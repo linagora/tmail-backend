@@ -1,0 +1,3 @@
+[submodule "james-project"]
+	path = james-project
+	url = https://github.com/linagora/james-project
