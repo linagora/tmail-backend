@@ -18,6 +18,7 @@
     <inceptionYear>2020</inceptionYear>
 
     <modules>
+        <module>apps</module>
         <module>jmap</module>
     </modules>
 
@@ -26,5 +27,20 @@
         <james.version>3.6.0-SNAPSHOT</james.version>
         <james.protocols.groupId>${james.groupId}.protocols</james.protocols.groupId>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jmap</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.inject</groupId>
+                <artifactId>guice</artifactId>
+                <version>4.2.2</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>
