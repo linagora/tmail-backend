@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.linagora.openpaas</groupId>
+        <artifactId>openpaas-james-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>openpaas-james</artifactId>
+    <packaging>pom</packaging>
+
+    <name>OpenPaaS James</name>
+    <description>Apache James extensions for OpemPaaS</description>
+    <inceptionYear>2020</inceptionYear>
+
+    <modules>
+        <module>jmap</module>
+    </modules>
+
+    <properties>
+        <james.groupId>org.apache.james</james.groupId>
+        <james.version>3.6.0-SNAPSHOT</james.version>
+        <james.protocols.groupId>${james.groupId}.protocols</james.protocols.groupId>
+    </properties>
+
+</project>
