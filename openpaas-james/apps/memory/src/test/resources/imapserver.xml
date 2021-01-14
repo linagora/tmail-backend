@@ -19,7 +19,6 @@ specific language governing permissions and limitations
 under the License.
 -->
 
-
 <imapservers>
     <imapserver enabled="true">
         <jmxName>imapserver</jmxName>

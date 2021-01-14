@@ -18,7 +18,6 @@
   under the License.                                           
  -->
 
-
 <pop3servers>
     <pop3server enabled="true">
         <jmxName>pop3server</jmxName>
