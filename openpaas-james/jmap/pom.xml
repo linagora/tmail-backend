@@ -14,7 +14,6 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-jmap-rfc-8621</artifactId>
-            <version>${james.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.inject</groupId>
