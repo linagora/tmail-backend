@@ -14,7 +14,7 @@
     <packaging>pom</packaging>
 
     <name>OpenPaaS James</name>
-    <description>Apache James extensions for OpemPaaS</description>
+    <description>Apache James extensions for OpenPaaS</description>
     <inceptionYear>2020</inceptionYear>
 
     <modules>
