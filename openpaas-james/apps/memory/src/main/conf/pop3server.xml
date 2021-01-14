@@ -19,7 +19,6 @@
  -->
 
 <!-- Read https://james.apache.org/server/config-pop3.html for further details -->
-
 <pop3servers>
     <pop3server enabled="false">
         <jmxName>pop3server</jmxName>

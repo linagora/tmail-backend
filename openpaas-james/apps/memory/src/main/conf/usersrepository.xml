@@ -19,7 +19,6 @@
  -->
 
 <!-- Read https://james.apache.org/server/config-users.html for further details -->
-
 <usersrepository name="LocalUsers">
     <algorithm>SHA-512</algorithm>
     <enableVirtualHosting>true</enableVirtualHosting>    

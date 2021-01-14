@@ -20,7 +20,6 @@
  -->
 
 <!-- Read https://james.apache.org/server/config-smtp-lmtp.html#SMTP_Configuration for further details -->
-
 <smtpservers>
     <smtpserver enabled="true">
         <jmxName>smtpserver-global</jmxName>
