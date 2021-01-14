@@ -257,13 +257,5 @@
                 </executions>
             </plugin>
         </plugins>
-        <extensions>
-            <extension>
-                <!-- Adding a Protocol to Deploy the Site (support for ssh/scp) -->
-                <groupId>org.apache.maven.wagon</groupId>
-                <artifactId>wagon-ssh-external</artifactId>
-                <version>2.0</version>
-            </extension>
-        </extensions>
     </build>
 </project>
