@@ -14,5 +14,6 @@
 
     <modules>
         <module>memory</module>
+        <module>distributed</module>
     </modules>
 </project>
