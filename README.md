@@ -8,6 +8,8 @@ This project adapts and enhance [Apache James project](https://james.apache.org)
 
  - [Building + Running the memory server](openpaas-james/apps/memory/README.md)
 
+- [Building + Running the distributed server](openpaas-james/apps/distributed/README.md)
+
 ## Additional features
 
 Additional features includes:
