@@ -54,3 +54,13 @@ Then you can finally start the James distributed server:
 ```
 docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/openpaas-james-distributed-ldap
 ```
+
+### With docker-compose 
+
+There is a docker-compose file in the root of this folder you can use to run everything in the same network at once.
+
+For this, just start it:
+
+```
+docker-compose up -d
+```
