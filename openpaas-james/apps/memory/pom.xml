@@ -152,7 +152,6 @@
                         <jvmFlags>
                             <jvmFlag>-Dlogback.configurationFile=/root/conf/logback.xml</jvmFlag>
                             <jvmFlag>-Dworking.directory=/root/</jvmFlag>
-                            <jvmFlag>-javaagent:/root/glowroot/glowroot.jar</jvmFlag>
                         </jvmFlags>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
                     </container>
