@@ -13,6 +13,7 @@
     <artifactId>integration-tests</artifactId>
 
     <modules>
+        <module>jmap/distributed-ldap-jmap-integration-tests</module>
         <module>jmap/jmap-integration-tests-common</module>
         <module>jmap/memory-jmap-integration-tests</module>
     </modules>
