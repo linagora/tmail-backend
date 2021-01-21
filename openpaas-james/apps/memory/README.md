@@ -15,3 +15,9 @@ Then run it:
 ```
 docker run linagora/openpaas-james-memory
 ```
+
+The [CLI](https://james.apache.org/server/manage-cli.html) can easily be used:
+
+```
+docker exec CONTAINER-ID james-cli ListDomains
+```
