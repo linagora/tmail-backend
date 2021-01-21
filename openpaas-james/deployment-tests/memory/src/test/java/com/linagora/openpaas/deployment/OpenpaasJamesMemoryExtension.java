@@ -1,5 +1,7 @@
 package com.linagora.openpaas.deployment;
 
+import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
+import org.apache.james.util.Port;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -13,16 +15,35 @@ public class OpenpaasJamesMemoryExtension implements BeforeEachCallback, AfterEa
         .waitingFor(Wait.forLogMessage(".*Web admin server started.*\\n", ONE_TIME));
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) {
-        container.stop();
-    }
-
-    @Override
     public void beforeEach(ExtensionContext extensionContext) {
         container.start();
     }
 
+    @Override
+    public void afterEach(ExtensionContext extensionContext) {
+        container.stop();
+    }
+
     public GenericContainer<?> getContainer() {
         return container;
+    }
+
+    ExternalJamesConfiguration configuration() {
+        return new ExternalJamesConfiguration() {
+            @Override
+            public String getAddress() {
+                return container.getContainerIpAddress();
+            }
+
+            @Override
+            public Port getImapPort() {
+                return Port.of(container.getMappedPort(143));
+            }
+
+            @Override
+            public Port getSmptPort() {
+                return Port.of(container.getMappedPort(25));
+            }
+        };
     }
 }
