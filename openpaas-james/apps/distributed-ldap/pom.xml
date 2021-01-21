@@ -104,6 +104,48 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>install-jbpm</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://github.com/glowroot/glowroot/releases/download/v0.13.4/glowroot-0.13.4-dist.zip</url>
+                            <unpack>true</unpack>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                            <md5>93d472281a67ab8404033a88280c23c9</md5>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-glowroot-resources</id>
+                        <!-- here the phase you need -->
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/target/glowroot</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/glowroot</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
                 <configuration>
@@ -142,10 +184,24 @@
                                 <into>/root/conf</into>
                             </path>
                             <path>
+                                <from>src/main/scripts</from>
+                                <into>/usr/bin</into>
+                            </path>
+                            <path>
+                                <from>target/glowroot</from>
+                                <into>/root/glowroot</into>
+                            </path>
+                            <path>
                                 <from>src/main/extensions-jars</from>
                                 <into>/root/extensions-jars</into>
                             </path>
                         </paths>
+                        <permissions>
+                            <permission>
+                                <file>/usr/bin/james-cli</file>
+                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                            </permission>
+                        </permissions>
                     </extraDirectories>
                 </configuration>
             </plugin>
