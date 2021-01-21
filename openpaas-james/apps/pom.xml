@@ -15,5 +15,6 @@
     <modules>
         <module>memory</module>
         <module>distributed</module>
+        <module>distributed-ldap</module>
     </modules>
 </project>
