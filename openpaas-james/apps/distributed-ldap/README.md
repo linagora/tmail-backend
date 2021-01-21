@@ -20,16 +20,6 @@ mvn compile com.google.cloud.tools:jib-maven-plugin:2.7.0:dockerBuild
 
 ## Run
 
-### Preprovisioned LDAP
-
-We put at disposition a small preprovisioned LDAP image that you need to build first locally before running it:
-
-```
-docker build -t preprovisioned_ldap src/main/ldap-container
-```
-
-The LDAP server contains the `james-user` user with the password `secret`.
-
 ### Run manually
 
 Firstly, create your own user network on Docker for the James environment:
@@ -62,7 +52,7 @@ docker run -d --network emaily --env SLAPD_DOMAIN=james.org --env SLAPD_PASSWORD
 Then you can finally start the James distributed server:
 
 ```
-docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/openpaas-james-distributed
+docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/openpaas-james-distributed-ldap
 ```
 
 ### With docker-compose 
