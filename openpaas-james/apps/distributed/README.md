@@ -90,5 +90,5 @@ services:
 The [CLI](https://james.apache.org/server/manage-cli.html) can easily be used once your distributed server is running:
 
 ```
-docker exec CONTAINER-ID james-cli ListDomains
+docker exec james james-cli ListDomains
 ```
