@@ -108,7 +108,7 @@
                 <artifactId>download-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>install-jbpm</id>
+                        <id>package-glowroot</id>
                         <phase>package</phase>
                         <goals>
                             <goal>wget</goal>
@@ -128,7 +128,6 @@
                 <executions>
                     <execution>
                         <id>copy-glowroot-resources</id>
-                        <!-- here the phase you need -->
                         <phase>package</phase>
                         <goals>
                             <goal>copy-resources</goal>
