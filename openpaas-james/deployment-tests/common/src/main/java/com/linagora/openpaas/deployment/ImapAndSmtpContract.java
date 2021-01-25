@@ -25,6 +25,8 @@ public abstract class ImapAndSmtpContract extends DeploymentValidation {
     @Override
     @BeforeEach
     public void setUp() throws Exception {
+        Thread.sleep(2000);
+
         container().execInContainer("james-cli", "AddDomain", "domain");
         container().execInContainer("james-cli", "AddUser", "imapuser@domain", "password");
 

@@ -28,6 +28,8 @@ public interface JmapContract {
 
     @BeforeEach
     default void setUp() throws Exception {
+        Thread.sleep(2000);
+
         jmapContainer().execInContainer("james-cli", "AddDomain", "domain.tld");
         jmapContainer().execInContainer("james-cli", "AddUser", BOB.asString(), BOB_PASSWORD);
 
