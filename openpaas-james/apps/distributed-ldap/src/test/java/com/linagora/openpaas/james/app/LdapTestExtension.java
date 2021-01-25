@@ -10,7 +10,7 @@ public class LdapTestExtension implements GuiceModuleTestExtension {
 
     private DockerLdapRule ldapRule;
 
-    LdapTestExtension() {
+    public LdapTestExtension() {
         this(new DockerLdapRule());
     }
 
