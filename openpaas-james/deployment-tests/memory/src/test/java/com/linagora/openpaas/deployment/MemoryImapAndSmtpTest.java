@@ -9,12 +9,12 @@ public class MemoryImapAndSmtpTest extends ImapAndSmtpContract {
     static OpenpaasJamesMemoryExtension extension = new OpenpaasJamesMemoryExtension();
 
     @Override
-    ExternalJamesConfiguration configuration() {
+    protected ExternalJamesConfiguration configuration() {
         return extension.configuration();
     }
 
     @Override
-    GenericContainer<?> container() {
+    protected GenericContainer<?> container() {
         return extension.getContainer();
     }
 }
