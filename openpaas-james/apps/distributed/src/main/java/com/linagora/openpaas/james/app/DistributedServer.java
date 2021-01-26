@@ -24,6 +24,7 @@ import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
 import org.apache.james.modules.server.DKIMMailetModule;
+import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
 
 import com.google.inject.Module;
@@ -61,7 +62,8 @@ public class DistributedServer {
             .build();
 
         LOGGER.info("Loading configuration {}", configuration.toString());
-        GuiceJamesServer server = createServer(configuration);
+        GuiceJamesServer server = createServer(configuration)
+            .combineWith(new JMXServerModule());
 
         JamesServerMain.main(server);
     }
