@@ -14,9 +14,9 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 public abstract class ImapAndSmtpContract extends DeploymentValidation {
-    abstract ExternalJamesConfiguration configuration();
+    protected abstract ExternalJamesConfiguration configuration();
 
-    abstract GenericContainer<?> container();
+    protected abstract GenericContainer<?> container();
 
     private ImapHostSystem system;
     private SmtpHostSystem smtpHostSystem;
