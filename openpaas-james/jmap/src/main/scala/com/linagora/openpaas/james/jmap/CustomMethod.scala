@@ -6,7 +6,7 @@ import com.linagora.openpaas.james.jmap.CapabilityIdentifier.LINAGORA_ECHO
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.MethodName
-import org.apache.james.jmap.core.{Capability, CustomCapability, CustomCapabilityProperties}
+import org.apache.james.jmap.core.{Capability, CapabilityProperties}
 import org.apache.james.jmap.method.{InvocationWithContext, Method}
 import org.apache.james.mailbox.MailboxSession
 import org.reactivestreams.Publisher
@@ -16,10 +16,16 @@ object CapabilityIdentifier {
   val LINAGORA_ECHO: CapabilityIdentifier = "com:linagora:params:jmap:echo"
 }
 
-class CustomCapabilitiesModule extends AbstractModule {
+case object CustomCapabilityProperties extends CapabilityProperties
 
+case object CustomCapability extends Capability {
+  val properties: CapabilityProperties = CustomCapabilityProperties
+  val identifier: CapabilityIdentifier = LINAGORA_ECHO
+}
+
+class CustomCapabilitiesModule extends AbstractModule {
   @ProvidesIntoSet
-  private def capability(): Capability = CustomCapability(new CustomCapabilityProperties, LINAGORA_ECHO)
+  private def capability(): Capability = CustomCapability
 }
 
 class CustomMethodModule extends AbstractModule {
