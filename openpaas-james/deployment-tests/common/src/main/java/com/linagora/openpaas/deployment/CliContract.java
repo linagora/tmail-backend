@@ -12,8 +12,6 @@ public interface CliContract {
 
     @Test
     default void cliShouldWork() throws Exception {
-        Thread.sleep(2000);
-
         Container.ExecResult exec1 = jamesContainer().execInContainer("james-cli", "ListDomains");
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(exec1.getExitCode()).isEqualTo(0);
