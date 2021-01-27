@@ -14,9 +14,9 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 public abstract class ImapAndSmtpContract extends DeploymentValidation {
-    abstract ExternalJamesConfiguration configuration();
+    protected abstract ExternalJamesConfiguration configuration();
 
-    abstract GenericContainer<?> container();
+    protected abstract GenericContainer<?> container();
 
     private ImapHostSystem system;
     private SmtpHostSystem smtpHostSystem;
@@ -25,6 +25,8 @@ public abstract class ImapAndSmtpContract extends DeploymentValidation {
     @Override
     @BeforeEach
     public void setUp() throws Exception {
+        Thread.sleep(2000);
+
         container().execInContainer("james-cli", "AddDomain", "domain");
         container().execInContainer("james-cli", "AddUser", "imapuser@domain", "password");
 

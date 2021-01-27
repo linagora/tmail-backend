@@ -26,7 +26,7 @@
     principal="uid=james-user,ou=people,dc=james,dc=org"
     credentials="secret"
     userBase="ou=people,dc=james,dc=org"
-    userIdAttribute="uid"
+    userIdAttribute="mail"
     userObjectClass="person">
     <supportsVirtualHosting>true</supportsVirtualHosting>
 </usersrepository>

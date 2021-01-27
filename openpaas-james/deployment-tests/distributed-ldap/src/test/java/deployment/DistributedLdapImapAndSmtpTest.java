@@ -1,12 +1,14 @@
-package com.linagora.openpaas.deployment;
+package deployment;
 
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.testcontainers.containers.GenericContainer;
 
-public class MemoryImapAndSmtpTest extends ImapAndSmtpContract {
+import com.linagora.openpaas.deployment.ImapAndSmtpContract;
+
+public class DistributedLdapImapAndSmtpTest extends ImapAndSmtpContract {
     @RegisterExtension
-    static OpenpaasJamesMemoryExtension extension = new OpenpaasJamesMemoryExtension();
+    OpenpaasJamesDistributedLdapExtension extension = new OpenpaasJamesDistributedLdapExtension();
 
     @Override
     protected ExternalJamesConfiguration configuration() {

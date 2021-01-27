@@ -4,9 +4,9 @@ import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJam
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.testcontainers.containers.GenericContainer;
 
-public class MemoryImapAndSmtpTest extends ImapAndSmtpContract {
+public class DistributedImapAndSmtpTest extends ImapAndSmtpContract {
     @RegisterExtension
-    static OpenpaasJamesMemoryExtension extension = new OpenpaasJamesMemoryExtension();
+    OpenpaasJamesDistributedExtension extension = new OpenpaasJamesDistributedExtension();
 
     @Override
     protected ExternalJamesConfiguration configuration() {
