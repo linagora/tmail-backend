@@ -84,7 +84,7 @@ public class OpenpaasJamesDistributedLdapExtension implements BeforeEachCallback
         return new GenericContainer<>("linagora/openpaas-james-distributed-ldap:latest")
             .withNetworkAliases("james-distributed-ldap")
             .withNetwork(network)
-            .waitingFor(Wait.forLogMessage(".*Web admin server started.*\\n", ONE_TIME));
+            .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
     }
 
     @Override
