@@ -1,5 +1,10 @@
 package com.linagora.openpaas.deployment;
 
+import static com.linagora.openpaas.deployment.ThirdPartyContainers.createCassandra;
+import static com.linagora.openpaas.deployment.ThirdPartyContainers.createElasticsearch;
+import static com.linagora.openpaas.deployment.ThirdPartyContainers.createRabbitMQ;
+import static com.linagora.openpaas.deployment.ThirdPartyContainers.createS3;
+
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.apache.james.util.Port;
 import org.apache.james.util.Runnables;
@@ -22,47 +27,11 @@ public class OpenpaasJamesDistributedExtension implements BeforeEachCallback, Af
 
     public OpenpaasJamesDistributedExtension() {
         network = Network.newNetwork();
-        cassandra = createCassandra();
-        elasticsearch = createElasticsearch();
-        rabbitmq = createRabbitMQ();
-        s3 = createS3();
+        cassandra = createCassandra(network);
+        elasticsearch = createElasticsearch(network);
+        rabbitmq = createRabbitMQ(network);
+        s3 = createS3(network);
         james = createOpenPaasJamesDistributed();
-    }
-
-    @SuppressWarnings("resource")
-    private GenericContainer<?> createCassandra() {
-        return new GenericContainer<>("cassandra:3.11.3")
-            .withNetworkAliases("cassandra")
-            .withNetwork(network)
-            .withExposedPorts(9042);
-    }
-
-    @SuppressWarnings("resource")
-    private GenericContainer<?> createElasticsearch() {
-        return new GenericContainer<>("docker.elastic.co/elasticsearch/elasticsearch:6.3.2")
-            .withNetworkAliases("elasticsearch")
-            .withNetwork(network)
-            .withExposedPorts(9200)
-            .withEnv("discovery.type", "single-node");
-    }
-
-    @SuppressWarnings("resource")
-    private GenericContainer<?> createRabbitMQ() {
-        return new GenericContainer<>("rabbitmq:3.8.3-management")
-            .withNetworkAliases("rabbitmq")
-            .withNetwork(network)
-            .withExposedPorts(5672, 15672);
-    }
-
-    @SuppressWarnings("resource")
-    private GenericContainer<?> createS3() {
-        return new GenericContainer<>("zenko/cloudserver:8.2.6")
-            .withNetworkAliases("s3", "s3.docker.test")
-            .withNetwork(network)
-            .withEnv("SCALITY_ACCESS_KEY_ID", "accessKey1")
-            .withEnv("SCALITY_SECRET_ACCESS_KEY", "secretKey1")
-            .withEnv("S3BACKEND", "mem")
-            .withEnv("REMOTE_MANAGEMENT_DISABLE", "1");
     }
 
     @SuppressWarnings("resource")
