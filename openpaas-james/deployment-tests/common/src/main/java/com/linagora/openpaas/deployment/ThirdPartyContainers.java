@@ -1,0 +1,54 @@
+package com.linagora.openpaas.deployment;
+
+import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
+
+public class ThirdPartyContainers {
+    @SuppressWarnings("resource")
+    public static GenericContainer<?> createCassandra(Network network) {
+        return new GenericContainer<>("cassandra:3.11.3")
+            .withNetworkAliases("cassandra")
+            .withNetwork(network)
+            .withExposedPorts(9042);
+    }
+
+    @SuppressWarnings("resource")
+    public static GenericContainer<?> createElasticsearch(Network network) {
+        return new GenericContainer<>("docker.elastic.co/elasticsearch/elasticsearch:6.3.2")
+            .withNetworkAliases("elasticsearch")
+            .withNetwork(network)
+            .withExposedPorts(9200)
+            .withEnv("discovery.type", "single-node");
+    }
+
+    @SuppressWarnings("resource")
+    public static GenericContainer<?> createRabbitMQ(Network network) {
+        return new GenericContainer<>("rabbitmq:3.8.3-management")
+            .withNetworkAliases("rabbitmq")
+            .withNetwork(network)
+            .withExposedPorts(5672, 15672);
+    }
+
+    @SuppressWarnings("resource")
+    public static GenericContainer<?> createS3(Network network) {
+        return new GenericContainer<>("zenko/cloudserver:8.2.6")
+            .withNetworkAliases("s3", "s3.docker.test")
+            .withNetwork(network)
+            .withEnv("SCALITY_ACCESS_KEY_ID", "accessKey1")
+            .withEnv("SCALITY_SECRET_ACCESS_KEY", "secretKey1")
+            .withEnv("S3BACKEND", "mem")
+            .withEnv("REMOTE_MANAGEMENT_DISABLE", "1");
+    }
+
+    @SuppressWarnings("resource")
+    public static GenericContainer<?> createLdap(Network network) {
+        return new GenericContainer<>("dinkel/openldap:latest")
+            .withNetworkAliases("ldap")
+            .withNetwork(network)
+            .withEnv("SLAPD_DOMAIN", "james.org")
+            .withEnv("SLAPD_PASSWORD", "mysecretpassword")
+            .withEnv("SLAPD_CONFIG_PASSWORD", "mysecretpassword")
+            .withClasspathResourceMapping("populate.ldif", "/etc/ldap/prepopulate/populate.ldif", BindMode.READ_ONLY);
+    }
+}
