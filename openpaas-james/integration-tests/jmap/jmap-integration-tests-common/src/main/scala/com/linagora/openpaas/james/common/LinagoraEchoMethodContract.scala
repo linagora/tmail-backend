@@ -31,7 +31,7 @@ trait LinagoraEchoMethodContract {
     val request =
       """{
         |  "using": [
-        |    "urn:ietf:params:jmap:core"
+        |    "urn:ietf:params:jmap:core", "com:linagora:params:jmap:echo"
         |  ],
         |  "methodCalls": [
         |    [
@@ -79,7 +79,7 @@ trait LinagoraEchoMethodContract {
     val request =
       """{
         |  "using": [
-        |    "urn:ietf:params:jmap:core"
+        |    "urn:ietf:params:jmap:core", "com:linagora:params:jmap:echo"
         |  ],
         |  "methodCalls": [
         |    [
@@ -140,7 +140,9 @@ trait LinagoraEchoMethodContract {
   def echoMethodShouldReturnUnknownMethodWhenMissingCoreCapability(): Unit = {
     val request =
       """{
-        |  "using": [],
+        |  "using": [
+        |    "com:linagora:params:jmap:echo"
+        |  ],
         |  "methodCalls": [
         |    [
         |      "Linagora/echo",
@@ -173,6 +175,50 @@ trait LinagoraEchoMethodContract {
          |    {
          |      "type": "unknownMethod",
          |      "description": "Missing capability(ies): urn:ietf:params:jmap:core"
+         |    },
+         |    "c1"]]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def echoMethodShouldReturnUnknownMethodWhenMissingLinagoraEchoCapability(): Unit = {
+    val request =
+      """{
+        |  "using": [
+        |    "urn:ietf:params:jmap:core"
+        |  ],
+        |  "methodCalls": [
+        |    [
+        |      "Linagora/echo",
+        |      {
+        |        "arg1": "arg1data",
+        |        "arg2": "arg2data"
+        |      },
+        |      "c1"
+        |    ]
+        |  ]
+        |}""".stripMargin
+
+    val response = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [[
+         |    "error",
+         |    {
+         |      "type": "unknownMethod",
+         |      "description": "Missing capability(ies): com:linagora:params:jmap:echo"
          |    },
          |    "c1"]]
          |}""".stripMargin)
