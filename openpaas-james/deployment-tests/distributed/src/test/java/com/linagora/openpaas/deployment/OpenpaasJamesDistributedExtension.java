@@ -71,7 +71,7 @@ public class OpenpaasJamesDistributedExtension implements BeforeEachCallback, Af
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
             .dependsOn(cassandra, elasticsearch, s3, rabbitmq)
-            .waitingFor(Wait.forLogMessage(".*Web admin server started.*\\n", ONE_TIME));
+            .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
     }
 
     @Override

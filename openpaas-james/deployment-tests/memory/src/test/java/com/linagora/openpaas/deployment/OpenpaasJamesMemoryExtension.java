@@ -12,7 +12,7 @@ public class OpenpaasJamesMemoryExtension implements BeforeEachCallback, AfterEa
     private static final int ONE_TIME = 1;
 
     private final GenericContainer<?> container = new GenericContainer<>("linagora/openpaas-james-memory:latest")
-        .waitingFor(Wait.forLogMessage(".*Web admin server started.*\\n", ONE_TIME));
+        .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) {
