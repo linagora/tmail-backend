@@ -1,6 +1,5 @@
 package com.linagora.openpaas.deployment;
 
-import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 
@@ -39,16 +38,5 @@ public class ThirdPartyContainers {
             .withEnv("SCALITY_SECRET_ACCESS_KEY", "secretKey1")
             .withEnv("S3BACKEND", "mem")
             .withEnv("REMOTE_MANAGEMENT_DISABLE", "1");
-    }
-
-    @SuppressWarnings("resource")
-    public static GenericContainer<?> createLdap(Network network) {
-        return new GenericContainer<>("dinkel/openldap:latest")
-            .withNetworkAliases("ldap")
-            .withNetwork(network)
-            .withEnv("SLAPD_DOMAIN", "james.org")
-            .withEnv("SLAPD_PASSWORD", "mysecretpassword")
-            .withEnv("SLAPD_CONFIG_PASSWORD", "mysecretpassword")
-            .withClasspathResourceMapping("populate.ldif", "/etc/ldap/prepopulate/populate.ldif", BindMode.READ_ONLY);
     }
 }
