@@ -57,18 +57,16 @@ This will automatically do for you:
 * generate docker images for `memory`, `distributed` and `distributed-ldap` flavors of the project
 * launch unit, integration and deployment tests on `openpaas-james`
 
-To launch it you need to have docker installed. From the root of this project, you can either use directly the image
-provided on docker hub:
-
-```
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/Jenkinsfile:/workspace/Jenkinsfile rcordier/jenkinsfile-runner:maven-jdk11
-```
-
-Or you can build the Jenkins runner locally yourself:
+To launch it you need to have docker installed. From the root of this project, you can build the 
+Jenkins runner locally yourself:
 
 ```
 docker build -t local-jenkins-runner dockerfiles/jenkins-runner
+```
 
+And then you need to launch it with the Jenkinsfile:
+
+```
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/Jenkinsfile:/workspace/Jenkinsfile local-jenkins-runner
 ```
 
