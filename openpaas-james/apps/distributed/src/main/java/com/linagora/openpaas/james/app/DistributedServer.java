@@ -20,6 +20,7 @@ import org.apache.james.modules.data.CassandraJmapModule;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.JMAPServerModule;
+import org.apache.james.modules.protocols.JmapEventBusModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
@@ -38,6 +39,7 @@ public class DistributedServer {
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
         new JMAPServerModule(),
+        new JmapEventBusModule(),
         WEBADMIN);
 
     public static Module REQUIRE_TASK_MANAGER_MODULE = Modules.combine(
