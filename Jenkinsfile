@@ -15,7 +15,7 @@ pipeline {
         stage('Test') {
             steps {
                 dir("openpaas-james") {
-                    sh 'mvn -B test'
+                    sh 'mvn -B surefire:test'
                 }
             }
         }
