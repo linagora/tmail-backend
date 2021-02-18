@@ -10,7 +10,9 @@ pipeline {
             }
         }
         stage('Compile') {
-            sh 'mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C'
+            steps {
+                sh 'mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C'
+            }
         }
         stage('Test') {
             steps {
