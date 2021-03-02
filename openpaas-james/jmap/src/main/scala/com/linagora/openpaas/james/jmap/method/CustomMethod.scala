@@ -1,8 +1,8 @@
-package com.linagora.openpaas.james.jmap
+package com.linagora.openpaas.james.jmap.method
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
-import com.linagora.openpaas.james.jmap.CapabilityIdentifier.LINAGORA_ECHO
+import com.linagora.openpaas.james.jmap.method.CapabilityIdentifier.LINAGORA_ECHO
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.MethodName
@@ -14,6 +14,7 @@ import reactor.core.scala.publisher.SMono
 
 object CapabilityIdentifier {
   val LINAGORA_ECHO: CapabilityIdentifier = "com:linagora:params:jmap:echo"
+  val LINAGORA_FILTER: CapabilityIdentifier = "com:linagora:params:jmap:filter"
 }
 
 case object CustomCapabilityProperties extends CapabilityProperties
