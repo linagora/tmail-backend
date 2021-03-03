@@ -67,7 +67,7 @@ docker build -t local-jenkins-runner dockerfiles/jenkins-runner
 And then you need to launch it with the Jenkinsfile:
 
 ```
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/Jenkinsfile:/workspace/Jenkinsfile local-jenkins-runner
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/dockerfiles/jenkins-runner/Jenkinsfile:/workspace/Jenkinsfile local-jenkins-runner
 ```
 
 If you don't want the build to redownload everytime all the maven dependencies (it can be heavy) you can mount
