@@ -2,8 +2,9 @@ pipeline {
     agent any
     
     stages {
-        stage('Git submodule init') {
+        stage('Git checkout') {
             steps {
+                git 'https://github.com/linagora/openpaas-james'
                 sh 'git submodule init'
                 sh 'git submodule update'
             }
