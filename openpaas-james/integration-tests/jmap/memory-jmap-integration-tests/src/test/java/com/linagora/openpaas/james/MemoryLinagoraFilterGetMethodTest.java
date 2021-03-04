@@ -13,7 +13,7 @@ import com.linagora.openpaas.james.app.MemoryServer;
 import com.linagora.openpaas.james.common.LinagoraFilterGetMethodContract;
 import com.linagora.openpaas.james.common.module.JmapGuiceCustomModule;
 
-public class MemoryLinagoraLinagoraFilterGetMethodTest implements LinagoraFilterGetMethodContract {
+public class MemoryLinagoraFilterGetMethodTest implements LinagoraFilterGetMethodContract {
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
