@@ -8,7 +8,7 @@ import com.linagora.openpaas.james.jmap.method.CapabilityIdentifier.LINAGORA_FIL
 import com.linagora.openpaas.james.jmap.model.{Action, AppendIn, Comparator, Condition, Field, Filter, FilterGetNotFound, FilterGetRequest, FilterGetResponse, Rule}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
-import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule => JavaRule}
+import org.apache.james.jmap.api.filtering.FilteringManagement
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityProperties, Invocation}
@@ -70,21 +70,18 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
       case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
     }
 
-  private def parseRuleFromJavaToScala(rule: JavaRule): Rule =
-    Rule(Name(rule.getName),
-      Condition(Field(rule.getCondition.getField.asString()), Comparator(rule.getCondition.getComparator.asString()), rule.getCondition.getValue),
-      Action(AppendIn(parseMailboxIds(rule.getAction.getAppendInMailboxes.getMailboxIds))))
-
   private def parseMailboxIds(mailboxIds: ImmutableList[String]) : List[MailboxId] = List(mailboxIdFactory.fromString(mailboxIds.get(0)))
 
   private def retrieveFilters(username: Username) : SMono[Filter] =
     SFlux.fromPublisher(filteringManagement.listRulesForUser(username))
-      .map(parseRuleFromJavaToScala)
+      .map(rule => Rule(Name(rule.getName),
+        Condition(Field(rule.getCondition.getField.asString()), Comparator(rule.getCondition.getComparator.asString()), rule.getCondition.getValue),
+        Action(AppendIn(parseMailboxIds(rule.getAction.getAppendInMailboxes.getMailboxIds)))))
       .collectSeq()
       .map(rules => Filter("singleton", rules.toList))
 
   private def getFilterGetResponse(request: FilterGetRequest,
-                                  mailboxSession: MailboxSession): SMono[FilterGetResponse] =
+                                   mailboxSession: MailboxSession): SMono[FilterGetResponse] =
     request.ids match {
       case None => retrieveFilters(mailboxSession.getUser)
         .map(filter => FilterGetResponse(request.accountId, List(filter), FilterGetNotFound(List())))
