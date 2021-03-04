@@ -20,9 +20,9 @@ case class Condition(field: Field, comparator: Comparator, value: String)
 
 case class Field(string: String)
 
-case class Comparator(string: String)
+case class Comparator(string: String) extends AnyVal
 
-case class AppendIn(mailboxIds: List[MailboxId])
+case class AppendIn(mailboxIds: List[MailboxId]) extends AnyVal
 
 case class Action(appendIn: AppendIn)
 

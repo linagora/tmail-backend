@@ -20,7 +20,6 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.MailboxId
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
-
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -55,14 +54,15 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
   override val methodName: Invocation.MethodName = MethodName("Filter/get")
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(LINAGORA_FILTER)
 
-  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FilterGetRequest): Publisher[InvocationWithContext] = {
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession,
+                         request: FilterGetRequest): Publisher[InvocationWithContext] =
     getFilterGetResponse(request, mailboxSession).map(response => InvocationWithContext(
       invocation = Invocation(
         methodName = methodName,
         arguments = Arguments(FilterSerializer.serialize(response).as[JsObject]),
         methodCallId = invocation.invocation.methodCallId),
       processingContext = invocation.processingContext))
-  }
+
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, FilterGetRequest] =
     FilterSerializer.deserializeFilterGetRequest(invocation.arguments.value) match {
@@ -70,29 +70,27 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
       case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
     }
 
-  private def parseRuleFromJavaToScala(rule: JavaRule): Rule = {
+  private def parseRuleFromJavaToScala(rule: JavaRule): Rule =
     Rule(Name(rule.getName),
       Condition(Field(rule.getCondition.getField.asString()), Comparator(rule.getCondition.getComparator.asString()), rule.getCondition.getValue),
       Action(AppendIn(parseMailboxIds(rule.getAction.getAppendInMailboxes.getMailboxIds))))
-  }
 
-  private def parseMailboxIds(mailboxIds: ImmutableList[String]) : List[MailboxId] = {
-    List(mailboxIdFactory.fromString(mailboxIds.get(0)))
-  }
+  private def parseMailboxIds(mailboxIds: ImmutableList[String]) : List[MailboxId] = List(mailboxIdFactory.fromString(mailboxIds.get(0)))
 
-  private def retrieveFilters(username: Username) : SMono[Filter] = {
+  private def retrieveFilters(username: Username) : SMono[Filter] =
     SFlux.fromPublisher(filteringManagement.listRulesForUser(username))
       .map(parseRuleFromJavaToScala)
       .collectSeq()
       .map(rules => Filter("singleton", rules.toList))
-  }
 
   private def getFilterGetResponse(request: FilterGetRequest,
                                   mailboxSession: MailboxSession): SMono[FilterGetResponse] =
     request.ids match {
-      case None => retrieveFilters(mailboxSession.getUser).map(filter => FilterGetResponse(request.accountId, List(filter), FilterGetNotFound(List())))
+      case None => retrieveFilters(mailboxSession.getUser)
+        .map(filter => FilterGetResponse(request.accountId, List(filter), FilterGetNotFound(List())))
       case Some(ids) => if(ids.value.contains("singleton")) {
-        retrieveFilters(mailboxSession.getUser).map(filter => FilterGetResponse(request.accountId, List(filter), FilterGetNotFound(ids.value.filterNot(id => id.equals("singleton")))))
+        retrieveFilters(mailboxSession.getUser)
+          .map(filter => FilterGetResponse(request.accountId, List(filter), FilterGetNotFound(ids.value.filterNot(id => id.equals("singleton")))))
       } else {
         SMono.just(FilterGetResponse(request.accountId, List(), FilterGetNotFound(ids.value)))
       }
