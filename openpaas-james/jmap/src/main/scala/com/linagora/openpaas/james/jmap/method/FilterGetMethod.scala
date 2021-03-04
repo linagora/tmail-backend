@@ -1,11 +1,10 @@
 package com.linagora.openpaas.james.jmap.method
 
-import com.google.common.collect.ImmutableList
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.openpaas.james.jmap.json.FilterSerializer
 import com.linagora.openpaas.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
-import com.linagora.openpaas.james.jmap.model.{Action, AppendIn, Comparator, Condition, Field, Filter, FilterGetNotFound, FilterGetRequest, FilterGetResponse, Rule}
+import com.linagora.openpaas.james.jmap.model.{Filter, FilterGetNotFound, FilterGetRequest, FilterGetResponse, Rule}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.FilteringManagement
@@ -13,7 +12,6 @@ import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityProperties, Invocation}
 import org.apache.james.jmap.json.ResponseSerializer
-import org.apache.james.jmap.mail.Name
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
@@ -70,13 +68,9 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
       case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
     }
 
-  private def parseMailboxIds(mailboxIds: ImmutableList[String]) : List[MailboxId] = List(mailboxIdFactory.fromString(mailboxIds.get(0)))
-
   private def retrieveFilters(username: Username) : SMono[Filter] =
     SFlux.fromPublisher(filteringManagement.listRulesForUser(username))
-      .map(rule => Rule(Name(rule.getName),
-        Condition(Field(rule.getCondition.getField.asString()), Comparator(rule.getCondition.getComparator.asString()), rule.getCondition.getValue),
-        Action(AppendIn(parseMailboxIds(rule.getAction.getAppendInMailboxes.getMailboxIds)))))
+      .map(javaRule => Rule.parseRuleFromJavaToScala(javaRule, mailboxIdFactory))
       .collectSeq()
       .map(rules => Filter("singleton", rules.toList))
 
