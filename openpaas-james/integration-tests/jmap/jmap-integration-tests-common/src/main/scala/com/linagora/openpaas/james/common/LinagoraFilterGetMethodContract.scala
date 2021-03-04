@@ -9,7 +9,6 @@ import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.Rule
-import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
@@ -36,7 +35,6 @@ trait LinagoraFilterGetMethodContract {
 
   @Test
   def filterGetWithUserHaveExistingRulesShouldShowThoseRules(server: GuiceJamesServer): Unit = {
-
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
         Rule.builder
@@ -45,7 +43,6 @@ trait LinagoraFilterGetMethodContract {
           .condition(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
-
 
     val request = s"""{
                      |  "using": ["com:linagora:params:jmap:filter" ],
@@ -64,7 +61,7 @@ trait LinagoraFilterGetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -106,7 +103,6 @@ trait LinagoraFilterGetMethodContract {
 
   @Test
   def filterGetWithUserHaveNoRulesShouldShowEmptyRules(): Unit = {
-
     val request = s"""{
                      |  "using": ["com:linagora:params:jmap:filter" ],
                      |  "methodCalls": [
@@ -153,7 +149,6 @@ trait LinagoraFilterGetMethodContract {
 
   @Test
   def filterGetWithWrongAccountIdShouldFail(): Unit = {
-
     val request = s"""{
                      |  "using": ["com:linagora:params:jmap:filter" ],
                      |  "methodCalls": [
@@ -196,7 +191,6 @@ trait LinagoraFilterGetMethodContract {
 
   @Test
   def filterGetShouldReturnUnknownMethodWhenOmittingCapability(): Unit = {
-
     val request = s"""{
                      |  "using": [],
                      |  "methodCalls": [
@@ -281,7 +275,6 @@ trait LinagoraFilterGetMethodContract {
 
   @Test
   def filterGetWithIdsNullShouldReturnStoredFilter(server: GuiceJamesServer): Unit = {
-
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
         Rule.builder
@@ -350,7 +343,6 @@ trait LinagoraFilterGetMethodContract {
 
   @Test
   def filterGetWithIdsContainSingletonShouldReturnStoredFilter(server: GuiceJamesServer): Unit = {
-
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
         Rule.builder
@@ -419,7 +411,6 @@ trait LinagoraFilterGetMethodContract {
 
   @Test
   def filterGetWithIdsNotContainSingletonShouldReturnEmptyFilter(server: GuiceJamesServer): Unit = {
-
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
         Rule.builder
@@ -428,7 +419,6 @@ trait LinagoraFilterGetMethodContract {
           .condition(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
-
 
     val request = s"""{
                      |  "using": ["com:linagora:params:jmap:filter" ],
@@ -472,7 +462,6 @@ trait LinagoraFilterGetMethodContract {
 
   @Test
   def filterGetWithEmptyIdsShouldReturnEmptyFilter(server: GuiceJamesServer): Unit = {
-
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
         Rule.builder
