@@ -1,5 +1,9 @@
 pipeline {
     agent any
+
+    options {
+        disableConcurrentBuilds()
+    }
     
     stages {
         stage('Git submodule init') {
