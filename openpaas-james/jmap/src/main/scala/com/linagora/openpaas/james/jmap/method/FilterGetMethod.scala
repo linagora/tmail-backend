@@ -70,7 +70,7 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
 
   private def retrieveFilters(username: Username) : SMono[Filter] =
     SFlux.fromPublisher(filteringManagement.listRulesForUser(username))
-      .map(javaRule => Rule.parseRuleFromJavaToScala(javaRule, mailboxIdFactory))
+      .map(javaRule => Rule.fromJava(javaRule, mailboxIdFactory))
       .collectSeq()
       .map(rules => Filter("singleton", rules.toList))
 

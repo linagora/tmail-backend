@@ -36,12 +36,12 @@ case class FilterGetNotFound(value: List[String]) {
 }
 
 object Rule {
-  def parseRuleFromJavaToScala(rule: JavaRule, mailboxIdFactory: MailboxId.Factory): Rule =
+  def fromJava(rule: JavaRule, mailboxIdFactory: MailboxId.Factory): Rule =
     Rule(Name(rule.getName),
       Condition(Field(rule.getCondition.getField.asString()), Comparator(rule.getCondition.getComparator.asString()), rule.getCondition.getValue),
-      Action(AppendIn(AppendIn.parseMailboxIds(rule.getAction.getAppendInMailboxes.getMailboxIds, mailboxIdFactory))))
+      Action(AppendIn(AppendIn.fromMailboxIds(rule.getAction.getAppendInMailboxes.getMailboxIds, mailboxIdFactory))))
 }
 
 object AppendIn {
-  def parseMailboxIds(mailboxIds: ImmutableList[String], mailboxIdFactory: MailboxId.Factory) : List[MailboxId] = List(mailboxIdFactory.fromString(mailboxIds.get(0)))
+  def fromMailboxIds(mailboxIds: ImmutableList[String], mailboxIdFactory: MailboxId.Factory) : List[MailboxId] = List(mailboxIdFactory.fromString(mailboxIds.get(0)))
 }
