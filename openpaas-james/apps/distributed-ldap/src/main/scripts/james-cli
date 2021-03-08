@@ -1,3 +1,0 @@
-#!/bin/bash
-
-java -cp /root/resources:/root/classes:/root/libs/* org.apache.james.cli.ServerCmd "$@"
