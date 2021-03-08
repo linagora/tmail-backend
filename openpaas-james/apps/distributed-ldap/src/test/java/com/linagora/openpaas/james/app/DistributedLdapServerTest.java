@@ -15,6 +15,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
@@ -87,6 +88,7 @@ public class DistributedLdapServerTest {
                 .configurationFromClasspath()
                 .blobStore(blobStoreConfiguration)
                 .searchConfiguration(SearchConfiguration.elasticSearch())
+                .usersRepository(UsersRepositoryModuleChooser.Implementation.LDAP)
                 .build())
             .extension(new DockerElasticSearchExtension())
             .extension(new CassandraExtension())

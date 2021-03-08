@@ -14,6 +14,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.core.Username;
+import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.jmap.http.UserCredential;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
@@ -40,6 +41,7 @@ public class DistributedLdapLinagoraFilterGetMethodTest implements LinagoraFilte
                 .disableCache()
                 .deduplication())
             .searchConfiguration(SearchConfiguration.elasticSearch())
+            .usersRepository(UsersRepositoryModuleChooser.Implementation.LDAP)
             .build())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
