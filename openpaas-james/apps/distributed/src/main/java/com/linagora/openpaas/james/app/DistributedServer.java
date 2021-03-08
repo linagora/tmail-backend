@@ -30,7 +30,8 @@ import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
-import com.linagora.openpaas.james.jmap.CustomMethodModule;
+import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
+import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 
 public class DistributedServer {
     public static final Module PROTOCOLS = Modules.combine(
@@ -56,7 +57,7 @@ public class DistributedServer {
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEventBusModule(),
                 new DistributedTaskSerializationModule()),
-       new CustomMethodModule());
+       new CustomMethodModule(), new FilterGetMethodModule());
 
     public static void main(String[] args) throws Exception {
         CassandraRabbitMQJamesConfiguration configuration = CassandraRabbitMQJamesConfiguration.builder()
