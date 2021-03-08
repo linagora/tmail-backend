@@ -13,6 +13,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.jmap.http.UserCredential;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
@@ -36,6 +37,7 @@ public class DistributedLdapLinagoraEchoMethodTest implements LinagoraEchoMethod
                     .disableCache()
                     .deduplication())
             .searchConfiguration(SearchConfiguration.elasticSearch())
+            .usersRepository(UsersRepositoryModuleChooser.Implementation.LDAP)
             .build())
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())

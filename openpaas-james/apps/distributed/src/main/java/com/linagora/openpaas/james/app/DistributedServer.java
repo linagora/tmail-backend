@@ -11,12 +11,14 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.SearchModuleChooser;
+import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.modules.DistributedTaskManagerModule;
 import org.apache.james.modules.DistributedTaskSerializationModule;
 import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.blobstore.BlobStoreModulesChooser;
 import org.apache.james.modules.data.CassandraJmapModule;
+import org.apache.james.modules.data.CassandraUsersRepositoryModule;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.JMAPServerModule;
@@ -79,6 +81,8 @@ public class DistributedServer {
             .combineWith(MODULES)
             .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
-            .combineWith(SearchModuleChooser.chooseModules(searchConfiguration));
+            .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
+            .combineWith(new UsersRepositoryModuleChooser(new CassandraUsersRepositoryModule())
+                .chooseModules(configuration.getUsersRepositoryImplementation()));
     }
 }
