@@ -23,7 +23,6 @@ pipeline {
             steps {
                 dir("openpaas-james") {
                     sh 'mvn -B surefire:test'
-                    echo 'skip tests for script docker push testing'
                 }
             }
         }
