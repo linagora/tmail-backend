@@ -28,10 +28,20 @@ pipeline {
         }
         stage('Deliver Docker images') {
           when {
-            branch 'master'
+            anyOf {
+              branch 'master'
+              buildingTag()
+            }
           }
           steps {
             script {
+              env.DOCKER_TAG = 'openpaas-branch-master'
+              if (env.TAG_NAME) {
+                env.DOCKER_TAG = env.TAG_NAME
+              }
+
+              echo "Docker tag: ${env.TAG_NAME}"
+
               // Temporary retag image names
               sh 'docker tag linagora/openpaas-james-memory linagora/james-memory'
               sh 'docker tag linagora/openpaas-james-distributed linagora/james-rabbitmq-project'
@@ -39,8 +49,8 @@ pipeline {
               def memoryImage = docker.image 'linagora/james-memory'
               def distributedImage = docker.image 'linagora/james-rabbitmq-project'
               docker.withRegistry('', 'dockerHub') {
-                memoryImage.push('openpaas-branch-master')
-                distributedImage.push('openpaas-branch-master')
+                memoryImage.push(env.DOCKER_TAG)
+                distributedImage.push(env.DOCKER_TAG)
               }
             }
           }
