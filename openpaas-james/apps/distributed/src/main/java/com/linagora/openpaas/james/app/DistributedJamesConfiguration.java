@@ -17,7 +17,7 @@ import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
 
-public class CassandraRabbitMQJamesConfiguration implements Configuration {
+public class DistributedJamesConfiguration implements Configuration {
     public static class Builder {
         private Optional<SearchConfiguration> searchConfiguration;
         private Optional<BlobStoreConfiguration> blobStoreConfiguration;
@@ -76,7 +76,7 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
             return this;
         }
 
-        public CassandraRabbitMQJamesConfiguration build() {
+        public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
                 .orElseThrow(() -> new MissingArgumentException("Server needs a working.directory env entry")));
@@ -97,7 +97,7 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
             UsersRepositoryModuleChooser.Implementation usersRepositoryChoice = usersRepositoryImplementation.orElseGet(
                 () -> UsersRepositoryModuleChooser.Implementation.parse(configurationProvider));
 
-            return new CassandraRabbitMQJamesConfiguration(
+            return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
                 blobStoreConfiguration,
@@ -106,7 +106,7 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
         }
     }
 
-    public static CassandraRabbitMQJamesConfiguration.Builder builder() {
+    public static DistributedJamesConfiguration.Builder builder() {
         return new Builder();
     }
 
@@ -116,7 +116,7 @@ public class CassandraRabbitMQJamesConfiguration implements Configuration {
     private final SearchConfiguration searchConfiguration;
     private final UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation;
 
-    public CassandraRabbitMQJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, BlobStoreConfiguration blobStoreConfiguration, SearchConfiguration searchConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) {
+    public DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, BlobStoreConfiguration blobStoreConfiguration, SearchConfiguration searchConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) {
         this.configurationPath = configurationPath;
         this.directories = directories;
         this.blobStoreConfiguration = blobStoreConfiguration;

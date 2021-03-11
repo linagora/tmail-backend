@@ -155,7 +155,7 @@ public class DistributedServer {
        new CustomMethodModule(), new FilterGetMethodModule());
 
     public static void main(String[] args) throws Exception {
-        CassandraRabbitMQJamesConfiguration configuration = CassandraRabbitMQJamesConfiguration.builder()
+        DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
             .useWorkingDirectoryEnvProperty()
             .build();
 
@@ -166,7 +166,7 @@ public class DistributedServer {
         JamesServerMain.main(server);
     }
 
-    public static GuiceJamesServer createServer(CassandraRabbitMQJamesConfiguration configuration) {
+    public static GuiceJamesServer createServer(DistributedJamesConfiguration configuration) {
         BlobStoreConfiguration blobStoreConfiguration = configuration.blobStoreConfiguration();
         SearchConfiguration searchConfiguration = configuration.searchConfiguration();
 

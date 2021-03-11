@@ -14,8 +14,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 class DistributedServerTest implements JamesServerContract, JmapJamesServerContract {
     @RegisterExtension
-    static JamesServerExtension testExtension =  new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
-        CassandraRabbitMQJamesConfiguration.builder()
+    static JamesServerExtension testExtension =  new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+        DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.cassandra()
