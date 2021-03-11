@@ -1,15 +1,11 @@
 package com.linagora.openpaas.james.app;
 
-import org.apache.james.CassandraExtension;
-import org.apache.james.CassandraRabbitMQJamesConfiguration;
-import org.apache.james.DockerElasticSearchExtension;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
-import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.junit.jupiter.api.Disabled;
@@ -33,7 +29,6 @@ class DistributedServerTest implements JamesServerContract, JmapJamesServerContr
         .extension(new RabbitMQExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
-
 
     @Disabled("POP3 server is disabled")
     @Test
