@@ -23,7 +23,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>distributed-ldap</artifactId>
+            <artifactId>distributed</artifactId>
         </dependency>
     </dependencies>
 </project>

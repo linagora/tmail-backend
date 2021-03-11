@@ -11,10 +11,13 @@ import org.apache.james.util.Runnables;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.shaded.com.github.dockerjava.core.exec.CreateVolumeCmdExec;
+import org.testcontainers.utility.MountableFile;
 
 public class OpenpaasJamesDistributedLdapExtension implements BeforeEachCallback, AfterEachCallback {
     private static final int ONE_TIME = 1;
@@ -52,10 +55,11 @@ public class OpenpaasJamesDistributedLdapExtension implements BeforeEachCallback
 
     @SuppressWarnings("resource")
     private GenericContainer<?> createOpenPaasJamesDistributedLdap() {
-        return new GenericContainer<>("linagora/openpaas-james-distributed-ldap:latest")
+        return new GenericContainer<>("linagora/openpaas-james-distributed:latest")
             .withNetworkAliases("james-distributed-ldap")
             .withNetwork(network)
             .dependsOn(cassandra, elasticsearch, s3, rabbitmq, ldap)
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/usersrepository.xml"), "/root/conf/")
             .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
     }
 
