@@ -20,6 +20,7 @@ import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
+import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
 
 public class MemoryServer {
     public static final Module PROTOCOLS = Modules.combine(
@@ -38,7 +39,8 @@ public class MemoryServer {
     public static final Module MODULES = Modules.combine(
         IN_MEMORY_SERVER_AGGREGATE_MODULE,
         new CustomMethodModule(),
-        new FilterGetMethodModule());
+        new FilterGetMethodModule(),
+        new FilterSetMethodModule());
 
     public static void main(String[] args) throws Exception {
         Configuration configuration = Configuration.builder()
