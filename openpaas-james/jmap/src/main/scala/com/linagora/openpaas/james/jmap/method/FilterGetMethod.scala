@@ -57,13 +57,13 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
     getFilterGetResponse(request, mailboxSession).map(response => InvocationWithContext(
       invocation = Invocation(
         methodName = methodName,
-        arguments = Arguments(FilterSerializer.serialize(response).as[JsObject]),
+        arguments = Arguments(FilterSerializer(mailboxIdFactory).serialize(response).as[JsObject]),
         methodCallId = invocation.invocation.methodCallId),
       processingContext = invocation.processingContext))
 
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, FilterGetRequest] =
-    FilterSerializer.deserializeFilterGetRequest(invocation.arguments.value) match {
+    FilterSerializer(mailboxIdFactory).deserializeFilterGetRequest(invocation.arguments.value) match {
       case JsSuccess(filterGetRequest, _) => Right(filterGetRequest)
       case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
     }
