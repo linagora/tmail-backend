@@ -60,7 +60,6 @@ public class OpenpaasJamesDistributedLdapExtension implements BeforeEachCallback
             .withNetwork(network)
             .dependsOn(cassandra, elasticsearch, s3, rabbitmq, ldap)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/usersrepository.xml"), "/root/conf/")
-            // .withClasspathResourceMapping("james-conf", "/root/conf", BindMode.READ_ONLY)
             .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
     }
 
