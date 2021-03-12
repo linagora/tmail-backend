@@ -39,6 +39,7 @@
         <jackson.version>2.12.1</jackson.version>
         <javax.inject.version>1</javax.inject.version>
         <junit.jupiter.version>5.7.0</junit.jupiter.version>
+        <logback.version>1.2.3</logback.version>
         <slf4j.version>1.7.27</slf4j.version>
     </properties>
 
@@ -500,6 +501,16 @@
                 <groupId>${james.groupId}</groupId>
                 <artifactId>testing-base</artifactId>
                 <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback.contrib</groupId>
+                <artifactId>logback-jackson</artifactId>
+                <version>0.1.5</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
