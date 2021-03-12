@@ -26,6 +26,7 @@ import org.apache.james.modules.data.CassandraJmapModule;
 import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
 import org.apache.james.modules.data.CassandraSieveRepositoryModule;
 import org.apache.james.modules.data.CassandraUsersRepositoryModule;
+import org.apache.james.modules.event.JMAPEventBusModule;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.eventstore.CassandraEventStoreModule;
 import org.apache.james.modules.mailbox.BlobStoreAPIModule;
@@ -145,6 +146,7 @@ public class DistributedServer {
         Modules
             .override(Modules.combine(REQUIRE_TASK_MANAGER_MODULE, new DistributedTaskManagerModule()))
             .with(new RabbitMQModule(),
+                new JMAPEventBusModule(),
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEventBusModule(),
                 new DistributedTaskSerializationModule()),
