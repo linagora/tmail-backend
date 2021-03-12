@@ -10,8 +10,6 @@ This project adapts and enhance [Apache James project](https://james.apache.org)
 
  - [Building + Running the distributed server](openpaas-james/apps/distributed/README.md)
 
- - [Building + Running the distributed ldap server](openpaas-james/apps/distributed-ldap/README.md)
-
 ## Additional features
 
 Additional features includes:
@@ -54,7 +52,7 @@ You can use a custom local jenkins runner with the `Jenkinsfile` at the root of 
 This will automatically do for you:
 
 * checkout and compile latest code of Apache James project alongside `openpaas-james`
-* generate docker images for `memory`, `distributed` and `distributed-ldap` flavors of the project
+* generate docker images for `memory` and `distributed` flavors of the project
 * launch unit, integration and deployment tests on `openpaas-james`
 
 To launch it you need to have docker installed. From the root of this project, you can build the 
