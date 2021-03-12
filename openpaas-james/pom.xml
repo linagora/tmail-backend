@@ -73,12 +73,23 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>james-server-guice-elasticsearch-v6</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>jmap-integration-tests-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>mailbox-elasticsearch-v6</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>mailbox-elasticsearch-v6</artifactId>
+                <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
