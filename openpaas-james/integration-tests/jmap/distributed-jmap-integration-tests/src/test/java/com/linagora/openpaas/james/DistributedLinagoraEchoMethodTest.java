@@ -1,7 +1,6 @@
 package com.linagora.openpaas.james;
 
 import org.apache.james.CassandraExtension;
-import org.apache.james.CassandraRabbitMQJamesConfiguration;
 import org.apache.james.DockerElasticSearchExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -12,13 +11,14 @@ import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.openpaas.james.app.DistributedJamesConfiguration;
 import com.linagora.openpaas.james.app.DistributedServer;
 import com.linagora.openpaas.james.common.LinagoraEchoMethodContract;
 
 public class DistributedLinagoraEchoMethodTest implements LinagoraEchoMethodContract {
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<CassandraRabbitMQJamesConfiguration>(tmpDir ->
-        CassandraRabbitMQJamesConfiguration.builder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+        DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
