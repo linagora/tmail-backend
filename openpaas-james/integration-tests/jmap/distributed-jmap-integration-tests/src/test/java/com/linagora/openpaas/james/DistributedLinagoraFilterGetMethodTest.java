@@ -12,9 +12,9 @@ import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.modules.TestJMAPServerModule;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.openpaas.james.app.BlobStoreConfiguration;
 import com.linagora.openpaas.james.app.DistributedJamesConfiguration;
 import com.linagora.openpaas.james.app.DistributedServer;
 import com.linagora.openpaas.james.common.LinagoraFilterGetMethodContract;

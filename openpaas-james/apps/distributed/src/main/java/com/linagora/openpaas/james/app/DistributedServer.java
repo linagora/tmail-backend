@@ -14,19 +14,13 @@ import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
-import org.apache.james.modules.DistributedTaskManagerModule;
-import org.apache.james.modules.DistributedTaskSerializationModule;
 import org.apache.james.modules.MailboxModule;
-import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration;
-import org.apache.james.modules.blobstore.BlobStoreModulesChooser;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
 import org.apache.james.modules.data.CassandraDomainListModule;
 import org.apache.james.modules.data.CassandraJmapModule;
 import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
 import org.apache.james.modules.data.CassandraSieveRepositoryModule;
 import org.apache.james.modules.data.CassandraUsersRepositoryModule;
-import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.eventstore.CassandraEventStoreModule;
 import org.apache.james.modules.mailbox.BlobStoreAPIModule;
 import org.apache.james.modules.mailbox.CassandraBlobStoreDependenciesModule;
@@ -42,12 +36,10 @@ import org.apache.james.modules.protocols.JMAPServerModule;
 import org.apache.james.modules.protocols.JmapEventBusModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
-import org.apache.james.modules.queue.activemq.ActiveMQQueueModule;
 import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
 import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.DLPRoutesModule;
 import org.apache.james.modules.server.DataRoutesModules;
-import org.apache.james.modules.server.ElasticSearchMetricReporterModule;
 import org.apache.james.modules.server.InconsistencyQuotasSolvingRoutesModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.JmapTasksModule;
@@ -113,7 +105,6 @@ public class DistributedServer {
             .toInstance(ImmutableSet.of());
 
     public static final Module CASSANDRA_SERVER_CORE_MODULE = Modules.combine(
-        new ActiveMQQueueModule(),
         new CassandraBlobStoreDependenciesModule(),
         new CassandraDomainListModule(),
         new CassandraDLPConfigurationStoreModule(),
@@ -123,7 +114,6 @@ public class DistributedServer {
         new CassandraRecipientRewriteTableModule(),
         new CassandraSessionModule(),
         new CassandraSieveRepositoryModule(),
-        new ElasticSearchMetricReporterModule(),
         BLOB_MODULE,
         CASSANDRA_EVENT_STORE_JSON_SERIALIZATION_DEFAULT_MODULE);
 

@@ -79,12 +79,16 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>blob-s3-guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>blob-s3-guice</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>data-cassandra</artifactId>
+            <artifactId>event-bus-distributed</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
@@ -108,7 +112,7 @@
             <artifactId>james-server-mailbox-plugin-deleted-messages-vault-guice</artifactId>
         </dependency>
         <dependency>
-            <groupId>${james.groupId}</groupId>
+            <groupId>org.apache.james</groupId>
             <artifactId>james-server-guice-cassandra</artifactId>
         </dependency>
         <dependency>
@@ -118,10 +122,6 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-data-ldap</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.james</groupId>
-            <artifactId>james-server-guice-distributed</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
@@ -148,6 +148,10 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-mailbox</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-mailbox-plugin-spamassassin</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
@@ -211,6 +215,10 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-task-distributed</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
             <artifactId>james-server-testing</artifactId>
             <scope>test</scope>
         </dependency>
@@ -225,7 +233,7 @@
             <artifactId>metrics-dropwizard</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.james</groupId>
+            <groupId>${james.groupId}</groupId>
             <artifactId>queue-rabbitmq-guice</artifactId>
         </dependency>
         <dependency>

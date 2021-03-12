@@ -116,6 +116,11 @@
                 <groupId>${james.groupId}</groupId>
                 <artifactId>blob-s3-guice</artifactId>
                 <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>blob-s3-guice</artifactId>
+                <version>${james.version}</version>
                 <type>test-jar</type>
             </dependency>
             <dependency>
@@ -126,7 +131,7 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>data-cassandra</artifactId>
+                <artifactId>event-bus-distributed</artifactId>
                 <version>${james.version}</version>
             </dependency>
             <dependency>
@@ -196,7 +201,7 @@
                 <version>${james.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.james</groupId>
+                <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-guice-distributed</artifactId>
                 <version>${james.version}</version>
             </dependency>
@@ -229,6 +234,11 @@
             <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-guice-mailbox</artifactId>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-guice-mailbox-plugin-spamassassin</artifactId>
                 <version>${james.version}</version>
             </dependency>
             <dependency>
@@ -321,6 +331,11 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-task-distributed</artifactId>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-testing</artifactId>
                 <version>${james.version}</version>
             </dependency>
@@ -347,7 +362,7 @@
                 <version>${james.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.james</groupId>
+                <groupId>${james.groupId}</groupId>
                 <artifactId>queue-rabbitmq-guice</artifactId>
                 <version>${james.version}</version>
             </dependency>
