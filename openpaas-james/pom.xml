@@ -146,18 +146,18 @@
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>apache-james-mailbox-memory</artifactId>
-                <version>${james.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${james.groupId}</groupId>
-                <artifactId>apache-james-mailbox-memory</artifactId>
+                <artifactId>apache-james-mailbox-elasticsearch</artifactId>
                 <version>${james.version}</version>
                 <type>test-jar</type>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
-                <artifactId>apache-james-mailbox-elasticsearch</artifactId>
+                <artifactId>apache-james-mailbox-memory</artifactId>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>apache-james-mailbox-memory</artifactId>
                 <version>${james.version}</version>
                 <type>test-jar</type>
             </dependency>
@@ -533,11 +533,6 @@
                 <version>${jackson.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.google.inject</groupId>
-                <artifactId>guice</artifactId>
-                <version>4.2.3</version>
-            </dependency>
-            <dependency>
                 <groupId>com.github.fge</groupId>
                 <artifactId>throwing-lambdas</artifactId>
                 <version>0.5.0</version>
@@ -551,6 +546,11 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.inject</groupId>
+                <artifactId>guice</artifactId>
+                <version>4.2.3</version>
             </dependency>
             <dependency>
                 <groupId>com.sun.mail</groupId>
