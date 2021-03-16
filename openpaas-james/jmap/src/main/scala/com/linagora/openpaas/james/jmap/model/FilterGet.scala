@@ -45,5 +45,5 @@ object Rule {
 object AppendIn {
   def fromMailboxIds(mailboxIds: ImmutableList[String], mailboxIdFactory: MailboxId.Factory) : List[MailboxId] = List(mailboxIdFactory.fromString(mailboxIds.get(0)))
   def convertListMailboxIdToListString(mailboxIds: List[MailboxId]) : List[String] =
-    mailboxIds.collect[String](id => String.valueOf(id))
+    mailboxIds.map(mailboxId => mailboxId.serialize())
 }
