@@ -25,6 +25,11 @@ pipeline {
                     sh 'mvn -B surefire:test'
                 }
             }
+            post {
+                always {
+                    deleteDir() /* clean up our workspace */
+                }
+            }
         }
         stage('Deliver Docker images') {
           when {
@@ -56,7 +61,18 @@ pipeline {
           }
           post {
               always {
-                  deleteDir() /* clean up our workspace */
+                  script {
+                      if (env.BRANCH_NAME == "master") {
+                          emailext(
+                                  subject: "[${currentBuild.result}]: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]'",
+                                  body: """
+${currentBuild.result}: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]:
+Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>'"
+""",
+                                  to: "openpaas-james@linagora.com"
+                          )
+                      }
+                  }
               }
           }
         }
