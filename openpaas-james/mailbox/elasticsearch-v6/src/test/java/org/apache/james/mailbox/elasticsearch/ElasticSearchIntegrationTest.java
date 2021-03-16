@@ -20,10 +20,12 @@
 package org.apache.james.mailbox.elasticsearch;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
+import java.util.List;
 
 import org.apache.james.backends.es.DockerElasticSearchExtension;
 import org.apache.james.backends.es.ElasticSearchIndexer;
@@ -40,6 +42,7 @@ import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.ComposedMessageId;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.store.search.AbstractMessageSearchIndexTest;
@@ -51,6 +54,13 @@ import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.stream.RawField;
 import org.apache.james.util.ClassLoaderUtils;
+import org.awaitility.Awaitility;
+import org.awaitility.Durations;
+import org.awaitility.core.ConditionFactory;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -61,7 +71,10 @@ import com.google.common.base.Strings;
 import reactor.core.publisher.Flux;
 
 class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
-
+    static final ConditionFactory CALMLY_AWAIT = Awaitility
+        .with().pollInterval(ONE_HUNDRED_MILLISECONDS)
+        .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
+        .await();
     static final int BATCH_SIZE = 1;
     static final int SEARCH_SIZE = 1;
 
@@ -70,6 +83,7 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
 
     @RegisterExtension
     DockerElasticSearchExtension elasticSearch = new DockerElasticSearchExtension();
+    QueryConverter queryConverter = new QueryConverter(new CriterionConverter());
 
     TikaTextExtractor textExtractor;
     ReactorElasticSearchClient client;
@@ -80,8 +94,8 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
     }
 
     @Override
-    protected void await() {
-        elasticSearch.awaitForElasticSearch();
+    protected void awaitMessageCount(List<MailboxId> mailboxIds, SearchQuery query, long messageCount) {
+        awaitForElasticSearch(queryConverter.from(mailboxIds, query), messageCount);
     }
 
     @Override
@@ -396,5 +410,15 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, "domain-test.tld")), session)).toStream())
             .containsOnly(messageId1.getUid());
+    }
+
+    private void awaitForElasticSearch(QueryBuilder query, long totalHits) {
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> assertThat(client.search(
+                new SearchRequest(MailboxElasticSearchConstants.DEFAULT_MAILBOX_INDEX.getValue())
+                    .source(new SearchSourceBuilder().query(query)),
+                RequestOptions.DEFAULT)
+                .block()
+                .getHits().getTotalHits()).isEqualTo(totalHits));
     }
 }
