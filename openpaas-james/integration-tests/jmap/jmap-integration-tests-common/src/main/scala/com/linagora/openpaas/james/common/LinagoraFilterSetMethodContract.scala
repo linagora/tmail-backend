@@ -485,4 +485,327 @@ trait LinagoraFilterSetMethodContract {
          |}""".stripMargin)
   }
 
+  @Test
+  def updateWithInvalidFieldShouldFail(): Unit = {
+    val request = s"""{
+                     |	"using": ["com:linagora:params:jmap:filter"],
+                     |	"methodCalls": [
+                     |		["Filter/set", {
+                     |			"accountId": "$generateAccountIdAsString",
+                     |			"update": {
+                     |				"singleton": [{
+                     |					"id": "1",
+                     |					"name": "My first rule",
+                     |					"condition": {
+                     |						"field": "wrongField",
+                     |						"comparator": "contains",
+                     |						"value": "question"
+                     |					},
+                     |					"action": {
+                     |						"appendIn": {
+                     |							"mailboxIds": ["$generateMailboxIdForUser"]
+                     |						}
+                     |					}
+                     |				}]
+                     |			}
+                     |		}, "c1"]
+                     |	]
+                     |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post().prettyPeek()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Filter/set",
+         |			{
+         |				"accountId": "$generateAccountIdAsString",
+         |				"newState": "${INSTANCE.value}",
+         |				"notUpdated": {
+         |					"singleton": {
+         |						"type": "invalidArguments",
+         |						"description": "'wrongField' is not a valid field name"
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateWithInvalidComparatorShouldFail(): Unit = {
+    val request = s"""{
+                     |	"using": ["com:linagora:params:jmap:filter"],
+                     |	"methodCalls": [
+                     |		["Filter/set", {
+                     |			"accountId": "$generateAccountIdAsString",
+                     |			"update": {
+                     |				"singleton": [{
+                     |					"id": "1",
+                     |					"name": "My first rule",
+                     |					"condition": {
+                     |						"field": "subject",
+                     |						"comparator": "wrongComparator",
+                     |						"value": "question"
+                     |					},
+                     |					"action": {
+                     |						"appendIn": {
+                     |							"mailboxIds": ["$generateMailboxIdForUser"]
+                     |						}
+                     |					}
+                     |				}]
+                     |			}
+                     |		}, "c1"]
+                     |	]
+                     |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post().prettyPeek()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Filter/set",
+         |			{
+         |				"accountId": "$generateAccountIdAsString",
+         |				"newState": "${INSTANCE.value}",
+         |				"notUpdated": {
+         |					"singleton": {
+         |						"type": "invalidArguments",
+         |						"description": "'wrongComparator' is not a valid comparator name"
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateWithEmptyValueShouldFail(): Unit = {
+    val request = s"""{
+                     |	"using": ["com:linagora:params:jmap:filter"],
+                     |	"methodCalls": [
+                     |		["Filter/set", {
+                     |			"accountId": "$generateAccountIdAsString",
+                     |			"update": {
+                     |				"singleton": [{
+                     |					"id": "1",
+                     |					"name": "My first rule",
+                     |					"condition": {
+                     |						"field": "subject",
+                     |						"comparator": "contains",
+                     |						"value": ""
+                     |					},
+                     |					"action": {
+                     |						"appendIn": {
+                     |							"mailboxIds": ["$generateMailboxIdForUser"]
+                     |						}
+                     |					}
+                     |				}]
+                     |			}
+                     |		}, "c1"]
+                     |	]
+                     |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post().prettyPeek()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "Filter/set",
+         |            {
+         |                "accountId": "$generateAccountIdAsString",
+         |                "newState": "${INSTANCE.value}",
+         |                "notUpdated": {
+         |                    "singleton": {
+         |                        "type": "invalidArguments",
+         |                        "description": "value should not be empty"
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateDuplicatedRuleIdsShouldFail(): Unit = {
+    val request = s"""{
+                     |	"using": ["com:linagora:params:jmap:filter"],
+                     |	"methodCalls": [
+                     |		["Filter/set", {
+                     |			"accountId": "$generateAccountIdAsString",
+                     |			"update": {
+                     |				"singleton": [{
+                     |					"id": "1",
+                     |					"name": "My first rule",
+                     |					"condition": {
+                     |						"field": "subject",
+                     |						"comparator": "contains",
+                     |						"value": "question"
+                     |					},
+                     |					"action": {
+                     |						"appendIn": {
+                     |							"mailboxIds": ["$generateMailboxIdForUser"]
+                     |						}
+                     |					}
+                     |				}, {
+                     |					"id": "1",
+                     |					"name": "My second rule",
+                     |					"condition": {
+                     |						"field": "subject",
+                     |						"comparator": "contains",
+                     |						"value": "question"
+                     |					},
+                     |					"action": {
+                     |						"appendIn": {
+                     |							"mailboxIds": ["$generateMailboxIdForUser"]
+                     |						}
+                     |					}
+                     |				}]
+                     |			}
+                     |		}, "c1"]
+                     |	]
+                     |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post().prettyPeek()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Filter/set",
+         |			{
+         |				"accountId": "$generateAccountIdAsString",
+         |				"newState": "${INSTANCE.value}",
+         |				"notUpdated": {
+         |					"singleton": {
+         |						"type": "invalidArguments",
+         |						"description": "There are some duplicated rules"
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateWithMultipleMailboxesShouldFail(): Unit = {
+    val request = s"""{
+                     |	"using": ["com:linagora:params:jmap:filter"],
+                     |	"methodCalls": [
+                     |		["Filter/set", {
+                     |			"accountId": "$generateAccountIdAsString",
+                     |			"update": {
+                     |				"singleton": [{
+                     |					"id": "1",
+                     |					"name": "My first rule",
+                     |					"condition": {
+                     |						"field": "subject",
+                     |						"comparator": "contains",
+                     |						"value": "question"
+                     |					},
+                     |					"action": {
+                     |						"appendIn": {
+                     |							"mailboxIds": ["$generateMailboxIdForUser", "$generateMailboxIdForUser"]
+                     |						}
+                     |					}
+                     |				}]
+                     |			}
+                     |		}, "c1"]
+                     |	]
+                     |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post().prettyPeek()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Filter/set",
+         |			{
+         |				"accountId": "$generateAccountIdAsString",
+         |				"newState": "${INSTANCE.value}",
+         |				"notUpdated": {
+         |					"singleton": {
+         |						"type": "invalidArguments",
+         |						"description": "There are some rules targeting several mailboxes"
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
 }
