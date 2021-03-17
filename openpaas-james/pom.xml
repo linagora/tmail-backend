@@ -25,6 +25,7 @@
         <module>integration-tests</module>
 
         <module>mailbox/elasticsearch-v6</module>
+        <module>mailbox/opendistro</module>
         <module>mailbox/plugin/quota-search-elasticsearch-v6</module>
 
         <module>jmap/extensions</module>
@@ -188,6 +189,17 @@
             <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>apache-james-mailbox-elasticsearch</artifactId>
+                <version>${james.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>apache-james-mailbox-elasticsearch-v7</artifactId>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>apache-james-mailbox-elasticsearch-v7</artifactId>
                 <version>${james.version}</version>
                 <type>test-jar</type>
             </dependency>
