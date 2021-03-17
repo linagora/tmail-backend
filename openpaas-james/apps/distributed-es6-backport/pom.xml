@@ -30,7 +30,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>jmap</artifactId>
+            <artifactId>jmap-extensions</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>

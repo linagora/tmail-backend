@@ -23,9 +23,11 @@
         <module>deployment-tests</module>
         <module>guice/elasticsearch-v6</module>
         <module>integration-tests</module>
-        <module>jmap</module>
+
         <module>mailbox/elasticsearch-v6</module>
         <module>mailbox/plugin/quota-search-elasticsearch-v6</module>
+
+        <module>jmap/extensions</module>
     </modules>
 
     <properties>
@@ -85,7 +87,7 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>jmap</artifactId>
+                <artifactId>jmap-extensions</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

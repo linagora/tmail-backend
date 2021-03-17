@@ -5,10 +5,10 @@
         <groupId>com.linagora.openpaas</groupId>
         <artifactId>openpaas-james</artifactId>
         <version>1.0.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>jmap</artifactId>
+    <artifactId>jmap-extensions</artifactId>
 
     <dependencies>
         <dependency>
