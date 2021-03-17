@@ -21,6 +21,7 @@ import com.google.inject.util.Modules;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
+import com.linagora.openpaas.james.jmap.ticket.TicketRoutesModule;
 
 public class MemoryServer {
     public static final Module PROTOCOLS = Modules.combine(
@@ -28,19 +29,20 @@ public class MemoryServer {
         new ProtocolHandlerModule(),
         new SMTPServerModule());
 
-    public static final Module IN_MEMORY_SERVER_AGGREGATE_MODULE = Modules.combine(
+    public static final Module JMAP_LINAGORA = Modules.combine(
+        JMAP,
+        new CustomMethodModule(),
+        new FilterGetMethodModule(),
+        new FilterSetMethodModule(),
+        new TicketRoutesModule());
+
+    public static final Module MODULES = Modules.combine(
         IN_MEMORY_SERVER_MODULE,
         PROTOCOLS,
-        JMAP,
+        JMAP_LINAGORA,
         WEBADMIN,
         new DKIMMailetModule(),
         new SpamAssassinListenerModule());
-
-    public static final Module MODULES = Modules.combine(
-        IN_MEMORY_SERVER_AGGREGATE_MODULE,
-        new CustomMethodModule(),
-        new FilterGetMethodModule(),
-        new FilterSetMethodModule());
 
     public static void main(String[] args) throws Exception {
         Configuration configuration = Configuration.builder()

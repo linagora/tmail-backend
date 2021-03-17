@@ -3,6 +3,8 @@ package com.linagora.openpaas.james.jmap.ticket
 import java.nio.charset.StandardCharsets
 import java.util.stream
 
+import com.google.inject.multibindings.Multibinder
+import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.openpaas.james.jmap.json.TicketSerializer
 import com.linagora.openpaas.james.jmap.ticket.TicketRoutes.{ENDPOINT, REVOCATION_ENDPOINT, TICKET_PARAM}
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
@@ -12,10 +14,6 @@ import javax.inject.{Inject, Named}
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.ProblemDetails
 import org.apache.james.jmap.exceptions.UnauthorizedException
-<<<<<<< HEAD
-import org.apache.james.jmap.http.Authenticator
-=======
->>>>>>> 707e032... routes
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
 import org.apache.james.jmap.json.ResponseSerializer
@@ -26,6 +24,19 @@ import play.api.libs.json.Json
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
+
+case class TicketRoutesModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[MemoryTicketStore]).in(Scopes.SINGLETON)
+    bind(classOf[TicketStore]).to(classOf[MemoryTicketStore])
+
+    val routes = Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
+    routes.addBinding.to(classOf[TicketRoutes])
+
+    val authenticationStrategies = Multibinder.newSetBinder(binder, classOf[AuthenticationStrategy])
+    authenticationStrategies.addBinding.to(classOf[TicketAuthenticationStrategy])
+  }
+}
 
 object TicketRoutes {
   val ENDPOINT: String = "/jmap/ws/ticket"

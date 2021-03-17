@@ -73,6 +73,7 @@ import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
+import com.linagora.openpaas.james.jmap.ticket.TicketRoutesModule;
 
 public class DistributedServer {
     public static final Module WEBADMIN = Modules.combine(
@@ -94,13 +95,20 @@ public class DistributedServer {
         new MessagesRoutesModule(),
         new WebAdminMailOverWebModule());
 
-    public static final Module PROTOCOLS = Modules.combine(
+    public static final Module JMAP = Modules.combine(
         new CassandraJmapModule(),
+        new CustomMethodModule(),
+        new FilterGetMethodModule(),
+        new FilterSetMethodModule(),
+        new JMAPServerModule(),
+        new JmapEventBusModule(),
+        new TicketRoutesModule());
+
+    public static final Module PROTOCOLS = Modules.combine(
+        JMAP,
         new IMAPServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
-        new JMAPServerModule(),
-        new JmapEventBusModule(),
         WEBADMIN);
 
     private static final Module BLOB_MODULE = Modules.combine(
@@ -149,8 +157,7 @@ public class DistributedServer {
                 new JMAPEventBusModule(),
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEventBusModule(),
-                new DistributedTaskSerializationModule()),
-       new CustomMethodModule(), new FilterGetMethodModule());
+                new DistributedTaskSerializationModule()));
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
