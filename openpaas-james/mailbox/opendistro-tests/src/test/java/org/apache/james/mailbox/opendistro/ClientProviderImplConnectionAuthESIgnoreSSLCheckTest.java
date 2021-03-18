@@ -21,8 +21,7 @@ package org.apache.james.mailbox.opendistro;
 
 import java.util.Optional;
 
-import org.apache.james.mailbox.opendistro.OpenDistroConfiguration.HostScheme;
-import org.apache.james.mailbox.opendistro.OpenDistroConfiguration.SSLConfiguration;
+import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 class ClientProviderImplConnectionAuthESIgnoreSSLCheckTest implements ClientProviderImplConnectionContract {
@@ -33,11 +32,11 @@ class ClientProviderImplConnectionAuthESIgnoreSSLCheckTest implements ClientProv
         new DockerOpenDistro.WithAuth()));
 
     @Override
-    public OpenDistroConfiguration.Builder configurationBuilder() {
-        return OpenDistroConfiguration.builder()
+    public ElasticSearchConfiguration.Builder configurationBuilder() {
+        return ElasticSearchConfiguration.builder()
             .credential(Optional.of(DockerOpenDistro.WithAuth.DEFAULT_CREDENTIAL))
-            .hostScheme(Optional.of(HostScheme.HTTPS))
-            .sslTrustConfiguration(SSLConfiguration.builder()
+            .hostScheme(Optional.of(ElasticSearchConfiguration.HostScheme.HTTPS))
+            .sslTrustConfiguration(ElasticSearchConfiguration.SSLConfiguration.builder()
                 .strategyIgnore()
                 .acceptAnyHostNameVerifier()
                 .build());

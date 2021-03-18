@@ -43,6 +43,7 @@ import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.elasticsearch.v7.IndexAttachments;
 import org.apache.james.mailbox.elasticsearch.v7.MailboxElasticSearchConstants;
 import org.apache.james.mailbox.elasticsearch.v7.MailboxIdRoutingKeyFactory;
+import org.apache.james.mailbox.elasticsearch.v7.MailboxIndexCreationUtil;
 import org.apache.james.mailbox.elasticsearch.v7.events.ElasticSearchListeningMessageSearchIndex;
 import org.apache.james.mailbox.elasticsearch.v7.json.MessageToElasticSearchJson;
 import org.apache.james.mailbox.elasticsearch.v7.query.CriterionConverter;
@@ -110,7 +111,6 @@ class OpenDistroListeningMessageSearchIndexTest {
     static final MessageId MESSAGE_ID_1 = TestMessageId.of(18L);
     static final MessageId MESSAGE_ID_2 = TestMessageId.of(19L);
     static final MessageId MESSAGE_ID_3 = TestMessageId.of(20L);
-    static final MessageId MESSAGE_ID_4 = TestMessageId.of(21L);
 
     static final SimpleMailboxMessage.Builder MESSAGE_BUILDER = SimpleMailboxMessage.builder()
         .mailboxId(MAILBOX_ID)

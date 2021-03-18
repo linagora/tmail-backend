@@ -36,8 +36,8 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import org.apache.http.HttpStatus;
-import org.apache.james.mailbox.opendistro.OpenDistroConfiguration.Credential;
-import org.apache.james.mailbox.opendistro.OpenDistroConfiguration.HostScheme;
+import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
+import org.apache.james.backends.es.v7.ElasticSearchConfiguration.Credential;
 import org.apache.james.util.Host;
 import org.apache.james.util.docker.DockerContainer;
 import org.apache.james.util.docker.RateLimiters;
@@ -265,9 +265,9 @@ public interface DockerOpenDistro {
         }
 
         @Override
-        public OpenDistroConfiguration configuration(Optional<Duration> requestTimeout) {
+        public ElasticSearchConfiguration configuration(Optional<Duration> requestTimeout) {
             return configurationBuilder(requestTimeout)
-                .hostScheme(Optional.of(HostScheme.HTTPS))
+                .hostScheme(Optional.of(ElasticSearchConfiguration.HostScheme.HTTPS))
                 .build();
         }
 
@@ -330,18 +330,18 @@ public interface DockerOpenDistro {
         }
     }
 
-    default OpenDistroConfiguration configuration(Optional<Duration> requestTimeout) {
+    default ElasticSearchConfiguration configuration(Optional<Duration> requestTimeout) {
         return configurationBuilder(requestTimeout)
             .build();
     }
 
-    default OpenDistroConfiguration.Builder configurationBuilder(Optional<Duration> requestTimeout) {
-        return OpenDistroConfiguration.builder()
+    default ElasticSearchConfiguration.Builder configurationBuilder(Optional<Duration> requestTimeout) {
+        return ElasticSearchConfiguration.builder()
             .addHost(getHttpHost())
             .requestTimeout(requestTimeout);
     }
 
-    default OpenDistroConfiguration configuration() {
+    default ElasticSearchConfiguration configuration() {
         return configuration(Optional.empty());
     }
 

@@ -21,6 +21,7 @@ package org.apache.james.mailbox.opendistro;
 
 import java.util.concurrent.TimeUnit;
 
+import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
 import org.apache.james.mailbox.opendistro.OpenDistroClusterExtension.ElasticSearchCluster;
 import org.awaitility.Awaitility;
@@ -38,7 +39,7 @@ interface ClientProviderImplConnectionContract {
 
     @Test
     default void connectingASingleServerShouldWork(ElasticSearchCluster esCluster) {
-        OpenDistroConfiguration configuration = configurationBuilder()
+        ElasticSearchConfiguration configuration = configurationBuilder()
             .addHost(esCluster.es1.getHttpHost())
             .build();
 
@@ -50,7 +51,7 @@ interface ClientProviderImplConnectionContract {
 
     @Test
     default void connectingAClusterShouldWork(ElasticSearchCluster esCluster) {
-        OpenDistroConfiguration configuration = configurationBuilder()
+        ElasticSearchConfiguration configuration = configurationBuilder()
             .addHosts(esCluster.getHosts())
             .build();
 
@@ -62,7 +63,7 @@ interface ClientProviderImplConnectionContract {
 
     @Test
     default void connectingAClusterWithAFailedNodeShouldWork(ElasticSearchCluster esCluster) {
-        OpenDistroConfiguration configuration = configurationBuilder()
+        ElasticSearchConfiguration configuration = configurationBuilder()
             .addHosts(esCluster.getHosts())
             .build();
 
@@ -87,8 +88,8 @@ interface ClientProviderImplConnectionContract {
         }
     }
 
-    default OpenDistroConfiguration.Builder configurationBuilder() {
-        return OpenDistroConfiguration.builder();
+    default ElasticSearchConfiguration.Builder configurationBuilder() {
+        return ElasticSearchConfiguration.builder();
     }
 }
 
