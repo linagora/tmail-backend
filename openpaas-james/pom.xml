@@ -25,7 +25,7 @@
         <module>integration-tests</module>
 
         <module>mailbox/elasticsearch-v6</module>
-        <module>mailbox/opendistro</module>
+        <module>mailbox/opendistro-tests</module>
         <module>mailbox/plugin/quota-search-elasticsearch-v6</module>
 
         <module>jmap/extensions</module>
