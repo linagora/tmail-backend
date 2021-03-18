@@ -69,7 +69,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -152,7 +152,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -262,7 +262,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -338,7 +338,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -406,7 +406,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -454,7 +454,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -516,7 +516,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -578,7 +578,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -640,7 +640,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -679,20 +679,22 @@ trait LinagoraFilterSetMethodContract {
                      |		["Filter/set", {
                      |			"accountId": "$generateAccountIdAsString",
                      |			"update": {
-                     |				"singleton": [{
-                     |					"id": "1",
-                     |					"name": "My first rule",
-                     |					"condition": {
-                     |						"field": "subject",
-                     |						"comparator": "contains",
-                     |						"value": "question"
-                     |					},
-                     |					"action": {
-                     |						"appendIn": {
-                     |							"mailboxIds": ["$generateMailboxIdForUser"]
-                     |						}
-                     |					}
-                     |				}, {
+                     |				"singleton": [
+                     |          {
+                     |					  "id": "1",
+                     |					  "name": "My first rule",
+                     |					  "condition": {
+                     |						  "field": "subject",
+                     |						  "comparator": "contains",
+                     |						  "value": "question"
+                     |					  },
+                     |					  "action": {
+                     |						  "appendIn": {
+                     |							  "mailboxIds": ["$generateMailboxIdForUser"]
+                     |						  }
+                     |					  }
+                     |				},
+                     |        {
                      |					"id": "1",
                      |					"name": "My second rule",
                      |					"condition": {
@@ -715,7 +717,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -777,7 +779,7 @@ trait LinagoraFilterSetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
