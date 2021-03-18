@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
 
 import com.google.common.collect.ImmutableMap;
@@ -59,7 +58,7 @@ import feign.slf4j.Slf4jLogger;
 
 public interface DockerOpenDistro {
 
-    public static final String OPENDISTRO_1_13_1 = "amazon/opendistro-for-elasticsearch:1.13.1";
+    String OPENDISTRO_1_13_1 = "amazon/opendistro-for-elasticsearch:1.13.1";
 
     interface ElasticSearchAPI {
 
@@ -117,7 +116,7 @@ public interface DockerOpenDistro {
             return new Builder(esURL);
         }
 
-        @RequestLine("DELETE /_all")
+        @RequestLine("DELETE /*,-.opendistro_security")
         Response deleteAllIndexes();
 
         @RequestLine("POST /_flush?force&wait_if_ongoing=true")
@@ -196,13 +195,12 @@ public interface DockerOpenDistro {
 
         private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(WithAuth.class);
 
-        private static final String DEFAULT_USERNAME = "elasticsearch";
-        private static final String DEFAULT_PASSWORD = "secret";
+        private static final String DEFAULT_USERNAME = "admin";
+        private static final String DEFAULT_PASSWORD = "admin";
         public static final Credential DEFAULT_CREDENTIAL =
             Credential.of(DEFAULT_USERNAME, DEFAULT_PASSWORD);
 
         private final DockerOpenDistro.NoAuth elasticSearch;
-        private final DockerContainer nginx;
         private final Network network;
 
         public WithAuth() {
@@ -217,36 +215,22 @@ public interface DockerOpenDistro {
                     .withLogConsumer(frame -> LOGGER.debug("[ElasticSearch] " + frame.getUtf8String()))
                     .withNetwork(network)
                     .withNetworkAliases("elasticsearch"));
-
-            this.nginx = new DockerContainer(
-                    new GenericContainer<>(
-                        new ImageFromDockerfile()
-                        .withFileFromClasspath("conf/nginx-conf/", "auth-es/nginx-conf/")
-                        .withFileFromClasspath("conf/default.crt", "auth-es/default.crt")
-                        .withFileFromClasspath("conf/default.key", "auth-es/default.key")
-                        .withFileFromClasspath("Dockerfile", "auth-es/NginxDockerfile")))
-                .withExposedPorts(ES_HTTP_PORT)
-                .withLogConsumer(frame -> LOGGER.debug("[NGINX] " + frame.getUtf8String()))
-                .withNetwork(network);
         }
-
 
         public void start() {
             elasticSearch.start();
-            nginx.start();
         }
 
         public void stop() {
-            nginx.stop();
             elasticSearch.stop();
         }
 
         public int getHttpPort() {
-            return nginx.getMappedPort(ES_HTTP_PORT);
+            return elasticSearch.getHttpPort();
         }
 
         public String getIp() {
-            return nginx.getHostIp();
+            return elasticSearch.getIp();
         }
 
         @Override
@@ -278,18 +262,16 @@ public interface DockerOpenDistro {
         }
 
         public void pause() {
-            nginx.pause();
             elasticSearch.pause();
         }
 
         public void unpause() {
             elasticSearch.unpause();
-            nginx.unpause();
         }
 
         @Override
         public boolean isRunning() {
-            return nginx.isRunning() && elasticSearch.isRunning();
+            return elasticSearch.isRunning();
         }
     }
 
