@@ -8,9 +8,9 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>mailbox-opendistro</artifactId>
-    <name>Mailbox :: OpenDistro</name>
-    <description>Mailbox IMAP search implementation using OpenDistro</description>
+    <artifactId>mailbox-opendistro-tests</artifactId>
+    <name>Mailbox :: OpenDistro :: Tests</name>
+    <description>Mailbox IMAP search tests using OpenDistro</description>
 
     <dependencies>
         <dependency>
