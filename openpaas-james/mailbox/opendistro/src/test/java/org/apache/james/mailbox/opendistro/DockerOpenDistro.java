@@ -20,6 +20,7 @@
 package org.apache.james.mailbox.opendistro;
 
 import static org.apache.james.mailbox.opendistro.DockerOpenDistro.Fixture.ES_HTTP_PORT;
+import static org.apache.james.mailbox.opendistro.DockerOpenDistro.NoAuth.defaultGenericContainer;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -116,8 +117,11 @@ public interface DockerOpenDistro {
             return new Builder(esURL);
         }
 
-        @RequestLine("DELETE /*,-.opendistro_security")
+        @RequestLine("DELETE /*")
         Response deleteAllIndexes();
+
+        @RequestLine("DELETE /*,-.opendistro_security")
+        Response deleteAllIndexesExceptOpenDistroSecurity();
 
         @RequestLine("POST /_flush?force&wait_if_ongoing=true")
         Response flush();
@@ -129,12 +133,16 @@ public interface DockerOpenDistro {
 
     class NoAuth implements DockerOpenDistro {
 
-        static DockerContainer defaultContainer(String imageName) {
-            GenericContainer<?> container = new GenericContainer<>(imageName);
-            container.withTmpFs(ImmutableMap.of("/usr/share/elasticsearch/data", "rw,size=200m"));
-            container.withExposedPorts(ES_HTTP_PORT);
-            container.withEnv("discovery.type", "single-node");
-            container.withCopyFileToContainer(MountableFile.forClasspathResource("elasticsearch.yml"), "/usr/share/elasticsearch/config/elasticsearch.yml");
+        static GenericContainer<?> defaultGenericContainer(String imageName) {
+            return new GenericContainer<>(imageName)
+                .withTmpFs(ImmutableMap.of("/usr/share/elasticsearch/data", "rw,size=200m"))
+                .withExposedPorts(ES_HTTP_PORT)
+                .withEnv("discovery.type", "single-node");
+        }
+
+        static DockerContainer noAuthContainer(String imageName) {
+            GenericContainer<?> container = defaultGenericContainer(imageName)
+                .withCopyFileToContainer(MountableFile.forClasspathResource("elasticsearch.yml"), "/usr/share/elasticsearch/config/elasticsearch.yml");
 
             return new DockerContainer(container)
                 .withAffinityToContainer()
@@ -148,7 +156,7 @@ public interface DockerOpenDistro {
         }
 
         public NoAuth(String imageName) {
-            this.eSContainer = defaultContainer(imageName);
+            this.eSContainer = noAuthContainer(imageName);
         }
 
         public NoAuth(DockerContainer eSContainer) {
@@ -200,7 +208,7 @@ public interface DockerOpenDistro {
         public static final Credential DEFAULT_CREDENTIAL =
             Credential.of(DEFAULT_USERNAME, DEFAULT_PASSWORD);
 
-        private final DockerOpenDistro.NoAuth elasticSearch;
+        private final NoAuth elasticSearch;
         private final Network network;
 
         public WithAuth() {
@@ -209,9 +217,11 @@ public interface DockerOpenDistro {
 
         WithAuth(String imageName) {
             this.network = Network.newNetwork();
-            this.elasticSearch = new DockerOpenDistro.NoAuth(
-                DockerOpenDistro.NoAuth
-                    .defaultContainer(imageName)
+
+            this.elasticSearch = new NoAuth(
+                new DockerContainer(defaultGenericContainer(imageName))
+                    .withAffinityToContainer()
+                    .waitingFor(new HostPortWaitStrategy().withRateLimiter(RateLimiters.TWENTIES_PER_SECOND))
                     .withLogConsumer(frame -> LOGGER.debug("[ElasticSearch] " + frame.getUtf8String()))
                     .withNetwork(network)
                     .withNetworkAliases("elasticsearch"));
@@ -272,6 +282,13 @@ public interface DockerOpenDistro {
         @Override
         public boolean isRunning() {
             return elasticSearch.isRunning();
+        }
+
+        @Override
+        public void cleanUpData() {
+            if (esAPI().deleteAllIndexesExceptOpenDistroSecurity().status() != HttpStatus.SC_OK) {
+                throw new IllegalStateException("Failed to delete all data from ElasticSearch");
+            }
         }
     }
 
