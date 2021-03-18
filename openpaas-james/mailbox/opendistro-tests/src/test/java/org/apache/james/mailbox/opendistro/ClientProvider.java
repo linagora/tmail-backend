@@ -44,10 +44,11 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.TrustStrategy;
+import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
+import org.apache.james.backends.es.v7.ElasticSearchConfiguration.SSLConfiguration.HostNameVerifier;
+import org.apache.james.backends.es.v7.ElasticSearchConfiguration.SSLConfiguration.SSLTrustStore;
+import org.apache.james.backends.es.v7.ElasticSearchConfiguration.SSLConfiguration.SSLValidationStrategy;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
-import org.apache.james.mailbox.opendistro.OpenDistroConfiguration.SSLConfiguration.HostNameVerifier;
-import org.apache.james.mailbox.opendistro.OpenDistroConfiguration.SSLConfiguration.SSLTrustStore;
-import org.apache.james.mailbox.opendistro.OpenDistroConfiguration.SSLConfiguration.SSLValidationStrategy;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.slf4j.Logger;
@@ -66,9 +67,9 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
         private static final TrustStrategy TRUST_ALL = (x509Certificates, authType) -> true;
         private static final HostnameVerifier ACCEPT_ANY_HOSTNAME = (hostname, sslSession) -> true;
 
-        private final OpenDistroConfiguration configuration;
+        private final ElasticSearchConfiguration configuration;
 
-        private HttpAsyncClientConfigurer(OpenDistroConfiguration configuration) {
+        private HttpAsyncClientConfigurer(ElasticSearchConfiguration configuration) {
             this.configuration = configuration;
         }
 
@@ -81,7 +82,7 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
         }
 
         private void configureHostScheme(HttpAsyncClientBuilder builder) {
-            OpenDistroConfiguration.HostScheme scheme = configuration.getHostScheme();
+            ElasticSearchConfiguration.HostScheme scheme = configuration.getHostScheme();
 
             switch (scheme) {
                 case HTTP:
@@ -179,21 +180,21 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientProvider.class);
 
-    private final OpenDistroConfiguration configuration;
+    private final ElasticSearchConfiguration configuration;
     private final RestHighLevelClient elasticSearchRestHighLevelClient;
     private final HttpAsyncClientConfigurer httpAsyncClientConfigurer;
     private final ReactorElasticSearchClient client;
 
     @Inject
     @VisibleForTesting
-    ClientProvider(OpenDistroConfiguration configuration) {
+    ClientProvider(ElasticSearchConfiguration configuration) {
         this.httpAsyncClientConfigurer = new HttpAsyncClientConfigurer(configuration);
         this.configuration = configuration;
         this.elasticSearchRestHighLevelClient = connect(configuration);
         this.client = new ReactorElasticSearchClient(this.elasticSearchRestHighLevelClient);
     }
 
-    private RestHighLevelClient connect(OpenDistroConfiguration configuration) {
+    private RestHighLevelClient connect(ElasticSearchConfiguration configuration) {
         Duration waitDelay = Duration.ofMillis(configuration.getMinDelay());
         boolean suppressLeadingZeroElements = true;
         boolean suppressTrailingZeroElements = true;
@@ -205,7 +206,7 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
             .block();
     }
 
-    private RestHighLevelClient connectToCluster(OpenDistroConfiguration configuration) {
+    private RestHighLevelClient connectToCluster(ElasticSearchConfiguration configuration) {
         LOGGER.info("Trying to connect to ElasticSearch service at {}", LocalDateTime.now());
 
         return new RestHighLevelClient(
