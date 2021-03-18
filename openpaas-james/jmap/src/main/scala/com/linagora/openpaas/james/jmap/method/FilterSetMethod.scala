@@ -103,28 +103,27 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
   }
 
   def update(mailboxSession: MailboxSession, filterSetRequest: FilterSetRequest): SMono[FilterSetUpdateResults] =
-    SFlux.fromIterable(filterSetRequest.parseUpdate()
-      .map[SMono[FilterSetUpdateResult]]({
-        case (id, Right(update)) => {
-          try {
-            ensureNoDuplicatedRules(update.rules)
-            ensureNoMultipleMailboxesRules(update.rules)
-            updateRules(mailboxSession.getUser, RuleWithId.toJava(update.rules))
-          } catch {
-            case ex1: DuplicatedRuleException => SMono.just(FilterSetUpdateFailure(id, ex1))
-            case ex2: MultipleMailboxIdException => SMono.just(FilterSetUpdateFailure(id, ex2))
-            case ex3: IllegalArgumentException => SMono.just(FilterSetUpdateFailure(id, ex3))
+    SFlux.fromIterable(
+      filterSetRequest.parseUpdate()
+        .map[SMono[FilterSetUpdateResult]]({
+          case (id, Right(update)) => {
+            validateRules(update.rules)
+              .fold[SMono[FilterSetUpdateResult]](
+                e => SMono.just(FilterSetUpdateFailure(id, e)),
+                _ => SMono.fromCallable(() => RuleWithId.toJava(update.rules))
+                  .flatMap(rule => updateRules(mailboxSession.getUser, rule)))
           }
-        }
-        case (id, Left(e)) => SMono.just(FilterSetUpdateFailure(id, e))
-      }))
+            .onErrorResume(e => SMono.just(FilterSetUpdateFailure(id, e)))
+          case (id, Left(e)) => SMono.just(FilterSetUpdateFailure(id, e))
+        }))
       .flatMap[FilterSetUpdateResult](updateResultMono => updateResultMono)
       .map(updateResult => updateResult.asFilterSetUpdateResults)
       .reduceWith(() => FilterSetUpdateResults.empty(), FilterSetUpdateResults.merge)
 
-  def updateRules(username: Username, validatedRules: List[Rule]): SMono[FilterSetUpdateResult] =
-    SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava))
-      .`then`(SMono.just(FilterSetUpdateSuccess))
+  def updateRules(username: Username, validatedRules: List[Rule]): SMono[FilterSetUpdateResult] = {
+      SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava))
+        .`then`(SMono.just(FilterSetUpdateSuccess))
+  }
 
   def validateNoCreate(filterSetRequest: FilterSetRequest): Option[Map[String, FilterSetError]] =
     filterSetRequest.create.map(aMap => aMap
@@ -139,11 +138,14 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
         Some(SetErrorDescription("'destroy' is not supported on singleton objects")))))
         .toMap)
 
-  def ensureNoDuplicatedRules(rules: List[RuleWithId]) =
-    if (!rules.distinctBy(_.id).length.equals(rules.length)) throw new DuplicatedRuleException("There are some duplicated rules")
-
-  def ensureNoMultipleMailboxesRules(rules: List[RuleWithId]) = {
-    if (!rules.count(rule => rule.action.appendIn.mailboxIds.length.equals(1)).equals(rules.length)) throw new MultipleMailboxIdException("There are some rules targeting several mailboxes")
+  def validateRules(rules: List[RuleWithId]): Either[IllegalArgumentException, Unit] = {
+    if (!rules.distinctBy(_.id).length.equals(rules.length)) {
+      Left(new DuplicatedRuleException("There are some duplicated rules"))
+    } else if(!rules.count(rule => rule.action.appendIn.mailboxIds.length.equals(1)).equals(rules.length)) {
+      Left(new MultipleMailboxIdException("There are some rules targeting several mailboxes"))
+    } else {
+      Right()
+    }
   }
 
   class DuplicatedRuleException(message: String) extends IllegalArgumentException(message)
