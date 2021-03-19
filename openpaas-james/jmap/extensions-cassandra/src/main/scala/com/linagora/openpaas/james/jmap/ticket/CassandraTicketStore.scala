@@ -7,14 +7,28 @@ import com.datastax.driver.core.Session
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.querybuilder.QueryBuilder.{bindMarker, insertInto, ttl}
 import com.datastax.driver.core.schemabuilder.{Create, SchemaBuilder}
+import com.google.inject.multibindings.Multibinder
+import com.google.inject.name.Names
+import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.openpaas.james.jmap.ticket.CassandraTicketStore.{clientAddress, generatedOn, key, ticketTable, username, validUntil}
 import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.init.configuration.InjectionNames
 import org.apache.james.backends.cassandra.init.{CassandraTypesProvider, CassandraZonedDateTimeModule}
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UTCDate
 import reactor.core.scala.publisher.SMono
+
+case class CassandraTicketStoreModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[CassandraTicketStore]).in(Scopes.SINGLETON)
+    bind(classOf[TicketStore]).to(classOf[CassandraTicketStore])
+
+    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+      .addBinding().toInstance(CassandraTicketStore.module)
+  }
+}
 
 object CassandraTicketStore {
   val ticketTable = "ticket"

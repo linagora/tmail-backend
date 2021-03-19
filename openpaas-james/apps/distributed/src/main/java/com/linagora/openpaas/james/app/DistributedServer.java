@@ -74,6 +74,7 @@ import com.google.inject.util.Modules;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
+import com.linagora.openpaas.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.openpaas.james.jmap.ticket.TicketRoutesModule;
 
 public class DistributedServer {
@@ -103,7 +104,7 @@ public class DistributedServer {
         new FilterSetMethodModule(),
         new JMAPServerModule(),
         new JmapEventBusModule(),
-        new TicketRoutesModule());
+        Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
 
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
