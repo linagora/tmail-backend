@@ -9,8 +9,10 @@ import org.apache.http.HttpStatus.{SC_OK, SC_UNAUTHORIZED}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, baseRequestSpecBuilder, getHeadersWith}
+import org.apache.james.jmap.rfc8621.contract.SessionRoutesContract.expected_session_object
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 trait LinagoraTicketAuthenticationContract {
 
@@ -189,5 +191,28 @@ trait LinagoraTicketAuthenticationContract {
       .post()
     .`then`
       .statusCode(SC_UNAUTHORIZED)
+  }
+
+  @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
+  def sessionShouldAdvertiseTicketEndpoints(): Unit = {
+    val sessionJson: String = `given`()
+      .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(sessionJson)
+      .inPath("capabilities.com:linagora:params:jmap:ws:ticket")
+      .isEqualTo("""{
+          |  "generationEndpoint":"http://localhost/jmap/ws/ticket",
+          |  "revocationEndpoint":"http://localhost/jmap/ws/ticket"
+          |}""".stripMargin)
   }
 }

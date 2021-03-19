@@ -1,18 +1,23 @@
 package com.linagora.openpaas.james.jmap.ticket
 
+import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.stream
 
-import com.google.inject.multibindings.Multibinder
+import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.openpaas.james.jmap.json.TicketSerializer
+import com.linagora.openpaas.james.jmap.method.CustomCapability
 import com.linagora.openpaas.james.jmap.ticket.TicketRoutes.{ENDPOINT, REVOCATION_ENDPOINT, TICKET_PARAM}
+import com.linagora.openpaas.james.jmap.ticket.TicketRoutesCapability.LINAGORA_WS_TICKET
+import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, NO_CONTENT, UNAUTHORIZED}
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus}
 import javax.inject.{Inject, Named}
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
-import org.apache.james.jmap.core.ProblemDetails
+import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
+import org.apache.james.jmap.core.{Capability, CapabilityProperties, JmapRfc8621Configuration, ProblemDetails}
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
@@ -20,7 +25,7 @@ import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.routes.ForbiddenException
 import org.apache.james.jmap.routes.UploadRoutes.LOGGER
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
@@ -36,10 +41,30 @@ case class TicketRoutesModule() extends AbstractModule {
     val authenticationStrategies = Multibinder.newSetBinder(binder, classOf[AuthenticationStrategy])
     authenticationStrategies.addBinding.to(classOf[TicketAuthenticationStrategy])
   }
+
+  @ProvidesIntoSet
+  private def capability(configuration: JmapRfc8621Configuration): Capability = TicketRoutesCapability(TicketRoutesCapabilityProperties(configuration))
+}
+
+object TicketRoutesCapability {
+  val LINAGORA_WS_TICKET: CapabilityIdentifier = "com:linagora:params:jmap:ws:ticket"
+}
+
+case class TicketRoutesCapability(properties: TicketRoutesCapabilityProperties) extends Capability {
+  val identifier: CapabilityIdentifier = LINAGORA_WS_TICKET
+}
+
+case class TicketRoutesCapabilityProperties(configuration: JmapRfc8621Configuration) extends CapabilityProperties {
+  val generationEndpoint: URL = new URL(s"${configuration.urlPrefix}/$ENDPOINT")
+  val revocationEndpoint: URL = new URL(s"${configuration.urlPrefix}/$ENDPOINT")
+
+  override def jsonify(): JsObject = Json.obj(
+    ("generationEndpoint", generationEndpoint.toString),
+    ("revocationEndpoint", revocationEndpoint.toString))
 }
 
 object TicketRoutes {
-  val ENDPOINT: String = "/jmap/ws/ticket"
+  val ENDPOINT: String = "jmap/ws/ticket"
   val TICKET_PARAM: String = "ticket"
   val REVOCATION_ENDPOINT = s"$ENDPOINT/{$TICKET_PARAM}"
 }
@@ -47,19 +72,19 @@ object TicketRoutes {
 class TicketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator, ticketManager: TicketManager) extends JMAPRoutes {
   override def routes(): stream.Stream[JMAPRoute] = stream.Stream.of(
     JMAPRoute.builder
-      .endpoint(new Endpoint(HttpMethod.POST, ENDPOINT))
+      .endpoint(new Endpoint(HttpMethod.POST, s"/$ENDPOINT"))
       .action(this.generate)
       .corsHeaders,
     JMAPRoute.builder
-      .endpoint(new Endpoint(HttpMethod.OPTIONS, ENDPOINT))
+      .endpoint(new Endpoint(HttpMethod.OPTIONS, s"/$ENDPOINT"))
       .action(JMAPRoutes.CORS_CONTROL)
       .corsHeaders(),
     JMAPRoute.builder
-      .endpoint(new Endpoint(HttpMethod.DELETE, REVOCATION_ENDPOINT))
+      .endpoint(new Endpoint(HttpMethod.DELETE, s"/$REVOCATION_ENDPOINT"))
       .action(this.revoke)
       .corsHeaders,
     JMAPRoute.builder
-      .endpoint(new Endpoint(HttpMethod.OPTIONS, REVOCATION_ENDPOINT))
+      .endpoint(new Endpoint(HttpMethod.OPTIONS, s"/$REVOCATION_ENDPOINT"))
       .action(JMAPRoutes.CORS_CONTROL)
       .corsHeaders())
 

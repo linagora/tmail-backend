@@ -18,12 +18,13 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.MailboxId
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
-import play.api.libs.json.{JsError, JsObject, JsSuccess}
+import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
-
 import javax.inject.Inject
 
-case object FilterCapabilityProperties extends CapabilityProperties
+case object FilterCapabilityProperties extends CapabilityProperties {
+  override def jsonify(): JsObject = Json.obj()
+}
 
 case object FilterCapability extends Capability {
   val properties: CapabilityProperties = FilterCapabilityProperties
