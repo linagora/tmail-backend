@@ -1,7 +1,6 @@
 package com.linagora.openpaas.james;
 
 import org.apache.james.CassandraExtension;
-import org.apache.james.DockerElasticSearchExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
@@ -14,6 +13,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.openpaas.james.app.DistributedJamesConfiguration;
 import com.linagora.openpaas.james.app.DistributedServer;
+import com.linagora.openpaas.james.app.DockerElasticSearchExtension;
 import com.linagora.openpaas.james.common.LinagoraFilterSetMethodContract;
 
 public class DistributedLinagoraFilterSetMethodTest implements LinagoraFilterSetMethodContract {
