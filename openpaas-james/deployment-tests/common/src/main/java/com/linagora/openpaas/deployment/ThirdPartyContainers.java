@@ -14,7 +14,7 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createElasticsearch(Network network) {
-        return new GenericContainer<>("docker.elastic.co/elasticsearch/elasticsearch:6.3.2")
+        return new GenericContainer<>("docker.elastic.co/elasticsearch/elasticsearch:7.10.2")
             .withNetworkAliases("elasticsearch")
             .withNetwork(network)
             .withExposedPorts(9200)
