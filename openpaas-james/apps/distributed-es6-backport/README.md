@@ -1,4 +1,4 @@
-# openpaas-james Distributed server
+# openpaas-james Distributed server with backport for ElasticSearch 6
 
 This server is the distributed version of James relying on:
 
