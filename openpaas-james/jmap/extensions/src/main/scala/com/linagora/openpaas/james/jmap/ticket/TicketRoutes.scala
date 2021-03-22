@@ -7,8 +7,7 @@ import java.util.stream
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.openpaas.james.jmap.json.TicketSerializer
-import com.linagora.openpaas.james.jmap.method.CustomCapability
-import com.linagora.openpaas.james.jmap.ticket.TicketRoutes.{ENDPOINT, REVOCATION_ENDPOINT, TICKET_PARAM}
+import com.linagora.openpaas.james.jmap.ticket.TicketRoutes.{ENDPOINT, LOGGER, REVOCATION_ENDPOINT, TICKET_PARAM}
 import com.linagora.openpaas.james.jmap.ticket.TicketRoutesCapability.LINAGORA_WS_TICKET
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
@@ -23,11 +22,12 @@ import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.routes.ForbiddenException
-import org.apache.james.jmap.routes.UploadRoutes.LOGGER
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
+import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
+import reactor.core.scheduler.Schedulers
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
 case class TicketRoutesModule() extends AbstractModule {
@@ -64,6 +64,7 @@ case class TicketRoutesCapabilityProperties(configuration: JmapRfc8621Configurat
 }
 
 object TicketRoutes {
+  val LOGGER: Logger = LoggerFactory.getLogger(classOf[TicketRoutes])
   val ENDPOINT: String = "jmap/ws/ticket"
   val TICKET_PARAM: String = "ticket"
   val REVOCATION_ENDPOINT = s"$ENDPOINT/{$TICKET_PARAM}"
@@ -97,6 +98,7 @@ class TicketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: 
         .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
         .sendString(SMono.just(ticket))
         .`then`()))
+      .subscribeOn(Schedulers.elastic())
       .onErrorResume(e => handleException(e, response))
       .asJava()
       .`then`()
@@ -108,6 +110,7 @@ class TicketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: 
         value.fold(e => SMono.error(e), ticketValue => ticketManager.revoke(ticketValue, session.getUser))
       })
       .`then`(SMono(response.status(NO_CONTENT).send()))
+      .subscribeOn(Schedulers.elastic())
       .onErrorResume(e => handleException(e, response))
       .asJava()
       .`then`()
