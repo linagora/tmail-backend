@@ -4,7 +4,7 @@ This server is the distributed version of James relying on:
 
 * Cassandra version 3.11.3
 * S3 API-like object storage. Using here Zenko Cloudserver version 8.2.6
-* ElasticSearch version 6.3.2
+* ElasticSearch version 7.10.2
 * RabbitMQ version 3.8.3
 * Tika version 1.24 (optional)
 
