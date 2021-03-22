@@ -4,6 +4,9 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 
 public class ThirdPartyContainers {
+    public static String ES6_IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:6.3.2";
+    public static String ES7_IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:7.10.2";
+
     @SuppressWarnings("resource")
     public static GenericContainer<?> createCassandra(Network network) {
         return new GenericContainer<>("cassandra:3.11.3")
@@ -13,8 +16,8 @@ public class ThirdPartyContainers {
     }
 
     @SuppressWarnings("resource")
-    public static GenericContainer<?> createElasticsearch(Network network) {
-        return new GenericContainer<>("docker.elastic.co/elasticsearch/elasticsearch:7.10.2")
+    public static GenericContainer<?> createElasticsearch(Network network, String imageName) {
+        return new GenericContainer<>(imageName)
             .withNetworkAliases("elasticsearch")
             .withNetwork(network)
             .withExposedPorts(9200)

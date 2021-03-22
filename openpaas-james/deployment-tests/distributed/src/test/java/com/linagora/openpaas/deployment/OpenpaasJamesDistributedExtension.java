@@ -1,5 +1,6 @@
 package com.linagora.openpaas.deployment;
 
+import static com.linagora.openpaas.deployment.ThirdPartyContainers.ES7_IMAGE_NAME;
 import static com.linagora.openpaas.deployment.ThirdPartyContainers.createCassandra;
 import static com.linagora.openpaas.deployment.ThirdPartyContainers.createElasticsearch;
 import static com.linagora.openpaas.deployment.ThirdPartyContainers.createRabbitMQ;
@@ -28,7 +29,7 @@ public class OpenpaasJamesDistributedExtension implements BeforeEachCallback, Af
     public OpenpaasJamesDistributedExtension() {
         network = Network.newNetwork();
         cassandra = createCassandra(network);
-        elasticsearch = createElasticsearch(network);
+        elasticsearch = createElasticsearch(network, ES7_IMAGE_NAME);
         rabbitmq = createRabbitMQ(network);
         s3 = createS3(network);
         james = createOpenPaasJamesDistributed();
