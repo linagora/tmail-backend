@@ -73,6 +73,7 @@ import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
+import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
 
 public class DistributedServer {
     public static final Module WEBADMIN = Modules.combine(
@@ -150,7 +151,7 @@ public class DistributedServer {
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEventBusModule(),
                 new DistributedTaskSerializationModule()),
-       new CustomMethodModule(), new FilterGetMethodModule());
+       new CustomMethodModule(), new FilterGetMethodModule(), new FilterSetMethodModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()

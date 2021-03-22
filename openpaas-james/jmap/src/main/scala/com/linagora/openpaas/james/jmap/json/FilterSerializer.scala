@@ -1,13 +1,16 @@
 package com.linagora.openpaas.james.jmap.json
 
-import com.linagora.openpaas.james.jmap.model.{Action, AppendIn, Comparator, Condition, Field, Filter, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, Rule}
+import com.linagora.openpaas.james.jmap.model.{Action, AppendIn, Comparator, Condition, Field, Filter, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, Rule, RuleWithId, Update}
 import eu.timepit.refined.api.{RefType, Validate}
-import org.apache.james.jmap.core.AccountId
+import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.{AccountId, State}
 import org.apache.james.jmap.mail.Name
 import org.apache.james.mailbox.model.MailboxId
 import play.api.libs.json.{JsError, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
 
-object FilterSerializer {
+import javax.inject.Inject
+
+case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
 
   implicit def writeRefined[T, P, F[_, _]](
                                             implicit writesT: Writes[T],
@@ -43,7 +46,31 @@ object FilterSerializer {
   implicit val filterGetResponseAccountId: Writes[AccountId] = Json.valueWrites[AccountId]
   implicit val filterGetResponseWrites: Writes[FilterGetResponse] = Json.writes[FilterGetResponse]
 
+  implicit val nameReads: Reads[Name] = Json.valueReads[Name]
+  implicit val fieldReads: Reads[Field] = Json.valueReads[Field]
+  implicit val comparatorReads: Reads[Comparator] = Json.valueReads[Comparator]
+  implicit val conditionReads: Reads[Condition] = Json.reads[Condition]
+  implicit val mailboxIdReads: Reads[MailboxId] = {
+    case JsString(serializedMailboxId) => JsSuccess(mailboxIdFactory.fromString(serializedMailboxId))
+    case _ => JsError()
+  }
+  implicit val appendInReads: Reads[AppendIn] = Json.reads[AppendIn]
+  implicit val actionReads: Reads[Action] = Json.reads[Action]
+  implicit val ruleWithIdReads: Reads[RuleWithId] = Json.reads[RuleWithId]
+  implicit val updateReads: Reads[Update] = Json.valueReads[Update]
+  implicit val filterSetRequestReads: Reads[FilterSetRequest] = Json.reads[FilterSetRequest]
+
   def serialize(response: FilterGetResponse): JsValue = Json.toJson(response)
 
+  implicit val setErrorDescriptionWrites: Writes[SetErrorDescription] = Json.valueWrites[SetErrorDescription]
+  implicit val filterSetErrorWrites: Writes[FilterSetError] = Json.writes[FilterSetError]
+  implicit val filterSetUpdateResponseWrites: Writes[FilterSetUpdateResponse] = Json.valueWrites[FilterSetUpdateResponse]
+  implicit val stateWrites: Writes[State] = Json.valueWrites[State]
+  implicit val filterSetResponseWrites: Writes[FilterSetResponse] = Json.writes[FilterSetResponse]
+
+  def serializeFilterSetResponse(response: FilterSetResponse): JsValue = Json.toJson(response)
+
   def deserializeFilterGetRequest(input: JsValue): JsResult[FilterGetRequest] = Json.fromJson[FilterGetRequest](input)
+
+  def deserializeFilterSetRequest(input: JsValue): JsResult[FilterSetRequest] = Json.fromJson[FilterSetRequest](input)
 }
