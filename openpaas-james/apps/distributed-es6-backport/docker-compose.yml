@@ -12,7 +12,7 @@ services:
       - tika
       - rabbitmq
       - s3
-    image: linagora/openpaas-james-distributed
+    image: linagora/openpaas-james-distributed-es6-backport
     container_name: james
     hostname: james.local
     ports:
