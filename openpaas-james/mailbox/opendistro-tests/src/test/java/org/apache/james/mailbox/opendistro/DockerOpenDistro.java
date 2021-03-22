@@ -36,6 +36,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import org.apache.http.HttpStatus;
+import org.apache.james.backends.es.v7.ClientProvider;
 import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
 import org.apache.james.backends.es.v7.ElasticSearchConfiguration.Credential;
 import org.apache.james.util.Host;
