@@ -21,6 +21,7 @@ package org.apache.james.mailbox.opendistro;
 
 import java.util.concurrent.TimeUnit;
 
+import org.apache.james.backends.es.v7.ClientProvider;
 import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
 import org.apache.james.mailbox.opendistro.OpenDistroClusterExtension.ElasticSearchCluster;
