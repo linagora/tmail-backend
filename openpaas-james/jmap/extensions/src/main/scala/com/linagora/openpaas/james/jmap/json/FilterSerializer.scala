@@ -1,6 +1,6 @@
 package com.linagora.openpaas.james.jmap.json
 
-import com.linagora.openpaas.james.jmap.model.{Action, AppendIn, Comparator, Condition, Field, Filter, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, Rule, RuleWithId, Update}
+import com.linagora.openpaas.james.jmap.model.{Action, AppendIn, Comparator, Condition, Field, Filter, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, Rule, RuleWithId, Update}
 import eu.timepit.refined.api.{RefType, Validate}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, State}
@@ -43,6 +43,7 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val ruleWrites: Writes[Rule] = Json.writes[Rule]
   implicit val filterWrites: Writes[Filter] = Json.writes[Filter]
   implicit val notFoundWrites: Writes[FilterGetNotFound] = Json.valueWrites[FilterGetNotFound]
+  implicit val filterState: Writes[FilterState] = Json.valueWrites[FilterState]
   implicit val filterGetResponseAccountId: Writes[AccountId] = Json.valueWrites[AccountId]
   implicit val filterGetResponseWrites: Writes[FilterGetResponse] = Json.writes[FilterGetResponse]
 
@@ -60,13 +61,13 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val updateReads: Reads[Update] = Json.valueReads[Update]
   implicit val filterSetRequestReads: Reads[FilterSetRequest] = Json.reads[FilterSetRequest]
 
-  def serialize(response: FilterGetResponse): JsValue = Json.toJson(response)
-
   implicit val setErrorDescriptionWrites: Writes[SetErrorDescription] = Json.valueWrites[SetErrorDescription]
   implicit val filterSetErrorWrites: Writes[FilterSetError] = Json.writes[FilterSetError]
   implicit val filterSetUpdateResponseWrites: Writes[FilterSetUpdateResponse] = Json.valueWrites[FilterSetUpdateResponse]
   implicit val stateWrites: Writes[State] = Json.valueWrites[State]
   implicit val filterSetResponseWrites: Writes[FilterSetResponse] = Json.writes[FilterSetResponse]
+
+  def serializeFilterGetResponse(response: FilterGetResponse): JsValue = Json.toJson(response)
 
   def serializeFilterSetResponse(response: FilterSetResponse): JsValue = Json.toJson(response)
 

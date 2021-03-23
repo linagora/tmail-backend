@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.openpaas.james.jmap.json.FilterSerializer
 import com.linagora.openpaas.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
-import com.linagora.openpaas.james.jmap.model.{Filter, FilterGetNotFound, FilterGetRequest, FilterGetResponse, Rule}
+import com.linagora.openpaas.james.jmap.model.{Filter, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterState, FilterWithVersion, Rule}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.FilteringManagement
@@ -19,8 +19,10 @@ import org.apache.james.mailbox.model.MailboxId
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
-import reactor.core.scala.publisher.{SFlux, SMono}
+import reactor.core.scala.publisher.SMono
+
 import javax.inject.Inject
+import scala.jdk.CollectionConverters._
 
 case object FilterCapabilityProperties extends CapabilityProperties {
   override def jsonify(): JsObject = Json.obj()
@@ -58,7 +60,7 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
     getFilterGetResponse(request, mailboxSession).map(response => InvocationWithContext(
       invocation = Invocation(
         methodName = methodName,
-        arguments = Arguments(FilterSerializer(mailboxIdFactory).serialize(response).as[JsObject]),
+        arguments = Arguments(FilterSerializer(mailboxIdFactory).serializeFilterGetResponse(response).as[JsObject]),
         methodCallId = invocation.invocation.methodCallId),
       processingContext = invocation.processingContext))
 
@@ -69,22 +71,22 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
       case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
     }
 
-  private def retrieveFilters(username: Username) : SMono[Filter] =
-    SFlux.fromPublisher(filteringManagement.listRulesForUser(username))
-      .map(javaRule => Rule.fromJava(javaRule, mailboxIdFactory))
-      .collectSeq()
-      .map(rules => Filter("singleton", rules.toList))
+  private def retrieveFiltersWithVersion(username: Username) : SMono[FilterWithVersion] =
+    SMono.fromPublisher(filteringManagement.listRulesForUser(username))
+      .map(rulesWithVersion => FilterWithVersion(Filter("singleton", rulesWithVersion.getRules.asScala.toList.map(rule => Rule.fromJava(rule, mailboxIdFactory))),
+        rulesWithVersion.getVersion))
 
   private def getFilterGetResponse(request: FilterGetRequest,
                                    mailboxSession: MailboxSession): SMono[FilterGetResponse] =
     request.ids match {
-      case None => retrieveFilters(mailboxSession.getUser)
-        .map(filter => FilterGetResponse(request.accountId, List(filter), FilterGetNotFound(List())))
+      case None => retrieveFiltersWithVersion(mailboxSession.getUser)
+        .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asString()), List(filterWithVersion.filter), FilterGetNotFound(List())))
       case Some(ids) => if(ids.value.contains("singleton")) {
-        retrieveFilters(mailboxSession.getUser)
-          .map(filter => FilterGetResponse(request.accountId, List(filter), FilterGetNotFound(ids.value.filterNot(id => id.equals("singleton")))))
+        retrieveFiltersWithVersion(mailboxSession.getUser)
+          .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asString()), List(filterWithVersion.filter), FilterGetNotFound(ids.value.filterNot(id => id.equals("singleton")))))
       } else {
-        SMono.just(FilterGetResponse(request.accountId, List(), FilterGetNotFound(ids.value)))
+        retrieveFiltersWithVersion(mailboxSession.getUser)
+          .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asString()), List(), FilterGetNotFound(ids.value)))
       }
     }
 

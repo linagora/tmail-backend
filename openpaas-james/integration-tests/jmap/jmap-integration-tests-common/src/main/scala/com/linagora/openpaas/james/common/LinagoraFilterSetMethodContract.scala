@@ -98,6 +98,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get", {
          |				"accountId": "$generateAccountIdAsString",
+         |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{

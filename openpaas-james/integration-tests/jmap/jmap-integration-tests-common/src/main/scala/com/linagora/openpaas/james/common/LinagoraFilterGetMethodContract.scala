@@ -76,6 +76,7 @@ trait LinagoraFilterGetMethodContract {
          |  "methodResponses": [[
          |    "Filter/get", {
          |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
          |      "list": [
          |      {
          |        "id": "singleton",
@@ -135,6 +136,7 @@ trait LinagoraFilterGetMethodContract {
          |  "methodResponses": [[
          |    "Filter/get", {
          |      "accountId": "$generateAccountIdAsString",
+         |      "state": "-1",
          |      "list": [
          |      {
          |        "id": "singleton",
@@ -316,6 +318,7 @@ trait LinagoraFilterGetMethodContract {
          |  "methodResponses": [[
          |    "Filter/get", {
          |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
          |      "list": [
          |      {
          |        "id": "singleton",
@@ -384,6 +387,7 @@ trait LinagoraFilterGetMethodContract {
          |  "methodResponses": [[
          |    "Filter/get", {
          |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
          |      "list": [
          |      {
          |        "id": "singleton",
@@ -452,6 +456,7 @@ trait LinagoraFilterGetMethodContract {
          |  "methodResponses": [[
          |    "Filter/get", {
          |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
          |      "list": [
          |
          |      ],
@@ -503,6 +508,7 @@ trait LinagoraFilterGetMethodContract {
          |  "methodResponses": [[
          |    "Filter/get", {
          |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
          |      "list": [],
          |      "notFound": []
          |  }, "c1"]]
