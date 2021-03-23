@@ -45,17 +45,20 @@ pipeline {
                 env.DOCKER_TAG = env.TAG_NAME
               }
 
-              echo "Docker tag: ${env.TAG_NAME}"
+              echo "Docker tag: ${env.DOCKER_TAG}"
 
               // Temporary retag image names
-              sh 'docker tag linagora/openpaas-james-memory linagora/james-memory'
-              sh 'docker tag linagora/openpaas-james-distributed linagora/james-rabbitmq-project'
+              sh "docker tag linagora/openpaas-james-memory linagora/james-memory:${env.DOCKER_TAG}"
+              sh "docker tag linagora/openpaas-james-distributed linagora/james-rabbitmq-project:${env.DOCKER_TAG}"
+              sh "docker tag linagora/openpaas-james-distributed-es6-backport linagora/james-rabbitmq-project:${env.DOCKER_TAG}-esv6"
 
-              def memoryImage = docker.image 'linagora/james-memory'
-              def distributedImage = docker.image 'linagora/james-rabbitmq-project'
+              def memoryImage = docker.image "linagora/james-memory:${env.DOCKER_TAG}"
+              def distributedImage = docker.image "linagora/james-rabbitmq-project:${env.DOCKER_TAG}"
+              def distributedEs6Image = docker.image "linagora/james-rabbitmq-project:${env.DOCKER_TAG}-esv6"
               docker.withRegistry('', 'dockerHub') {
-                memoryImage.push(env.DOCKER_TAG)
-                distributedImage.push(env.DOCKER_TAG)
+                memoryImage.push()
+                distributedImage.push()
+                distributedEs6Image.push()
               }
             }
           }
