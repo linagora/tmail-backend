@@ -69,7 +69,7 @@ class OpenDistroIntegrationTest extends AbstractMessageSearchIndexTest {
     static TikaExtension tika = new TikaExtension();
 
     @RegisterExtension
-    DockerOpenDistroExtension openDistro = new DockerOpenDistroExtension();
+    DockerOpenDistroExtension openDistro = new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE);
 
     TikaTextExtractor textExtractor;
     ReactorElasticSearchClient client;

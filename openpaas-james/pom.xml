@@ -126,6 +126,12 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>mailbox-opendistro-tests</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>mailbox-quota-search-elasticsearch-v6</artifactId>
                 <version>${project.version}</version>
             </dependency>

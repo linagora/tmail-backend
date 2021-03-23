@@ -144,7 +144,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     SessionProviderImpl sessionProvider;
 
     @RegisterExtension
-    DockerOpenDistroExtension openDistro = new DockerOpenDistroExtension();
+    DockerOpenDistroExtension openDistro = new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE);
 
     @BeforeEach
     void setup() throws Exception {
