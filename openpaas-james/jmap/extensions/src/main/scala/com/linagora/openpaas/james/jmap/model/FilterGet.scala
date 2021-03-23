@@ -1,7 +1,7 @@
 package com.linagora.openpaas.james.jmap.model
 
 import com.google.common.collect.ImmutableList
-import org.apache.james.jmap.api.filtering.{Rule => JavaRule}
+import org.apache.james.jmap.api.filtering.{Version, Rule => JavaRule}
 import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.mail.Name
@@ -12,6 +12,7 @@ case class FilterGetRequest(accountId: AccountId,
                             ids: Option[FilterGetIds]) extends WithAccountId
 
 case class FilterGetResponse(accountId: AccountId,
+                             state: FilterState,
                              list: List[Filter],
                              notFound: FilterGetNotFound)
 
@@ -30,6 +31,10 @@ case class Action(appendIn: AppendIn)
 case class Rule(name: Name, condition: Condition, action: Action)
 
 case class Filter(id: Id, rules: List[Rule])
+
+case class FilterWithVersion(filter: Filter, version: Version)
+
+case class FilterState(state: String)
 
 case class FilterGetNotFound(value: List[String]) {
   def merge(other: FilterGetNotFound): FilterGetNotFound = FilterGetNotFound(this.value ++ other.value)
