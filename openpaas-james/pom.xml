@@ -33,7 +33,7 @@
 
     <properties>
         <james.groupId>org.apache.james</james.groupId>
-        <james.version>3.6.0-SNAPSHOT</james.version>
+        <james.version>3.7.0-SNAPSHOT</james.version>
         <james.protocols.groupId>${james.groupId}.protocols</james.protocols.groupId>
 
         <feign.version>10.3.0</feign.version>
