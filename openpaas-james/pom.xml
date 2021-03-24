@@ -23,14 +23,17 @@
         <module>deployment-tests</module>
         <module>guice/elasticsearch-v6</module>
         <module>integration-tests</module>
-        <module>jmap</module>
+
         <module>mailbox/elasticsearch-v6</module>
         <module>mailbox/plugin/quota-search-elasticsearch-v6</module>
+
+        <module>jmap/extensions</module>
+        <module>jmap/extensions-cassandra</module>
     </modules>
 
     <properties>
         <james.groupId>org.apache.james</james.groupId>
-        <james.version>3.6.0-SNAPSHOT</james.version>
+        <james.version>3.7.0-SNAPSHOT</james.version>
         <james.protocols.groupId>${james.groupId}.protocols</james.protocols.groupId>
 
         <feign.version>10.3.0</feign.version>
@@ -85,7 +88,18 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>jmap</artifactId>
+                <artifactId>jmap-extensions</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jmap-extensions</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jmap-extensions-cassandra</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -118,6 +132,11 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>memory</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>apache-james-backends-cassandra</artifactId>
+                <version>${james.version}</version>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>

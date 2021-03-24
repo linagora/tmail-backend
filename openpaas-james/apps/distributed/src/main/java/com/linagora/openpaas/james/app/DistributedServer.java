@@ -74,6 +74,8 @@ import com.google.inject.util.Modules;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
+import com.linagora.openpaas.james.jmap.ticket.CassandraTicketStoreModule;
+import com.linagora.openpaas.james.jmap.ticket.TicketRoutesModule;
 
 public class DistributedServer {
     public static final Module WEBADMIN = Modules.combine(
@@ -95,13 +97,20 @@ public class DistributedServer {
         new MessagesRoutesModule(),
         new WebAdminMailOverWebModule());
 
-    public static final Module PROTOCOLS = Modules.combine(
+    public static final Module JMAP = Modules.combine(
         new CassandraJmapModule(),
-        new IMAPServerModule(),
-        new ProtocolHandlerModule(),
-        new SMTPServerModule(),
+        new CustomMethodModule(),
+        new FilterGetMethodModule(),
+        new FilterSetMethodModule(),
         new JMAPServerModule(),
         new JmapEventBusModule(),
+        Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
+
+    public static final Module PROTOCOLS = Modules.combine(
+        new IMAPServerModule(),
+        JMAP,
+        new ProtocolHandlerModule(),
+        new SMTPServerModule(),
         WEBADMIN);
 
     private static final Module BLOB_MODULE = Modules.combine(
@@ -150,8 +159,7 @@ public class DistributedServer {
                 new JMAPEventBusModule(),
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEventBusModule(),
-                new DistributedTaskSerializationModule()),
-       new CustomMethodModule(), new FilterGetMethodModule(), new FilterSetMethodModule());
+                new DistributedTaskSerializationModule()));
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()

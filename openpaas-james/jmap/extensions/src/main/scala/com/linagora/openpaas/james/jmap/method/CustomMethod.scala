@@ -10,6 +10,7 @@ import org.apache.james.jmap.core.{Capability, CapabilityProperties}
 import org.apache.james.jmap.method.{InvocationWithContext, Method}
 import org.apache.james.mailbox.MailboxSession
 import org.reactivestreams.Publisher
+import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.SMono
 
 object CapabilityIdentifier {
@@ -17,7 +18,9 @@ object CapabilityIdentifier {
   val LINAGORA_FILTER: CapabilityIdentifier = "com:linagora:params:jmap:filter"
 }
 
-case object CustomCapabilityProperties extends CapabilityProperties
+case object CustomCapabilityProperties extends CapabilityProperties {
+  override def jsonify(): JsObject = Json.obj()
+}
 
 case object CustomCapability extends Capability {
   val properties: CapabilityProperties = CustomCapabilityProperties
