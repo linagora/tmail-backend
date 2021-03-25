@@ -25,7 +25,7 @@ class TicketAuthenticationStrategy @Inject() (ticketManager: TicketManager,
           .getOrElse(SMono.empty[Username]))
       .map(sessionProvider.createSystemSession)
       .onErrorResume {
-        case _: ForbiddenException => SMono.error(new UnauthorizedException("User is forbidden to use this ticket", authenticateHeader))
+        case _: ForbiddenException => SMono.error(new UnauthorizedException("User is forbidden to use this ticket"))
       }
       .asJava()
 
