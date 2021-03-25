@@ -1,22 +1,22 @@
 package com.linagora.openpaas.james.jmap.ticket
 
-import java.util
-import java.util.{List, Optional}
-
+import cats.implicits._
 import io.netty.handler.codec.http.QueryStringDecoder
-import org.apache.james.jmap.http.AuthenticationStrategy
+import javax.inject.Inject
+import org.apache.james.core.Username
+import org.apache.james.jmap.core.JmapRfc8621Configuration
+import org.apache.james.jmap.exceptions.UnauthorizedException
+import org.apache.james.jmap.http.{AuthenticationChallenge, AuthenticationScheme, AuthenticationStrategy}
 import org.apache.james.mailbox.{MailboxSession, SessionProvider}
 import reactor.core.publisher.Mono
+import reactor.core.scala.publisher.SMono
 import reactor.netty.http.server.HttpServerRequest
 
 import scala.jdk.CollectionConverters._
-import cats.implicits._
-import javax.inject.Inject
-import org.apache.james.core.Username
-import org.apache.james.jmap.exceptions.UnauthorizedException
-import reactor.core.scala.publisher.SMono
 
-class TicketAuthenticationStrategy @Inject() (ticketManager: TicketManager, sessionProvider: SessionProvider) extends AuthenticationStrategy {
+class TicketAuthenticationStrategy @Inject() (ticketManager: TicketManager,
+                                              sessionProvider: SessionProvider,
+                                              configuration: JmapRfc8621Configuration) extends AuthenticationStrategy {
   override def createMailboxSession(httpRequest: HttpServerRequest): Mono[MailboxSession] =
     retrieveTicket(httpRequest)
       .fold(_ => SMono.error(new UnauthorizedException("Invalid ticket passed as a query parameter")),
@@ -28,6 +28,11 @@ class TicketAuthenticationStrategy @Inject() (ticketManager: TicketManager, sess
         case _: ForbiddenException => SMono.error(new UnauthorizedException("User is forbidden to use this ticket"))
       }
       .asJava()
+
+
+  override def correspondingChallenge(): AuthenticationChallenge = AuthenticationChallenge.of(
+    AuthenticationScheme.of("Ticket"),
+    Map("realm" -> configuration.urlPrefix.toString).asJava)
 
   private def retrieveTicket(httpRequest: HttpServerRequest): Either[IllegalArgumentException, Option[TicketValue]] =
     queryParam(httpRequest, "ticket")
