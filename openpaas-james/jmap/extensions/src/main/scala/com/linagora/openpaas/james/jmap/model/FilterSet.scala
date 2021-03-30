@@ -1,9 +1,9 @@
 package com.linagora.openpaas.james.jmap.model
 
 import org.apache.james.jmap.api.filtering.Rule
+import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id
-import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType, invalidArgumentValue, serverFailValue}
-import org.apache.james.jmap.core.{AccountId, State}
+import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType, invalidArgumentValue, serverFailValue, stateMismatchValue}
 import org.apache.james.jmap.mail.Name
 import org.apache.james.jmap.method.WithAccountId
 import play.api.libs.json.{JsArray, JsObject}
@@ -12,6 +12,7 @@ import scala.jdk.CollectionConverters._
 
 
 case class FilterSetRequest(accountId: AccountId,
+                            ifInState: Option[FilterState],
                             update: Option[Map[String, Update]],
                             create: Option[Map[String, JsArray]],
                             destroy: Option[Seq[String]]) extends WithAccountId {
@@ -29,7 +30,8 @@ case class Update(rules: List[RuleWithId])
 case class RuleWithId(id: Id, name: Name, condition: Condition, action: Action)
 
 case class FilterSetResponse(accountId: AccountId,
-                             newState: State,
+                             oldState: Option[FilterState],
+                             newState: FilterState,
                              updated: Option[Map[String, FilterSetUpdateResponse]],
                              notUpdated: Option[Map[String, FilterSetError]],
                              notCreated: Option[Map[String, FilterSetError]],
@@ -40,6 +42,7 @@ case class FilterSetUpdateResponse(value: JsObject)
 object FilterSetError {
   def invalidArgument(description: Option[SetErrorDescription]) = FilterSetError(invalidArgumentValue, description)
   def serverFail(description: Option[SetErrorDescription]) = FilterSetError(serverFailValue, description)
+  def stateMismatch(description: Option[SetErrorDescription]) = FilterSetError(stateMismatchValue, description)
 }
 
 object RuleWithId {

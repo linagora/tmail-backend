@@ -52,3 +52,7 @@ object AppendIn {
   def convertListMailboxIdToListString(mailboxIds: List[MailboxId]) : List[String] =
     mailboxIds.map(_.serialize)
 }
+
+object FilterState {
+  def toVersion(filterState: FilterState) : Version = new Version(filterState.state.toInt)
+}
