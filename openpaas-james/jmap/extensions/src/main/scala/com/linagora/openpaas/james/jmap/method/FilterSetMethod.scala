@@ -7,7 +7,7 @@ import com.linagora.openpaas.james.jmap.method.CapabilityIdentifier.LINAGORA_FIL
 import com.linagora.openpaas.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, RuleWithId}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
-import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule}
+import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule, Version}
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -24,6 +24,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import javax.inject.Inject
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 
 class FilterSetMethodModule extends AbstractModule {
@@ -121,7 +122,7 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
       .reduceWith(() => FilterSetUpdateResults.empty(), FilterSetUpdateResults.merge)
 
   def updateRules(username: Username, validatedRules: List[Rule]): SMono[FilterSetUpdateResult] = {
-      SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava))
+      SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava, Option(Version.INITIAL).toJava))
         .`then`(SMono.just(FilterSetUpdateSuccess))
   }
 
