@@ -1139,7 +1139,7 @@ trait LinagoraFilterSetMethodContract {
   }
 
   @Test
-  def updateWithIfInStateIsInitialWhenAStateIsDefinedShouldSucceed(): Unit = {
+  def updateWithIfInStateIsInitialWhenAStateIsDefinedShouldFail(): Unit = {
     val request1 = s"""{
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
