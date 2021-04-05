@@ -31,7 +31,7 @@ trait LinagoraFilterSetMethodContract {
   }
 
   @Test
-  def updateShouldSucceed(): Unit = {
+  def updateRulesWithEmptyIfInStateWhenNonStateIsDefinedShouldSucceed(): Unit = {
     val request = s"""{
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
