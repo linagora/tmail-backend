@@ -821,7 +821,7 @@ trait LinagoraFilterSetMethodContract {
   }
 
   @Test
-  def givenARulesWithStateIsZeroThenUpdateRulesWithIfInStateIsZeroShouldSucceed(): Unit = {
+  def givenARuleWithStateIsZeroThenUpdateRulesWithIfInStateIsZeroShouldSucceed(): Unit = {
     val request1 = s"""{
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
