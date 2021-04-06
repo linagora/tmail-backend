@@ -1,20 +1,24 @@
 package com.linagora.openpaas.encrypted
+import java.io.ByteArrayInputStream
+
+import com.google.common.io.BaseEncoding
+import com.linagora.openpaas.gpg.Encrypter
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-class InMemoryKeystoreManager(keystore: scala.collection.concurrent.Map[Username, Set[PublicKey]]) extends KeystoreManager {
+import scala.util.Try
+
+class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Username, Set[PublicKey]]) extends KeystoreManager {
 
   def this() {
     this(keystore = scala.collection.concurrent.TrieMap())
   }
 
-  override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] = {
-    val keyId = KeyId.generate()
-    validateUsername(username)
-      .fold(_ => create(username, keyId, payload),
-        _ => update(username, keyId, payload))
-  }
+  override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =
+    validatePayload(payload)
+      .fold(e => SMono.raiseError(e), keyId => validateUsername(username)
+        .fold(_ => create(username, keyId, payload), _ => update(username, keyId, payload)))
 
   override def listPublicKeys(username: Username): Publisher[PublicKey] =
     validateUsername(username)
@@ -39,6 +43,11 @@ class InMemoryKeystoreManager(keystore: scala.collection.concurrent.Map[Username
         .map(key => keystore.put(username, keys -- Set(key))))
       .fold(e => SMono.raiseError(e), _ => SMono.empty)
 
+  override def deleteAll(username: Username): Publisher[Void] =
+    validateUsername(username)
+      .fold(e => SMono.raiseError(e),
+        _ => SMono.fromCallable(() => keystore.remove(username)).`then`())
+
   private def checkKeyId(keys: Set[PublicKey], keyId: KeyId): Either[IllegalArgumentException, PublicKey] = {
     if (keys.exists(key => key.id.equals(keyId))) {
       Right(keys.find(k => k.id.equals(keyId)).get)
@@ -47,35 +56,28 @@ class InMemoryKeystoreManager(keystore: scala.collection.concurrent.Map[Username
     }
   }
 
-  override def deleteAll(username: Username): Publisher[Void] =
-    validateUsername(username)
-      .fold(e => SMono.raiseError(e),
-        _ => SMono.fromCallable(() => keystore.remove(username)).`then`())
-
   private def create(username: Username, keyId: KeyId, payload: Array[Byte]): Publisher[KeyId] =
     SMono.fromCallable(() => keystore.put(username, Set(PublicKey(keyId, payload))))
       .map[KeyId](_ => keyId)
 
   private def update(username: Username, keyId: KeyId, payload: Array[Byte]): Publisher[KeyId] =
-    validatePayload(username, payload)
-      .fold(_ => updateWhenPayloadNotExist(username, keyId, payload),
-        existingKeyId => SMono.just(existingKeyId))
+    if (keystore(username).contains(PublicKey(keyId, payload))) {
+      SMono.just(keyId)
+    } else {
+      SMono.fromCallable(() => keystore.put(username, keystore(username) ++ Set(PublicKey(keyId, payload))))
+        .`then`(SMono.just(keyId))
+    }
 
-  private def updateWhenPayloadNotExist(username: Username, keyId: KeyId, payload: Array[Byte]): SMono[KeyId] =
-    SMono.fromCallable(() => keystore.put(username, keystore(username) ++ Set(PublicKey(keyId, payload))))
-      .`then`(SMono.just(keyId))
+  private def validatePayload(payload: Array[Byte]): Either[Throwable, KeyId] = {
+    Try(Encrypter.readPublicKey(new ByteArrayInputStream(payload)))
+      .toEither
+      .map(key => KeyId(BaseEncoding.base16().encode(key.getFingerprint)))
+  }
 
-  private def validateUsername(username: Username): Either[IllegalArgumentException, Boolean] =
+  private def validateUsername(username: Username): Either[IllegalArgumentException, Unit] =
     if (keystore.contains(username)) {
-      Right(true)
+      Right()
     } else {
       Left(new IllegalArgumentException(s"Username ${username.asString} does not exist"))
     }
-
-  private def validatePayload(username: Username, payload: Array[Byte]): Either[Unit, KeyId] = {
-    keystore(username)
-      .find(p => p.payload.sameElements(payload))
-      .map(key => Right(key.id))
-      .getOrElse(Left())
-  }
 }

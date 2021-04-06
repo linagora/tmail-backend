@@ -1,15 +1,14 @@
 package com.linagora.openpaas.encrypted
 
-import java.util.UUID
-
+import com.google.common.io.BaseEncoding
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 
 object KeyId {
-    def generate(): KeyId = KeyId(UUID.randomUUID())
+    def fromPayload(payload: Array[Byte]): KeyId = KeyId(BaseEncoding.base16().encode(payload))
 }
 
-case class KeyId(value: UUID)
+case class KeyId(value: String)
 
 case class PublicKey(id: KeyId, payload: Array[Byte])
 
