@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.Provider;
 import java.security.Security;
 
-import org.bouncycastle.openpgp.PGPException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -89,6 +88,6 @@ class EncrypterTest {
 
         assertThatThrownBy(() -> Decrypter.forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg2.private"), "123456".toCharArray())
             .decrypt(new ByteArrayInputStream(out.toByteArray())))
-            .isInstanceOf(PGPException.class);
+            .isInstanceOf(Exception.class);
     }
 }
