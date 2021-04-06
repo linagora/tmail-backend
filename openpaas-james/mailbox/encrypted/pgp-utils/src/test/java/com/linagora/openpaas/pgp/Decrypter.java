@@ -1,4 +1,4 @@
-package com.linagora.openpaas.gpg;
+package com.linagora.openpaas.pgp;
 
 import java.io.IOException;
 import java.io.InputStream;

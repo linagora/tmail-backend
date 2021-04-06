@@ -1,4 +1,4 @@
-package com.linagora.openpaas.gpg;
+package com.linagora.openpaas.pgp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
