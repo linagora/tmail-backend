@@ -1,6 +1,7 @@
 package com.linagora.openpaas.pgp;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -8,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Provider;
 import java.security.Security;
 
+import org.bouncycastle.openpgp.PGPException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -69,5 +71,24 @@ class EncrypterTest {
 
         assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
             .isEqualTo(INPUT);
+    }
+
+    @Test
+    void readPublicKeyShouldThrowOnBadFormat() {
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream("bad".getBytes(StandardCharsets.UTF_8))))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void decryptWithIncorrectKeyShouldFail() throws Exception {
+        byte[] keyBytes1 = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        Encrypter.forKeys(keyBytes1)
+            .encrypt(ByteSource.wrap(INPUT.getBytes(StandardCharsets.UTF_8)), out);
+
+        assertThatThrownBy(() -> Decrypter.forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg2.private"), "123456".toCharArray())
+            .decrypt(new ByteArrayInputStream(out.toByteArray())))
+            .isInstanceOf(PGPException.class);
     }
 }

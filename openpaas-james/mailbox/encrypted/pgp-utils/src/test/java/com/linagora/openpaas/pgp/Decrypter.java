@@ -62,7 +62,7 @@ public class Decrypter {
             .map(PGPPublicKeyEncryptedData.class::cast)
             .flatMap(Throwing.<PGPPublicKeyEncryptedData, Stream<InputStream>>function(this::decrypt).orReturn(Stream.empty()))
             .findFirst()
-            .get();
+            .orElseThrow(() -> new PGPException("Decryption failed"));
     }
 
     private PGPEncryptedDataList retrievePgpEncryptedData(PGPObjectFactory pgpF, Object o) throws IOException {
