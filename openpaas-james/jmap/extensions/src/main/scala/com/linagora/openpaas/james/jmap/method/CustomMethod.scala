@@ -16,6 +16,7 @@ import reactor.core.scala.publisher.SMono
 object CapabilityIdentifier {
   val LINAGORA_ECHO: CapabilityIdentifier = "com:linagora:params:jmap:echo"
   val LINAGORA_FILTER: CapabilityIdentifier = "com:linagora:params:jmap:filter"
+  val LINAGORA_PGP: CapabilityIdentifier = "com:linagora:params:jmap:pgp"
 }
 
 case object CustomCapabilityProperties extends CapabilityProperties {
