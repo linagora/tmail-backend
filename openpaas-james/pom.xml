@@ -37,6 +37,7 @@
         <james.groupId>org.apache.james</james.groupId>
         <james.version>3.7.0-SNAPSHOT</james.version>
         <james.protocols.groupId>${james.groupId}.protocols</james.protocols.groupId>
+        <apache-mime4j.version>0.8.3</apache-mime4j.version>
 
         <feign.version>10.3.0</feign.version>
         <guavate.version>1.0.0</guavate.version>
@@ -269,6 +270,28 @@
                 <groupId>${james.groupId}</groupId>
                 <artifactId>apache-mailet-icalendar</artifactId>
                 <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>apache-mime4j-core</artifactId>
+                <version>${apache-mime4j.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>apache-mime4j-dom</artifactId>
+                <version>${apache-mime4j.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
