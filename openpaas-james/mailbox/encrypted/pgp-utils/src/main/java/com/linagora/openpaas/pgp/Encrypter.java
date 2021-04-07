@@ -1,8 +1,6 @@
 package com.linagora.openpaas.pgp;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -10,15 +8,10 @@ import java.security.SecureRandom;
 import java.util.Collection;
 import java.util.Date;
 
-import org.apache.commons.io.output.DeferredFileOutputStream;
 import org.apache.james.mime4j.dom.Header;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.Multipart;
-import org.apache.james.mime4j.dom.TextBody;
-import org.apache.james.mime4j.field.ContentTypeFieldImpl;
 import org.apache.james.mime4j.message.BasicBodyFactory;
-import org.apache.james.mime4j.message.BodyFactory;
-import org.apache.james.mime4j.message.BodyPart;
 import org.apache.james.mime4j.message.BodyPartBuilder;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
