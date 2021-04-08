@@ -1,7 +1,7 @@
 package com.linagora.openpaas.encrypted
 
 import org.apache.james.core.{Domain, Username}
-import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -128,6 +128,12 @@ trait KeystoreManagerContract {
   }
 
   @Test
+  def deleteAllShouldSucceedWhenUserHasNoKey(): Unit = {
+    assertThatCode(() => SMono.fromPublisher(keyStoreManager.deleteAll(BOB)).block())
+      .doesNotThrowAnyException()
+  }
+
+  @Test
   def deleteShouldSucceed(): Unit = {
     val payload1: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg.pub").readAllBytes()
 
@@ -140,23 +146,23 @@ trait KeystoreManagerContract {
   }
 
   @Test
-  def deleteShouldThrowWhenUserHasNoKey(): Unit = {
+  def deleteShouldSucceedWhenUserHasNoKey(): Unit = {
     val payload1: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg.pub").readAllBytes()
     val keyId: KeyId = KeyId.fromPayload(payload1)
 
-    assertThatThrownBy(() => SMono.fromPublisher(keyStoreManager.delete(BOB, keyId)).block())
-      .isInstanceOf(classOf[IllegalArgumentException])
+    assertThatCode(() => SMono.fromPublisher(keyStoreManager.delete(BOB, keyId)).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
-  def deleteShouldThrowWhenKeyIdNotFound(): Unit = {
+  def deleteShouldBeIdempotent(): Unit = {
     val payload1: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg.pub").readAllBytes()
 
     SMono.fromPublisher(keyStoreManager.save(BOB, payload1)).block()
 
     val keyId: KeyId = KeyId.fromPayload(ClassLoader.getSystemClassLoader.getResourceAsStream("gpg2.pub").readAllBytes())
 
-    assertThatThrownBy(() => SMono.fromPublisher(keyStoreManager.delete(BOB, keyId)).block())
-      .isInstanceOf(classOf[IllegalArgumentException])
+    assertThatCode(() => SMono.fromPublisher(keyStoreManager.delete(BOB, keyId)).block())
+      .doesNotThrowAnyException()
   }
 }
