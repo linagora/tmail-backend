@@ -12,6 +12,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>mailbox-encrypted-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-jmap-rfc-8621</artifactId>
         </dependency>
