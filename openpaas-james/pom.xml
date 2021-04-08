@@ -25,6 +25,7 @@
         <module>integration-tests</module>
 
         <module>mailbox/elasticsearch-v6</module>
+        <module>mailbox/encrypted</module>
         <module>mailbox/encrypted/pgp-utils</module>
         <module>mailbox/opendistro-tests</module>
         <module>mailbox/plugin/quota-search-elasticsearch-v6</module>
@@ -45,6 +46,7 @@
         <javax.inject.version>1</javax.inject.version>
         <junit.jupiter.version>5.7.0</junit.jupiter.version>
         <logback.version>1.2.3</logback.version>
+        <scala.base>2.13</scala.base>
         <slf4j.version>1.7.27</slf4j.version>
     </properties>
 
@@ -127,6 +129,11 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>mailbox-encrypted-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>mailbox-opendistro-tests</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
@@ -139,6 +146,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>memory</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>pgp-utils</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -653,6 +665,11 @@
                 <groupId>io.github.openfeign</groupId>
                 <artifactId>feign-slf4j</artifactId>
                 <version>${feign.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.projectreactor</groupId>
+                <artifactId>reactor-scala-extensions_${scala.base}</artifactId>
+                <version>0.8.0</version>
             </dependency>
             <dependency>
                 <groupId>javax.annotation</groupId>
