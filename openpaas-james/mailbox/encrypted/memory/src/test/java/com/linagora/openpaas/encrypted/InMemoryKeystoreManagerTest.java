@@ -1,8 +1,6 @@
-import org.junit.jupiter.api.BeforeEach;
+package com.linagora.openpaas.encrypted;
 
-import com.linagora.openpaas.encrypted.InMemoryKeystoreManager;
-import com.linagora.openpaas.encrypted.KeystoreManager;
-import com.linagora.openpaas.encrypted.KeystoreManagerContract;
+import org.junit.jupiter.api.BeforeEach;
 
 public class InMemoryKeystoreManagerTest implements KeystoreManagerContract {
 
