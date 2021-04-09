@@ -1,13 +1,22 @@
 package com.linagora.openpaas.encrypted
-import java.io.ByteArrayInputStream
 
 import com.google.common.io.BaseEncoding
+import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.openpaas.pgp.Encrypter
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.io.ByteArrayInputStream
 import scala.util.Try
+
+case class KeystoreModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[InMemoryKeystoreManager]).in(Scopes.SINGLETON)
+
+    bind(classOf[KeystoreManager]).to(classOf[InMemoryKeystoreManager])
+  }
+}
 
 class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Username, Set[PublicKey]]) extends KeystoreManager {
 
