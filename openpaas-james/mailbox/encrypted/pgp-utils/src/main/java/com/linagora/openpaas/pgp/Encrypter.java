@@ -3,10 +3,19 @@ package com.linagora.openpaas.pgp;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Collection;
 import java.util.Date;
 
+import org.apache.james.mime4j.dom.Header;
+import org.apache.james.mime4j.dom.Message;
+import org.apache.james.mime4j.dom.Multipart;
+import org.apache.james.mime4j.message.BasicBodyFactory;
+import org.apache.james.mime4j.message.BodyPartBuilder;
+import org.apache.james.mime4j.message.DefaultMessageBuilder;
+import org.apache.james.mime4j.message.DefaultMessageWriter;
+import org.apache.james.mime4j.stream.NameValuePair;
 import org.bouncycastle.bcpg.ArmoredOutputStream;
 import org.bouncycastle.openpgp.PGPCompressedData;
 import org.bouncycastle.openpgp.PGPCompressedDataGenerator;
@@ -25,8 +34,11 @@ import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodG
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
+import com.google.common.io.FileBackedOutputStream;
 
 public class Encrypter {
+    private static final int FILE_THRESHOLD = 100 * 1024;
+
     public static Encrypter forKeys(Collection<byte[]> armoredKeys) {
         return new Encrypter(createEncryptor(armoredKeys));
     }
@@ -77,6 +89,44 @@ public class Encrypter {
             OutputStream literalDataOutStream = literalDataGenerator.open(compressedOutStream, PGPLiteralData.BINARY,
                 "encrypted.pgp", byteSource.size(), new Date())) {
             byteSource.openBufferedStream().transferTo(literalDataOutStream);
+        }
+    }
+
+    public Message encrypt(Message clearMessage) throws Exception {
+        DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
+        BasicBodyFactory basicBodyFactory = new BasicBodyFactory();
+        DefaultMessageWriter defaultMessageWriter = new DefaultMessageWriter();
+        FileBackedOutputStream clearOutputStream = new FileBackedOutputStream(FILE_THRESHOLD);
+        FileBackedOutputStream encryptedOutputStream = new FileBackedOutputStream(FILE_THRESHOLD);
+
+        try {
+            defaultMessageWriter.writeMessage(clearMessage, clearOutputStream);
+            encrypt(clearOutputStream.asByteSource(), encryptedOutputStream);
+
+            Message encryptedMessage = messageBuilder.newMessage();
+            Header header = messageBuilder.newHeader(clearMessage.getHeader());
+            header.removeFields("Content-Type");
+            encryptedMessage.setHeader(header);
+
+            Multipart multipart = messageBuilder.newMultipart("encrypted", new NameValuePair("protocol", "application/pgp-encrypted"));
+            multipart.addBodyPart(new BodyPartBuilder()
+                .setBody(basicBodyFactory.binaryBody("Version: 1".getBytes(StandardCharsets.UTF_8)))
+                .setContentType("application/pgp-encrypted")
+                .build());
+            multipart.addBodyPart(new BodyPartBuilder()
+                .setContentType("application/octet-stream")
+                .setBody(basicBodyFactory.binaryBody(encryptedOutputStream.asByteSource().openStream()))
+                .build());
+            encryptedMessage.setBody(multipart);
+
+
+            final Message.Builder of = Message.Builder.of();
+            header.getFields().forEach(of::addField);
+            of.setBody(multipart);
+            return of.build();
+        } finally {
+            clearOutputStream.reset();
+            encryptedOutputStream.reset();
         }
     }
 }
