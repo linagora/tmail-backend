@@ -135,6 +135,12 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>mailbox-encrypted-api</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>mailbox-opendistro-tests</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
@@ -152,6 +158,12 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>pgp-utils</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>pgp-utils</artifactId>
+                <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -29,6 +29,7 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-testing</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
