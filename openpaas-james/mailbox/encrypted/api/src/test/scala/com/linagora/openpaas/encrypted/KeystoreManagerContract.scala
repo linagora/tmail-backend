@@ -22,8 +22,8 @@ trait KeystoreManagerContract {
 
     val keyId: KeyId = SMono.fromPublisher(keyStoreManager.save(BOB, payload)).block()
 
-    assertThat(SMono.fromPublisher(keyStoreManager.retrieveKey(BOB, keyId)).block())
-      .isEqualTo(PublicKey(keyId, payload))
+    assertThat(SMono.fromPublisher(keyStoreManager.retrieveKey(BOB, keyId)).block().hasSameContentAs(PublicKey(keyId, payload)))
+      .isTrue
   }
 
   @Test
@@ -37,8 +37,12 @@ trait KeystoreManagerContract {
     val key1: PublicKey = PublicKey(keyId1, payload1)
     val key2: PublicKey = PublicKey(keyId2, payload2)
 
-    assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().asJava)
-      .containsExactly(key1, key2)
+    assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().exists(_.hasSameContentAs(key1)))
+        .isTrue
+      softly.assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().exists(_.hasSameContentAs(key2)))
+        .isTrue
+    })
   }
 
   @Test
@@ -51,8 +55,8 @@ trait KeystoreManagerContract {
     assertSoftly(softly => {
       softly.assertThat(SMono.fromPublisher(keyStoreManager.save(BOB, payload)).block())
           .isEqualTo(keyId)
-      softly.assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().asJava)
-        .containsExactly(key)
+      softly.assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().exists(_.hasSameContentAs(key)))
+        .isTrue
     })
   }
 
@@ -75,8 +79,12 @@ trait KeystoreManagerContract {
     val key1: PublicKey = PublicKey(keyId1, payload1)
     val key2: PublicKey = PublicKey(keyId2, payload2)
 
-    assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().asJava)
-      .containsExactly(key1, key2)
+    assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().exists(_.hasSameContentAs(key1)))
+        .isTrue
+      softly.assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().exists(_.hasSameContentAs(key2)))
+        .isTrue
+    })
   }
 
   @Test
@@ -88,8 +96,8 @@ trait KeystoreManagerContract {
     SMono.fromPublisher(keyStoreManager.save(BOB, payload2)).block()
     val key1: PublicKey = PublicKey(keyId1, payload1)
 
-    assertThat(SMono.fromPublisher(keyStoreManager.retrieveKey(BOB, keyId1)).block())
-      .isEqualTo(key1)
+    assertThat(SMono.fromPublisher(keyStoreManager.retrieveKey(BOB, keyId1)).block().hasSameContentAs(key1))
+      .isTrue
   }
 
   @Test
@@ -123,8 +131,8 @@ trait KeystoreManagerContract {
 
     SMono.fromPublisher(keyStoreManager.deleteAll(BOB)).block()
 
-    assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(ALICE)).collectSeq().block().asJava)
-      .contains(key)
+    assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(ALICE)).collectSeq().block().exists(_.hasSameContentAs(key)))
+      .isTrue
   }
 
   @Test
