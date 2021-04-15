@@ -9,28 +9,6 @@ import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json.{Format, JsError, JsObject, JsResult, JsSuccess, JsValue, Json, Reads, Writes}
 
 class KeystoreSerializer {
-  implicit val accountId: Format[AccountId] = Json.valueFormat[AccountId]
-  implicit val propertiesFormat: Format[Properties] = Json.valueFormat[Properties]
-  implicit val setErrorDescriptionWrites: Writes[SetErrorDescription] = Json.valueWrites[SetErrorDescription]
-  implicit val setErrorWrites: Writes[SetError] = Json.writes[SetError]
-
-  implicit def writeRefined[T, P, F[_, _]](
-                                            implicit writesT: Writes[T],
-                                            reftype: RefType[F]
-                                          ): Writes[F[T, P]] = Writes(value => writesT.writes(reftype.unwrap(value)))
-  implicit def readRefined[T, P, F[_, _]](
-                                           implicit readsT: Reads[T],
-                                           reftype: RefType[F],
-                                           validate: Validate[T, P]
-                                         ): Reads[F[T, P]] =
-    Reads(jsValue =>
-      readsT.reads(jsValue).flatMap { valueT =>
-        reftype.refine[P](valueT) match {
-          case Right(valueP) => JsSuccess(valueP)
-          case Left(error)   => JsError(error)
-        }
-      })
-
   private implicit val keyIdFormat: Format[KeyId] = Json.valueFormat[KeyId]
 
   private implicit val keyReads: Reads[Key] = Json.valueReads[Key]

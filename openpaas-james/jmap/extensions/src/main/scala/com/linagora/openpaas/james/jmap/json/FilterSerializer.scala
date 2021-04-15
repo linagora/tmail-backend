@@ -12,25 +12,7 @@ import javax.inject.Inject
 
 case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
 
-  implicit def writeRefined[T, P, F[_, _]](
-                                            implicit writesT: Writes[T],
-                                            reftype: RefType[F]
-                                          ): Writes[F[T, P]] = Writes(value => writesT.writes(reftype.unwrap(value)))
-  implicit def readRefined[T, P, F[_, _]](
-                                           implicit readsT: Reads[T],
-                                           reftype: RefType[F],
-                                           validate: Validate[T, P]
-                                         ): Reads[F[T, P]] =
-    Reads(jsValue =>
-      readsT.reads(jsValue).flatMap { valueT =>
-        reftype.refine[P](valueT) match {
-          case Right(valueP) => JsSuccess(valueP)
-          case Left(error)   => JsError(error)
-        }
-      })
-
   implicit val filterGetIds: Reads[FilterGetIds] = Json.valueReads[FilterGetIds]
-  implicit val accountId: Reads[AccountId] = Json.valueReads[AccountId]
   implicit val filterGetRequestReads: Reads[FilterGetRequest] = Json.reads[FilterGetRequest]
 
   implicit val mailboxIdWrites: Writes[MailboxId] = mailboxId => JsString(mailboxId.serialize)
@@ -44,7 +26,6 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val filterWrites: Writes[Filter] = Json.writes[Filter]
   implicit val notFoundWrites: Writes[FilterGetNotFound] = Json.valueWrites[FilterGetNotFound]
   implicit val filterState: Writes[FilterState] = Json.valueWrites[FilterState]
-  implicit val filterGetResponseAccountId: Writes[AccountId] = Json.valueWrites[AccountId]
   implicit val filterGetResponseWrites: Writes[FilterGetResponse] = Json.writes[FilterGetResponse]
 
   implicit val nameReads: Reads[Name] = Json.valueReads[Name]
@@ -61,7 +42,6 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val updateReads: Reads[Update] = Json.valueReads[Update]
   implicit val filterSetRequestReads: Reads[FilterSetRequest] = Json.reads[FilterSetRequest]
 
-  implicit val setErrorDescriptionWrites: Writes[SetErrorDescription] = Json.valueWrites[SetErrorDescription]
   implicit val filterSetErrorWrites: Writes[FilterSetError] = Json.writes[FilterSetError]
   implicit val filterSetUpdateResponseWrites: Writes[FilterSetUpdateResponse] = Json.valueWrites[FilterSetUpdateResponse]
   implicit val stateWrites: Writes[State] = Json.valueWrites[State]
