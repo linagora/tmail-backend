@@ -4,9 +4,6 @@ import static org.apache.james.jmap.JMAPTestingConstants.ALICE;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import javax.mail.Flags;
-
-import org.apache.commons.io.IOUtils;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
@@ -24,7 +21,6 @@ import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.openpaas.pgp.Decrypter;
@@ -34,7 +30,6 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.Provider;
 import java.security.Security;
-import java.util.Date;
 import reactor.core.publisher.Mono;
 
 public class EncryptedMessageManagerTest {
@@ -106,48 +101,6 @@ public class EncryptedMessageManagerTest {
     }
 
     @Test
-    @Disabled("Append by stream only used in test code")
-    void streamAppendShouldEncryptMessage() throws Exception {
-        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
-        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
-
-        testee.appendMessage(ClassLoader.getSystemClassLoader().getResourceAsStream("mail.eml"),
-            new Date(1388617200000L),
-            session,
-            true,
-            new Flags());
-
-        MessageResultIterator messages = mailboxManager.getMailbox(path, session)
-            .getMessages(MessageRange.all(), FetchGroup.BODY_CONTENT, session);
-        MessageResult result = messages.next();
-
-        assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
-            .doesNotContain("An update between the 17th of May and the 1st of June seems to have broken");
-    }
-
-    @Test
-    @Disabled("Append by stream only used in test code")
-    void streamAppendShouldEncryptMessageWithMultipleKeys() throws Exception {
-        byte[] keyBytes1 = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
-        byte[] keyBytes2 = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg2.pub").readAllBytes();
-        Mono.from(keystoreManager.save(BOB, keyBytes1)).block();
-        Mono.from(keystoreManager.save(BOB, keyBytes2)).block();
-
-        testee.appendMessage(ClassLoader.getSystemClassLoader().getResourceAsStream("mail.eml"),
-            new Date(1388617200000L),
-            session,
-            true,
-            new Flags());
-
-        MessageResultIterator messages = mailboxManager.getMailbox(path, session)
-            .getMessages(MessageRange.all(), FetchGroup.BODY_CONTENT, session);
-        MessageResult result = messages.next();
-
-        assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
-            .doesNotContain("An update between the 17th of May and the 1st of June seems to have broken");
-    }
-
-    @Test
     void commandAppendedWithSingleKeyShouldBeDecryptable() throws Exception {
         byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
         Mono.from(keystoreManager.save(BOB, keyBytes)).block();
@@ -202,68 +155,6 @@ public class EncryptedMessageManagerTest {
     }
 
     @Test
-    @Disabled("Problem encountered with decrypter. However manual decryption with GPG works")
-    void streamAppendedWithSingleKeyShouldBeDecryptable() throws Exception {
-        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
-        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
-
-        testee.appendMessage(ClassLoader.getSystemClassLoader().getResourceAsStream("mail.eml"),
-            new Date(1388617200000L),
-            session,
-            true,
-            new Flags());
-
-        MessageResultIterator messages = mailboxManager.getMailbox(path, session)
-            .getMessages(MessageRange.all(), FetchGroup.FULL_CONTENT, session);
-        MessageResult result = messages.next();
-
-        Body body = new DefaultMessageBuilder().parseMessage(result.getFullContent().getInputStream()).getBody();
-        Multipart encryptedMultiPart = (Multipart) body;
-        Body encryptedBodyPart = encryptedMultiPart.getBodyParts().get(1).getBody();
-        ByteArrayOutputStream encryptedBodyBytes = new ByteArrayOutputStream();
-        new DefaultMessageWriter().writeBody(encryptedBodyPart, encryptedBodyBytes);
-
-        byte[] decryptedPayload = Decrypter
-            .forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.private"), "123456".toCharArray())
-            .decrypt(new ByteArrayInputStream(encryptedBodyBytes.toByteArray()))
-            .readAllBytes();
-
-        assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
-            .contains("An update between the 17th of May and the 1st of June seems to have broken");
-    }
-
-    @Test
-    @Disabled("Problem encountered with decrypter. However manual decryption with GPG works")
-    void streamAppendedWithMultipleKeysShouldBeDecryptable() throws Exception {
-        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
-        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
-
-        testee.appendMessage(ClassLoader.getSystemClassLoader().getResourceAsStream("mail.eml"),
-            new Date(1388617200000L),
-            session,
-            true,
-            new Flags());
-
-        MessageResultIterator messages = mailboxManager.getMailbox(path, session)
-            .getMessages(MessageRange.all(), FetchGroup.FULL_CONTENT, session);
-        MessageResult result = messages.next();
-
-        Body body = new DefaultMessageBuilder().parseMessage(result.getFullContent().getInputStream()).getBody();
-        Multipart encryptedMultiPart = (Multipart) body;
-        Body encryptedBodyPart = encryptedMultiPart.getBodyParts().get(1).getBody();
-        ByteArrayOutputStream encryptedBodyBytes = new ByteArrayOutputStream();
-        new DefaultMessageWriter().writeBody(encryptedBodyPart, encryptedBodyBytes);
-
-        byte[] decryptedPayload = Decrypter
-            .forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.private"), "123456".toCharArray())
-            .decrypt(new ByteArrayInputStream(encryptedBodyBytes.toByteArray()))
-            .readAllBytes();
-
-        assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
-            .contains("An update between the 17th of May and the 1st of June seems to have broken");
-    }
-
-    @Test
     void commandAppendShouldThrowWhenNoPublicKey() throws Exception {
         testee.appendMessage(MessageManager.AppendCommand.from(message), session);
 
@@ -285,23 +176,5 @@ public class EncryptedMessageManagerTest {
 
         assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
             .contains("testmail");
-    }
-
-    @Test
-    @Disabled("Append by stream only used in test code")
-    void streamAppendShouldNotEncryptWhenNoPublicKey() throws Exception {
-        testee.appendMessage(ClassLoader.getSystemClassLoader().getResourceAsStream("mail.eml"),
-            new Date(1388617200000L),
-            session,
-            true,
-            new Flags());
-
-        MessageResultIterator messages = mailboxManager.getMailbox(path, session)
-            .getMessages(MessageRange.all(), FetchGroup.BODY_CONTENT, session);
-        MessageResult result = messages.next();
-        System.out.println(IOUtils.toString(result.getFullContent().getInputStream()));
-
-        assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
-            .contains("An update between the 17th of May and the 1st of June seems to have broken");
     }
 }
