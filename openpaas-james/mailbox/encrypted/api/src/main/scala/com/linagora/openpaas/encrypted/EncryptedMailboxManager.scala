@@ -12,7 +12,7 @@ import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager}
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 
-class InMemoryEncryptedMailboxManager @Inject()(mailboxManager: MailboxManager) extends MailboxManager {
+class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager, keystoreManager: KeystoreManager) extends MailboxManager {
 
   override def getSupportedMailboxCapabilities: util.EnumSet[MailboxCapabilities] = mailboxManager.getSupportedMailboxCapabilities
 
@@ -22,9 +22,9 @@ class InMemoryEncryptedMailboxManager @Inject()(mailboxManager: MailboxManager) 
 
   override def getSupportedSearchCapabilities: util.EnumSet[SearchCapabilities] = mailboxManager.getSupportedSearchCapabilities
 
-  override def getMailbox(mailboxPath: MailboxPath, session: MailboxSession): MessageManager = new EncryptedMessageManager(mailboxManager.getMailbox(mailboxPath, session), new InMemoryKeystoreManager())
+  override def getMailbox(mailboxPath: MailboxPath, session: MailboxSession): MessageManager = new EncryptedMessageManager(mailboxManager.getMailbox(mailboxPath, session), keystoreManager)
 
-  override def getMailbox(mailboxId: MailboxId, session: MailboxSession): MessageManager = mailboxManager.getMailbox(mailboxId, session)
+  override def getMailbox(mailboxId: MailboxId, session: MailboxSession): MessageManager = new EncryptedMessageManager(mailboxManager.getMailbox(mailboxId, session), keystoreManager)
 
   override def createMailbox(mailboxPath: MailboxPath, mailboxSession: MailboxSession): Optional[MailboxId] =
     mailboxManager.createMailbox(mailboxPath, mailboxSession)
