@@ -12,7 +12,7 @@ case class KeyId(value: String)
 
 case class PublicKey(id: KeyId, payload: Array[Byte]) {
   def hasSameContentAs(publicKey: PublicKey): Boolean =
-    id.equals(publicKey.id) && new String(payload).equals(new String(publicKey.payload))
+    id.equals(publicKey.id) && payload.sameElements(publicKey.payload)
 }
 
 trait KeystoreManager {
