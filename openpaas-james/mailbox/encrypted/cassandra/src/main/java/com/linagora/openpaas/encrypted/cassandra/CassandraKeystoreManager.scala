@@ -1,16 +1,33 @@
 package com.linagora.openpaas.encrypted.cassandra
 
 import java.io.ByteArrayInputStream
-
 import com.google.common.io.BaseEncoding
+import com.google.inject.multibindings.Multibinder
+import com.google.inject.{AbstractModule, Scopes}
+import com.linagora.openpaas.encrypted.cassandra.table.CassandraKeystoreModule
 import com.linagora.openpaas.encrypted.{KeyId, KeystoreManager, PublicKey}
 import com.linagora.openpaas.pgp.Encrypter
+import org.apache.james.backends.cassandra.components.CassandraModule
+
 import javax.inject.Inject
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
 
 import scala.util.Try
+
+case class KeystoreCassandraModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[CassandraKeystoreManager]).in(Scopes.SINGLETON)
+    bind(classOf[CassandraKeystoreDAO]).in(Scopes.SINGLETON)
+
+    bind(classOf[KeystoreManager]).to(classOf[CassandraKeystoreManager])
+
+    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+      .addBinding()
+      .toInstance(CassandraKeystoreModule.MODULE)
+  }
+}
 
 class CassandraKeystoreManager @Inject()(cassandraKeystoreDAO: CassandraKeystoreDAO) extends KeystoreManager {
   override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =

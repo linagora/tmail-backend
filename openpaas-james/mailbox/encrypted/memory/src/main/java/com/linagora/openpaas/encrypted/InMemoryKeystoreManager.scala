@@ -10,7 +10,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import java.io.ByteArrayInputStream
 import scala.util.Try
 
-case class KeystoreModule() extends AbstractModule {
+case class KeystoreMemoryModule() extends AbstractModule {
   override def configure(): Unit = {
     bind(classOf[InMemoryKeystoreManager]).in(Scopes.SINGLETON)
 
