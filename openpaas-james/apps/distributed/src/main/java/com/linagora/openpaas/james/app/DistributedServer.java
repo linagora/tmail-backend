@@ -2,6 +2,7 @@ package com.linagora.openpaas.james.app;
 
 import static org.apache.james.JamesServerMain.LOGGER;
 
+import java.util.List;
 import java.util.Set;
 
 import org.apache.james.GuiceJamesServer;
@@ -12,6 +13,8 @@ import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
+import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
 import org.apache.james.modules.DistributedTaskManagerModule;
@@ -66,12 +69,19 @@ import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.modules.webadmin.CassandraRoutesModule;
 import org.apache.james.modules.webadmin.InconsistencySolvingRoutesModule;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.inject.AbstractModule;
 import com.google.inject.Module;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.openpaas.encrypted.cassandra.KeystoreCassandraModule;
+import com.linagora.openpaas.encrypted.EncryptedMailboxManager;
+import com.linagora.openpaas.encrypted.KeystoreManager;
+import com.linagora.openpaas.encrypted.MailboxConfiguration;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
@@ -187,6 +197,22 @@ public class DistributedServer {
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
             .combineWith(new UsersRepositoryModuleChooser(new CassandraUsersRepositoryModule())
-                .chooseModules(configuration.getUsersRepositoryImplementation()));
+                .chooseModules(configuration.getUsersRepositoryImplementation()))
+            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
+    }
+
+    private static class EncryptedMailboxModule extends AbstractModule {
+        @Provides
+        @Singleton
+        MailboxManager provide(CassandraMailboxManager mailboxManager, KeystoreManager keystoreManager) {
+            return new EncryptedMailboxManager(mailboxManager, keystoreManager);
+        }
+    }
+
+    private static List<Module> chooseMailbox(MailboxConfiguration mailboxConfiguration) {
+        if (mailboxConfiguration.isEncryptionEnabled()) {
+            return ImmutableList.of(new EncryptedMailboxModule());
+        }
+        return ImmutableList.of();
     }
 }

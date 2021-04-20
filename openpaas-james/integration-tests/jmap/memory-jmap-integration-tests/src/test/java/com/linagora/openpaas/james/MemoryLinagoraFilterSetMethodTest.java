@@ -6,12 +6,17 @@ import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.openpaas.james.app.MemoryConfiguration;
 import com.linagora.openpaas.james.app.MemoryServer;
 import com.linagora.openpaas.james.common.LinagoraFilterSetMethodContract;
 
 public class MemoryLinagoraFilterSetMethodTest implements LinagoraFilterSetMethodContract {
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
+        MemoryConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new TestJMAPServerModule()))
         .build();

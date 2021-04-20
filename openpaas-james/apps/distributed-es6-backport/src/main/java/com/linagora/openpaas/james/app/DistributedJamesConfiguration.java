@@ -16,9 +16,11 @@ import org.apache.james.server.core.filesystem.FileSystemImpl;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
+import com.linagora.openpaas.encrypted.MailboxConfiguration;
 
 public class DistributedJamesConfiguration implements Configuration {
     public static class Builder {
+        private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
         private Optional<BlobStoreConfiguration> blobStoreConfiguration;
         private Optional<String> rootDirectory;
@@ -26,6 +28,7 @@ public class DistributedJamesConfiguration implements Configuration {
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
 
         private Builder() {
+            mailboxConfiguration = Optional.empty();
             searchConfiguration = Optional.empty();
             rootDirectory = Optional.empty();
             configurationPath = Optional.empty();
@@ -66,6 +69,11 @@ public class DistributedJamesConfiguration implements Configuration {
             return this;
         }
 
+        public Builder mailboxConfiguration(MailboxConfiguration mailboxConfiguration) {
+            this.mailboxConfiguration = Optional.of(mailboxConfiguration);
+            return this;
+        }
+
         public Builder searchConfiguration(SearchConfiguration searchConfiguration) {
             this.searchConfiguration = Optional.of(searchConfiguration);
             return this;
@@ -97,9 +105,14 @@ public class DistributedJamesConfiguration implements Configuration {
             UsersRepositoryModuleChooser.Implementation usersRepositoryChoice = usersRepositoryImplementation.orElseGet(
                 () -> UsersRepositoryModuleChooser.Implementation.parse(configurationProvider));
 
+            MailboxConfiguration mailboxConfiguration = this.mailboxConfiguration.orElseGet(Throwing.supplier(
+                () -> MailboxConfiguration.parse(
+                    new PropertiesProvider(fileSystem, configurationPath))));
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
+                mailboxConfiguration,
                 blobStoreConfiguration,
                 searchConfiguration,
                 usersRepositoryChoice);
@@ -112,13 +125,15 @@ public class DistributedJamesConfiguration implements Configuration {
 
     private final ConfigurationPath configurationPath;
     private final JamesDirectoriesProvider directories;
+    private final MailboxConfiguration mailboxConfiguration;
     private final BlobStoreConfiguration blobStoreConfiguration;
     private final SearchConfiguration searchConfiguration;
     private final UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation;
 
-    public DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, BlobStoreConfiguration blobStoreConfiguration, SearchConfiguration searchConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) {
+    public DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, MailboxConfiguration mailboxConfiguration, BlobStoreConfiguration blobStoreConfiguration, SearchConfiguration searchConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) {
         this.configurationPath = configurationPath;
         this.directories = directories;
+        this.mailboxConfiguration = mailboxConfiguration;
         this.blobStoreConfiguration = blobStoreConfiguration;
         this.searchConfiguration = searchConfiguration;
         this.usersRepositoryImplementation = usersRepositoryImplementation;
@@ -132,6 +147,10 @@ public class DistributedJamesConfiguration implements Configuration {
     @Override
     public JamesDirectoriesProvider directories() {
         return directories;
+    }
+
+    public MailboxConfiguration mailboxConfiguration() {
+        return mailboxConfiguration;
     }
 
     public BlobStoreConfiguration blobStoreConfiguration() {
