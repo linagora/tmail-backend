@@ -1,4 +1,4 @@
-package com.linagora.openpaas.james.app;
+package com.linagora.openpaas.encrypted;
 
 import javax.inject.Inject;
 

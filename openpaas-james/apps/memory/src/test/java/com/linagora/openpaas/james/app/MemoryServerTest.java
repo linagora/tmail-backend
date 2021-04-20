@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.openpaas.encrypted.MailboxConfiguration;
+import com.linagora.openpaas.encrypted.MailboxManagerClassProbe;
 
 class MemoryServerTest implements JamesServerContract, JmapJamesServerContract {
     @RegisterExtension
