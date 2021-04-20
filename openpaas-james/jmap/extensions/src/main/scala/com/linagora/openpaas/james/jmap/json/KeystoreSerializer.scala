@@ -17,7 +17,7 @@ class KeystoreSerializer {
 
   private implicit val mapCreationRequestByKeystoreCreationId: Reads[Map[KeystoreCreationId, JsObject]] =
     Reads.mapReads[KeystoreCreationId, JsObject] {string => refineV[IdConstraint](string)
-      .fold(e => JsError(s"mailbox creationId needs to match id contraints: $e"),
+      .fold(e => JsError(s"key creationId needs to match id constraints: $e"),
         id => JsSuccess(KeystoreCreationId(id))) }
 
   implicit val keystoreCreationResponseWrites: Writes[KeystoreCreationResponse] = Json.writes[KeystoreCreationResponse]
@@ -28,6 +28,8 @@ class KeystoreSerializer {
   private implicit val keystoreMapCreationResponseWrites: Writes[Map[KeystoreCreationId, KeystoreCreationResponse]] =
     mapWrites[KeystoreCreationId, KeystoreCreationResponse](_.id.value, keystoreCreationResponseWrites)
 
+  private implicit val keyIdReads: Format[KeystoreCreationId] = Json.valueFormat[KeystoreCreationId]
+  private implicit val keystoreDestroyReads: Reads[List[KeystoreCreationId]] = Reads.list[KeystoreCreationId]
   private implicit val keystoreSetRequestReads: Reads[KeystoreSetRequest] = Json.reads[KeystoreSetRequest]
   private implicit val keystoreSetResponseWrites: Writes[KeystoreSetResponse] = Json.writes[KeystoreSetResponse]
 

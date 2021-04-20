@@ -1,5 +1,7 @@
 package com.linagora.openpaas.james.common.probe;
 
+import java.util.Optional;
+
 import javax.inject.Inject;
 
 import org.apache.james.core.Username;
@@ -19,7 +21,11 @@ public class JmapGuiceKeystoreManagerProbe implements GuiceProbe {
         this.keystore = keystore;
     }
 
-    public PublicKey retrieveKey(Username username, KeyId id) {
-        return Mono.from(keystore.retrieveKey(username, id)).block();
+    public Optional<PublicKey> retrieveKey(Username username, KeyId id) {
+        try {
+            return Optional.ofNullable(Mono.from(keystore.retrieveKey(username, id)).block());
+        } catch (IllegalArgumentException e) {
+           return Optional.empty();
+        }
     }
 }
