@@ -8,7 +8,6 @@ import org.apache.james.JamesServerContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
-import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.utils.GuiceProbe;
@@ -17,10 +16,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.openpaas.encrypted.EncryptedMailboxManager;
 import com.linagora.openpaas.encrypted.MailboxConfiguration;
 import com.linagora.openpaas.encrypted.MailboxManagerClassProbe;
 
-class DistributedServerTest implements JamesServerContract, JmapJamesServerContract {
+class EncryptedDistributedServerTest implements JamesServerContract, JmapJamesServerContract {
     @RegisterExtension
     static JamesServerExtension testExtension =  new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
@@ -30,7 +30,7 @@ class DistributedServerTest implements JamesServerContract, JmapJamesServerContr
                 .deduplication()
                 .noCryptoConfig())
             .searchConfiguration(SearchConfiguration.elasticSearch())
-            .mailbox(new MailboxConfiguration(false))
+            .mailbox(new MailboxConfiguration(true))
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new TestJMAPServerModule())
@@ -54,8 +54,8 @@ class DistributedServerTest implements JamesServerContract, JmapJamesServerContr
     }
 
     @Test
-    public void shouldUseCassandraMailboxManager(GuiceJamesServer jamesServer) {
+    public void shouldUseEncryptedMailboxManager(GuiceJamesServer jamesServer) {
         assertThat(jamesServer.getProbe(MailboxManagerClassProbe.class).getMailboxManagerClass())
-            .isEqualTo(CassandraMailboxManager.class);
+            .isEqualTo(EncryptedMailboxManager.class);
     }
 }

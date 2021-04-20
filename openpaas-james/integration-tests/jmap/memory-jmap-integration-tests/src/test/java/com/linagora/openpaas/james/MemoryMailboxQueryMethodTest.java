@@ -25,11 +25,16 @@ import org.apache.james.jmap.rfc8621.contract.MailboxQueryMethodContract;
 import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.openpaas.james.app.MemoryConfiguration;
 import com.linagora.openpaas.james.app.MemoryServer;
 
 public class MemoryMailboxQueryMethodTest implements MailboxQueryMethodContract {
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+    static JamesServerExtension testExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
+        MemoryConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new TestJMAPServerModule()))
         .build();

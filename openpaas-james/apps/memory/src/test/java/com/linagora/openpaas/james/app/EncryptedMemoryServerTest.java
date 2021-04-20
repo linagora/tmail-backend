@@ -15,15 +15,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.openpaas.encrypted.EncryptedMailboxManager;
 import com.linagora.openpaas.encrypted.MailboxConfiguration;
 import com.linagora.openpaas.encrypted.MailboxManagerClassProbe;
 
-class MemoryServerTest implements JamesServerContract, JmapJamesServerContract {
+class EncryptedMemoryServerTest implements JamesServerContract, JmapJamesServerContract {
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir -> MemoryConfiguration.builder()
         .workingDirectory(tmpDir)
         .configurationFromClasspath()
-        .mailbox(new MailboxConfiguration(false))
+        .mailbox(new MailboxConfiguration(true))
         .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new TestJMAPServerModule())
@@ -32,19 +33,19 @@ class MemoryServerTest implements JamesServerContract, JmapJamesServerContract {
 
     @Disabled("POP3 server is disabled")
     @Test
-    public void connectPOP3ServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) {
+    public void connectPOP3ServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) throws Exception {
         // POP3 server is disabled
     }
 
     @Disabled("LMTP server is disabled")
     @Test
-    public void connectLMTPServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) {
+    public void connectLMTPServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) throws Exception {
         // LMTP server is disabled
     }
 
     @Test
-    public void shouldUseMemoryMailboxManager(GuiceJamesServer jamesServer) {
+    public void shouldUseEncryptedMailboxManager(GuiceJamesServer jamesServer) {
         assertThat(jamesServer.getProbe(MailboxManagerClassProbe.class).getMailboxManagerClass())
-            .isEqualTo(InMemoryMailboxManager.class);
+            .isEqualTo(EncryptedMailboxManager.class);
     }
 }
