@@ -1,6 +1,8 @@
 package com.linagora.openpaas.james.common
 
+import com.linagora.openpaas.encrypted.KeyId
 import com.linagora.openpaas.james.common.LinagoraKeystoreSetMethodContract.{PGP_KEY, PGP_KEY_ARMORED, PGP_KEY_ID}
+import com.linagora.openpaas.james.common.probe.JmapGuiceKeystoreManagerProbe
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -14,6 +16,7 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ALICE_ACCOUNT_ID, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder, getHeadersWith}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Disabled, Tag, Test}
 
 import java.nio.charset.StandardCharsets
@@ -88,6 +91,37 @@ trait LinagoraKeystoreSetMethodContract {
          |			}, "c1"]
          |	]
          |}""".stripMargin)
+  }
+
+  @Test
+  def keystoreSetCreateShouldStoreCorrectlyAValidKey(server: GuiceJamesServer): Unit = {
+    val request = s"""{
+                     |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+                     |	"methodCalls": [
+                     |		["Keystore/set", {
+                     |			"accountId": "$ACCOUNT_ID",
+                     |			"create": {
+                     |        "K87": {
+                     |          "key": "$PGP_KEY_ARMORED"
+                     |        }
+                     |      }
+                     |		}, "c1"]
+                     |	]
+                     |}""".stripMargin
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+
+    assertThat(server.getProbe(classOf[JmapGuiceKeystoreManagerProbe])
+        .retrieveKey(BOB, KeyId(PGP_KEY_ID))
+        .payload)
+      .isEqualTo(PGP_KEY)
   }
 
   @Test
