@@ -1,5 +1,3 @@
-
-
 package com.linagora.openpaas.encrypted;
 
 import java.io.FileNotFoundException;
