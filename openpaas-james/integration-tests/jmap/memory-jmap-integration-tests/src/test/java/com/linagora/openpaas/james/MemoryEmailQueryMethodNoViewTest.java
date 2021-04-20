@@ -31,11 +31,16 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.openpaas.james.app.MemoryConfiguration;
 import com.linagora.openpaas.james.app.MemoryServer;
 
 public class MemoryEmailQueryMethodNoViewTest implements EmailQueryMethodContract {
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<>(JamesServerBuilder.defaultConfigurationProvider())
+    static JamesServerExtension testExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
+        MemoryConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new TestJMAPServerModule())
             .overrideWith(binder -> binder.bind(JMAPConfiguration.class)
