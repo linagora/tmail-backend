@@ -64,9 +64,7 @@ public class MemoryServer {
             .build();
 
         LOGGER.info("Loading configuration {}", configuration.toString());
-        GuiceJamesServer server = GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(MODULES)
-            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
+        GuiceJamesServer server = createServer(configuration)
             .combineWith(new FakeSearchMailboxModule(), new JMXServerModule());
 
         JamesServerMain.main(server);
