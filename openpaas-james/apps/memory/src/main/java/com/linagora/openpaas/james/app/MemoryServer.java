@@ -18,7 +18,7 @@ import org.apache.james.server.core.configuration.Configuration;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
-import com.linagora.openpaas.encrypted.KeystoreModule;
+import com.linagora.openpaas.encrypted.KeystoreMemoryModule;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
@@ -36,7 +36,7 @@ public class MemoryServer {
         new CustomMethodModule(),
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
-        new KeystoreModule(),
+        new KeystoreMemoryModule(),
         new KeystoreSetMethodModule(),
         new TicketRoutesModule());
 

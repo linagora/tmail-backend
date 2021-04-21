@@ -71,9 +71,11 @@ import com.google.inject.Module;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
+import com.linagora.openpaas.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
+import com.linagora.openpaas.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.openpaas.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.openpaas.james.jmap.ticket.TicketRoutesModule;
 
@@ -104,6 +106,8 @@ public class DistributedServer {
         new FilterSetMethodModule(),
         new JMAPServerModule(),
         new JmapEventBusModule(),
+        new KeystoreCassandraModule(),
+        new KeystoreSetMethodModule(),
         Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
 
     public static final Module PROTOCOLS = Modules.combine(

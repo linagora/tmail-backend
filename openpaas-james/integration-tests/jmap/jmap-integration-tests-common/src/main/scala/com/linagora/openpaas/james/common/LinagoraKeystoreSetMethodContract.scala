@@ -7,17 +7,15 @@ import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
-import org.apache.commons.codec.binary.Base64
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ALICE_ACCOUNT_ID, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder, getHeadersWith}
-import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.{BeforeEach, Disabled, Tag, Test}
+import org.junit.jupiter.api.{BeforeEach, Test}
 
 import java.nio.charset.StandardCharsets
 
