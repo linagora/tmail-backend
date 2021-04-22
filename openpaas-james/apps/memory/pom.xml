@@ -86,6 +86,17 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+                <configuration>
+                    <argLine>-Xms512m -Xmx1024m</argLine>
+                    <reuseForks>false</reuseForks>
+                    <!-- Fail tests longer than 20 minutes, prevent form random locking tests -->
+                    <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>com.googlecode.maven-download-plugin</groupId>
                 <artifactId>download-maven-plugin</artifactId>
                 <executions>
