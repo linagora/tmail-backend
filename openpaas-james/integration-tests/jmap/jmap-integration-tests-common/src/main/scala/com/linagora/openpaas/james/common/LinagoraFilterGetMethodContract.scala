@@ -8,14 +8,12 @@ import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
-import org.apache.james.jmap.api.filtering.{Rule, Version}
+import org.apache.james.jmap.api.filtering.Rule
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.utils.DataProbeImpl
 import org.junit.jupiter.api.{BeforeEach, Test}
-
-import scala.jdk.OptionConverters._
 
 trait LinagoraFilterGetMethodContract {
 
@@ -39,7 +37,6 @@ trait LinagoraFilterGetMethodContract {
   def filterGetWithUserHaveExistingRulesShouldShowThoseRules(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
-        Option(Version.INITIAL).toJava,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -282,7 +279,6 @@ trait LinagoraFilterGetMethodContract {
   def filterGetWithIdsNullShouldReturnStoredFilter(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
-        Option(Version.INITIAL).toJava,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -352,7 +348,6 @@ trait LinagoraFilterGetMethodContract {
   def filterGetWithIdsContainSingletonShouldReturnStoredFilter(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
-        Option(Version.INITIAL).toJava,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -422,7 +417,6 @@ trait LinagoraFilterGetMethodContract {
   def filterGetWithIdsNotContainSingletonShouldReturnEmptyFilter(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
-        Option(Version.INITIAL).toJava,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -475,7 +469,6 @@ trait LinagoraFilterGetMethodContract {
   def filterGetWithEmptyIdsShouldReturnEmptyFilter(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
       .setRulesForUser(generateUsername(),
-        Option(Version.INITIAL).toJava,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")

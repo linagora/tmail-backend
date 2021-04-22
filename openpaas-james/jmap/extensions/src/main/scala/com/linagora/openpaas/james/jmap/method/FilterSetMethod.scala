@@ -4,14 +4,15 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.openpaas.james.jmap.json.FilterSerializer
 import com.linagora.openpaas.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
-import com.linagora.openpaas.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, RuleWithId}
+import com.linagora.openpaas.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, RuleWithId}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
+import org.apache.james.jmap.api.exception.StateMismatchException
 import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule, Version}
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
+import org.apache.james.jmap.core.Invocation
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{Invocation, State}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -22,6 +23,7 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.util.Optional
 import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
@@ -62,6 +64,7 @@ case class FilterSetUpdateFailure(id: String, exception: Throwable) extends Filt
 
   def asSetError(exception: Throwable): FilterSetError = exception match {
     case e: IllegalArgumentException => FilterSetError.invalidArgument(Some(SetErrorDescription(e.getMessage)))
+    case e: StateMismatchException => FilterSetError.stateMismatch(Some(SetErrorDescription(e.getMessage)))
     case e: Throwable => FilterSetError.serverFail(Some(SetErrorDescription(e.getMessage)))
   }
 }
@@ -76,10 +79,14 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(LINAGORA_FILTER)
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession,
-                         request: FilterSetRequest): Publisher[InvocationWithContext] =
-    update(mailboxSession, request)
-      .map(updateResult => createResponse(invocation.invocation, request, updateResult))
-      .map(InvocationWithContext(_, invocation.processingContext))
+                         request: FilterSetRequest): Publisher[InvocationWithContext] = {
+    for {
+      oldState <- retrieveState(mailboxSession)
+      updateResult <- update(mailboxSession, request)
+      newState <- retrieveState(mailboxSession)
+      response = createResponse(invocation.invocation, request, updateResult, oldState, newState)
+    } yield InvocationWithContext(response, invocation.processingContext)
+  }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, FilterSetRequest] =
     FilterSerializer(mailboxIdFactory).deserializeFilterSetRequest(invocation.arguments.value) match {
@@ -89,10 +96,13 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
 
   def createResponse(invocation: Invocation,
                      filterSetRequest: FilterSetRequest,
-                     updateResult: FilterSetUpdateResults): Invocation = {
+                     updateResult: FilterSetUpdateResults,
+                     oldState: FilterState,
+                     newState: FilterState): Invocation = {
     val response = FilterSetResponse(
       accountId = filterSetRequest.accountId,
-      newState = State.INSTANCE,
+      oldState = Some(oldState),
+      newState = newState,
       updated = Some(updateResult.updateSuccess).filter(_.nonEmpty),
       notUpdated = Some(updateResult.updateFailures).filter(_.nonEmpty),
       notCreated = validateNoCreate(filterSetRequest),
@@ -112,17 +122,19 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
               .fold[SMono[FilterSetUpdateResult]](
                 e => SMono.just(FilterSetUpdateFailure(id, e)),
                 _ => SMono.fromCallable(() => RuleWithId.toJava(update.rules))
-                  .flatMap(rule => updateRules(mailboxSession.getUser, rule)))
+                  .flatMap(rule => updateRules(mailboxSession.getUser, rule, filterSetRequest.ifInState)))
           }
-            .onErrorResume(e => SMono.just(FilterSetUpdateFailure(id, e)))
+            .onErrorResume(e => {
+                SMono.just(FilterSetUpdateFailure(id, e))
+            })
           case (id, Left(e)) => SMono.just(FilterSetUpdateFailure(id, e))
         }))
       .flatMap[FilterSetUpdateResult](updateResultMono => updateResultMono)
       .map(updateResult => updateResult.asFilterSetUpdateResults)
       .reduceWith(() => FilterSetUpdateResults.empty(), FilterSetUpdateResults.merge)
 
-  def updateRules(username: Username, validatedRules: List[Rule]): SMono[FilterSetUpdateResult] = {
-      SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava, Option(Version.INITIAL).toJava))
+  def updateRules(username: Username, validatedRules: List[Rule], ifInState: Option[FilterState]): SMono[FilterSetUpdateResult] = {
+      SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava, convertToOptionalVersion(ifInState)))
         .`then`(SMono.just(FilterSetUpdateSuccess))
   }
 
@@ -148,6 +160,13 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
       Right()
     }
   }
+
+  def convertToOptionalVersion(ifInState: Option[FilterState]): Optional[Version] =
+    ifInState.map(filterState => FilterState.toVersion(filterState)).toJava
+
+  def retrieveState(mailboxSession: MailboxSession): SMono[FilterState] =
+    SMono(filteringManagement.getLatestVersion(mailboxSession.getUser))
+      .map(version => FilterState(version.asString()))
 
   class DuplicatedRuleException(message: String) extends IllegalArgumentException(message)
   class MultipleMailboxIdException(message: String) extends IllegalArgumentException(message)
