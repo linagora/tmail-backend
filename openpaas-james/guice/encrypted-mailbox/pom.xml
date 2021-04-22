@@ -23,7 +23,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>mailbox-encrypted-memory</artifactId>
+            <artifactId>mailbox-encrypted-api</artifactId>
         </dependency>
     </dependencies>
 </project>
