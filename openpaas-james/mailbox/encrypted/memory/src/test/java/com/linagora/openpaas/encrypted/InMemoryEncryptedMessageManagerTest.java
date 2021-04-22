@@ -32,7 +32,7 @@ import java.security.Provider;
 import java.security.Security;
 import reactor.core.publisher.Mono;
 
-public class EncryptedMessageManagerTest {
+public class InMemoryEncryptedMessageManagerTest {
     private EncryptedMessageManager testee;
     private MailboxManager mailboxManager;
     private MessageManager messageManager;
