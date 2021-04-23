@@ -2,9 +2,6 @@ package com.linagora.openpaas.james.app;
 
 import static org.apache.james.JamesServerMain.LOGGER;
 
-import java.util.List;
-import java.util.Set;
-
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
@@ -85,9 +82,13 @@ import com.linagora.openpaas.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
+import com.linagora.openpaas.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.openpaas.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.openpaas.james.jmap.ticket.TicketRoutesModule;
+
+import java.util.List;
+import java.util.Set;
 
 public class DistributedServer {
     public static final Module WEBADMIN = Modules.combine(
@@ -118,6 +119,7 @@ public class DistributedServer {
         new JmapEventBusModule(),
         new KeystoreCassandraModule(),
         new KeystoreSetMethodModule(),
+        new KeystoreGetMethodModule(),
         Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
 
     public static final Module PROTOCOLS = Modules.combine(

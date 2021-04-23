@@ -1,10 +1,10 @@
 package com.linagora.openpaas.james.jmap.json
 
-import com.linagora.openpaas.encrypted.KeyId
-import com.linagora.openpaas.james.jmap.model.{Key, KeystoreCreationId, KeystoreCreationRequest, KeystoreCreationResponse, KeystoreSetRequest, KeystoreSetResponse}
+import com.linagora.openpaas.encrypted.{KeyId, PublicKey}
+import com.linagora.openpaas.james.jmap.model.{Key, KeystoreCreationId, KeystoreCreationRequest, KeystoreCreationResponse, KeystoreGetRequest, KeystoreGetResponse, KeystoreSetRequest, KeystoreSetResponse}
 import eu.timepit.refined.refineV
 import org.apache.james.jmap.core.Id.IdConstraint
-import org.apache.james.jmap.core.SetError
+import org.apache.james.jmap.core.{SetError, State}
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json.{Format, JsError, JsObject, JsResult, JsSuccess, JsValue, Json, Reads, Writes}
 
@@ -28,14 +28,29 @@ class KeystoreSerializer {
   private implicit val keystoreMapCreationResponseWrites: Writes[Map[KeystoreCreationId, KeystoreCreationResponse]] =
     mapWrites[KeystoreCreationId, KeystoreCreationResponse](_.id.value, keystoreCreationResponseWrites)
 
+  private implicit val payloadWrites: Writes[Array[Byte]] = (payload: Array[Byte]) => Json.toJson(new String(payload))
+  private implicit val stateWrites: Writes[State] = Json.valueWrites[State]
+  private implicit val publicKeyWrites: Writes[PublicKey] = Json.writes[PublicKey]
+  private implicit val keystoreMapGetResponseWrites: Writes[Map[KeyId, PublicKey]] = mapWrites[KeyId, PublicKey](_.value, publicKeyWrites)
+
   private implicit val keyIdReads: Format[KeystoreCreationId] = Json.valueFormat[KeystoreCreationId]
   private implicit val keystoreDestroyReads: Reads[List[KeystoreCreationId]] = Reads.list[KeystoreCreationId]
   private implicit val keystoreSetRequestReads: Reads[KeystoreSetRequest] = Json.reads[KeystoreSetRequest]
   private implicit val keystoreSetResponseWrites: Writes[KeystoreSetResponse] = Json.writes[KeystoreSetResponse]
+  private implicit val keystoreGetRequestReads: Reads[KeystoreGetRequest] = {
+    case jsonObject: JsObject if jsonObject.keys.contains("ids") => JsError("current implementation only supports list all")
+    case jsonObject: JsObject => Json.reads[KeystoreGetRequest].reads(jsonObject)
+    case _ => JsError("expecting request to be represented by a JsObject")
+  }
+  private implicit val keystoreGetResponseWrites: Writes[KeystoreGetResponse] = Json.writes[KeystoreGetResponse]
 
   def serializeKeystoreSetResponse(response: KeystoreSetResponse): JsValue = Json.toJson(response)
 
   def deserializeKeystoreCreationRequest(input: JsValue): JsResult[KeystoreCreationRequest] = Json.fromJson[KeystoreCreationRequest](input)
 
   def deserializeKeystoreSetRequest(input: JsValue): JsResult[KeystoreSetRequest] = Json.fromJson[KeystoreSetRequest](input)
+
+  def deserializeKeystoreGetRequest(input: JsValue): JsResult[KeystoreGetRequest] = Json.fromJson[KeystoreGetRequest](input)
+
+  def serializeKeystoreGetResponse(response: KeystoreGetResponse): JsValue = Json.toJson(response)
 }
