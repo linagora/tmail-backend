@@ -5,6 +5,8 @@ import static org.apache.james.MemoryJamesServerMain.IN_MEMORY_SERVER_MODULE;
 import static org.apache.james.MemoryJamesServerMain.JMAP;
 import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
+import java.util.List;
+
 import org.apache.james.FakeSearchMailboxModule;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
@@ -34,7 +36,6 @@ import com.linagora.openpaas.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.openpaas.james.jmap.ticket.TicketRoutesModule;
 
-import java.util.List;
 
 public class MemoryServer {
     public static final Module PROTOCOLS = Modules.combine(
