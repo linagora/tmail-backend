@@ -1,5 +1,7 @@
 package com.linagora.openpaas.encrypted
 
+import java.io.ByteArrayInputStream
+
 import com.google.common.io.BaseEncoding
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.openpaas.pgp.Encrypter
@@ -7,7 +9,6 @@ import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.io.ByteArrayInputStream
 import scala.util.Try
 
 case class KeystoreMemoryModule() extends AbstractModule {
@@ -47,7 +48,7 @@ class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Usernam
 
   private def find(keyId: KeyId, keys: Set[PublicKey]): SMono[PublicKey] =
     keys.find(key => key.id.equals(keyId)).map(SMono.just)
-      .getOrElse(SMono.raiseError(new IllegalArgumentException(s"Cannot find key $keyId")))
+      .getOrElse(SMono.empty)
 
   private def deleteKey(username: Username, keyId: KeyId): SMono[Void] =
     SMono.fromCallable[Set[PublicKey]](() => keystore(username))
