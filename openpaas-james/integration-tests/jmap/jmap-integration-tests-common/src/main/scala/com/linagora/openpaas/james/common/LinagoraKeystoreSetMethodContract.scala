@@ -688,7 +688,7 @@ trait LinagoraKeystoreSetMethodContract {
   }
 
   @Test
-  def keystoreSetDestroyWithShouldFailWhenMissingOneCapability(): Unit = {
+  def keystoreSetDestroyShouldFailWhenMissingOneCapability(): Unit = {
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core"],
@@ -728,7 +728,7 @@ trait LinagoraKeystoreSetMethodContract {
   }
 
   @Test
-  def keystoreSetDestroyWithShouldFailWhenMissingAllCapabilities(): Unit = {
+  def keystoreSetDestroyShouldFailWhenMissingAllCapabilities(): Unit = {
     val request = s"""{
                      |  "using": [],
                      |  "methodCalls": [
