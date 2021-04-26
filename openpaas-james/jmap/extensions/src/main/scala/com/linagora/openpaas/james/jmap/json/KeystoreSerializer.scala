@@ -37,11 +37,7 @@ class KeystoreSerializer {
   private implicit val keystoreDestroyReads: Reads[List[KeystoreCreationId]] = Reads.list[KeystoreCreationId]
   private implicit val keystoreSetRequestReads: Reads[KeystoreSetRequest] = Json.reads[KeystoreSetRequest]
   private implicit val keystoreSetResponseWrites: Writes[KeystoreSetResponse] = Json.writes[KeystoreSetResponse]
-  private implicit val keystoreGetRequestReads: Reads[KeystoreGetRequest] = {
-    case jsonObject: JsObject if jsonObject.keys.contains("ids") => JsError("current implementation only supports list all")
-    case jsonObject: JsObject => Json.reads[KeystoreGetRequest].reads(jsonObject)
-    case _ => JsError("expecting request to be represented by a JsObject")
-  }
+  private implicit val keystoreGetRequestReads: Reads[KeystoreGetRequest] = Json.reads[KeystoreGetRequest]
   private implicit val keystoreGetResponseWrites: Writes[KeystoreGetResponse] = Json.writes[KeystoreGetResponse]
 
   def serializeKeystoreSetResponse(response: KeystoreSetResponse): JsValue = Json.toJson(response)

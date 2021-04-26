@@ -48,7 +48,7 @@ trait LinagoraKeystoreGetMethodContract {
   }
 
   @Test
-  def keystoreGetShouldSucceed(): Unit = {
+  def keystoreGetAllShouldSucceed(): Unit = {
     val request = s"""{
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
@@ -64,7 +64,8 @@ trait LinagoraKeystoreGetMethodContract {
                      |      }
                      |    }, "c1"],
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID"
+                     |      "accountId": "$ACCOUNT_ID",
+                     |      "ids": []
                      |    }, "c2"]
                      |  ]
                      |}""".stripMargin
@@ -116,12 +117,147 @@ trait LinagoraKeystoreGetMethodContract {
   }
 
   @Test
+  def keystoreGetShouldSucceed(): Unit = {
+    val request = s"""{
+                     |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+                     |  "methodCalls": [
+                     |    ["Keystore/set", {
+                     |      "accountId": "$ACCOUNT_ID",
+                     |      "create": {
+                     |        "K87": {
+                     |          "key": "$PGP_KEY_ARMORED"
+                     |        },
+                     |        "K88": {
+                     |          "key": "$PGP_KEY_ARMORED2"
+                     |        }
+                     |      }
+                     |    }, "c1"],
+                     |    ["Keystore/get", {
+                     |      "accountId": "$ACCOUNT_ID",
+                     |      "ids": [
+                     |        "$PGP_KEY_ID"
+                     |      ]
+                     |    }, "c2"]
+                     |  ]
+                     |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [
+         |    ["Keystore/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "created": {
+         |        "K87": {
+         |          "id": "$PGP_KEY_ID"
+         |        },
+         |        "K88": {
+         |          "id": "$PGP_KEY_ID2"
+         |        }
+         |      }
+         |    }, "c1"],
+         |    ["Keystore/get", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "state": "${INSTANCE.value}",
+         |      "list": {
+         |        "$PGP_KEY_ID": {
+         |          "id": "$PGP_KEY_ID",
+         |          "payload": "$PGP_KEY_ARMORED"
+         |        }
+         |      }
+         |    }, "c2"]
+         |  ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def keystoreGetShouldSupportBackReference(): Unit = {
+    val request = s"""{
+                     |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+                     |  "methodCalls": [
+                     |    ["Keystore/set", {
+                     |      "accountId": "$ACCOUNT_ID",
+                     |      "create": {
+                     |        "K87": {
+                     |          "key": "$PGP_KEY_ARMORED"
+                     |        },
+                     |        "K88": {
+                     |          "key": "$PGP_KEY_ARMORED2"
+                     |        }
+                     |      }
+                     |    }, "c1"],
+                     |    ["Keystore/get", {
+                     |      "accountId": "$ACCOUNT_ID",
+                     |      "ids": [
+                     |        "#K87"
+                     |      ]
+                     |    }, "c2"]
+                     |  ]
+                     |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [
+         |    ["Keystore/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "created": {
+         |        "K87": {
+         |          "id": "$PGP_KEY_ID"
+         |        },
+         |        "K88": {
+         |          "id": "$PGP_KEY_ID2"
+         |        }
+         |      }
+         |    }, "c1"],
+         |    ["Keystore/get", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "state": "${INSTANCE.value}",
+         |      "list": {
+         |        "$PGP_KEY_ID": {
+         |          "id": "$PGP_KEY_ID",
+         |          "payload": "$PGP_KEY_ARMORED"
+         |        }
+         |      }
+         |    }, "c2"]
+         |  ]
+         |}""".stripMargin)
+  }
+
+  @Test
   def keystoreGetShouldReturnEmptyWhenNoKey(): Unit = {
     val request = s"""{
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID"
+                     |      "accountId": "$ACCOUNT_ID",
+                     |      "ids": []
                      |    }, "c1"]
                      |  ]
                      |}""".stripMargin
@@ -153,17 +289,26 @@ trait LinagoraKeystoreGetMethodContract {
   }
 
   @Test
-  def keystoreGetShouldRejectIdsField(): Unit = {
-    val request =
-      s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
-         |  "methodCalls": [
-         |    ["Keystore/get", {
-         |      "accountId": "$ACCOUNT_ID",
-         |      "ids": []
-         |    }, "c1"]
-         |  ]
-         |}""".stripMargin
+  def keystoreGetShouldReturnEmptyWhenUnknownId(): Unit = {
+    val request = s"""{
+                     |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+                     |  "methodCalls": [
+                     |    ["Keystore/set", {
+                     |      "accountId": "$ACCOUNT_ID",
+                     |      "create": {
+                     |        "K87": {
+                     |          "key": "$PGP_KEY_ARMORED"
+                     |        }
+                     |      }
+                     |    }, "c1"],
+                     |    ["Keystore/get", {
+                     |      "accountId": "$ACCOUNT_ID",
+                     |      "ids": [
+                     |        "$PGP_KEY_ID2"
+                     |      ]
+                     |    }, "c2"]
+                     |  ]
+                     |}""".stripMargin
 
     val response = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -180,12 +325,21 @@ trait LinagoraKeystoreGetMethodContract {
 
     assertThatJson(response).isEqualTo(
       s"""{
-         |  "sessionState":"${SESSION_STATE.value}",
+         |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
-         |    ["error", {
-         |      "type": "invalidArguments",
-         |      "description": "{\\"errors\\":[{\\"path\\":\\"obj\\",\\"messages\\":[\\"current implementation only supports list all\\"]}]}"
-         |    },"c1"]
+         |    ["Keystore/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "created": {
+         |        "K87": {
+         |          "id": "$PGP_KEY_ID"
+         |        }
+         |      }
+         |    }, "c1"],
+         |    ["Keystore/get", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "state": "${INSTANCE.value}",
+         |      "list": {}
+         |    }, "c2"]
          |  ]
          |}""".stripMargin)
   }

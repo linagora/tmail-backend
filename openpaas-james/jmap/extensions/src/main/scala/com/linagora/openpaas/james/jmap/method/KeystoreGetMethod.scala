@@ -2,7 +2,7 @@ package com.linagora.openpaas.james.jmap.method
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
-import com.linagora.openpaas.encrypted.KeystoreManager
+import com.linagora.openpaas.encrypted.{KeystoreManager, PublicKey}
 import com.linagora.openpaas.james.jmap.json.KeystoreSerializer
 import com.linagora.openpaas.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.openpaas.james.jmap.model.{KeystoreGetRequest, KeystoreGetResponse}
@@ -18,7 +18,7 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
-import reactor.core.scala.publisher.SFlux
+import reactor.core.scala.publisher.{SFlux, SMono}
 
 class KeystoreGetMethodModule extends AbstractModule {
   override def configure(): Unit = {
@@ -41,7 +41,11 @@ class KeystoreGetMethod @Inject()(serializer: KeystoreSerializer,
                          invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,
                          request: KeystoreGetRequest): Publisher[InvocationWithContext] = {
-    SFlux.fromPublisher(keystoreManager.listPublicKeys(mailboxSession.getUser))
+    SFlux.fromPublisher[PublicKey](request.ids match {
+      case Nil => keystoreManager.listPublicKeys(mailboxSession.getUser)
+      case _ => SFlux.fromIterable(request.ids)
+        .flatMap(id => SMono.fromPublisher(keystoreManager.retrieveKey(mailboxSession.getUser, id)))
+    })
       .map(key => (key.id, key))
       .collectSeq()
       .map(seq => KeystoreGetResponse(request.accountId, State.INSTANCE, seq.toMap))
