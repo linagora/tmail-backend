@@ -6,6 +6,7 @@ import com.linagora.openpaas.james.jmap.json.KeystoreSerializer
 import com.linagora.openpaas.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.openpaas.james.jmap.model.{KeystoreSetRequest, KeystoreSetResponse}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityProperties, ClientId, Id, Invocation, ServerId, SetError}
@@ -16,8 +17,6 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.SMono
-
-import javax.inject.Inject
 
 case object KeystoreCapabilityProperties extends CapabilityProperties {
   override def jsonify(): JsObject = Json.obj()
@@ -46,6 +45,7 @@ case class KeystoreCreationParseException(setError: SetError) extends Exception
 
 class KeystoreSetMethod @Inject()(serializer: KeystoreSerializer,
                                   createPerformer: KeystoreSetCreatePerformer,
+                                  destroyPerformer: KeystoreSetDestroyPerformer,
                                   val metricFactory: MetricFactory,
                                   val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[KeystoreSetRequest] {
   override val methodName: MethodName = MethodName("Keystore/set")
@@ -54,13 +54,15 @@ class KeystoreSetMethod @Inject()(serializer: KeystoreSerializer,
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: KeystoreSetRequest): SMono[InvocationWithContext] = {
     for {
       created <- createPerformer.createKeys(mailboxSession, request)
+      destroyed <- destroyPerformer.destroy(mailboxSession, request)
     } yield InvocationWithContext(
       invocation = Invocation(
         methodName = methodName,
         arguments = Arguments(serializer.serializeKeystoreSetResponse(KeystoreSetResponse(
           accountId = request.accountId,
           created = Some(created.retrieveCreated).filter(_.nonEmpty),
-          notCreated = Some(created.retrieveErrors).filter(_.nonEmpty))).as[JsObject]),
+          notCreated = Some(created.retrieveErrors).filter(_.nonEmpty),
+          destroyed = Some(destroyed.retrieveDestroyed.map(_.id)).filter(_.nonEmpty))).as[JsObject]),
         methodCallId = invocation.invocation.methodCallId),
       processingContext = Some(created.retrieveCreated).getOrElse(Map())
         .foldLeft(invocation.processingContext)({
@@ -70,7 +72,6 @@ class KeystoreSetMethod @Inject()(serializer: KeystoreSerializer,
                 serverId => processingContext.recordCreatedId(ClientId(clientId.id), ServerId(serverId)))
         }))
   }
-
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, KeystoreSetRequest] =
     serializer.deserializeKeystoreSetRequest(invocation.arguments.value) match {

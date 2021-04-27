@@ -14,7 +14,8 @@ import play.api.libs.json.JsObject
 case class KeystoreCreationId(id: Id)
 
 case class KeystoreSetRequest(accountId: AccountId,
-                              create: Option[Map[KeystoreCreationId, JsObject]]) extends WithAccountId
+                              create: Option[Map[KeystoreCreationId, JsObject]],
+                              destroy: Option[List[KeyId]]) extends WithAccountId
 
 object KeystoreCreationRequest {
   private val serverSetProperty = Set("id")
@@ -47,6 +48,7 @@ case class KeystoreCreationRequest(key: Key)
 
 case class KeystoreSetResponse(accountId: AccountId,
                                created: Option[Map[KeystoreCreationId, KeystoreCreationResponse]],
-                               notCreated: Option[Map[KeystoreCreationId, SetError]])
+                               notCreated: Option[Map[KeystoreCreationId, SetError]],
+                               destroyed: Option[List[KeyId]])
 
 case class KeystoreCreationResponse(id: KeyId)
