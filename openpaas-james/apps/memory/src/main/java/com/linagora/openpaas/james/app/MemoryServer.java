@@ -32,8 +32,10 @@ import com.linagora.openpaas.encrypted.MailboxConfiguration;
 import com.linagora.openpaas.james.jmap.method.CustomMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.FilterSetMethodModule;
+import com.linagora.openpaas.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.openpaas.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.openpaas.james.jmap.ticket.TicketRoutesModule;
+
 
 public class MemoryServer {
     public static final Module PROTOCOLS = Modules.combine(
@@ -48,6 +50,7 @@ public class MemoryServer {
         new FilterSetMethodModule(),
         new KeystoreMemoryModule(),
         new KeystoreSetMethodModule(),
+        new KeystoreGetMethodModule(),
         new TicketRoutesModule());
 
     public static final Module MODULES = Modules.combine(

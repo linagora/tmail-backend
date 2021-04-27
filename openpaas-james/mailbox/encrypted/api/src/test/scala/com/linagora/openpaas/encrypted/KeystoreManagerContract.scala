@@ -101,6 +101,18 @@ trait KeystoreManagerContract {
   }
 
   @Test
+  def retrieveKeyShouldReturnEmptyWhenUnknownId(): Unit = {
+    val payload1: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg.pub").readAllBytes()
+    val payload2: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg2.pub").readAllBytes()
+
+    SMono.fromPublisher(keyStoreManager.save(BOB, payload1)).block()
+    val keyId2: KeyId = KeyId.fromPayload(payload2)
+
+    assertThat(SMono.fromPublisher(keyStoreManager.retrieveKey(BOB, keyId2)).block())
+      .isNull()
+  }
+
+  @Test
   def listPublicKeysShouldReturnEmptyWhenUserDoesNotExist(): Unit = {
     assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().asJava)
       .isEmpty()
