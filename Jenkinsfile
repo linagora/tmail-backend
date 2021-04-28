@@ -40,7 +40,7 @@ pipeline {
           }
           steps {
             script {
-              env.DOCKER_TAG = 'openpaas-branch-master'
+              env.DOCKER_TAG = 'branch-master'
               if (env.TAG_NAME) {
                 env.DOCKER_TAG = env.TAG_NAME
               }
@@ -48,13 +48,13 @@ pipeline {
               echo "Docker tag: ${env.DOCKER_TAG}"
 
               // Temporary retag image names
-              sh "docker tag linagora/openpaas-james-memory linagora/james-memory:${env.DOCKER_TAG}"
-              sh "docker tag linagora/openpaas-james-distributed linagora/james-rabbitmq-project:${env.DOCKER_TAG}"
-              sh "docker tag linagora/openpaas-james-distributed-es6-backport linagora/james-rabbitmq-project:${env.DOCKER_TAG}-esv6"
+              sh "docker tag linagora/openpaas-james-memory linagora/tmail-backend:memory-${env.DOCKER_TAG}"
+              sh "docker tag linagora/openpaas-james-distributed linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
+              sh "docker tag linagora/openpaas-james-distributed-es6-backport linagora/tmail-backend:distributed-esv6-${env.DOCKER_TAG}"
 
-              def memoryImage = docker.image "linagora/james-memory:${env.DOCKER_TAG}"
-              def distributedImage = docker.image "linagora/james-rabbitmq-project:${env.DOCKER_TAG}"
-              def distributedEs6Image = docker.image "linagora/james-rabbitmq-project:${env.DOCKER_TAG}-esv6"
+              def memoryImage = docker.image "linagora/tmail-backend:memory-${env.DOCKER_TAG}"
+              def distributedImage = docker.image "linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
+              def distributedEs6Image = docker.image "linagora/tmail-backend:distributed-esv6-${env.DOCKER_TAG}"
               docker.withRegistry('', 'dockerHub') {
                 memoryImage.push()
                 distributedImage.push()
