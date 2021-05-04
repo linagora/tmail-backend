@@ -1,5 +1,6 @@
 package com.linagora.openpaas.pgp;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -98,10 +99,14 @@ public class Encrypter {
         DefaultMessageWriter defaultMessageWriter = new DefaultMessageWriter();
         FileBackedOutputStream clearOutputStream = new FileBackedOutputStream(FILE_THRESHOLD);
         FileBackedOutputStream encryptedOutputStream = new FileBackedOutputStream(FILE_THRESHOLD);
+        BufferedOutputStream bufferedEncryptedOutputStream = new BufferedOutputStream(encryptedOutputStream);
+        BufferedOutputStream bufferedClearOutputStream = new BufferedOutputStream(clearOutputStream);
 
         try {
-            defaultMessageWriter.writeMessage(clearMessage, clearOutputStream);
-            encrypt(clearOutputStream.asByteSource(), encryptedOutputStream);
+            defaultMessageWriter.writeMessage(clearMessage, bufferedClearOutputStream);
+            bufferedClearOutputStream.close();
+            encrypt(clearOutputStream.asByteSource(), bufferedEncryptedOutputStream);
+            bufferedEncryptedOutputStream.close();
 
             Message encryptedMessage = messageBuilder.newMessage();
             Header header = messageBuilder.newHeader(clearMessage.getHeader());
