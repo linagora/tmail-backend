@@ -48,9 +48,9 @@ pipeline {
               echo "Docker tag: ${env.DOCKER_TAG}"
 
               // Temporary retag image names
-              sh "docker tag linagora/openpaas-james-memory linagora/tmail-backend:memory-${env.DOCKER_TAG}"
-              sh "docker tag linagora/openpaas-james-distributed linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
-              sh "docker tag linagora/openpaas-james-distributed-es6-backport linagora/tmail-backend:distributed-esv6-${env.DOCKER_TAG}"
+              sh "docker tag linagora/tmail-backend-memory linagora/tmail-backend:memory-${env.DOCKER_TAG}"
+              sh "docker tag linagora/tmail-backend-distributed linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
+              sh "docker tag linagora/tmail-backend-distributed-esv6 linagora/tmail-backend:distributed-esv6-${env.DOCKER_TAG}"
 
               def memoryImage = docker.image "linagora/tmail-backend:memory-${env.DOCKER_TAG}"
               def distributedImage = docker.image "linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
