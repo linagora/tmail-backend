@@ -1,0 +1,25 @@
+= TMail Backend
+:navtitle: TMail backend
+
+TMail backend server offers an easy way to scale email server. Based on
+noSQL solutions, it is intended to be easy to operate for large
+deployments, without needing sharding and protocol aware load balancing.
+
+TMail backend server is based on the xref:james-project:servers:distributed.adoc[Apache James Distributed server].
+
+Read more about...
+
+* xref:james-project:servers:distributed/objectives.adoc[Objectives and motivation of the Distributed Server]
+* xref:james-project:servers:distributed/architecture/index.adoc[Overview of architecture]
+* xref:james-project:servers:distributed/configure/index.adoc[Configure the Distributed Server]
+* xref:james-project:servers:distributed/operate/index.adoc[Operation of the Distributed Server]
+* xref:james-project:servers:distributed/extending/index.adoc[How to extend the server]
+
+All of this applies to TMail.
+
+In addition, TMail offers some xref:tmail-backend/features.adoc[Advanced features].
+
+Get on board easily with minimal set up using xref:tmail-backend/test.adoc[TMail testing server], relying solely on
+in memory datastructures, thus is light and adapted for functional testing on your local laptop.
+
+However, more advanced users will for sure want to install the xref:tmail-backend/run.adoc[TMail distributed topology].

@@ -1,0 +1,6 @@
+name: tmail-site
+title: TMail Site
+version: 'latest'
+prerelease: true
+nav:
+  - modules/ROOT/nav.adoc

@@ -1,0 +1,52 @@
+= Advanced features
+:navtitle: Advanced features
+
+TMail offer number of essential advanced features, amongst them:
+
+image::lock.png[Lock logo]
+
+== PGP encryption
+
+
+TMail allow your users to store their emails encrypted in their mailbox.
+
+To do so, first:
+
+ - *Pre-requisite*: an administrator need to enable the encrypted mailbox. This can easily be done via the `mailbox.properties` configuration file.
+
+....
+gpg.encryption.enable=true
+....
+
+ - Create a GPG keypair. This can be dione via:
+
+....
+gpg --default-new-key-algo rsa4096 --gen-key
+....
+
+Upload your keypair to the TMail backend using the Key management JMAP extension.
+
+Example:
+
+....
+curl -XPOST http://james/jmap -d
+
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+  "methodCalls": [
+    ["Keystore/set", {
+      "accountId": "$ACCOUNT_ID",
+      "create": {
+        "K87": {
+          "key": "$PGP_KEY_ARMORED"
+        }
+      }
+    }, "c1"]
+  ]
+}
+....
+
+Doing so, your mails will be stored encrypted within your mailbox (even if the sender did not
+encrypt them!).
+
+You can read your emails using compatible extensions like link:https://enigmail.net/index.php/en/[EnygMail].

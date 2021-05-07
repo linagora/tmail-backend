@@ -1,0 +1,20 @@
+= TMail Documentation WebSite
+:navtitle: About TMail
+
+Tmail is a Collaborative email suite we are carefully crafting at Linagora.
+
+TMail is:
+
+ - Reliable: engaged in OpenSource communities, distributed technologies, TMail is able
+to scale to millions of users.
+ - Secure: with its encrypted mailbox
+ - Sustainable: Engaged into OpenSource communities with an efficient implementation of JMAP, the green email protocol
+
+Tmail is the collaborative email suite that minimizes your impact on the planet !
+
+TMail is composed of the following components:
+
+ - xref:tmail-backend/index.adoc[TMail Backend], a powerful and modern distributed Email server based on
+link:https://james.apache.org[Apache James].
+ - link:https://github.com/OpenPaaS-Suite/esn-frontend-inbox/[INBOX], its webMail.
+ - An upcoming mobile application.

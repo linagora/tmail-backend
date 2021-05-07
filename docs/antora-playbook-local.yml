@@ -1,0 +1,19 @@
+# Use this configuration for local testing / docs develop.
+site:
+  title: TMail Documentation
+  url: https://documentation.tmail.org/
+  start_page: tmail-site::index.adoc
+content:
+  sources:
+    - url: ./..
+      branches: HEAD
+      start_path: james-project/docs
+    - url: ./../
+      branches: HEAD
+      start_path: docs
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/master/raw/build/ui-bundle.zip?job=bundle-stable
+  supplemental_files: ./ui-overrides
+runtime:
+  fetch: true

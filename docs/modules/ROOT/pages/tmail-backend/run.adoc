@@ -1,0 +1,96 @@
+= Run TMail in Production
+:navtitle: Run TMail
+
+This server is the distributed version of TMail relying on:
+
+* Cassandra version 3.11.3 for metadata storage
+* S3 API-like object storage for storing email content. Using here Zenko Cloudserver version 8.2.6
+* ElasticSearch version 7.10.2 for looking up your emails.
+* RabbitMQ version 3.8.3 for messaging between the TMail nodes.
+* Tika version 1.24 (optional) allows to extract attachment content upon indexing.
+
+== Run manually
+
+Firstly, create your own user network on Docker for the James environment:
+
+....
+docker network create --driver bridge emaily
+....
+
+You can then start in that newly created network all the other softwares the distributed James is relying on:
+
+....
+docker run -d --network emaily --name=cassandra cassandra:3.11.3
+
+docker run -d --network emaily --name=rabbitmq rabbitmq:3.8.3-management
+
+docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test zenko/cloudserver:8.2.6
+
+docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single-node' docker.elastic.co/elasticsearch/elasticsearch:6.3.2
+
+docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
+....
+
+Then you can finally start the TMail distributed server:
+
+....
+docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
+....
+
+Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags)
+to pass extra JVM flags. For instance:
+
+....
+docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
+....
+
+=== With docker-compose
+
+link:https://github.com/linagora/openpaas-james/blob/master/openpaas-james/apps/distributed/docker-compose.yml[There is a docker-compose file]
+you can use to run everything in the same network at once.
+
+For this, just start it:
+
+....
+docker-compose up -d
+....
+
+=== Run with Glowroot
+
+link:https://glowroot.org/[Glowroot APM] is packaged as part of the docker distribution to easily enable valuable performances insights.
+Disabled by default, its java agent can easily be enabled.
+
+If you run the distributed server manually, you can do like this:
+
+...
+docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/openpaas-james-distributed
+...
+
+If you use the docker-compose file, you can add an environment variable to the distributed server container:
+
+...
+services:
+  james:
+    [...]
+    environment:
+      - JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar
+...
+
+=== Using the CLI
+
+The xref:james-project:servers:distributed/operate/cli.adoc[CLI] can easily be used once your distributed server is running:
+
+....
+docker exec james james-cli ListDomains
+....
+
+=== Support earlier version of ElasticSearch
+
+We do backport a TMail server compatible with earlier versions of ElasticSearch.
+
+You then need to run ElasticSearch version 6.3.2.
+
+To use it, you just need to change the docker image to `linagora/tmail-backend:distributed-esv6-branch-master`.
+
+You can also use a link:https://github.com/linagora/openpaas-james/blob/master/openpaas-james/apps/distributed-es6-backport/docker-compose.yml[docker-compose] file.
+
