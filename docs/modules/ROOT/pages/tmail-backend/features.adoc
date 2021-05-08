@@ -18,13 +18,13 @@ To do so, first:
 gpg.encryption.enable=true
 ....
 
- - Create a GPG keypair. This can be dione via:
+ - Create a GPG keypair. This can be done via:
 
 ....
 gpg --default-new-key-algo rsa4096 --gen-key
 ....
 
-Upload your keypair to the TMail backend using the Key management JMAP extension.
+Upload your public key to the TMail backend using the Key management JMAP extension.
 
 Example:
 
