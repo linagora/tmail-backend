@@ -1,18 +1,18 @@
 = Advanced features
 :navtitle: Advanced features
 
-TMail offer number of essential advanced features, amongst them:
+TMail offers a number of essential advanced features, amongst them:
 
 image::lock.png[Lock logo]
 
 == PGP encryption
 
 
-TMail allow your users to store their emails encrypted in their mailbox.
+TMail allows your users to store their emails encrypted in their mailbox.
 
 To do so, first:
 
- - *Pre-requisite*: an administrator need to enable the encrypted mailbox. This can easily be done via the `mailbox.properties` configuration file.
+ - *Pre-requisite*: an administrator needs to enable the encrypted mailbox. This can easily be done via the `mailbox.properties` configuration file.
 
 ....
 gpg.encryption.enable=true
@@ -49,4 +49,4 @@ curl -XPOST http://james/jmap -d
 Doing so, your mails will be stored encrypted within your mailbox (even if the sender did not
 encrypt them!).
 
-You can read your emails using compatible extensions like link:https://enigmail.net/index.php/en/[EnygMail].
+You can read your emails through IMAP using compatible extensions like link:https://enigmail.net/index.php/en/[EnygMail].

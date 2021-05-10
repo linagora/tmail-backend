@@ -15,7 +15,7 @@
           <a class="navbar-link" href="#">Products</a>
           <div class="navbar-dropdown">
             <div class="navbar-item"><strong>Tmail Suite</strong></div>
-            <a class="navbar-item" href="https://github.com/linagora/openpaas-james">Repository</a>
+            <a class="navbar-item" href="https://github.com/linagora/tmail-backend">Repository</a>
             <hr class="navbar-divider">
             <a class="navbar-item" href="https://github.com/OpenPaaS-Suite/esn-frontend-inbox/">INBOX WebMail frontend</a>
           </div>
