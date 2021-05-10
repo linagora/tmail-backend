@@ -37,7 +37,7 @@ public class OpenpaasJamesDistributedExtension implements BeforeEachCallback, Af
 
     @SuppressWarnings("resource")
     private GenericContainer<?> createOpenPaasJamesDistributed() {
-        return new GenericContainer<>("linagora/openpaas-james-distributed:latest")
+        return new GenericContainer<>("linagora/tmail-backend-distributed:latest")
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
             .dependsOn(cassandra, elasticsearch, s3, rabbitmq)

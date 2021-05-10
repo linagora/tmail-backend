@@ -11,7 +11,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 public class OpenpaasJamesMemoryExtension implements BeforeEachCallback, AfterEachCallback {
     private static final int ONE_TIME = 1;
 
-    private final GenericContainer<?> container = new GenericContainer<>("linagora/openpaas-james-memory:latest")
+    private final GenericContainer<?> container = new GenericContainer<>("linagora/tmail-backend-memory:latest")
         .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
 
     @Override
