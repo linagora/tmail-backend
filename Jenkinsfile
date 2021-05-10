@@ -21,7 +21,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                dir("openpaas-james") {
+                dir("tmail-backend") {
                     sh 'mvn -B surefire:test'
                 }
             }

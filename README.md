@@ -1,4 +1,4 @@
-# OpenPaaS James
+# TMail backend server
 
 This project adapts and enhance [Apache James project](https://james.apache.org)
 
@@ -6,9 +6,9 @@ This project adapts and enhance [Apache James project](https://james.apache.org)
 
  - We maintain a [CHANGELOG](CHANGELOG.md) and [upgrade instructions](upgrade-instructions.md)
 
- - [Building + Running the memory server](openpaas-james/apps/memory/README.md)
+ - [Building + Running the memory server](tmail-backend/apps/memory/README.md)
 
- - [Building + Running the distributed server](openpaas-james/apps/distributed/README.md)
+ - [Building + Running the distributed server](tmail-backend/apps/distributed/README.md)
 
 ## Additional features
 
@@ -38,7 +38,7 @@ git submodule update --remote
 
 **Note**: Don't hesitate to push the latest state of the submodule in a commit if it was not up-to-date!
 
-Then you can compile both `apache/james-project` and `linagora/openpaas-james` together.
+Then you can compile both `apache/james-project` and `linagora/tmail-backend` together.
 
 ```
 mvn clean install -Dmaven.javadoc.skip=true
@@ -51,9 +51,9 @@ You can add the `-DskipTests` flag as well if you don't want to run the tests of
 You can use a custom local jenkins runner with the `Jenkinsfile` at the root of this project to build the project. 
 This will automatically do for you:
 
-* checkout and compile latest code of Apache James project alongside `openpaas-james`
+* checkout and compile latest code of Apache James project alongside `tmail-backend`
 * generate docker images for `memory` and `distributed` flavors of the project
-* launch unit, integration and deployment tests on `openpaas-james`
+* launch unit, integration and deployment tests on `tmail-backend`
 
 To launch it you need to have docker installed. From the root of this project, you can build the 
 Jenkins runner locally yourself:
