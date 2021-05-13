@@ -166,7 +166,7 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
 
   def retrieveState(mailboxSession: MailboxSession): SMono[FilterState] =
     SMono(filteringManagement.getLatestVersion(mailboxSession.getUser))
-      .map(version => FilterState(version.asString()))
+      .map(version => FilterState(version.asInteger))
 
   class DuplicatedRuleException(message: String) extends IllegalArgumentException(message)
   class MultipleMailboxIdException(message: String) extends IllegalArgumentException(message)

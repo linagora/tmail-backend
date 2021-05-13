@@ -2,7 +2,7 @@ package com.linagora.tmail.james.jmap.model
 
 import com.google.common.collect.ImmutableList
 import org.apache.james.jmap.api.filtering.{Version, Rule => JavaRule}
-import org.apache.james.jmap.core.AccountId
+import org.apache.james.jmap.core.{AccountId, State}
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.mail.Name
 import org.apache.james.jmap.method.WithAccountId
@@ -34,7 +34,9 @@ case class Filter(id: Id, rules: List[Rule])
 
 case class FilterWithVersion(filter: Filter, version: Version)
 
-case class FilterState(state: String)
+case class FilterState(int: Int) extends State {
+  override def serialize: String = int.toString
+}
 
 case class FilterGetNotFound(value: List[String]) {
   def merge(other: FilterGetNotFound): FilterGetNotFound = FilterGetNotFound(this.value ++ other.value)
@@ -54,5 +56,6 @@ object AppendIn {
 }
 
 object FilterState {
-  def toVersion(filterState: FilterState) : Version = new Version(filterState.state.toInt)
+  def toVersion(filterState: FilterState) : Version = new Version(filterState.int)
+  def fromString(string: String): FilterState = FilterState(Integer.parseInt(string))
 }
