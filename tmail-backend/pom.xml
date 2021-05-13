@@ -20,6 +20,7 @@
     <modules>
         <module>apps</module>
         <module>backend-commons/elasticsearch-v6</module>
+        <module>blob/blobid-list</module>
         <module>deployment-tests</module>
         <module>guice/elasticsearch-v6</module>
         <module>guice/encrypted-mailbox</module>
