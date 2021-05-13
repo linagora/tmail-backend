@@ -2,11 +2,14 @@ package com.linagora.tmail.james.jmap.model
 
 import com.google.common.collect.ImmutableList
 import org.apache.james.jmap.api.filtering.{Version, Rule => JavaRule}
+import org.apache.james.jmap.change.TypeName
 import org.apache.james.jmap.core.{AccountId, State}
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.mail.Name
 import org.apache.james.jmap.method.WithAccountId
 import org.apache.james.mailbox.model.MailboxId
+
+import scala.util.Try
 
 case class FilterGetRequest(accountId: AccountId,
                             ids: Option[FilterGetIds]) extends WithAccountId
@@ -42,6 +45,16 @@ case class FilterGetNotFound(value: List[String]) {
   def merge(other: FilterGetNotFound): FilterGetNotFound = FilterGetNotFound(this.value ++ other.value)
 }
 
+case object FilterTypeName extends TypeName {
+  override val asString: String = "Filter"
+
+  override def parse(string: String): Option[TypeName] = string match {
+    case FilterTypeName.asString => Some(FilterTypeName)
+    case _ => None
+  }
+
+  override def parseState(string: String): Either[IllegalArgumentException, FilterState] = FilterState.parse(string)
+}
 object Rule {
   def fromJava(rule: JavaRule, mailboxIdFactory: MailboxId.Factory): Rule =
     Rule(Name(rule.getName),
@@ -57,5 +70,8 @@ object AppendIn {
 
 object FilterState {
   def toVersion(filterState: FilterState) : Version = new Version(filterState.int)
-  def fromString(string: String): FilterState = FilterState(Integer.parseInt(string))
+  def parse(string: String): Either[IllegalArgumentException, FilterState] = Try(Integer.parseInt(string))
+    .toEither
+    .map(FilterState(_))
+    .left.map(new IllegalArgumentException(_))
 }
