@@ -7,10 +7,9 @@ import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{KeystoreGetRequest, KeystoreGetResponse}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Invocation, State}
+import org.apache.james.jmap.core.{Invocation, UuidState}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -19,6 +18,8 @@ import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+import javax.inject.Inject
 
 class KeystoreGetMethodModule extends AbstractModule {
   override def configure(): Unit = {
@@ -48,7 +49,7 @@ class KeystoreGetMethod @Inject()(serializer: KeystoreSerializer,
     })
       .map(key => (key.id, key))
       .collectSeq()
-      .map(seq => KeystoreGetResponse(request.accountId, State.INSTANCE, seq.toMap))
+      .map(seq => KeystoreGetResponse(request.accountId, UuidState.INSTANCE, seq.toMap))
       .map(response => InvocationWithContext(
         invocation = Invocation(
           methodName = methodName,

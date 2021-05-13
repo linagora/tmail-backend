@@ -4,7 +4,7 @@ import com.linagora.tmail.encrypted.{KeyId, PublicKey}
 import com.linagora.tmail.james.jmap.model.{Key, KeystoreCreationId, KeystoreCreationRequest, KeystoreCreationResponse, KeystoreGetRequest, KeystoreGetResponse, KeystoreSetRequest, KeystoreSetResponse}
 import eu.timepit.refined.refineV
 import org.apache.james.jmap.core.Id.IdConstraint
-import org.apache.james.jmap.core.{SetError, State}
+import org.apache.james.jmap.core.{SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json.{Format, JsError, JsObject, JsResult, JsSuccess, JsValue, Json, Reads, Writes}
 
@@ -29,7 +29,7 @@ class KeystoreSerializer {
     mapWrites[KeystoreCreationId, KeystoreCreationResponse](_.id.value, keystoreCreationResponseWrites)
 
   private implicit val payloadWrites: Writes[Array[Byte]] = (payload: Array[Byte]) => Json.toJson(new String(payload))
-  private implicit val stateWrites: Writes[State] = Json.valueWrites[State]
+  private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
   private implicit val publicKeyWrites: Writes[PublicKey] = Json.writes[PublicKey]
   private implicit val keystoreMapGetResponseWrites: Writes[Map[KeyId, PublicKey]] = mapWrites[KeyId, PublicKey](_.value, publicKeyWrites)
 
