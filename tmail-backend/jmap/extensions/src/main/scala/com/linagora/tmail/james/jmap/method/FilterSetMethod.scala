@@ -4,11 +4,12 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.json.FilterSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
-import com.linagora.tmail.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, RuleWithId}
+import com.linagora.tmail.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.exception.StateMismatchException
 import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule, Version}
+import org.apache.james.jmap.change.TypeName
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -30,10 +31,14 @@ import scala.jdk.OptionConverters._
 
 
 class FilterSetMethodModule extends AbstractModule {
-  override def configure(): Unit =
+  override def configure(): Unit = {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[FilterSetMethod])
+    Multibinder.newSetBinder(binder(), classOf[TypeName])
+      .addBinding()
+      .toInstance(FilterTypeName)
+  }
 }
 
 object FilterSetUpdateResults {
