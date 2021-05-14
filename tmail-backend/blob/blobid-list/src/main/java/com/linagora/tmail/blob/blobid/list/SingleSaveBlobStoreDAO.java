@@ -25,17 +25,16 @@ public class SingleSaveBlobStoreDAO {
 
     public Mono<Void> save(BucketName bucketName, BlobId blobId, byte[] data) {
         return Mono.from(blobIdList.isStored(blobId))
-                .filter(isStored -> isStored.equals(false))
-                .switchIfEmpty(Mono.empty())
-                .then(Mono.from(blobIdList.store(blobId))
-                        .then(Mono.from(blobStoreDAO.save(bucketName, blobId, data)))
-                        .onErrorResume(error -> Mono.from(blobIdList.remove(blobId)).then()))
+                .filter(isStored -> isStored.equals(true))
+                .switchIfEmpty(Mono.defer(() ->
+                        Mono.from(blobStoreDAO.save(bucketName, blobId, data))
+                                .then(Mono.from(blobIdList.store(blobId)))))
                 .then();
     }
 
     public Mono<Void> delete(BucketName bucketName, BlobId blobId) {
         if (defaultBucketName.equals(bucketName)) {
-            return Mono.error(() -> new ObjectStoreException("Can not delete in the default bucket when single save is enabled"));
+            return Mono.error(new ObjectStoreException("Can not delete in the default bucket when single save is enabled"));
         } else {
             return Mono.from(blobStoreDAO.delete(bucketName, blobId));
         }
