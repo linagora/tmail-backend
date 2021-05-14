@@ -7,9 +7,13 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
 import com.linagora.tmail.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
+import org.apache.james.events.Event.EventId
+import org.apache.james.events.EventBus
+import org.apache.james.jmap.InjectionKeys
 import org.apache.james.jmap.api.exception.StateMismatchException
 import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule, Version}
-import org.apache.james.jmap.change.TypeName
+import org.apache.james.jmap.api.model.AccountId
+import org.apache.james.jmap.change.{AccountIdRegistrationKey, StateChangeEvent, TypeName}
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -25,7 +29,7 @@ import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import java.util.Optional
-import javax.inject.Inject
+import javax.inject.{Inject, Named}
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
@@ -75,7 +79,8 @@ case class FilterSetUpdateFailure(id: String, exception: Throwable) extends Filt
 }
 
 
-class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
+class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
+                                val metricFactory: MetricFactory,
                                 val sessionSupplier: SessionSupplier,
                                 val mailboxIdFactory: MailboxId.Factory,
                                 filteringManagement: FilteringManagement) extends MethodRequiringAccountId[FilterSetRequest] {
@@ -90,7 +95,14 @@ class FilterSetMethod @Inject()(val metricFactory: MetricFactory,
       updateResult <- update(mailboxSession, request)
       newState <- retrieveState(mailboxSession)
       response = createResponse(invocation.invocation, request, updateResult, oldState, newState)
-    } yield InvocationWithContext(response, invocation.processingContext)
+    } yield {
+      val event = StateChangeEvent(eventId = EventId.random(),
+        username = mailboxSession.getUser,
+        map = Map(FilterTypeName -> newState))
+      val accountId = AccountId.fromUsername(mailboxSession.getUser)
+      SMono(eventBus.dispatch(event, AccountIdRegistrationKey(accountId))).subscribe()
+      InvocationWithContext(response, invocation.processingContext)
+    }
   }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, FilterSetRequest] =
