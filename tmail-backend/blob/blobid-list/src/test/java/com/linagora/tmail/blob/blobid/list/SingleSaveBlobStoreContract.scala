@@ -6,8 +6,9 @@ import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.SMono
+import org.apache.james.blob.api.BlobStoreDAOContract
 
-trait SingleSaveBlobStoreContract {
+trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   def singleSaveBlobStoreDAO: SingleSaveBlobStoreDAO
 
@@ -18,25 +19,19 @@ trait SingleSaveBlobStoreContract {
   def defaultBucketName: BucketName
 
   @Test
-  def saveShouldSuccessIfBlobIDoesNotExist(): Unit = {
+  def saveShouldSuccessIfBlobIdDoesNotExist(): Unit = {
     val blobId: BlobId = blobIdFactory.randomId()
     SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
-    val isStore: Boolean = SMono.fromPublisher(blobIdList.isStored(blobId)).block()
-    assert(isStore)
+
+    assertThat(SMono.fromPublisher(blobIdList.isStored(blobId)).block()).isTrue
   }
 
   @Test
-  def saveShouldFailIfBlobExists(): Unit = {
+  def saveShouldNoopIfBlobExists(): Unit = {
     val blobId: BlobId = blobIdFactory.randomId()
     SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
 
-    val duplicateBlobThrowingCallable: ThrowingCallable = () =>
-      SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
-
-    assertThatThrownBy(duplicateBlobThrowingCallable)
-      .isInstanceOf(classOf[ObjectStoreException])
-    assertThatThrownBy(duplicateBlobThrowingCallable)
-      .hasMessage("Can not save duplicate blob when single save is enabled")
+    assertThat(SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block())
   }
 
   @Test

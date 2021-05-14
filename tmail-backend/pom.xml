@@ -78,6 +78,24 @@
                 <type>test-jar</type>
             </dependency>
             <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>blob-api</artifactId>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>blob-api</artifactId>
+                <type>test-jar</type>
+                <scope>test</scope>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>blob-memory</artifactId>
+                <scope>test</scope>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>distributed</artifactId>
                 <version>${project.version}</version>

@@ -8,6 +8,7 @@ import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
 import org.apache.james.blob.api.BlobId;
+import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.HashBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreDAO;
@@ -22,16 +23,23 @@ public class SingleSaveBlobStoreTest implements SingleSaveBlobStoreContract {
                     CassandraSchemaVersionModule.MODULE));
 
     private CassandraBlobIdList cassandraBlobIdList;
+    private BlobStoreDAO blobStoreDAO;
 
     @BeforeEach
     void setUp(CassandraCluster cassandra) {
         CassandraBlobIdListDAO cassandraBlobIdListDAO = new CassandraBlobIdListDAO(cassandra.getConf());
         cassandraBlobIdList = new CassandraBlobIdList(cassandraBlobIdListDAO);
+        blobStoreDAO = new MemoryBlobStoreDAO();
     }
 
     @Override
     public SingleSaveBlobStoreDAO singleSaveBlobStoreDAO() {
-        return new SingleSaveBlobStoreDAO(new MemoryBlobStoreDAO(), blobIdList(), defaultBucketName());
+        return new SingleSaveBlobStoreDAO(blobStoreDAO, blobIdList(), defaultBucketName());
+    }
+
+    @Override
+    public BlobStoreDAO testee() {
+        return blobStoreDAO;
     }
 
     @Override
