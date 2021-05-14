@@ -15,7 +15,6 @@ import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerElasticSearchExtension;
 import com.linagora.tmail.james.common.LinagoraFilterStateChangeTest;
-import com.linagora.tmail.james.common.module.JmapGuiceFilterStateChangeModule;
 
 public class DistributedLinagoraFilterStateChangeTest implements LinagoraFilterStateChangeTest {
     @RegisterExtension
@@ -35,8 +34,7 @@ public class DistributedLinagoraFilterStateChangeTest implements LinagoraFilterS
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
-            .overrideWith(new JmapGuiceFilterStateChangeModule()))
+            .overrideWith(new TestJMAPServerModule()))
         .build();
 
     @Override

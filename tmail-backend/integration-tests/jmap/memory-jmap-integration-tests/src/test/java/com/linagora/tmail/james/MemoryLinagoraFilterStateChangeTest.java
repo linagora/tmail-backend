@@ -9,7 +9,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraFilterStateChangeTest;
-import com.linagora.tmail.james.common.module.JmapGuiceFilterStateChangeModule;
 
 public class MemoryLinagoraFilterStateChangeTest implements LinagoraFilterStateChangeTest {
     @RegisterExtension
@@ -19,8 +18,7 @@ public class MemoryLinagoraFilterStateChangeTest implements LinagoraFilterStateC
             .configurationFromClasspath()
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
-            .overrideWith(new JmapGuiceFilterStateChangeModule()))
+            .overrideWith(new TestJMAPServerModule()))
         .build();
 
     @Override
