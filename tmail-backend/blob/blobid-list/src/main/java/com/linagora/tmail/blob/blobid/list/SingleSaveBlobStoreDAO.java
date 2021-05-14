@@ -25,11 +25,14 @@ public class SingleSaveBlobStoreDAO {
 
     public Mono<Void> save(BucketName bucketName, BlobId blobId, byte[] data) {
         return Mono.from(blobIdList.isStored(blobId))
-                .filter(isStored -> isStored.equals(true))
-                .switchIfEmpty(Mono.defer(() ->
-                        Mono.from(blobStoreDAO.save(bucketName, blobId, data))
-                                .then(Mono.from(blobIdList.store(blobId)))))
-                .then();
+                .flatMap(isStored -> {
+                    if (isStored.equals(true)) {
+                        return Mono.empty();
+                    }
+                    return Mono.from(blobStoreDAO.save(bucketName, blobId, data))
+                            .then(Mono.from(blobIdList.store(blobId)))
+                            .then();
+                });
     }
 
     public Mono<Void> delete(BucketName bucketName, BlobId blobId) {
