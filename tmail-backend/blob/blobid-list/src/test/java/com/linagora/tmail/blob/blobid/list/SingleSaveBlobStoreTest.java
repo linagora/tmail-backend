@@ -29,7 +29,7 @@ public class SingleSaveBlobStoreTest implements SingleSaveBlobStoreContract {
     void setUp(CassandraCluster cassandra) {
         CassandraBlobIdListDAO cassandraBlobIdListDAO = new CassandraBlobIdListDAO(cassandra.getConf());
         cassandraBlobIdList = new CassandraBlobIdList(cassandraBlobIdListDAO);
-        blobStoreDAO = new MemoryBlobStoreDAO();
+        blobStoreDAO = new SingleSaveBlobStoreDAO(new MemoryBlobStoreDAO(), cassandraBlobIdList, defaultBucketName());
     }
 
     @Override

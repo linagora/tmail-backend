@@ -1,12 +1,14 @@
 package com.linagora.tmail.blob.blobid.list
 
-import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAOFixture._
-import org.apache.james.blob.api.{BlobId, BucketName, ObjectStoreException}
+import com.google.common.io.ByteSource
+import org.apache.james.blob.api.BlobStoreDAOFixture.{SHORT_BYTEARRAY, TEST_BUCKET_NAME}
+import org.apache.james.blob.api.{BlobId, BlobStoreDAOContract, BucketName, ObjectStoreException}
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.SMono
-import org.apache.james.blob.api.BlobStoreDAOContract
+
+import java.io.ByteArrayInputStream
 
 trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
@@ -19,7 +21,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
   def defaultBucketName: BucketName
 
   @Test
-  def saveShouldSuccessIfBlobIdDoesNotExist(): Unit = {
+  def saveBytesShouldSuccessIfBlobIdDoesNotExist(): Unit = {
     val blobId: BlobId = blobIdFactory.randomId()
     SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
 
@@ -27,11 +29,43 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
   }
 
   @Test
-  def saveShouldNoopIfBlobExists(): Unit = {
+  def saveBytesShouldNoopIfBlobExists(): Unit = {
     val blobId: BlobId = blobIdFactory.randomId()
     SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
 
     assertThat(SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block())
+  }
+
+  @Test
+  def saveInputStreamShouldSuccessIfBlobIdDoesNotExist(): Unit = {
+    val blobId: BlobId = blobIdFactory.randomId()
+    SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
+
+    assertThat(SMono.fromPublisher(blobIdList.isStored(blobId)).block()).isTrue
+  }
+
+  @Test
+  def saveInputStreamShouldNoopIfBlobExists(): Unit = {
+    val blobId: BlobId = blobIdFactory.randomId()
+    SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
+
+    assertThat(SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block())
+  }
+
+  @Test
+  def saveByteSourceShouldSuccessIfBlobIdDoesNotExist(): Unit = {
+    val blobId: BlobId = blobIdFactory.randomId()
+    SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
+
+    assertThat(SMono.fromPublisher(blobIdList.isStored(blobId)).block()).isTrue
+  }
+
+  @Test
+  def saveByteSourceShouldNoopIfBlobExists(): Unit = {
+    val blobId: BlobId = blobIdFactory.randomId()
+    SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
+
+    assertThat(SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block())
   }
 
   @Test
