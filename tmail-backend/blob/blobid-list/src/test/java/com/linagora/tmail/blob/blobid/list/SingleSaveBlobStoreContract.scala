@@ -3,7 +3,7 @@ package com.linagora.tmail.blob.blobid.list
 import com.google.common.io.ByteSource
 import org.apache.james.blob.api.BlobStoreDAOFixture.{SHORT_BYTEARRAY, TEST_BUCKET_NAME}
 import org.apache.james.blob.api.{BlobId, BlobStoreDAOContract, BucketName, ObjectStoreException}
-import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.SMono
@@ -33,7 +33,8 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
     val blobId: BlobId = blobIdFactory.randomId()
     SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
 
-    assertThat(SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block())
+    assertThatCode(() => SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
@@ -49,7 +50,8 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
     val blobId: BlobId = blobIdFactory.randomId()
     SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
 
-    assertThat(SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block())
+    assertThatCode(() => SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
@@ -65,7 +67,8 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
     val blobId: BlobId = blobIdFactory.randomId()
     SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
 
-    assertThat(SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block())
+    assertThatCode(() => SMono.fromPublisher(singleSaveBlobStoreDAO.save(TEST_BUCKET_NAME, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
