@@ -12,7 +12,9 @@
 
     <artifactId>blobid-list</artifactId>
     <name>Blob :: BlobIdList</name>
-    <description>Single save blob store</description>
+    <description>When deduplication is active, use a Cassandra projection to avoid saving several time the same blob to S3.
+        This prevents isolation issues for Swift backed S3 deployments and also  adds a performance boost.
+    </description>
 
     <dependencies>
         <dependency>
