@@ -120,4 +120,8 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager, keystore
     mailboxManager.loginAsOtherUser(adminUserid, passwd, otherUserId)
 
   override def logout(session: MailboxSession): Unit = mailboxManager.logout(session)
+
+  override def getMailboxReactive(mailboxId: MailboxId, session: MailboxSession): Publisher[MessageManager] = mailboxManager.getMailboxReactive(mailboxId, session)
+
+  override def getMailboxReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MessageManager] = mailboxManager.getMailboxReactive(mailboxPath, session)
 }
