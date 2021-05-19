@@ -80,13 +80,13 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
                                    mailboxSession: MailboxSession): SMono[FilterGetResponse] =
     request.ids match {
       case None => retrieveFiltersWithVersion(mailboxSession.getUser)
-        .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asString()), List(filterWithVersion.filter), FilterGetNotFound(List())))
+        .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asInteger), List(filterWithVersion.filter), FilterGetNotFound(List())))
       case Some(ids) => if(ids.value.contains("singleton")) {
         retrieveFiltersWithVersion(mailboxSession.getUser)
-          .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asString()), List(filterWithVersion.filter), FilterGetNotFound(ids.value.filterNot(id => id.equals("singleton")))))
+          .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asInteger), List(filterWithVersion.filter), FilterGetNotFound(ids.value.filterNot(id => id.equals("singleton")))))
       } else {
         retrieveFiltersWithVersion(mailboxSession.getUser)
-          .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asString()), List(), FilterGetNotFound(ids.value)))
+          .map(filterWithVersion => FilterGetResponse(request.accountId, FilterState(filterWithVersion.version.asInteger), List(), FilterGetNotFound(ids.value)))
       }
     }
 

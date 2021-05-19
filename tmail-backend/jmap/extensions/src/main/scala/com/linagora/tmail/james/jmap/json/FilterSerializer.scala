@@ -9,7 +9,6 @@ import javax.inject.Inject
 
 case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
 
-  implicit val filterStateFormat: Format[FilterState] = Json.valueFormat[FilterState]
   implicit val comparatorFormat: Format[Comparator] = Json.valueFormat[Comparator]
   implicit val fieldFormat: Format[Field] = Json.valueFormat[Field]
   implicit val nameFormat: Format[Name] = Json.valueFormat[Name]
@@ -24,7 +23,7 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val ruleWrites: Writes[Rule] = Json.writes[Rule]
   implicit val filterWrites: Writes[Filter] = Json.writes[Filter]
   implicit val notFoundWrites: Writes[FilterGetNotFound] = Json.valueWrites[FilterGetNotFound]
-  implicit val filterState: Writes[FilterState] = Json.valueWrites[FilterState]
+  implicit val filterStateWrites: Writes[FilterState] = state => JsString(state.serialize)
   implicit val filterGetResponseWrites: Writes[FilterGetResponse] = Json.writes[FilterGetResponse]
 
   implicit val conditionReads: Reads[Condition] = Json.reads[Condition]
@@ -36,6 +35,12 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val actionReads: Reads[Action] = Json.reads[Action]
   implicit val ruleWithIdReads: Reads[RuleWithId] = Json.reads[RuleWithId]
   implicit val updateReads: Reads[Update] = Json.valueReads[Update]
+  implicit val filterStateReads: Reads[FilterState] = {
+    case JsString(string) => FilterState.parse(string).fold(
+      error => JsError(error.getMessage),
+      filterState => JsSuccess(filterState))
+    case _ => JsError()
+  }
   implicit val filterSetRequestReads: Reads[FilterSetRequest] = Json.reads[FilterSetRequest]
 
   implicit val filterSetErrorWrites: Writes[FilterSetError] = Json.writes[FilterSetError]
