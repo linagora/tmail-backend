@@ -28,9 +28,9 @@ import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.modules.TestJMAPServerModule;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 
@@ -41,10 +41,10 @@ public class DistributedEmailQueryMethodTest implements EmailQueryMethodContract
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                    .s3()
                     .disableCache()
                     .deduplication()
-                    .noCryptoConfig())
+                    .noCryptoConfig()
+                    .disableSingleSave())
             .build())
         .extension(new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE))
         .extension(new CassandraExtension())

@@ -9,7 +9,6 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
 import org.apache.james.modules.TestJMAPServerModule;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -19,6 +18,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
+import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 
 class EncryptedDistributedServerTest implements JamesServerContract, JmapJamesServerContract {
     @RegisterExtension
@@ -26,9 +26,11 @@ class EncryptedDistributedServerTest implements JamesServerContract, JmapJamesSe
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
-            .blobStore(BlobStoreConfiguration.cassandra()
+            .blobStore(BlobStoreConfiguration.builder()
+                .disableCache()
                 .deduplication()
-                .noCryptoConfig())
+                .noCryptoConfig()
+                .enableSingleSave())
             .searchConfiguration(SearchConfiguration.elasticSearch())
             .mailbox(new MailboxConfiguration(true))
             .build())

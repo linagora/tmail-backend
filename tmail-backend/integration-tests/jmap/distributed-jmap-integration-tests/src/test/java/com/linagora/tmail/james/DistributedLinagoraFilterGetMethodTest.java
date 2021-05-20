@@ -11,9 +11,9 @@ import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.modules.TestJMAPServerModule;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerElasticSearchExtension;
@@ -28,10 +28,10 @@ public class DistributedLinagoraFilterGetMethodTest implements LinagoraFilterGet
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                .s3()
-                .disableCache()
-                .deduplication()
-                .noCryptoConfig())
+                    .disableCache()
+                    .deduplication()
+                    .noCryptoConfig()
+                    .disableSingleSave())
             .searchConfiguration(SearchConfiguration.elasticSearch())
             .build())
         .extension(new DockerElasticSearchExtension())
