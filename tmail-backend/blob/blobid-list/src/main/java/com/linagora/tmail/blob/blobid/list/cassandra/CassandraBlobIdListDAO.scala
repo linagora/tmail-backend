@@ -30,7 +30,7 @@ class CassandraBlobIdListDAO @Inject()(session: Session) {
     SMono.fromPublisher(executor.executeVoid(insertStatement.bind.setString(BLOB_ID, blobId.asString)))
       .`then`
 
-  def isStored(blobId: BlobId): SMono[Boolean] =
+  def isStored(blobId: BlobId): SMono[java.lang.Boolean] =
     SMono.fromPublisher(executor.executeReturnExists(selectStatement.bind
       .setString(BLOB_ID, blobId.asString)))
       .map(_.booleanValue())
