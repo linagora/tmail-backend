@@ -18,7 +18,7 @@ case class BlobIdListCassandraModule() extends AbstractModule {
 
 class CassandraBlobIdList @Inject()(cassandraBlobIdListDAO: CassandraBlobIdListDAO) extends BlobIdList {
 
-  override def isStored(blobId: BlobId): Publisher[Boolean] =
+  override def isStored(blobId: BlobId): Publisher[java.lang.Boolean] =
     cassandraBlobIdListDAO.isStored(blobId)
 
   override def store(blobId: BlobId): Publisher[Unit] =

@@ -44,7 +44,7 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     public Mono<Void> save(BucketName bucketName, BlobId blobId, byte[] data) {
         return Mono.from(blobIdList.isStored(blobId))
                 .flatMap(isStored -> {
-                    if (isStored.equals(true)) {
+                    if (isStored) {
                         return Mono.empty();
                     }
                     return Mono.from(blobStoreDAO.save(bucketName, blobId, data))
@@ -57,7 +57,7 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     public Publisher<Void> save(BucketName bucketName, BlobId blobId, InputStream inputStream) {
         return Mono.from(blobIdList.isStored(blobId))
                 .flatMap(isStored -> {
-                    if (isStored.equals(true)) {
+                    if (isStored) {
                         return Mono.empty();
                     }
                     return Mono.from(blobStoreDAO.save(bucketName, blobId, inputStream))
@@ -70,7 +70,7 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     public Publisher<Void> save(BucketName bucketName, BlobId blobId, ByteSource content) {
         return Mono.from(blobIdList.isStored(blobId))
                 .flatMap(isStored -> {
-                    if (isStored.equals(true)) {
+                    if (isStored) {
                         return Mono.empty();
                     }
                     return Mono.from(blobStoreDAO.save(bucketName, blobId, content))
