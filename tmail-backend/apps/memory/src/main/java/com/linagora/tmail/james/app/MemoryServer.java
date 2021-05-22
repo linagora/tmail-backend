@@ -12,6 +12,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
+import org.apache.james.mailetcontainer.impl.CustomMailetProcessingModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
@@ -36,7 +37,6 @@ import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
-
 public class MemoryServer {
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
@@ -54,6 +54,7 @@ public class MemoryServer {
         new TicketRoutesModule());
 
     public static final Module MODULES = Modules.combine(
+        new CustomMailetProcessingModule(),
         IN_MEMORY_SERVER_MODULE,
         PROTOCOLS,
         JMAP_LINAGORA,
