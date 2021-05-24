@@ -6,6 +6,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerContract;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.MailsShouldBeWellReceived;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.modules.TestJMAPServerModule;
@@ -18,7 +19,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 
-class MemoryServerTest implements JamesServerContract, JmapJamesServerContract {
+class MemoryServerTest implements JamesServerContract, JmapJamesServerContract, MailsShouldBeWellReceived {
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir -> MemoryConfiguration.builder()
         .workingDirectory(tmpDir)

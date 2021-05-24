@@ -15,6 +15,7 @@ import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
+import org.apache.james.mailetcontainer.impl.CustomMailetProcessingModule;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
 import org.apache.james.modules.DistributedTaskManagerModule;
@@ -168,14 +169,16 @@ public class DistributedServer {
         PLUGINS,
         new DKIMMailetModule());
 
-    public static final Module MODULES = Modules.combine(
-        Modules
-            .override(Modules.combine(REQUIRE_TASK_MANAGER_MODULE, new DistributedTaskManagerModule()))
-            .with(new RabbitMQModule(),
-                new JMAPEventBusModule(),
-                new RabbitMailQueueRoutesModule(),
-                new RabbitMQEventBusModule(),
-                new DistributedTaskSerializationModule()));
+    public static final Module MODULES = Modules
+        .override(Modules.combine(
+            new CustomMailetProcessingModule(),
+            REQUIRE_TASK_MANAGER_MODULE,
+            new DistributedTaskManagerModule()))
+        .with(new RabbitMQModule(),
+            new JMAPEventBusModule(),
+            new RabbitMailQueueRoutesModule(),
+            new RabbitMQEventBusModule(),
+            new DistributedTaskSerializationModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
