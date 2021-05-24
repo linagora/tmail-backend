@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.app;
 
 import static org.apache.james.JamesServerMain.LOGGER;
-import static org.apache.james.MemoryJamesServerMain.IN_MEMORY_SERVER_MODULE;
 import static org.apache.james.MemoryJamesServerMain.JMAP;
 import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
@@ -13,12 +12,21 @@ import org.apache.james.JamesServerMain;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailetcontainer.impl.CustomMailetProcessingModule;
+import org.apache.james.modules.BlobExportMechanismModule;
+import org.apache.james.modules.BlobMemoryModule;
+import org.apache.james.modules.MailboxModule;
+import org.apache.james.modules.data.MemoryDataModule;
+import org.apache.james.modules.eventstore.MemoryEventStoreModule;
+import org.apache.james.modules.mailbox.MemoryMailboxModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
+import org.apache.james.modules.queue.memory.MemoryMailQueueModule;
 import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.JMXServerModule;
+import org.apache.james.modules.server.TaskManagerModule;
 import org.apache.james.modules.spamassassin.SpamAssassinListenerModule;
+import org.apache.james.modules.vault.DeletedMessageVaultModule;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
@@ -38,6 +46,18 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
 public class MemoryServer {
+    public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
+        new CustomMailetProcessingModule(),
+        new BlobMemoryModule(),
+        new DeletedMessageVaultModule(),
+        new BlobExportMechanismModule(),
+        new MailboxModule(),
+        new MemoryDataModule(),
+        new MemoryEventStoreModule(),
+        new MemoryMailboxModule(),
+        new MemoryMailQueueModule(),
+        new TaskManagerModule());
+
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
         new ProtocolHandlerModule(),
@@ -54,7 +74,6 @@ public class MemoryServer {
         new TicketRoutesModule());
 
     public static final Module MODULES = Modules.combine(
-        new CustomMailetProcessingModule(),
         IN_MEMORY_SERVER_MODULE,
         PROTOCOLS,
         JMAP_LINAGORA,
