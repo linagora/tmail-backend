@@ -42,7 +42,7 @@
         <james.groupId>org.apache.james</james.groupId>
         <james.version>3.7.0-SNAPSHOT</james.version>
         <james.protocols.groupId>${james.groupId}.protocols</james.protocols.groupId>
-        <apache-mime4j.version>0.8.3</apache-mime4j.version>
+        <apache-mime4j.version>0.8.5-SNAPSHOT</apache-mime4j.version>
 
         <feign.version>10.3.0</feign.version>
         <guavate.version>1.0.0</guavate.version>
