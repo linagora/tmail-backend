@@ -50,6 +50,18 @@ import com.google.common.collect.ImmutableSet;
  */
 public class MailetProcessorImpl extends AbstractStateMailetProcessor {
     private static class ProcessingStep {
+        private static class Builder {
+            @FunctionalInterface
+            interface RequiresInFlight {
+                RequiresEncounteredMails inFlight(ImmutableList<Mail> inFlightMails);
+            }
+
+            @FunctionalInterface
+            interface RequiresEncounteredMails {
+                ProcessingStep encountered(ImmutableList<Mail> inFlightMails);
+            }
+        }
+
         public static ProcessingStep initial(Mail mail) {
             return new ProcessingStep(ImmutableList.of(mail), ImmutableSet.of(mail));
         }
@@ -66,11 +78,12 @@ public class MailetProcessorImpl extends AbstractStateMailetProcessor {
             return inFlightMails;
         }
 
-        public ProcessingStep nextStep(ImmutableList<Mail> stepResults) {
-            return new ProcessingStep(stepResults,
+        public Builder.RequiresInFlight nextStepBuilder() {
+            return inFlight -> encountered -> new ProcessingStep(inFlight,
                 ImmutableSet.<Mail>builder()
-                    .addAll(stepResults)
+                    .addAll(inFlight)
                     .addAll(encounteredMails)
+                    .addAll(encountered)
                     .build());
         }
 
@@ -155,10 +168,11 @@ public class MailetProcessorImpl extends AbstractStateMailetProcessor {
             .filter(mail -> !mail.getState().equals(Mail.GHOST))
             .forEach(Throwing.consumer(this::toProcessor).sneakyThrow());
 
-        return step.nextStep(
-            afterMatching.stream()
+        return step.nextStepBuilder()
+            .inFlight(afterMatching.stream()
                 .filter(mail -> mail.getState().equals(getState()))
-                .collect(Guavate.toImmutableList()));
+                .collect(Guavate.toImmutableList()))
+            .encountered(afterMatching);
     }
 
     public List<MatcherMailetPair> getPairs() {
