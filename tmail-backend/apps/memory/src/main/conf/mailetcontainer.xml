@@ -49,6 +49,7 @@
             <mailet match="All" class="Bounce"/>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>memory://var/mail/error/</repositoryPath>
+                <onMailetException>propagate</onMailetException>
             </mailet>
         </processor>
 

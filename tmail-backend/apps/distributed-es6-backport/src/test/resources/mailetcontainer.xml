@@ -43,6 +43,7 @@
             <mailet match="All" class="Bounce"/>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>cassandra://var/mail/error/</repositoryPath>
+                <onMailetException>propagate</onMailetException>
             </mailet>
         </processor>
 
