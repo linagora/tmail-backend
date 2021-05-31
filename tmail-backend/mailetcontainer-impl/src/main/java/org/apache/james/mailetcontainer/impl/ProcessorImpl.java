@@ -90,6 +90,8 @@ public class ProcessorImpl {
                 // changed by the mailet
                 LOGGER.warn("Encountered error while executing mailet {}. Ignoring it.", mailet, ex);
                 ProcessorUtil.verifyMailAddresses(mail.getRecipients());
+            } else if (onMailetException.equalsIgnoreCase("propagate")) {
+                throw me;
             } else {
                 ProcessorUtil.handleException(me, mail, mailet.getMailetConfig().getMailetName(), onMailetException, LOGGER);
             }
