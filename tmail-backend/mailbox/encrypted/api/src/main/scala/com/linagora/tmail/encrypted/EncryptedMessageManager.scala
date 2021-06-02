@@ -1,12 +1,6 @@
 package com.linagora.tmail.encrypted
 
-import java.io.InputStream
-import java.util
-import java.util.Date
-
 import com.linagora.tmail.pgp.Encrypter
-import javax.inject.Inject
-import javax.mail.Flags
 import org.apache.james.mailbox.MessageManager.{AppendCommand, AppendResult, MailboxMetaData}
 import org.apache.james.mailbox.model.{ComposedMessageIdWithMetaData, FetchGroup, Mailbox, MailboxACL, MailboxCounters, MailboxId, MailboxPath, MessageRange, MessageResultIterator, SearchQuery}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}
@@ -15,8 +9,13 @@ import org.apache.james.mime4j.dom.Message
 import org.apache.james.mime4j.message.DefaultMessageBuilder
 import org.apache.james.mime4j.stream.MimeConfig
 import org.reactivestreams.Publisher
-import reactor.core.scala.publisher.SFlux
+import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.io.InputStream
+import java.util
+import java.util.Date
+import javax.inject.Inject
+import javax.mail.Flags
 import scala.jdk.CollectionConverters._
 
 class EncryptedMessageManager @Inject()(messageManager: MessageManager, keystoreManager: KeystoreManager) extends MessageManager {
@@ -42,24 +41,11 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager, keystore
       throw new UnsupportedOperationException("append by InputStream only used in test for compatibility issue")
   }
 
-  override def appendMessage(appendCommand: AppendCommand, session: MailboxSession): AppendResult = {
-    val keys: Seq[PublicKey] = SFlux.fromPublisher(keystoreManager.listPublicKeys(session.getUser))
-      .collectSeq()
-      .block()
+  override def appendMessage(appendCommand: AppendCommand, session: MailboxSession): AppendResult =
+    MailboxReactorUtils.block(append(appendCommand, session))
 
-    if (keys.isEmpty) {
-      messageManager.appendMessage(appendCommand, session)
-    } else {
-      val messageBuilder: DefaultMessageBuilder = new DefaultMessageBuilder();
-      messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
-      messageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
-      val clearMessage: Message = messageBuilder.parseMessage(appendCommand.getMsgIn.getInputStream)
-      val encryptedMessage: Message = Encrypter.forKeys(keys.map(key => key.payload).asJava)
-        .encrypt(clearMessage)
-
-      messageManager.appendMessage(AppendCommand.from(encryptedMessage), session)
-    }
-  }
+  override def appendMessageReactive(appendCommand: AppendCommand, session: MailboxSession): Publisher[AppendResult] =
+    append(appendCommand, session)
 
   override def getMessages(set: MessageRange, fetchGroup: FetchGroup, mailboxSession: MailboxSession): MessageResultIterator =
     messageManager.getMessages(set, fetchGroup, mailboxSession)
@@ -81,4 +67,22 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager, keystore
     messageManager.getMetaData(resetRecent, mailboxSession, fetchGroup)
 
   override def getResolvedAcl(mailboxSession: MailboxSession): MailboxACL = messageManager.getResolvedAcl(mailboxSession)
+
+  private def append(appendCommand: AppendCommand, session: MailboxSession): SMono[AppendResult] =
+    SFlux.fromPublisher(keystoreManager.listPublicKeys(session.getUser))
+      .collectSeq()
+      .flatMap(keys => {
+        if (keys.isEmpty) {
+          SMono.fromPublisher(messageManager.appendMessageReactive(appendCommand, session))
+        } else {
+          val messageBuilder: DefaultMessageBuilder = new DefaultMessageBuilder();
+          messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
+          messageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
+          val clearMessage: Message = messageBuilder.parseMessage(appendCommand.getMsgIn.getInputStream)
+          val encryptedMessage: Message = Encrypter.forKeys(keys.map(key => key.payload).asJava)
+            .encrypt(clearMessage)
+
+          SMono.fromPublisher(messageManager.appendMessageReactive(AppendCommand.from(encryptedMessage), session))
+        }
+      })
 }
