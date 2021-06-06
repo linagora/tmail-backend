@@ -117,6 +117,19 @@
                             <md5>f9026dbab1fbade067ca549913802fcc</md5>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>package-async-profiler</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://github.com/jvm-profiling-tools/async-profiler/releases/download/v2.0/async-profiler-2.0-linux-x64.tar.gz</url>
+                            <unpack>true</unpack>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                            <md5>50764faa05521fdc36a5e3f6d6628d75</md5>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
@@ -197,6 +210,10 @@
                                 <into>/root/glowroot</into>
                             </path>
                             <path>
+                                <from>target/async-profiler-2.0-linux-x64</from>
+                                <into>/root/async-profiler</into>
+                            </path>
+                            <path>
                                 <from>src/main/extensions-jars</from>
                                 <into>/root/extensions-jars</into>
                             </path>
@@ -204,6 +221,18 @@
                         <permissions>
                             <permission>
                                 <file>/usr/bin/james-cli</file>
+                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                            </permission>
+                            <permission>
+                                <file>/root/async-profiler/profiler.sh</file>
+                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                            </permission>
+                            <permission>
+                                <file>/root/async-profiler/build/libasyncProfiler.so</file>
+                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                            </permission>
+                            <permission>
+                                <file>/root/async-profiler/build/jattach</file>
                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                             </permission>
                         </permissions>
