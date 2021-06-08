@@ -21,6 +21,7 @@
         <module>apps</module>
         <module>backend-commons/elasticsearch-v6</module>
         <module>blob/blobid-list</module>
+        <module>combined-identity</module>
         <module>deployment-tests</module>
         <module>guice/elasticsearch-v6</module>
         <module>guice/encrypted-mailbox</module>
@@ -120,6 +121,18 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>jmap-extensions-cassandra</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-data-cassandra</artifactId>
+                <type>test-jar</type>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-data-ldap</artifactId>
+                <type>test-jar</type>
+                <version>${james.version}</version>
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
