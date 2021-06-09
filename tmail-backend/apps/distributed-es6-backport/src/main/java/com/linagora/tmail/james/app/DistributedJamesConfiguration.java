@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.Optional;
 
 import org.apache.james.SearchConfiguration;
-import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.server.core.JamesServerResourceLoader;
@@ -16,6 +15,7 @@ import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 
 public class DistributedJamesConfiguration implements Configuration {
