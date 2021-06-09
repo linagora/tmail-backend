@@ -10,6 +10,7 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.modules.TestJMAPServerModule;
+import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 
@@ -36,7 +38,8 @@ class DistributedServerTest implements JamesServerContract, JmapJamesServerContr
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new TestJMAPServerModule())
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class)))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
         .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
@@ -59,5 +62,11 @@ class DistributedServerTest implements JamesServerContract, JmapJamesServerContr
     public void shouldUseCassandraMailboxManager(GuiceJamesServer jamesServer) {
         assertThat(jamesServer.getProbe(MailboxManagerClassProbe.class).getMailboxManagerClass())
             .isEqualTo(CassandraMailboxManager.class);
+    }
+
+    @Test
+    public void shouldUseCassandraUsersDAOAsDefault(GuiceJamesServer jamesServer) {
+        assertThat(jamesServer.getProbe(UsersRepositoryClassProbe.class).getUsersDAOClass())
+            .isEqualTo(CassandraUsersDAO.class);
     }
 }

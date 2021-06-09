@@ -9,7 +9,6 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.SearchModuleChooser;
-import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
@@ -26,7 +25,6 @@ import org.apache.james.modules.data.CassandraDomainListModule;
 import org.apache.james.modules.data.CassandraJmapModule;
 import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
 import org.apache.james.modules.data.CassandraSieveRepositoryModule;
-import org.apache.james.modules.data.CassandraUsersRepositoryModule;
 import org.apache.james.modules.event.JMAPEventBusModule;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.eventstore.CassandraEventStoreModule;
@@ -79,6 +77,7 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.blob.blobid.list.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser;
+import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
@@ -196,8 +195,7 @@ public class DistributedServer {
             .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
-            .combineWith(new UsersRepositoryModuleChooser(new CassandraUsersRepositoryModule())
-                .chooseModules(configuration.getUsersRepositoryImplementation()))
+            .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.getUsersRepositoryImplementation()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 
