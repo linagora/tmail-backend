@@ -35,7 +35,7 @@ services:
       - emaily
 
   cassandra:
-    image: cassandra:3.11.3
+    image: cassandra:3.11.10
     ports:
       - "9042:9042"
     networks:
@@ -47,7 +47,7 @@ services:
       - emaily
 
   rabbitmq:
-    image: rabbitmq:3.8.3-management
+    image: rabbitmq:3.8.17-management
     ports:
       - "5672:5672"
       - "15672:15672"
