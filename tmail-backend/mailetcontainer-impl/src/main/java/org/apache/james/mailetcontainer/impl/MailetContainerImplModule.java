@@ -19,12 +19,11 @@
 
 package org.apache.james.mailetcontainer.impl;
 
-import static org.apache.james.modules.server.CamelMailetContainerModule.BCC_Check;
+import static org.apache.james.modules.server.MailetContainerModule.BCC_Check;
 
 import java.util.Arrays;
 import java.util.Set;
 
-import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
@@ -37,10 +36,10 @@ import org.apache.james.mailetcontainer.api.MailProcessor;
 import org.apache.james.mailetcontainer.api.MailetLoader;
 import org.apache.james.mailetcontainer.api.MatcherLoader;
 import org.apache.james.mailetcontainer.api.jmx.MailSpoolerMBean;
-import org.apache.james.mailetcontainer.impl.camel.CamelCompositeProcessor;
+import org.apache.james.mailetcontainer.impl.CompositeProcessorImpl;
 import org.apache.james.mailrepository.api.MailRepositoryStore;
-import org.apache.james.modules.server.CamelMailetContainerModule.DefaultProcessorsConfigurationSupplier;
-import org.apache.james.modules.server.CamelMailetContainerModule.ProcessorsCheck;
+import org.apache.james.modules.server.MailetContainerModule.DefaultProcessorsConfigurationSupplier;
+import org.apache.james.modules.server.MailetContainerModule.ProcessorsCheck;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.utils.GuiceMailetLoader;
 import org.apache.james.utils.GuiceMatcherLoader;
@@ -136,7 +135,6 @@ public class MailetContainerImplModule extends AbstractModule {
         private final CompositeProcessorImpl compositeProcessor;
         private final DefaultProcessorsConfigurationSupplier defaultProcessorsConfigurationSupplier;
         private final Set<ProcessorsCheck> processorsCheckSet;
-        private final DefaultCamelContext camelContext;
         private final JamesMailSpooler jamesMailSpooler;
         private final JamesMailSpooler.Configuration spoolerConfiguration;
 
@@ -145,23 +143,22 @@ public class MailetContainerImplModule extends AbstractModule {
                                                    CompositeProcessorImpl compositeProcessor,
                                                    Set<ProcessorsCheck> processorsCheckSet,
                                                    DefaultProcessorsConfigurationSupplier defaultProcessorsConfigurationSupplier,
-                                                   DefaultCamelContext camelContext, JamesMailSpooler jamesMailSpooler, JamesMailSpooler.Configuration spoolerConfiguration) {
+                                                   JamesMailSpooler jamesMailSpooler, JamesMailSpooler.Configuration spoolerConfiguration) {
             this.configurationProvider = configurationProvider;
             this.compositeProcessor = compositeProcessor;
             this.processorsCheckSet = processorsCheckSet;
             this.defaultProcessorsConfigurationSupplier = defaultProcessorsConfigurationSupplier;
-            this.camelContext = camelContext;
             this.jamesMailSpooler = jamesMailSpooler;
             this.spoolerConfiguration = spoolerConfiguration;
         }
 
         @Override
         public void initModule() throws Exception {
-            configureProcessors(camelContext);
+            configureProcessors();
             checkProcessors();
         }
 
-        private void configureProcessors(DefaultCamelContext camelContext) throws Exception {
+        private void configureProcessors() throws Exception {
             compositeProcessor.configure(getProcessorConfiguration());
             compositeProcessor.init();
 
@@ -202,7 +199,7 @@ public class MailetContainerImplModule extends AbstractModule {
 
         @Override
         public Class<? extends Startable> forClass() {
-            return CamelCompositeProcessor.class;
+            return CompositeProcessorImpl.class;
         }
     }
 
