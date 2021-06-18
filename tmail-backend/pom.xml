@@ -248,6 +248,11 @@
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-mailetcontainer-camel</artifactId>
                 <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-mailetcontainer-camel</artifactId>
+                <version>${james.version}</version>
                 <type>test-jar</type>
             </dependency>
 
