@@ -18,7 +18,7 @@
  ****************************************************************/
 package org.apache.james.mailetcontainer.impl;
 
-import static org.apache.james.mailetcontainer.impl.camel.MatcherSplitter.MATCHER_MATCHED_ATTRIBUTE;
+import static org.apache.james.mailetcontainer.impl.MatcherSplitter.MATCHER_MATCHED_ATTRIBUTE;
 
 import java.util.List;
 import java.util.Map;
