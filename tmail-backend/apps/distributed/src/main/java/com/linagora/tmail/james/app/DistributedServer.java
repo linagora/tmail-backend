@@ -14,12 +14,12 @@ import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
-import org.apache.james.mailetcontainer.impl.CustomMailetProcessingModule;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
 import org.apache.james.modules.DistributedTaskManagerModule;
 import org.apache.james.modules.DistributedTaskSerializationModule;
 import org.apache.james.modules.MailboxModule;
+import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
 import org.apache.james.modules.data.CassandraDomainListModule;
 import org.apache.james.modules.data.CassandraJmapModule;
@@ -170,7 +170,7 @@ public class DistributedServer {
 
     public static final Module MODULES = Modules
         .override(Modules.combine(
-            new CustomMailetProcessingModule(),
+            new MailetProcessingModule(),
             REQUIRE_TASK_MANAGER_MODULE,
             new DistributedTaskManagerModule()))
         .with(new RabbitMQModule(),
