@@ -11,10 +11,10 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
-import org.apache.james.mailetcontainer.impl.CustomMailetProcessingModule;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.BlobMemoryModule;
 import org.apache.james.modules.MailboxModule;
+import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.MemoryDataModule;
 import org.apache.james.modules.eventstore.MemoryEventStoreModule;
 import org.apache.james.modules.mailbox.MemoryMailboxModule;
@@ -47,7 +47,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
 public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
-        new CustomMailetProcessingModule(),
+        new MailetProcessingModule(),
         new BlobMemoryModule(),
         new DeletedMessageVaultModule(),
         new BlobExportMechanismModule(),
