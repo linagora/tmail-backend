@@ -3,6 +3,7 @@ package com.linagora.tmail.encrypted
 import com.google.common.io.ByteSource
 import org.apache.james.jmap.api.model.Preview
 import org.apache.james.jmap.draft.utils.JsoupHtmlTextExtractor
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser
 import org.apache.james.mime4j.dom.{Message, Multipart}
 import org.apache.james.mime4j.message.{BasicBodyFactory, BodyPartBuilder, MultipartBuilder}
 import org.apache.james.util.html.HtmlTextExtractor
@@ -31,11 +32,15 @@ class ClearEmailContentTest {
   var textPart: BodyPartBuilder = _
   var textAttachment: BodyPartBuilder = _
 
+  var clearEmailContentFactory : ClearEmailContentFactory = _
 
   @BeforeEach
   def setUp(): Unit = {
+    val messageContentExtractor: MessageContentExtractor = new MessageContentExtractor()
     val htmlTextExtractor: HtmlTextExtractor = new JsoupHtmlTextExtractor
     previewFactory = new Preview.Factory(new MessageContentExtractor, htmlTextExtractor)
+    clearEmailContentFactory = new ClearEmailContentFactory(new MessageParser(), messageContentExtractor, previewFactory)
+
     textPart = BodyPartBuilder.create()
       .setBody(TEXT_CONTENT, "plain", StandardCharsets.UTF_8)
     htmlPart = BodyPartBuilder.create
@@ -51,7 +56,7 @@ class ClearEmailContentTest {
       .setBody(BasicBodyFactory.INSTANCE.binaryBody(BINARY_CONTENT, StandardCharsets.UTF_8))
       .build
 
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
 
     assertSoftly(softly => {
       softly.assertThat(tryClearEmailContent.isSuccess)
@@ -74,7 +79,7 @@ class ClearEmailContentTest {
       .build
 
     val message: Message = Message.Builder.of.setBody(multipart).build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
 
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
@@ -101,7 +106,7 @@ class ClearEmailContentTest {
       .setSubject("subject")
       .setBody("small message", StandardCharsets.UTF_8)
       .build;
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
 
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
@@ -124,7 +129,7 @@ class ClearEmailContentTest {
     val message: Message = Message.Builder.of()
       .setBody(multipart)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
 
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
@@ -146,7 +151,7 @@ class ClearEmailContentTest {
     val message: Message = Message.Builder.of()
       .setBody(multipartBuilder.build)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
 
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
@@ -166,7 +171,7 @@ class ClearEmailContentTest {
       .setBody(TEXT_CONTENT, StandardCharsets.UTF_8)
       .build
 
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
     assertThat(tryClearEmailContent.get.html)
@@ -178,7 +183,7 @@ class ClearEmailContentTest {
     val message: Message = Message.Builder.of()
       .setBody(HTML_CONTENT, "html", StandardCharsets.UTF_8)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
     assertThat(tryClearEmailContent.get.html)
@@ -194,7 +199,7 @@ class ClearEmailContentTest {
     val message: Message = Message.Builder.of()
       .setBody(multipart)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
     assertThat(tryClearEmailContent.get.html)
@@ -210,7 +215,7 @@ class ClearEmailContentTest {
     val message: Message = Message.Builder.of
       .setBody(multipart)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
 
@@ -224,7 +229,7 @@ class ClearEmailContentTest {
       .setSubject("subject 123")
       .setBody("", StandardCharsets.UTF_8)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
     assertThat(tryClearEmailContent.get.preview)
@@ -236,7 +241,7 @@ class ClearEmailContentTest {
     val message: Message = Message.Builder.of()
       .setBody(TEXT_CONTENT, StandardCharsets.UTF_8)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
     assertThat(tryClearEmailContent.get.preview)
@@ -248,7 +253,7 @@ class ClearEmailContentTest {
     val message: Message = Message.Builder.of()
       .setBody(TEXT_CONTENT, StandardCharsets.UTF_8)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
     assertThat(tryClearEmailContent.get.preview)
@@ -260,7 +265,7 @@ class ClearEmailContentTest {
     val message: Message = Message.Builder.of()
       .setBody(HTML_CONTENT.repeat(999999), "html", StandardCharsets.UTF_8)
       .build
-    val tryClearEmailContent: Try[ClearEmailContent] = ClearEmailContent.from(message)
+    val tryClearEmailContent: Try[ClearEmailContent] = clearEmailContentFactory.from(message)
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
     assertThat(tryClearEmailContent.get.preview)

@@ -1,21 +1,18 @@
 package com.linagora.tmail.encrypted
 
 import org.apache.james.jmap.api.model.Preview
-import org.apache.james.jmap.draft.utils.JsoupHtmlTextExtractor
 import org.apache.james.mailbox.model.ParsedAttachment
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser
 import org.apache.james.mime4j.dom.Message
-import org.apache.james.util.html.HtmlTextExtractor
 import org.apache.james.util.mime.MessageContentExtractor
 
+import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-object ClearEmailContent {
-  val messageParser: MessageParser = new MessageParser()
-  val messageContentExtractor: MessageContentExtractor = new MessageContentExtractor()
-  val htmlTextExtractor: HtmlTextExtractor = new JsoupHtmlTextExtractor();
-  val previewFactory: Preview.Factory = new Preview.Factory(messageContentExtractor, htmlTextExtractor);
+class ClearEmailContentFactory @Inject()(messageParser: MessageParser,
+                                         messageContentExtractor: MessageContentExtractor,
+                                         previewFactory: Preview.Factory) {
 
   def from(message: Message): Try[ClearEmailContent] = {
     for {
