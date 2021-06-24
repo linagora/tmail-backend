@@ -7,7 +7,7 @@ import play.api.libs.json.{JsValue, Json}
 class AttachmentMetaDataSerializerTest {
 
   @Test
-  def serializeShouldBeSuccess(): Unit = {
+  def serializeShouldSuccess(): Unit = {
     val attachmentMetadata: AttachmentMetadata = AttachmentMetadata(
       position = 1,
       blobId = "encryptedAttachment_123_3",
@@ -34,7 +34,7 @@ class AttachmentMetaDataSerializerTest {
   }
 
   @Test
-  def serializeListShouldBeSuccess(): Unit = {
+  def serializeListShouldSuccess(): Unit = {
     val attachmentMetadata1: AttachmentMetadata = AttachmentMetadata(
       position = 1,
       blobId = "encryptedAttachment_123_3",

@@ -1,5 +1,6 @@
 package com.linagora.tmail.encrypted
 
+import com.google.common.base.Preconditions
 import com.google.common.io.ByteSource
 import com.linagora.tmail.pgp.Encrypter
 import org.apache.james.jmap.api.model.Preview
@@ -23,16 +24,22 @@ class EncryptedEmailContentFactory(encrypter: Encrypter) {
     encrypt(preview.getValue)
 
   def encryptAttachmentMetadata(parsedAttachments: List[ParsedAttachment], messageId: MessageId): Option[String] = {
-    if (parsedAttachments.isEmpty) return None
-    Some(encrypt(AttachmentMetaDataSerializer
-      .serializeList(AttachmentMetadata.fromJava(parsedAttachments, messageId))
-      .toString()))
+    parsedAttachments match {
+      case Nil | List() => None
+      case _ =>
+        val position: AtomicInteger = new AtomicInteger(0)
+        Some(encrypt(AttachmentMetaDataSerializer
+          .serializeList(parsedAttachments
+            .map(parsedAttachment => AttachmentMetadata.fromJava(parsedAttachment, position.getAndIncrement(), messageId)))
+          .toString()))
+    }
   }
 
-  def encryptAttachmentContent(parsedAttachments: List[ParsedAttachment]): List[String] = {
-    if (parsedAttachments.isEmpty) return List.empty
-    parsedAttachments.map(parsedAttachment => encrypt(parsedAttachment.getContent))
-  }
+  def encryptAttachmentContent(parsedAttachments: List[ParsedAttachment]): List[String] =
+    parsedAttachments match {
+      case Nil | List() => List.empty
+      case _ => parsedAttachments.map(parsedAttachment => encrypt(parsedAttachment.getContent))
+    }
 
   def encrypt(byteSource: ByteSource): String = {
     val stream: ByteArrayOutputStream = new ByteArrayOutputStream
@@ -41,6 +48,7 @@ class EncryptedEmailContentFactory(encrypter: Encrypter) {
   }
 
   def encrypt(value: String): String = {
+    Preconditions.checkNotNull(value)
     val stream: ByteArrayOutputStream = new ByteArrayOutputStream
     encrypter.encrypt(ByteSource.wrap(value.getBytes(StandardCharsets.UTF_8)), stream)
     new String(stream.toByteArray, StandardCharsets.UTF_8)
@@ -65,12 +73,6 @@ object AttachmentMetadata {
         .map(cid => cid.getValue),
       isLine = parsedAttachment.isInline,
       size = parsedAttachment.getContent.size())
-
-  def fromJava(listParsedAttachment: List[ParsedAttachment], messageId: MessageId): List[AttachmentMetadata] = {
-    val position: AtomicInteger = new AtomicInteger(0)
-    listParsedAttachment
-      .map(parsedAttachment => fromJava(parsedAttachment, position.getAndIncrement(), messageId))
-  }
 }
 
 case class AttachmentMetadata(position: Int,

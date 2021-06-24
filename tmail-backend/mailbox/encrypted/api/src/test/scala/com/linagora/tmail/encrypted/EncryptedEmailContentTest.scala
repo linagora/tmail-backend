@@ -2,6 +2,8 @@ package com.linagora.tmail.encrypted
 
 import com.google.common.io.ByteSource
 import com.linagora.tmail.pgp.{Decrypter, Encrypter}
+import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option
 import org.apache.james.jmap.api.model.Preview
 import org.apache.james.mailbox.inmemory.InMemoryMessageId
 import org.apache.james.mailbox.model.{MessageId, ParsedAttachment}
@@ -14,6 +16,7 @@ import play.api.libs.json.Json
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.security.Security
+import java.util.concurrent.atomic.AtomicInteger
 
 object EncryptedEmailContentTest {
   val HTML_CONTENT: String = "<b>html</b> content"
@@ -67,9 +70,10 @@ class EncryptedEmailContentTest {
   def encryptedAttachmentMetadataShouldEncrypt(): Unit = {
     val encryptedEmailContent: EncryptedEmailContent = testee.encrypt(CLEAR_EMAIL_CONTENT, MESSAGE_ID)
     val decryptedAttachmentMetadata: String = decrypt(encryptedEmailContent.encryptedAttachmentMetadata.get)
-
+    val position: AtomicInteger = new AtomicInteger(0)
     assertThat(AttachmentMetaDataSerializer
-      .serializeList(AttachmentMetadata.fromJava(CLEAR_EMAIL_CONTENT.attachments, MESSAGE_ID)))
+      .serializeList(CLEAR_EMAIL_CONTENT.attachments
+        .map(parsedAttachment => AttachmentMetadata.fromJava(parsedAttachment, position.getAndIncrement(), MESSAGE_ID))))
       .isEqualTo(Json.parse(decryptedAttachmentMetadata))
   }
 
@@ -151,7 +155,102 @@ class EncryptedEmailContentTest {
       .isEmpty()
   }
 
-  def decrypt(encryptedPayload: String): String = {
+  @Test
+  def positionShouldStartFromZero(): Unit = {
+    val encryptedEmailContent: EncryptedEmailContent = testee.encrypt(CLEAR_EMAIL_CONTENT, MESSAGE_ID)
+    val decryptedAttachmentMetadata: String = decrypt(encryptedEmailContent.encryptedAttachmentMetadata.get)
+
+    assertThatJson(decryptedAttachmentMetadata)
+      .inPath("[0].position")
+      .isEqualTo(0)
+    assertThatJson(decryptedAttachmentMetadata)
+      .isArray
+      .hasSize(1)
+  }
+
+  @Test
+  def positionShouldPreserveOrdering(): Unit = {
+    val clearEmailContent: ClearEmailContent = ClearEmailContent(
+      preview = Preview.from("preview 123321"),
+      hasAttachment = true,
+      html = HTML_CONTENT,
+      attachments = List(ParsedAttachment.builder
+        .contentType("content")
+        .content(ByteSource.wrap("payload123321".getBytes(StandardCharsets.UTF_8)))
+        .name("name0")
+        .noCid
+        .inline(false),
+        ParsedAttachment.builder
+          .contentType("content")
+          .content(ByteSource.wrap("payload123321".getBytes(StandardCharsets.UTF_8)))
+          .name("name1")
+          .noCid
+          .inline(false),
+        ParsedAttachment.builder
+          .contentType("content")
+          .content(ByteSource.wrap("payload123321".getBytes(StandardCharsets.UTF_8)))
+          .name("name2")
+          .noCid
+          .inline(false)))
+
+    val encryptedEmailContent: EncryptedEmailContent = testee.encrypt(clearEmailContent, MESSAGE_ID)
+    val decryptedAttachmentMetadata: String = decrypt(encryptedEmailContent.encryptedAttachmentMetadata.get)
+
+    assertThatJson(decryptedAttachmentMetadata)
+      .when(Option.IGNORING_EXTRA_FIELDS)
+      .isEqualTo(
+        """[
+          |    {
+          |        "name": "name0",
+          |        "position": 0
+          |    },
+          |    {
+          |        "name": "name1",
+          |        "position": 1
+          |    },
+          |    {
+          |        "name": "name2",
+          |        "position": 2
+          |    }
+          |]""".stripMargin)
+  }
+
+  @Test
+  def encryptedAttachmentContentsShouldPreserveOrdering(): Unit = {
+    val clearEmailContent: ClearEmailContent = ClearEmailContent(
+      preview = Preview.from("preview 123321"),
+      hasAttachment = true,
+      html = HTML_CONTENT,
+      attachments = List(ParsedAttachment.builder
+        .contentType("content")
+        .content(ByteSource.wrap("payload0".getBytes(StandardCharsets.UTF_8)))
+        .name("name0")
+        .noCid
+        .inline(false),
+        ParsedAttachment.builder
+          .contentType("content")
+          .content(ByteSource.wrap("payload1".getBytes(StandardCharsets.UTF_8)))
+          .name("name1")
+          .noCid
+          .inline(false),
+        ParsedAttachment.builder
+          .contentType("content")
+          .content(ByteSource.wrap("payload2".getBytes(StandardCharsets.UTF_8)))
+          .name("name2")
+          .noCid
+          .inline(false)))
+
+    val encryptedEmailContent: EncryptedEmailContent = testee.encrypt(clearEmailContent, MESSAGE_ID)
+    val decryptedAttachmentContents: List[String] = encryptedEmailContent.encryptedAttachmentContents
+      .map(encrypted => decrypt(encrypted))
+    val clearAttachmentContents: List[String] = clearEmailContent.attachments
+      .map(clearAttachment => new String(clearAttachment.getContent.read(), StandardCharsets.UTF_8))
+
+    assertThat(decryptedAttachmentContents)
+      .isEqualTo(clearAttachmentContents)
+  }
+
+  private def decrypt(encryptedPayload: String): String = {
     val decryptedPayload: Array[Byte] = decrypter.decrypt(new ByteArrayInputStream(encryptedPayload.getBytes))
       .readAllBytes()
     new String(decryptedPayload, StandardCharsets.UTF_8)
