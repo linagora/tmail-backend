@@ -1,6 +1,5 @@
 package com.linagora.tmail.encrypted
 
-import com.google.common.base.Preconditions
 import com.google.common.io.ByteSource
 import com.linagora.tmail.pgp.Encrypter
 import org.apache.james.jmap.api.model.Preview
@@ -47,12 +46,8 @@ class EncryptedEmailContentFactory(encrypter: Encrypter) {
     new String(stream.toByteArray, StandardCharsets.UTF_8)
   }
 
-  def encrypt(value: String): String = {
-    Preconditions.checkNotNull(value)
-    val stream: ByteArrayOutputStream = new ByteArrayOutputStream
-    encrypter.encrypt(ByteSource.wrap(value.getBytes(StandardCharsets.UTF_8)), stream)
-    new String(stream.toByteArray, StandardCharsets.UTF_8)
-  }
+  def encrypt(value: String): String =
+    encrypt(ByteSource.wrap(value.getBytes(StandardCharsets.UTF_8)))
 }
 
 case class EncryptedEmailContent(encryptedPreview: String,
