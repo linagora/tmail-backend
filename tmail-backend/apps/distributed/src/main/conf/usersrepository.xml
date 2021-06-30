@@ -26,3 +26,15 @@
     <enableForwarding>true</enableForwarding>
 </usersrepository>
 
+<!-- CombinedUsersRepository example. Read https://github.com/linagora/tmail-backend/issues/157 for further details -->
+<!--
+<usersrepository name="LocalUsers"
+                 class="com.linagora.tmail.combined.identity.CombinedUsersRepository"
+                 ldapHost="ldap://ldap:389"
+                 principal="uid=james-user,ou=people,dc=james,dc=org"
+                 credentials="secret"
+                 userBase="ou=people,dc=james,dc=org"
+                 userIdAttribute="mail"
+                 userObjectClass="person">
+<supportsVirtualHosting>true</supportsVirtualHosting>
+</usersrepository>-->
