@@ -78,7 +78,9 @@ import com.linagora.tmail.blob.blobid.list.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
+import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
+import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
@@ -202,8 +204,10 @@ public class DistributedServer {
     private static class EncryptedMailboxModule extends AbstractModule {
         @Provides
         @Singleton
-        MailboxManager provide(CassandraMailboxManager mailboxManager, KeystoreManager keystoreManager) {
-            return new EncryptedMailboxManager(mailboxManager, keystoreManager);
+        MailboxManager provide(CassandraMailboxManager mailboxManager, KeystoreManager keystoreManager,
+                               ClearEmailContentFactory clearEmailContentFactory,
+                               InMemoryEncryptedEmailContentStore contentStore) {
+            return new EncryptedMailboxManager(mailboxManager, keystoreManager, clearEmailContentFactory, contentStore);
         }
     }
 

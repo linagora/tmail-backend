@@ -4,6 +4,18 @@ import static org.apache.james.jmap.JMAPTestingConstants.ALICE;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.Provider;
+import java.security.Security;
+
+import org.apache.james.blob.api.BlobId;
+import org.apache.james.blob.api.BucketName;
+import org.apache.james.blob.api.HashBlobId;
+import org.apache.james.blob.memory.MemoryBlobStoreDAO;
+import org.apache.james.jmap.api.model.Preview;
+import org.apache.james.jmap.draft.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
@@ -14,22 +26,21 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.model.MessageResultIterator;
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mime4j.dom.Body;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.Multipart;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
+import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore;
+import org.apache.james.util.ClassLoaderUtils;
+import org.apache.james.util.mime.MessageContentExtractor;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.pgp.Decrypter;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.Provider;
-import java.security.Security;
 import reactor.core.publisher.Mono;
 
 public class InMemoryEncryptedMessageManagerTest {
@@ -40,6 +51,8 @@ public class InMemoryEncryptedMessageManagerTest {
     private MailboxSession session;
     private MailboxPath path;
     private Message message;
+    private InMemoryEncryptedEmailContentStore emailContentStore;
+    private DeDuplicationBlobStore blobStore;
 
     @BeforeAll
     static void setUpAll() throws Exception {
@@ -56,7 +69,12 @@ public class InMemoryEncryptedMessageManagerTest {
         messageManager = mailboxManager.getMailbox(mailboxId, session);
 
         keystoreManager = new InMemoryKeystoreManager();
-        testee = new EncryptedMessageManager(messageManager, keystoreManager);
+        MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
+        blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, new HashBlobId.Factory());
+        emailContentStore = new InMemoryEncryptedEmailContentStore(blobStore);
+        testee = new EncryptedMessageManager(messageManager, keystoreManager,
+            new ClearEmailContentFactory(new MessageParser(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
+            emailContentStore);
 
         message = Message.Builder
             .of()
@@ -81,6 +99,62 @@ public class InMemoryEncryptedMessageManagerTest {
 
         assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
             .doesNotContain("testmail");
+    }
+
+    @Test
+    void commandAppendShouldStoreEncryptedFastViewContent() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
+
+        MessageManager.AppendResult appendResult = testee.appendMessage(MessageManager.AppendCommand.from(message), session);
+
+        EncryptedEmailFastView fastView = Mono.from(emailContentStore.retrieveFastView(appendResult.getId().getMessageId())).block();
+
+        byte[] decryptedPayload = Decrypter
+            .forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.private"), "123456".toCharArray())
+            .decrypt(new ByteArrayInputStream(fastView.encryptedPreview().getBytes(StandardCharsets.UTF_8)))
+            .readAllBytes();
+
+        assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
+            .contains("testmail");
+    }
+
+    @Test
+    void commandAppendShouldStoreEncryptedContent() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
+
+        MessageManager.AppendResult appendResult = testee.appendMessage(MessageManager.AppendCommand.from(message), session);
+
+        EncryptedEmailDetailedView fastView = Mono.from(emailContentStore.retrieveDetailedView(appendResult.getId().getMessageId())).block();
+
+        byte[] decryptedPayload = Decrypter
+            .forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.private"), "123456".toCharArray())
+            .decrypt(new ByteArrayInputStream(fastView.encryptedHtml().getBytes(StandardCharsets.UTF_8)))
+            .readAllBytes();
+
+        assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
+            .contains("testmail");
+    }
+
+    @Test
+    void commandAppendShouldStoreEncryptedAttachments() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
+
+        MessageManager.AppendResult appendResult = testee.appendMessage(MessageManager.AppendCommand
+            .from(ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithTextAttachment.eml")), session);
+
+        BlobId encryptedAttachmentBlobId = Mono.from(emailContentStore.retrieveAttachmentContent(appendResult.getId().getMessageId(), 0)).block();
+        byte[] encryptedAttachment = Mono.from(blobStore.readBytes(blobStore.getDefaultBucketName(), encryptedAttachmentBlobId)).block();
+
+        byte[] decryptedPayload = Decrypter
+            .forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.private"), "123456".toCharArray())
+            .decrypt(new ByteArrayInputStream(encryptedAttachment))
+            .readAllBytes();
+
+        assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
+            .contains("This is a beautiful banana.");
     }
 
     @Test
