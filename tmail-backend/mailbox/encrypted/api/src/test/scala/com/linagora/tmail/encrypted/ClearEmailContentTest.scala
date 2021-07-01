@@ -166,7 +166,7 @@ class ClearEmailContentTest {
   }
 
   @Test
-  def htmlShouldReturnEmptyWhenTextOnlyBody(): Unit = {
+  def htmlShouldReturnTextBodyWhenTextOnlyBody(): Unit = {
     val message: Message = Message.Builder.of()
       .setBody(TEXT_CONTENT, StandardCharsets.UTF_8)
       .build
@@ -175,7 +175,7 @@ class ClearEmailContentTest {
     assertThat(tryClearEmailContent.isSuccess)
       .isTrue
     assertThat(tryClearEmailContent.get.html)
-      .isEqualTo("");
+      .isEqualTo(TEXT_CONTENT);
   }
 
   @Test
