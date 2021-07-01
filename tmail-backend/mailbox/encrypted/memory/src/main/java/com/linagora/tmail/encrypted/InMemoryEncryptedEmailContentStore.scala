@@ -18,8 +18,7 @@ object InMemoryEncryptedEmailContentStore {
   val messageIdBlobIdStore: scala.collection.concurrent.Map[MessageId, Map[Int, BlobId]] = scala.collection.concurrent.TrieMap()
 }
 
-class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
-                                                   storagePolicy: StoragePolicy) extends EncryptedEmailContentStore {
+class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore) extends EncryptedEmailContentStore {
 
   override def store(messageId: MessageId, encryptedEmailContent: EncryptedEmailContent): Publisher[Unit] =
     storeAttachment(messageId, encryptedEmailContent.encryptedAttachmentContents)
@@ -47,7 +46,7 @@ class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
   private def storeAttachment(messageId: MessageId, encryptedAttachmentContents: List[String]): SMono[Unit] = {
     Preconditions.checkNotNull(encryptedAttachmentContents)
     SFlux.fromIterable(encryptedAttachmentContents)
-      .concatMap(attachmentContent => SMono.fromPublisher(blobStore.save(blobStore.getDefaultBucketName, attachmentContent.getBytes(StandardCharsets.UTF_8), storagePolicy)))
+      .concatMap(attachmentContent => SMono.fromPublisher(blobStore.save(blobStore.getDefaultBucketName, attachmentContent.getBytes(StandardCharsets.UTF_8), StoragePolicy.LOW_COST)))
       .index()
       .collectMap(positionBlobId => positionBlobId._1.intValue + POSITION_NUMBER_START_AT, positionBlobId => positionBlobId._2)
       .map(positionBlobIdMap => messageIdBlobIdStore.put(messageId, positionBlobIdMap))
