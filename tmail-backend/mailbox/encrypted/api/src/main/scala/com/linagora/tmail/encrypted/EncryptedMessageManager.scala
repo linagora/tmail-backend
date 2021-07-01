@@ -1,6 +1,12 @@
 package com.linagora.tmail.encrypted
 
+import java.io.InputStream
+import java.util
+import java.util.Date
+
 import com.linagora.tmail.pgp.Encrypter
+import javax.inject.Inject
+import javax.mail.Flags
 import org.apache.james.mailbox.MessageManager.{AppendCommand, AppendResult, MailboxMetaData}
 import org.apache.james.mailbox.model.{ComposedMessageIdWithMetaData, FetchGroup, Mailbox, MailboxACL, MailboxCounters, MailboxId, MailboxPath, MessageRange, MessageResultIterator, SearchQuery}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}
@@ -11,14 +17,12 @@ import org.apache.james.mime4j.stream.MimeConfig
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.io.InputStream
-import java.util
-import java.util.Date
-import javax.inject.Inject
-import javax.mail.Flags
 import scala.jdk.CollectionConverters._
 
-class EncryptedMessageManager @Inject()(messageManager: MessageManager, keystoreManager: KeystoreManager) extends MessageManager {
+class EncryptedMessageManager @Inject()(messageManager: MessageManager,
+                                        keystoreManager: KeystoreManager,
+                                        clearEmailContentFactory: ClearEmailContentFactory,
+                                        encryptedEmailContentStore: EncryptedEmailContentStore) extends MessageManager {
   
   override def getMessageCount(mailboxSession: MailboxSession): Long = messageManager.getMessageCount(mailboxSession)
 
@@ -79,10 +83,26 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager, keystore
           messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
           messageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
           val clearMessage: Message = messageBuilder.parseMessage(appendCommand.getMsgIn.getInputStream)
-          val encryptedMessage: Message = Encrypter.forKeys(keys.map(key => key.payload).asJava)
-            .encrypt(clearMessage)
-
-          SMono.fromPublisher(messageManager.appendMessageReactive(AppendCommand.from(encryptedMessage), session))
+          clearEmailContentFactory.from(clearMessage)
+            .fold(e => SMono.error(e),
+              clearContent => storeEncryptedMessage(session, keys, clearMessage, clearContent))
         }
       })
+
+  private def storeEncryptedMessage(session: MailboxSession,
+                                    keys: Seq[PublicKey],
+                                    clearMessage: Message,
+                                    clearContent: ClearEmailContent): SMono[AppendResult] = {
+    val encrypter = Encrypter.forKeys(keys.map(key => key.payload).asJava)
+    val encryptedMessage: Message = encrypter
+      .encrypt(clearMessage)
+
+    SMono.fromPublisher(messageManager.appendMessageReactive(AppendCommand.from(encryptedMessage), session))
+      .flatMap(appendResult => {
+        val messageId = appendResult.getId.getMessageId
+        val encryptedEmailContent = new EncryptedEmailContentFactory(encrypter).encrypt(clearContent, messageId)
+        SMono(encryptedEmailContentStore.store(messageId, encryptedEmailContent))
+          .`then`(SMono.just(appendResult))
+      })
+  }
 }

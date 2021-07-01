@@ -34,7 +34,9 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
+import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
+import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
@@ -102,8 +104,10 @@ public class MemoryServer {
     private static class EncryptedMailboxModule extends AbstractModule {
         @Provides
         @Singleton
-        MailboxManager provide(InMemoryMailboxManager mailboxManager, KeystoreManager keystoreManager) {
-            return new EncryptedMailboxManager(mailboxManager, keystoreManager);
+        MailboxManager provide(InMemoryMailboxManager mailboxManager, KeystoreManager keystoreManager,
+                               ClearEmailContentFactory clearEmailContentFactory,
+                               InMemoryEncryptedEmailContentStore contentStore) {
+            return new EncryptedMailboxManager(mailboxManager, keystoreManager, clearEmailContentFactory, contentStore);
         }
     }
 
