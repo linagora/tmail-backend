@@ -1,13 +1,14 @@
 package com.linagora.tmail.encrypted
 
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicInteger
+
 import com.google.common.io.ByteSource
 import com.linagora.tmail.pgp.Encrypter
 import org.apache.james.jmap.api.model.Preview
 import org.apache.james.mailbox.model.{MessageId, ParsedAttachment}
 
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.atomic.AtomicInteger
 import scala.jdk.OptionConverters._
 
 class EncryptedEmailContentFactory(encrypter: Encrypter) {
@@ -19,10 +20,10 @@ class EncryptedEmailContentFactory(encrypter: Encrypter) {
       encryptedAttachmentMetadata = encryptAttachmentMetadata(clearEmailContent.attachments, messageId),
       encryptedAttachmentContents = encryptAttachmentContent(clearEmailContent.attachments))
 
-  def encryptPreview(preview: Preview): String =
+  private def encryptPreview(preview: Preview): String =
     encrypt(preview.getValue)
 
-  def encryptAttachmentMetadata(parsedAttachments: List[ParsedAttachment], messageId: MessageId): Option[String] = {
+  private def encryptAttachmentMetadata(parsedAttachments: List[ParsedAttachment], messageId: MessageId): Option[String] = {
     parsedAttachments match {
       case Nil | List() => None
       case _ =>
@@ -34,19 +35,19 @@ class EncryptedEmailContentFactory(encrypter: Encrypter) {
     }
   }
 
-  def encryptAttachmentContent(parsedAttachments: List[ParsedAttachment]): List[String] =
+  private def encryptAttachmentContent(parsedAttachments: List[ParsedAttachment]): List[String] =
     parsedAttachments match {
       case Nil | List() => List.empty
       case _ => parsedAttachments.map(parsedAttachment => encrypt(parsedAttachment.getContent))
     }
 
-  def encrypt(byteSource: ByteSource): String = {
+  private def encrypt(byteSource: ByteSource): String = {
     val stream: ByteArrayOutputStream = new ByteArrayOutputStream
     encrypter.encrypt(byteSource, stream)
     new String(stream.toByteArray, StandardCharsets.UTF_8)
   }
 
-  def encrypt(value: String): String =
+  private def encrypt(value: String): String =
     encrypt(ByteSource.wrap(value.getBytes(StandardCharsets.UTF_8)))
 }
 
