@@ -29,6 +29,11 @@ object EncryptedEmailFastView {
     EncryptedEmailFastView(
       encryptedPreview = EncryptedPreview(encryptedEmailContent.encryptedPreview),
       hasAttachment = encryptedEmailContent.hasAttachment)
+
+  def from(encryptedEmailDetailedView: EncryptedEmailDetailedView): EncryptedEmailFastView =
+    EncryptedEmailFastView(
+      encryptedPreview = encryptedEmailDetailedView.encryptedPreview,
+      hasAttachment = encryptedEmailDetailedView.hasAttachment)
 }
 
 case class EncryptedEmailFastView(encryptedPreview: EncryptedPreview,
