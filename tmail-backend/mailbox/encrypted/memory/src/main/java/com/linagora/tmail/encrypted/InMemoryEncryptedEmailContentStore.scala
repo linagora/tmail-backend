@@ -1,17 +1,17 @@
 package com.linagora.tmail.encrypted
 
+import java.lang
+import java.nio.charset.StandardCharsets
+
 import com.google.common.base.Preconditions
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore.{emailContentStore, messageIdBlobIdStore}
+import javax.inject.Inject
 import org.apache.james.blob.api.BlobStore.StoragePolicy
-import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
+import org.apache.james.blob.api.{BlobId, BlobStore}
 import org.apache.james.mailbox.model.MessageId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import java.lang
-import java.nio.charset.StandardCharsets
-import javax.inject.Inject
 
 object InMemoryEncryptedEmailContentStore {
   val emailContentStore: scala.collection.concurrent.Map[MessageId, EncryptedEmailContent] = scala.collection.concurrent.TrieMap()
@@ -19,7 +19,6 @@ object InMemoryEncryptedEmailContentStore {
 }
 
 class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
-                                                   bucketName: BucketName,
                                                    storagePolicy: StoragePolicy) extends EncryptedEmailContentStore {
 
   override def store(messageId: MessageId, encryptedEmailContent: EncryptedEmailContent): Publisher[Unit] =
@@ -48,7 +47,7 @@ class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
   private def storeAttachment(messageId: MessageId, encryptedAttachmentContents: List[String]): SMono[Unit] = {
     Preconditions.checkNotNull(encryptedAttachmentContents)
     SFlux.fromIterable(encryptedAttachmentContents)
-      .concatMap(attachmentContent => SMono.fromPublisher(blobStore.save(bucketName, attachmentContent.getBytes(StandardCharsets.UTF_8), storagePolicy)))
+      .concatMap(attachmentContent => SMono.fromPublisher(blobStore.save(blobStore.getDefaultBucketName, attachmentContent.getBytes(StandardCharsets.UTF_8), storagePolicy)))
       .index()
       .collectMap(positionBlobId => positionBlobId._1.intValue + POSITION_NUMBER_START_AT, positionBlobId => positionBlobId._2)
       .map(positionBlobIdMap => messageIdBlobIdStore.put(messageId, positionBlobIdMap))
@@ -62,5 +61,5 @@ class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
 
   private def deleteBlobStore(messageId: MessageId): SFlux[lang.Boolean] =
     SFlux.fromIterable(messageIdBlobIdStore.getOrElse(messageId, Map()).values)
-      .flatMap(blobId => SMono.fromPublisher(blobStore.delete(bucketName, blobId)))
+      .flatMap(blobId => SMono.fromPublisher(blobStore.delete(blobStore.getDefaultBucketName, blobId)))
 }
