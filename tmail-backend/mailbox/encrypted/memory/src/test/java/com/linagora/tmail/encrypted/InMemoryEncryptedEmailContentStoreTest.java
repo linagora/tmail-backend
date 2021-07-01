@@ -45,7 +45,7 @@ public class InMemoryEncryptedEmailContentStoreTest implements EncryptedEmailCon
 
     @Override
     public EncryptedEmailContentStore testee() {
-        return new InMemoryEncryptedEmailContentStore(blobStore, bucketName(), BlobStore.StoragePolicy.LOW_COST);
+        return new InMemoryEncryptedEmailContentStore(blobStore, BlobStore.StoragePolicy.LOW_COST);
     }
 
     @Override
