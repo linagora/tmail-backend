@@ -61,6 +61,7 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>blob-memory</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
