@@ -3,6 +3,7 @@ package com.linagora.tmail.encrypted.cassandra.table
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
+import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailContentStore.DEFAULT_STORAGE_POLICY
 import com.linagora.tmail.encrypted.{AttachmentNotFoundException, EncryptedEmailContent, EncryptedEmailContentStore, EncryptedEmailDetailedView, EncryptedEmailFastView, MessageNotFoundException}
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.blob.api.BlobStore.StoragePolicy
@@ -27,14 +28,17 @@ case class EncryptedEmailContentStoreCassandraModule() extends AbstractModule {
   }
 }
 
+object CassandraEncryptedEmailContentStore {
+  val DEFAULT_STORAGE_POLICY: StoragePolicy = StoragePolicy.LOW_COST
+}
+
 class CassandraEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
-                                                    bucketName: BucketName,
-                                                    storagePolicy: StoragePolicy,
                                                     encryptedEmailDAO: CassandraEncryptedEmailDAO) extends EncryptedEmailContentStore {
+  val bucketName: BucketName = blobStore.getDefaultBucketName;
 
   override def store(messageId: MessageId, encryptedEmailContent: EncryptedEmailContent): Publisher[Unit] =
     SFlux.fromIterable(encryptedEmailContent.encryptedAttachmentContents)
-      .concatMap(encryptedAttachmentContent => SMono.fromPublisher(blobStore.save(bucketName, encryptedAttachmentContent, storagePolicy)))
+      .concatMap(encryptedAttachmentContent => SMono.fromPublisher(blobStore.save(bucketName, encryptedAttachmentContent, DEFAULT_STORAGE_POLICY)))
       .index()
       .collectMap(positionBlobId => positionBlobId._1.intValue + POSITION_NUMBER_START_AT, positionBlobId => positionBlobId._2)
       .flatMap(positionBlobIdMap => encryptedEmailDAO.insert(messageId.asInstanceOf[CassandraMessageId],

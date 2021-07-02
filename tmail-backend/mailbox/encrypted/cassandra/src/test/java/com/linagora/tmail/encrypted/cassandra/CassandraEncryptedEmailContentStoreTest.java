@@ -59,7 +59,7 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
 
     @Override
     public EncryptedEmailContentStore testee() {
-        return new CassandraEncryptedEmailContentStore(blobStore, bucketName(), BlobStore.StoragePolicy.LOW_COST, cassandraEncryptedEmailDAO);
+        return new CassandraEncryptedEmailContentStore(blobStore, cassandraEncryptedEmailDAO);
     }
 
     @Override
