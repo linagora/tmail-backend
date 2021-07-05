@@ -29,6 +29,11 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions</artifactId>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>pgp-utils</artifactId>
+            <type>test-jar</type>
+        </dependency>
     </dependencies>
     
     <build>

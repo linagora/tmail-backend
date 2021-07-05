@@ -41,6 +41,7 @@ import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
@@ -68,6 +69,7 @@ public class MemoryServer {
     public static final Module JMAP_LINAGORA = Modules.combine(
         JMAP,
         new CustomMethodModule(),
+        new EncryptedEmailFastViewGetMethodModule(),
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
         new KeystoreMemoryModule(),
