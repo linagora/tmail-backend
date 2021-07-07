@@ -80,9 +80,10 @@ import com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
-import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
+import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore;
+import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
@@ -116,6 +117,7 @@ public class DistributedServer {
     public static final Module JMAP = Modules.combine(
         new CassandraJmapModule(),
         new CustomMethodModule(),
+        new EncryptedEmailContentStoreCassandraModule(),
         new EncryptedEmailFastViewGetMethodModule(),
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
@@ -213,7 +215,7 @@ public class DistributedServer {
         @Singleton
         MailboxManager provide(CassandraMailboxManager mailboxManager, KeystoreManager keystoreManager,
                                ClearEmailContentFactory clearEmailContentFactory,
-                               InMemoryEncryptedEmailContentStore contentStore) {
+                               CassandraEncryptedEmailContentStore contentStore) {
             return new EncryptedMailboxManager(mailboxManager, keystoreManager, clearEmailContentFactory, contentStore);
         }
     }
