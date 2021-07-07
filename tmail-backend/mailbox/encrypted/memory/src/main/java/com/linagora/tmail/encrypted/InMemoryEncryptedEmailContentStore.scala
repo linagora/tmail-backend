@@ -1,24 +1,38 @@
 package com.linagora.tmail.encrypted
 
-import java.lang
-import java.nio.charset.StandardCharsets
-
 import com.google.common.base.Preconditions
+import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
-import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore.{emailContentStore, messageIdBlobIdStore}
-import javax.inject.Inject
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.blob.api.{BlobId, BlobStore}
 import org.apache.james.mailbox.model.MessageId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-object InMemoryEncryptedEmailContentStore {
-  val emailContentStore: scala.collection.concurrent.Map[MessageId, EncryptedEmailContent] = scala.collection.concurrent.TrieMap()
-  val messageIdBlobIdStore: scala.collection.concurrent.Map[MessageId, Map[Int, BlobId]] = scala.collection.concurrent.TrieMap()
+import java.lang
+import java.nio.charset.StandardCharsets
+import javax.inject.Inject
+
+case class InMemoryEncryptedEmailContentStoreModule() extends AbstractModule {
+
+  override def configure(): Unit = {
+    bind(classOf[EncryptedEmailContentStore]).to(classOf[InMemoryEncryptedEmailContentStore])
+  }
+
+  @Provides
+  @Singleton
+  def provideInMemoryEncryptedEmailContentStore(blobStore: BlobStore): InMemoryEncryptedEmailContentStore =
+    new InMemoryEncryptedEmailContentStore(blobStore)
+
 }
 
-class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore) extends EncryptedEmailContentStore {
+class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
+                                                   emailContentStore: scala.collection.concurrent.Map[MessageId, EncryptedEmailContent] = scala.collection.concurrent.TrieMap(),
+                                                   messageIdBlobIdStore: scala.collection.concurrent.Map[MessageId, Map[Int, BlobId]] = scala.collection.concurrent.TrieMap()) extends EncryptedEmailContentStore {
+
+  def this(blobstoreImpl: BlobStore) {
+    this(blobStore = blobstoreImpl)
+  }
 
   override def store(messageId: MessageId, encryptedEmailContent: EncryptedEmailContent): Publisher[Unit] =
     storeAttachment(messageId, encryptedEmailContent.encryptedAttachmentContents)
