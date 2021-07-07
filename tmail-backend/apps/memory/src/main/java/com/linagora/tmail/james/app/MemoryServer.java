@@ -37,6 +37,7 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore;
+import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
@@ -72,6 +73,7 @@ public class MemoryServer {
         new EncryptedEmailFastViewGetMethodModule(),
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
+        new InMemoryEncryptedEmailContentStoreModule(),
         new KeystoreMemoryModule(),
         new KeystoreSetMethodModule(),
         new KeystoreGetMethodModule(),
