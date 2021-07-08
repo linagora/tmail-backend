@@ -7,13 +7,14 @@ import com.linagora.tmail.james.jmap.json.EncryptedEmailSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{EmailIdHelper, EncryptedEmailFastViewResults, EncryptedEmailGetRequest, EncryptedEmailGetResponse}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, UuidState}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.mail.UnparsedEmailId
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
-import org.apache.james.jmap.routes.SessionSupplier
+import org.apache.james.jmap.routes.{BlobResolver, SessionSupplier}
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
 import org.apache.james.metrics.api.MetricFactory
@@ -22,7 +23,6 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 class EncryptedEmailFastViewGetMethodModule extends AbstractModule {
@@ -30,6 +30,9 @@ class EncryptedEmailFastViewGetMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[EncryptedEmailFastViewGetMethod])
+    Multibinder.newSetBinder(binder(), classOf[BlobResolver])
+      .addBinding()
+      .to(classOf[EncryptedAttachmentBlobResolver])
   }
 }
 
