@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 public class InMemoryEncryptedEmailContentStoreTest implements EncryptedEmailContentStoreContract {
     private static final HashBlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
     private BlobStore blobStore;
+    private InMemoryEncryptedEmailContentStore inMemoryEncryptedEmailContentStore;
 
     static class MetricableBlobStoreExtension implements BeforeEachCallback {
         private RecordingMetricFactory metricFactory;
@@ -41,11 +42,12 @@ public class InMemoryEncryptedEmailContentStoreTest implements EncryptedEmailCon
             .blobIdFactory(BLOB_ID_FACTORY)
             .defaultBucketName()
             .passthrough());
+        inMemoryEncryptedEmailContentStore = new InMemoryEncryptedEmailContentStore(blobStore);
     }
 
     @Override
     public EncryptedEmailContentStore testee() {
-        return new InMemoryEncryptedEmailContentStore(blobStore);
+        return inMemoryEncryptedEmailContentStore;
     }
 
     @Override
