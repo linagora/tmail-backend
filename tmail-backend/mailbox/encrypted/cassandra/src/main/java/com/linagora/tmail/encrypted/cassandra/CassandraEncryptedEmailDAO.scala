@@ -1,4 +1,4 @@
-package com.linagora.tmail.encrypted.cassandra.table
+package com.linagora.tmail.encrypted.cassandra
 
 import com.datastax.driver.core.DataType.{cint, frozenMap, text}
 import com.datastax.driver.core.querybuilder.QueryBuilder

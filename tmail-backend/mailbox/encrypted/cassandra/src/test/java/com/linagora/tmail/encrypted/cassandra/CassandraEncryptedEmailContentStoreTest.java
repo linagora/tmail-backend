@@ -18,8 +18,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.EncryptedEmailContentStoreContract;
-import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailContentStore;
-import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailDAO;
 import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailStoreModule;
 
 public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailContentStoreContract {
@@ -27,6 +25,7 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
     private static final HashBlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
     private BlobStore blobStore;
     private CassandraEncryptedEmailDAO cassandraEncryptedEmailDAO;
+    private CassandraEncryptedEmailContentStore cassandraEncryptedEmailContentStore;
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
@@ -55,11 +54,12 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
             .defaultBucketName()
             .passthrough());
         cassandraEncryptedEmailDAO = new CassandraEncryptedEmailDAO(cassandra.getConf(), BLOB_ID_FACTORY);
+        cassandraEncryptedEmailContentStore = new CassandraEncryptedEmailContentStore(blobStore, cassandraEncryptedEmailDAO);
     }
 
     @Override
     public EncryptedEmailContentStore testee() {
-        return new CassandraEncryptedEmailContentStore(blobStore, cassandraEncryptedEmailDAO);
+        return cassandraEncryptedEmailContentStore;
     }
 
     @Override
