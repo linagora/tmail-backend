@@ -17,7 +17,7 @@ import com.datastax.driver.core.utils.UUIDs;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
-import com.linagora.tmail.encrypted.cassandra.table.EncryptedEmailContentStoreCassandraModule;
+import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailFastViewGetMethodContract;

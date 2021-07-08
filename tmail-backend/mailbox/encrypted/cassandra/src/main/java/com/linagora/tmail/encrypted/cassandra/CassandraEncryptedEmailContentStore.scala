@@ -1,9 +1,10 @@
-package com.linagora.tmail.encrypted.cassandra.table
+package com.linagora.tmail.encrypted.cassandra
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
-import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailContentStore.DEFAULT_STORAGE_POLICY
+import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore.DEFAULT_STORAGE_POLICY
+import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailStoreModule
 import com.linagora.tmail.encrypted.{AttachmentNotFoundException, EncryptedEmailContent, EncryptedEmailContentStore, EncryptedEmailDetailedView, EncryptedEmailFastView, MessageNotFoundException}
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.blob.api.BlobStore.StoragePolicy
