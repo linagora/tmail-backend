@@ -5,11 +5,13 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.io.ByteSource
+import com.linagora.tmail.encrypted.EncryptedAttachmentBlobId.prefix
 import com.linagora.tmail.pgp.Encrypter
 import org.apache.james.jmap.api.model.Preview
 import org.apache.james.mailbox.model.{MessageId, ParsedAttachment}
 
 import scala.jdk.OptionConverters._
+import scala.util.Try
 
 class EncryptedEmailContentFactory(encrypter: Encrypter) {
 
@@ -61,7 +63,7 @@ object AttachmentMetadata {
   def fromJava(parsedAttachment: ParsedAttachment, position: Int, messageId: MessageId): AttachmentMetadata =
     AttachmentMetadata(
       position = position,
-      blobId = s"encryptedAttachment_${messageId.serialize()}_$position",
+      blobId = EncryptedAttachmentBlobId(messageId, position).serialize,
       name = parsedAttachment.getName.toScala,
       contentType = parsedAttachment.getContentType.asString(),
       cid = parsedAttachment.getCid
@@ -69,6 +71,33 @@ object AttachmentMetadata {
         .map(cid => cid.getValue),
       isLine = parsedAttachment.isInline,
       size = parsedAttachment.getContent.size())
+}
+
+object EncryptedAttachmentBlobId {
+  private val prefix: String = "encryptedAttachment_"
+
+  def parse(messageIdFactory: MessageId.Factory, string: String): Either[IllegalArgumentException, EncryptedAttachmentBlobId] =
+    if (string.startsWith(prefix)) {
+      val positionIndex = string.lastIndexOf('_')
+
+      val aTry: Try[EncryptedAttachmentBlobId] = for {
+        position <- Try(string.substring(positionIndex + 1).toInt)
+          .filter(i => i >= 0)
+        messageId <- Try(messageIdFactory.fromString(string.substring(prefix.length + 1, positionIndex)))
+      } yield {
+        EncryptedAttachmentBlobId(messageId, position)
+      }
+      aTry.toEither
+        .left.map(new IllegalArgumentException(_))
+    } else {
+      Left(new IllegalArgumentException(s"Must start with $prefix"))
+    }
+}
+
+case class EncryptedAttachmentBlobId(messageId: MessageId, position: Int) {
+  def serialize: String = {
+    s"$prefix${messageId.serialize()}_$position"
+  }
 }
 
 case class AttachmentMetadata(position: Int,

@@ -1,5 +1,10 @@
 package com.linagora.tmail.encrypted
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
+import java.security.Security
+import java.util.concurrent.atomic.AtomicInteger
+
 import com.google.common.io.ByteSource
 import com.linagora.tmail.pgp.{Decrypter, Encrypter}
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
@@ -13,10 +18,8 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import play.api.libs.json.Json
 
-import java.io.ByteArrayInputStream
-import java.nio.charset.StandardCharsets
-import java.security.Security
-import java.util.concurrent.atomic.AtomicInteger
+
+import scala.jdk.OptionConverters._
 
 object EncryptedEmailContentTest {
   val HTML_CONTENT: String = "<b>html</b> content"
@@ -166,6 +169,60 @@ class EncryptedEmailContentTest {
     assertThatJson(decryptedAttachmentMetadata)
       .isArray
       .hasSize(1)
+  }
+
+  @Test
+  def parseShouldFailOnEmptyStrings(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldFailWhenNoPrefix(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "1_2").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldFailWhenInvalidMessageId(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_invalid_2").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldFailWhenEmptyMessageId(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment__2").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldFailWhenInvalidPosition(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_1_invalid").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldFailWhenEmptyPosition(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_1_").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldFailWhenNegativePosition(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_1_-1").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldSucceed(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_1_2"))
+      .isEqualTo(Right(EncryptedAttachmentBlobId(InMemoryMessageId.of(1), 2)))
+  }
+
+  @Test
+  def parseShouldSucceedWhenZero(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_1_0"))
+      .isEqualTo(Right(EncryptedAttachmentBlobId(InMemoryMessageId.of(1), 0)))
   }
 
   @Test
