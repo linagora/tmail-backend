@@ -83,7 +83,7 @@ object EncryptedAttachmentBlobId {
       val aTry: Try[EncryptedAttachmentBlobId] = for {
         position <- Try(string.substring(positionIndex + 1).toInt)
           .filter(i => i >= 0)
-        messageId <- Try(messageIdFactory.fromString(string.substring(prefix.length + 1, positionIndex)))
+        messageId <- Try(messageIdFactory.fromString(string.substring(prefix.length, positionIndex)))
       } yield {
         EncryptedAttachmentBlobId(messageId, position)
       }

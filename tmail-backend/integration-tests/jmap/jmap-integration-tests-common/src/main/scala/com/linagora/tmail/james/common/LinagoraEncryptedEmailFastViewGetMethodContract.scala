@@ -1,6 +1,8 @@
 package com.linagora.tmail.james.common
 
 import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
+import java.nio.charset.StandardCharsets
+
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe
 import com.linagora.tmail.james.jmap.model.EncryptedEmailGetRequest
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -18,12 +20,11 @@ import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.MailboxProbeImpl
+import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsString, Json}
-
-import java.nio.charset.StandardCharsets
 
 object LinagoraEncryptedEmailFastViewGetMethodContract {
   val MESSAGE: Message = Message.Builder.of
@@ -443,6 +444,29 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
 
     assertThat(decrypt(encryptedPreviewResponse))
       .isEqualTo(MESSAGE_PREVIEW)
+  }
+
+  @Test
+  def encryptedAttachmentsShouldBeDownloadable(server: GuiceJamesServer): Unit = {
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithTextAttachment.eml")))
+      .getMessageId
+
+    val attachment = `given`
+      .basePath("/download")
+    .when()
+      .get(s"$ACCOUNT_ID/encryptedAttachment_${messageId.serialize()}_0")
+    .`then`()
+      .extract()
+      .body()
+      .asString()
+
+    println(attachment)
+
+    assertThat(decrypt(attachment))
+      .isEqualTo("This is a beautiful banana.\n")
   }
 
   @Test
