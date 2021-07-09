@@ -86,6 +86,7 @@ import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStor
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
@@ -117,6 +118,7 @@ public class DistributedServer {
         new CassandraJmapModule(),
         new CustomMethodModule(),
         new EncryptedEmailContentStoreCassandraModule(),
+        new EncryptedEmailDetailedViewGetMethodModule(),
         new EncryptedEmailFastViewGetMethodModule(),
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
