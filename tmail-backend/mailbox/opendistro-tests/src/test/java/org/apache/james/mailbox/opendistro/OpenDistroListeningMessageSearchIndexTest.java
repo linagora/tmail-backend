@@ -48,6 +48,7 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.model.TestId;
 import org.apache.james.mailbox.model.TestMessageId;
+import org.apache.james.mailbox.model.ThreadId;
 import org.apache.james.mailbox.model.UidValidity;
 import org.apache.james.mailbox.model.UpdatedFlags;
 import org.apache.james.mailbox.store.FakeAuthenticator;
@@ -105,10 +106,12 @@ class OpenDistroListeningMessageSearchIndexTest {
         .modseq(MOD_SEQ);
 
     static final SimpleMailboxMessage MESSAGE_1 = MESSAGE_BUILDER.messageId(MESSAGE_ID_1)
+        .threadId(ThreadId.fromBaseMessageId(MESSAGE_ID_1))
         .uid(MESSAGE_UID_1)
         .build();
 
     static final SimpleMailboxMessage MESSAGE_2 = MESSAGE_BUILDER.messageId(MESSAGE_ID_2)
+        .threadId(ThreadId.fromBaseMessageId(MESSAGE_ID_2))
         .uid(MESSAGE_UID_2)
         .build();
 
@@ -123,6 +126,7 @@ class OpenDistroListeningMessageSearchIndexTest {
         .build();
 
     static final SimpleMailboxMessage MESSAGE_WITH_ATTACHMENT = MESSAGE_BUILDER.messageId(MESSAGE_ID_3)
+        .threadId(ThreadId.fromBaseMessageId(MESSAGE_ID_3))
         .uid(MESSAGE_UID_3)
         .addAttachments(ImmutableList.of(MESSAGE_ATTACHMENT))
         .build();

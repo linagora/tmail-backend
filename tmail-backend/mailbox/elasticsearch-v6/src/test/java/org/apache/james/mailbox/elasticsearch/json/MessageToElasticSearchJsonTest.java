@@ -42,6 +42,7 @@ import org.apache.james.mailbox.model.ByteContent;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.TestId;
 import org.apache.james.mailbox.model.TestMessageId;
+import org.apache.james.mailbox.model.ThreadId;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.mailbox.store.extractor.JsoupTextExtractor;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
@@ -97,13 +98,14 @@ class MessageToElasticSearchJsonTest {
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"), IndexAttachments.YES);
         MailboxMessage spamMail = new SimpleMailboxMessage(MESSAGE_ID,
-                date,
-                SIZE,
-                BODY_START_OCTET,
-                new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/spamMail.eml"))),
-                new Flags(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            date,
+            SIZE,
+            BODY_START_OCTET,
+            new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/spamMail.eml"))),
+            new Flags(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         spamMail.setUid(UID);
         spamMail.setModSeq(MOD_SEQ);
         assertThatJson(messageToElasticSearchJson.convertToJson(spamMail, ImmutableList.of(USERNAME)))
@@ -117,13 +119,14 @@ class MessageToElasticSearchJsonTest {
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"), IndexAttachments.YES);
         MailboxMessage spamMail = new SimpleMailboxMessage(MESSAGE_ID,
-                date,
-                SIZE,
-                BODY_START_OCTET,
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            date,
+            SIZE,
+            BODY_START_OCTET,
             new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/invalidCharset.eml"))),
-                new Flags(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+            new Flags(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         spamMail.setUid(UID);
         spamMail.setModSeq(MOD_SEQ);
 
@@ -139,13 +142,14 @@ class MessageToElasticSearchJsonTest {
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"), IndexAttachments.YES);
         MailboxMessage htmlMail = new SimpleMailboxMessage(MESSAGE_ID,
-                date,
-                SIZE,
-                BODY_START_OCTET,
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            date,
+            SIZE,
+            BODY_START_OCTET,
             new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/htmlMail.eml"))),
-                new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("social", "pocket-money").build(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+            new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("social", "pocket-money").build(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         htmlMail.setModSeq(MOD_SEQ);
         htmlMail.setUid(UID);
         assertThatJson(messageToElasticSearchJson.convertToJson(htmlMail, ImmutableList.of(USERNAME)))
@@ -159,13 +163,14 @@ class MessageToElasticSearchJsonTest {
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"), IndexAttachments.YES);
         MailboxMessage pgpSignedMail = new SimpleMailboxMessage(MESSAGE_ID,
-                date,
-                SIZE,
-                BODY_START_OCTET,
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            date,
+            SIZE,
+            BODY_START_OCTET,
             new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/pgpSignedMail.eml"))),
-                new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+            new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         pgpSignedMail.setModSeq(MOD_SEQ);
         pgpSignedMail.setUid(UID);
         assertThatJson(messageToElasticSearchJson.convertToJson(pgpSignedMail, ImmutableList.of(USERNAME)))
@@ -179,13 +184,14 @@ class MessageToElasticSearchJsonTest {
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"), IndexAttachments.YES);
         MailboxMessage mail = new SimpleMailboxMessage(MESSAGE_ID,
-                date,
-                SIZE,
-                BODY_START_OCTET,
-                new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/mail.eml"))),
-                new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            date,
+            SIZE,
+            BODY_START_OCTET,
+            new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/mail.eml"))),
+            new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         mail.setModSeq(MOD_SEQ);
         mail.setUid(UID);
         assertThatJson(messageToElasticSearchJson.convertToJson(mail,
@@ -199,14 +205,15 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"), IndexAttachments.YES);
-        MailboxMessage recursiveMail = new SimpleMailboxMessage(MESSAGE_ID, 
-                date,
-                SIZE,
-                BODY_START_OCTET,
-                new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
-                new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+        MailboxMessage recursiveMail = new SimpleMailboxMessage(MESSAGE_ID,
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            date,
+            SIZE,
+            BODY_START_OCTET,
+            new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
+            new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         recursiveMail.setModSeq(MOD_SEQ);
         recursiveMail.setUid(UID);
         assertThatJson(messageToElasticSearchJson.convertToJson(recursiveMail, ImmutableList.of(USERNAME)))
@@ -220,13 +227,14 @@ class MessageToElasticSearchJsonTest {
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"), IndexAttachments.YES);
         MailboxMessage mailWithNoInternalDate = new SimpleMailboxMessage(MESSAGE_ID,
-                null,
-                SIZE,
-                BODY_START_OCTET,
-                new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
-                new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            null,
+            SIZE,
+            BODY_START_OCTET,
+            new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
+            new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         mailWithNoInternalDate.setModSeq(MOD_SEQ);
         mailWithNoInternalDate.setUid(UID);
         assertThatJson(messageToElasticSearchJson.convertToJson(mailWithNoInternalDate, ImmutableList.of(USERNAME)))
@@ -239,13 +247,14 @@ class MessageToElasticSearchJsonTest {
     void emailWithAttachmentsShouldConvertAttachmentsWhenIndexAttachmentsIsTrue() throws IOException {
         // Given
         MailboxMessage mailWithNoInternalDate = new SimpleMailboxMessage(MESSAGE_ID,
-                null,
-                SIZE,
-                BODY_START_OCTET,
-                new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
-                new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            null,
+            SIZE,
+            BODY_START_OCTET,
+            new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
+            new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         mailWithNoInternalDate.setModSeq(MOD_SEQ);
         mailWithNoInternalDate.setUid(UID);
 
@@ -267,13 +276,14 @@ class MessageToElasticSearchJsonTest {
     void emailWithAttachmentsShouldNotConvertAttachmentsWhenIndexAttachmentsIsFalse() throws IOException {
         // Given
         MailboxMessage mailWithNoInternalDate = new SimpleMailboxMessage(MESSAGE_ID,
-                null,
-                SIZE,
-                BODY_START_OCTET,
-                new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
-                new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
-                propertyBuilder.build(),
-                MAILBOX_ID);
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            null,
+            SIZE,
+            BODY_START_OCTET,
+            new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
+            new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.SEEN).add("debian", "security").build(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
         mailWithNoInternalDate.setModSeq(MOD_SEQ);
         mailWithNoInternalDate.setUid(UID);
 
@@ -296,7 +306,9 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"), IndexAttachments.YES);
-        MailboxMessage mailWithNoMailboxId = new SimpleMailboxMessage(MESSAGE_ID, date,
+        MailboxMessage mailWithNoMailboxId = new SimpleMailboxMessage(MESSAGE_ID,
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            date,
             SIZE,
             BODY_START_OCTET,
             new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/recursiveMail.eml"))),
@@ -348,7 +360,9 @@ class MessageToElasticSearchJsonTest {
             textExtractor,
             ZoneId.of("Europe/Paris"),
             IndexAttachments.YES);
-        MailboxMessage spamMail = new SimpleMailboxMessage(MESSAGE_ID, date,
+        MailboxMessage spamMail = new SimpleMailboxMessage(MESSAGE_ID,
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
+            date,
             SIZE,
             BODY_START_OCTET,
             new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/nonTextual.eml"))),
@@ -368,6 +382,7 @@ class MessageToElasticSearchJsonTest {
     void convertToJsonWithoutAttachmentShouldConvertEmailBoby() throws IOException {
         // Given
         MailboxMessage message = new SimpleMailboxMessage(MESSAGE_ID,
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
             null,
             SIZE,
             BODY_START_OCTET,
@@ -396,6 +411,7 @@ class MessageToElasticSearchJsonTest {
     void convertToJsonShouldExtractHtmlText() throws IOException {
         // Given
         MailboxMessage message = new SimpleMailboxMessage(MESSAGE_ID,
+            ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
             SIZE,
             BODY_START_OCTET,
