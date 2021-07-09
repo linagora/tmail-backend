@@ -105,4 +105,6 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
           .`then`(SMono.just(appendResult))
       })
   }
+
+  override def getMailboxCountersReactive(mailboxSession: MailboxSession): Publisher[MailboxCounters] = messageManager.getMailboxCountersReactive(mailboxSession)
 }
