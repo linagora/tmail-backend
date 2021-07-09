@@ -16,6 +16,7 @@ import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.user.ldap.DockerLdapSingleton;
 import org.apache.james.user.ldap.LdapGenericContainer;
+import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -74,8 +75,8 @@ public class CombinedIdentityJamesServerTest {
         configuration.addProperty("[@readTimeout]", "1000");
 
         configuration.addProperty("[@userIdAttribute]", "mail");
-        configuration.addProperty("supportsVirtualHosting", true);
         configuration.addProperty("[@administratorId]", ADMIN.asString());
+        configuration.addProperty("enableVirtualHosting", true);
         return configuration;
     }
 
@@ -83,5 +84,13 @@ public class CombinedIdentityJamesServerTest {
     void shouldUseCombinedUsersRepositoryWhenSpecified(GuiceJamesServer server) {
         assertThat(server.getProbe(UsersRepositoryClassProbe.class).getUserRepositoryClass())
             .isEqualTo(CombinedUsersRepository.class);
+    }
+
+    @Test
+    void shouldAllowUserSynchronisation(GuiceJamesServer server) throws Exception {
+        server.getProbe(DataProbeImpl.class)
+            .fluent()
+            .addDomain("james.org")
+            .addUser("james-user@james.org", "123456");
     }
 }

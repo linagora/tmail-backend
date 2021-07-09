@@ -56,6 +56,13 @@ public class CombinedUsersRepositoryModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
+    InitializationOperation configureUsersRepository(ConfigurationProvider configurationProvider, CombinedUsersRepository usersRepository) {
+        return InitilizationOperationBuilder
+            .forClass(CombinedUsersRepository.class)
+            .init(() -> usersRepository.configure(configurationProvider.getConfiguration("usersrepository")));
+    }
+
+    @ProvidesIntoSet
     InitializationOperation configureLdap(LdapRepositoryConfiguration configuration, ReadOnlyLDAPUsersDAO readOnlyLDAPUsersDAO) {
         return InitilizationOperationBuilder
             .forClass(ReadOnlyUsersLDAPRepository.class)
