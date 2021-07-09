@@ -3,6 +3,7 @@ package com.linagora.tmail.james.app;
 import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN;
 import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN_PASSWORD;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
@@ -87,10 +88,12 @@ public class CombinedIdentityJamesServerTest {
     }
 
     @Test
-    void shouldAllowUserSynchronisation(GuiceJamesServer server) throws Exception {
-        server.getProbe(DataProbeImpl.class)
-            .fluent()
-            .addDomain("james.org")
-            .addUser("james-user@james.org", "123456");
+    void shouldAllowUserSynchronisation(GuiceJamesServer server) {
+        assertThatCode(
+            () -> server.getProbe(DataProbeImpl.class)
+                .fluent()
+                .addDomain("james.org")
+                .addUser("james-user@james.org", "123456"))
+            .doesNotThrowAnyException();
     }
 }
