@@ -125,7 +125,11 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
 
   override def logout(session: MailboxSession): Unit = mailboxManager.logout(session)
 
-  override def getMailboxReactive(mailboxId: MailboxId, session: MailboxSession): Publisher[MessageManager] = SMono.fromCallable(() => getMailbox(mailboxId, session))
+  override def getMailboxReactive(mailboxId: MailboxId, session: MailboxSession): Publisher[MessageManager] =
+    SMono.fromPublisher(mailboxManager.getMailboxReactive(mailboxId, session))
+      .map(messageManager => new EncryptedMessageManager(messageManager, keystoreManager, clearEmailContentFactory, encryptedEmailContentStore))
 
-  override def getMailboxReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MessageManager] = SMono.fromCallable(() => getMailbox(mailboxPath, session))
+  override def getMailboxReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MessageManager] =
+    SMono.fromPublisher(mailboxManager.getMailboxReactive(mailboxPath, session))
+      .map(messageManager => new EncryptedMessageManager(messageManager, keystoreManager, clearEmailContentFactory, encryptedEmailContentStore))
 }
