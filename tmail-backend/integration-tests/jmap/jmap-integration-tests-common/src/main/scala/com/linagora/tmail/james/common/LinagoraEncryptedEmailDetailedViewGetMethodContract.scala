@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.EncryptHelper.{PGP_KEY_ARMORED, decrypt}
+import com.linagora.tmail.james.common.EncryptHelper.{decrypt, uploadPublicKey}
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract.{BOB_INBOX_PATH, MESSAGE, MESSAGE_HAS_ATTACHMENTS, MESSAGE_HTML, MESSAGE_PREVIEW}
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe
 import com.linagora.tmail.james.jmap.model.EncryptedEmailGetRequest
@@ -70,35 +70,10 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
     server.getProbe(classOf[MailboxProbeImpl])
       .createMailbox(BOB_INBOX_PATH)
 
-    uploadPublicKey()
+    uploadPublicKey(ACCOUNT_ID, requestSpecification)
   }
 
   def randomMessageId: MessageId
-
-  private def uploadPublicKey(): Unit = {
-    val request: String =
-      s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
-         |  "methodCalls": [
-         |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
-         |      "create": {
-         |        "K87": {
-         |          "key": "$PGP_KEY_ARMORED"
-         |        }
-         |      }
-         |    }, "c1"]
-         |  ]
-         |}""".stripMargin
-
-    `given`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
-    .when()
-      .post()
-    .`then`
-      .statusCode(HttpStatus.SC_OK)
-  }
 
   @Test
   def methodShouldReturnFailWhenMissingOneCapability(): Unit = {
@@ -595,30 +570,11 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
 
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
 
-    val keystoreSetRequest: String =
-      s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
-         |  "methodCalls": [
-         |    ["Keystore/set", {
-         |      "accountId": "$ANDRE_ACCOUNT_ID",
-         |      "create": {
-         |        "K87": {
-         |          "key": "$PGP_KEY_ARMORED"
-         |        }
-         |      }
-         |    }, "c1"]
-         |  ]
-         |}""".stripMargin
-
-    `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
-      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .build)
-      .body(keystoreSetRequest)
-    .when
-      .post
-    .`then`
-      .statusCode(HttpStatus.SC_OK)
+    uploadPublicKey(ANDRE_ACCOUNT_ID,
+      baseRequestSpecBuilder(server)
+        .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+        .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .build)
 
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(ANDRE.asString(),
