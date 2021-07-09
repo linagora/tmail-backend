@@ -1,9 +1,5 @@
 package com.linagora.tmail.encrypted
 
-import java.util.Optional
-import java.{lang, util}
-
-import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager.{MailboxCapabilities, MailboxRenamedResult, MessageCapabilities, SearchCapabilities}
 import org.apache.james.mailbox.model.search.MailboxQuery
@@ -11,6 +7,11 @@ import org.apache.james.mailbox.model.{Mailbox, MailboxACL, MailboxAnnotation, M
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager}
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
+import reactor.core.scala.publisher.SMono
+
+import java.util.Optional
+import java.{lang, util}
+import javax.inject.Inject
 
 class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
                                         keystoreManager: KeystoreManager,
@@ -124,7 +125,11 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
 
   override def logout(session: MailboxSession): Unit = mailboxManager.logout(session)
 
-  override def getMailboxReactive(mailboxId: MailboxId, session: MailboxSession): Publisher[MessageManager] = mailboxManager.getMailboxReactive(mailboxId, session)
+  override def getMailboxReactive(mailboxId: MailboxId, session: MailboxSession): Publisher[MessageManager] =
+    SMono.fromPublisher(mailboxManager.getMailboxReactive(mailboxId, session))
+      .map(messageManager => new EncryptedMessageManager(messageManager, keystoreManager, clearEmailContentFactory, encryptedEmailContentStore))
 
-  override def getMailboxReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MessageManager] = mailboxManager.getMailboxReactive(mailboxPath, session)
+  override def getMailboxReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MessageManager] =
+    SMono.fromPublisher(mailboxManager.getMailboxReactive(mailboxPath, session))
+      .map(messageManager => new EncryptedMessageManager(messageManager, keystoreManager, clearEmailContentFactory, encryptedEmailContentStore))
 }
