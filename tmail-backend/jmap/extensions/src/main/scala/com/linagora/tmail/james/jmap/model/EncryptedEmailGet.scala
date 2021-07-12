@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.model
 
-import com.linagora.tmail.encrypted.EncryptedEmailFastView
+import com.linagora.tmail.encrypted.{EncryptedEmailDetailedView, EncryptedEmailFastView}
 import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.apache.james.jmap.mail.{Email, EmailIds, EmailNotFound, RequestTooLargeException, UnparsedEmailId}
 import org.apache.james.jmap.method.WithAccountId
@@ -59,3 +59,31 @@ object EmailIdHelper {
         .toEither
         .left.map(e => id -> new IllegalArgumentException(e)))
 }
+
+case class EncryptedEmailDetailedResponse(accountId: AccountId,
+                                     state: UuidState,
+                                     list: Option[Map[MessageId, EncryptedEmailDetailedView]],
+                                     notFound: Option[EmailNotFound])
+
+object EncryptedEmailDetailedViewResults {
+  def notFound(unparsedEmailId: UnparsedEmailId): EncryptedEmailDetailedViewResults =
+    EncryptedEmailDetailedViewResults(None, Some(EmailNotFound(Set(unparsedEmailId))))
+
+  def notFound(messageId: MessageId): EncryptedEmailDetailedViewResults =
+    EncryptedEmailDetailedViewResults(None, Some(EmailNotFound(Set(Email.asUnparsed(messageId).get))))
+
+  def list(messageId: MessageId, detailedView: EncryptedEmailDetailedView): EncryptedEmailDetailedViewResults =
+    EncryptedEmailDetailedViewResults(Some(Map(messageId -> detailedView)), None)
+
+  def empty(): EncryptedEmailDetailedViewResults =
+    EncryptedEmailDetailedViewResults(None, None)
+
+  def merge(result1: EncryptedEmailDetailedViewResults, result2: EncryptedEmailDetailedViewResults): EncryptedEmailDetailedViewResults =
+    EncryptedEmailDetailedViewResults(
+      list = (result1.list ++ result2.list).reduceOption(_ ++ _),
+      notFound = (result1.notFound ++ result2.notFound).reduceOption((notFound1, notFound2) => notFound1.merge(notFound2)))
+
+}
+
+case class EncryptedEmailDetailedViewResults(list: Option[Map[MessageId, EncryptedEmailDetailedView]],
+                                             notFound: Option[EmailNotFound])

@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.encrypted.{EncryptedEmailFastView, EncryptedPreview}
-import com.linagora.tmail.james.jmap.model.{EncryptedEmailGetRequest, EncryptedEmailGetResponse}
+import com.linagora.tmail.encrypted.{EncryptedAttachmentMetadata, EncryptedEmailDetailedView, EncryptedEmailFastView, EncryptedHtml, EncryptedPreview}
+import com.linagora.tmail.james.jmap.model.{EncryptedEmailDetailedResponse, EncryptedEmailGetRequest, EncryptedEmailGetResponse}
 import eu.timepit.refined
 import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.UuidState
@@ -26,10 +26,17 @@ object EncryptedEmailSerializer {
   private implicit val encryptedPreviewWrites: Writes[EncryptedPreview] = Json.valueWrites[EncryptedPreview]
   private implicit val encryptedEmailFastViewWrites: Writes[EncryptedEmailFastView] = Json.writes[EncryptedEmailFastView]
   private implicit val encryptedEmailGetResponseWrites: Writes[EncryptedEmailGetResponse] = Json.writes[EncryptedEmailGetResponse]
+  private implicit val encryptedHtmlWrites: Writes[EncryptedHtml] = Json.valueWrites[EncryptedHtml]
+  private implicit val encryptedAttachmentMetadataWrites: Writes[EncryptedAttachmentMetadata] = Json.valueWrites[EncryptedAttachmentMetadata]
+  private implicit val encryptedEmailDetailedViewWrites: Writes[EncryptedEmailDetailedView] = Json.writes[EncryptedEmailDetailedView]
+  private implicit val encryptedEmailDetailedResponseWrites: Writes[EncryptedEmailDetailedResponse] = Json.writes[EncryptedEmailDetailedResponse]
 
   def deserializeEncryptedEmailGetRequest(input: JsValue): JsResult[EncryptedEmailGetRequest] =
     Json.fromJson[EncryptedEmailGetRequest](input)
 
   def serializeEncryptedEmailGetResponse(encryptedEmailGetResponse: EncryptedEmailGetResponse) : JsValue =
     Json.toJson(encryptedEmailGetResponse)
+
+  def serializeEncryptedEmailDetailedResponse(encryptedEmailDetailedResponse: EncryptedEmailDetailedResponse): JsValue =
+    Json.toJson(encryptedEmailDetailedResponse)
 }

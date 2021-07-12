@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
+import com.linagora.tmail.james.common.EncryptHelper.{decrypt, uploadPublicKey}
+import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract.{BOB_INBOX_PATH, MESSAGE, MESSAGE_HAS_ATTACHMENTS, MESSAGE_HTML, MESSAGE_PREVIEW}
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe
 import com.linagora.tmail.james.jmap.model.EncryptedEmailGetRequest
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -15,8 +16,9 @@ import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
-import org.apache.james.mailbox.model.{MailboxPath, MessageId}
+import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
+import org.apache.james.mime4j.message.{BodyPartBuilder, MultipartBuilder}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
@@ -25,7 +27,7 @@ import play.api.libs.json.{JsString, Json}
 
 import java.nio.charset.StandardCharsets
 
-object LinagoraEncryptedEmailFastViewGetMethodContract {
+object LinagoraEncryptedEmailDetailedViewGetMethodContract {
   val MESSAGE: Message = Message.Builder.of
     .setSubject("test")
     .setSender(BOB.asString)
@@ -34,15 +36,24 @@ object LinagoraEncryptedEmailFastViewGetMethodContract {
     .setBody("test mail", StandardCharsets.UTF_8)
     .build
 
-  val MESSAGE_PREVIEW: String = "test mail"
+  val MESSAGE_HAS_ATTACHMENTS: Message = Message.Builder.of()
+    .setBody(MultipartBuilder.create("mixed")
+      .addBodyPart(BodyPartBuilder.create
+        .setBody("attachment content", "plain", StandardCharsets.UTF_8)
+        .setContentDisposition("attachment"))
+      .addBodyPart(BodyPartBuilder.create()
+        .setBody("text content", "plain", StandardCharsets.UTF_8))
+      .addBodyPart(BodyPartBuilder.create
+        .setBody("<b>html</b> content", "html", StandardCharsets.UTF_8))
+      .build)
+    .build
 
+  val MESSAGE_PREVIEW: String = "test mail"
+  val MESSAGE_HTML: String = "test mail"
   val BOB_INBOX_PATH: MailboxPath = MailboxPath.inbox(BOB)
 }
 
-trait LinagoraEncryptedEmailFastViewGetMethodContract {
-
-  import EncryptHelper.decrypt
-  import LinagoraEncryptedEmailFastViewGetMethodContract._
+trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -56,8 +67,8 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
-    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    mailboxProbe.createMailbox(BOB_INBOX_PATH)
+    server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(BOB_INBOX_PATH)
 
     uploadPublicKey(ACCOUNT_ID, requestSpecification)
   }
@@ -70,7 +81,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["1"]
          |    }, "c1"]
@@ -106,7 +117,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": [],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["1"]
          |    }, "c1"]
@@ -142,7 +153,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "unknownAccountId",
          |      "ids": ["${randomMessageId.serialize}"]
          |    }, "c1"]
@@ -182,7 +193,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": $emailIdsJson
          |    }, "c1"]
@@ -221,7 +232,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["invalid"]
          |    }, "c1"]
@@ -245,7 +256,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |    "sessionState": "${SESSION_STATE.value}",
            |    "methodResponses": [
            |        [
-           |            "EncryptedEmailFastView/get",
+           |            "EncryptedEmailDetailedView/get",
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
@@ -264,7 +275,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
@@ -288,7 +299,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |    "sessionState": "${SESSION_STATE.value}",
            |    "methodResponses": [
            |        [
-           |            "EncryptedEmailFastView/get",
+           |            "EncryptedEmailDetailedView/get",
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
@@ -317,7 +328,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
@@ -341,7 +352,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |    "sessionState": "${SESSION_STATE.value}",
            |    "methodResponses": [
            |        [
-           |            "EncryptedEmailFastView/get",
+           |            "EncryptedEmailDetailedView/get",
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
@@ -356,7 +367,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   }
 
   @Test
-  def methodShouldReturnFastViewWhenEmailIdExits(server: GuiceJamesServer): Unit = {
+  def methodShouldReturnDetailedViewWhenEmailIdExits(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(BOB.asString(),
         BOB_INBOX_PATH,
@@ -366,7 +377,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
@@ -395,7 +406,8 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |            "${messageId.serialize()}",
            |            {
            |                "encryptedPreview": "$${json-unit.ignore}",
-           |                "hasAttachment": false
+           |                "hasAttachment": false,
+           |                "encryptedHtml": "$${json-unit.ignore}"
            |            }
            |        ]
            |    ]
@@ -404,45 +416,14 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
     assertThatJson(response)
       .inPath("methodResponses[0][1].list[0][1].encryptedPreview")
       .isNotNull
-  }
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].list[0][1].encryptedHtml")
+      .isNotNull
 
-  @Test
-  def encryptedPreviewShouldEncrypt(server: GuiceJamesServer): Unit = {
-    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
-        BOB_INBOX_PATH,
-        AppendCommand.from(MESSAGE))
-      .getMessageId
-    val request: String =
-      s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
-         |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
-         |      "ids": ["${messageId.serialize}"]
-         |    }, "c1"]
-         |  ]
-         |}""".stripMargin
-
-    val response: String = `given`
-      .body(request)
-    .when()
-      .post()
-    .`then`
-      .statusCode(HttpStatus.SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .asString()
-
-    val encryptedPreviewResponse:String = (((Json.parse(response) \\"methodResponses")
-      .head \\ "list")
-      .head \\ "encryptedPreview")
-      .head.asInstanceOf[JsString]
-      .value
-
-    assertThat(decrypt(encryptedPreviewResponse))
-      .isEqualTo(MESSAGE_PREVIEW)
+    // Because message doesn't have attachment
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].list[0][1].encryptedAttachmentMetadata")
+      .isAbsent()
   }
 
   @Test
@@ -467,7 +448,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["${messageId1.serialize}", "${messageId2.serialize}", "${messageId3.serialize}"]
          |    }, "c1"]
@@ -497,21 +478,24 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |            "${messageId1.serialize()}",
            |            {
            |                "encryptedPreview": "$${json-unit.ignore}",
-           |                "hasAttachment": false
+           |                "hasAttachment": false,
+           |                "encryptedHtml": "$${json-unit.ignore}"
            |            }
            |        ],
            |        [
            |            "${messageId2.serialize()}",
            |            {
            |                "encryptedPreview": "$${json-unit.ignore}",
-           |                "hasAttachment": false
+           |                "hasAttachment": false,
+           |                "encryptedHtml": "$${json-unit.ignore}"
            |            }
            |        ],
            |        [
            |            "${messageId3.serialize()}",
            |            {
            |                "encryptedPreview": "$${json-unit.ignore}",
-           |                "hasAttachment": false
+           |                "hasAttachment": false,
+           |                "encryptedHtml": "$${json-unit.ignore}"
            |            }
            |        ]
            |    ]
@@ -531,7 +515,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["${existMessageId.serialize}", "${notFoundMessageId1.serialize}"]
          |    }, "c1"]
@@ -561,7 +545,8 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |            "${existMessageId.serialize}",
            |            {
            |                "encryptedPreview": "$${json-unit.ignore}",
-           |                "hasAttachment": false
+           |                "hasAttachment": false,
+           |                "encryptedHtml": "$${json-unit.ignore}"
            |            }
            |        ]
            |    ],
@@ -572,6 +557,9 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
 
     assertThatJson(response)
       .inPath("methodResponses[0][1].list[0][1].encryptedPreview")
+      .isNotNull
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].list[0][1].encryptedHtml")
       .isNotNull
   }
 
@@ -598,7 +586,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
@@ -622,7 +610,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |    "sessionState": "${SESSION_STATE.value}",
            |    "methodResponses": [
            |        [
-           |            "EncryptedEmailFastView/get",
+           |            "EncryptedEmailDetailedView/get",
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
@@ -637,7 +625,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   }
 
   @Test
-  def methodShouldReturnNotFoundWhenAccountDoesNotHaveAnyKeyStore(server: GuiceJamesServer) : Unit = {
+  def methodShouldReturnNotFoundWhenAccountDoesNotHaveAnyKeyStore(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
       .addUser(ANDRE.asString(), ANDRE_PASSWORD)
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
@@ -653,7 +641,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
-         |    ["EncryptedEmailFastView/get", {
+         |    ["EncryptedEmailDetailedView/get", {
          |      "accountId": "$ANDRE_ACCOUNT_ID",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
@@ -681,7 +669,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |    "sessionState": "${SESSION_STATE.value}",
            |    "methodResponses": [
            |        [
-           |            "EncryptedEmailFastView/get",
+           |            "EncryptedEmailDetailedView/get",
            |            {
            |                "accountId": "$ANDRE_ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
@@ -695,4 +683,277 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |}""".stripMargin)
   }
 
+  @Test
+  def encryptedPreviewShouldEncrypt(server: GuiceJamesServer): Unit = {
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(MESSAGE))
+      .getMessageId
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+         |  "methodCalls": [
+         |    ["EncryptedEmailDetailedView/get", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "ids": ["${messageId.serialize}"]
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    val encryptedPreviewResponse: String = (((Json.parse(response) \\ "methodResponses")
+      .head \\ "list")
+      .head \\ "encryptedPreview")
+      .head.asInstanceOf[JsString]
+      .value
+
+    assertThat(decrypt(encryptedPreviewResponse))
+      .isEqualTo(MESSAGE_PREVIEW)
+  }
+
+  @Test
+  def encryptedHtmlShouldEncrypt(server: GuiceJamesServer): Unit = {
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(MESSAGE))
+      .getMessageId
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+         |  "methodCalls": [
+         |    ["EncryptedEmailDetailedView/get", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "ids": ["${messageId.serialize}"]
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    val encryptedHtmlResponse: String = (((Json.parse(response) \\ "methodResponses")
+      .head \\ "list")
+      .head \\ "encryptedHtml")
+      .head.asInstanceOf[JsString]
+      .value
+
+    assertThat(decrypt(encryptedHtmlResponse))
+      .isEqualTo(MESSAGE_HTML)
+  }
+
+  @Test
+  def methodShouldSuccessWhenMessageHasAttachment(server: GuiceJamesServer): Unit = {
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(MESSAGE_HAS_ATTACHMENTS))
+      .getMessageId
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+         |  "methodCalls": [
+         |    ["EncryptedEmailDetailedView/get", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "ids": ["${messageId.serialize}"]
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1]")
+      .isEqualTo(
+        s"""{
+           |    "accountId": "$ACCOUNT_ID",
+           |    "state": "${INSTANCE.value}",
+           |    "list": [
+           |        [
+           |            "${messageId.serialize()}",
+           |            {
+           |                "encryptedPreview": "$${json-unit.ignore}",
+           |                "hasAttachment": true,
+           |                "encryptedHtml": "$${json-unit.ignore}",
+           |                "encryptedAttachmentMetadata": "$${json-unit.ignore}"
+           |            }
+           |        ]
+           |    ]
+           |}""".stripMargin)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].list[0][1].encryptedPreview")
+      .isNotNull
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].list[0][1].encryptedHtml")
+      .isNotNull
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].list[0][1].encryptedAttachmentMetadata")
+      .isNotNull()
+  }
+
+  @Test
+  def encryptedAttachmentMetadataShouldEncrypt(server: GuiceJamesServer): Unit = {
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(MESSAGE_HAS_ATTACHMENTS))
+      .getMessageId
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+         |  "methodCalls": [
+         |    ["EncryptedEmailDetailedView/get", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "ids": ["${messageId.serialize}"]
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    val encryptedHtmlResponse: String = (((Json.parse(response) \\ "methodResponses")
+      .head \\ "list")
+      .head \\ "encryptedAttachmentMetadata")
+      .head.asInstanceOf[JsString]
+      .value
+
+    assertThatJson(decrypt(encryptedHtmlResponse))
+      .isEqualTo(s"""[
+                   |    {
+                   |        "position": 0,
+                   |        "blobId": "$${json-unit.ignore}",
+                   |        "contentType": "text/plain; charset=UTF-8",
+                   |        "isLine": false,
+                   |        "size": 18
+                   |    }
+                   |]""".stripMargin)
+  }
+
+  @Test
+  def methodShouldSupportBackReference(server: GuiceJamesServer): Unit = {
+    val mailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(MailboxConstants.USER_NAMESPACE, BOB.asString, MailboxConstants.INBOX)
+    val request: String =
+      s"""{
+         |    "using": [
+         |        "urn:ietf:params:jmap:core",
+         |        "urn:ietf:params:jmap:mail",
+         |        "com:linagora:params:jmap:pgp"
+         |    ],
+         |    "methodCalls": [
+         |        [
+         |            "Email/set",
+         |            {
+         |                "accountId": "$ACCOUNT_ID",
+         |                "create": {
+         |                    "K87": {
+         |                        "mailboxIds": {
+         |                            "${mailboxId.serialize}": true
+         |                        },
+         |                        "subject": "Boredome comes from a boring mind!"
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ],
+         |        [
+         |            "EncryptedEmailDetailedView/get",
+         |            {
+         |                "accountId": "$ACCOUNT_ID",
+         |                "ids": [
+         |                    "#K87"
+         |                ]
+         |            },
+         |            "c2"
+         |        ]
+         |    ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "$${json-unit.ignore}",
+           |    "methodResponses": [
+           |        [
+           |            "Email/set",
+           |            {
+           |                "accountId": "$ACCOUNT_ID",
+           |                "newState": "$${json-unit.ignore}",
+           |                "oldState": "$${json-unit.ignore}",
+           |                "created": {
+           |                    "K87": "$${json-unit.ignore}"
+           |                }
+           |            },
+           |            "c1"
+           |        ],
+           |        [
+           |            "EncryptedEmailDetailedView/get",
+           |            {
+           |                "accountId": "$ACCOUNT_ID",
+           |                "state": "$${json-unit.ignore}",
+           |                "list": [
+           |                    [
+           |                      "$${json-unit.ignore}",
+           |                        {
+           |                            "encryptedPreview": "$${json-unit.ignore}",
+           |                            "encryptedHtml": "$${json-unit.ignore}",
+           |                            "hasAttachment": false
+           |                        }
+           |                    ]
+           |                ]
+           |            },
+           |            "c2"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+  }
 }

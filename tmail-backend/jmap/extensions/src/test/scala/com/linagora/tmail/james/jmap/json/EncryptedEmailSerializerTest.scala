@@ -1,8 +1,8 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.encrypted.{EncryptedEmailFastView, EncryptedPreview}
+import com.linagora.tmail.encrypted.{EncryptedAttachmentMetadata, EncryptedEmailDetailedView, EncryptedEmailFastView, EncryptedHtml, EncryptedPreview}
 import com.linagora.tmail.james.jmap.json.EncryptedEmailSerializerTest.{ACCOUNT_ID, MESSAGE_ID_FACTORY}
-import com.linagora.tmail.james.jmap.model.{EncryptedEmailGetRequest, EncryptedEmailGetResponse}
+import com.linagora.tmail.james.jmap.model.{EncryptedEmailDetailedResponse, EncryptedEmailGetRequest, EncryptedEmailGetResponse}
 import org.apache.james.jmap.core.{AccountId, Id, UuidState}
 import org.apache.james.jmap.mail.{Email, EmailIds, EmailNotFound, UnparsedEmailId}
 import org.apache.james.mailbox.inmemory.InMemoryMessageId
@@ -73,5 +73,47 @@ class EncryptedEmailSerializerTest {
 
     assertThat(actualEncryptedEmailGetRequest)
       .isEqualTo(expectedEncryptedEmailGetRequest)
+  }
+
+  @Test
+  def serializeEncryptedEmailDetailedResponseShouldSuccess(): Unit = {
+    val messageId: MessageId = MESSAGE_ID_FACTORY.generate()
+    val notFoundMessageId: MessageId = MESSAGE_ID_FACTORY.generate()
+    val encryptedEmailDetailedView: EncryptedEmailDetailedView = EncryptedEmailDetailedView(
+      encryptedPreview = EncryptedPreview("EncryptedPreview1"),
+      encryptedHtml = EncryptedHtml("EncryptedHtml1"),
+      hasAttachment = true,
+      encryptedAttachmentMetadata = Some(EncryptedAttachmentMetadata("EncryptedAttachmentMetadata1")))
+    val encryptedEmailDetailedResponse:EncryptedEmailDetailedResponse = EncryptedEmailDetailedResponse(
+      accountId = ACCOUNT_ID,
+      state = UuidState.INSTANCE,
+      list = Some(Map(messageId -> encryptedEmailDetailedView)),
+      notFound = Some(EmailNotFound(Set(Email.asUnparsed(notFoundMessageId).get))))
+
+    val actualValue: JsValue = EncryptedEmailSerializer.serializeEncryptedEmailDetailedResponse(encryptedEmailDetailedResponse)
+
+    val expectedValue: JsValue = Json.parse(
+      s"""
+        |{
+        |    "accountId": "aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8",
+        |    "state": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+        |    "list": [
+        |        [
+        |            "${messageId.serialize()}",
+        |            {
+        |                "encryptedPreview": "EncryptedPreview1",
+        |                "encryptedHtml": "EncryptedHtml1",
+        |                "hasAttachment": true,
+        |                "encryptedAttachmentMetadata": "EncryptedAttachmentMetadata1"
+        |            }
+        |        ]
+        |    ],
+        |    "notFound": [
+        |        "${notFoundMessageId.serialize()}"
+        |    ]
+        |}""".stripMargin)
+
+    assertThat(actualValue)
+      .isEqualTo(expectedValue)
   }
 }
