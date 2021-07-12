@@ -48,6 +48,7 @@ import org.apache.james.mailbox.store.StoreMessageIdManager;
 import org.apache.james.mailbox.store.StoreRightManager;
 import org.apache.james.mailbox.store.event.MailboxAnnotationListener;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
+import org.apache.james.mailbox.store.mail.NaiveThreadIdGuessingAlgorithmImpl;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver;
 import org.apache.james.mailbox.store.quota.QuotaComponents;
@@ -67,8 +68,6 @@ import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.encrypted.EncryptedEmailContent;
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.MessageNotFoundException;
-import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailContentStore;
-import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailDAO;
 import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailStoreModule;
 
 import reactor.core.publisher.Mono;
@@ -144,7 +143,7 @@ public class DeleteEncryptedProjectionHookTest {
             new NoMailboxPathLocker(), new MessageParser(), new CassandraMessageId.Factory(),
             eventBus, annotationManager, storeRightManager, quotaComponents, index,
             MailboxManagerConfiguration.DEFAULT,
-            preDeletionHooks);
+            preDeletionHooks, new NaiveThreadIdGuessingAlgorithmImpl());
 
         eventBus.register(new MailboxAnnotationListener(mapperFactory, sessionProvider));
         eventBus.register(mapperFactory.deleteMessageListener());
