@@ -60,6 +60,7 @@ import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.S
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.SUBTYPE;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.TEXT;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.TEXT_BODY;
+import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.THREAD_ID;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.TO;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.UID;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.USER_FLAGS;
@@ -95,6 +96,10 @@ public class MailboxMappingFactory {
                         .startObject(MESSAGE_ID)
                             .field(TYPE, KEYWORD)
                             .field(STORE, true)
+                        .endObject()
+
+                        .startObject(THREAD_ID)
+                            .field(TYPE, KEYWORD)
                         .endObject()
 
                         .startObject(UID)
