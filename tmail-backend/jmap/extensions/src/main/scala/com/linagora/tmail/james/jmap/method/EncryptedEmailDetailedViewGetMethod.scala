@@ -7,6 +7,7 @@ import com.linagora.tmail.james.jmap.json.EncryptedEmailSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{EmailIdHelper, EncryptedEmailDetailedResponse, EncryptedEmailDetailedViewResults, EncryptedEmailGetRequest}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, UuidState}
@@ -22,7 +23,6 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 class EncryptedEmailDetailedViewGetMethodModule extends AbstractModule {
@@ -92,7 +92,7 @@ class EncryptedEmailDetailedViewGetMethod @Inject()(encryptedEmailDetailedViewRe
     encryptedEmailDetailedViewReader.read(ids, mailboxSession)
       .map(messageIdAndEitherDetailedView => messageIdAndEitherDetailedView._2 match {
         case Left(_) => EncryptedEmailDetailedViewResults.notFound(messageIdAndEitherDetailedView._1)
-        case Right(detailedView) => EncryptedEmailDetailedViewResults.list(messageIdAndEitherDetailedView._1, detailedView)
+        case Right(detailedView) => EncryptedEmailDetailedViewResults.list(detailedView)
       })
   }
 }

@@ -53,7 +53,7 @@ class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: Blob
   def get(cassandraMessageId: CassandraMessageId): SMono[EncryptedEmailDetailedView] =
     SMono.fromPublisher(executor.executeSingleRow(selectStatement.bind
       .setUUID(MESSAGE_ID, cassandraMessageId.get())))
-      .map(this.readRow)
+      .map(row => readRow(cassandraMessageId, row))
 
   def delete(cassandraMessageId: CassandraMessageId): SMono[Unit] =
     SMono.fromPublisher(executor.executeVoid(deleteStatement.bind
@@ -73,8 +73,9 @@ class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: Blob
       .flatMapMany(blobIds => SFlux.fromIterable(blobIds))
       .map(blobIdRow => blobIdFactory.from(blobIdRow))
 
-  private def readRow(row: Row): EncryptedEmailDetailedView =
+  private def readRow(cassandraMessageId: CassandraMessageId, row: Row): EncryptedEmailDetailedView =
     EncryptedEmailDetailedView(
+      id = cassandraMessageId,
       encryptedPreview = EncryptedPreview(row.getString(ENCRYPTED_PREVIEW)),
       encryptedHtml = EncryptedHtml(row.getString(ENCRYPTED_HTML)),
       hasAttachment = row.getBool(HAS_ATTACHMENT),

@@ -1,17 +1,17 @@
 package com.linagora.tmail.encrypted
 
+import java.lang
+import java.nio.charset.StandardCharsets
+
 import com.google.common.base.Preconditions
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
+import javax.inject.Inject
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.blob.api.{BlobId, BlobStore}
 import org.apache.james.mailbox.model.MessageId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import java.lang
-import java.nio.charset.StandardCharsets
-import javax.inject.Inject
 
 case class InMemoryEncryptedEmailContentStoreModule() extends AbstractModule {
 
@@ -44,12 +44,12 @@ class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
 
   override def retrieveFastView(messageId: MessageId): Publisher[EncryptedEmailFastView] =
     SMono.justOrEmpty(emailContentStore.get(messageId)
-      .map(encryptedEmailContent => EncryptedEmailFastView.from(encryptedEmailContent)))
+      .map(encryptedEmailContent => EncryptedEmailFastView.from(messageId, encryptedEmailContent)))
       .switchIfEmpty(SMono.error(MessageNotFoundException(messageId)))
 
   override def retrieveDetailedView(messageId: MessageId): Publisher[EncryptedEmailDetailedView] =
     SMono.justOrEmpty(emailContentStore.get(messageId)
-      .map(encryptedEmailContent => EncryptedEmailDetailedView.from(encryptedEmailContent)))
+      .map(encryptedEmailContent => EncryptedEmailDetailedView.from(messageId, encryptedEmailContent)))
       .switchIfEmpty(SMono.error(MessageNotFoundException(messageId)))
 
   override def retrieveAttachmentContent(messageId: MessageId, position: Int): Publisher[BlobId] =

@@ -1,11 +1,14 @@
 package com.linagora.tmail.encrypted.cassandra
 
+import java.lang
+
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
 import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore.DEFAULT_STORAGE_POLICY
 import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailStoreModule
 import com.linagora.tmail.encrypted.{AttachmentNotFoundException, EncryptedEmailContent, EncryptedEmailContentStore, EncryptedEmailDetailedView, EncryptedEmailFastView, MessageNotFoundException}
+import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
@@ -13,9 +16,6 @@ import org.apache.james.mailbox.cassandra.ids.CassandraMessageId
 import org.apache.james.mailbox.model.MessageId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import java.lang
-import javax.inject.Inject
 
 case class EncryptedEmailContentStoreCassandraModule() extends AbstractModule {
   override def configure(): Unit = {
@@ -43,7 +43,7 @@ class CassandraEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
       .index()
       .collectMap(positionBlobId => positionBlobId._1.intValue + POSITION_NUMBER_START_AT, positionBlobId => positionBlobId._2)
       .flatMap(positionBlobIdMap => encryptedEmailDAO.insert(messageId.asInstanceOf[CassandraMessageId],
-        EncryptedEmailDetailedView.from(encryptedEmailContent),
+        EncryptedEmailDetailedView.from(messageId, encryptedEmailContent),
         positionBlobIdMap))
 
   override def delete(messageId: MessageId): Publisher[Unit] =
@@ -53,7 +53,7 @@ class CassandraEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
 
   override def retrieveFastView(messageId: MessageId): Publisher[EncryptedEmailFastView] =
     encryptedEmailDAO.get(messageId.asInstanceOf[CassandraMessageId])
-      .map(encryptedEmailDetailedView => EncryptedEmailFastView.from(encryptedEmailDetailedView))
+      .map(encryptedEmailDetailedView => EncryptedEmailFastView.from(messageId, encryptedEmailDetailedView))
       .switchIfEmpty(SMono.error(MessageNotFoundException(messageId)))
 
   override def retrieveDetailedView(messageId: MessageId): Publisher[EncryptedEmailDetailedView] =

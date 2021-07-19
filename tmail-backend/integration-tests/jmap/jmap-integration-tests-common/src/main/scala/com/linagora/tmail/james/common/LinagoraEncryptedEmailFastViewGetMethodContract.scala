@@ -392,18 +392,16 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
            |    "list": [
-           |        [
-           |            "${messageId.serialize()}",
            |            {
+           |                "id": "${messageId.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false
            |            }
-           |        ]
            |    ]
            |}""".stripMargin)
 
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedPreview")
+      .inPath("methodResponses[0][1].list[0].encryptedPreview")
       .isNotNull
   }
 
@@ -517,28 +515,22 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
            |    "list": [
-           |        [
-           |            "${messageId1.serialize()}",
            |            {
+           |                "id": "${messageId1.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false
-           |            }
-           |        ],
-           |        [
-           |            "${messageId2.serialize()}",
+           |            },
            |            {
+           |                "id": "${messageId2.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false
-           |            }
-           |        ],
-           |        [
-           |            "${messageId3.serialize()}",
+           |            },
            |            {
+           |                "id": "${messageId3.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false
            |            }
            |        ]
-           |    ]
            |}""".stripMargin)
   }
 
@@ -581,13 +573,11 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
            |    "list": [
-           |        [
-           |            "${existMessageId.serialize}",
            |            {
+           |                "id": "${existMessageId.serialize}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false
            |            }
-           |        ]
            |    ],
            |    "notFound": [
            |        "${notFoundMessageId1.serialize}"
@@ -595,7 +585,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |}""".stripMargin)
 
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedPreview")
+      .inPath("methodResponses[0][1].list[0].encryptedPreview")
       .isNotNull
   }
 

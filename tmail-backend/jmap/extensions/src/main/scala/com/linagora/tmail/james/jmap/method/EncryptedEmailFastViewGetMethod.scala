@@ -95,7 +95,7 @@ class EncryptedEmailFastViewGetMethod @Inject()(encryptedEmailFastViewReader: En
     encryptedEmailFastViewReader.read(ids, mailboxSession)
       .map(messageIdAndEitherFastView => messageIdAndEitherFastView._2 match {
         case Left(_) => EncryptedEmailFastViewResults.notFound(messageIdAndEitherFastView._1)
-        case Right(fastView) => EncryptedEmailFastViewResults.list(messageIdAndEitherFastView._1, fastView)
+        case Right(fastView) => EncryptedEmailFastViewResults.list(fastView)
       })
   }
 }

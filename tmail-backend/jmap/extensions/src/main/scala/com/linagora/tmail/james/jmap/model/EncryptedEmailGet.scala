@@ -27,7 +27,7 @@ case class EncryptedEmailGetRequest(accountId: AccountId,
 
 case class EncryptedEmailGetResponse(accountId: AccountId,
                                      state: UuidState,
-                                     list: Option[Map[MessageId, EncryptedEmailFastView]],
+                                     list: Option[List[EncryptedEmailFastView]],
                                      notFound: Option[EmailNotFound])
 
 object EncryptedEmailFastViewResults {
@@ -37,8 +37,8 @@ object EncryptedEmailFastViewResults {
   def notFound(messageId: MessageId): EncryptedEmailFastViewResults =
     EncryptedEmailFastViewResults(None, Some(EmailNotFound(Set(Email.asUnparsed(messageId).get))))
 
-  def list(messageId: MessageId, fastView: EncryptedEmailFastView): EncryptedEmailFastViewResults =
-    EncryptedEmailFastViewResults(Some(Map(messageId -> fastView)), None)
+  def list(fastView: EncryptedEmailFastView): EncryptedEmailFastViewResults =
+    EncryptedEmailFastViewResults(Some(List(fastView)), None)
 
   def empty(): EncryptedEmailFastViewResults =
     EncryptedEmailFastViewResults(None, None)
@@ -49,7 +49,7 @@ object EncryptedEmailFastViewResults {
       notFound = (result1.notFound ++ result2.notFound).reduceOption((notFound1, notFound2) => notFound1.merge(notFound2)))
 }
 
-case class EncryptedEmailFastViewResults(list: Option[Map[MessageId, EncryptedEmailFastView]],
+case class EncryptedEmailFastViewResults(list: Option[List[EncryptedEmailFastView]],
                                          notFound: Option[EmailNotFound])
 
 object EmailIdHelper {
@@ -62,7 +62,7 @@ object EmailIdHelper {
 
 case class EncryptedEmailDetailedResponse(accountId: AccountId,
                                      state: UuidState,
-                                     list: Option[Map[MessageId, EncryptedEmailDetailedView]],
+                                     list: Option[List[EncryptedEmailDetailedView]],
                                      notFound: Option[EmailNotFound])
 
 object EncryptedEmailDetailedViewResults {
@@ -72,8 +72,8 @@ object EncryptedEmailDetailedViewResults {
   def notFound(messageId: MessageId): EncryptedEmailDetailedViewResults =
     EncryptedEmailDetailedViewResults(None, Some(EmailNotFound(Set(Email.asUnparsed(messageId).get))))
 
-  def list(messageId: MessageId, detailedView: EncryptedEmailDetailedView): EncryptedEmailDetailedViewResults =
-    EncryptedEmailDetailedViewResults(Some(Map(messageId -> detailedView)), None)
+  def list(detailedView: EncryptedEmailDetailedView): EncryptedEmailDetailedViewResults =
+    EncryptedEmailDetailedViewResults(Some(List(detailedView)), None)
 
   def empty(): EncryptedEmailDetailedViewResults =
     EncryptedEmailDetailedViewResults(None, None)
@@ -85,5 +85,5 @@ object EncryptedEmailDetailedViewResults {
 
 }
 
-case class EncryptedEmailDetailedViewResults(list: Option[Map[MessageId, EncryptedEmailDetailedView]],
+case class EncryptedEmailDetailedViewResults(list: Option[List[EncryptedEmailDetailedView]],
                                              notFound: Option[EmailNotFound])
