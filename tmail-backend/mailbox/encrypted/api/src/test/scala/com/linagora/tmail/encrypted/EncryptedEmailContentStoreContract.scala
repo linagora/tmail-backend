@@ -1,14 +1,14 @@
 package com.linagora.tmail.encrypted
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
+
 import com.linagora.tmail.encrypted.EncryptedEmailContentStoreContract.{ENCRYPTED_EMAIL_CONTENT, ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT, POSITION_NUMBER_START_AT}
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName, ObjectStoreException}
 import org.apache.james.mailbox.model.MessageId
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.SMono
-
-import java.io.ByteArrayInputStream
-import java.nio.charset.StandardCharsets
 
 object EncryptedEmailContentStoreContract {
   private lazy val ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT: EncryptedEmailContent = EncryptedEmailContent(
@@ -68,6 +68,7 @@ trait EncryptedEmailContentStoreContract {
     SMono.fromPublisher(testee.store(messageId, ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT)).block()
     assertThat(SMono.fromPublisher(testee.retrieveFastView(messageId)).block())
       .isEqualTo(EncryptedEmailFastView(
+        id = messageId,
         encryptedPreview = EncryptedPreview(ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT.encryptedPreview),
         hasAttachment = ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT.hasAttachment))
   }
@@ -78,6 +79,7 @@ trait EncryptedEmailContentStoreContract {
     SMono.fromPublisher(testee.store(messageId, ENCRYPTED_EMAIL_CONTENT)).block()
     assertThat(SMono.fromPublisher(testee.retrieveFastView(messageId)).block())
       .isEqualTo(EncryptedEmailFastView(
+        id = messageId,
         encryptedPreview = EncryptedPreview(ENCRYPTED_EMAIL_CONTENT.encryptedPreview),
         hasAttachment = ENCRYPTED_EMAIL_CONTENT.hasAttachment))
   }
@@ -94,6 +96,7 @@ trait EncryptedEmailContentStoreContract {
     SMono.fromPublisher(testee.store(messageId, ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT)).block()
     assertThat(SMono.fromPublisher(testee.retrieveDetailedView(messageId)).block())
       .isEqualTo(EncryptedEmailDetailedView(
+        id = messageId,
         encryptedPreview = EncryptedPreview(ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT.encryptedPreview),
         encryptedHtml = EncryptedHtml(ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT.encryptedHtml),
         hasAttachment = ENCRYPTED_EMAIL_CONTENT_NO_ATTACHMENT.hasAttachment,
@@ -106,6 +109,7 @@ trait EncryptedEmailContentStoreContract {
     SMono.fromPublisher(testee.store(messageId, ENCRYPTED_EMAIL_CONTENT)).block()
     assertThat(SMono.fromPublisher(testee.retrieveDetailedView(messageId)).block())
       .isEqualTo(EncryptedEmailDetailedView(
+        id = messageId,
         encryptedPreview = EncryptedPreview(ENCRYPTED_EMAIL_CONTENT.encryptedPreview),
         encryptedHtml = EncryptedHtml(ENCRYPTED_EMAIL_CONTENT.encryptedHtml),
         hasAttachment = ENCRYPTED_EMAIL_CONTENT.hasAttachment,

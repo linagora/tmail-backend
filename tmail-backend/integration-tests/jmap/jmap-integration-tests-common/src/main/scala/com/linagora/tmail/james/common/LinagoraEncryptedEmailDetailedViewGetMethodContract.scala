@@ -402,27 +402,25 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
            |    "list": [
-           |        [
-           |            "${messageId.serialize()}",
-           |            {
-           |                "encryptedPreview": "$${json-unit.ignore}",
-           |                "hasAttachment": false,
-           |                "encryptedHtml": "$${json-unit.ignore}"
-           |            }
-           |        ]
+           |        {
+           |            "id": "${messageId.serialize()}",
+           |            "encryptedPreview": "$${json-unit.ignore}",
+           |            "hasAttachment": false,
+           |            "encryptedHtml": "$${json-unit.ignore}"
+           |        }
            |    ]
            |}""".stripMargin)
 
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedPreview")
+      .inPath("methodResponses[0][1].list[0].encryptedPreview")
       .isNotNull
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedHtml")
+      .inPath("methodResponses[0][1].list[0].encryptedHtml")
       .isNotNull
 
     // Because message doesn't have attachment
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedAttachmentMetadata")
+      .inPath("methodResponses[0][1].list[0].encryptedAttachmentMetadata")
       .isAbsent()
   }
 
@@ -474,31 +472,25 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
            |    "list": [
-           |        [
-           |            "${messageId1.serialize()}",
            |            {
+           |                "id": "${messageId1.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false,
            |                "encryptedHtml": "$${json-unit.ignore}"
-           |            }
-           |        ],
-           |        [
-           |            "${messageId2.serialize()}",
+           |            },
            |            {
+           |                "id": "${messageId2.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false,
            |                "encryptedHtml": "$${json-unit.ignore}"
-           |            }
-           |        ],
-           |        [
-           |            "${messageId3.serialize()}",
+           |            },
            |            {
+           |                "id": "${messageId3.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false,
            |                "encryptedHtml": "$${json-unit.ignore}"
            |            }
            |        ]
-           |    ]
            |}""".stripMargin)
   }
 
@@ -541,14 +533,12 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
            |    "list": [
-           |        [
-           |            "${existMessageId.serialize}",
            |            {
+           |                "id": "${existMessageId.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false,
            |                "encryptedHtml": "$${json-unit.ignore}"
            |            }
-           |        ]
            |    ],
            |    "notFound": [
            |        "${notFoundMessageId1.serialize}"
@@ -556,10 +546,10 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |}""".stripMargin)
 
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedPreview")
+      .inPath("methodResponses[0][1].list[0].encryptedPreview")
       .isNotNull
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedHtml")
+      .inPath("methodResponses[0][1].list[0].encryptedHtml")
       .isNotNull
   }
 
@@ -797,26 +787,24 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
            |    "list": [
-           |        [
-           |            "${messageId.serialize()}",
            |            {
+           |                "id": "${messageId.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": true,
            |                "encryptedHtml": "$${json-unit.ignore}",
            |                "encryptedAttachmentMetadata": "$${json-unit.ignore}"
            |            }
-           |        ]
            |    ]
            |}""".stripMargin)
 
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedPreview")
+      .inPath("methodResponses[0][1].list[0].encryptedPreview")
       .isNotNull
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedHtml")
+      .inPath("methodResponses[0][1].list[0].encryptedHtml")
       .isNotNull
     assertThatJson(response)
-      .inPath("methodResponses[0][1].list[0][1].encryptedAttachmentMetadata")
+      .inPath("methodResponses[0][1].list[0].encryptedAttachmentMetadata")
       .isNotNull()
   }
 
@@ -941,14 +929,12 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "$${json-unit.ignore}",
            |                "list": [
-           |                    [
-           |                      "$${json-unit.ignore}",
            |                        {
+           |                            "id": "$${json-unit.ignore}",
            |                            "encryptedPreview": "$${json-unit.ignore}",
            |                            "encryptedHtml": "$${json-unit.ignore}",
            |                            "hasAttachment": false
            |                        }
-           |                    ]
            |                ]
            |            },
            |            "c2"

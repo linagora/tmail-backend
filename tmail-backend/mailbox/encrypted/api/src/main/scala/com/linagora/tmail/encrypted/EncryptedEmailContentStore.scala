@@ -25,23 +25,24 @@ case class MessageNotFoundException(messageId: MessageId) extends RuntimeExcepti
 case class AttachmentNotFoundException(messageId: MessageId, position: Int) extends RuntimeException
 
 object EncryptedEmailFastView {
-  def from(encryptedEmailContent: EncryptedEmailContent): EncryptedEmailFastView =
-    EncryptedEmailFastView(
+  def from(id: MessageId, encryptedEmailContent: EncryptedEmailContent): EncryptedEmailFastView =
+    EncryptedEmailFastView(id = id,
       encryptedPreview = EncryptedPreview(encryptedEmailContent.encryptedPreview),
       hasAttachment = encryptedEmailContent.hasAttachment)
 
-  def from(encryptedEmailDetailedView: EncryptedEmailDetailedView): EncryptedEmailFastView =
-    EncryptedEmailFastView(
+  def from(id: MessageId, encryptedEmailDetailedView: EncryptedEmailDetailedView): EncryptedEmailFastView =
+    EncryptedEmailFastView(id = id,
       encryptedPreview = encryptedEmailDetailedView.encryptedPreview,
       hasAttachment = encryptedEmailDetailedView.hasAttachment)
 }
 
-case class EncryptedEmailFastView(encryptedPreview: EncryptedPreview,
+case class EncryptedEmailFastView(id: MessageId,
+                                  encryptedPreview: EncryptedPreview,
                                   hasAttachment: Boolean)
 
 object EncryptedEmailDetailedView {
-  def from(encryptedEmailContent: EncryptedEmailContent): EncryptedEmailDetailedView =
-    EncryptedEmailDetailedView(
+  def from(id: MessageId, encryptedEmailContent: EncryptedEmailContent): EncryptedEmailDetailedView =
+    EncryptedEmailDetailedView(id = id,
       encryptedPreview = EncryptedPreview(encryptedEmailContent.encryptedPreview),
       encryptedHtml = EncryptedHtml(encryptedEmailContent.encryptedHtml),
       hasAttachment = encryptedEmailContent.hasAttachment,
@@ -53,7 +54,8 @@ case class EncryptedAttachmentMetadata(value: String) extends AnyVal
 case class EncryptedPreview(value: String) extends AnyVal
 case class EncryptedHtml(value: String) extends AnyVal
 
-case class EncryptedEmailDetailedView(encryptedPreview: EncryptedPreview,
+case class EncryptedEmailDetailedView(id: MessageId,
+                                      encryptedPreview: EncryptedPreview,
                                       encryptedHtml: EncryptedHtml,
                                       hasAttachment: Boolean,
                                       encryptedAttachmentMetadata: Option[EncryptedAttachmentMetadata])
