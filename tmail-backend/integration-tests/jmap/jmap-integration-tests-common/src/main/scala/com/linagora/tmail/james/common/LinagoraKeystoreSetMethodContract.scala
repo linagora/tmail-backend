@@ -117,7 +117,7 @@ trait LinagoraKeystoreSetMethodContract {
     assertThat(server.getProbe(classOf[JmapGuiceKeystoreManagerProbe])
       .retrieveKey(BOB, KeyId(PGP_KEY_ID))
       .get()
-      .payload)
+      .key)
       .isEqualTo(PGP_KEY)
   }
 
