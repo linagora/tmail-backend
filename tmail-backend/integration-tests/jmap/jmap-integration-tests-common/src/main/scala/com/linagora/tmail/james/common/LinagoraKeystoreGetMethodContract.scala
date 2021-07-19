@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
+
 import com.linagora.tmail.james.common.LinagoraKeystoreGetMethodContract.{PGP_KEY_ARMORED, PGP_KEY_ARMORED2, PGP_KEY_ID, PGP_KEY_ID2}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -64,7 +65,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |    }, "c1"],
                      |    ["Keystore/get", {
                      |      "accountId": "$ACCOUNT_ID",
-                     |      "ids": []
+                     |      "ids": null
                      |    }, "c2"]
                      |  ]
                      |}""".stripMargin
@@ -100,16 +101,16 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
-         |      "list": {
-         |        "$PGP_KEY_ID": {
+         |      "list": [
+         |        {
          |          "id": "$PGP_KEY_ID",
-         |          "payload": "$PGP_KEY_ARMORED"
+         |          "key": "$PGP_KEY_ARMORED"
          |        },
-         |        "$PGP_KEY_ID2": {
+         |        {
          |          "id": "$PGP_KEY_ID2",
-         |          "payload": "$PGP_KEY_ARMORED2"
+         |          "key": "$PGP_KEY_ARMORED2"
          |        }
-         |      }
+         |      ]
          |    }, "c2"]
          |  ]
          |}""".stripMargin)
@@ -171,12 +172,12 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
-         |      "list": {
-         |        "$PGP_KEY_ID": {
+         |      "list": [
+         |        {
          |          "id": "$PGP_KEY_ID",
-         |          "payload": "$PGP_KEY_ARMORED"
+         |          "key": "$PGP_KEY_ARMORED"
          |        }
-         |      }
+         |      ]
          |    }, "c2"]
          |  ]
          |}""".stripMargin)
@@ -238,12 +239,12 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
-         |      "list": {
-         |        "$PGP_KEY_ID": {
+         |      "list": [
+         |        {
          |          "id": "$PGP_KEY_ID",
-         |          "payload": "$PGP_KEY_ARMORED"
+         |          "key": "$PGP_KEY_ARMORED"
          |        }
-         |      }
+         |      ]
          |    }, "c2"]
          |  ]
          |}""".stripMargin)
@@ -281,7 +282,7 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
-         |      "list": {}
+         |      "list": []
          |    }, "c1"]
          |  ]
          |}""".stripMargin)
@@ -337,7 +338,7 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
-         |      "list": {}
+         |      "list": []
          |    }, "c2"]
          |  ]
          |}""".stripMargin)

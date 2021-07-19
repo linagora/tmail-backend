@@ -93,7 +93,7 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
                                     keys: Seq[PublicKey],
                                     clearMessage: Message,
                                     clearContent: ClearEmailContent): SMono[AppendResult] = {
-    val encrypter = Encrypter.forKeys(keys.map(key => key.payload).asJava)
+    val encrypter = Encrypter.forKeys(keys.map(key => key.key).asJava)
     val encryptedMessage: Message = encrypter
       .encrypt(clearMessage)
 

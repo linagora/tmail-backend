@@ -38,7 +38,7 @@ class CassandraKeystoreDAO @Inject()(session: Session, cassandraTypesProvider: C
   def insert(username: Username, key: PublicKey): SMono[Void] =
     SMono.fromPublisher(executor.executeVoid(insertStatement.bind.setString(USERNAME, username.asString)
       .setString(ID, key.id.value)
-      .setBytes(KEY, ByteBuffer.wrap(key.payload))))
+      .setBytes(KEY, ByteBuffer.wrap(key.key))))
 
   def getKey(username: Username, id: KeyId): SMono[PublicKey] =
     SMono.fromPublisher(executor.executeSingleRow(selectStatement.bind

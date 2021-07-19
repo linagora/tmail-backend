@@ -10,9 +10,9 @@ object KeyId {
 
 case class KeyId(value: String)
 
-case class PublicKey(id: KeyId, payload: Array[Byte]) {
+case class PublicKey(id: KeyId, key: Array[Byte]) {
   def hasSameContentAs(publicKey: PublicKey): Boolean =
-    id.equals(publicKey.id) && payload.sameElements(publicKey.payload)
+    id.equals(publicKey.id) && key.sameElements(publicKey.key)
 }
 
 trait KeystoreManager {
