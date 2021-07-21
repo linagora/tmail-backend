@@ -223,6 +223,10 @@
                                 <from>src/main/extensions-jars</from>
                                 <into>/root/extensions-jars</into>
                             </path>
+                            <path>
+                                <from>src/main/provisioning</from>
+                                <into>/root/provisioning</into>
+                            </path>
                         </paths>
                         <permissions>
                             <permission>
@@ -239,6 +243,10 @@
                             </permission>
                             <permission>
                                 <file>/root/async-profiler/build/jattach</file>
+                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                            </permission>
+                            <permission>
+                                <file>/root/provisioning/provisioning.sh</file>
                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                             </permission>
                         </permissions>
