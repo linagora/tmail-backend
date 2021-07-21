@@ -34,3 +34,27 @@ The [CLI](https://james.apache.org/server/manage-cli.html) can easily be used:
 ```
 docker exec CONTAINER-ID james-cli ListDomains
 ```
+
+## Provisioning
+
+The docker container embed a small provisioning script, creating some users, mailboxes and emails
+to be used for testing purposes.
+
+To run it:
+
+```
+docker exec CONTAINER-ID /root/provisioning/provisioning.sh
+```
+
+It will create the following accounts:
+
+```
+User: alice@localhost
+Password: aliceSecret
+
+User: bob@localhost
+Password: bobSecret
+
+User: empty@localhost
+Password: emptrySecret
+```
