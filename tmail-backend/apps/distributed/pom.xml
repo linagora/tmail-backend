@@ -12,16 +12,6 @@
     <artifactId>distributed</artifactId>
 
     <dependencies>
-        <!-- Force the version of Mime4J used as a dependency -->
-        <dependency>
-            <groupId>${james.groupId}</groupId>
-            <artifactId>apache-mime4j-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${james.groupId}</groupId>
-            <artifactId>apache-mime4j-dom</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>blobid-list</artifactId>
