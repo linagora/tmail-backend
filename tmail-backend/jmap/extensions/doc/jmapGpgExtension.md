@@ -6,9 +6,10 @@ need to access part of the underlying data and do not need to perform any MIME p
 We thus introduce the following objects:
 
  - `EncryptedEmailFastView` holds information required to list emails.
- - `EncryptedEmailDetailedView` holds information required to view emails.\
+ - `EncryptedEmailDetailedView` holds information required to view emails.
+ - `Keystore` allows clients to upload, list and remove GPG public keys used to encrypt their mailbox content.
 
-Furthermore, this extension allows clients to upload, list and remove GPG public keys used to encrypt their mailbox content.
+Furthermore, the `Email/send` additional method allows sending clear text emails when encryption is activated.
 
 ## Additions to the Capabilities Object
 
@@ -344,6 +345,7 @@ Will return:
     ]
 }
 ```
+
 ## EncryptedEmailDetailedView
 
 `EncryptedEmailDetailedView` allows secure encrypted access to the sensible fields available within the detailed view
@@ -492,6 +494,183 @@ Will return:
                              -----END PGP MESSAGE-----\n
                              "
                     }
+                ]
+            },
+            "c1"
+        ]
+    ]
+}
+```
+
+## Email/send
+
+This method behaves like a `/set` method with only `create` implemented. It combines the behaviours of `Email/set create`
+and of `EmailSubmission/set create` in a single method call.
+
+The creation object have the following properties:
+
+ - `email/create` takes the same argument that `Email/set` creation entries.
+ - `emailSubmission/set` takes the same argument that `EmailSubmission/set` creation entries.
+
+Additionally, `Email/send` takes two extra properties, `onSuccessUpdateEmail` and `onSuccessDestroyEmail` as described
+for `EmailSubmission/set`.
+
+### Example
+
+Sending:
+
+```
+{
+    "using": [
+        "urn:ietf:params:jmap:core",
+        "urn:ietf:params:jmap:mail",
+        "urn:ietf:params:jmap:submission",
+        "com:linagora:params:jmap:pgp"
+    ],
+    "methodCalls": [
+        [
+            "Email/send",
+            {
+                "accountId": "$ACCOUNT_ID",
+                "create": {
+                    "K87": {
+                        "email/create": {
+                            "mailboxIds": {
+                                "${getBobInboxId(server).serialize}": true
+                            },
+                            "subject": "World domination",
+                            "htmlBody": [
+                                {
+                                    "partId": "a49d",
+                                    "type": "text/html"
+                                }
+                            ],
+                            "bodyValues": {
+                                "a49d": {
+                                    "value": "$HTML_BODY",
+                                    "isTruncated": false,
+                                    "isEncodingProblem": false
+                                }
+                            }
+                        },
+                        "emailSubmission/set": {
+                            "envelope": {
+                                "mailFrom": {
+                                    "email": "bob@domain.tld"
+                                },
+                                "rcptTo": [
+                                    {
+                                        "email": "andre@domain.tld"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "K88": {
+                        "email/create": {
+                            "mailboxIds": {
+                                "${getBobInboxId(server).serialize}": true
+                            },
+                            "subject": "World domination 88"
+                        },
+                        "emailSubmission/set": {
+                            "envelope": {
+                                "mailFrom": {
+                                    "email": "bob@domain.tld"
+                                },
+                                "rcptTo": [
+                                    {
+                                        "email": "andre@domain.tld"
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "K89": {
+                        "email/create": {
+                            "mailboxIds": {
+                                "${getBobInboxId(server).serialize}": true
+                            },
+                            "subject": "World domination 89"
+                        },
+                        "emailSubmission/set": {
+                            "envelope": {
+                                "mailFrom": {
+                                    "email": "bob@domain.tld"
+                                },
+                                "rcptTo": [
+                                    {
+                                        "email": "andre@domain.tld"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "onSuccessUpdateEmail": {
+                    "#K87": {
+                        "keywords": {
+                            "$$sent": true
+                        }
+                    }
+                },
+                "onSuccessDestroyEmail": ["#K88", "#K89"]
+            },
+            "c1"
+        ]
+    ]
+}
+```
+
+Will return a `Email/send` method response and the implicit `Email/set` response call performed by `onSuccess*` properties:
+
+```
+{
+    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+    "methodResponses": [
+        [
+            "Email/send",
+            {
+                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+                "created": {
+                    "K87": {
+                        "emailSubmissionId": "6aa031e8-1481-4847-8137-d23a5834a707",
+                        "emailId": "1",
+                        "blobId": "1",
+                        "threadId": "1",
+                        "size": 1655
+                    },
+                    "K88": {
+                        "emailSubmissionId": "887460cc-41e2-4cf0-a6a1-d551ecce2792",
+                        "emailId": "2",
+                        "blobId": "2",
+                        "threadId": "2",
+                        "size": 1472
+                    },
+                    "K89": {
+                        "emailSubmissionId": "c37e214a-d516-4a43-b0f0-b502e8e43daf",
+                        "emailId": "3",
+                        "blobId": "3",
+                        "threadId": "3",
+                        "size": 1476
+                    }
+                }
+            },
+            "c1"
+        ],
+        [
+            "Email/set",
+            {
+                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                "oldState": "66ac6fb7-a2e4-4dfd-971e-09aa46b8be7e",
+                "newState": "b6c263f5-cb66-4cab-ae1f-dfc7a2000eb4",
+                "updated": {
+                    "1": null
+                },
+                "destroyed": [
+                    "2",
+                    "3"
                 ]
             },
             "c1"
