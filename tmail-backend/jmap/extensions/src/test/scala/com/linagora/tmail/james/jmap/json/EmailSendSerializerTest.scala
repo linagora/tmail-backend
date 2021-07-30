@@ -3,9 +3,10 @@ package com.linagora.tmail.james.jmap.json
 import com.linagora.tmail.james.jmap.json.Fixture.{ACCOUNT_ID, MESSAGE_ID_FACTORY, STATE}
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationResponse, EmailSendResponse}
 import eu.timepit.refined.auto._
+import org.apache.james.jmap.api.model.Size
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError}
-import org.apache.james.jmap.mail.{BlobId, Email, EmailSubmissionId, ThreadId}
+import org.apache.james.jmap.mail.{BlobId, EmailSubmissionId, ThreadId}
 import org.apache.james.mailbox.model.MessageId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -115,14 +116,14 @@ class EmailSendSerializerTest {
           emailId = messageId1,
           blobId = Some(BlobId("blob1")),
           threadId = ThreadId("thread1"),
-          size = Email.sanitizeSize(11))),
+          size = Size.sanitizeSize(11))),
       (EmailSendCreationId("isci2"),
         EmailSendCreationResponse(
           emailSubmissionId = EmailSubmissionId("emailSubmissionId2"),
           emailId = messageId2,
           blobId = None,
           threadId = ThreadId("thread2"),
-          size = Email.sanitizeSize(22))))
+          size = Size.sanitizeSize(22))))
 
     val notCreated: Map[EmailSendCreationId, SetError] = Map(
       (EmailSendCreationId("isci3"),

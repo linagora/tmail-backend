@@ -92,5 +92,10 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     public Publisher<Void> deleteBucket(BucketName bucketName) {
         return blobStoreDAO.deleteBucket(bucketName);
     }
+
+    @Override
+    public Publisher<BucketName> listBuckets() {
+        return blobStoreDAO.listBuckets();
+    }
 }
 

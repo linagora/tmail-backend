@@ -4,12 +4,16 @@ import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN;
 import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN_LOCAL_PART;
 import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN_PASSWORD;
 
+import java.util.Optional;
+
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.plist.PropertyListConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
+import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.user.cassandra.CassandraUsersRepositoryModule;
 import org.apache.james.user.ldap.DockerLdapSingleton;
@@ -51,20 +55,27 @@ public class CombinedUsersRepositoryTest {
         private CombinedUsersRepository combinedUsersRepository;
         private ReadOnlyLDAPUsersDAO readOnlyLDAPUsersDAO;
         private CassandraUsersDAO cassandraUsersDAO;
+        private CombinedTestSystem testSystem;
 
         @BeforeEach
         void setUp(CombinedTestSystem testSystem) throws Exception {
+            this.testSystem = testSystem;
             readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO();
             readOnlyLDAPUsersDAO.configure(ldapRepositoryConfiguration(ldapContainer, true));
             readOnlyLDAPUsersDAO.init();
 
             cassandraUsersDAO = new CassandraUsersDAO(new Algorithm.DefaultFactory(), cassandraCluster.getCassandraCluster().getConf());
-            combinedUsersRepository = getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), true);
+            combinedUsersRepository = getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), true, Optional.empty());
         }
 
         @Override
         public CombinedUsersRepository testee() {
             return combinedUsersRepository;
+        }
+
+        @Override
+        public UsersRepository testee(Optional<Username> administrator) throws Exception {
+            return getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), extension.isSupportVirtualHosting(), administrator);
         }
 
         @Override
@@ -83,21 +94,28 @@ public class CombinedUsersRepositoryTest {
         private CombinedUsersRepository combinedUsersRepository;
         private ReadOnlyLDAPUsersDAO readOnlyLDAPUsersDAO;
         private CassandraUsersDAO cassandraUsersDAO;
+        private CombinedTestSystem testSystem;
 
         @BeforeEach
         void setUp(CombinedTestSystem testSystem) throws Exception {
+            this.testSystem = testSystem;
             readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO();
             readOnlyLDAPUsersDAO.configure(ldapRepositoryConfiguration(ldapContainer, false));
             readOnlyLDAPUsersDAO.init();
 
             cassandraUsersDAO = new CassandraUsersDAO(new Algorithm.DefaultFactory(), cassandraCluster.getCassandraCluster().getConf());
 
-            combinedUsersRepository = getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), false);
+            combinedUsersRepository = getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), false, Optional.empty());
         }
 
         @Override
         public CombinedUsersRepository testee() {
             return combinedUsersRepository;
+        }
+
+        @Override
+        public UsersRepository testee(Optional<Username> administrator) throws Exception {
+            return getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), extension.isSupportVirtualHosting(), administrator);
         }
 
         @Override
@@ -108,10 +126,12 @@ public class CombinedUsersRepositoryTest {
 
     private static CombinedUsersRepository getUsersRepository(CombinedUserDAO combinedUserDAO,
                                                               DomainList domainList,
-                                                              boolean enableVirtualHosting) throws Exception {
+                                                              boolean enableVirtualHosting,
+                                                              Optional<Username> administrator) throws Exception {
         CombinedUsersRepository repository = new CombinedUsersRepository(domainList, combinedUserDAO);
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
         configuration.addProperty("enableVirtualHosting", String.valueOf(enableVirtualHosting));
+        administrator.ifPresent(username -> configuration.addProperty("administratorId", username.asString()));
         repository.configure(configuration);
         return repository;
     }
