@@ -1,13 +1,14 @@
 package com.linagora.tmail.james.jmap.method
 
 import java.io.{ByteArrayInputStream, InputStream}
-
 import com.linagora.tmail.encrypted.{EncryptedAttachmentBlobId, EncryptedEmailContentStore}
+
 import javax.inject.Inject
 import org.apache.james.blob.api.BlobStore
 import org.apache.james.blob.api.BlobStore.StoragePolicy
+import org.apache.james.jmap.api.model.Size
+import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.mail.BlobId
-import org.apache.james.jmap.mail.Email.Size
 import org.apache.james.jmap.routes.{Applicable, Blob, BlobResolutionResult, BlobResolver, NonApplicable, UploadRoutes}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.{ContentType, MessageId}
@@ -18,7 +19,7 @@ import scala.util.{Success, Try}
 case class EncryptedAttachmentBlob(blobId: BlobId, bytes: Array[Byte]) extends Blob {
   override def contentType: ContentType = new ContentType("application/pgp")
 
-  override def size: Try[Size] = Success(UploadRoutes.sanitizeSize(bytes.length))
+  override def size: Try[Size] = Success(Size.sanitizeSize(bytes.length))
 
   override def content: InputStream = new ByteArrayInputStream(bytes)
 }

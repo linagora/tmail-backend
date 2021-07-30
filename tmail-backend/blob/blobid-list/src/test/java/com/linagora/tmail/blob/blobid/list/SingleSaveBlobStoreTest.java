@@ -1,8 +1,12 @@
 package com.linagora.tmail.blob.blobid.list;
 
-import com.linagora.tmail.blob.blobid.list.cassandra.CassandraBlobIdList;
-import com.linagora.tmail.blob.blobid.list.cassandra.CassandraBlobIdListDAO;
-import com.linagora.tmail.blob.blobid.list.cassandra.CassandraBlobIdListModule;
+import static org.apache.james.blob.api.BlobStoreDAOFixture.CUSTOM_BUCKET_NAME;
+import static org.apache.james.blob.api.BlobStoreDAOFixture.OTHER_TEST_BLOB_ID;
+import static org.apache.james.blob.api.BlobStoreDAOFixture.SHORT_BYTEARRAY;
+import static org.apache.james.blob.api.BlobStoreDAOFixture.TEST_BLOB_ID;
+import static org.apache.james.blob.api.BlobStoreDAOFixture.TEST_BUCKET_NAME;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraModule;
@@ -13,7 +17,16 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.HashBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreDAO;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+
+import com.linagora.tmail.blob.blobid.list.cassandra.CassandraBlobIdList;
+import com.linagora.tmail.blob.blobid.list.cassandra.CassandraBlobIdListDAO;
+import com.linagora.tmail.blob.blobid.list.cassandra.CassandraBlobIdListModule;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public class SingleSaveBlobStoreTest implements SingleSaveBlobStoreContract {
 
@@ -55,5 +68,23 @@ public class SingleSaveBlobStoreTest implements SingleSaveBlobStoreContract {
     @Override
     public BucketName defaultBucketName() {
         return BucketName.DEFAULT;
+    }
+
+    @Override
+    @Test
+    public void listBucketsShouldReturnAllBucketsInUse() {
+        BlobStoreDAO store = testee();
+
+        Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(store.save(CUSTOM_BUCKET_NAME, OTHER_TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+
+        assertThat(Flux.from(store.listBuckets()).collectList().block())
+            .containsOnly(TEST_BUCKET_NAME, CUSTOM_BUCKET_NAME);
+    }
+
+    @Override
+    @Disabled("Not supported")
+    public void listBucketsShouldReturnBucketsWithNoBlob() {
+
     }
 }

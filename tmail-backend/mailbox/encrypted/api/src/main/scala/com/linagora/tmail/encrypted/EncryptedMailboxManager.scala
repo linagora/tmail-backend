@@ -3,7 +3,7 @@ package com.linagora.tmail.encrypted
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager.{MailboxCapabilities, MailboxRenamedResult, MessageCapabilities, SearchCapabilities}
 import org.apache.james.mailbox.model.search.MailboxQuery
-import org.apache.james.mailbox.model.{Mailbox, MailboxACL, MailboxAnnotation, MailboxAnnotationKey, MailboxId, MailboxMetaData, MailboxPath, MessageId, MessageRange, MultimailboxesSearchQuery}
+import org.apache.james.mailbox.model.{Mailbox, MailboxACL, MailboxAnnotation, MailboxAnnotationKey, MailboxId, MailboxMetaData, MailboxPath, MessageId, MessageRange, MultimailboxesSearchQuery, ThreadId}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager}
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
@@ -60,6 +60,9 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
 
   override def search(expression: MultimailboxesSearchQuery, session: MailboxSession, limit: Long): Publisher[MessageId] =
     mailboxManager.search(expression, session, limit)
+
+  override def getThread(threadId: ThreadId, session: MailboxSession): Publisher[MessageId] =
+    mailboxManager.getThread(threadId, session)
 
   override def mailboxExists(mailboxPath: MailboxPath, session: MailboxSession): Publisher[lang.Boolean] = mailboxManager.mailboxExists(mailboxPath, session)
 

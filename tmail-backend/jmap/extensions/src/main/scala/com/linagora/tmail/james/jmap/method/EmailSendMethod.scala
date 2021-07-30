@@ -8,6 +8,7 @@ import com.linagora.tmail.james.jmap.model.EmailSubmissionHelper.resolveEnvelope
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationRequest, EmailSendCreationRequestInvalidException, EmailSendCreationResponse, EmailSendId, EmailSendRequest, EmailSendResults, EmailSetCreationFailure, EmailSetCreationResult, EmailSetCreationSuccess, EmailSubmissionCreationRequest, MimeMessageSourceImpl}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{MailAddress, Username}
+import org.apache.james.jmap.api.model.Size
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, EMAIL_SUBMISSION, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, UTCDate, UuidState}
@@ -255,7 +256,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
       val blobId: Option[BlobId] = BlobId.of(appendResult.getId.getMessageId).toOption
       val threadId: ThreadId = ThreadId.fromJava(appendResult.getThreadId)
       EmailSetCreationSuccess(clientId,
-        EmailCreationResponse(appendResult.getId.getMessageId, blobId, threadId, Email.sanitizeSize(appendResult.getSize)),
+        EmailCreationResponse(appendResult.getId.getMessageId, blobId, threadId, Size.sanitizeSize(appendResult.getSize)),
         messageAsBytes)
     }
 }
