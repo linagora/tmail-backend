@@ -42,41 +42,53 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
 
     @Override
     public Mono<Void> save(BucketName bucketName, BlobId blobId, byte[] data) {
-        return Mono.from(blobIdList.isStored(blobId))
+        if (defaultBucketName.equals(bucketName)) {
+            return Mono.from(blobIdList.isStored(blobId))
                 .flatMap(isStored -> {
                     if (isStored) {
                         return Mono.empty();
                     }
                     return Mono.from(blobStoreDAO.save(bucketName, blobId, data))
-                            .then(Mono.from(blobIdList.store(blobId)))
-                            .then();
+                        .then(Mono.from(blobIdList.store(blobId)))
+                        .then();
                 });
+        } else {
+            return Mono.from(blobStoreDAO.save(bucketName, blobId, data));
+        }
     }
 
     @Override
     public Publisher<Void> save(BucketName bucketName, BlobId blobId, InputStream inputStream) {
-        return Mono.from(blobIdList.isStored(blobId))
+        if (defaultBucketName.equals(bucketName)) {
+            return Mono.from(blobIdList.isStored(blobId))
                 .flatMap(isStored -> {
                     if (isStored) {
                         return Mono.empty();
                     }
                     return Mono.from(blobStoreDAO.save(bucketName, blobId, inputStream))
-                            .then(Mono.from(blobIdList.store(blobId)))
-                            .then();
+                        .then(Mono.from(blobIdList.store(blobId)))
+                        .then();
                 });
+        } else {
+            return Mono.from(blobStoreDAO.save(bucketName, blobId, inputStream));
+        }
     }
 
     @Override
     public Publisher<Void> save(BucketName bucketName, BlobId blobId, ByteSource content) {
-        return Mono.from(blobIdList.isStored(blobId))
+        if (defaultBucketName.equals(bucketName)) {
+            return Mono.from(blobIdList.isStored(blobId))
                 .flatMap(isStored -> {
                     if (isStored) {
                         return Mono.empty();
                     }
                     return Mono.from(blobStoreDAO.save(bucketName, blobId, content))
-                            .then(Mono.from(blobIdList.store(blobId)))
-                            .then();
+                        .then(Mono.from(blobIdList.store(blobId)))
+                        .then();
                 });
+        } else {
+            return Mono.from(blobStoreDAO.save(bucketName, blobId, content));
+        }
     }
 
     @Override
@@ -90,7 +102,11 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
 
     @Override
     public Publisher<Void> deleteBucket(BucketName bucketName) {
-        return blobStoreDAO.deleteBucket(bucketName);
+        if (defaultBucketName.equals(bucketName)) {
+            return Mono.error(new ObjectStoreException("Can not delete the default bucket when single save is enabled"));
+        } else {
+            return blobStoreDAO.deleteBucket(bucketName);
+        }
     }
 
     @Override
