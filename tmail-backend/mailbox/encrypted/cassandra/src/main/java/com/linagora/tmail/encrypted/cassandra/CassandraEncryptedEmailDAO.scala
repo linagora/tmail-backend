@@ -1,18 +1,20 @@
 package com.linagora.tmail.encrypted.cassandra
 
+import java.util
+
 import com.datastax.driver.core.DataType.{cint, frozenMap, text}
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.querybuilder.QueryBuilder.{bindMarker, insertInto, select, delete => deleteBuilder}
 import com.datastax.driver.core.{CodecRegistry, PreparedStatement, Row, Session, TypeCodec, TypeTokens}
 import com.linagora.tmail.encrypted.cassandra.table.EncryptedEmailTable.{ENCRYPTED_ATTACHMENT_METADATA, ENCRYPTED_HTML, ENCRYPTED_PREVIEW, HAS_ATTACHMENT, MESSAGE_ID, POSITION_BLOB_ID_MAPPING, TABLE_NAME}
 import com.linagora.tmail.encrypted.{EncryptedAttachmentMetadata, EncryptedEmailDetailedView, EncryptedHtml, EncryptedPreview}
+import javax.inject.Inject
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
-import org.apache.james.blob.api.BlobId
+import org.apache.james.blob.api.{BlobId, BlobReferenceSource}
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId
+import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.util
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: BlobId.Factory) {
@@ -29,6 +31,10 @@ class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: Blob
     .value(HAS_ATTACHMENT, bindMarker(HAS_ATTACHMENT))
     .value(ENCRYPTED_ATTACHMENT_METADATA, bindMarker(ENCRYPTED_ATTACHMENT_METADATA))
     .value(POSITION_BLOB_ID_MAPPING, bindMarker(POSITION_BLOB_ID_MAPPING)))
+
+  private val listBlobIdsStatement: PreparedStatement = session.prepare(
+    select(POSITION_BLOB_ID_MAPPING)
+      .from(TABLE_NAME))
 
   private val selectStatement: PreparedStatement = session.prepare(select.from(TABLE_NAME)
     .where(QueryBuilder.eq(MESSAGE_ID, bindMarker(MESSAGE_ID))))
@@ -73,6 +79,10 @@ class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: Blob
       .flatMapMany(blobIds => SFlux.fromIterable(blobIds))
       .map(blobIdRow => blobIdFactory.from(blobIdRow))
 
+  def listBlobIds(): SFlux[BlobId] = SFlux(executor.executeRows(listBlobIdsStatement.bind()))
+    .flatMapIterable(row => row.getMap(POSITION_BLOB_ID_MAPPING, classOf[Integer], classOf[String]).asScala.toMap.values)
+    .map(blobIdFactory.from)
+
   private def readRow(cassandraMessageId: CassandraMessageId, row: Row): EncryptedEmailDetailedView =
     EncryptedEmailDetailedView(
       id = cassandraMessageId,
@@ -86,4 +96,8 @@ class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: Blob
     SMono.fromPublisher(executor.executeSingleRow(selectStatement.bind
       .setUUID(MESSAGE_ID, cassandraMessageId.get())))
       .map(row => row.get(POSITION_BLOB_ID_MAPPING, MAP_OF_POSITION_BLOBID_CODEC))
+}
+
+class EncryptedEmailBlobReferenceSource @Inject()(dao: CassandraEncryptedEmailDAO) extends BlobReferenceSource {
+  override def listReferencedBlobs(): Publisher[BlobId] = dao.listBlobIds()
 }
