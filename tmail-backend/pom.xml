@@ -40,17 +40,8 @@
     <properties>
         <james.groupId>org.apache.james</james.groupId>
         <james.version>3.7.0-SNAPSHOT</james.version>
-        <james.protocols.groupId>${james.groupId}.protocols</james.protocols.groupId>
 
-        <feign.version>10.3.0</feign.version>
-        <guavate.version>1.0.0</guavate.version>
-        <guava.version>25.1-jre</guava.version>
-        <jackson.version>2.12.1</jackson.version>
-        <javax.inject.version>1</javax.inject.version>
-        <junit.jupiter.version>5.7.0</junit.jupiter.version>
-        <logback.version>1.2.3</logback.version>
         <scala.base>2.13</scala.base>
-        <slf4j.version>1.7.27</slf4j.version>
     </properties>
 
     <dependencyManagement>

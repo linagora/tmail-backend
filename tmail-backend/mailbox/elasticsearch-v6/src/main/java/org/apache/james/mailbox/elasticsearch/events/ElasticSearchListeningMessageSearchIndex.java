@@ -18,7 +18,6 @@
  ****************************************************************/
 package org.apache.james.mailbox.elasticsearch.events;
 
-import static com.github.steveash.guavate.Guavate.toImmutableList;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.IS_ANSWERED;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.IS_DELETED;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.IS_DRAFT;
@@ -179,7 +178,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
         return elasticSearchIndexer
             .delete(expungedUids.stream()
                 .map(uid ->  indexIdFor(mailboxId, uid))
-                .collect(toImmutableList()),
+                .collect(ImmutableList.toImmutableList()),
                 routingKeyFactory.from(mailboxId))
             .then();
     }
@@ -203,7 +202,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
                 updatedFlags -> createUpdatedDocumentPartFromUpdatedFlags(mailboxId, updatedFlags))
                 .sneakyThrow())
             .window(FLAGS_UPDATE_PROCESSING_WINDOW_SIZE)
-            .concatMap(flux -> flux.collect(toImmutableList())
+            .concatMap(flux -> flux.collect(ImmutableList.toImmutableList())
                 .flatMap(updates -> elasticSearchIndexer.update(updates, routingKey)))
             .then();
     }
