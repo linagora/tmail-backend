@@ -18,7 +18,7 @@ object EncryptedEmailContentStoreContract {
     encryptedAttachmentMetadata = None,
     encryptedAttachmentContents = List())
 
-  private lazy val ENCRYPTED_EMAIL_CONTENT: EncryptedEmailContent = EncryptedEmailContent(
+  val ENCRYPTED_EMAIL_CONTENT: EncryptedEmailContent = EncryptedEmailContent(
     encryptedPreview = "encryptedPreview1",
     encryptedHtml = "encryptedHtml1",
     hasAttachment = true,

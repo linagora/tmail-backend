@@ -1,5 +1,7 @@
 package com.linagora.tmail.encrypted.cassandra;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraModule;
@@ -12,13 +14,18 @@ import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.EncryptedEmailContentStoreContract;
+import com.linagora.tmail.encrypted.EncryptedEmailContentStoreContract$;
 import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailStoreModule;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailContentStoreContract {
     private final CassandraMessageId.Factory messageIdFactory = new CassandraMessageId.Factory();
@@ -26,6 +33,7 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
     private BlobStore blobStore;
     private CassandraEncryptedEmailDAO cassandraEncryptedEmailDAO;
     private CassandraEncryptedEmailContentStore cassandraEncryptedEmailContentStore;
+    private EncryptedEmailBlobReferenceSource blobReferenceSource;
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
@@ -55,6 +63,7 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
             .passthrough());
         cassandraEncryptedEmailDAO = new CassandraEncryptedEmailDAO(cassandra.getConf(), BLOB_ID_FACTORY);
         cassandraEncryptedEmailContentStore = new CassandraEncryptedEmailContentStore(blobStore, cassandraEncryptedEmailDAO);
+        blobReferenceSource = new EncryptedEmailBlobReferenceSource(cassandraEncryptedEmailDAO);
     }
 
     @Override
@@ -75,5 +84,21 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
     @Override
     public BucketName bucketName() {
         return blobStore.getDefaultBucketName();
+    }
+
+    @Test
+    public void blobReferencesShouldBeEmptyByDefault() {
+        assertThat(Flux.from(blobReferenceSource.listReferencedBlobs()).collectList().block())
+            .isEmpty();
+    }
+
+    @Test
+    public void blobReferencesShouldReturnAddedValues() {
+        Mono.from(testee()
+            .store(randomMessageId(), EncryptedEmailContentStoreContract$.MODULE$.ENCRYPTED_EMAIL_CONTENT()))
+            .block();
+
+        assertThat(Flux.from(blobReferenceSource.listReferencedBlobs()).collectList().block())
+            .hasSize(1);
     }
 }
