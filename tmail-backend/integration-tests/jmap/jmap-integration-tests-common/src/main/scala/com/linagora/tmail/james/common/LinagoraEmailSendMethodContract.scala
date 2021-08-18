@@ -1,5 +1,9 @@
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.time.Duration
+import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract.{BOB_INBOX_PATH, HTML_BODY}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -29,9 +33,6 @@ import org.awaitility.core.ConditionFactory
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsString, JsValue, Json}
 
-import java.nio.charset.StandardCharsets
-import java.time.Duration
-import java.util.concurrent.TimeUnit
 import scala.jdk.CollectionConverters._
 
 object LinagoraEmailSendMethodContract {
@@ -1111,7 +1112,7 @@ trait LinagoraEmailSendMethodContract {
       .contentType("text/plain")
       .body(payload)
     .when
-      .post(s"/upload/$ACCOUNT_ID/")
+      .post(s"/upload/$ACCOUNT_ID")
     .`then`
       .statusCode(SC_CREATED)
       .extract
