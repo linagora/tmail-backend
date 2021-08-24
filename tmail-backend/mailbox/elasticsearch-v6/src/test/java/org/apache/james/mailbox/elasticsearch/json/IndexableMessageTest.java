@@ -42,6 +42,7 @@ import org.apache.james.mailbox.model.MessageAttachmentMetadata;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.TestId;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
+import org.apache.james.mailbox.store.mail.model.DefaultMessageId;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.tika.TikaConfiguration;
 import org.apache.james.mailbox.tika.TikaExtension;
@@ -92,6 +93,7 @@ class IndexableMessageTest {
         when(mailboxMessage.getAttachments())
             .thenReturn(ImmutableList.of(MessageAttachmentMetadata.builder()
                 .attachment(AttachmentMetadata.builder()
+                    .messageId(new DefaultMessageId())
                     .attachmentId(AttachmentId.from("1"))
                     .type("text/plain")
                     .size(36)
