@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test
 class JwtPrivateKeyConfigurationTest {
   @Test
   def getJwtPrivateKeyPemShouldReturnEmptyWhenEmptyPrivateKey(): Unit = {
-    val jwtPrivateKeyConfiguration = new JwtPrivateKeyConfiguration(Option.empty)
+    val jwtPrivateKeyConfiguration = new JwtPrivateKeyConfiguration(None)
 
-    assertThat(jwtPrivateKeyConfiguration.jwtPrivateKey).isEqualTo(Option.empty)
+    assertThat(jwtPrivateKeyConfiguration.jwtPrivateKey).isEqualTo(None)
   }
 
   @Test

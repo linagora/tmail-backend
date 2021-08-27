@@ -1,9 +1,10 @@
 package com.linagora.tmail.james.jmap.jwt
 
 import com.linagora.tmail.james.jmap.jwt.Fixture.{validPrivateKey, validPublicKey}
-import com.linagora.tmail.james.jmap.jwt.JwtSignerTest.{bob, expiredExpirationTime, validExpirationTime}
+import com.linagora.tmail.james.jmap.jwt.JwtSignerTest.{bob, differentValidPublicKey, expiredExpirationTime, now, validExpirationTime}
 import org.apache.james.core.Username
 import org.apache.james.jwt.{JwtConfiguration, JwtTokenVerifier, PublicKeyProvider, PublicKeyReader}
+import org.apache.james.utils.UpdatableTickingClock
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.jupiter.api.{BeforeAll, BeforeEach, Test}
@@ -14,8 +15,9 @@ import java.util.Optional
 
 object JwtSignerTest {
   private val bob = Username.of("bob")
-  private val validExpirationTime = ZonedDateTime.now().plusHours(1)
-  private val expiredExpirationTime = ZonedDateTime.now().minusHours(1)
+  private val now: ZonedDateTime = ZonedDateTime.now()
+  private val validExpirationTime = now.plusHours(1)
+  private val expiredExpirationTime = now.minusHours(1)
 
   private val differentValidPublicKey =
     """
@@ -42,7 +44,8 @@ class JwtSignerTest {
   @BeforeEach
   def setup(): Unit = {
     val privateKeyProvider = new JwtPrivateKeyProvider(new JwtPrivateKeyConfiguration(Option(validPrivateKey)))
-    jwtSigner = new JwtSigner(privateKeyProvider)
+    val clock = new UpdatableTickingClock(now.toInstant)
+    jwtSigner = new JwtSigner(clock, privateKeyProvider)
 
     val publicKeyProvider = new PublicKeyProvider(new JwtConfiguration(Optional.of(validPublicKey)), new PublicKeyReader)
     jwtTokenVerifier = new JwtTokenVerifier(publicKeyProvider)
@@ -92,10 +95,10 @@ class JwtSignerTest {
 
   @Test
   def verifyShouldReturnFalseWhenKeysAreNotPaired(): Unit = {
-    val otherPublicKeyProvider = new PublicKeyProvider(new JwtConfiguration(Optional.of(validPublicKey)), new PublicKeyReader)
+    val otherPublicKeyProvider = new PublicKeyProvider(new JwtConfiguration(Optional.of(differentValidPublicKey)), new PublicKeyReader)
     val otherJwtTokenVerifier = new JwtTokenVerifier(otherPublicKeyProvider)
 
-    val jwtToken = jwtSigner.sign(bob, expiredExpirationTime)
+    val jwtToken = jwtSigner.sign(bob, validExpirationTime)
 
     assertThat(otherJwtTokenVerifier.verifyAndExtractLogin(jwtToken.value))
       .isEmpty

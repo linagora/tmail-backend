@@ -18,20 +18,18 @@ object JwtPrivateKeyProviderTest {
 
 class JwtPrivateKeyProviderTest {
   @Test
-  def getShouldNotThrowWhenPEMKeyProvided(): Unit = {
+  def providerShouldNotThrowWhenPEMKeyProvided(): Unit = {
     val jwtPrivateKeyConfiguration = new JwtPrivateKeyConfiguration(Option(validPrivateKey))
 
     val privateKeyProvider = new JwtPrivateKeyProvider(jwtPrivateKeyConfiguration)
 
-    assertThat(privateKeyProvider.get()).isInstanceOf(classOf[RSAPrivateKey])
+    assertThat(privateKeyProvider.privateKey).isInstanceOf(classOf[RSAPrivateKey])
   }
 
   @Test
-  def getShouldThrowWhenPEMKeyNotProvided(): Unit = {
-    val jwtPrivateKeyConfiguration = new JwtPrivateKeyConfiguration(Option.empty)
+  def providerShouldThrowWhenPEMKeyNotProvided(): Unit = {
+    val jwtPrivateKeyConfiguration = new JwtPrivateKeyConfiguration(None)
 
-    val privateKeyProvider = new JwtPrivateKeyProvider(jwtPrivateKeyConfiguration)
-
-    assertThatThrownBy(() => privateKeyProvider.get()).isExactlyInstanceOf(classOf[MissingOrInvalidKeyException])
+    assertThatThrownBy(() => new JwtPrivateKeyProvider(jwtPrivateKeyConfiguration)).isExactlyInstanceOf(classOf[MissingOrInvalidKeyException])
   }
 }

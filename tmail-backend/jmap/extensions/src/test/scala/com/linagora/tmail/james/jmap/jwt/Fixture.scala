@@ -1,6 +1,23 @@
 package com.linagora.tmail.james.jmap.jwt
 
 object Fixture {
+  /**
+   * Key pair generation used for this example:
+   *
+   * ``
+   * $ openssl req \
+   *    -subj "/C=FR/ST=French/L=Paris/O=Apache/CN=localhost" \
+   *    -new -x509 -sha256 -newkey rsa:2048 -nodes \
+   *    -keyout private_key \
+   *    -days 365 \
+   *    -out cert
+   *
+   * $ openssl rsa \
+   *    -in private_key \
+   *    -pubout > public_key
+   * ``
+   */
+
   lazy val validPrivateKey: String =
     """
       |-----BEGIN PRIVATE KEY-----

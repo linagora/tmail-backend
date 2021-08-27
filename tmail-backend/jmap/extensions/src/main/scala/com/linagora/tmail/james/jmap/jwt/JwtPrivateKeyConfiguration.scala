@@ -26,12 +26,12 @@ object JwtPrivateKeyConfiguration {
           Option(new JcaPEMKeyConverter().getPrivateKey(privateKeyInfo))
         case _ =>
           LOGGER.warn("Key is not an instance of SubjectPublicKeyInfo but of {}", readPEM)
-          Option.empty
+          None
       }
     } catch {
       case e: IOException =>
         LOGGER.warn("Error when reading the PEM file", e)
-        Option.empty
+        None
     }
   }
 }
