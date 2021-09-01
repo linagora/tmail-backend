@@ -2,8 +2,8 @@ package com.linagora.tmail.james.jmap.longlivedtoken
 
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreContract.{DEVICE_ID, LONG_LIVED_TOKEN, LONG_LIVED_TOKEN_SECRET, USERNAME, USERNAME_2}
 import org.apache.james.core.Username
-import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
+import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -18,14 +18,7 @@ object LongLivedTokenStoreContract {
 
 trait LongLivedTokenStoreContract {
 
-  def getLongLivedTokenStore: LongLivedTokenStore
-
-  var testee: LongLivedTokenStore = _
-
-  @BeforeEach
-  def setUp(): Unit = {
-    testee = getLongLivedTokenStore
-  }
+  def testee: LongLivedTokenStore
 
   @Test
   def storeShouldThrowWhenUsernameIsNull(): Unit = {
@@ -62,6 +55,16 @@ trait LongLivedTokenStoreContract {
   }
 
   @Test
+  def storeShouldReturnDifferentIdWhenSaveAnotherSecret(): Unit = {
+    val longLivedTokenId: LongLivedTokenId = SMono.fromPublisher(testee.store(USERNAME, LONG_LIVED_TOKEN)).block()
+    val longLivedTokenId2: LongLivedTokenId = SMono.fromPublisher(testee.store(USERNAME,
+      LongLivedToken(DEVICE_ID, LongLivedTokenSecret.parse("1111111-463d-49b8-956e-80e2a64398d8").toOption.get))).block()
+
+    assertThat(longLivedTokenId)
+      .isNotEqualTo(longLivedTokenId2)
+  }
+
+  @Test
   def validateShouldThrowWhenUsernameIsNull(): Unit = {
     assertThatThrownBy(() => SMono.fromPublisher(testee.validate(null, LONG_LIVED_TOKEN_SECRET)).block())
       .isInstanceOf(classOf[NullPointerException])
@@ -87,7 +90,7 @@ trait LongLivedTokenStoreContract {
   }
 
   @Test
-  def validateShouldThrowWhenLongLivedTokenSecretInvalid(): Unit = {
+  def validateShouldThrowWhenLongLivedTokenBelongToAnotherUser(): Unit = {
     SMono.fromPublisher(testee.store(USERNAME_2, LONG_LIVED_TOKEN)).block()
 
     assertThatThrownBy(() => SMono.fromPublisher(testee.validate(USERNAME, LONG_LIVED_TOKEN_SECRET)).block())
@@ -141,7 +144,7 @@ trait LongLivedTokenStoreContract {
 
   @Test
   def revokeShouldThrowWhenUsernameIsNull(): Unit = {
-    assertThatThrownBy(() => SMono.fromPublisher(testee.revoke(null, LongLivedTokenFootPrint(LongLivedTokenId.generate, DEVICE_ID))).block())
+    assertThatThrownBy(() => SMono.fromPublisher(testee.revoke(null, LongLivedTokenId.generate)).block())
       .isInstanceOf(classOf[NullPointerException])
   }
 
@@ -152,16 +155,16 @@ trait LongLivedTokenStoreContract {
   }
 
   @Test
-  def revokeShouldThrowWhenLongLivedTokenFootPrintNotFound(): Unit = {
-    assertThatThrownBy(() => SMono.fromPublisher(testee.revoke(USERNAME, LongLivedTokenFootPrint(LongLivedTokenId.generate, DEVICE_ID))).block())
-      .isInstanceOf(classOf[LongLivedTokenNotFoundException])
+  def revokeShouldNotThrowWhenLongLivedTokenFootPrintNotFound(): Unit = {
+    assertThatCode(() => SMono.fromPublisher(testee.revoke(USERNAME, LongLivedTokenId.generate)).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
   def revokeShouldRemoveAssignId(): Unit = {
     val longLivedTokenId: LongLivedTokenId = SMono.fromPublisher(testee.store(USERNAME, LONG_LIVED_TOKEN)).block()
 
-    SMono.fromPublisher(testee.revoke(USERNAME, LongLivedTokenFootPrint(longLivedTokenId, DEVICE_ID))).block()
+    SMono.fromPublisher(testee.revoke(USERNAME, longLivedTokenId)).block()
     assertThat(SFlux.fromPublisher(testee.listTokens(USERNAME)).collectSeq().block().asJava)
       .isEmpty()
   }
@@ -171,7 +174,7 @@ trait LongLivedTokenStoreContract {
     val longLivedTokenIdShouldBeRemoved: LongLivedTokenId = SMono.fromPublisher(testee.store(USERNAME, LONG_LIVED_TOKEN)).block()
     val longLivedTokenId: LongLivedTokenId = SMono.fromPublisher(testee.store(USERNAME, LongLivedToken(DEVICE_ID, LongLivedTokenSecret.generate))).block()
 
-    SMono.fromPublisher(testee.revoke(USERNAME, LongLivedTokenFootPrint(longLivedTokenIdShouldBeRemoved, DEVICE_ID))).block()
+    SMono.fromPublisher(testee.revoke(USERNAME, longLivedTokenIdShouldBeRemoved)).block()
     assertThat(SFlux.fromPublisher(testee.listTokens(USERNAME)).collectSeq().block().asJava)
       .contains(LongLivedTokenFootPrint(longLivedTokenId, DEVICE_ID))
       .doesNotContain(LongLivedTokenFootPrint(longLivedTokenIdShouldBeRemoved, DEVICE_ID))

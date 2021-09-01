@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.longlivedtoken
 
 import com.google.common.base.Preconditions
-import org.apache.commons.lang3.tuple.ImmutableTriple
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -38,6 +37,10 @@ case class LongLivedTokenFootPrint(id: LongLivedTokenId, deviceId: DeviceId)
 
 case class LongLivedTokenNotFoundException() extends RuntimeException
 
+case class LongLivedTokenInfo(id: LongLivedTokenId, deviceId: DeviceId, secret: LongLivedTokenSecret) {
+  def asFootPrint(): LongLivedTokenFootPrint = LongLivedTokenFootPrint(id, deviceId)
+}
+
 trait LongLivedTokenStore {
   def store(username: Username, longLivedToken: LongLivedToken): Publisher[LongLivedTokenId]
 
@@ -45,11 +48,12 @@ trait LongLivedTokenStore {
 
   def listTokens(user: Username): Publisher[LongLivedTokenFootPrint]
 
-  def revoke(username: Username, id: LongLivedTokenFootPrint): Publisher[Unit]
+  def revoke(username: Username, id: LongLivedTokenId): Publisher[Unit]
 }
 
-class InMemoryLongLivedTokenStore(tokenStore: Map[Username, Seq[ImmutableTriple[DeviceId, LongLivedTokenId, LongLivedTokenSecret]]] = scala.collection.concurrent.TrieMap())
-  extends LongLivedTokenStore {
+class InMemoryLongLivedTokenStore() extends LongLivedTokenStore {
+
+  val tokenStore: Map[Username, Seq[LongLivedTokenInfo]] = scala.collection.concurrent.TrieMap()
 
   override def store(username: Username, longLivedToken: LongLivedToken): Publisher[LongLivedTokenId] = {
     Preconditions.checkNotNull(username)
@@ -61,13 +65,13 @@ class InMemoryLongLivedTokenStore(tokenStore: Map[Username, Seq[ImmutableTriple[
   }
 
   private def storeWhenUserExists(username: Username, longLivedToken: LongLivedToken): LongLivedTokenId = {
-    val tokenList: Seq[ImmutableTriple[DeviceId, LongLivedTokenId, LongLivedTokenSecret]] = tokenStore(username)
+    val tokenList: Seq[LongLivedTokenInfo] = tokenStore(username)
     tokenList
-      .find(triple => triple.left.equals(longLivedToken.deviceId) && triple.right.equals(longLivedToken.secret))
-      .map(e => e.middle)
+      .find(tokenInfo => tokenInfo.deviceId.equals(longLivedToken.deviceId) && tokenInfo.secret.equals(longLivedToken.secret))
+      .map(e => e.id)
       .getOrElse({
         val longLivedTokenId: LongLivedTokenId = LongLivedTokenId.generate
-        tokenStore.put(username, tokenList :+ ImmutableTriple.of(longLivedToken.deviceId, longLivedTokenId, longLivedToken.secret))
+        tokenStore.put(username, tokenList :+ LongLivedTokenInfo(longLivedTokenId, longLivedToken.deviceId, longLivedToken.secret))
         longLivedTokenId
       })
   }
@@ -75,7 +79,7 @@ class InMemoryLongLivedTokenStore(tokenStore: Map[Username, Seq[ImmutableTriple[
   private def storeWhenUserNotExists(username: Username, longLivedToken: LongLivedToken): SMono[LongLivedTokenId] =
     SMono.fromCallable(() => {
       val longLivedTokenId: LongLivedTokenId = LongLivedTokenId.generate
-      tokenStore.put(username, Seq(ImmutableTriple.of(longLivedToken.deviceId, longLivedTokenId, longLivedToken.secret)))
+      tokenStore.put(username, Seq(LongLivedTokenInfo(longLivedTokenId, longLivedToken.deviceId, longLivedToken.secret)))
       longLivedTokenId
     })
 
@@ -83,29 +87,28 @@ class InMemoryLongLivedTokenStore(tokenStore: Map[Username, Seq[ImmutableTriple[
     Preconditions.checkNotNull(username)
     Preconditions.checkNotNull(secret)
     SFlux.fromIterable(tokenStore.getOrElse(username, Seq.empty))
-      .filter(row => row.right.equals(secret))
+      .filter(row => row.secret.equals(secret))
       .head
-      .map(tripe => LongLivedTokenFootPrint(tripe.middle, tripe.left))
+      .map(tokenInfo => tokenInfo.asFootPrint())
       .switchIfEmpty(SMono.error(new LongLivedTokenNotFoundException))
   }
 
   override def listTokens(username: Username): Publisher[LongLivedTokenFootPrint] = {
     Preconditions.checkNotNull(username)
     SFlux.fromIterable(tokenStore.getOrElse(username, Seq.empty))
-      .map(triple => LongLivedTokenFootPrint(triple.middle, triple.left))
+      .map(tokenInfo => tokenInfo.asFootPrint())
   }
 
-  override def revoke(username: Username, id: LongLivedTokenFootPrint): Publisher[Unit] = {
+  override def revoke(username: Username, id: LongLivedTokenId): Publisher[Unit] = {
     Preconditions.checkNotNull(username)
     Preconditions.checkNotNull(id)
-    val tokenList: Seq[ImmutableTriple[DeviceId, LongLivedTokenId, LongLivedTokenSecret]] = tokenStore.getOrElse(username, Seq.empty)
+    val tokenList: Seq[LongLivedTokenInfo] = tokenStore.getOrElse(username, Seq.empty)
 
-    SMono.justOrEmpty(tokenList.filter(row => row.middle.equals(id.id) && row.left.equals(id.deviceId)))
+    SMono.justOrEmpty(tokenList.filter(row => row.id.equals(id)))
       .filter(seq => seq.nonEmpty)
       .doOnNext(seq => {
         tokenStore.put(username, tokenList diff seq)
       })
-      .switchIfEmpty(SMono.error(new LongLivedTokenNotFoundException))
       .`then`
   }
 }
