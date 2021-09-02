@@ -59,9 +59,12 @@ class InMemoryLongLivedTokenStore() extends LongLivedTokenStore {
     Preconditions.checkNotNull(username)
     Preconditions.checkNotNull(longLivedToken)
     SMono.just(tokenStore.contains(username))
-      .filter(userExists => userExists)
-      .map(_ => storeWhenUserExists(username, longLivedToken))
-      .switchIfEmpty(storeWhenUserNotExists(username, longLivedToken))
+      .map(userExists =>
+        if (userExists) {
+          storeWhenUserExists(username, longLivedToken)
+        } else {
+          storeWhenUserNotExists(username, longLivedToken)
+        })
   }
 
   private def storeWhenUserExists(username: Username, longLivedToken: LongLivedToken): LongLivedTokenId = {
@@ -76,12 +79,11 @@ class InMemoryLongLivedTokenStore() extends LongLivedTokenStore {
       })
   }
 
-  private def storeWhenUserNotExists(username: Username, longLivedToken: LongLivedToken): SMono[LongLivedTokenId] =
-    SMono.fromCallable(() => {
-      val longLivedTokenId: LongLivedTokenId = LongLivedTokenId.generate
-      tokenStore.put(username, Seq(LongLivedTokenInfo(longLivedTokenId, longLivedToken.deviceId, longLivedToken.secret)))
-      longLivedTokenId
-    })
+  private def storeWhenUserNotExists(username: Username, longLivedToken: LongLivedToken): LongLivedTokenId = {
+    val longLivedTokenId: LongLivedTokenId = LongLivedTokenId.generate
+    tokenStore.put(username, Seq(LongLivedTokenInfo(longLivedTokenId, longLivedToken.deviceId, longLivedToken.secret)))
+    longLivedTokenId
+  }
 
   override def validate(username: Username, secret: LongLivedTokenSecret): Publisher[LongLivedTokenFootPrint] = {
     Preconditions.checkNotNull(username)
