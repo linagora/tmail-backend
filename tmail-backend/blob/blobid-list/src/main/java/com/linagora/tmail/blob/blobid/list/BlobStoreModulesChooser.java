@@ -39,6 +39,7 @@ import org.apache.james.lifecycle.api.StartUpCheck;
 import org.apache.james.modules.blobstore.BlobDeduplicationGCModule;
 import org.apache.james.modules.blobstore.validation.EventsourcingStorageStrategy;
 import org.apache.james.modules.blobstore.validation.StorageStrategyModule;
+import org.apache.james.modules.mailbox.BlobStoreAPIModule;
 import org.apache.james.modules.objectstorage.DefaultBucketModule;
 import org.apache.james.modules.objectstorage.S3BlobStoreModule;
 import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore;
@@ -123,9 +124,11 @@ public class BlobStoreModulesChooser {
                     .to(DeDuplicationBlobStore.class);
                 return ImmutableList.of(new BlobDeduplicationGCModule(), deduplicationModule);
             case PASSTHROUGH:
-                return ImmutableList.of(binder -> binder.bind(BlobStore.class)
-                    .annotatedWith(Names.named(CachedBlobStore.BACKEND))
-                    .to(PassThroughBlobStore.class));
+                return ImmutableList.of(
+                    binder -> binder.bind(BlobStore.class)
+                        .annotatedWith(Names.named(CachedBlobStore.BACKEND))
+                        .to(PassThroughBlobStore.class),
+                    new BlobStoreAPIModule());
             default:
                 throw new RuntimeException("Unknown storage strategy " + storageStrategy.name());
         }
