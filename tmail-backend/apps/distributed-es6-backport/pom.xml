@@ -16,13 +16,6 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-mime4j-dom</artifactId>
-            <version>0.8.6-SNAPSHOT</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
