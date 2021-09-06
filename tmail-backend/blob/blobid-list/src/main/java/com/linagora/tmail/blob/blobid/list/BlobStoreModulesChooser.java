@@ -36,6 +36,7 @@ import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.cassandra.dto.EventDTO;
 import org.apache.james.eventsourcing.eventstore.cassandra.dto.EventDTOModule;
 import org.apache.james.lifecycle.api.StartUpCheck;
+import org.apache.james.modules.blobstore.BlobDeduplicationGCModule;
 import org.apache.james.modules.blobstore.validation.EventsourcingStorageStrategy;
 import org.apache.james.modules.blobstore.validation.StorageStrategyModule;
 import org.apache.james.modules.objectstorage.DefaultBucketModule;
@@ -114,16 +115,17 @@ public class BlobStoreModulesChooser {
         return new MultiSaveDeclarationModule();
     }
 
-    private static Module chooseStoragePolicyModule(StorageStrategy storageStrategy) {
+    private static ImmutableList<Module> chooseStoragePolicyModule(StorageStrategy storageStrategy) {
         switch (storageStrategy) {
             case DEDUPLICATION:
-                return binder -> binder.bind(BlobStore.class)
+                Module deduplicationModule = binder -> binder.bind(BlobStore.class)
                     .annotatedWith(Names.named(CachedBlobStore.BACKEND))
                     .to(DeDuplicationBlobStore.class);
+                return ImmutableList.of(new BlobDeduplicationGCModule(), deduplicationModule);
             case PASSTHROUGH:
-                return binder -> binder.bind(BlobStore.class)
+                return ImmutableList.of(binder -> binder.bind(BlobStore.class)
                     .annotatedWith(Names.named(CachedBlobStore.BACKEND))
-                    .to(PassThroughBlobStore.class);
+                    .to(PassThroughBlobStore.class));
             default:
                 throw new RuntimeException("Unknown storage strategy " + storageStrategy.name());
         }
@@ -156,7 +158,7 @@ public class BlobStoreModulesChooser {
         return ImmutableList.<Module>builder()
             .add(chooseEncryptionModule(choosingConfiguration.getCryptoConfig()))
             .add(chooseObjectStorageModule(choosingConfiguration.isSingleSaveEnabled()))
-            .add(chooseStoragePolicyModule(choosingConfiguration.storageStrategy()))
+            .addAll(chooseStoragePolicyModule(choosingConfiguration.storageStrategy()))
             .add(new StoragePolicyConfigurationSanityEnforcementModule(choosingConfiguration))
             .build();
     }
