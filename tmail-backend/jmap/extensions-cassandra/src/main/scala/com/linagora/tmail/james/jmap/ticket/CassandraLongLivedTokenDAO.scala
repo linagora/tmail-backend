@@ -21,21 +21,13 @@ object LongLivedTokenStoreTable {
   val DEVICE_ID: String = "device_id"
   val TOKEN_ID: String = "token_id"
 
-  val LOOKUP_TABLE_NAME: String = "long_lived_token_lookup"
-
   val module: CassandraModule = CassandraModule.table(TABLE_NAME)
     .comment("Holds long lived token for user in order to authen JMAP")
     .statement((statement: Create) => statement
       .addPartitionKey(USERNAME, text)
       .addClusteringColumn(SECRET_KEY, uuid())
-      .addClusteringColumn(TOKEN_ID, uuid())
+      .addColumn(TOKEN_ID, uuid())
       .addColumn(DEVICE_ID, text))
-    .table(LOOKUP_TABLE_NAME)
-    .comment("Long lived token table lookup by token_id, using for deletion long lived token data")
-    .statement((statement: Create) => statement
-      .addPartitionKey(USERNAME, text)
-      .addClusteringColumn(TOKEN_ID, uuid())
-      .addColumn(SECRET_KEY, uuid()))
     .build
 }
 
@@ -51,11 +43,6 @@ class CassandraLongLivedTokenDAO @Inject()(session: Session) {
     .value(DEVICE_ID, bindMarker(DEVICE_ID))
     .value(TOKEN_ID, bindMarker(TOKEN_ID)))
 
-  private val insertLookupStatement: PreparedStatement = session.prepare(insertInto(LOOKUP_TABLE_NAME)
-    .value(USERNAME, bindMarker(USERNAME))
-    .value(SECRET_KEY, bindMarker(SECRET_KEY))
-    .value(TOKEN_ID, bindMarker(TOKEN_ID)))
-
   private val listStatement: PreparedStatement = session.prepare(select.from(TABLE_NAME)
     .where(QueryBuilder.eq(USERNAME, bindMarker(USERNAME))))
 
@@ -63,13 +50,8 @@ class CassandraLongLivedTokenDAO @Inject()(session: Session) {
     .where(QueryBuilder.eq(USERNAME, bindMarker(USERNAME)))
     .and(QueryBuilder.eq(SECRET_KEY, bindMarker(SECRET_KEY))))
 
-  private val selectLookUpStatement: PreparedStatement = session.prepare(select.from(LOOKUP_TABLE_NAME)
-    .where(QueryBuilder.eq(USERNAME, bindMarker(USERNAME)))
-    .and(QueryBuilder.eq(TOKEN_ID, bindMarker(TOKEN_ID))))
-
   private val deleteStatement: PreparedStatement = session.prepare(QueryBuilder.delete.from(TABLE_NAME)
     .where(QueryBuilder.eq(USERNAME, bindMarker(USERNAME)))
-    .and(QueryBuilder.eq(TOKEN_ID, bindMarker(TOKEN_ID)))
     .and(QueryBuilder.eq(SECRET_KEY, bindMarker(SECRET_KEY))))
 
   def insert(username: Username, longLivedToken: LongLivedToken): SMono[LongLivedTokenId] = {
@@ -80,16 +62,8 @@ class CassandraLongLivedTokenDAO @Inject()(session: Session) {
           .setUUID(SECRET_KEY, longLivedToken.secret.value)
           .setString(DEVICE_ID, longLivedToken.deviceId.value)
           .setUUID(TOKEN_ID, longLivedTokenId.value)))
-          .`then`(insertLookup(username, longLivedTokenId, longLivedToken.secret))
           .`then`(SMono.just(longLivedTokenId)))
   }
-
-  private def insertLookup(username: Username, longLivedTokenId: LongLivedTokenId, secret: LongLivedTokenSecret): SMono[Unit] =
-    SMono.fromPublisher(executor.executeVoid(insertLookupStatement.bind
-      .setString(USERNAME, username.asString())
-      .setUUID(TOKEN_ID, longLivedTokenId.value)
-      .setUUID(SECRET_KEY, secret.value)))
-      .`then`()
 
   def validate(username: Username, secret: LongLivedTokenSecret): SMono[LongLivedTokenFootPrint] =
     SMono.fromPublisher(executor.executeSingleRow(selectStatement.bind
@@ -107,15 +81,15 @@ class CassandraLongLivedTokenDAO @Inject()(session: Session) {
       .flatMap(secretKey =>
         SMono.fromPublisher(executor.executeVoid(deleteStatement.bind
           .setString(USERNAME, username.asString())
-          .setUUID(TOKEN_ID, longLivedTokenId.value)
           .setUUID(SECRET_KEY, secretKey.value))))
       .`then`()
 
   def lookupSecretKey(username: Username, longLivedTokenId: LongLivedTokenId): SMono[LongLivedTokenSecret] =
-    SMono.fromPublisher(executor.executeSingleRow(selectLookUpStatement.bind
-      .setString(USERNAME, username.asString())
-      .setUUID(TOKEN_ID, longLivedTokenId.value)))
+    SFlux.fromPublisher(executor.executeRows(listStatement.bind
+      .setString(USERNAME, username.asString())))
+      .filter(row => row.getUUID(TOKEN_ID).equals(longLivedTokenId.value))
       .map(row => LongLivedTokenSecret(row.getUUID(SECRET_KEY)))
+      .head
 
   private def readRow(row: Row): LongLivedTokenFootPrint =
     LongLivedTokenFootPrint(

@@ -39,14 +39,6 @@ trait LongLivedTokenStoreContract {
   }
 
   @Test
-  def storeShouldReturnSameLongLivedTokenIdWhenSameDeviceIdAndSecret(): Unit = {
-    val longLivedTokenId: LongLivedTokenId = SMono.fromPublisher(testee.store(USERNAME, LONG_LIVED_TOKEN)).block()
-
-    assertThat(SMono.fromPublisher(testee.store(USERNAME, LONG_LIVED_TOKEN)).block())
-      .isEqualTo(longLivedTokenId)
-  }
-
-  @Test
   def storeShouldSaveLongLivedToken(): Unit = {
     val longLivedTokenId: LongLivedTokenId = SMono.fromPublisher(testee.store(USERNAME, LONG_LIVED_TOKEN)).block()
 

@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.ticket
 
+import com.google.common.base.Preconditions
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.longlivedtoken.{LongLivedToken, LongLivedTokenFootPrint, LongLivedTokenId, LongLivedTokenNotFoundException, LongLivedTokenSecret, LongLivedTokenStore}
@@ -24,18 +25,27 @@ case class CassandraLongLivedTokenStoreModule() extends AbstractModule {
 
 class CassandraLongLivedTokenStore @Inject()(longLivedTokenDAO: CassandraLongLivedTokenDAO) extends LongLivedTokenStore {
 
-  override def store(username: Username, longLivedToken: LongLivedToken): Publisher[LongLivedTokenId] =
-    longLivedTokenDAO.validate(username, longLivedToken.secret)
-      .map(footPrint => footPrint.id)
-      .switchIfEmpty(longLivedTokenDAO.insert(username, longLivedToken))
+  override def store(username: Username, longLivedToken: LongLivedToken): Publisher[LongLivedTokenId] = {
+    Preconditions.checkNotNull(username)
+    Preconditions.checkNotNull(longLivedToken)
+    longLivedTokenDAO.insert(username, longLivedToken)
+  }
 
-  override def validate(username: Username, secret: LongLivedTokenSecret): Publisher[LongLivedTokenFootPrint] =
+  override def validate(username: Username, secret: LongLivedTokenSecret): Publisher[LongLivedTokenFootPrint] = {
+    Preconditions.checkNotNull(username)
+    Preconditions.checkNotNull(secret)
     longLivedTokenDAO.validate(username, secret)
       .switchIfEmpty(SMono.error(new LongLivedTokenNotFoundException))
+  }
 
-  override def listTokens(username: Username): Publisher[LongLivedTokenFootPrint] =
+  override def listTokens(username: Username): Publisher[LongLivedTokenFootPrint] = {
+    Preconditions.checkNotNull(username)
     longLivedTokenDAO.list(username)
+  }
 
-  override def revoke(username: Username, id: LongLivedTokenId): Publisher[Unit] =
+  override def revoke(username: Username, id: LongLivedTokenId): Publisher[Unit] = {
+    Preconditions.checkNotNull(username)
+    Preconditions.checkNotNull(id)
     longLivedTokenDAO.delete(username, id)
+  }
 }
