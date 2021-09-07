@@ -1,11 +1,10 @@
-package com.linagora.tmail.james.jmap.ticket
+package com.linagora.tmail.james.jmap.longlivedtoken
 
 import com.datastax.driver.core.DataType.{text, uuid}
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.querybuilder.QueryBuilder.{bindMarker, insertInto, select}
 import com.datastax.driver.core.schemabuilder.Create
 import com.datastax.driver.core.{PreparedStatement, Row, Session}
-import com.linagora.tmail.james.jmap.longlivedtoken.{DeviceId, LongLivedToken, LongLivedTokenFootPrint, LongLivedTokenId, LongLivedTokenSecret}
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.core.Username

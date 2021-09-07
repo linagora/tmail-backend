@@ -1,9 +1,8 @@
-package com.linagora.tmail.james.jmap.ticket
+package com.linagora.tmail.james.jmap.longlivedtoken
 
 import com.google.common.base.Preconditions
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
-import com.linagora.tmail.james.jmap.longlivedtoken.{LongLivedToken, LongLivedTokenFootPrint, LongLivedTokenId, LongLivedTokenNotFoundException, LongLivedTokenSecret, LongLivedTokenStore}
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
