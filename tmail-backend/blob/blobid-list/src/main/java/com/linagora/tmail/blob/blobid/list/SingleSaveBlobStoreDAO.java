@@ -93,11 +93,7 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
 
     @Override
     public Mono<Void> delete(BucketName bucketName, BlobId blobId) {
-        if (defaultBucketName.equals(bucketName)) {
-            return Mono.error(new ObjectStoreException("Can not delete in the default bucket when single save is enabled"));
-        } else {
-            return Mono.from(blobStoreDAO.delete(bucketName, blobId));
-        }
+        return Mono.from(blobStoreDAO.delete(bucketName, blobId));
     }
 
     @Override
