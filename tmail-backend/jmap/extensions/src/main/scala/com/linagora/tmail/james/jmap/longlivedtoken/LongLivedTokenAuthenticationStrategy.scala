@@ -30,7 +30,7 @@ class LongLivedTokenAuthenticationStrategy @Inject()(longLivedTokenStore: LongLi
       .asJava()
 
   override def correspondingChallenge(): AuthenticationChallenge = AuthenticationChallenge.of(
-    AuthenticationScheme.of("Ticket"),
+    AuthenticationScheme.of("Bearer"),
     Map("realm" -> "LongLivedToken").asJava)
 
   private def retrieveAuthenticationToken(httpRequest: HttpServerRequest): Option[AuthenticationToken] =
@@ -40,9 +40,10 @@ class LongLivedTokenAuthenticationStrategy @Inject()(longLivedTokenStore: LongLi
       .flatMap(tokenValue => parseToken(tokenValue))
 
   private def parseToken(tokenValue: String): Option[AuthenticationToken] =
-    Option(tokenValue.lastIndexOf(AUTHENTICATION_TOKEN_COMMA))
-      .filter(index => index > 0)
-      .flatMap(index => LongLivedTokenSecret.parse(tokenValue.substring(index + 1)).toOption
-        .map(secret => AuthenticationToken(Username.of(tokenValue.substring(0, index)), secret)))
+    Some(tokenValue.lastIndexOf(AUTHENTICATION_TOKEN_COMMA))
+      .filter(commaIndex => commaIndex > 0)
+      .filter(commaIndex => (commaIndex + 1) < tokenValue.length)
+      .flatMap(commaIndex => LongLivedTokenSecret.parse(tokenValue.substring(commaIndex + 1)).toOption
+        .map(secret => AuthenticationToken(Username.of(tokenValue.substring(0, commaIndex)), secret)))
 
 }

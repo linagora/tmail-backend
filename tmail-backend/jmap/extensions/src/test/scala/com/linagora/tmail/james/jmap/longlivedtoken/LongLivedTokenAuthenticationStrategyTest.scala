@@ -51,10 +51,20 @@ class LongLivedTokenAuthenticationStrategyTest {
       .isEmpty()
   }
 
-  @Test
-  def createMailboxSessionShouldReturnEmptyWhenAuthHeadersIsInvalid(): Unit = {
+  @ParameterizedTest
+  @ValueSource(strings = Array(
+    "Bearer abc",
+    "Bearer broken_",
+    "Bearerbroken_",
+    "broken_",
+    "Basic broken_",
+    "_",
+    "_ ",
+    " _",
+  ))
+  def createMailboxSessionShouldReturnEmptyWhenAuthHeadersIsInvalid(valueToken: String): Unit = {
     when(mockedHeaders.get(AUTHORIZATION_HEADERS))
-      .thenReturn("Bearer abc")
+      .thenReturn(valueToken)
     assertThat(testee.createMailboxSession(mockedRequest).blockOptional())
       .isEmpty()
   }
@@ -79,7 +89,7 @@ class LongLivedTokenAuthenticationStrategyTest {
   }
 
   @Test
-  def createMailboxSessionShouldReturnWhenAuthHeadersAreValid(): Unit = {
+  def createMailboxSessionShouldReturnValidSessionWhenAuthHeadersAreValid(): Unit = {
     when(mockedHeaders.get(AUTHORIZATION_HEADERS))
       .thenReturn("Bearer " + TOKEN)
     val fakeMailboxSession: MailboxSession = mock(classOf[MailboxSession])
@@ -100,7 +110,7 @@ class LongLivedTokenAuthenticationStrategyTest {
     "_bob__",
     "bob__@a"
   ))
-  def createMailboxSessionShouldReturnWhenAuthHeaderHasSeveralSpecialCharacter(username: String): Unit = {
+  def createMailboxSessionShouldReturnValidSessionWhenAuthHeaderHasSeveralSpecialCharacter(username: String): Unit = {
     val USER_NAME: Username = Username.of("bob_bob@linagora")
 
     when(mockedHeaders.get(AUTHORIZATION_HEADERS))
