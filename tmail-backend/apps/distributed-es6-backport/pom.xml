@@ -361,7 +361,7 @@
                 </executions>
                 <configuration>
                     <from>
-                        <image>adoptopenjdk:11-jdk-hotspot</image>
+                        <image>eclipse-temurin:11-jre-focal</image>
                     </from>
                     <to>
                         <image>linagora/tmail-backend-distributed-esv6</image>
