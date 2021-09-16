@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.MountableFile;
 
 public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEachCallback {
     private static final int ONE_TIME = 1;
@@ -41,6 +42,7 @@ public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEa
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
             .dependsOn(cassandra, elasticsearch, s3, rabbitmq)
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
             .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
     }
 
