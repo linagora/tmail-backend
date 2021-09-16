@@ -7,11 +7,13 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.MountableFile;
 
 public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallback {
     private static final int ONE_TIME = 1;
 
     private final GenericContainer<?> container = new GenericContainer<>("linagora/tmail-backend-memory:latest")
+        .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
         .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
 
     @Override
