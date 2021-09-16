@@ -84,6 +84,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
+import com.linagora.tmail.james.jmap.longlivedtoken.CassandraLongLivedTokenStoreModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
@@ -92,6 +93,7 @@ import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
+import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodMethodModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
@@ -129,6 +131,7 @@ public class DistributedServer {
         new KeystoreCassandraModule(),
         new KeystoreSetMethodModule(),
         new KeystoreGetMethodModule(),
+        Modules.override(new LongLivedTokenSetMethodMethodModule()).with(new CassandraLongLivedTokenStoreModule()),
         Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
 
     public static final Module PROTOCOLS = Modules.combine(
