@@ -1,23 +1,24 @@
 package com.linagora.tmail.james.jmap.method
 
-import com.google.inject.{AbstractModule, Scopes}
+import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.LongLivedTokenSerializer
-import com.linagora.tmail.james.jmap.longlivedtoken.{InMemoryLongLivedTokenStore, LongLivedToken, LongLivedTokenSecret, LongLivedTokenStore}
-import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.{LINAGORA_LONG_LIVED_TOKEN, LINAGORA_PGP}
-import com.linagora.tmail.james.jmap.model.{LongLivedTokenSetRequest, LongLivedTokenSetResponse, TokenCreateRequest, TokenCreateResponse}
+import com.linagora.tmail.james.jmap.longlivedtoken.{LongLivedToken, LongLivedTokenId, LongLivedTokenSecret, LongLivedTokenStore}
+import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LONG_LIVED_TOKEN
+import com.linagora.tmail.james.jmap.model.{LongLivedTokenCreationId, LongLivedTokenCreationRequest, LongLivedTokenCreationRequestInvalidException, LongLivedTokenSetRequest, LongLivedTokenSetResults, TokenCreationResult}
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
-import org.apache.james.jmap.core.{Capability, CapabilityProperties, Invocation}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
+import org.apache.james.jmap.core.{Capability, CapabilityProperties, ClientId, Id, Invocation, ServerId}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
-import org.apache.james.jmap.routes.SessionSupplier
+import org.apache.james.jmap.routes.{ProcessingContext, SessionSupplier}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
-import reactor.core.scala.publisher.SMono
+import reactor.core.scala.publisher.{SFlux, SMono}
+import reactor.core.scheduler.Schedulers
 
 import javax.inject.Inject
 
@@ -35,9 +36,6 @@ class LongLivedTokenSetMethodMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[LongLivedTokenSetMethod])
-
-    bind(classOf[InMemoryLongLivedTokenStore]).in(Scopes.SINGLETON)
-    bind(classOf[LongLivedTokenStore]).to(classOf[InMemoryLongLivedTokenStore])
   }
 
   @ProvidesIntoSet
@@ -56,22 +54,68 @@ class LongLivedTokenSetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore
                          invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,
                          request: LongLivedTokenSetRequest): Publisher[InvocationWithContext] =
-    createToken(mailboxSession, request.create)
-      .map(response => Invocation(
-        methodName = methodName,
-        arguments = Arguments(LongLivedTokenSerializer.serializeKeystoreGetResponse(
-          LongLivedTokenSetResponse(request.accountId, response)).as[JsObject]),
-        methodCallId = invocation.invocation.methodCallId))
-      .map(InvocationWithContext(_, invocation.processingContext))
+    create(mailboxSession, request, invocation.processingContext)
+      .map(response => InvocationWithContext(
+        invocation = Invocation(
+          methodName = methodName,
+          arguments = Arguments(LongLivedTokenSerializer.serializeKeystoreGetResponse(response._1.asResponse(request.accountId)).as[JsObject]),
+          methodCallId = invocation.invocation.methodCallId),
+        processingContext = response._2))
 
-  private def createToken(mailboxSession: MailboxSession, tokenCreateRequest: TokenCreateRequest): SMono[TokenCreateResponse] =
-    SMono.fromCallable(() => LongLivedTokenSecret.generate)
-      .flatMap(secretKey => SMono.fromPublisher(longLivedTokenStore.store(mailboxSession.getUser, LongLivedToken(tokenCreateRequest.deviceId, secretKey)))
-        .map(longLivedTokenId => TokenCreateResponse(longLivedTokenId, secretKey)))
-
-  override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, LongLivedTokenSetRequest] = 
+  override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, LongLivedTokenSetRequest] =
     LongLivedTokenSerializer.deserializeLongLivedTokenSetRequest(invocation.arguments.value) match {
-      case JsSuccess(setRequest, _) => setRequest.validate
+      case JsSuccess(setRequest, _) => Right(setRequest)
       case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
     }
+
+  private def create(mailboxSession: MailboxSession,
+                     longLivedTokenSetRequest: LongLivedTokenSetRequest,
+                     processingContext: ProcessingContext): SMono[(LongLivedTokenSetResults, ProcessingContext)] =
+    SFlux.fromIterable(longLivedTokenSetRequest.create)
+      .fold[SMono[(LongLivedTokenSetResults, ProcessingContext)]](SMono.just(LongLivedTokenSetResults.empty -> processingContext)) {
+        (acc: SMono[(LongLivedTokenSetResults, ProcessingContext)], elem: (LongLivedTokenCreationId, JsObject)) => {
+          val (emailSendCreationId, jsObject) = elem
+          acc.flatMap {
+            case (creationResult, processingContext) =>
+              createEach(mailboxSession, emailSendCreationId, jsObject, processingContext)
+                .map(createResult => LongLivedTokenSetResults.merge(creationResult, createResult._1) -> createResult._2)
+          }
+        }
+      }
+      .flatMap(any => any)
+      .subscribeOn(Schedulers.elastic())
+
+  private def createEach(session: MailboxSession,
+                         creationId: LongLivedTokenCreationId,
+                         creationRequest: JsObject,
+                         processingContext: ProcessingContext): SMono[(LongLivedTokenSetResults, ProcessingContext)] =
+    parseCreationRequest(creationRequest)
+      .fold(error => SMono.error(error),
+        createToken(session, _))
+      .map(successResult =>
+        recordCreationIdInProcessingContext(creationId, successResult.id, processingContext)
+          .map(context => LongLivedTokenSetResults.created(creationId, successResult) -> context)
+          .fold(error => LongLivedTokenSetResults.notCreated(creationId, error) -> processingContext,
+            createResultWithUpdatedContext => createResultWithUpdatedContext
+          ))
+      .onErrorResume(error => SMono.just(LongLivedTokenSetResults.notCreated(creationId, error) -> processingContext))
+
+  private def createToken(session: MailboxSession,
+                          longLivedTokenCreationRequest: LongLivedTokenCreationRequest): SMono[TokenCreationResult] =
+    SMono.fromCallable(() => LongLivedTokenSecret.generate)
+      .flatMap(secretKey => SMono.fromPublisher(longLivedTokenStore.store(session.getUser, LongLivedToken(longLivedTokenCreationRequest.deviceId, secretKey)))
+        .map(longLivedTokenId => TokenCreationResult(longLivedTokenId, secretKey)))
+
+  private def parseCreationRequest(jsObject: JsObject): Either[LongLivedTokenCreationRequestInvalidException, LongLivedTokenCreationRequest] =
+    LongLivedTokenSerializer.deserializeLongLivedTokenCreationRequest(jsObject) match {
+      case JsSuccess(createRequest, _) => createRequest.validate
+      case JsError(errors) => Left(LongLivedTokenCreationRequestInvalidException.parse(errors))
+    }
+
+  private def recordCreationIdInProcessingContext(longLivedTokenCreationId: LongLivedTokenCreationId,
+                                                  longLivedTokenId: LongLivedTokenId,
+                                                  processingContext: ProcessingContext): Either[Exception, ProcessingContext] =
+    Id.validate(longLivedTokenId.value.toString)
+      .map(serverId => processingContext.recordCreatedId(ClientId(longLivedTokenCreationId.id), ServerId(serverId)))
+
 }

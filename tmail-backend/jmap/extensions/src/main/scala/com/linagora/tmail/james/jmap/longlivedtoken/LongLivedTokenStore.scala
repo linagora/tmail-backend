@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap.longlivedtoken
 
 import com.google.common.base.Preconditions
+import com.google.inject.{AbstractModule, Scopes}
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.refineV
 import org.apache.james.core.Username
@@ -68,6 +69,13 @@ trait LongLivedTokenStore {
   def listTokens(user: Username): Publisher[LongLivedTokenFootPrint]
 
   def revoke(username: Username, id: LongLivedTokenId): Publisher[Unit]
+}
+
+case class LongLivedTokenStoreInMemoryModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[InMemoryLongLivedTokenStore]).in(Scopes.SINGLETON)
+    bind(classOf[LongLivedTokenStore]).to(classOf[InMemoryLongLivedTokenStore])
+  }
 }
 
 class InMemoryLongLivedTokenStore() extends LongLivedTokenStore {
