@@ -42,6 +42,7 @@ import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
+import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreInMemoryModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
@@ -88,6 +89,7 @@ public class MemoryServer {
         new LongLivedTokenGetMethodModule(),
         new LongLivedTokenSetMethodModule(),
         new LongLivedTokenStoreInMemoryModule(),
+        new ShortLivedTokenRoutesModule(),
         new ShortLivedTokenModule(),
         new TicketRoutesModule());
 
