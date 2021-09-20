@@ -110,15 +110,15 @@ class LongLivedTokenAuthenticationStrategyTest {
     "_bob__",
     "bob__@a"
   ))
-  def createMailboxSessionShouldReturnValidSessionWhenAuthHeaderHasSeveralSpecialCharacter(username: String): Unit = {
-    val USER_NAME: Username = Username.of("bob_bob@linagora")
+  def createMailboxSessionShouldReturnValidSessionWhenAuthHeaderHasSeveralSpecialCharacter(usernameString: String): Unit = {
+    val username: Username = Username.of(usernameString)
 
     when(mockedHeaders.get(AUTHORIZATION_HEADERS))
-      .thenReturn("Bearer " + USER_NAME.asString() + "_" + SECRET_UUID.value.toString)
+      .thenReturn("Bearer " + username.asString() + "_" + SECRET_UUID.value.toString)
     val fakeMailboxSession: MailboxSession = mock(classOf[MailboxSession])
-    when(mockedMailboxManager.createSystemSession(ArgumentMatchers.eq(USER_NAME)))
+    when(mockedMailboxManager.createSystemSession(ArgumentMatchers.eq(username)))
       .thenReturn(fakeMailboxSession)
-    when(longLivedTokenStore.validate(ArgumentMatchers.eq(USER_NAME), ArgumentMatchers.eq(SECRET_UUID)))
+    when(longLivedTokenStore.validate(ArgumentMatchers.eq(username), ArgumentMatchers.eq(SECRET_UUID)))
       .thenReturn(SMono.just(LongLivedTokenFootPrint(LongLivedTokenId.generate, DeviceId("deviceId1"))))
 
     assertThat(testee.createMailboxSession(mockedRequest).block())
