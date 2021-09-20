@@ -14,7 +14,7 @@ import com.linagora.tmail.james.jmap.jwt.JwtPrivateKeyProvider;
 import scala.jdk.javaapi.OptionConverters;
 
 public class LinagoraTestJMAPServerModule extends TestJMAPServerModule {
-    private static final String JWT_PUBLIC_PEM_KEY =
+    public static final String JWT_PUBLIC_PEM_KEY =
         "-----BEGIN PUBLIC KEY-----\n" +
             "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCVnxAOpup/rtGzn+xUaBRFSe34\n" +
             "H7YyiM6YBD1bh5rkoi9pB6fvs1vDlXzBmR0Zl6kn3g+2ChW0lqMkmv73Y2Lv3WZK\n" +
@@ -22,7 +22,7 @@ public class LinagoraTestJMAPServerModule extends TestJMAPServerModule {
             "zoZF4vgBYx0VmuJslwIDAQAB\n" +
             "-----END PUBLIC KEY-----";
 
-    private static final String JWT_PRIVATE_PEM_KEY =
+    public static final String JWT_PRIVATE_PEM_KEY =
         "-----BEGIN PRIVATE KEY-----\n" +
             "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAJWfEA6m6n+u0bOf\n" +
             "7FRoFEVJ7fgftjKIzpgEPVuHmuSiL2kHp++zW8OVfMGZHRmXqSfeD7YKFbSWoySa\n" +
