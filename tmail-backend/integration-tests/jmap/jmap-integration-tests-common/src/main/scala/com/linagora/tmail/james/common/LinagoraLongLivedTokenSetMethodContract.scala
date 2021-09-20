@@ -156,7 +156,7 @@ trait LinagoraLongLivedTokenSetMethodContract {
   }
 
   @Test
-  def methodShouldFailWhenDeviceIdTooLength(): Unit = {
+  def methodShouldFailWhenDeviceIdTooLong(): Unit = {
     val deviceId: String = "a".repeat(501)
     val request: String =
       s"""{
@@ -244,7 +244,7 @@ trait LinagoraLongLivedTokenSetMethodContract {
          |                "notCreated": {
          |                    "K38": {
          |                        "type": "invalidArguments",
-         |                        "description": "deviceId must be not empty"
+         |                        "description": "deviceId must not be empty"
          |                    }
          |                }
          |            },
@@ -414,7 +414,7 @@ trait LinagoraLongLivedTokenSetMethodContract {
          |                "notCreated": {
          |                    "K40": {
          |                        "type": "invalidArguments",
-         |                        "description": "deviceId must be not empty"
+         |                        "description": "deviceId must not be empty"
          |                    }
          |                }
          |            },

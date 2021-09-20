@@ -34,6 +34,6 @@ object LongLivedTokenSerializer {
   def deserializeLongLivedTokenCreationRequest(input: JsValue): JsResult[LongLivedTokenCreationRequest] =
     Json.fromJson[LongLivedTokenCreationRequest](input)
 
-  def serializeKeystoreGetResponse(response: LongLivedTokenSetResponse): JsValue = Json.toJson(response)
+  def serializeLongLivedTokenSetResponse(response: LongLivedTokenSetResponse): JsValue = Json.toJson(response)
 
 }

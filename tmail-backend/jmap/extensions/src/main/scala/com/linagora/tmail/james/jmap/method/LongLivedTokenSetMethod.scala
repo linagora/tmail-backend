@@ -31,7 +31,7 @@ case object LongLivedTokenCapability extends Capability {
   val identifier: CapabilityIdentifier = LINAGORA_LONG_LIVED_TOKEN
 }
 
-class LongLivedTokenSetMethodMethodModule extends AbstractModule {
+class LongLivedTokenSetMethodModule extends AbstractModule {
   override def configure(): Unit = {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
@@ -58,7 +58,7 @@ class LongLivedTokenSetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore
       .map(response => InvocationWithContext(
         invocation = Invocation(
           methodName = methodName,
-          arguments = Arguments(LongLivedTokenSerializer.serializeKeystoreGetResponse(response._1.asResponse(request.accountId)).as[JsObject]),
+          arguments = Arguments(LongLivedTokenSerializer.serializeLongLivedTokenSetResponse(response._1.asResponse(request.accountId)).as[JsObject]),
           methodCallId = invocation.invocation.methodCallId),
         processingContext = response._2))
 

@@ -49,7 +49,7 @@ class LongLivedTokenSerializerTest {
       Some(created),
       Some(notCreated))
 
-    val actualValue: JsValue = LongLivedTokenSerializer.serializeKeystoreGetResponse(longLivedTokenSetResponse)
+    val actualValue: JsValue = LongLivedTokenSerializer.serializeLongLivedTokenSetResponse(longLivedTokenSetResponse)
     assertThat(Json.parse(
       """{
         |    "accountId": "aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8",

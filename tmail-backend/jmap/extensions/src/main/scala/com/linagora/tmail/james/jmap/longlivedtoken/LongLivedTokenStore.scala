@@ -35,7 +35,7 @@ object DeviceId {
 case class DeviceId(value: String) extends AnyVal {
 
   def validate: Either[IllegalArgumentException, DeviceId] = refineV[NonEmpty](value) match {
-    case Left(e) => Left(new IllegalArgumentException("deviceId must be not empty"))
+    case Left(e) => Left(new IllegalArgumentException("deviceId must not be empty"))
     case Right(_) => validateMaxLength
   }
 
