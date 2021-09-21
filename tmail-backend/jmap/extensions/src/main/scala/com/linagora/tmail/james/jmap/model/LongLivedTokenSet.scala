@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.model
 
-import com.linagora.tmail.james.jmap.longlivedtoken.{DeviceId, LongLivedTokenId, LongLivedTokenSecret}
+import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, DeviceId, LongLivedTokenId}
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, SetError}
@@ -21,7 +21,7 @@ case class LongLivedTokenSetRequest(accountId: AccountId,
                                     create: Map[LongLivedTokenCreationId, JsObject]) extends WithAccountId
 
 case class TokenCreationResult(id: LongLivedTokenId,
-                               token: LongLivedTokenSecret)
+                               token: AuthenticationToken)
 
 case class LongLivedTokenSetResponse(accountId: AccountId,
                                      created: Option[Map[LongLivedTokenCreationId, TokenCreationResult]],

@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.method
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.LongLivedTokenSerializer
-import com.linagora.tmail.james.jmap.longlivedtoken.{LongLivedToken, LongLivedTokenId, LongLivedTokenSecret, LongLivedTokenStore}
+import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, LongLivedToken, LongLivedTokenId, LongLivedTokenSecret, LongLivedTokenStore}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LONG_LIVED_TOKEN
 import com.linagora.tmail.james.jmap.model.{LongLivedTokenCreationId, LongLivedTokenCreationRequest, LongLivedTokenCreationRequestInvalidException, LongLivedTokenSetRequest, LongLivedTokenSetResults, TokenCreationResult}
 import eu.timepit.refined.auto._
@@ -104,7 +104,7 @@ class LongLivedTokenSetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore
                           longLivedTokenCreationRequest: LongLivedTokenCreationRequest): SMono[TokenCreationResult] =
     SMono.fromCallable(() => LongLivedTokenSecret.generate)
       .flatMap(secretKey => SMono.fromPublisher(longLivedTokenStore.store(session.getUser, LongLivedToken(longLivedTokenCreationRequest.deviceId, secretKey)))
-        .map(longLivedTokenId => TokenCreationResult(longLivedTokenId, secretKey)))
+        .map(longLivedTokenId => TokenCreationResult(longLivedTokenId, AuthenticationToken(session.getUser, secretKey))))
 
   private def parseCreationRequest(jsObject: JsObject): Either[LongLivedTokenCreationRequestInvalidException, LongLivedTokenCreationRequest] =
     LongLivedTokenSerializer.deserializeLongLivedTokenCreationRequest(jsObject) match {

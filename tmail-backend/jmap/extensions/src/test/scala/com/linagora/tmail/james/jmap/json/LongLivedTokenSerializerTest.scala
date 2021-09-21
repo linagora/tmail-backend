@@ -2,9 +2,10 @@ package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.json.Fixture.ACCOUNT_ID
 import com.linagora.tmail.james.jmap.json.LongLivedTokenSerializerTest.{LONG_LIVED_TOKEN_ID, LONG_LIVED_TOKEN_SECRET}
-import com.linagora.tmail.james.jmap.longlivedtoken.{LongLivedTokenId, LongLivedTokenSecret}
+import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, LongLivedTokenId, LongLivedTokenSecret}
 import com.linagora.tmail.james.jmap.model.{LongLivedTokenCreationId, LongLivedTokenSetResponse, TokenCreationResult}
 import eu.timepit.refined.auto._
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.assertj.core.api.Assertions.assertThat
@@ -43,7 +44,7 @@ class LongLivedTokenSerializerTest {
       SetError(SetError.invalidArgumentValue, SetErrorDescription("des1"), None)))
 
     val created: Map[LongLivedTokenCreationId, TokenCreationResult] =
-      Map(LongLivedTokenCreationId("K38") -> TokenCreationResult(LONG_LIVED_TOKEN_ID, LONG_LIVED_TOKEN_SECRET))
+      Map(LongLivedTokenCreationId("K38") -> TokenCreationResult(LONG_LIVED_TOKEN_ID, AuthenticationToken(Username.of("bob"), LONG_LIVED_TOKEN_SECRET)))
 
     val longLivedTokenSetResponse: LongLivedTokenSetResponse = LongLivedTokenSetResponse(ACCOUNT_ID,
       Some(created),
@@ -56,7 +57,7 @@ class LongLivedTokenSerializerTest {
         |    "created": {
         |        "K38": {
         |            "id": "57b8ffe6-4587-4912-886a-6affc83efd90",
-        |            "token": "825eee6c-9488-442e-9079-19985c18c532"
+        |            "token": "bob_825eee6c-9488-442e-9079-19985c18c532"
         |        }
         |    },
         |    "notCreated": {
