@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.longlivedtoken
 
-import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenAuthenticationStrategy.{AUTHENTICATION_TOKEN_COMMA, AUTHORIZATION_HEADER_PREFIX, AuthenticationToken}
+import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenAuthenticationStrategy.{AUTHENTICATION_TOKEN_COMMA, AUTHORIZATION_HEADER_PREFIX}
 import org.apache.james.core.Username
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.{AuthenticationChallenge, AuthenticationScheme, AuthenticationStrategy}
@@ -12,9 +12,18 @@ import reactor.netty.http.server.HttpServerRequest
 import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
-object LongLivedTokenAuthenticationStrategy {
-  case class AuthenticationToken(username: Username, secret: LongLivedTokenSecret)
+object AuthenticationToken {
+  def from(tokenValue: String): Option[AuthenticationToken] =
+    Some(tokenValue.lastIndexOf(AUTHENTICATION_TOKEN_COMMA))
+      .filter(commaIndex => commaIndex > 0)
+      .filter(commaIndex => (commaIndex + 1) < tokenValue.length)
+      .flatMap(commaIndex => LongLivedTokenSecret.parse(tokenValue.substring(commaIndex + 1)).toOption
+        .map(secret => AuthenticationToken(Username.of(tokenValue.substring(0, commaIndex)), secret)))
+}
 
+case class AuthenticationToken(username: Username, secret: LongLivedTokenSecret)
+
+object LongLivedTokenAuthenticationStrategy {
   val AUTHORIZATION_HEADER_PREFIX: String = "Bearer "
   val AUTHENTICATION_TOKEN_COMMA: String = "_"
 }
@@ -37,13 +46,6 @@ class LongLivedTokenAuthenticationStrategy @Inject()(longLivedTokenStore: LongLi
     Option(authHeaders(httpRequest))
       .filter(header => header.startsWith(AUTHORIZATION_HEADER_PREFIX))
       .map(header => header.substring(AUTHORIZATION_HEADER_PREFIX.length))
-      .flatMap(tokenValue => parseToken(tokenValue))
-
-  private def parseToken(tokenValue: String): Option[AuthenticationToken] =
-    Some(tokenValue.lastIndexOf(AUTHENTICATION_TOKEN_COMMA))
-      .filter(commaIndex => commaIndex > 0)
-      .filter(commaIndex => (commaIndex + 1) < tokenValue.length)
-      .flatMap(commaIndex => LongLivedTokenSecret.parse(tokenValue.substring(commaIndex + 1)).toOption
-        .map(secret => AuthenticationToken(Username.of(tokenValue.substring(0, commaIndex)), secret)))
+      .flatMap(tokenValue => AuthenticationToken.from(tokenValue))
 
 }
