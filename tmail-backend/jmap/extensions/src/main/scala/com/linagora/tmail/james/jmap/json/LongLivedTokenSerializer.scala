@@ -1,10 +1,10 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.longlivedtoken.{DeviceId, LongLivedTokenId, LongLivedTokenSecret}
-import com.linagora.tmail.james.jmap.model.{LongLivedTokenCreationId, LongLivedTokenSetRequest, LongLivedTokenSetResponse, LongLivedTokenCreationRequest, TokenCreationResult}
+import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, DeviceId, LongLivedTokenId, LongLivedTokenSecret}
+import com.linagora.tmail.james.jmap.model.{LongLivedTokenCreationId, LongLivedTokenCreationRequest, LongLivedTokenSetRequest, LongLivedTokenSetResponse, TokenCreationResult}
 import org.apache.james.jmap.core.{Id, SetError}
 import org.apache.james.jmap.json.mapWrites
-import play.api.libs.json.{Format, JsError, JsObject, JsResult, JsSuccess, JsValue, Json, Reads, Writes}
+import play.api.libs.json.{Format, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
 
 object LongLivedTokenSerializer {
 
@@ -18,6 +18,7 @@ object LongLivedTokenSerializer {
     Reads.mapReads[LongLivedTokenCreationId, JsObject] {
       s => Id.validate(s).fold(e => JsError(e.getMessage), partId => JsSuccess(LongLivedTokenCreationId(partId)))
     }
+  private implicit val authenticationTokenWrite: Writes[AuthenticationToken] = authenToken => JsString(authenToken.username.asString() + "_" + authenToken.secret.value.toString)
   private implicit val tokenCreateResponseWrite: Writes[TokenCreationResult] = Json.writes[TokenCreationResult]
   private implicit val tokenCreatedMapWrites: Writes[Map[LongLivedTokenCreationId, TokenCreationResult]] =
     mapWrites[LongLivedTokenCreationId, TokenCreationResult](creationId => creationId.id.value, tokenCreateResponseWrite)

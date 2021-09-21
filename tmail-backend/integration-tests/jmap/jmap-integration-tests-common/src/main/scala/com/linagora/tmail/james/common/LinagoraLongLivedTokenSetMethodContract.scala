@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.common
 
+import com.linagora.tmail.james.jmap.longlivedtoken.AuthenticationToken
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -593,6 +594,43 @@ trait LinagoraLongLivedTokenSetMethodContract {
 
     assertThat(longLivedTokenId)
       .isEqualTo(backReferenceValue)
+  }
+
+  @Test
+  def methodShouldReturnTokenHasUsernameAndSecret(): Unit = {
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:long:lived:token"],
+         |  "methodCalls": [
+         |    ["LongLivedToken/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "create": {
+         |        "K38": {
+         |          "deviceId": "My android device"
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    val longLivedTokenResponse:String = (((Json.parse(response) \\ "methodResponses" )
+      .head \\ "created")
+      .head \\ "token")
+      .head.asInstanceOf[JsString].value
+
+    assertThat(AuthenticationToken.from(longLivedTokenResponse).isDefined)
+      .isTrue
   }
 
 }
