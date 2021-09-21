@@ -25,7 +25,7 @@ object JwtPrivateKeyConfiguration {
         case privateKeyInfo: PrivateKeyInfo =>
           Option(new JcaPEMKeyConverter().getPrivateKey(privateKeyInfo))
         case _ =>
-          LOGGER.warn("Key is not an instance of SubjectPublicKeyInfo but of {}", readPEM)
+          LOGGER.warn("Key is not an instance of PrivateKeyInfo but of {}", readPEM)
           None
       }
     } catch {
