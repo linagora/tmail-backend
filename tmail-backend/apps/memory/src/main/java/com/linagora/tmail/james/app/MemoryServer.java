@@ -41,6 +41,7 @@ import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
+import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreInMemoryModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
@@ -49,6 +50,7 @@ import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
+import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
 public class MemoryServer {
@@ -81,6 +83,8 @@ public class MemoryServer {
         new KeystoreMemoryModule(),
         new KeystoreSetMethodModule(),
         new KeystoreGetMethodModule(),
+        new LongLivedTokenSetMethodModule(),
+        new LongLivedTokenStoreInMemoryModule(),
         new TicketRoutesModule());
 
     public static final Module MODULES = Modules.combine(

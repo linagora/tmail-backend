@@ -1,6 +1,9 @@
 package com.linagora.tmail.james.jmap.longlivedtoken
 
 import com.google.common.base.Preconditions
+import com.google.inject.{AbstractModule, Scopes}
+import eu.timepit.refined.collection.NonEmpty
+import eu.timepit.refined.refineV
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -25,7 +28,24 @@ object LongLivedTokenSecret {
   def generate: LongLivedTokenSecret = LongLivedTokenSecret(UUID.randomUUID())
 }
 
-case class DeviceId(value: String) extends AnyVal
+object DeviceId {
+  val MAX_LENGTH: Int = 500;
+}
+
+case class DeviceId(value: String) extends AnyVal {
+
+  def validate: Either[IllegalArgumentException, DeviceId] = refineV[NonEmpty](value) match {
+    case Left(e) => Left(new IllegalArgumentException("deviceId must not be empty"))
+    case Right(_) => validateMaxLength
+  }
+
+  def validateMaxLength: Either[IllegalArgumentException, DeviceId] =
+    if (value.length > DeviceId.MAX_LENGTH) {
+      Left(new IllegalArgumentException("Length of deviceId must be smaller than " + DeviceId.MAX_LENGTH))
+    } else {
+      scala.Right(this)
+    }
+}
 
 case class LongLivedTokenId(value: UUID)
 
@@ -49,6 +69,13 @@ trait LongLivedTokenStore {
   def listTokens(user: Username): Publisher[LongLivedTokenFootPrint]
 
   def revoke(username: Username, id: LongLivedTokenId): Publisher[Unit]
+}
+
+case class LongLivedTokenStoreInMemoryModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[InMemoryLongLivedTokenStore]).in(Scopes.SINGLETON)
+    bind(classOf[LongLivedTokenStore]).to(classOf[InMemoryLongLivedTokenStore])
+  }
 }
 
 class InMemoryLongLivedTokenStore() extends LongLivedTokenStore {

@@ -17,6 +17,7 @@ object CapabilityIdentifier {
   val LINAGORA_ECHO: CapabilityIdentifier = "com:linagora:params:jmap:echo"
   val LINAGORA_FILTER: CapabilityIdentifier = "com:linagora:params:jmap:filter"
   val LINAGORA_PGP: CapabilityIdentifier = "com:linagora:params:jmap:pgp"
+  val LINAGORA_LONG_LIVED_TOKEN: CapabilityIdentifier = "com:linagora:params:long:lived:token"
 }
 
 case object CustomCapabilityProperties extends CapabilityProperties {

@@ -10,7 +10,7 @@ import reactor.core.scala.publisher.SMono
 
 import javax.inject.Inject
 
-case class CassandraLongLivedTokenStoreModule() extends AbstractModule {
+case class LongLivedTokenStoreCassandraModule() extends AbstractModule {
   override def configure(): Unit = {
     bind(classOf[CassandraLongLivedTokenStore]).in(Scopes.SINGLETON)
     bind(classOf[LongLivedTokenStore]).to(classOf[CassandraLongLivedTokenStore])
