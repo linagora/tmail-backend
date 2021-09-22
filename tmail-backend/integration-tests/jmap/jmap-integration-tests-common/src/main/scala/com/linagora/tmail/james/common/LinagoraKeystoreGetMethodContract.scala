@@ -83,7 +83,9 @@ trait LinagoraKeystoreGetMethodContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .when(net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER)
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
