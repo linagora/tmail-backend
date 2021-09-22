@@ -26,11 +26,11 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.rfc8621.contract.EmailSetMethodContract;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.mailbox.model.MessageId;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryEmailSetMethodTest implements EmailSetMethodContract {
 
@@ -41,7 +41,7 @@ public class MemoryEmailSetMethodTest implements EmailSetMethodContract {
             .configurationFromClasspath()
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 
     @Override

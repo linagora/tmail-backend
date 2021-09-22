@@ -26,6 +26,11 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>encrypted-mailbox-guice</artifactId>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>jmap-integration-tests-common</artifactId>
             <scope>test</scope>
         </dependency>

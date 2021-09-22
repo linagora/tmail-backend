@@ -6,7 +6,6 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
@@ -14,6 +13,7 @@ import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerElasticSearchExtension;
 import com.linagora.tmail.james.common.LinagoraEchoMethodContract;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraEchoMethodTest implements LinagoraEchoMethodContract {
     @RegisterExtension
@@ -33,6 +33,6 @@ public class DistributedLinagoraEchoMethodTest implements LinagoraEchoMethodCont
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 }

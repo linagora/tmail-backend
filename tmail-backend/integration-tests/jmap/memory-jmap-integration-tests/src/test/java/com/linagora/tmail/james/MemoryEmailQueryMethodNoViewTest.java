@@ -25,7 +25,6 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.JMAPConfiguration;
 import org.apache.james.jmap.rfc8621.contract.EmailQueryMethodContract;
 import org.apache.james.junit.categories.Unstable;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -33,6 +32,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryEmailQueryMethodNoViewTest implements EmailQueryMethodContract {
     @RegisterExtension
@@ -42,7 +42,7 @@ public class MemoryEmailQueryMethodNoViewTest implements EmailQueryMethodContrac
             .configurationFromClasspath()
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> binder.bind(JMAPConfiguration.class)
                 .toInstance(JMAPConfiguration.builder()
                     .enable()

@@ -26,11 +26,11 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.rfc8621.contract.MailboxGetMethodContract;
 import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.mailbox.model.MailboxId;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryMailboxGetMethodTest implements MailboxGetMethodContract {
     @RegisterExtension
@@ -40,7 +40,7 @@ public class MemoryMailboxGetMethodTest implements MailboxGetMethodContract {
             .configurationFromClasspath()
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 
     @Override

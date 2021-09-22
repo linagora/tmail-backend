@@ -7,7 +7,6 @@ import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
@@ -15,6 +14,7 @@ import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.common.LinagoraKeystoreGetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraKeystoreGetMethodTest implements LinagoraKeystoreGetMethodContract {
     @RegisterExtension
@@ -34,7 +34,7 @@ public class DistributedLinagoraKeystoreGetMethodTest implements LinagoraKeystor
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule()))
         .build();
 }

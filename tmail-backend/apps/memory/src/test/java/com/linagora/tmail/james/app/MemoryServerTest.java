@@ -9,7 +9,6 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.MailsShouldBeWellReceived;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -18,6 +17,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 class MemoryServerTest implements JamesServerContract, JmapJamesServerContract, MailsShouldBeWellReceived {
     @RegisterExtension
@@ -27,7 +27,7 @@ class MemoryServerTest implements JamesServerContract, JmapJamesServerContract, 
         .mailbox(new MailboxConfiguration(false))
         .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class)))
         .build();
 
