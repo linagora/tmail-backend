@@ -19,6 +19,12 @@ object AuthenticationToken {
       .filter(commaIndex => (commaIndex + 1) < tokenValue.length)
       .flatMap(commaIndex => LongLivedTokenSecret.parse(tokenValue.substring(commaIndex + 1)).toOption
         .map(secret => AuthenticationToken(Username.of(tokenValue.substring(0, commaIndex)), secret)))
+
+  def fromAuthHeader(authHeader: String): Option[AuthenticationToken] =
+    Some(authHeader)
+      .filter(header => header.startsWith(AUTHORIZATION_HEADER_PREFIX))
+      .map(header => header.substring(AUTHORIZATION_HEADER_PREFIX.length))
+      .flatMap(tokenValue => from(tokenValue))
 }
 
 case class AuthenticationToken(username: Username, secret: LongLivedTokenSecret)
@@ -44,8 +50,6 @@ class LongLivedTokenAuthenticationStrategy @Inject()(longLivedTokenStore: LongLi
 
   private def retrieveAuthenticationToken(httpRequest: HttpServerRequest): Option[AuthenticationToken] =
     Option(authHeaders(httpRequest))
-      .filter(header => header.startsWith(AUTHORIZATION_HEADER_PREFIX))
-      .map(header => header.substring(AUTHORIZATION_HEADER_PREFIX.length))
-      .flatMap(tokenValue => AuthenticationToken.from(tokenValue))
+      .flatMap(authHeader => AuthenticationToken.fromAuthHeader(authHeader))
 
 }
