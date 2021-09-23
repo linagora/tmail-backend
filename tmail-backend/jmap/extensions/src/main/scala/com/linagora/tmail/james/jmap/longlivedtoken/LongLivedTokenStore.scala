@@ -5,6 +5,7 @@ import com.google.inject.{AbstractModule, Scopes}
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.refineV
 import org.apache.james.core.Username
+import org.apache.james.jmap.core.Id.Id
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -46,6 +47,8 @@ case class DeviceId(value: String) extends AnyVal {
       scala.Right(this)
     }
 }
+
+case class UnparsedLongLivedTokenId(value: Id)
 
 case class LongLivedTokenId(value: UUID)
 

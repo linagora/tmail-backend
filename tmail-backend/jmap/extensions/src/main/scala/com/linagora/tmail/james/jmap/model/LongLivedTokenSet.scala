@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.model
 
-import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, DeviceId, LongLivedTokenId}
+import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, DeviceId, LongLivedTokenId, UnparsedLongLivedTokenId}
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, SetError}
@@ -18,14 +18,17 @@ case class LongLivedTokenCreationRequest(deviceId: DeviceId) {
 }
 
 case class LongLivedTokenSetRequest(accountId: AccountId,
-                                    create: Map[LongLivedTokenCreationId, JsObject]) extends WithAccountId
+                                    create: Option[Map[LongLivedTokenCreationId, JsObject]],
+                                    destroy: Option[List[UnparsedLongLivedTokenId]]) extends WithAccountId
 
 case class TokenCreationResult(id: LongLivedTokenId,
                                token: AuthenticationToken)
 
 case class LongLivedTokenSetResponse(accountId: AccountId,
                                      created: Option[Map[LongLivedTokenCreationId, TokenCreationResult]],
-                                     notCreated: Option[Map[LongLivedTokenCreationId, SetError]])
+                                     destroyed: Option[Seq[LongLivedTokenId]],
+                                     notCreated: Option[Map[LongLivedTokenCreationId, SetError]],
+                                     notDestroyed: Option[Map[UnparsedLongLivedTokenId, SetError]])
 
 object LongLivedTokenCreationRequestInvalidException {
   def parse(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): LongLivedTokenCreationRequestInvalidException = {
@@ -41,27 +44,45 @@ object LongLivedTokenCreationRequestInvalidException {
 
 case class LongLivedTokenCreationRequestInvalidException(error: SetError) extends Exception
 
-object LongLivedTokenSetResults {
-  def empty: LongLivedTokenSetResults = LongLivedTokenSetResults(None, None)
+object LongLivedTokenCreationResults {
+  def empty: LongLivedTokenCreationResults = LongLivedTokenCreationResults(None, None)
 
-  def created(longLivedTokenCreationId: LongLivedTokenCreationId, tokenCreationResult: TokenCreationResult): LongLivedTokenSetResults =
-    LongLivedTokenSetResults(Some(Map(longLivedTokenCreationId -> tokenCreationResult)), None)
+  def created(longLivedTokenCreationId: LongLivedTokenCreationId, tokenCreationResult: TokenCreationResult): LongLivedTokenCreationResults =
+    LongLivedTokenCreationResults(Some(Map(longLivedTokenCreationId -> tokenCreationResult)), None)
 
-  def notCreated(longLivedTokenCreationId: LongLivedTokenCreationId, throwable: Throwable): LongLivedTokenSetResults = {
+  def notCreated(longLivedTokenCreationId: LongLivedTokenCreationId, throwable: Throwable): LongLivedTokenCreationResults = {
     val setError: SetError = throwable match {
       case invalidException: LongLivedTokenCreationRequestInvalidException => invalidException.error
       case error: Throwable => SetError.serverFail(SetErrorDescription(error.getMessage))
     }
-    LongLivedTokenSetResults(None, Some(Map(longLivedTokenCreationId -> setError)))
+    LongLivedTokenCreationResults(None, Some(Map(longLivedTokenCreationId -> setError)))
   }
 
-  def merge(result1: LongLivedTokenSetResults, result2: LongLivedTokenSetResults): LongLivedTokenSetResults = LongLivedTokenSetResults(
+  def merge(result1: LongLivedTokenCreationResults, result2: LongLivedTokenCreationResults): LongLivedTokenCreationResults = LongLivedTokenCreationResults(
     created = (result1.created ++ result2.created).reduceOption(_ ++ _),
     notCreated = (result1.notCreated ++ result2.notCreated).reduceOption(_ ++ _))
 }
 
-case class LongLivedTokenSetResults(created: Option[Map[LongLivedTokenCreationId, TokenCreationResult]],
-                                    notCreated: Option[Map[LongLivedTokenCreationId, SetError]]) {
-  def asResponse(accountId: AccountId): LongLivedTokenSetResponse = LongLivedTokenSetResponse(accountId, created, notCreated)
+case class LongLivedTokenCreationResults(created: Option[Map[LongLivedTokenCreationId, TokenCreationResult]],
+                                         notCreated: Option[Map[LongLivedTokenCreationId, SetError]])
+
+sealed trait LongLivedTokenDestroyResult
+case class LongLivedTokenDestroySuccess(id: LongLivedTokenId) extends LongLivedTokenDestroyResult
+case class LongLivedTokenDestroyFailure(id: UnparsedLongLivedTokenId, throwable: Throwable) extends LongLivedTokenDestroyResult {
+  def asLongLivedTokenSetError: SetError = throwable match {
+    case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(s"${id.value} is not a LongLivedTokenId: ${e.getMessage}"))
+    case _ => SetError.serverFail(SetErrorDescription(throwable.getMessage))
+  }
 }
 
+case class LongLivedTokenDestroyResults(values: Seq[LongLivedTokenDestroyResult]) {
+  def retrieveDestroyed: Seq[LongLivedTokenId] = values.flatMap {
+    case success: LongLivedTokenDestroySuccess => Some(success)
+    case _ => None
+  }.map(_.id)
+
+  def retrieveNotDestroyed: Map[UnparsedLongLivedTokenId, SetError] = values.flatMap {
+    case failure: LongLivedTokenDestroyFailure => Some(failure.id, failure.asLongLivedTokenSetError)
+    case _ => None
+  }.toMap
+}
