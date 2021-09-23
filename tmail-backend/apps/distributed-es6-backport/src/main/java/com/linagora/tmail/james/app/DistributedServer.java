@@ -90,6 +90,8 @@ import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModul
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
+import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
+import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
@@ -125,6 +127,8 @@ public class DistributedServer {
         new JmapEventBusModule(),
         new KeystoreCassandraModule(),
         new KeystoreSetMethodModule(),
+        new LongLivedTokenGetMethodModule(),
+        new LongLivedTokenSetMethodModule(),
         Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
 
     public static final Module PROTOCOLS = Modules.combine(

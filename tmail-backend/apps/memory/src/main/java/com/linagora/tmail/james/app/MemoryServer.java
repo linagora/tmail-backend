@@ -50,6 +50,7 @@ import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
+import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
@@ -83,6 +84,7 @@ public class MemoryServer {
         new KeystoreMemoryModule(),
         new KeystoreSetMethodModule(),
         new KeystoreGetMethodModule(),
+        new LongLivedTokenGetMethodModule(),
         new LongLivedTokenSetMethodModule(),
         new LongLivedTokenStoreInMemoryModule(),
         new TicketRoutesModule());
