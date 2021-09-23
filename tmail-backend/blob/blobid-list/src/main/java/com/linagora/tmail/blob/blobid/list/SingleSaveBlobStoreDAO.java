@@ -1,6 +1,7 @@
 package com.linagora.tmail.blob.blobid.list;
 
 import java.io.InputStream;
+import java.util.Collection;
 
 import javax.inject.Inject;
 
@@ -94,6 +95,11 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Mono<Void> delete(BucketName bucketName, BlobId blobId) {
         return Mono.from(blobStoreDAO.delete(bucketName, blobId));
+    }
+
+    @Override
+    public Publisher<Void> delete(BucketName bucketName, Collection<BlobId> blobIds) {
+        return Mono.from(blobStoreDAO.delete(bucketName, blobIds));
     }
 
     @Override
