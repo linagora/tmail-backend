@@ -66,6 +66,8 @@ trait LongLivedTokenGetContract {
       .asString()
 
     assertThatJson(response)
+      .when(net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER)
+
       .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
@@ -140,7 +142,9 @@ trait LongLivedTokenGetContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .when(net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER)
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
@@ -197,7 +201,9 @@ trait LongLivedTokenGetContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .when(net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER)
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
@@ -226,9 +232,9 @@ trait LongLivedTokenGetContract {
 
     val response = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request).log().all()
+      .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
@@ -237,7 +243,9 @@ trait LongLivedTokenGetContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .when(net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER)
+      .isEqualTo(
       s"""{
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
@@ -275,7 +283,9 @@ trait LongLivedTokenGetContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .when(net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER)
+      .isEqualTo(
       s"""{
          |  "sessionState":"${SESSION_STATE.value}",
          |  "methodResponses": [
@@ -311,7 +321,9 @@ trait LongLivedTokenGetContract {
       .body()
       .asString()
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .when(net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER)
+      .isEqualTo(
       s"""{
          |  "sessionState":"${SESSION_STATE.value}",
          |  "methodResponses": [
