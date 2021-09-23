@@ -84,6 +84,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
+import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
@@ -129,6 +130,7 @@ public class DistributedServer {
         new KeystoreSetMethodModule(),
         new LongLivedTokenGetMethodModule(),
         new LongLivedTokenSetMethodModule(),
+        new LongLivedTokenStoreCassandraModule(),
         Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
 
     public static final Module PROTOCOLS = Modules.combine(
