@@ -1,14 +1,27 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, DeviceId, LongLivedTokenFootPrint, LongLivedTokenId, LongLivedTokenSecret}
+import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, DeviceId, LongLivedTokenFootPrint, LongLivedTokenId, LongLivedTokenSecret, UnparsedLongLivedTokenId}
 import com.linagora.tmail.james.jmap.model.{LongLivedTokenCreationId, LongLivedTokenCreationRequest, LongLivedTokenGetRequest, LongLivedTokenGetResponse, LongLivedTokenSetRequest, LongLivedTokenSetResponse, TokenCreationResult}
+import eu.timepit.refined
+import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.{Id, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json.{Format, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
 
 object LongLivedTokenSerializer {
-
   private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
+
+  private implicit val unparsedLongLivedTokenIdWrites: Writes[UnparsedLongLivedTokenId] = Json.valueWrites[UnparsedLongLivedTokenId]
+  private implicit val unparsedLongLivedTokenIdReads: Reads[UnparsedLongLivedTokenId] = {
+    case JsString(string) =>
+      refined.refineV[IdConstraint](string)
+        .fold(
+          error => JsError(s"LongLivedTokenId does not match Id constraints: $error"),
+          id => JsSuccess(UnparsedLongLivedTokenId(id))
+        )
+    case _ => JsError("LongLivedTokenId needs to be represented by a string")
+  }
+
   private implicit val creationIdFormat: Format[LongLivedTokenCreationId] = Json.valueFormat[LongLivedTokenCreationId]
   private implicit val longLivedTokenIdFormat: Format[LongLivedTokenId] = Json.valueFormat[LongLivedTokenId]
   private implicit val longLivedTokenSecretFormat: Format[LongLivedTokenSecret] = Json.valueFormat[LongLivedTokenSecret]
@@ -27,6 +40,9 @@ object LongLivedTokenSerializer {
 
   private implicit val tokenNotCreatedMapWrites: Writes[Map[LongLivedTokenCreationId, SetError]] =
     mapWrites[LongLivedTokenCreationId, SetError](creationId => creationId.id.value, setErrorWrites)
+
+  private implicit val tokenNotDestroyedMapWrites: Writes[Map[UnparsedLongLivedTokenId, SetError]] =
+    mapWrites[UnparsedLongLivedTokenId, SetError](destroyedId => destroyedId.value.value, setErrorWrites)
 
   private implicit val longLivedTokenSetRequestRead: Reads[LongLivedTokenSetRequest] = Json.reads[LongLivedTokenSetRequest]
   private implicit val longLivedTokenGetRequestRead: Reads[LongLivedTokenGetRequest] = Json.reads[LongLivedTokenGetRequest]
