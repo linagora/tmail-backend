@@ -27,30 +27,30 @@ case class EncryptedEmailGetRequest(accountId: AccountId,
 
 case class EncryptedEmailGetResponse(accountId: AccountId,
                                      state: UuidState,
-                                     list: Option[List[EncryptedEmailFastView]],
-                                     notFound: Option[EmailNotFound])
+                                     list: List[EncryptedEmailFastView],
+                                     notFound: EmailNotFound)
 
 object EncryptedEmailFastViewResults {
   def notFound(unparsedEmailId: UnparsedEmailId): EncryptedEmailFastViewResults =
-    EncryptedEmailFastViewResults(None, Some(EmailNotFound(Set(unparsedEmailId))))
+    EncryptedEmailFastViewResults(List(), EmailNotFound(Set(unparsedEmailId)))
 
   def notFound(messageId: MessageId): EncryptedEmailFastViewResults =
-    EncryptedEmailFastViewResults(None, Some(EmailNotFound(Set(Email.asUnparsed(messageId).get))))
+    EncryptedEmailFastViewResults(List(), EmailNotFound(Set(Email.asUnparsed(messageId).get)))
 
   def list(fastView: EncryptedEmailFastView): EncryptedEmailFastViewResults =
-    EncryptedEmailFastViewResults(Some(List(fastView)), None)
+    EncryptedEmailFastViewResults(List(fastView), EmailNotFound(Set()))
 
   def empty(): EncryptedEmailFastViewResults =
-    EncryptedEmailFastViewResults(None, None)
+    EncryptedEmailFastViewResults(List(), EmailNotFound(Set()))
 
   def merge(result1: EncryptedEmailFastViewResults, result2: EncryptedEmailFastViewResults): EncryptedEmailFastViewResults =
     EncryptedEmailFastViewResults(
-      list = (result1.list ++ result2.list).reduceOption(_ ++ _),
-      notFound = (result1.notFound ++ result2.notFound).reduceOption((notFound1, notFound2) => notFound1.merge(notFound2)))
+      list = result1.list ++ result2.list,
+      notFound = EmailNotFound(result1.notFound.value ++ result2.notFound.value))
 }
 
-case class EncryptedEmailFastViewResults(list: Option[List[EncryptedEmailFastView]],
-                                         notFound: Option[EmailNotFound])
+case class EncryptedEmailFastViewResults(list: List[EncryptedEmailFastView],
+                                         notFound: EmailNotFound)
 
 object EmailIdHelper {
   def parser(ids: List[UnparsedEmailId], messageIdFactory: MessageId.Factory): List[Either[(UnparsedEmailId, IllegalArgumentException), MessageId]] =
@@ -62,28 +62,27 @@ object EmailIdHelper {
 
 case class EncryptedEmailDetailedResponse(accountId: AccountId,
                                      state: UuidState,
-                                     list: Option[List[EncryptedEmailDetailedView]],
-                                     notFound: Option[EmailNotFound])
+                                     list: List[EncryptedEmailDetailedView],
+                                     notFound: EmailNotFound)
 
 object EncryptedEmailDetailedViewResults {
   def notFound(unparsedEmailId: UnparsedEmailId): EncryptedEmailDetailedViewResults =
-    EncryptedEmailDetailedViewResults(None, Some(EmailNotFound(Set(unparsedEmailId))))
+    EncryptedEmailDetailedViewResults(List(), EmailNotFound(Set(unparsedEmailId)))
 
   def notFound(messageId: MessageId): EncryptedEmailDetailedViewResults =
-    EncryptedEmailDetailedViewResults(None, Some(EmailNotFound(Set(Email.asUnparsed(messageId).get))))
+    EncryptedEmailDetailedViewResults(List(), EmailNotFound(Set(Email.asUnparsed(messageId).get)))
 
   def list(detailedView: EncryptedEmailDetailedView): EncryptedEmailDetailedViewResults =
-    EncryptedEmailDetailedViewResults(Some(List(detailedView)), None)
+    EncryptedEmailDetailedViewResults(List(detailedView), EmailNotFound(Set()))
 
   def empty(): EncryptedEmailDetailedViewResults =
-    EncryptedEmailDetailedViewResults(None, None)
+    EncryptedEmailDetailedViewResults(List(), EmailNotFound(Set()))
 
   def merge(result1: EncryptedEmailDetailedViewResults, result2: EncryptedEmailDetailedViewResults): EncryptedEmailDetailedViewResults =
     EncryptedEmailDetailedViewResults(
-      list = (result1.list ++ result2.list).reduceOption(_ ++ _),
-      notFound = (result1.notFound ++ result2.notFound).reduceOption((notFound1, notFound2) => notFound1.merge(notFound2)))
-
+      list = result1.list ++ result2.list,
+      notFound = EmailNotFound(result1.notFound.value ++ result2.notFound.value))
 }
 
-case class EncryptedEmailDetailedViewResults(list: Option[List[EncryptedEmailDetailedView]],
-                                             notFound: Option[EmailNotFound])
+case class EncryptedEmailDetailedViewResults(list: List[EncryptedEmailDetailedView],
+                                             notFound: EmailNotFound)
