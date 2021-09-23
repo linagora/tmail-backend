@@ -101,6 +101,7 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
+         |      "notFound": [],
          |      "list": [
          |        {
          |          "id": "$PGP_KEY_ID",
@@ -177,7 +178,8 @@ trait LinagoraKeystoreGetMethodContract {
          |          "id": "$PGP_KEY_ID",
          |          "key": "$PGP_KEY_ARMORED"
          |        }
-         |      ]
+         |      ],
+         |      "notFound": []
          |    }, "c2"]
          |  ]
          |}""".stripMargin)
@@ -239,6 +241,7 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
+         |      "notFound": [],
          |      "list": [
          |        {
          |          "id": "$PGP_KEY_ID",
@@ -282,14 +285,15 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
-         |      "list": []
+         |      "list": [],
+         |      "notFound": []
          |    }, "c1"]
          |  ]
          |}""".stripMargin)
   }
 
   @Test
-  def keystoreGetShouldReturnEmptyWhenUnknownId(): Unit = {
+  def keystoreGetShouldReturnNotFoundyWhenUnknownId(): Unit = {
     val request = s"""{
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
@@ -338,7 +342,8 @@ trait LinagoraKeystoreGetMethodContract {
          |    ["Keystore/get", {
          |      "accountId": "$ACCOUNT_ID",
          |      "state": "${INSTANCE.value}",
-         |      "list": []
+         |      "list": [],
+         |      "notFound":["12522CF961A95474431BADD676E1BC47187D6CEF"]
          |    }, "c2"]
          |  ]
          |}""".stripMargin)

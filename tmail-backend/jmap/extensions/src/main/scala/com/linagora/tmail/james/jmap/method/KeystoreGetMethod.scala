@@ -47,14 +47,15 @@ class KeystoreGetMethod @Inject()(serializer: KeystoreSerializer,
         .flatMap(id => SMono.fromPublisher(keystoreManager.retrieveKey(mailboxSession.getUser, id)))
     })
       .collectSeq()
-      .map(seq => KeystoreGetResponse(request.accountId, UuidState.INSTANCE, seq.toList))
+      .map(seq => KeystoreGetResponse(
+        accountId = request.accountId,
+        state = UuidState.INSTANCE,
+        list = seq.toList,
+        notFound = request.notFound(seq.map(_.id).toSet)))
       .map(response => InvocationWithContext(
         invocation = Invocation(
           methodName = methodName,
-          arguments = Arguments(serializer.serializeKeystoreGetResponse(KeystoreGetResponse(
-            accountId = request.accountId,
-            state = response.state,
-            list = response.list)).as[JsObject]),
+          arguments = Arguments(serializer.serializeKeystoreGetResponse(response).as[JsObject]),
           methodCallId = invocation.invocation.methodCallId), processingContext = invocation.processingContext))
   }
 
