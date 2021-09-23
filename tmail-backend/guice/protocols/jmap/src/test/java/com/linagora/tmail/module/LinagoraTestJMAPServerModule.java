@@ -1,5 +1,6 @@
 package com.linagora.tmail.module;
 
+
 import java.util.Optional;
 
 import javax.inject.Singleton;

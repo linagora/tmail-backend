@@ -32,12 +32,6 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>encrypted-mailbox-guice</artifactId>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions</artifactId>
         </dependency>
         <dependency>
@@ -47,6 +41,12 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>mailbox-encrypted-cassandra</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-guice-jmap</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.linagora.tmail</groupId>
