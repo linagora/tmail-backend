@@ -9,7 +9,6 @@ import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -23,6 +22,7 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailFastViewGetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraEncryptedEmailFastViewGetMethodTest implements LinagoraEncryptedEmailFastViewGetMethodContract {
     public static final CassandraMessageId.Factory MESSAGE_ID_FACTORY = new CassandraMessageId.Factory();
@@ -45,7 +45,7 @@ public class DistributedLinagoraEncryptedEmailFastViewGetMethodTest implements L
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(new EncryptedEmailContentStoreCassandraModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)

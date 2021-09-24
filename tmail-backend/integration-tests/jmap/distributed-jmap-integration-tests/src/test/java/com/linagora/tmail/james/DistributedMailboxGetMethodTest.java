@@ -29,13 +29,13 @@ import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.driver.core.utils.UUIDs;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedMailboxGetMethodTest implements MailboxGetMethodContract {
     @RegisterExtension
@@ -54,7 +54,7 @@ public class DistributedMailboxGetMethodTest implements MailboxGetMethodContract
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 
     @Override

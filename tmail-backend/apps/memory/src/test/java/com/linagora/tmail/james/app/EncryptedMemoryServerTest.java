@@ -38,6 +38,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
 
@@ -49,7 +50,7 @@ class EncryptedMemoryServerTest implements JamesServerContract, JmapJamesServerC
         .mailbox(new MailboxConfiguration(true))
         .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class)))
         .build();
 

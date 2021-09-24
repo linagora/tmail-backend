@@ -7,28 +7,19 @@
         <groupId>com.linagora.tmail</groupId>
         <artifactId>tmail-backend</artifactId>
         <version>1.0.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
+        <relativePath>../../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>encrypted-mailbox-guice</artifactId>
+    <artifactId>tmail-guice-jmap</artifactId>
     <packaging>jar</packaging>
 
-    <name>Apache James :: Server :: ElasticSearch - guice modules - v6</name>
-    <description>Guice injections for the EncryptedMailbox</description>
+    <description>JMAP modules for Guice implementation of TMail server</description>
 
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>mailbox-encrypted-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>${james.groupId}</groupId>
-            <artifactId>james-server-guice-configuration</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>

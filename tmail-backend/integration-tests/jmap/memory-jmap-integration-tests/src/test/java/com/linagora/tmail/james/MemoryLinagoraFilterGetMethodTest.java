@@ -6,13 +6,13 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.inmemory.InMemoryId;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraFilterGetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceCustomModule;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryLinagoraFilterGetMethodTest implements LinagoraFilterGetMethodContract {
 
@@ -23,7 +23,7 @@ public class MemoryLinagoraFilterGetMethodTest implements LinagoraFilterGetMetho
             .configurationFromClasspath()
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceCustomModule()))
         .build();
 
