@@ -14,7 +14,7 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.ProblemDetails
 import org.apache.james.jmap.exceptions.UnauthorizedException
-import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
+import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator, BasicAuthenticationStrategy}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.routes.ForbiddenException
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
@@ -40,8 +40,9 @@ case class ShortLivedTokenRoutesModule() extends AbstractModule {
   @Singleton
   @Named(LongLivedTokenInjectKeys.JMAP)
   def provideLongLivedTokenAuthenticator(metricFactory: MetricFactory,
-                                         longLivedTokenAuthenticationStrategy: LongLivedTokenAuthenticationStrategy): Authenticator =
-    Authenticator.of(metricFactory, longLivedTokenAuthenticationStrategy)
+                                         longLivedTokenAuthenticationStrategy: LongLivedTokenAuthenticationStrategy,
+                                         basicAuthenticationStrategy: BasicAuthenticationStrategy): Authenticator =
+    Authenticator.of(metricFactory, longLivedTokenAuthenticationStrategy, basicAuthenticationStrategy)
 
 }
 
@@ -67,10 +68,8 @@ class ShortLivedTokenRoutes @Inject()(@Named(LongLivedTokenInjectKeys.JMAP) val 
 
   private def generate(request: HttpServerRequest, response: HttpServerResponse): SMono[Unit] =
     SMono(authenticator.authenticate(request))
-      .doOnNext(_ => validRequestParameter(request))
-      .flatMap(session => validDeviceId(session.getUser, request)
-        .`then`(SMono.just(session.getUser))
-      )
+      .flatMap(session => validRequest(session.getUser, request)
+        .`then`(SMono.just(session.getUser)))
       .map(user => {
         val validUntil: ZonedDateTime = ZonedDateTime.ofInstant(clock.instant().plusSeconds(TOKEN_DURATION_DEFAULT.toSeconds), clock.getZone)
         JwtTokenResponse(jwtSigner.sign(user, validUntil), validUntil)
@@ -84,21 +83,20 @@ class ShortLivedTokenRoutes @Inject()(@Named(LongLivedTokenInjectKeys.JMAP) val 
       .subscribeOn(Schedulers.elastic())
       .`then`()
 
-  private def validDeviceId(username: Username, request: HttpServerRequest): SMono[Unit] = {
-    val secretAndDeviceId: Option[(LongLivedTokenSecret, DeviceId)] = for {
-      secretToken <- extractLongLivedTokenSecretInHeader(request)
-      deviceId <- queryParam(DEVICE_ID_PARAM, request.uri())
-    } yield (secretToken, DeviceId(deviceId))
+  private def validRequest(username: Username, request: HttpServerRequest): SMono[Unit] =
+    SMono.just(isAuthenByLongLivedToken(request))
+      .doOnNext(isAuthenByLongLivedToken => validRequestParameter(request, isAuthenByLongLivedToken))
+      .filter(isAuthenByLongLivedToken => isAuthenByLongLivedToken)
+      .flatMap(_ => SMono.justOrEmpty(extractLongLivedTokenSecretAndDeviceId(request))
+        .switchIfEmpty(SMono.error(new UnauthorizedException("'deviceId' is not valid")))
+        .flatMap(secretAndDevice => validateToken(username, secretAndDevice._2, secretAndDevice._1)))
 
-    SMono.justOrEmpty(secretAndDeviceId)
-      .switchIfEmpty(SMono.error(new UnauthorizedException("'deviceId' is not valid")))
-      .flatMap(secretAndDevice => validateToken(username, secretAndDevice._2, secretAndDevice._1))
-  }
-
-  private def extractLongLivedTokenSecretInHeader(request: HttpServerRequest): Option[LongLivedTokenSecret] =
+  private def extractLongLivedTokenSecretAndDeviceId(request: HttpServerRequest): Option[(LongLivedTokenSecret, DeviceId)] =
     Option(request.requestHeaders.get(AuthenticationStrategy.AUTHORIZATION_HEADERS))
       .flatMap(authHeader => AuthenticationToken.fromAuthHeader(authHeader))
       .map(authenticationToken => authenticationToken.secret)
+      .flatMap(secret => queryParam(DEVICE_ID_PARAM, request.uri())
+        .map(deviceId => secret -> DeviceId(deviceId)))
 
   private def validateToken(username: Username,
                             deviceId: DeviceId,
@@ -108,15 +106,20 @@ class ShortLivedTokenRoutes @Inject()(@Named(LongLivedTokenInjectKeys.JMAP) val 
       .switchIfEmpty(SMono.error(new UnauthorizedException("'deviceId' is not valid")))
       .`then`()
 
-  private def validRequestParameter(request: HttpServerRequest): Unit = {
-    if (queryParam(DEVICE_ID_PARAM, request.uri()).isEmpty) {
-      throw new IllegalArgumentException(s"'$DEVICE_ID_PARAM' must be not empty")
-    }
-
+  private def validRequestParameter(request: HttpServerRequest, isAuthenByLongLivedToken: Boolean): Unit = {
     if (!queryParam(TYPE_PARAM, request.uri()).exists(typeValue => TYPE_ACCEPT_PARAM.equals(typeValue))) {
       throw new IllegalArgumentException(s"'$TYPE_PARAM' must be $TYPE_ACCEPT_PARAM")
     }
+    if (isAuthenByLongLivedToken) {
+      if (queryParam(DEVICE_ID_PARAM, request.uri()).isEmpty) {
+        throw new IllegalArgumentException(s"'$DEVICE_ID_PARAM' must be not empty")
+      }
+    }
   }
+
+  private def isAuthenByLongLivedToken(request: HttpServerRequest): Boolean =
+    Option(request.requestHeaders().get(AuthenticationStrategy.AUTHORIZATION_HEADERS))
+      .exists(authenValue => authenValue.startsWith(LongLivedTokenAuthenticationStrategy.AUTHORIZATION_HEADER_PREFIX))
 
   private def queryParam(parameterName: String, uri: String): Option[String] =
     Option(new QueryStringDecoder(uri).parameters.get(parameterName))

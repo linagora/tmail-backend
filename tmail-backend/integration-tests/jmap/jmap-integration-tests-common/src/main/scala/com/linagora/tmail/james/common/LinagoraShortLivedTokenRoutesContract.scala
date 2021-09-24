@@ -25,7 +25,6 @@ object LinagoraShortLivedTokenRoutesContract {
 
   def unSupportAuthenHeaderStream : Stream[Arguments] = {
     Stream.of(
-      Arguments.of(BOB_BASIC_AUTH_HEADER),
       Arguments.of(new Header(AUTHORIZATION_HEADER, s"Bearer $USER_TOKEN")))
   }
 }
@@ -258,6 +257,55 @@ trait LinagoraShortLivedTokenRoutesContract {
            |    "type": "about:blank",
            |    "status": 401,
            |    "detail": "'deviceId' is not valid"
+           |}""".stripMargin)
+  }
+
+  @Test
+  def getTokenShouldBeAuthenticatedWhenUseBasicAuth(): Unit = {
+    val response: String = `given`()
+      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .queryParam("type", "shortLived")
+    .when()
+      .basePath(BASE_PATH)
+      .get()
+    .`then`()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""
+           |{
+           |  "token" : "$${json-unit.ignore}",
+           |  "expiresOn" : "$${json-unit.ignore}"
+           |}""".stripMargin)
+  }
+
+  @Test
+  def getTokenShouldNotValidDeviceIdWhenUseBasicAuth(): Unit = {
+    val response: String = `given`()
+      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .queryParam("type", "shortLived")
+      .queryParam("deviceId", "abc xyz")
+    .when()
+      .basePath(BASE_PATH)
+      .get()
+    .`then`()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""
+           |{
+           |  "token" : "$${json-unit.ignore}",
+           |  "expiresOn" : "$${json-unit.ignore}"
            |}""".stripMargin)
   }
 
