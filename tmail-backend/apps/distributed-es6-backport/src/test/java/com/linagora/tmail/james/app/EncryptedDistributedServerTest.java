@@ -8,7 +8,6 @@ import org.apache.james.JamesServerContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
-import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Disabled;
@@ -21,6 +20,7 @@ import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 class EncryptedDistributedServerTest implements JamesServerContract, JmapJamesServerContract {
     @RegisterExtension
@@ -37,7 +37,7 @@ class EncryptedDistributedServerTest implements JamesServerContract, JmapJamesSe
             .mailboxConfiguration(new MailboxConfiguration(true))
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new TestJMAPServerModule())
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
         .extension(new DockerElasticSearchExtension())
