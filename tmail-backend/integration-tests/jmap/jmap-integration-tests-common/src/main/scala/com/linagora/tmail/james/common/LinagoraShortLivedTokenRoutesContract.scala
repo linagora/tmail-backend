@@ -8,13 +8,14 @@ import io.restassured.http.ContentType.JSON
 import io.restassured.http.Header
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus
-import org.apache.http.HttpStatus.SC_OK
+import org.apache.http.HttpStatus.{SC_INTERNAL_SERVER_ERROR, SC_OK, SC_UNAUTHORIZED}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, AUTHORIZATION_HEADER, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, ECHO_REQUEST_OBJECT, USER_TOKEN, baseRequestSpecBuilder, getHeadersWith}
 import org.apache.james.utils.DataProbeImpl
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
+import play.api.libs.json.{JsString, Json}
 
 import java.util.stream.Stream
 
@@ -260,4 +261,84 @@ trait LinagoraShortLivedTokenRoutesContract {
            |}""".stripMargin)
   }
 
+  @Test
+  def getTokenShouldFailWithRevokedLongLivedToken(): Unit = {
+    val longLivedTokenRequest: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:long:lived:token"],
+         |  "methodCalls": [
+         |    ["LongLivedToken/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "create": {
+         |        "K38": {
+         |          "deviceId": "$DEVICE_ID"
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val longLivedTokenResponse: String = `given`()
+      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .body(longLivedTokenRequest)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .extract()
+      .body()
+      .asString()
+
+    val longLivedTokenId: String = (((Json.parse(longLivedTokenResponse) \\ "methodResponses" )
+      .head \\ "created")
+      .head \\ "id")
+      .head.asInstanceOf[JsString].value
+
+    val longLivedToken: String = (((Json.parse(longLivedTokenResponse) \\ "methodResponses" )
+      .head \\ "created")
+      .head \\ "token")
+      .head.asInstanceOf[JsString].value
+
+    val revokeRequest: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:long:lived:token"],
+         |  "methodCalls": [
+         |    ["LongLivedToken/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "destroy": ["$longLivedTokenId"]
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    `given`
+      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .body(revokeRequest)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+
+    val response: String = `given`()
+      .header(buildBearerTokenHeader(longLivedToken))
+      .queryParam("type", "shortLived")
+      .queryParam("deviceId", DEVICE_ID)
+    .when()
+      .basePath(BASE_PATH)
+      .get()
+    .`then`()
+      .statusCode(SC_UNAUTHORIZED)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |    "type": "about:blank",
+           |    "status": 401,
+           |    "detail": "Invalid long lived token"
+           |}""".stripMargin)
+  }
 }
