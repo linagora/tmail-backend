@@ -43,6 +43,8 @@ public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEa
             .withNetwork(network)
             .dependsOn(cassandra, elasticsearch, s3, rabbitmq)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
     }
 
