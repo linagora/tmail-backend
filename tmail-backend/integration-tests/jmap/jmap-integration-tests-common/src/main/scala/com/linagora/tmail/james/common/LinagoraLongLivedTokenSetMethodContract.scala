@@ -949,6 +949,4 @@ trait LinagoraLongLivedTokenSetMethodContract {
          |    ]
          |}""".stripMargin)
   }
-
-  // TODO: calling /token endpoint after long lived token revocation should fail (waiting for /token endpoint)
 }
