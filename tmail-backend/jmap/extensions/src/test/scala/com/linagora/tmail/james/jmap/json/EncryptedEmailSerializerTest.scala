@@ -27,8 +27,8 @@ class EncryptedEmailSerializerTest {
     val encryptedEmailGetResponse: EncryptedEmailGetResponse = EncryptedEmailGetResponse(
       accountId = ACCOUNT_ID,
       state = UuidState.parse("6e0dd59d-660e-4d9b-b22f-0354479f47b4").toOption.get,
-      list = Some(List(EncryptedEmailFastView)),
-      notFound = Some(EmailNotFound(Set(Email.asUnparsed(notFoundMessageId).get))))
+      list = List(EncryptedEmailFastView),
+      notFound = EmailNotFound(Set(Email.asUnparsed(notFoundMessageId).get)))
 
     val actualValue: JsValue = EncryptedEmailSerializer.serializeEncryptedEmailGetResponse(encryptedEmailGetResponse)
 
@@ -87,8 +87,8 @@ class EncryptedEmailSerializerTest {
     val encryptedEmailDetailedResponse:EncryptedEmailDetailedResponse = EncryptedEmailDetailedResponse(
       accountId = ACCOUNT_ID,
       state = UuidState.INSTANCE,
-      list = Some(List(encryptedEmailDetailedView)),
-      notFound = Some(EmailNotFound(Set(Email.asUnparsed(notFoundMessageId).get))))
+      list = List(encryptedEmailDetailedView),
+      notFound = EmailNotFound(Set(Email.asUnparsed(notFoundMessageId).get)))
 
     val actualValue: JsValue = EncryptedEmailSerializer.serializeEncryptedEmailDetailedResponse(encryptedEmailDetailedResponse)
 

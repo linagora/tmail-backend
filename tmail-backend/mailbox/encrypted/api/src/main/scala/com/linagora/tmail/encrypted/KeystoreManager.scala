@@ -8,7 +8,7 @@ object KeyId {
   def fromPayload(payload: Array[Byte]): KeyId = KeyId(BaseEncoding.base16().encode(payload))
 }
 
-case class KeyId(value: String)
+case class KeyId(value: String) extends AnyVal
 
 case class PublicKey(id: KeyId, key: Array[Byte]) {
   def hasSameContentAs(publicKey: PublicKey): Boolean =

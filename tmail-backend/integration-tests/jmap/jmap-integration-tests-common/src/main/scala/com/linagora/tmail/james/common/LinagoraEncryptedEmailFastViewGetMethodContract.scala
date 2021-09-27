@@ -1,8 +1,8 @@
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
 import java.nio.charset.StandardCharsets
 
+import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe
 import com.linagora.tmail.james.jmap.model.EncryptedEmailGetRequest
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -250,7 +250,8 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
-           |                "notFound": ["invalid"]
+           |                "notFound": ["invalid"],
+           |                "list": []
            |            },
            |            "c1"
            |        ]
@@ -295,7 +296,8 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |                "state": "${INSTANCE.value}",
            |                "notFound": [
            |                    "${messageId.serialize}"
-           |                ]
+           |                ],
+           |                "list": []
            |            },
            |            "c1"
            |        ]
@@ -348,7 +350,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |                "state": "${INSTANCE.value}",
            |                "notFound": [
            |                    "${messageId.serialize}"
-           |                ]
+           |                ], "list": []
            |            },
            |            "c1"
            |        ]
@@ -391,6 +393,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
         s"""{
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
+           |    "notFound": [],
            |    "list": [
            |            {
            |                "id": "${messageId.serialize()}",
@@ -514,6 +517,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
         s"""{
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
+           |    "notFound": [],
            |    "list": [
            |            {
            |                "id": "${messageId1.serialize()}",
@@ -642,7 +646,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |                "state": "${INSTANCE.value}",
            |                "notFound": [
            |                    "${messageId.serialize}"
-           |                ]
+           |                ], "list": []
            |            },
            |            "c1"
            |        ]
@@ -701,7 +705,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |                "state": "${INSTANCE.value}",
            |                "notFound": [
            |                    "${messageId.serialize}"
-           |                ]
+           |                ], "list": []
            |            },
            |            "c1"
            |        ]

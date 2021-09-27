@@ -23,7 +23,7 @@ public class JmapGuiceKeystoreManagerProbe implements GuiceProbe {
 
     public Optional<PublicKey> retrieveKey(Username username, KeyId id) {
         try {
-            return Optional.ofNullable(Mono.from(keystore.retrieveKey(username, id)).block());
+            return Optional.ofNullable(Mono.from(keystore.retrieveKey(username, id.value())).block());
         } catch (IllegalArgumentException e) {
            return Optional.empty();
         }

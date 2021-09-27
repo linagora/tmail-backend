@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+
 import com.linagora.tmail.james.common.EncryptHelper.{decrypt, uploadPublicKey}
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract.{BOB_INBOX_PATH, MESSAGE, MESSAGE_HAS_ATTACHMENTS, MESSAGE_HTML, MESSAGE_PREVIEW}
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe
@@ -24,8 +26,6 @@ import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsString, Json}
-
-import java.nio.charset.StandardCharsets
 
 object LinagoraEncryptedEmailDetailedViewGetMethodContract {
   val MESSAGE: Message = Message.Builder.of
@@ -260,7 +260,8 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
-           |                "notFound": ["invalid"]
+           |                "notFound": ["invalid"],
+           |                "list": []
            |            },
            |            "c1"
            |        ]
@@ -303,6 +304,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
+           |                "list": [],
            |                "notFound": [
            |                    "${messageId.serialize}"
            |                ]
@@ -356,6 +358,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
+           |                "list": [],
            |                "notFound": [
            |                    "${messageId.serialize}"
            |                ]
@@ -401,6 +404,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
         s"""{
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
+           |    "notFound": [],
            |    "list": [
            |        {
            |            "id": "${messageId.serialize()}",
@@ -471,6 +475,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
         s"""{
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
+           |    "notFound": [],
            |    "list": [
            |            {
            |                "id": "${messageId1.serialize()}",
@@ -604,6 +609,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
+           |                "list": [],
            |                "notFound": [
            |                    "${messageId.serialize}"
            |                ]
@@ -663,6 +669,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |            {
            |                "accountId": "$ANDRE_ACCOUNT_ID",
            |                "state": "${INSTANCE.value}",
+           |                "list": [],
            |                "notFound": [
            |                    "${messageId.serialize}"
            |                ]
@@ -786,6 +793,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
         s"""{
            |    "accountId": "$ACCOUNT_ID",
            |    "state": "${INSTANCE.value}",
+           |    "notFound": [],
            |    "list": [
            |            {
            |                "id": "${messageId.serialize()}",
@@ -928,6 +936,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |            {
            |                "accountId": "$ACCOUNT_ID",
            |                "state": "$${json-unit.ignore}",
+           |                "notFound": [],
            |                "list": [
            |                        {
            |                            "id": "$${json-unit.ignore}",
