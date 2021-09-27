@@ -125,4 +125,18 @@ class LongLivedTokenAuthenticationStrategyTest {
       .isEqualTo(fakeMailboxSession)
   }
 
+  @Test
+  def createMailboxSessionShouldThrowUnauthorizedExceptionWhenSecretNotFound(): Unit ={
+    when(mockedHeaders.get(AUTHORIZATION_HEADERS))
+      .thenReturn("Bearer " + TOKEN)
+    val fakeMailboxSession: MailboxSession = mock(classOf[MailboxSession])
+    when(mockedMailboxManager.createSystemSession(ArgumentMatchers.eq(Username.of(USER_NAME))))
+      .thenReturn(fakeMailboxSession)
+    when(longLivedTokenStore.validate(ArgumentMatchers.eq(Username.of(USER_NAME)), ArgumentMatchers.eq(SECRET_UUID)))
+      .thenReturn(SMono.error(new LongLivedTokenNotFoundException))
+
+    assertThatThrownBy(() => testee.createMailboxSession(mockedRequest).blockOptional)
+      .isInstanceOf(classOf[UnauthorizedException])
+  }
+
 }

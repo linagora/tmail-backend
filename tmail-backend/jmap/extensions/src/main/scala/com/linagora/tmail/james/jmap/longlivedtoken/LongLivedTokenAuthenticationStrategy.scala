@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.longlivedtoken
 
-import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenAuthenticationStrategy.{AUTHENTICATION_TOKEN_COMMA, AUTHORIZATION_HEADER_PREFIX}
+import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenAuthenticationStrategy.{AUTHENTICATION_TOKEN_COMMA, AUTHORIZATION_HEADER_PREFIX, UNAUTHORIZED_MSG}
 import org.apache.james.core.Username
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.{AuthenticationChallenge, AuthenticationScheme, AuthenticationStrategy}
@@ -26,6 +26,7 @@ case class AuthenticationToken(username: Username, secret: LongLivedTokenSecret)
 object LongLivedTokenAuthenticationStrategy {
   val AUTHORIZATION_HEADER_PREFIX: String = "Bearer "
   val AUTHENTICATION_TOKEN_COMMA: String = "_"
+  val UNAUTHORIZED_MSG: String = "Invalid long lived token"
 }
 
 class LongLivedTokenAuthenticationStrategy @Inject()(longLivedTokenStore: LongLivedTokenStore,
@@ -35,7 +36,11 @@ class LongLivedTokenAuthenticationStrategy @Inject()(longLivedTokenStore: LongLi
     SMono.justOrEmpty(retrieveAuthenticationToken(httpRequest))
       .flatMap(token => SMono.fromPublisher(longLivedTokenStore.validate(token.username, token.secret))
         .map(_ => sessionProvider.createSystemSession(token.username))
-        .switchIfEmpty(SMono.error(new UnauthorizedException("Invalid long lived token"))))
+        .switchIfEmpty(SMono.error(new UnauthorizedException(UNAUTHORIZED_MSG)))
+        .onErrorResume {
+          case _: LongLivedTokenNotFoundException => SMono.error(new UnauthorizedException(UNAUTHORIZED_MSG))
+          case error => SMono.error(error)
+        })
       .asJava()
 
   override def correspondingChallenge(): AuthenticationChallenge = AuthenticationChallenge.of(
