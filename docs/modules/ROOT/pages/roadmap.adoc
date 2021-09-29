@@ -1,4 +1,30 @@
 = Roadmap
 :navtitle: Roadmap
 
-TODO
+Here is a glance as what we are currently working on.
+
+*Disclaimer*: this roadmap is purely informative, while we will try our best to deliver these items, we
+have no engagement of results. We also reserve ourself the rights to adapt it to our needs.
+
+Changes to this high-level roadmap are made through pull requests. Comments might allow to clarify our choices, propose
+alternatives, raise your voice.
+
+== Second semester 2021
+
+ - Build a reliable, multi-platform, JMAP mobile application.
+ - Offer advanced collaborative features in TMail backend.
+ - Single sign on (Keycloack), single log out.
+
+== First semester 2022
+
+ - The TMail mobile application should allow using TMail advanced features like
+encryption, the Functional mailboxes, or filters.
+ - Components to have a TMail SAAS offer, including *fair usage enforcement* and *spam protection*.
+- Release a TMail webmail using Flutter application.
+
+== After
+
+ - Integration with other Linagora collaborative components including:
+   - The *Calendar*: display events in email and update event status from emails.
+   - *LinShare*: Save attachments to LinShare and send big attachments thanks to LinShare.
+   - *Twake*: Discuss an email on Twake, associate functional mailboxes to Twake channels or Twake projects.
