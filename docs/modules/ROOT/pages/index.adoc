@@ -1,5 +1,5 @@
-= TMail Documentation WebSite
-:navtitle: About TMail
+= TMail Collaborative Suite
+:navtitle: TMail Collaborative Suite
 
 image::logo.png[TMail logo]
 
