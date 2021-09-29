@@ -1,4 +1,45 @@
 = Join us
 :navtitle: Join us
 
-TODO
+You love email? You dream to contribute to OpenSource projects and support a community? You recognize yourself in out link:ethic.adoc[values]? You want to join a dynamic agile team?
+
+*Why not joining us?*
+
+See link:https://job.linagora.com/[careers at Linagora].
+
+Here are the position we would be looking for on the TMail product especially.
+
+== Backend engineer
+
+You dream about scale, and are born in the NOSQL age, you embrace modern technology. You have
+some experience in *Java* and other JVM programming languages like Scala, functional and reactive
+programming are your mantras. You wish to express design skills in an agile team. Cassandra,
+ElasticSearch, RabbitMQ, Pulsar, S3 have no secrets for you. You can conduct performance test campaigns
+with Gatling and analyse the results thanks to the observability built in the TMail plateform.
+
+== Mobile developer
+
+*Flutter* and mobile developments have no secrets for you and you like building high quality applications.
+You have experience with both Android and IOS platforms and are ready to take the challenge of building
+desktop applications.
+
+== DevOps engineer
+
+You enjoy deploying, and crafting packages for observable software. You are able to build **Ansible**
+receipts and write **Helm** packages for the **Kubernetes** platform. You want to bring operational
+knowledge to the team and have voice as part of system design. You are ready to release frequently.
+You master *Jenkins*.
+
+== BA / QA engineer
+
+Ready to assist the product owner? You will have a look at what other collaborative email suites
+are doing, help to write *user stories*, and prioritize them. You will validate the conformity of
+the development team deliveries, and will look at corner-cases bugs.
+
+Expertise in Email, and awareness about security is a plus!
+
+== UX designer
+
+We need a UX designer expertise to bring the very best possible applications to our end users. What you
+love is ergonomic, responsive designs, and you are ready to stand for user experience during the all
+application lifecycle, from conception to the final delivery. You are ready to propose creative mockups.
