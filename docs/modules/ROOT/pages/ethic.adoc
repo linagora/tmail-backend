@@ -1,0 +1,29 @@
+= TMail ethic
+:navtitle: TMail ethic
+
+We do not just write software. We write **ethical software**. This page details what this
+means to us, and provides concrete actions that we did undertake.
+
+== Design Open Standards
+
+**TODO**
+
+== OpenSource, everywhere
+
+**TODO**
+
+== Respect projects governance
+
+**TODO**
+
+== Contribute back!
+
+**TODO**
+
+== Promote education.
+
+**TODO**
+
+== Thoughts for the planet
+
+**TODO**
