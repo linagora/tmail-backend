@@ -1,0 +1,32 @@
+= Advanced features
+:navtitle: Advanced features
+
+TMail offers a number of essential advanced features, amongst them:
+
+== The Encrypted mailbox
+
+image::lock.png[Lock logo]
+
+TMail allows your users to store their emails encrypted in their mailbox, using the **GPG format**
+(link:https://datatracker.ietf.org/doc/html/rfc4880[RFC-4880 OpenPGP Message Format],
+link:https://datatracker.ietf.org/doc/html/rfc3156[RFC-3156 MIME Security with OpenPGP]).
+
+Thus, TMail have **no means** to decrypt your messages once they are stored in the encrypted
+mailbox. So be careful not to lose your private key: you would not be able to read your messages ever again! This also
+means that, once encrypted, nobody else than you can ever read the messages!
+
+xref:tmail-backend/features/encrypted-mailbox.adoc[Read more]...
+
+== Functional mailboxes
+
+Manage emails effectively as a team!
+
+Functional mailboxes enable everybody in the team:
+
+ - Emails are received on an email address dedicated to the functional mailbox
+ - Members can read the emails received in the functional mailbox. Everybody can manage these emails.
+ - Members can reply and send emails using the address of the functional mailbox.
+
+An example would be `marketting@linagora.com`.
+
+xref:tmail-backend/features/functionalMailboxes.adoc[Read more]...

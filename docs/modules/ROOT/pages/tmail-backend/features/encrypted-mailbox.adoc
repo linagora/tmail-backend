@@ -1,0 +1,79 @@
+= Encrypted Mailbox
+:navtitle: Encrypted Mailbox
+
+image::lock.png[Lock logo]
+
+TMail allows your users to store their emails encrypted in their mailbox, using the **GPG format**
+(link:https://datatracker.ietf.org/doc/html/rfc4880[RFC-4880 OpenPGP Message Format],
+link:https://datatracker.ietf.org/doc/html/rfc3156[RFC-3156 MIME Security with OpenPGP]).
+
+Thus, TMail have **no means** to decrypt your messages once they are stored in the encrypted
+mailbox. So be careful not to lose your private key: you would not be able to read your messages ever again! This also
+means that, once encrypted, nobody else than you can ever read the messages!
+
+You can read your emails through IMAP using compatible extensions like link:https://enigmail.net/index.php/en/[EnygMail].
+
+Furthermore, we designed a xref:tmail-backend/jmap-extensions/jmapGpgExtension.adoc[JMAP GPG extension] to efficiently handle encrypted emails
+within webMail or mobile applications. This extension encrypts separately the preview, the html body as well as attachments so
+that the webMail / mobile application do not need to retrieve all the time the all message (it would be innefective to do so)
+or parse MIME messages (complicated to do).
+
+== Limitations
+
+The messages are processed clear, where we do all the necessary treatments. Emails are only encrypted when stored in the
+encrypted mailbox, not during the mail processing steps before. This means that an attacker eyes-dropping the email processing
+will see emails in clear, but your emails are safe as soon as they land in your (encrypted) mailbox.
+
+We do not encrypt email headers. A hacker might know who you send email to, as well as the topic of your email.
+
+As we encrypted the content of the emails, we are not able to perform `content search` or encrypted emails. Your searches
+will be limited to the headers of the email.
+
+In order to ship an efficient JMAP extension (described above), we need to access the sturcture of the message (unencrypted).
+This means that JMAP GPG extensions do not support GPG messages sent by third-parties. GPG messages sent by third parties can
+still be read using IMAP extensions like EnygMail.
+
+Key management still have to be performed manually by the user.
+
+We will eventually work on lifting some of these restrictions.
+
+== Activation
+
+*Pre-requisite*: an administrator needs to enable the encrypted mailbox. This can easily be done via the `mailbox.properties` configuration file.
+
+....
+gpg.encryption.enable=true
+....
+
+Create a GPG keypair. This can be done via:
+
+....
+gpg --default-new-key-algo rsa4096 --gen-key
+....
+
+Upload your public key to the TMail backend using the Key management JMAP extension.
+
+Example:
+
+....
+curl -XPOST http://james/jmap -d
+
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+  "methodCalls": [
+    ["Keystore/set", {
+      "accountId": "$ACCOUNT_ID",
+      "create": {
+        "K87": {
+          "key": "$PGP_KEY_ARMORED"
+        }
+      }
+    }, "c1"]
+  ]
+}
+....
+
+Doing so, your mails will be stored encrypted within your mailbox (even if the sender did not
+encrypt them!).
+
+You can read your emails through IMAP using compatible extensions like link:https://enigmail.net/index.php/en/[EnygMail].

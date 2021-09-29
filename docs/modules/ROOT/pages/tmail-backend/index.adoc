@@ -17,7 +17,7 @@ Read more about...
 
 All of this applies to TMail.
 
-In addition, TMail offers some xref:tmail-backend/features.adoc[Advanced features].
+In addition, TMail offers some xref:tmail-backend/features/index.adoc[Advanced features].
 
 Get on board easily with minimal set up using xref:tmail-backend/test.adoc[TMail testing server], relying solely on
 in memory datastructures, thus is light and adapted for functional testing on your local laptop.
