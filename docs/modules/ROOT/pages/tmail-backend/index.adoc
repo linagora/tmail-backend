@@ -1,9 +1,12 @@
 = TMail Backend
 :navtitle: TMail backend
 
+TMail backend is the back-bone of TMail, THE **collaborative**, **private and secure** email suite that minimises
+**your** impact on the planet.
+
 TMail backend server offers an easy way to scale email server. Based on
 noSQL solutions, it is intended to be easy to operate for large
-deployments, without needing sharding and protocol aware load balancing.
+deployments, without needing sharding and protocol aware load balancing. This makes TMail easier to operate.
 
 TMail backend server is based on the xref:james-project:servers:distributed.adoc[Apache James Distributed server].
 

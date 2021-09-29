@@ -1,20 +1,29 @@
 = TMail Documentation WebSite
 :navtitle: About TMail
 
-Tmail is a Collaborative email suite we are carefully crafting at Linagora.
+image::logo.png[TMail logo]
 
-TMail is:
+TMail is THE **collaborative**, **private and secure** email suite that minimises
+**your** impact on the planet, carefully crafted at link:https://linagora.com[Linagora].
 
- - Reliable: engaged in OpenSource communities, distributed technologies, TMail is able
-to scale to millions of users.
- - Secure: with its encrypted mailbox
- - Sustainable: Engaged into OpenSource communities with an efficient implementation of JMAP, the green email protocol
+image::pillars.png[Our 4 development pillars: collaboration, reliability, privacy + security, sustainability]
 
-Tmail is the collaborative email suite that minimizes your impact on the planet !
+- **Collaboration**: TMail offers some xref:tmail-backend/features/index.adoc[Advanced features], including
+**Functional mailboxes**.
+- **Reliable**: By the use of noSQL technologies, trusted OpenSource building blocks we can easily and reliably scale TMail to millions of users. Discover TMail
+xref:james-project:servers:distributed/architecture/index.adoc[architecture].
+- **Private and secure**: The xref:tmail-backend/features/encrypted-mailbox.adoc[Encrypted mailbox] keeps your mail safe,
+we are link:https://gdpr-info.eu/[GDPR] compliant, and we leverage the security of our reliable OpenSource building blocks.
+- **Sustainable**: By the use of the link:[JMAP protocol] TMail aims at providing a sustainable protocol adapted to modern use cases.
+xref:tmail-backend/jmap-extensions/index.adoc[Read more]... We also put great care to contribute back to the OpenSource communities
 
-TMail is composed of the following components:
+Read more about our xref:ethic.adoc[ethic]
 
- - xref:tmail-backend/index.adoc[TMail Backend], a powerful and modern distributed Email server based on
-link:https://james.apache.org[Apache James].
- - link:https://github.com/OpenPaaS-Suite/esn-frontend-inbox/[INBOX], its webMail.
- - An upcoming mobile application.
+Tmail components includes:
+
+- xref:tmail-backend/index.adoc[TMail backend]: The backbone of the TMail collaborative suite: built on top
+link:https://james.apache.org[Apache James], it adds a layer of collaborative feature and security.
+- xref:tmail-mobile/index.adoc[TMail mobile]: This is the first truely multi-platform mobile application for the JMAP
+protocol, crafted with inter-operability in mind. You can leverage TMail advanced features when used in conjonction with
+TMail backend.
+- link:https://open-paas.org/[OpenPaaS] is our current webMail.
