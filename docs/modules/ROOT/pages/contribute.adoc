@@ -1,4 +1,46 @@
 = Contribute To TMail
 :navtitle: Contribute
 
-TODO
+Thanks a lot for considering contributing to TMail!
+
+We do have a chat channel on link:https://gitter.im/linagora/team-mail[Gitter], do not hesitate to say hello,
+and bring your topics, concerns, and questions, we will be very happy to discuss with you.
+
+Each TMail sub-project have a dedicated Github project where we can open issues and propose pull requests.
+
+== What can we contribute?
+
+Most people tend to think that contributions need to be code, but we believe here that anyone can contribute. Yes, *anyone*!
+
+ - You can share your experience with TMail on social medias or via a blog post, this would greatly help us!
+ - Reporting bugs, proposing features, giving a feedback is a valuable contribution too!
+ - Documentation is very helpful. Hopefully the existing one is already clear enough, but who knows?
+ - We gadly accept bug fixes and additional
+
+== Places
+
+=== TMail backend
+
+Here are the links to contribute to the backend sub-product:
+
+- link:https://github.com/linagora/tmail-backend/issues[ISSUES]
+- link:https://github.com/linagora/tmail-backend/pulls[PRS]
+
+=== TMail mobile
+
+Here are the links to contribute to the mobile sub-product:
+
+- link:https://github.com/linagora/tmail-flutter/issues[ISSUES]
+- link:https://github.com/linagora/tmail-flutter/pulls[PRS]
+
+== Coding standards
+
+We encourage the following practices to help your code contributions to be integrated:
+
+ - We encourage to discuss your proposals in an issue before going straight to coding. We likely have valuable insight...
+ - Follow the checkstyle code formatting, maven/gradle ordering rules. If compilation pass, you are good!
+ - Write tests. Unit tests are good, integretion tests are better.
+ - Follow principles described in link:https://www.amazon.fr/Clean-Code-Handbook-Software-Craftsmanship/dp/0132350882[Clean Code]. We then will be on the same wave-length...
+ - If relevant split your work into reasonable-to-review commits.
+ - You did compile your work prior opening the PR. You tested manually a few relevant impacted tests. Running the all test suite can be done by our CI.
+ - You implicitly accept your contribution to be done under the license of the repository, be it **AGPL** Linagora license or the MIT.
