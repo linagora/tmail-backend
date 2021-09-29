@@ -1,4 +1,166 @@
 = Long Lived Tokens
 :navtitle: Long lived tokens
 
-TODO
+The goal of this extension is to enable secure mobile connection. The mobile application uses the
+supplied credentions to generate a `Long Lived token` that will be stored on the device. This `long lived token`
+can be later used to generate `short leaved tokens` with very short validity but that grants access to main
+JMAP APIs.
+
+== Additions to the capability object
+
+Servers supporting the Long lived token extension needs
+to advertize it through the session capabilities:
+
+....
+com:linagora:params:long:lived:token
+....
+
+The associated object is empty.
+
+== The LongLivedToken object
+
+A LongLivedToken have the following fields:
+
+ - **id**: `Id`, server set, immutable, the JMAP identifier of the object.
+ - **deviceId**: `String`, immutable, the device identifier associated with this token.
+ - **token**: `String`, immutable, server set, never return by `LongLivedToken/get` calls,
+it is only returned to the creator of the token as a result of `LongLivedToken/set create`. This token can be
+used as a `Bearer` value for the `Authorization` header to generate short lived tokens.
+
+=== LongLivedToken/get
+
+A generic /get method. Do not return the `token` field of `LongLivedToken`.
+
+=== LongLivedToken/set
+
+`create` method should return the `id` and the `token` field.
+
+`update` are rejected (`notUpdate`).
+
+`destroy` can be used to revoke the long lived tokens: short lived tokens will no longer be
+able to be created with this long lived token.
+
+=== Examples
+
+....
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:long:lived:token"],
+  "methodCalls": [
+    ["LongLivedToken/set", {
+      "accountId": "efgh",
+      "create": {
+        "K38": {
+          "deviceId": "My android device"
+        },
+        "K39": {
+          "deviceId": "My IOS device"
+        }
+      }
+    }, "c1"],
+    ["LongLivedToken/get", {
+        "accountId": "efgh",
+        "ids": null
+      }, "c2"]
+  ]
+}
+....
+
+Will return:
+
+....
+{
+  "sessionState": "abcd",
+  "methodResponses": [
+    ["LongLivedToken/set", {
+      "accountId": "efgh",
+      "created": {
+        "K38": {
+          "id": "ijklm",
+          "token": "ddd-eee-fff"
+        },
+        "K39": {
+          "id": "nopqrst",
+          "token": "aaa-bbb-ccc"
+        }
+      }
+    }, "c1"],
+    ["LongLivedToken/get", {
+      "accountId": "efgh",
+      "state": "fhwrwfwe3rfo",
+      "list": [
+        {
+          "id": "ijklm",
+          "deviceId": "My android device"
+        },
+        {
+          "id": "nopqrst",
+          "deviceId": "My IOS device"
+        }
+      ],
+      "notFound": []
+    }, "c2"]
+  ]
+}
+....
+
+== The /token endpoint
+
+This endpoint allows, given a long lived token to create short lived tokens to use JMAP.
+
+....
+GET /token?type=shortLived&deviceId=xxxxxx
+....
+
+Will return a short lived token that can be used to authenticate follow up JMAP requests:
+
+....
+{
+  "token" : "eruverlvrververver",
+  "expiresOn" : "2021-09-29T10:55:49.887Z"
+}
+....
+
+Regarding `Authorization` either long lived tokens bearer authentication is supported or basic authentication.
+
+`deviceId` is compulsory whn using long lived token bearer, and needs to be matching the stored value.
+
+== Flows
+
+=== Authentication against a TMail server (first connection)
+
+- 0. Given a virgin TMail application
+- 1. The user inputs URL, login and password
+- 2. A first request is made to the session object to check if long lived tokens are supported. Basic authentication is used for that request.
+- 3. Given that long lived token are supported, a JMAP call is made to create a long lived token. This long lived token is stored.
+- 4. The long lived token is used to generate a short lived JWT token that can be used to autheticate all other JMAP requests.
+
+=== Authentication against a TMail server (later connections)
+
+- 0. Load the long lived token from storage
+- 1. Generate a short lived JWT token with it.
+- 2. Start doing JMAP calls to load emails and mailboxes (authenticated with the short lived token).
+
+=== Authentication against a regular JMAP server (first connection)
+
+- 0. Given a virgin TMail application
+- 1. The user inputs URL, login and password
+- 2. A first request is made to the session object to check if long lived tokens are supported. Basic authentication is used for that request.
+- 3. As the long lived token capability is nowhere to be found we store the login and passord localy.
+- 4. Basic authentication is used for all following JMAP requests.
+
+=== Authentication against a regular JMAP server (later connections)
+
+- 0. Load the login/password from local storage.
+- 1. Start doing JMAP calls to load emails and mailboxes using Basic authentication.
+
+=== Web authentication against a TMail server
+
+- 1. The user inputs login and password
+- 2. A first request is made to the session object to check if long lived tokens are supported. Basic authentication is used for that request.
+- 3. As the long lived token are supported, a request is made to request a short lived token. Basic authentication is used for that request.
+- 4. Start doing JMAP calls to load emails and mailboxes (authenticated with the short lived token).
+- 5. Once the short live token is expired the website need to re-ask user login/password and re-create a new short lived token.
+
+=== Web authentication against a regular JMAP server
+
+Use of basic authentication.
