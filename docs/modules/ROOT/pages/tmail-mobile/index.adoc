@@ -1,4 +1,43 @@
-= Tmail mobile application
-:navtitle: Mobile application
+= TMail mobile application
+:navtitle: TMail Mobile application
 
-TODO
+The link:[tmail-flutter] project aims at providing a multi-plateform mobile email application, running the JMAP protocol
+and will also deliver additional features to the TMail back-end.
+
+image::mobile-screen.jpg[Mobile screen]
+
+Here is how TMail looks like on a tablet:
+
+image::tablet.png[Tablet screen]
+
+== Why did you choose JMAP?
+
+**IMAP** is THE ubiquitous protocol people use to read their emails, THE norm.
+
+Yet IMAP had been designed in another age, which resulted in a chatty patchwork
+of extensions. IMAP lacks decent synchronisation primitives to address real-time
+challenges modern mobile fleet requires, it consumes a lot of bandwith, requires a
+lot of roundtrips which means high latency.
+
+We are not alone to say this! Big players of the field started their own link:https://developers.google.com/gmail/api[proprietary]
+link:https://docs.microsoft.com/en-us/exchange/clients/exchange-activesync/exchange-activesync?view=exchserver-2019[protocols]
+to address IMAP flaws, and inter-operable standard was yet to be found...
+
+This, is where link:https://jmap.io[JMAP] comes to play! JMAP builds on decades of experience,
+and beautifully addresses these challenges using `HTTP` and `JSON` standards. Not only does it make
+applications easier to develop, we also strongly believes it results in an improved experience for
+the end user.
+
+== Inter-operability
+
+You can use the TMail application with any JMAP server and benefits from Tmail ergonomy and ease of use.
+
+We will test TMail mobile application against **FastMail** servers to ensure this.
+
+== Targeted platforms
+
+First, we target Android, IOS mobiles. We also take care of tablets and large rendering space early on in the development process.
+
+Then, we plan on introducing a desktop application.
+
+This versatility is enabled by the use of the link:https://flutter.dev/[Flutter] framework.
