@@ -1,5 +1,7 @@
 # TMail backend server
 
+[![Join the chat at https://gitter.im/linagora/team-mail](https://badges.gitter.im/linagora/team-mail.svg)](https://gitter.im/linagora/team-mail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 This project adapts and enhance [Apache James project](https://james.apache.org)
 
 ## Useful links
