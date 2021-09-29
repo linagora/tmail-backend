@@ -3,6 +3,24 @@
 
 TMail uses JMAP as a protocol for all the user facing interactions.
 
+== Why did you choose JMAP?
+
+**IMAP** is THE ubiquitous protocol people use to read their emails, THE norm.
+
+Yet IMAP had been designed in another age, which resulted in a chatty patchwork
+of extensions. IMAP lacks decent synchronisation primitives to address real-time
+challenges modern mobile fleet requires, it consumes a lot of bandwith, requires a
+lot of roundtrips which means high latency.
+
+We are not alone to say this! Big players of the field started their own link:https://developers.google.com/gmail/api[proprietary]
+link:https://docs.microsoft.com/en-us/exchange/clients/exchange-activesync/exchange-activesync?view=exchserver-2019[protocols]
+to address IMAP flaws, and inter-operable standard was yet to be found...
+
+This, is where link:https://jmap.io[JMAP] comes to play! JMAP builds on decades of experience,
+and beautifully addresses these challenges using `HTTP` and `JSON` standards. Not only does it make
+applications easier to develop, we also strongly believes it results in an improved experience for
+the end user.
+
 == TMail JMAP specifications
 
 === JMAP extensions for TMail
