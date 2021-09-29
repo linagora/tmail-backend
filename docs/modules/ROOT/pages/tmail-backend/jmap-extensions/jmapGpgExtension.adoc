@@ -1,17 +1,18 @@
-# JMAP GPG
+= JMAP GPG
+:navtitle: JMAP GPG extension
 
 This extension allow access to encrypted email subpart for efficient email display, typically within a webmail. The clients
 need to access part of the underlying data and do not need to perform any MIME parsing / manipulation.
 
 We thus introduce the following objects:
 
- - `EncryptedEmailFastView` holds information required to list emails.
- - `EncryptedEmailDetailedView` holds information required to view emails.
- - `Keystore` allows clients to upload, list and remove GPG public keys used to encrypt their mailbox content.
+* `EncryptedEmailFastView` holds information required to list emails.
+* `EncryptedEmailDetailedView` holds information required to view emails.
+* `Keystore` allows clients to upload, list and remove GPG public keys used to encrypt their mailbox content.
 
 Furthermore, the `Email/send` additional method allows sending clear text emails when encryption is activated.
 
-## Additions to the Capabilities Object
+== Additions to the Capabilities Object
 
 Servers supporting the JMAP GPG extension advertise it via the `com:linagora:params:jmap:pgp` capability.
 
@@ -19,18 +20,18 @@ The value of this property in the JMAP session capabilities property is an empty
 
 The value of this property in an account’s accountCapabilities property is an empty object.
 
-## Keystore
+== Keystore
 
 The `Keystore` object represents an underlying GPG public key
 
 A `Keystore` has the following fields:
 
- - `id`: String, immutable. The computed GPG identifier of the public key.
- - `key`: String, immutable. The public key in its armored format.
- 
+* `id`: String, immutable. The computed GPG identifier of the public key.
+* `key`: String, immutable. The public key in its armored format.
+
 Example:
 
-```
+----
 {
   "id": "",
   "key": "-----BEGIN PGP PUBLIC KEY BLOCK-----\n  
@@ -76,24 +77,25 @@ Example:
     -----END PGP PUBLIC KEY BLOCK-----\n
           "
 }
-```
 
-### Keystore/get
+----
 
-This is a standard `“/get”` method as described in [RFC-8620, Section 5.1](https://jmap.io/spec-core.html#get).
+=== Keystore/get
+
+This is a standard `“/get”` method as described in https://jmap.io/spec-core.html#get["RFC-8620, Section 5.1"].
 The `ids` argument may be `null` to fetch all at once.
 
-### Keystore/set
+=== Keystore/set
 
-This is a standard “/set” method as described in [RFC8620, Section 5.3](https://jmap.io/spec-core.html#set).
+This is a standard “/set” method as described in https://jmap.io/spec-core.html#set["RFC8620, Section 5.3"].
 
 All fields being immutable, updates are rejected.
 
-### Examples
+=== Examples
 
 Uploading a new public key:
 
-```
+----
 {
     "using": [
         "urn:ietf:params:jmap:core",
@@ -154,11 +156,11 @@ Uploading a new public key:
         ]
     ]
 }
-```
+----
 
 Will return:
 
-```
+----
 {
     "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
     "methodResponses": [
@@ -176,11 +178,11 @@ Will return:
         ]
     ]
 }
-```
+----
 
 Listing existing GPG keys:
 
-```
+----
 {
     "using": [
         "urn:ietf:params:jmap:core",
@@ -196,11 +198,11 @@ Listing existing GPG keys:
         ]
     ]
 }
-```
+----
 
 Will return:
 
-```
+----
 {
     "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
     "methodResponses": [
@@ -220,11 +222,11 @@ Will return:
         ]
     ]
 }
-```
+----
 
 Removing a key:
 
-```
+----
 {
     "using": [
         "urn:ietf:params:jmap:core",
@@ -241,11 +243,11 @@ Removing a key:
         ]
     ]
 }
-```
+----
 
 Will return:
 
-```
+----
 {
     "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
     "methodResponses": [
@@ -261,28 +263,28 @@ Will return:
         ]
     ]
 }
-```
+----
 
-## EncryptedEmailFastView
+== EncryptedEmailFastView
 
 `EncryptedEmailFastView` allows secure encrypted access to the sensible fields available within the listing of emails.
 
 It is composed of the following fields:
 
- - `id`: String, server assigned, matches the id of the underlying email.
- - `encryptedPreview`: String, server assigned. The preview of the message, encrypted and GPG armored.
- - `hasAttachment`: Boolean, server assigned. Decrypted, does this message have attachments? This information is not 
+* `id`: String, server assigned, matches the id of the underlying email.
+* `encryptedPreview`: String, server assigned. The preview of the message, encrypted and GPG armored.
+* `hasAttachment`: Boolean, server assigned. Decrypted, does this message have attachments? This information is not
  encrypted.
- 
-### EncryptedEmailFastView/get
 
-This is a standard `“/get”` method as described in [RFC-8620, Section 5.1](https://jmap.io/spec-core.html#get).
+=== EncryptedEmailFastView/get
 
-### Examples
+This is a standard `“/get”` method as described in https://jmap.io/spec-core.html#get["RFC-8620, Section 5.1"].
+
+=== Examples
 
 Retrieving a specific EncryptedEmailFastView:
 
-```
+----
 {
     "using": [
         "urn:ietf:params:jmap:core",
@@ -299,12 +301,11 @@ Retrieving a specific EncryptedEmailFastView:
         ]
     ]
 }
-```
+----
 
 Will return:
 
-
-```
+----
 {
     "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
     "methodResponses": [
@@ -344,42 +345,42 @@ Will return:
         ]
     ]
 }
-```
+----
 
-## EncryptedEmailDetailedView
+== EncryptedEmailDetailedView
 
 `EncryptedEmailDetailedView` allows secure encrypted access to the sensible fields available within the detailed view
 of an email.
 
 It is composed of the following fields:
 
- - `id`: String, server assigned, matches the id of the underlying email.
- - `encryptedPreview`: String, server assigned. The preview of the message, encrypted and GPG armored.
- - `hasAttachment`: Boolean, server assigned. Decrypted, does this message have attachments? This information is not 
+* `id`: String, server assigned, matches the id of the underlying email.
+* `encryptedPreview`: String, server assigned. The preview of the message, encrypted and GPG armored.
+* `hasAttachment`: Boolean, server assigned. Decrypted, does this message have attachments? This information is not
  encrypted.
- - `encryptedHtml`: String, server assigned. The html to be displayed of the message, encrypted and GPG armored.
- - `encryptedAttachmentMetadata`: String, server assigned. Details for attachment displays. This 
+* `encryptedHtml`: String, server assigned. The html to be displayed of the message, encrypted and GPG armored.
+* `encryptedAttachmentMetadata`: String, server assigned. Details for attachment displays. This
  correspond to the encrypted, GPG armored list of `EncryptedAttachmentMetadata` of this email as JSON.
 
 The `EncryptedAttachmentMetadata` object is composed of the following field:
 
- - `blobId`: String, allow download of the attachment, encrypted.
- - `position`: Integer, positive, position of this attachment within the email, indexed from 0.
- - `name`: String|null, the file name of this attachment.
- - `cid`: String|null, the file name of this attachment.
- - `isInline`: Boolean, if this attachment is inlined.
- - `size`: Integer, positive, the size of this attachment in bytes, decrypted.
- - `contentType`: String. The content type of this attachment.
- 
-### EncryptedEmailDetailedView/get
+* `blobId`: String, allow download of the attachment, encrypted.
+* `position`: Integer, positive, position of this attachment within the email, indexed from 0.
+* `name`: String|null, the file name of this attachment.
+* `cid`: String|null, the file name of this attachment.
+* `isInline`: Boolean, if this attachment is inlined.
+* `size`: Integer, positive, the size of this attachment in bytes, decrypted.
+* `contentType`: String. The content type of this attachment.
 
-This is a standard `“/get”` method as described in [RFC-8620, Section 5.1](https://jmap.io/spec-core.html#get).
+=== EncryptedEmailDetailedView/get
 
-### Examples
+This is a standard `“/get”` method as described in https://jmap.io/spec-core.html#get["RFC-8620, Section 5.1"].
+
+=== Examples
 
 Here is the decrypted `encryptedAttachmentMetadata`:
 
-```
+----
 [
   {
     "position": 0,
@@ -391,12 +392,11 @@ Here is the decrypted `encryptedAttachmentMetadata`:
   }
 ]
 
-```
-
+----
 
 Retrieving a specific EncryptedEmailDetailedView:
 
-```
+----
 {
     "using": [
         "urn:ietf:params:jmap:core",
@@ -413,11 +413,11 @@ Retrieving a specific EncryptedEmailDetailedView:
         ]
     ]
 }
-```
+----
 
 Will return:
 
-```
+----
 {
     "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
     "methodResponses": [
@@ -500,26 +500,26 @@ Will return:
         ]
     ]
 }
-```
+----
 
-## Email/send
+== Email/send
 
 This method behaves like a `/set` method with only `create` implemented. It combines the behaviours of `Email/set create`
 and of `EmailSubmission/set create` in a single method call.
 
 The creation object have the following properties:
 
- - `email/create` takes the same argument that `Email/set` creation entries.
- - `emailSubmission/set` takes the same argument that `EmailSubmission/set` creation entries.
+* `email/create` takes the same argument that `Email/set` creation entries.
+* `emailSubmission/set` takes the same argument that `EmailSubmission/set` creation entries.
 
 Additionally, `Email/send` takes two extra properties, `onSuccessUpdateEmail` and `onSuccessDestroyEmail` as described
 for `EmailSubmission/set`.
 
-### Example
+=== Example
 
 Sending:
 
-```
+----
 {
     "using": [
         "urn:ietf:params:jmap:core",
@@ -620,11 +620,11 @@ Sending:
         ]
     ]
 }
-```
+----
 
 Will return a `Email/send` method response and the implicit `Email/set` response call performed by `onSuccess*` properties:
 
-```
+----
 {
     "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
     "methodResponses": [
@@ -677,4 +677,4 @@ Will return a `Email/send` method response and the implicit `Email/set` response
         ]
     ]
 }
-```
+----
