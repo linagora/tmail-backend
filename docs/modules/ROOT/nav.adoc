@@ -3,3 +3,8 @@
 ** xref:tmail-backend/test.adoc[]
 ** xref:tmail-backend/run.adoc[]
 ** xref:tmail-backend/features.adoc[]
+** xref:tmail-backend/jmap-extensions/index.adoc[]
+*** xref:tmail-backend/jmap-extensions/jmapFilters.adoc[]
+*** xref:tmail-backend/jmap-extensions/jmapGpgExtension.adoc[]
+*** xref:tmail-backend/jmap-extensions/longLivedTokens.adoc[]
+*** xref:tmail-backend/jmap-extensions/ticketAuthentication.adoc[]

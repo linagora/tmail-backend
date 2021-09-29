@@ -1,0 +1,77 @@
+= TMail JMAP extensions
+:navtitle: TMail JMAP extensions
+
+TMail uses JMAP as a protocol for all the user facing interactions.
+
+== TMail JMAP specifications
+
+=== JMAP extensions for TMail
+
+We introduce custom extensions to the main JMAP protocol in order to achieve our means. These extensions are documented here.
+
+These extensions include:
+
+ - link:jmapGpgExtension.adoc[com:linagora:params:jmap:pgp] which add the capability to read messages of TMail encrypted
+ mailbox.
+ - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allow to generate one time usage tickets in order
+to authenticate webSocket connections using URI query parameters, as most browsers do not support setting `Authorization`
+headers during the webSocket handshake.
+ - link:jmapFilters.adoc[com:linagora:params:jmap:filter] allows user to specify message filters automating actions upon
+message reception like moving them to a folder.
+ - link:longLivedTokens.adoc[com:linagora:params:long:lived:token] enables a mechanism to safely authenticate mobile devices.
+
+=== Standard JMAP extensions
+
+We furthermore expose the following JMAP specifications in TMail (implemented in James):
+
+ - link:https://datatracker.ietf.org/doc/html/rfc8620[RFC-8620] JMAP Core defines mechanisms shared by all JMAP
+specifications including download, uploads, event source.
+ - link:https://datatracker.ietf.org/doc/html/rfc8621[RFC-8621] JMAP Mail defines JMAP entities for emails and allow
+building easily email applications.
+ - link:https://datatracker.ietf.org/doc/html/rfc8887[RFC-8887] allows JMAP to rely on webSockets as a transport layer.
+ - link:https://datatracker.ietf.org/doc/html/rfc9007[RFC-9007] JMAP MDN exposes convenient APIs for parsing, and sending
+Message Delivery Notifications (Read receipts).
+
+=== JMAP extensions from Apache James
+
+Moreover, we do expose some JMAP extensions defined within Apache JAMES:
+
+ - link:https://github.com/apache/james-project/blob/master/server/protocols/jmap-rfc-8621/doc/specs/spec/quotas/quotas.mdown[urn:apache:james:params:jmap:mail:quota]
+JMAP Quota (while waiting for the link:https://datatracker.ietf.org/doc/draft-ietf-jmap-quotas/[IETF draft] to be finalized) enable users to know their quotas for the Email related entities.
+ - link:https://github.com/apache/james-project/blob/master/server/protocols/jmap-rfc-8621/doc/specs/spec/mail/rights.mdown[urn:apache:james:params:jmap:mail:shares]
+JMAP Sharing adds properties for a user to share access for their mailboxes to each other.
+
+== Authentication
+
+JMAP RFC-8620 deliberately does not address authentication concerns, and only assumes authenticated requests are handled.
+
+Here are authentication methods supported by TMail for JMAP related endpoints:
+
+ - TMail supports link:https://en.wikipedia.org/wiki/Basic_access_authentication[Basic Authentication] defined in
+link:https://datatracker.ietf.org/doc/html/rfc7617[RFC-7617]. Please note that while convenient for testing purpose, this
+authentication mechanism should not be used for production workflow: the credentials are transmitted again and over again,
+should be retained in memory, authentication is challenged for each request...
+ - TMail supports link:https://jwt.io/[JWT tokens] (link:https://tools.ietf.org/html/rfc7519[RFC-7519]]) signed by third party
+software, valid according to the configured JWT public key. If valid, the request is blindly trusted.
+link:https://james.staged.apache.org/james-project/3.7.0/servers/distributed/configure/webadmin.html#_generating_a_jwt_key_pair[Read more]...
+ - link:longLivedTokens.adoc[com:linagora:params:long:lived:token] enables a mechanism to safely authenticate mobile devices.
+ - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allow to generate one time usage tickets in order
+to authenticate webSocket connections using URI query parameters, as most browsers do not support setting `Authorization`
+headers during the webSocket handshake.
+
+== Non goals and limitations
+
+Please note that we do not plan to add support for link:https://datatracker.ietf.org/doc/draft-ietf-jmap-jscontact/[JMAP Contact]
+and link:https://datatracker.ietf.org/doc/draft-ietf-jmap-calendars/[JMAP calendar] in TMail. There is a dedicated calendar/contact
+software in the OpenPaaS suite.
+
+Also, as a rule of thumb, while we try our best to follow all the standards:
+
+ - We refrain ourselves to implement IETF drafts. Subject to frequent changes, this had proved to be very costly in the
+past, and we would like not to do the same mistakes again.
+ - We might have some limitations, naive behaviour, or even missing entities in our implementations. In fact the areas
+covered by JMAP specifications is very large, and implementing them all perfectly is a tremendous task. While increasing
+JMAP support is our ultimate goal, we have to accept intermediate steps where our implementation is partial. The Apache
+JAMES project maintains an
+link:https://github.com/apache/james-project/tree/master/server/protocols/jmap-rfc-8621/doc/specs[annotated documentation]
+clarifying these limitations.
