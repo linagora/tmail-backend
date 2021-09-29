@@ -1,29 +1,123 @@
 = TMail ethic
-:navtitle: TMail ethic
+:navtitle: Our ethic
 
-We do not just write software. We write **ethical software**. This page details what this
-means to us, and provides concrete actions that we did undertake.
+
+image::pillars.png[Linagora development pillars]
+
+At Linagora we write reliable software, private and secure, opensource, and that respect the planet.
+We do not just write software. We write **ethical software**.
+
+This page details what this means to us, and provides concrete actions that we did undertake.
 
 == Design Open Standards
 
-**TODO**
+We believe in an Open internet structured by open standards, designed collaboratively,
+and enabling **inter-operability**.
+
+image::open-standards.jpeg[Open Standards]
+
+We have been involved for years  within the link:https://www.ietf.org/[IETF] on the standardisation
+efforts around the link:https://jmap.io/[JMAP] protocol. Active on the mailing list, we are amongst the
+first implementors. By sharing our feedback, we believe we helped making JMAP a better specification.
+
+We also wrote link:https://datatracker.ietf.org/doc/rfc9007/[RFC-9007] Handling Message Disposition Notification
+with the JSON Meta Application Protocol (JMAP).
+
+We also promote a link:https://datatracker.ietf.org/doc/draft-ietf-jmap-quotas/[draft] regarding quota management with JMAP.
 
 == OpenSource, everywhere
 
-**TODO**
+We believe OpenSource embodies a third, independent digital way, enabling **co-innovation**, and empowering trust.
 
-== Respect projects governance
+image::open-source.png[Open Source]
 
-**TODO**
+As such, we are only writing OpenSource software. Yes. Only OpenSource. All of our main components are licensed with the
+**AGPL** Linagora license.
+
+This is a list of our repositories licensed with the **AGPL** license:
+
+- link:https://github.com/linagora/tmail-backend/[TMail backend]
+- link:https://github.com/linagora/tmail-flutter[TMail mobile]
+- link:https://github.com/linagora/esn-frontend-inbox[OpenPaaS INBOX]
 
 == Contribute back!
 
-**TODO**
+We believe that OpenSource is not just about the license! We are fully aware we are part of an eco-system and that our
+contributions might have a broader reach when performed on projects owned by third parties.
 
-== Promote education.
+image::contribute.png[Contribute]
 
-**TODO**
+ - We are active contributors, and the main maintainers of the link:https://james.apache.org[Apache James] project.
+ - We also share with the community our JMAP libraries under more permissive licences (MIT), actively used by the JMAP community:
+    - link:https://github.com/linagora/jmap-dart-client[jmap-dart-client] A link:https://jmap.io/[JMAP] client for the link:https://dart.dev/[Dart] programming language and the link:https://flutter.dev/[Flutter] framework.
+    - link:https://github.com/linagora/jmap-client-ts[jmap-client-ts] A link:https://jmap.io/[JMAP] client for the link:https://www.typescriptlang.org/[TypeScript] programming language.
+    - link:https://github.com/linagora/jmap-draft-client[jmap-draft-client] A JavaScript client for JMAP pre-standardisation drafts.
+
+In addition to this we always report defects we might find in third party libraries, and if we are able to, we also propose
+fixes for it. We try to have a positive impact on the projects we depend on.
+
+== Respect projects governance
+
+Strong communities are built on top of a predicatble decision making. We believe without a clear governance process
+communities cannot grow.
+
+image::governance.jpeg[Governance]
+
+While we want to keep governance on our TMail product, we want to be able to collaborate with people with diverging views.
+We do not want to push our roadmap and our feature, and impose them to third party communities. Thus, with TMail software
+structure, we can extend, or even replace on a fin grain basis components provided by third parties, and adapt them to our needs
+without impacting negatively the communities.
+
+As part of our interactions with the link:https://www.apache.org/[Apache Fundation] we fully embrasse the
+link:http://www.apache.org/theapacheway/[Apache way].
+
+For TMail components, we regularly publish a link:roadmap.adoc[roadmap], in order to people to understand where we are heading.
+
+Furthermore, we would be delighted to discuss your needs and see how it can fit in our roadmap. link:contribute.adoc[Contributions] are welcome.
+
+== Promote education
+
+We believe that as professional we need to engage ourselves and transmit what we know. We believe knowledge sharing is
+at the heart of OpenSource.
+
+image::education.jpg[Education]
+
+The team behind TMail loves to share!
+
+ - We maintain a link:https://medium.com/linagora-engineering[blog] where we share our expertise about TMail and on the
+technologies surrounding it.
+ - We have an **internship** program. Internship is often the first step for students into professional life, and the best
+opportunity to transmit our values, our knowledge. We ensure the best possible knowledge environement for our interns, on
+OpenSource projects.
+ - We join other initiatives like the link:https://summerofcode.withgoogle.com/[Google Summer Of Code] which promotes
+OpenSource. In 2021, we for instance were accepted on a topic about **message threads**.
+ - We collaborate with Academic. We have a partnership with the polytechnic schoole of Hanoi (SOICT) and have been teeching
+there the link:https://www.schoolandcollegelistings.com/VN/Hanoi/1673064029649116/Open-Up---Bach-Khoa-Hanoi[OpenUp] tutoring
+program.
+ - We organise talks within our office, for instance through the **Open Tech Talk** initiative in Hanoi.
 
 == Thoughts for the planet
 
-**TODO**
+We are aware of the climate emergency, and of the ecological impact of the IT industry.
+
+image::planet.png[Linagora: sustainable logo]
+
+We believe that by having a strong collaborative suite we can help to limit in-person transit, and thus help to
+indirectly limit carbon emissions.
+
+Also when faced with a technological choice, we try to account for the carbon footprint. For instance, we chose
+link:https://jmap.io[JMAP] protocol as it limits bandwidth costs of email re-synchronisations, limits network roundtrips.
+His cleaner data model (when compared to alternative Open standards) means less queries to our databases, and thus reduced
+energy consumption.
+
+== Privacy
+
+We believe it is our responsibility to keep your data safe!
+
+image::lock.png[Encrypted mailbox]
+
+In addition of being link:https://gdpr-info.eu/[GDPR] compliant, we take it one step further by allowing you to
+encrypt your data using the link:tmail-backend/features/encrypted-mailbox.adoc[Encrypted Mailbox].
+
+Privacy goes hand in hand with security. We do use link:https://app.snyk.io/[Snyk] to monitor our dependencies and docker
+images. We regularily perform some security audits, for instance using link:https://github.com/CodeIntelligenceTesting/jazzer[fuzzing].
