@@ -12,3 +12,5 @@
 *** xref:tmail-backend/jmap-extensions/ticketAuthentication.adoc[]
 * xref:tmail-mobile/index.adoc[]
 * xref:ethic.adoc[]
+* xref:roadmap.adoc[]
+* xref:contribute.adoc[]
