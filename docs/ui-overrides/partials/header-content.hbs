@@ -1,0 +1,64 @@
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="{{{or site.url (or siteRootUrl siteRootPath)}}}"><img src="{{{or site.url (or siteRootUrl siteRootPath)}}}/_/img/tmail.svg" alt="tmail logo"> {{site.title}}</a>
+      <button class="navbar-burger" data-target="topbar-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#">Home</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Products</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="https://github.com/linagora/tmail-backend/">TMail backend</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="https://github.com/linagora/tmail-flutter/">TMail mobile application</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="https://github.com/linagora/esn-frontend-inbox/">INBOX WebMail frontend</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Services</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Adopt TMail on premise</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="#">SaaS offer (coming soon)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="https://www.linagora.com/fr/ossa-et-support/open-source-software-assurance/">Apache JAMES expertise</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">Resources</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="#">Product website (coming soon)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="#">SaaS offer (coming soon)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="https://hub.docker.com/r/linagora/tmail-backend">Download (dockerhub)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="#">Android application (coming soon)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="#">IOS application (coming soon)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="#">Windows application (coming soon)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="#">MacOS application (coming soon)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="#">Linux application (coming soon)</a>
+            <hr class="navbar-divider">
+            <a class="navbar-item" href="https://gitter.im/linagora/team-mail">Chat with us!</a>
+          </div>
+        </div>
+        <div class="navbar-item">
+          <span class="control">
+            <a class="button is-primary" href="https://hub.docker.com/r/linagora/tmail-backend">Docker images</a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
