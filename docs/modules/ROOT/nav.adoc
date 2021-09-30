@@ -5,6 +5,7 @@
 ** xref:tmail-backend/features/index.adoc[]
 *** xref:tmail-backend/features/encrypted-mailbox.adoc[]
 *** xref:tmail-backend/features/teamMailboxes.adoc[]
+** xref:tmail-backend/extra-components/index.adoc[]
 ** xref:tmail-backend/jmap-extensions/index.adoc[]
 *** xref:tmail-backend/jmap-extensions/jmapFilters.adoc[]
 *** xref:tmail-backend/jmap-extensions/jmapGpgExtension.adoc[]
