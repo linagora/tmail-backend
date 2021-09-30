@@ -1,4 +1,150 @@
 = JMAP Filters
 :navtitle: JMAP Filters
 
-TODO
+JMAP filters allow a user to automate actions, based on specified rules, to be applied when receiving messages.
+
+The following conditions are currently implemented:
+
+ - `from`, `to`, `cc`, `recipient`, `subject` fields matching either completely or partially.
+
+The following actions are currently implemented:
+
+ - Move the message to another mailbox
+
+== Addition to the capability object
+
+Support for JMAP filters is advertised through the `com:linagora:params:jmap:filter` capability, associated with an
+empty object.
+
+== Filter object
+
+The `Filter` object represents the set of rules associated to a given user. It is composed of the following fields:
+
+ - **id**: Server-set, `Id`, immutable, must be `singleton`.
+
+A filter is associated with a list of `Rule`.
+
+A `Rule` object has the following properties:
+
+ - **id**: Server-set, `Id`, immutable, the JMAP identifier.
+ - **name**: `String`, the name of the rule, which can be used to hold an explanation regarding the purpose of this rule.
+ - **condition**: `Condition`, when should this rule be applied.
+ - **action**: `Action`, what to do when the rule is applied.
+
+A `Condition` object has the following properties:
+
+- **field**: `String`, the filed of the message to be evaluated. Must be one of `from`, `to`, `cc`, `recipient`, `subject`.
+- **comparator**: `String`, how to compare the field against the suppied value. Must be one of `contains`, `not-contains`, `exactly-equals`, `not-exactly-equals`.
+The comparator is case-incentive for `from`, `to`, `cc`, `recipient` fields but case-sensitive for `subject` field.
+- **value**: `String`, the value the field should be evaluated against, using the comparator.
+
+An `Action` object has the following properties:
+
+- **appendIn**: `AppendIn`, specified the "append in mailboxes" action.
+
+An `AppendIn` object has the following properties:
+
+ - **mailboxIds**: `List[Id]`: The list of mailboxes to put the message in. Must be a single value.
+
+=== Filter/get
+
+This is a standard `/get` call for the Filter object.
+
+ - The `state` property reflects the internal event sourcing state.
+ - This object being a singleton, only `singleton` id is associated with a value.
+
+=== Filter/set
+
+This is a standard `/get` call for the Filter object.
+
+ - `ifInState` property is supported
+ - `oldState` and `newState` are accurate.
+ - As this is a singleton object, `create` and `destroy` are not supported for filters.
+
+=== Push data types
+
+A client can register for updates on the `Filter` datatype using either eventsource or websockets.
+
+=== Example
+
+....
+{
+	"using": ["com:linagora:params:jmap:filter"],
+	"methodCalls": [
+		["Filter/set", {
+			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+			"update": {
+				"singleton": [{
+					"id": "1",
+					"name": "My first rule",
+					"condition": {
+						"field": "subject",
+						"comparator": "contains",
+						"value": "question"
+					},
+					"action": {
+						"appendIn": {
+							"mailboxIds": ["42"]
+						}
+					}
+				}]
+			}
+		}, "c1"],
+		[
+			"Filter/get",
+			{
+				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+				"ids": ["singleton"]
+			},
+			"c2"
+		]
+	]
+}
+....
+
+Will return:
+
+....
+{
+	"sessionState": "abcdefghij",
+	"methodResponses": [
+		[
+			"Filter/set",
+			{
+				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+				"oldState": "-1",
+				"newState": "0",
+				"updated": {
+					"singleton": {
+
+					}
+				}
+			},
+			"c1"
+		],
+		[
+			"Filter/get", {
+				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+				"state": "0",
+				"list": [{
+					"id": "singleton",
+					"rules": [{
+						"name": "My first rule",
+						"condition": {
+							"field": "subject",
+							"comparator": "contains",
+							"value": "question"
+						},
+						"action": {
+							"appendIn": {
+								"mailboxIds": ["42"]
+							}
+						}
+					}]
+				}],
+				"notFound": []
+			}, "c2"
+		]
+	]
+}
+....
