@@ -1,14 +1,14 @@
 package com.linagora.tmail.james.jmap.jwt
 
-import com.linagora.tmail.james.jmap.jwt.JwtPrivateKeyConfiguration.{DEFAULT_VALUE, fromPEM}
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
-import org.bouncycastle.openssl.PEMParser
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
-import org.bouncycastle.util.io.pem.PemReader
-import org.slf4j.LoggerFactory
-
 import java.io.{IOException, StringReader}
 import java.security.PrivateKey
+
+import com.linagora.tmail.james.jmap.jwt.JwtPrivateKeyConfiguration.{DEFAULT_VALUE, fromPEM}
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
+import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
+import org.bouncycastle.util.io.pem.PemReader
+import org.slf4j.LoggerFactory
 
 object JwtPrivateKeyConfiguration {
   private val LOGGER = LoggerFactory.getLogger(classOf[JwtPrivateKeyConfiguration])
@@ -23,7 +23,9 @@ object JwtPrivateKeyConfiguration {
       val readPEM = reader.readObject
       readPEM match {
         case privateKeyInfo: PrivateKeyInfo =>
-          Option(new JcaPEMKeyConverter().getPrivateKey(privateKeyInfo))
+          Some(new JcaPEMKeyConverter().getPrivateKey(privateKeyInfo))
+        case pemKeyPair: PEMKeyPair => Some(new JcaPEMKeyConverter().getPrivateKey(pemKeyPair.getPrivateKeyInfo))
+        case privateKey: PrivateKey => Some(privateKey)
         case _ =>
           LOGGER.warn("Key is not an instance of PrivateKeyInfo but of {}", readPEM)
           None
