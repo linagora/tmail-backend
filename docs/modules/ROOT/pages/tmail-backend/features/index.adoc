@@ -17,16 +17,16 @@ means that, once encrypted, nobody else than you can ever read the messages!
 
 xref:tmail-backend/features/encrypted-mailbox.adoc[Read more]...
 
-== Functional mailboxes
+== Team mailboxes
 
 Manage emails effectively as a team!
 
-Functional mailboxes enable everybody in the team:
+Team mailboxes enable everybody in the team:
 
- - Emails are received on an email address dedicated to the functional mailbox
- - Members can read the emails received in the functional mailbox. Everybody can manage these emails.
- - Members can reply and send emails using the address of the functional mailbox.
+ - Emails are received on an email address dedicated to the team mailbox
+ - Members can read the emails received in the team mailbox. Everybody can manage these emails.
+ - Members can reply and send emails using the address of the team mailbox.
 
 An example would be `marketting@linagora.com`.
 
-xref:tmail-backend/features/functionalMailboxes.adoc[Read more]...
+xref:tmail-backend/features/teamMailboxes.adoc[Read more]...

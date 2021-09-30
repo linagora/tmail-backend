@@ -18,7 +18,7 @@ alternatives, raise your voice.
 == First semester 2022
 
  - The TMail mobile application should allow using TMail advanced features like
-encryption, the Functional mailboxes, or filters.
+encryption, the Team mailboxes, or filters.
  - Components to have a TMail SAAS offer, including *fair usage enforcement* and *spam protection*.
 - Release a TMail webmail using Flutter application.
 
@@ -27,4 +27,4 @@ encryption, the Functional mailboxes, or filters.
  - Integration with other Linagora collaborative components including:
    - The *Calendar*: display events in email and update event status from emails.
    - *LinShare*: Save attachments to LinShare and send big attachments thanks to LinShare.
-   - *Twake*: Discuss an email on Twake, associate functional mailboxes to Twake channels or Twake projects.
+   - *Twake*: Discuss an email on Twake, associate team mailboxes to Twake channels or Twake projects.

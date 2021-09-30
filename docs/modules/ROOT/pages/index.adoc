@@ -9,7 +9,7 @@ TMail is THE **collaborative**, **private and secure** email suite that minimise
 image::pillars.png[Our 4 development pillars: collaboration, reliability, privacy + security, sustainability]
 
 - **Collaboration**: TMail offers some xref:tmail-backend/features/index.adoc[Advanced features], including
-**Functional mailboxes**.
+**Team mailboxes**.
 - **Reliable**: By the use of noSQL technologies, trusted OpenSource building blocks we can easily and reliably scale TMail to millions of users. Discover TMail
 xref:james-project:servers:distributed/architecture/index.adoc[architecture].
 - **Private and secure**: The xref:tmail-backend/features/encrypted-mailbox.adoc[Encrypted mailbox] keeps your mail safe,
