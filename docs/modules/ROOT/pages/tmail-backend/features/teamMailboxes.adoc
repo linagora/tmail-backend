@@ -1,0 +1,14 @@
+= Team Mailboxes
+:navtitle: Team mailboxes
+
+Manage emails effectively as a team!
+
+Team mailboxes enable everybody in the team:
+
+- Emails are received on an email address dedicated to the team mailbox
+- Members can read the emails received in the team mailbox. Everybody can manage these emails.
+- Members can reply and send emails using the address of the team mailbox.
+
+An example would be `marketting@linagora.com`.
+
+**Coming soon**...
