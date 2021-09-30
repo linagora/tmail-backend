@@ -11,8 +11,8 @@ TMail allows your users to store their emails encrypted in their mailbox, using 
 (link:https://datatracker.ietf.org/doc/html/rfc4880[RFC-4880 OpenPGP Message Format],
 link:https://datatracker.ietf.org/doc/html/rfc3156[RFC-3156 MIME Security with OpenPGP]).
 
-Thus, TMail have **no means** to decrypt your messages once they are stored in the encrypted
-mailbox. So be careful not to lose your private key: you would not be able to read your messages ever again! This also
+Thus, TMail has **no means** to decrypt your messages once they are stored in the encrypted
+mailbox. So be careful not to loose your private key: you would not be able to read your messages ever again! This also
 means that, once encrypted, nobody else than you can ever read the messages!
 
 xref:tmail-backend/features/encrypted-mailbox.adoc[Read more]...

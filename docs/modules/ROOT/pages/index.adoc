@@ -21,8 +21,8 @@ Read more about our xref:ethic.adoc[ethic]
 
 Tmail components includes:
 
-- xref:tmail-backend/index.adoc[TMail backend]: The backbone of the TMail collaborative suite: built on top
-link:https://james.apache.org[Apache James], it adds a layer of collaborative feature and security.
+- xref:tmail-backend/index.adoc[TMail backend]: The backbone of the TMail collaborative suite: built on top of
+link:https://james.apache.org[Apache James], it adds a layer of collaborative features and security.
 - xref:tmail-mobile/index.adoc[TMail mobile]: This is the first truely multi-platform mobile application for the JMAP
 protocol, crafted with inter-operability in mind. You can leverage TMail advanced features when used in conjonction with
 TMail backend.

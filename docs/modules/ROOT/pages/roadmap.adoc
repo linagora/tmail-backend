@@ -4,7 +4,7 @@
 Here is a glance as what we are currently working on.
 
 *Disclaimer*: this roadmap is purely informative, while we will try our best to deliver these items, we
-have no engagement of results. We also reserve ourself the rights to adapt it to our needs.
+have no engagement of results. We also reserve ourselves the rights to adapt it to our needs.
 
 Changes to this high-level roadmap are made through pull requests. Comments might allow to clarify our choices, propose
 alternatives, raise your voice.

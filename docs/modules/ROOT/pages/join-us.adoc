@@ -1,17 +1,17 @@
 = Join us
 :navtitle: Join us
 
-You love email? You dream to contribute to OpenSource projects and support a community? You recognize yourself in out link:ethic.adoc[values]? You want to join a dynamic agile team?
+You love email? You dream to contribute to OpenSource projects and support a community? You recognize yourself in our link:ethic.adoc[values]? You want to join a dynamic agile team?
 
 *Why not joining us?*
 
 See link:https://job.linagora.com/[careers at Linagora].
 
-Here are the position we would be looking for on the TMail product especially.
+Here are the positions we would be looking for on the TMail product especially.
 
 == Backend engineer
 
-You dream about scale, and are born in the NOSQL age, you embrace modern technology. You have
+You dream about scaling, and are born in the NOSQL age, you embrace modern technology. You have
 some experience in *Java* and other JVM programming languages like Scala, functional and reactive
 programming are your mantras. You wish to express design skills in an agile team. Cassandra,
 ElasticSearch, RabbitMQ, Pulsar, S3 have no secrets for you. You can conduct performance test campaigns

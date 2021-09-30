@@ -29,11 +29,11 @@ We do not encrypt email headers. A hacker might know who you send email to, as w
 As we encrypted the content of the emails, we are not able to perform `content search` or encrypted emails. Your searches
 will be limited to the headers of the email.
 
-In order to ship an efficient JMAP extension (described above), we need to access the sturcture of the message (unencrypted).
+In order to ship an efficient JMAP extension (described above), we need to access the structure of the message (unencrypted).
 This means that JMAP GPG extensions do not support GPG messages sent by third-parties. GPG messages sent by third parties can
 still be read using IMAP extensions like EnygMail.
 
-Key management still have to be performed manually by the user.
+Key management still has to be performed manually by the user.
 
 We will eventually work on lifting some of these restrictions.
 
