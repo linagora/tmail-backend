@@ -43,4 +43,6 @@ We encourage the following practices to help your code contributions to be integ
  - Follow principles described in link:https://www.amazon.fr/Clean-Code-Handbook-Software-Craftsmanship/dp/0132350882[Clean Code]. We then will be on the same wave-length...
  - If relevant split your work into reasonable-to-review commits.
  - You did compile your work prior opening the PR. You tested manually a few relevant impacted tests. Running the all test suite can be done by our CI.
- - You implicitly accept your contribution to be done under the license of the repository, be it **AGPL** Linagora license or the MIT.
+ - You accept your contribution to be done under the license of the repository, be it **AGPL** Linagora license or the MIT.
+For contributions under the **AGPL** license with Linagora terms, we require the
+link:https://www.linshare.org/wp-content/uploads/2020/07/Contributor-agreement.pdf[Linagora Contributor Framework Agreement] to be signed.
