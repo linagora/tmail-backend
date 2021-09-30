@@ -19,6 +19,8 @@ xref:tmail-backend/jmap-extensions/index.adoc[Read more]... We also put great ca
 
 Read more about our xref:ethic.adoc[ethic]
 
+== TMail components
+
 Tmail components includes:
 
 - xref:tmail-backend/index.adoc[TMail backend]: The backbone of the TMail collaborative suite: built on top of
