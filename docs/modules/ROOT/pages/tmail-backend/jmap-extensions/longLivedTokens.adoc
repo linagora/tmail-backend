@@ -2,13 +2,13 @@
 :navtitle: Long lived tokens
 
 The goal of this extension is to enable secure mobile connection. The mobile application uses the
-supplied credentions to generate a `Long Lived token` that will be stored on the device. This `long lived token`
-can be later used to generate `short leaved tokens` with very short validity but that grants access to main
+supplied credentials to generate a `Long Lived token` that will be stored on the device. This `long lived token`
+can be later used to generate `short lived tokens` with very short validity but that grants access to main
 JMAP APIs.
 
 == Additions to the capability object
 
-Servers supporting the Long lived token extension needs
+Servers supporting the Long lived token extension need
 to advertize it through the session capabilities:
 
 ....
@@ -19,7 +19,7 @@ The associated object is empty.
 
 == The LongLivedToken object
 
-A LongLivedToken have the following fields:
+A LongLivedToken has the following fields:
 
  - **id**: `Id`, server set, immutable, the JMAP identifier of the object.
  - **deviceId**: `String`, immutable, the device identifier associated with this token.
@@ -29,7 +29,7 @@ used as a `Bearer` value for the `Authorization` header to generate short lived 
 
 === LongLivedToken/get
 
-A generic /get method. Do not return the `token` field of `LongLivedToken`.
+A generic /get method. Does not return the `token` field of `LongLivedToken`.
 
 === LongLivedToken/set
 
@@ -122,7 +122,7 @@ Will return a short lived token that can be used to authenticate follow up JMAP 
 
 Regarding `Authorization` either long lived tokens bearer authentication is supported or basic authentication.
 
-`deviceId` is compulsory whn using long lived token bearer, and needs to be matching the stored value.
+`deviceId` is compulsory when using long lived token bearer, and needs to be matching the stored value.
 
 == Flows
 

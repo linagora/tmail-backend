@@ -18,7 +18,7 @@ to address IMAP flaws, and inter-operable standard was yet to be found...
 
 This, is where link:https://jmap.io[JMAP] comes to play! JMAP builds on decades of experience,
 and beautifully addresses these challenges using `HTTP` and `JSON` standards. Not only does it make
-applications easier to develop, we also strongly believes it results in an improved experience for
+applications easier to develop, we also strongly believe it results in an improved experience for
 the end user.
 
 == TMail JMAP specifications
@@ -29,9 +29,9 @@ We introduce custom extensions to the main JMAP protocol in order to achieve our
 
 These extensions include:
 
- - link:jmapGpgExtension.adoc[com:linagora:params:jmap:pgp] which add the capability to read messages of TMail encrypted
+ - link:jmapGpgExtension.adoc[com:linagora:params:jmap:pgp] which adds the capability to read messages of TMail encrypted
  mailbox.
- - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allow to generate one time usage tickets in order
+ - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allows to generate one time usage tickets in order
 to authenticate webSocket connections using URI query parameters, as most browsers do not support setting `Authorization`
 headers during the webSocket handshake.
  - link:jmapFilters.adoc[com:linagora:params:jmap:filter] allows user to specify message filters automating actions upon
@@ -44,7 +44,7 @@ We furthermore expose the following JMAP specifications in TMail (implemented in
 
  - link:https://datatracker.ietf.org/doc/html/rfc8620[RFC-8620] JMAP Core defines mechanisms shared by all JMAP
 specifications including download, uploads, event source.
- - link:https://datatracker.ietf.org/doc/html/rfc8621[RFC-8621] JMAP Mail defines JMAP entities for emails and allow
+ - link:https://datatracker.ietf.org/doc/html/rfc8621[RFC-8621] JMAP Mail defines JMAP entities for emails and allows
 building easily email applications.
  - link:https://datatracker.ietf.org/doc/html/rfc8887[RFC-8887] allows JMAP to rely on webSockets as a transport layer.
  - link:https://datatracker.ietf.org/doc/html/rfc9007[RFC-9007] JMAP MDN exposes convenient APIs for parsing, and sending
@@ -55,7 +55,7 @@ Message Delivery Notifications (Read receipts).
 Moreover, we do expose some JMAP extensions defined within Apache JAMES:
 
  - link:https://github.com/apache/james-project/blob/master/server/protocols/jmap-rfc-8621/doc/specs/spec/quotas/quotas.mdown[urn:apache:james:params:jmap:mail:quota]
-JMAP Quota (while waiting for the link:https://datatracker.ietf.org/doc/draft-ietf-jmap-quotas/[IETF draft] to be finalized) enable users to know their quotas for the Email related entities.
+JMAP Quota (while waiting for the link:https://datatracker.ietf.org/doc/draft-ietf-jmap-quotas/[IETF draft] to be finalized) enables users to know their quotas for the Email related entities.
  - link:https://github.com/apache/james-project/blob/master/server/protocols/jmap-rfc-8621/doc/specs/spec/mail/rights.mdown[urn:apache:james:params:jmap:mail:shares]
 JMAP Sharing adds properties for a user to share access for their mailboxes to each other.
 
@@ -73,7 +73,7 @@ should be retained in memory, authentication is challenged for each request...
 software, valid according to the configured JWT public key. If valid, the request is blindly trusted.
 link:https://james.staged.apache.org/james-project/3.7.0/servers/distributed/configure/webadmin.html#_generating_a_jwt_key_pair[Read more]...
  - link:longLivedTokens.adoc[com:linagora:params:long:lived:token] enables a mechanism to safely authenticate mobile devices.
- - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allow to generate one time usage tickets in order
+ - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allows to generate one time usage tickets in order
 to authenticate webSocket connections using URI query parameters, as most browsers do not support setting `Authorization`
 headers during the webSocket handshake.
 
