@@ -5,20 +5,20 @@ TMail offers some alternatives to James components, solving some specific pain p
 
 == Object Storage: BlobId list
 
-When deduplication upon blob storage is enabled in James, we would store only one objects for all
+When deduplication upon blob storage is enabled in James, we would store only one object for all
 entities sharing the same content.
 
 This helps reducing storage costs as email content within companies is highly duplicated.
 
 However, this brings additional issues and opportunity:
 
- - We might not want to save several time the same content, when we know we actually already store it. Storing it twice
+ - We might not want to save several times the same content, when we know we actually already store it. Storing it twice
 is a waste of resources and writes might be billed by the cloud provider.
  - Concurrently reading and writing to the same blob might cause issues for low consistency object stores (eg Swift based),
 see link:https://issues.apache.org/jira/browse/JAMES-3570[this issue].
 
 We thus offer an additional cache, in Cassandra, to check if the blob is already stored prior to store it. Inconsistent
-cache result in double writes (low impact). We found it to have a positive impact on performance and solve isolation issues
+cache results in double writes (low impact). We found it to have a positive impact on performance and solve isolation issues
 on top of Swift S3 APIs.
 
 Example `blob.properties`:
@@ -38,8 +38,8 @@ Linagora uses LDAP as an identity provider.
 
 We use it in a couple of occasions including:
 
- - IMAP / SMTP login, which involve checking the user password against the LDAP
- - Receiving an email (both at the SMTP and mail processing level, we check that the user exist)
+ - IMAP / SMTP login, which involves checking the user password against the LDAP
+ - Receiving an email (both at the SMTP and mail processing level, we check that the user exists)
 
 The above implies that emails can not be received during LDAP outages. Emails received during LDAP outages
 may be rejected at the SMTP level, thus queued in upstream systems or considered as errored upon mail processing.
@@ -81,7 +81,7 @@ Example `usersrepository.xml`:
 
 Encrypting messages is costly thus we unserstand an administrator might choose not to enable this feature.
 
-We provide an easy way to disactivate completly the **Encrypted Mailbox** through the configuration.
+We provide an easy way to disable completely the **Encrypted Mailbox** through the configuration.
 
 Example: `mailbox.properties`
 
