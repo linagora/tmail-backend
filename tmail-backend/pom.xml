@@ -33,6 +33,7 @@
         <module>mailbox/encrypted/pgp-utils</module>
         <module>mailbox/opendistro-tests</module>
         <module>mailbox/plugin/quota-search-elasticsearch-v6</module>
+        <module>mailbox/team-mailboxes</module>
 
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
