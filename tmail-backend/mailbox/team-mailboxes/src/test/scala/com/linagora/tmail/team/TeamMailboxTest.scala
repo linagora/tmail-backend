@@ -28,6 +28,12 @@ class TeamMailboxTest {
   }
 
   @Test
+  def fromMailboxPathShouldReturnTeamMailboxWhenValidSubMailbox(): Unit = {
+    assertThat(TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales.INBOX")).toJava)
+      .contains(TeamMailbox.apply(TEAM_MAILBOX_USER, TeamMailboxName.apply(TeamMailboxName.validate("sales").toOption.get)))
+  }
+
+  @Test
   def mailboxPathTeamMailboxShouldRespectAsStringMethod(): Unit = {
     val teamMailbox: TeamMailbox = TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales")).get
     assertThat(teamMailbox.mailboxPath.asString())

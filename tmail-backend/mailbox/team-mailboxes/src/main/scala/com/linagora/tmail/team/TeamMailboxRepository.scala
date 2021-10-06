@@ -94,10 +94,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .filter(mailboxMetaData => mailboxMetaData.getPath.getUser.getDomainPart
         .filter(domain.equals(_)).isPresent)
       .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
+      .distinct()
 
   override def listTeamMailboxes(username: Username): Publisher[TeamMailbox] =
     SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, sessionProvider.createSystemSession(username)))
       .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
+      .distinct()
 
   override def addMember(teamMailbox: TeamMailbox, addUser: Username): Publisher[Void] =
     SMono.fromPublisher(exists(teamMailbox))

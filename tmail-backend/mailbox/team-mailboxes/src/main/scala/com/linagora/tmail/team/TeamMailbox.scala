@@ -45,7 +45,7 @@ object TeamMailbox {
   def from(mailboxPath: MailboxPath): Option[TeamMailbox] = mailboxPath.getNamespace match {
     case TEAM_MAILBOX_NAMESPACE =>
       for {
-        name <- TeamMailboxName.validate(mailboxPath.getName())
+        name <- TeamMailboxName.validate(mailboxPath.getHierarchyLevels('.').get(0).getName())
           .map(nameValue => TeamMailboxName(nameValue))
           .toOption
         domain <- mailboxPath.getUser.getDomainPart.toScala
