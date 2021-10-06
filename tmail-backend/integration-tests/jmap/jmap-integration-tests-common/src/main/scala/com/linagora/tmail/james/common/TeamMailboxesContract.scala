@@ -499,4 +499,329 @@ trait TeamMailboxesContract {
            |    "c1"]]
            |}""".stripMargin)
   }
+
+  @Test
+  def renamingATeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
+      .serialize()
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [[
+         |           "Mailbox/set",
+         |           {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "update": {
+         |                    "$id1": {
+         |                      "name": "otherName"
+         |                    }
+         |                }
+         |           },
+         |    "c1"
+         |       ]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState")
+      .isEqualTo(
+        s"""{
+           |  "sessionState":"2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |  "methodResponses":[[
+           |    "Mailbox/set",
+           |    {
+           |      "accountId":"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "notUpdated":{
+           |        "$id1":{
+           |          "type":"notFound",
+           |          "description":"#TeamMailbox:team-mailbox@domain.tld:marketing"
+           |        }
+           |      }
+           |    },
+           |    "c1"]
+           |  ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def movingATeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
+      .serialize()
+
+    val id2 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
+      .serialize()
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [[
+         |           "Mailbox/set",
+         |           {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "update": {
+         |                    "$id1": {
+         |                      "parentId": "$id2"
+         |                    }
+         |                }
+         |           },
+         |    "c1"
+         |       ]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState")
+      .isEqualTo(
+        s"""{
+           |  "sessionState":"2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |  "methodResponses":[[
+           |    "Mailbox/set",
+           |    {
+           |      "accountId":"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "notUpdated":{
+           |        "$id1":{
+           |          "type":"notFound",
+           |          "description":"#TeamMailbox:team-mailbox@domain.tld:marketing.Sent.INBOX"
+           |        }
+           |      }
+           |    },
+           |    "c1"]
+           |  ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def delegatingATeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
+      .serialize()
+
+    val request =
+      s"""{
+         |   "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares" ],
+         |   "methodCalls": [
+         |       [
+         |           "Mailbox/set",
+         |           {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "update": {
+         |                    "$id1": {
+         |                      "sharedWith": {
+         |                        "${CEDRIC.asString()}":["r", "l"]
+         |                      }
+         |                    }
+         |                }
+         |           },
+         |    "c1"
+         |       ],
+         |       ["Mailbox/get",
+         |         {
+         |           "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |           "properties": ["id", "rights"],
+         |           "ids": ["$id1"]
+         |          },
+         |       "c2"]
+         |   ]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState", "methodResponses[1][1].state")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Mailbox/set",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "notUpdated": {
+           |                    "$id1": {
+           |                        "type": "invalidArguments",
+           |                        "description": "Invalid change to a delegated mailbox"
+           |                    }
+           |                }
+           |            },
+           |            "c1"
+           |        ],
+           |        [
+           |            "Mailbox/get",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "notFound": [],
+           |                "list": [
+           |                    {
+           |                        "id": "$id1",
+           |                        "rights": {
+           |                            "bob@domain.tld": ["i", "l", "r", "s", "t", "w"]
+           |                        }
+           |                    }
+           |                ]
+           |            },
+           |            "c2"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def subscribingATeamMailboxShouldSucceed(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
+      .serialize()
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [[
+         |           "Mailbox/set",
+         |           {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "update": {
+         |                    "$id1": {
+         |                      "isSubscribed": true
+         |                    }
+         |                }
+         |           },
+         |    "c1"], [
+         |    "Mailbox/get",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "ids": ["$id1"]
+         |    },
+         |    "c2"]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState", "methodResponses[1][1].state")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Mailbox/set",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "updated": {
+           |                    "$id1": {}
+           |                }
+           |            },
+           |            "c1"
+           |        ],
+           |        [
+           |            "Mailbox/get",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "notFound": [],
+           |                "list": [
+           |                    {
+           |                        "id": "$id1",
+           |                        "name": "marketing",
+           |                        "sortOrder": 1000,
+           |                        "totalEmails": 0,
+           |                        "unreadEmails": 0,
+           |                        "totalThreads": 0,
+           |                        "unreadThreads": 0,
+           |                        "myRights": {
+           |                            "mayReadItems": true,
+           |                            "mayAddItems": true,
+           |                            "mayRemoveItems": true,
+           |                            "maySetSeen": true,
+           |                            "maySetKeywords": true,
+           |                            "mayCreateChild": false,
+           |                            "mayRename": false,
+           |                            "mayDelete": false,
+           |                            "maySubmit": false
+           |                        },
+           |                        "isSubscribed": true,
+           |                        "namespace": "TeamMailbox[marketing@domain.tld]",
+           |                        "rights": {
+           |                            "bob@domain.tld": ["i",  "l", "r", "s", "t", "w"]
+           |                        }
+           |                    }
+           |                ]
+           |            },
+           |            "c2"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+  }
 }
