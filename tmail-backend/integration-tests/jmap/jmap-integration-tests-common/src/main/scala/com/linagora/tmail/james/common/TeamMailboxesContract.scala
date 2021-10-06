@@ -646,6 +646,74 @@ trait TeamMailboxesContract {
   }
 
   @Test
+  def creatingATeamMailboxChildShouldFail(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
+      .serialize()
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [[
+         |           "Mailbox/set",
+         |           {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "create": {
+         |                  "K39" : {
+         |                    "name": "aname",
+         |                    "parentId": "$id1"
+         |                  }
+         |                }
+         |           },
+         |    "c1"
+         |       ]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Mailbox/set",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "notCreated": {
+           |                    "K39": {
+           |                        "type": "forbidden",
+           |                        "description": "Insufficient rights",
+           |                        "properties": ["parentId"]
+           |                    }
+           |                }
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+  }
+
+  @Test
   def movingATeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
