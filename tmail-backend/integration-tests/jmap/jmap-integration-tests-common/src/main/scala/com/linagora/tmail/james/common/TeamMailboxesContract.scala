@@ -1249,4 +1249,76 @@ trait TeamMailboxesContract {
            |}""".stripMargin)
   }
 
+  @Test
+  def emailSetShouldDestroyTeamMailboxEmail(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    val messageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [["Email/set", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "destroy": ["$messageId"]
+         |    }, "c1"], ["Email/get", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "ids": ["$messageId"],
+         |      "properties":["subject"]
+         |    }, "c2"]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState", "methodResponses[1][1].state")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Email/set",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "destroyed": ["1"]
+           |            },
+           |            "c1"
+           |        ],
+           |        [
+           |            "Email/get",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "notFound": ["1"],
+           |                "state": "14ee6150-95ea-44dc-bf1b-e50953f43404",
+           |                "list": []
+           |            },
+           |            "c2"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+  }
+
 }
