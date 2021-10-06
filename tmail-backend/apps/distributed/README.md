@@ -10,6 +10,18 @@ This server is the distributed version of James relying on:
 
 ## Build
 
+To be able to run Tmail backend server, you need to generate a JWT key pair first.
+A really easy way to generate a basic JWT key pair is like this:
+
+```
+# private key
+openssl genrsa -out jwt_privatekey 4096
+# public key
+openssl rsa -in jwt_privatekey -pubout > jwt_publickey
+```
+
+Then copy those two keys into the `src/main/conf` folder of this distributed app module.
+
 To build the distributed server:
 
 ```

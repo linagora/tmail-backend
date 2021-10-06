@@ -31,10 +31,17 @@ docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single
 docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
 ....
 
-Then you can finally start the TMail distributed server:
+Before running the TMail distributed server, you need to generate a JWT key pair. This is something up to you to generate
+the keys and necessary certificates related to your production environment domain.
+
+When you have your JWT key pair ready, then you can finally start the TMail distributed server:
 
 ....
-docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
+docker run --network emaily --hostname HOSTNAME \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
+-p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
+--name james -t linagora/tmail-backend:distributed-branch-master
 ....
 
 Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags)
@@ -48,6 +55,17 @@ docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostna
 
 link:https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed/docker-compose.yml[There is a docker-compose file]
 you can use to run everything in the same network at once.
+
+First you need to add your JWT keys to the docker-compose file, like this:
+
+....
+services:
+  james:
+    [...]
+    volumes:
+      - [/PATH/TO/JWT_PUBLICKEY]:/root/conf/jwt_publickey
+      - [/PATH/TO/JWT_PRIVATEKEY]:/root/conf/jwt_privatekey
+....
 
 For this, just start it:
 
@@ -63,7 +81,11 @@ Disabled by default, its java agent can easily be enabled.
 If you run the distributed server manually, you can do like this:
 
 ....
-docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
+docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
+-p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
+--name james -t linagora/tmail-backend:distributed-branch-master
 ....
 
 If you use the docker-compose file, you can add an environment variable to the distributed server container:

@@ -4,24 +4,40 @@
 To get on board easily with minimal set up we provide a TMail testing server, relying solely on
 in memory datastructures, thus is light and adapted for functional testing on your local laptop.
 
-To run it:
+But first you need to generate a JWT key pair first.
+A really easy way to generate a basic JWT key pair is like this:
 
 ....
-docker run linagora/tmail-backend:memory-branch-master
+# private key
+openssl genrsa -out jwt_privatekey 4096
+# public key
+openssl rsa -in jwt_privatekey -pubout > jwt_publickey
+....
+
+Then you need to bind them to the memory sever to be able to run it:
+
+....
+docker run --mount type=bind,source=[/ABSOLUTE/PATH/TO]/jwt_publickey,target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO]/jwt_privatekey,target=/root/conf/jwt_privatekey \
+--name james linagora/tmail-backend:memory-branch-master
 ....
 
 Use the link:https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags[JAVA_TOOL_OPTIONS environment option]
 to pass extra JVM flags. For instance:
 
 ....
-docker run -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" linagora/tmail-backend:memory-branch-master
+docker run --mount type=bind,source=[/ABSOLUTE/PATH/TO]/jwt_publickey,target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO]/jwt_privatekey,target=/root/conf/jwt_privatekey \
+-e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" linagora/tmail-backend:memory-branch-master
 ....
 
 link:https://glowroot.org/[Glowroot APM] is packaged as part of the docker distribution to easily enable valuable performances insights.
 Disabled by default, its java agent can easily be enabled:
 
 ....
-docker run -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" linagora/tmail-backend:memory-branch-master
+docker run --mount type=bind,source=[/ABSOLUTE/PATH/TO]/jwt_publickey,target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO]/jwt_privatekey,target=/root/conf/jwt_privatekey \
+-e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" linagora/tmail-backend:memory-branch-master
 ....
 
 The xref:james-project:servers:distributed/operate/cli.adoc[CLI] can easily be used once your testing server is running:
