@@ -37,6 +37,8 @@
 
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
+
+        <module>webadmin</module>
     </modules>
 
     <properties>
@@ -210,7 +212,6 @@
                 <artifactId>team-mailboxes</artifactId>
                 <version>${project.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>apache-mailet-icalendar</artifactId>
