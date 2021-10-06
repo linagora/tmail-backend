@@ -140,7 +140,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(entriesRights)
         .hasSize(1)
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("lprstw")
+        .isEqualTo("ilprstw")
     })
   }
 

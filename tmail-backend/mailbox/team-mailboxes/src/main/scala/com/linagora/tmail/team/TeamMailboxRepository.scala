@@ -45,6 +45,7 @@ object TeamMailboxRepositoryImpl {
       Right.Read,
       Right.WriteSeenFlag,
       Right.DeleteMessages,
+      Right.Insert,
       Right.Write
     )
 }
