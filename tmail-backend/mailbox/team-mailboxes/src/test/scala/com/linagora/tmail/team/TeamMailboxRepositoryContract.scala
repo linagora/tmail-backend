@@ -1,5 +1,7 @@
 package com.linagora.tmail.team
 
+import java.util
+
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{ANDRE, BOB, TEAM_MAILBOX, TEAM_MAILBOX_2, TEAM_MAILBOX_USER, TEAM_MAILBOX_USERNAME, TEAM_MAILBOX_USERNAME_2, TEAM_MAILBOX_USER_2}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
@@ -11,18 +13,17 @@ import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.util
 import scala.jdk.CollectionConverters._
 
 object TeamMailboxRepositoryContract {
   val TEAM_MAILBOX_USER: Domain = Domain.of("linagora.com")
   val TEAM_MAILBOX_USER_2: Domain = Domain.of("linagora2.com")
-  val TEAM_MAILBOX_USERNAME: Username = Username.of(TEAM_MAILBOX_USER.asString())
-  val TEAM_MAILBOX_USERNAME_2: Username = Username.of(TEAM_MAILBOX_USER_2.asString())
+  val TEAM_MAILBOX_USERNAME: Username = Username.fromLocalPartWithDomain("team-mailbox", TEAM_MAILBOX_USER)
+  val TEAM_MAILBOX_USERNAME_2: Username = Username.fromLocalPartWithDomain("team-mailbox", TEAM_MAILBOX_USER_2)
   val TEAM_MAILBOX: TeamMailbox = TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("marketing"))
-  val TEAM_MAILBOX_2: TeamMailbox = TeamMailbox(TEAM_MAILBOX_USER_2, TeamMailboxName("sale"))
-  val BOB: Username = Username.of("bob")
-  val ANDRE: Username = Username.of("andre")
+  val TEAM_MAILBOX_2: TeamMailbox = TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sale"))
+  val BOB: Username = Username.of("bob@linagora.com")
+  val ANDRE: Username = Username.of("andre@linagora.com")
 }
 
 trait TeamMailboxRepositoryContract {
