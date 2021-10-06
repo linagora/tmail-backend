@@ -79,7 +79,7 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def deleteTeamMailboxShouldRemoveAllAssignMailbox(): Unit = {
+  def deleteTeamMailboxShouldRemoveAllAssignedMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX)).block()
     val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME)
@@ -98,7 +98,7 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def deleteTeamMailboxShouldNotRemoveUnAssignMailbox(): Unit = {
+  def deleteTeamMailboxShouldNotRemoveOtherTeamMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_2)).block()
     SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX)).block()
@@ -151,7 +151,7 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def removeMemberShouldThrowWhenAssignMemberNotInTeamMailbox(): Unit = {
+  def removeMemberShouldThrowWhenMemberNotInTeamMailbox(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
 
     assertThatThrownBy(() => SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX, BOB)).block())
@@ -159,7 +159,7 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def removeMemberShouldRevokeAssignMemberFromTeamMailbox(): Unit = {
+  def removeMemberShouldRevokeMemberRightsFromTeamMailbox(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX, BOB)).block()
     SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX, BOB)).block()
@@ -169,7 +169,7 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def removeMemberShouldNotRevokeUnAssignMember(): Unit = {
+  def removeMemberShouldNotRevokeOtherMembers(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX, BOB)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX, ANDRE)).block()
@@ -213,7 +213,7 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def listTeamMailboxesByUserShouldReturnTeamMailboxesWhichAssignUserInThat(): Unit = {
+  def listTeamMailboxesByUserShouldReturnTeamMailboxesWhichUserIsMemberOf(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX, BOB)).block()
 
@@ -222,7 +222,7 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def listTeamMailboxesByUserShouldNotReturnTeamMailboxesWhichAssignUserNotInThat(): Unit = {
+  def listTeamMailboxesByUserShouldNotReturnTeamMailboxesWhichUserIsNotMemberOf(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX, ANDRE)).block()
 
@@ -231,7 +231,7 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def userCanHaveSeveralTeamMailboxes(): Unit = {
+  def userCanBeMemberOfSeveralTeamMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX, BOB)).block()
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_2)).block()
