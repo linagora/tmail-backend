@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
+
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxRepository, TeamMailboxRepositoryImpl}
@@ -14,12 +17,22 @@ import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
+import org.apache.james.jmap.api.change.State
+import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
+import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.mailbox.MessageManager.AppendCommand
+import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
+import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility
+import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.junit.jupiter.api.{BeforeEach, Test}
+import play.api.libs.json.{JsArray, Json}
 import reactor.core.scala.publisher.SMono
 
 class TeamMailboxProbeModule extends AbstractModule {
@@ -45,6 +58,12 @@ class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) e
 }
 
 trait TeamMailboxesContract {
+  private lazy val slowPacedPollInterval = ONE_HUNDRED_MILLISECONDS
+  private lazy val calmlyAwait = Awaitility.`with`
+    .pollInterval(slowPacedPollInterval)
+    .and.`with`.pollDelay(slowPacedPollInterval)
+    .await
+  private lazy val awaitAtMostTenSeconds = calmlyAwait.atMost(10, TimeUnit.SECONDS)
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -823,5 +842,224 @@ trait TeamMailboxesContract {
            |        ]
            |    ]
            |}""".stripMargin)
+  }
+
+  private def provisionSystemMailboxes(server: GuiceJamesServer): State = {
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    val jmapGuiceProbe: JmapGuiceProbe = server.getProbe(classOf[JmapGuiceProbe])
+
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [[
+         |    "Mailbox/get",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+      .when
+      .post
+      .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+
+    //Wait until all the system mailboxes are created
+    val request2 =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [[
+         |    "Mailbox/changes",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "sinceState": "${State.INITIAL.getValue.toString}"
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      val response1 = `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(request2)
+        .when
+        .post
+        .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      val createdSize = Json.parse(response1)
+        .\("methodResponses")
+        .\(0).\(1)
+        .\("created")
+        .get.asInstanceOf[JsArray].value.size
+
+      assertThat(createdSize).isEqualTo(6)
+    }
+
+    jmapGuiceProbe.getLatestMailboxState(AccountId.fromUsername(BOB))
+  }
+
+  @Test
+  def addMemberTriggersAMailboxChange(server: GuiceJamesServer): Unit = {
+    val oldState = provisionSystemMailboxes(server)
+
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
+      .serialize()
+
+    val id2 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
+      .serialize()
+
+    val id3 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
+      .serialize()
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [["Mailbox/changes", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "sinceState": "${oldState.getValue}"
+         |    }, "c1"]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Mailbox/changes",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "hasMoreChanges": false,
+           |                "updatedProperties": null,
+           |                "created": [],
+           |                "updated": ["$id1", "$id2", "$id3"],
+           |                "destroyed": []
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}
+           |""".stripMargin)
+  }
+
+  private def waitForNextState(server: GuiceJamesServer, accountId: AccountId, initialState: State): State = {
+    val jmapGuiceProbe: JmapGuiceProbe = server.getProbe(classOf[JmapGuiceProbe])
+    awaitAtMostTenSeconds.untilAsserted {
+      () => assertThat(jmapGuiceProbe.getLatestMailboxStateWithDelegation(accountId)).isNotEqualTo(initialState)
+    }
+
+    jmapGuiceProbe.getLatestMailboxStateWithDelegation(accountId)
+  }
+
+  @Test
+  def receivingAMailShouldTriggerAStateChange(server: GuiceJamesServer): Unit = {
+    val originalState = provisionSystemMailboxes(server)
+
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
+      .serialize()
+
+    val id2 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
+      .serialize()
+
+    val id3 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
+      .serialize()
+
+    val oldState = waitForNextState(server, AccountId.fromUsername(BOB), originalState)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+
+    waitForNextState(server, AccountId.fromUsername(BOB), oldState)
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [["Mailbox/changes", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "sinceState": "${oldState.getValue}"
+         |    }, "c1"]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Mailbox/changes",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "hasMoreChanges": false,
+           |                "updatedProperties": ["totalEmails","unreadEmails","totalThreads","unreadThreads"],
+           |                "created": [],
+           |                "updated": ["$id2"],
+           |                "destroyed": []
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}
+           |""".stripMargin)
   }
 }
