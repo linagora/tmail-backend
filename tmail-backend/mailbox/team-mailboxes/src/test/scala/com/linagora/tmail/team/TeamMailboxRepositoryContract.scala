@@ -10,6 +10,7 @@ import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.MailboxACL
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider}
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
+import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -38,20 +39,24 @@ trait TeamMailboxRepositoryContract {
   def createTeamMailboxShouldStoreThreeAssignMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME)
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.mailboxPath, session))
-      .block())
-      .isTrue
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.inboxPath, session))
-      .block())
-      .isTrue
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.sentPath, session))
-      .block())
-      .isTrue
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.mailboxPath, session))
+        .block())
+        .isTrue
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.inboxPath, session))
+        .block())
+        .isTrue
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.sentPath, session))
+        .block())
+        .isTrue
+    })
   }
 
   @Test
   def createTeamMailboxShouldThrowWhenAssignMailboxExists(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
+
     assertThatThrownBy(() => SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block())
       .hasMessageContaining(s"${TEAM_MAILBOX.mailboxPath.toString} already exists.")
   }
@@ -60,14 +65,17 @@ trait TeamMailboxRepositoryContract {
   def createMailboxWithSamePathShouldFailWhenTeamMailboxExists(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME)
-    assertThatThrownBy(() => mailboxManager.createMailbox(TEAM_MAILBOX.mailboxPath, session))
-      .hasMessageContaining(s"${TEAM_MAILBOX.mailboxPath.toString} already exists.")
 
-    assertThatThrownBy(() => mailboxManager.createMailbox(TEAM_MAILBOX.inboxPath, session))
-      .hasMessageContaining(s"${TEAM_MAILBOX.inboxPath.toString} already exists.")
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThatThrownBy(() => mailboxManager.createMailbox(TEAM_MAILBOX.mailboxPath, session))
+        .hasMessageContaining(s"${TEAM_MAILBOX.mailboxPath.toString} already exists.")
 
-    assertThatThrownBy(() => mailboxManager.createMailbox(TEAM_MAILBOX.sentPath, session))
-      .hasMessageContaining(s"${TEAM_MAILBOX.sentPath.toString} already exists.")
+      softly.assertThatThrownBy(() => mailboxManager.createMailbox(TEAM_MAILBOX.inboxPath, session))
+        .hasMessageContaining(s"${TEAM_MAILBOX.inboxPath.toString} already exists.")
+
+      softly.assertThatThrownBy(() => mailboxManager.createMailbox(TEAM_MAILBOX.sentPath, session))
+        .hasMessageContaining(s"${TEAM_MAILBOX.sentPath.toString} already exists.")
+    })
   }
 
   @Test
@@ -75,15 +83,18 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX)).block()
     val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME)
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.mailboxPath, session))
-      .block())
-      .isFalse
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.inboxPath, session))
-      .block())
-      .isFalse
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.sentPath, session))
-      .block())
-      .isFalse
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.mailboxPath, session))
+        .block())
+        .isFalse
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.inboxPath, session))
+        .block())
+        .isFalse
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.sentPath, session))
+        .block())
+        .isFalse
+    })
   }
 
   @Test
@@ -92,15 +103,18 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_2)).block()
     SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX)).block()
     val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME_2)
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_2.mailboxPath, session))
-      .block())
-      .isTrue
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_2.inboxPath, session))
-      .block())
-      .isTrue
-    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_2.sentPath, session))
-      .block())
-      .isTrue
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_2.mailboxPath, session))
+        .block())
+        .isTrue
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_2.inboxPath, session))
+        .block())
+        .isTrue
+      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_2.sentPath, session))
+        .block())
+        .isTrue
+    })
   }
 
   @Test
@@ -122,10 +136,12 @@ trait TeamMailboxRepositoryContract {
     val bobSession: MailboxSession = sessionProvider.createSystemSession(BOB)
     val entriesRights: util.Map[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX.mailboxPath, bobSession).getEntries
 
-    assertThat(entriesRights)
-      .hasSize(1)
-    assertThat(entriesRights.asScala.head._2.toString)
-      .isEqualTo("lprstw")
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(entriesRights)
+        .hasSize(1)
+      softly.assertThat(entriesRights.asScala.head._2.toString)
+        .isEqualTo("lprstw")
+    })
   }
 
   @Test
@@ -137,6 +153,7 @@ trait TeamMailboxRepositoryContract {
   @Test
   def removeMemberShouldThrowWhenAssignMemberNotInTeamMailbox(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
+
     assertThatThrownBy(() => SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX, BOB)).block())
       .isInstanceOf(classOf[TeamMailboxNotFoundException])
   }
@@ -165,6 +182,7 @@ trait TeamMailboxRepositoryContract {
   @Test
   def listMemberShouldReturnEmptyWhenDefault(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
+
     assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX)).collectSeq().block().asJava)
       .isEmpty()
   }
@@ -233,6 +251,7 @@ trait TeamMailboxRepositoryContract {
   def listTeamMailboxesByDomainShouldReturnStoredEntriesWhenSingle(): Unit = {
     val saleTeam: TeamMailbox = TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sale"))
     SMono.fromPublisher(testee.createTeamMailbox(saleTeam)).block()
+
     assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(TEAM_MAILBOX_USER)).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(saleTeam)
   }
@@ -243,6 +262,7 @@ trait TeamMailboxRepositoryContract {
     val marketingTeam: TeamMailbox = TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("marketing"))
     SMono.fromPublisher(testee.createTeamMailbox(saleTeam)).block()
     SMono.fromPublisher(testee.createTeamMailbox(marketingTeam)).block()
+
     assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(TEAM_MAILBOX_USER)).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(saleTeam, marketingTeam)
   }
