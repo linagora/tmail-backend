@@ -53,10 +53,20 @@ docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single
 docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
 ```
 
-Then you can finally start the James distributed server:
+Then you can finally start the James distributed server. If you included the JWT keys in the build:
 
 ```
 docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend-distributed
+```
+
+If not, you need to bind them to the container for TMail to start:
+
+```
+docker run --network emaily --hostname HOSTNAME \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
+-p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
+--name james -t linagora/tmail-backend-distributed
 ```
 
 Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags)
@@ -70,7 +80,18 @@ docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostna
 
 There is a docker-compose file in the root of this folder you can use to run everything in the same network at once.
 
-For this, just start it:
+First you need to generate your RSA keys and replace the local paths by the correct ones pointing to your keys:
+
+```
+services:
+  james:
+    [...]
+    volumes:
+    - [/PATH/TO/RSA_PUBLICKEY]:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+    - [/PATH/TO/RSA_PRIVATEKEY]:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+```
+
+Then, you can just start it:
 
 ```
 docker-compose up -d

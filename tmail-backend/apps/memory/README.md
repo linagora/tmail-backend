@@ -13,7 +13,8 @@ openssl genrsa -out jwt_privatekey 4096
 openssl rsa -in jwt_privatekey -pubout > jwt_publickey
 ```
 
-Then copy those two keys into the `src/main/conf` folder of this memory app module.
+You can copy those two keys into the `src/main/conf` folder of this memory app module if you want to build
+TMail server with them in the conf, or you can decide to mount them later when running the server.
 
 Then to build your server:
 
@@ -22,10 +23,18 @@ mvn clean install
 mvn compile com.google.cloud.tools:jib-maven-plugin:2.7.0:dockerBuild
 ```
 
-Then run it:
+Then you can finally start the James distributed server. If you included the JWT keys in the build:
 
 ```
 docker run linagora/tmail-backend-memory
+```
+
+If not, you need to bind them to the container for TMail to start:
+
+```
+docker --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
+linagora/tmail-backend-memory
 ```
 
 Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags) 

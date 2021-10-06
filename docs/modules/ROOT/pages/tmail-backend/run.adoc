@@ -31,10 +31,10 @@ docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single
 docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
 ....
 
-Before running the TMail distributed server, you need to generate a JWT key pair. This is something up to you to generate
-the keys and necessary certificates related to your production environment domain.
+Before running the TMail distributed server, you need to generate a RSA key pair. This is something up to you to generate
+the keys with necessary certificates related to your production environment domain.
 
-When you have your JWT key pair ready, then you can finally start the TMail distributed server:
+When you have your RSA key pair ready, then you can finally start the TMail distributed server:
 
 ....
 docker run --network emaily --hostname HOSTNAME \
@@ -56,18 +56,18 @@ docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostna
 link:https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed/docker-compose.yml[There is a docker-compose file]
 you can use to run everything in the same network at once.
 
-First you need to add your JWT keys to the docker-compose file, like this:
+First you need to generate your RSA keys and replace the local paths by the correct ones pointing to your keys:
 
 ....
 services:
   james:
     [...]
     volumes:
-      - [/PATH/TO/JWT_PUBLICKEY]:/root/conf/jwt_publickey
-      - [/PATH/TO/JWT_PRIVATEKEY]:/root/conf/jwt_privatekey
+      - [/PATH/TO/RSA_PUBLICKEY]:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - [/PATH/TO/RSA_PRIVATEKEY]:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
 ....
 
-For this, just start it:
+Then, you can just start it:
 
 ....
 docker-compose up -d
