@@ -9,7 +9,7 @@ import org.apache.james.mailbox.inmemory.InMemoryMailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.MailboxACL
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider}
-import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -54,11 +54,11 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def createTeamMailboxShouldThrowWhenAssignMailboxExists(): Unit = {
+  def createTeamMailboxShouldNotThrowWhenAssignMailboxExists(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
 
-    assertThatThrownBy(() => SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block())
-      .hasMessageContaining(s"${TEAM_MAILBOX.mailboxPath.toString} already exists.")
+    assertThatCode(() => SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
@@ -118,9 +118,9 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def deleteTeamMailboxShouldThrowWhenAssignMailboxDoesNotExists(): Unit = {
-    assertThatThrownBy(() => SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX)).block())
-      .hasMessageContaining(s"${TEAM_MAILBOX.mailboxPath.toString} can not be found")
+  def deleteTeamMailboxShouldNotThrowWhenAssignMailboxDoesNotExists(): Unit = {
+    assertThatCode(() => SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX)).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
