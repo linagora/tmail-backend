@@ -2,6 +2,7 @@ package com.linagora.tmail.team
 
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
+import javax.inject.Inject
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.model.MailboxACL
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
@@ -10,7 +11,6 @@ import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 trait TeamMailboxRepository {
@@ -52,7 +52,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
                                           sessionProvider: SessionProvider) extends TeamMailboxRepository {
 
   override def createTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
-    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.user.asString))
+    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))
     SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.mailboxPath, session))
       .`then`(SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.inboxPath, session)))
       .`then`(SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.sentPath, session)))
@@ -60,7 +60,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
   }
 
   override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
-    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.user.asString))
+    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))
     SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.mailboxPath, session))
       .`then`(SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.inboxPath, session)))
       .`then`(SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.sentPath, session)))
@@ -87,7 +87,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
           .forUser(addUser)
           .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
           .asAddition(),
-        sessionProvider.createSystemSession(Username.of(teamMailbox.user.asString))))
+        sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))))
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
       .`then`()
 
@@ -100,12 +100,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
           .forUser(removeUser)
           .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
           .asRemoval(),
-        sessionProvider.createSystemSession(Username.of(teamMailbox.user.asString))))
+        sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))))
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
       .`then`()
 
   override def listMembers(teamMailbox: TeamMailbox): Publisher[Username] = {
-    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.user.asString))
+    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))
     SMono.fromCallable(() => mailboxManager.listRights(teamMailbox.mailboxPath, session))
       .flatMapIterable(mailboxACL => mailboxACL.getEntries.asScala)
       .map(entryKeyAndRights => entryKeyAndRights._1)
@@ -120,7 +120,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .hasElements
 
   private def isExistTeamMailbox(teamMailbox: TeamMailbox): SMono[Boolean] =
-    SFlux.fromPublisher(listTeamMailboxes(teamMailbox.user))
+    SFlux.fromPublisher(listTeamMailboxes(teamMailbox.domain))
       .filter(teamMailbox1 => teamMailbox1.equals(teamMailbox))
       .hasElements
 }

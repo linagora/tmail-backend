@@ -49,12 +49,12 @@ object TeamMailbox {
   }
 }
 
-case class TeamMailbox(user: Domain, mailboxName: TeamMailboxName) {
-  def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(user.asString()), mailboxName.value)
+case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
+  def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(domain.asString()), mailboxName.value)
 
-  def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(user.asString()), s"${mailboxName.value}.${MailboxConstants.INBOX}")
+  def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(domain.asString()), s"${mailboxName.value}.${MailboxConstants.INBOX}")
 
-  def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(user.asString()), s"${mailboxName.value}.Sent")
+  def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(domain.asString()), s"${mailboxName.value}.Sent")
 }
 
 case class TeamMailboxNotFoundException() extends RuntimeException
