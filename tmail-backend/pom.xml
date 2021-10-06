@@ -205,6 +205,11 @@
                 <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>team-mailboxes</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>${james.groupId}</groupId>

@@ -97,6 +97,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
+import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
@@ -120,7 +121,7 @@ public class DistributedServer {
         new MessagesRoutesModule(),
         new WebAdminMailOverWebModule());
 
-    public static final Module JMAP = Modules.combine(
+    public static final Module JMAP = Modules.override(
         new CassandraJmapModule(),
         new CustomMethodModule(),
         new EncryptedEmailContentStoreCassandraModule(),
@@ -132,14 +133,15 @@ public class DistributedServer {
         new JMAPServerModule(),
         new JmapEventBusModule(),
         new KeystoreCassandraModule(),
-        new KeystoreSetMethodModule(),
         new KeystoreGetMethodModule(),
+        new KeystoreSetMethodModule(),
         new LongLivedTokenGetMethodModule(),
         new LongLivedTokenSetMethodModule(),
         new LongLivedTokenStoreCassandraModule(),
         new ShortLivedTokenModule(),
         new ShortLivedTokenRoutesModule(),
-        Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
+        new TicketRoutesModule())
+        .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),

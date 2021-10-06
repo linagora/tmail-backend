@@ -84,15 +84,20 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
+import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
+import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
+import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
+import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 
@@ -116,22 +121,27 @@ public class DistributedServer {
         new MessagesRoutesModule(),
         new WebAdminMailOverWebModule());
 
-    public static final Module JMAP = Modules.combine(
+    public static final Module JMAP = Modules.override(
         new CassandraJmapModule(),
         new CustomMethodModule(),
         new EncryptedEmailContentStoreCassandraModule(),
         new EncryptedEmailDetailedViewGetMethodModule(),
         new EncryptedEmailFastViewGetMethodModule(),
+        new EmailSendMethodModule(),
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
         new JMAPServerModule(),
         new JmapEventBusModule(),
         new KeystoreCassandraModule(),
+        new KeystoreGetMethodModule(),
         new KeystoreSetMethodModule(),
         new LongLivedTokenGetMethodModule(),
         new LongLivedTokenSetMethodModule(),
         new LongLivedTokenStoreCassandraModule(),
-        Modules.override(new TicketRoutesModule()).with(new CassandraTicketStoreModule()));
+        new ShortLivedTokenModule(),
+        new ShortLivedTokenRoutesModule(),
+        new TicketRoutesModule())
+        .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
         JMAP,
