@@ -4,9 +4,10 @@ import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
 import javax.inject.Inject
 import org.apache.james.core.{Domain, Username}
-import org.apache.james.mailbox.model.MailboxACL
+import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
 import org.apache.james.mailbox.model.search.MailboxQuery
+import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -53,19 +54,35 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
 
   override def createTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
     val session: MailboxSession = createSession(teamMailbox)
-    SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.mailboxPath, session))
-      .`then`(SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.inboxPath, session)))
-      .`then`(SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.sentPath, session)))
+
+    createMailboxReliably(teamMailbox.mailboxPath, session)
+      .`then`(createMailboxReliably(teamMailbox.inboxPath, session))
+      .`then`(createMailboxReliably(teamMailbox.sentPath, session))
       .`then`()
   }
 
+  private def createMailboxReliably(path: MailboxPath, session: MailboxSession) =
+    SMono.fromCallable(() => mailboxManager.createMailbox(path, session))
+      .onErrorResume {
+        case e: MailboxExistsException => SMono.empty
+        case e => SMono.error(e)
+      }
+
   override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
     val session: MailboxSession = createSession(teamMailbox)
-    SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.mailboxPath, session))
-      .`then`(SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.inboxPath, session)))
-      .`then`(SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.sentPath, session)))
+
+    deleteReliably(teamMailbox.mailboxPath, session)
+      .`then`(deleteReliably(teamMailbox.inboxPath, session))
+      .`then`(deleteReliably(teamMailbox.sentPath, session))
       .`then`()
   }
+
+  private def deleteReliably(path: MailboxPath, session: MailboxSession) =
+    SMono.fromCallable(() => mailboxManager.deleteMailbox(path, session))
+      .onErrorResume {
+        case e: MailboxNotFoundException => SMono.empty
+        case e => SMono.error(e)
+      }
 
   private def createSession(teamMailbox: TeamMailbox): MailboxSession = createSession(teamMailbox.domain)
 
