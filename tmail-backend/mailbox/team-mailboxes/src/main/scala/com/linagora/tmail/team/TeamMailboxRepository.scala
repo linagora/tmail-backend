@@ -13,6 +13,7 @@ import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 trait TeamMailboxRepository {
 
@@ -102,31 +103,51 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
       .distinct()
 
-  override def addMember(teamMailbox: TeamMailbox, addUser: Username): Publisher[Void] =
+  override def addMember(teamMailbox: TeamMailbox, user: Username): Publisher[Void] = {
+    val session = createSession(teamMailbox)
     SMono.fromPublisher(exists(teamMailbox))
       .filter(teamMailboxExist => teamMailboxExist)
-      .doOnNext(_ => mailboxManager.applyRightsCommand(
-        teamMailbox.mailboxPath,
-        MailboxACL.command
-          .forUser(addUser)
-          .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
-          .asAddition(),
-        createSession(teamMailbox)))
+      .doOnNext(_ => {
+        addRightForMember(teamMailbox.mailboxPath, user, session)
+        addRightForMember(teamMailbox.inboxPath, user, session)
+        addRightForMember(teamMailbox.sentPath, user, session)
+      })
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
       .`then`()
+  }
 
-  override def removeMember(teamMailbox: TeamMailbox, removeUser: Username): Publisher[Void] =
-    SMono.fromPublisher(isUserInTeamMailbox(teamMailbox, removeUser))
+  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession) =
+    Try(mailboxManager.applyRightsCommand(
+      path,
+      MailboxACL.command
+        .forUser(user)
+        .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
+        .asAddition(),
+      session))
+      .fold(_ => (), u => u)
+
+  private def removeRightForMember(path: MailboxPath, user: Username, session: MailboxSession) =
+    Try(mailboxManager.applyRightsCommand(
+      path,
+      MailboxACL.command
+        .forUser(user)
+        .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
+        .asRemoval(),
+      session))
+      .fold(_ => (), u => u)
+
+  override def removeMember(teamMailbox: TeamMailbox, user: Username): Publisher[Void] = {
+    val session = createSession(teamMailbox)
+    SMono.fromPublisher(isUserInTeamMailbox(teamMailbox, user))
       .filter(teamMailboxExist => teamMailboxExist)
-      .doOnNext(_ => mailboxManager.applyRightsCommand(
-        teamMailbox.mailboxPath,
-        MailboxACL.command
-          .forUser(removeUser)
-          .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
-          .asRemoval(),
-        createSession(teamMailbox)))
+      .doOnNext(_ => {
+        removeRightForMember(teamMailbox.mailboxPath, user, session)
+        removeRightForMember(teamMailbox.inboxPath, user, session)
+        removeRightForMember(teamMailbox.sentPath, user, session)
+      })
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
       .`then`()
+  }
 
   override def listMembers(teamMailbox: TeamMailbox): Publisher[Username] = {
     val session: MailboxSession = createSession(teamMailbox)
