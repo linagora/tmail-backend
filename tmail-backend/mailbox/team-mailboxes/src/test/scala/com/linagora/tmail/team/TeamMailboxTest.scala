@@ -32,11 +32,11 @@ class TeamMailboxTest {
   def mailboxPathTeamMailboxShouldRespectAsStringMethod(): Unit = {
     val teamMailbox: TeamMailbox = TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales")).get
     assertThat(teamMailbox.mailboxPath.asString())
-      .isEqualTo("#TeamMailbox:linagora.com:sales")
+      .isEqualTo("#TeamMailbox:team-mailbox@linagora.com:sales")
     assertThat(teamMailbox.inboxPath.asString())
-      .isEqualTo("#TeamMailbox:linagora.com:sales.INBOX")
+      .isEqualTo("#TeamMailbox:team-mailbox@linagora.com:sales.INBOX")
     assertThat(teamMailbox.sentPath.asString())
-      .isEqualTo("#TeamMailbox:linagora.com:sales.Sent")
+      .isEqualTo("#TeamMailbox:team-mailbox@linagora.com:sales.Sent")
   }
 
 }

@@ -52,7 +52,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
                                           sessionProvider: SessionProvider) extends TeamMailboxRepository {
 
   override def createTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
-    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))
+    val session: MailboxSession = createSession(teamMailbox)
     SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.mailboxPath, session))
       .`then`(SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.inboxPath, session)))
       .`then`(SMono.fromCallable(() => mailboxManager.createMailbox(teamMailbox.sentPath, session)))
@@ -60,26 +60,30 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
   }
 
   override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
-    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))
+    val session: MailboxSession = createSession(teamMailbox)
     SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.mailboxPath, session))
       .`then`(SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.inboxPath, session)))
       .`then`(SMono.fromCallable(() => mailboxManager.deleteMailbox(teamMailbox.sentPath, session)))
       .`then`()
   }
 
-  override def listTeamMailboxes(domain: Domain): Publisher[TeamMailbox] = {
-    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(domain.asString()))
-    SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, session))
-      .filter(mailboxMetaData => domain.asString().equals(mailboxMetaData.getPath.getUser.getLocalPart))
+  private def createSession(teamMailbox: TeamMailbox): MailboxSession = createSession(teamMailbox.domain)
+
+  private def createSession(domain: Domain): MailboxSession =
+    sessionProvider.createSystemSession(Username.fromLocalPartWithDomain("team-mailbox", domain))
+
+  override def listTeamMailboxes(domain: Domain): Publisher[TeamMailbox] =
+    SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, createSession(domain)))
+      .filter(mailboxMetaData => mailboxMetaData.getPath.getUser.getDomainPart
+        .filter(domain.equals(_)).isPresent)
       .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
-  }
 
   override def listTeamMailboxes(username: Username): Publisher[TeamMailbox] =
     SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, sessionProvider.createSystemSession(username)))
       .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
 
   override def addMember(teamMailbox: TeamMailbox, addUser: Username): Publisher[Void] =
-    SMono.fromPublisher(isExistTeamMailbox(teamMailbox))
+    SMono.fromPublisher(exists(teamMailbox))
       .filter(teamMailboxExist => teamMailboxExist)
       .doOnNext(_ => mailboxManager.applyRightsCommand(
         teamMailbox.mailboxPath,
@@ -87,7 +91,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
           .forUser(addUser)
           .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
           .asAddition(),
-        sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))))
+        createSession(teamMailbox)))
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
       .`then`()
 
@@ -100,12 +104,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
           .forUser(removeUser)
           .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
           .asRemoval(),
-        sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))))
+        createSession(teamMailbox)))
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
       .`then`()
 
   override def listMembers(teamMailbox: TeamMailbox): Publisher[Username] = {
-    val session: MailboxSession = sessionProvider.createSystemSession(Username.of(teamMailbox.domain.asString))
+    val session: MailboxSession = createSession(teamMailbox)
     SMono.fromCallable(() => mailboxManager.listRights(teamMailbox.mailboxPath, session))
       .flatMapIterable(mailboxACL => mailboxACL.getEntries.asScala)
       .map(entryKeyAndRights => entryKeyAndRights._1)
@@ -119,8 +123,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .filter(teamMailbox1 => teamMailbox1.equals(teamMailbox))
       .hasElements
 
-  private def isExistTeamMailbox(teamMailbox: TeamMailbox): SMono[Boolean] =
-    SFlux.fromPublisher(listTeamMailboxes(teamMailbox.domain))
-      .filter(teamMailbox1 => teamMailbox1.equals(teamMailbox))
-      .hasElements
+  private def exists(teamMailbox: TeamMailbox): SMono[Boolean] =
+    SMono.fromPublisher(mailboxManager.mailboxExists(teamMailbox.mailboxPath, createSession(teamMailbox)))
+      .map(b => b)
 }

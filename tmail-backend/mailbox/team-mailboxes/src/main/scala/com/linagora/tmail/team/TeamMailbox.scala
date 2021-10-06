@@ -9,6 +9,8 @@ import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath}
 
+import scala.jdk.OptionConverters._
+
 object TeamMailboxNameSpace {
   val TEAM_MAILBOX_NAMESPACE: String = MailboxConstants.NAMESPACE_PREFIX_CHAR + "TeamMailbox"
 }
@@ -41,20 +43,25 @@ case class TeamMailboxName(value: TeamMailboxNameType)
 
 object TeamMailbox {
   def from(mailboxPath: MailboxPath): Option[TeamMailbox] = mailboxPath.getNamespace match {
-    case TEAM_MAILBOX_NAMESPACE => TeamMailboxName.validate(mailboxPath.getName())
-      .map(nameValue => TeamMailboxName(nameValue))
-      .toOption
-      .map(teamMailboxName => TeamMailbox(Domain.of(mailboxPath.getUser.getLocalPart), teamMailboxName))
+    case TEAM_MAILBOX_NAMESPACE =>
+      for {
+        name <- TeamMailboxName.validate(mailboxPath.getName())
+          .map(nameValue => TeamMailboxName(nameValue))
+          .toOption
+        domain <- mailboxPath.getUser.getDomainPart.toScala
+      } yield {
+        TeamMailbox(domain, name)
+      }
     case _ => None
   }
 }
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
-  def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(domain.asString()), mailboxName.value)
+  def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), mailboxName.value)
 
-  def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(domain.asString()), s"${mailboxName.value}.${MailboxConstants.INBOX}")
+  def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.${MailboxConstants.INBOX}")
 
-  def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.of(domain.asString()), s"${mailboxName.value}.Sent")
+  def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.Sent")
 }
 
 case class TeamMailboxNotFoundException() extends RuntimeException
