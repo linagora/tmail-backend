@@ -6,7 +6,7 @@ import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.auto._
-import org.apache.james.core.{Domain, Username}
+import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath}
 
 import scala.jdk.OptionConverters._
@@ -57,6 +57,8 @@ object TeamMailbox {
 }
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
+  def asMailAddress: MailAddress = new MailAddress(mailboxName.value.value, domain)
+
   def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), mailboxName.value)
 
   def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.${MailboxConstants.INBOX}")
