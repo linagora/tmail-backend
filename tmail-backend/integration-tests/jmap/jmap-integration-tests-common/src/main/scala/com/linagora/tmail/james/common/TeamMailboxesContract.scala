@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.common
 
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
@@ -22,10 +23,12 @@ import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
+import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.mime4j.dom.Message
+import org.apache.james.mime4j.message.DefaultMessageWriter
 import org.apache.james.mime4j.stream.RawField
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
@@ -1387,6 +1390,41 @@ trait TeamMailboxesContract {
            |        ]
            |    ]
            |}""".stripMargin)
+  }
+
+  @Test
+  def downloadShouldReturnTeamMailboxEmail(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    val messageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+
+    val response = `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+    .when
+      .get(s"/download/$accountId/$messageId")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType("message/rfc822")
+      .extract
+      .body
+      .asString
+
+    val outputStream = new ByteArrayOutputStream()
+    new DefaultMessageWriter().writeMessage(message, outputStream)
+    val expectedResponse: String = new String(outputStream.toByteArray)
+    assertThat(new ByteArrayInputStream(response.getBytes(StandardCharsets.UTF_8)))
+      .hasContent(expectedResponse)
   }
 
   @Test
