@@ -19,13 +19,19 @@
 
     <modules>
         <module>apps</module>
+
         <module>backend-commons/elasticsearch-v6</module>
+
         <module>blob/blobid-list</module>
+
         <module>combined-identity</module>
+
         <module>deployment-tests</module>
+
         <module>guice/elasticsearch-v6</module>
         <module>guice/encrypted-mailbox</module>
         <module>guice/protocols/jmap</module>
+
         <module>integration-tests</module>
 
         <module>mailbox/elasticsearch-v6</module>
@@ -37,6 +43,8 @@
 
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
+
+        <module>smtp-extensions</module>
 
         <module>webadmin/webadmin-team-mailboxes</module>
     </modules>
