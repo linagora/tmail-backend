@@ -1,17 +1,21 @@
 package com.linagora.tmail.team
 
+import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
-import javax.inject.Inject
+import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
+import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider}
+import org.apache.james.rrt.api.MappingConflictException
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -56,8 +60,29 @@ object TeamMailboxRepositoryImpl {
 class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
                                           sessionProvider: SessionProvider) extends TeamMailboxRepository {
 
+  private var _teamMailboxEntityValidator: UserEntityValidator = new TeamMailboxUserEntityValidator(this)
+
+  @Inject
+  def setValidator(teamMailboxEntityValidator: UserEntityValidator) = {
+    _teamMailboxEntityValidator = teamMailboxEntityValidator
+  }
+
   override def createTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
     val session: MailboxSession = createSession(teamMailbox)
+    val username = Username.fromMailAddress(teamMailbox.asMailAddress)
+
+//    SMono.just(userEntityValidator.canCreate(username, ImmutableSet.of(TEAM_MAILBOX)))
+//      .filter(validationFailure => validationFailure.isPresent)
+//      .map(validationFailure => SMono.error(new MappingConflictException(validationFailure.get.errorMessage)))
+//      .switchIfEmpty(createMailboxReliably(teamMailbox.mailboxPath, session))
+//      .`then`(createMailboxReliably(teamMailbox.inboxPath, session))
+//      .`then`(createMailboxReliably(teamMailbox.sentPath, session))
+//      .`then`()
+
+    val validationFailure = _teamMailboxEntityValidator.canCreate(username, ImmutableSet.of(TEAM_MAILBOX))
+    if (validationFailure.isPresent) {
+      return SMono.error(new MappingConflictException(validationFailure.get.errorMessage))
+    }
 
     createMailboxReliably(teamMailbox.mailboxPath, session)
       .`then`(createMailboxReliably(teamMailbox.inboxPath, session))

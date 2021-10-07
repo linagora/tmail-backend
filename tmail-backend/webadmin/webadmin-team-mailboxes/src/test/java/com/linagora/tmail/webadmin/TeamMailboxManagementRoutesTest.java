@@ -6,6 +6,7 @@ import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX;
 import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX_2;
 import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX_DOMAIN;
 import static io.restassured.RestAssured.given;
+import static io.restassured.RestAssured.when;
 import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,17 +14,30 @@ import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import org.apache.james.DefaultUserEntityValidator;
+import org.apache.james.RecipientRewriteTableUserEntityValidator;
+import org.apache.james.UserEntityValidator;
 import org.apache.james.core.Domain;
+import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.domainlist.lib.DomainListConfiguration;
+import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
+import org.apache.james.rrt.lib.MappingSource;
+import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
+import org.apache.james.user.api.UsersRepositoryException;
+import org.apache.james.user.memory.MemoryUsersRepository;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.utils.JsonTransformer;
+import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -32,12 +46,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import com.linagora.tmail.team.TeamMailboxRepository;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
+import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 
 import io.restassured.RestAssured;
 import net.javacrumbs.jsonunit.core.Option;
 import net.javacrumbs.jsonunit.core.internal.Options;
+import io.restassured.http.ContentType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -68,12 +83,34 @@ public class TeamMailboxManagementRoutesTest {
     }
 
     private WebAdminServer webAdminServer;
-    private TeamMailboxRepository teamMailboxRepository;
+    private TeamMailboxRepositoryImpl teamMailboxRepository;
+    private MemoryUsersRepository usersRepository;
+    private MemoryRecipientRewriteTable recipientRewriteTable;
 
     @BeforeEach
     void setUp() throws Exception {
+        recipientRewriteTable = new MemoryRecipientRewriteTable();
+        DNSService dnsService = mock(DNSService.class);
+        MemoryDomainList domainList = new MemoryDomainList(dnsService);
+        domainList.configure(DomainListConfiguration.DEFAULT);
+        domainList.addDomain(TEAM_MAILBOX_DOMAIN);
+        recipientRewriteTable.setDomainList(domainList);
+        recipientRewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+        usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
+
         InMemoryMailboxManager mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
         teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, mailboxManager.getSessionProvider());
+
+        UserEntityValidator validator = UserEntityValidator.aggregate(
+            new DefaultUserEntityValidator(usersRepository),
+            new RecipientRewriteTableUserEntityValidator(recipientRewriteTable),
+            new TeamMailboxUserEntityValidator(teamMailboxRepository));
+
+        usersRepository.setValidator(validator);
+        recipientRewriteTable.setUsersRepository(usersRepository);
+        recipientRewriteTable.setUserEntityValidator(validator);
+        teamMailboxRepository.setValidator(validator);
+
         TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(teamMailboxManagementRoutes).start();
 
@@ -212,6 +249,65 @@ public class TeamMailboxManagementRoutesTest {
                 .statusCode(NO_CONTENT_204);
         }
 
+        @Test
+        void createTeamMailboxShouldNotConflictWithUser() throws UsersRepositoryException {
+            usersRepository.addUser(BOB, "whatever");
+
+            Map<String, Object> errors = when()
+                .put("/bob")
+            .then()
+                .statusCode(HttpStatus.CONFLICT_409)
+                .contentType(ContentType.JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", HttpStatus.CONFLICT_409)
+                .containsEntry("type", "WrongState")
+                .containsEntry("message", "'bob@linagora.com' user already exist");
+        }
+
+        @Test
+        void createTeamMailboxShouldNotConflictWithGroup() throws Exception {
+            recipientRewriteTable.addGroupMapping(MappingSource.fromUser(BOB), ANDRE.asString());
+
+            Map<String, Object> errors = when()
+                .put("/bob")
+            .then()
+                .statusCode(HttpStatus.CONFLICT_409)
+                .contentType(ContentType.JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", HttpStatus.CONFLICT_409)
+                .containsEntry("type", "WrongState")
+                .containsEntry("message", "'bob@linagora.com' already have associated mappings: group:andre@linagora.com");
+        }
+
+        @Test
+        void createTeamMailboxShouldNotConflictWithAlias() throws Exception {
+            recipientRewriteTable.addAliasMapping(MappingSource.fromUser(BOB), ANDRE.asString());
+
+            Map<String, Object> errors = when()
+                .put("/bob")
+            .then()
+                .statusCode(HttpStatus.CONFLICT_409)
+                .contentType(ContentType.JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", HttpStatus.CONFLICT_409)
+                .containsEntry("type", "WrongState")
+                .containsEntry("message", "'bob@linagora.com' already have associated mappings: alias:andre@linagora.com");
+        }
     }
 
     @Nested

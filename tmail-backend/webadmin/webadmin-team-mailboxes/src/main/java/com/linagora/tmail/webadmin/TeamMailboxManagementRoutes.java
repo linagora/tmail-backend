@@ -4,6 +4,7 @@ import javax.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
+import org.apache.james.rrt.api.MappingConflictException;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
@@ -145,8 +146,16 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             Domain domain = extractDomain(request);
             TeamMailboxName teamMailboxName = extractName(request);
-            Mono.from(teamMailboxRepository.createTeamMailbox(new TeamMailbox(domain, teamMailboxName))).block();
-            return Responses.returnNoContent(response);
+            return Mono.from(teamMailboxRepository.createTeamMailbox(new TeamMailbox(domain, teamMailboxName)))
+                .then(Mono.just(Responses.returnNoContent(response)))
+                .onErrorResume(MappingConflictException.class, e -> {
+                    throw ErrorResponder.builder()
+                        .statusCode(HttpStatus.CONFLICT_409)
+                        .type(ErrorResponder.ErrorType.WRONG_STATE)
+                        .message(e.getMessage())
+                        .haltError();
+                })
+                .block();
         };
     }
 

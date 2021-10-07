@@ -1,7 +1,5 @@
 package com.linagora.tmail.team
 
-import java.util
-
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{ANDRE, BOB, TEAM_MAILBOX, TEAM_MAILBOX_2, TEAM_MAILBOX_USER, TEAM_MAILBOX_USERNAME, TEAM_MAILBOX_USERNAME_2, TEAM_MAILBOX_USER_2}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
@@ -14,6 +12,7 @@ import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.util
 import scala.jdk.CollectionConverters._
 
 object TeamMailboxRepositoryContract {
