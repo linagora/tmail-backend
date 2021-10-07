@@ -37,9 +37,14 @@ object TeamMailboxName {
       .left
       .map(new IllegalArgumentException(_))
 
+  def fromString(value: String): Either[IllegalArgumentException, TeamMailboxName] =
+    validate(value)
+      .map(TeamMailboxName(_))
 }
 
-case class TeamMailboxName(value: TeamMailboxNameType)
+case class TeamMailboxName(value: TeamMailboxNameType) {
+  def asString(): String = value.value
+}
 
 object TeamMailbox {
   def from(mailboxPath: MailboxPath): Option[TeamMailbox] = mailboxPath.getNamespace match {
@@ -54,6 +59,11 @@ object TeamMailbox {
       }
     case _ => None
   }
+
+  def fromJava(domain: Domain, teamMailboxName: String): Option[TeamMailbox] =
+    TeamMailboxName.fromString(teamMailboxName)
+      .map(teamMailboxName => TeamMailbox(domain, teamMailboxName))
+      .toOption
 }
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
