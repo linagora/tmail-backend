@@ -26,6 +26,7 @@ import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HE
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.mime4j.dom.Message
+import org.apache.james.mime4j.stream.RawField
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
 import org.assertj.core.api.Assertions.assertThat
@@ -1836,6 +1837,86 @@ trait TeamMailboxesContract {
            |        ]
            |    ]
            |}""".stripMargin)
+  }
+
+  @Test
+  def threadGetShouldHandleTeamMailboxEmail(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val message1: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setMessageId("abc")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    val result = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessageAndGetAppendResult(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message1))
+    val messageId1 = result.getId.getMessageId.serialize()
+    val threadId = result
+      .getThreadId
+      .getBaseMessageId
+      .serialize()
+    val message2: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setMessageId("abc")
+      .setField(new RawField("In-Reply-To", "abc"))
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    val messageId2 = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message2))
+      .getMessageId
+      .serialize()
+
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [["Thread/get", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "ids": ["$threadId"]
+         |    }, "c1"]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
+        s"""
+           |{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Thread/get",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "list": [
+           |                    {
+           |                        "id": "$threadId",
+           |                        "emailIds": ["$messageId1", "$messageId2"]
+           |                    }
+           |                ],
+           |                "notFound": []
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}
+           |""".stripMargin)
   }
 
 }
