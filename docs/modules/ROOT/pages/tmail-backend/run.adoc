@@ -1,4 +1,4 @@
-= Run TMail in Production
+= Run TMail Distributed version
 :navtitle: Run TMail
 
 This server is the distributed version of TMail relying on:
@@ -31,10 +31,17 @@ docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single
 docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
 ....
 
-Before running the TMail distributed server, you need to generate a RSA key pair. This is something up to you to generate
-the keys with necessary certificates related to your production environment domain.
+To be able to run Tmail distributed server, you need to generate a RSA key pair first.
+A really easy way to generate a basic RSA key pair is like this:
 
-When you have your RSA key pair ready, then you can finally start the TMail distributed server:
+....
+# private key
+openssl genrsa -out jwt_privatekey 4096
+# public key
+openssl rsa -in jwt_privatekey -pubout > jwt_publickey
+....
+
+Then you can bind them when starting the TMail docker container:
 
 ....
 docker run --network emaily --hostname HOSTNAME \
@@ -48,7 +55,11 @@ Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContaine
 to pass extra JVM flags. For instance:
 
 ....
-docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
+docker run --network emaily --hostname HOSTNAME -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
+-p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
+--name james -t linagora/tmail-backend:distributed-branch-master
 ....
 
 === With docker-compose
