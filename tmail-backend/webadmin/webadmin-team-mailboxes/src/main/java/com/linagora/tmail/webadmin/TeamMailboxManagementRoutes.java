@@ -9,7 +9,6 @@ import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.james.webadmin.utils.Responses;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxName;
 import com.linagora.tmail.team.TeamMailboxRepository;
@@ -84,16 +83,15 @@ public class TeamMailboxManagementRoutes implements Routes {
         return TeamMailboxName.fromJava(request.params(TEAM_MAILBOX_NAME_PARAM))
             .fold(illegalArgumentException -> {
                 throw illegalArgumentException;
-            }, teamMailboxName1 -> teamMailboxName1);
+            }, x -> x);
     }
 
     public Route getTeamMailboxesByDomain() {
         return (request, response) -> {
             Domain domain = extractDomain(request);
-            return Flux.from(teamMailboxRepository.listTeamMailboxes(domain)).collectList().block()
-                .stream()
+            return Flux.from(teamMailboxRepository.listTeamMailboxes(domain))
                 .map(TeamMailboxResponse::from)
-                .collect(ImmutableList.toImmutableList());
+                .collectList().block();
         };
     }
 
