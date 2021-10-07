@@ -1003,9 +1003,9 @@ trait TeamMailboxesContract {
       val response1 = `given`
         .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
         .body(request2)
-        .when
+      .when
         .post
-        .`then`
+      .`then`
         .statusCode(SC_OK)
         .contentType(JSON)
         .extract
