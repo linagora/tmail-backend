@@ -105,9 +105,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
     val request =s"""{
                     |  "using": [
@@ -182,13 +180,9 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.inboxPath)
 
-    val id2 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id2 = mailboxId(server, teamMailbox.mailboxPath)
 
     val request =s"""{
                     |  "using": [
@@ -264,13 +258,9 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.sentPath)
 
-    val id2 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id2 = mailboxId(server, teamMailbox.mailboxPath)
 
     val request =s"""{
                     |  "using": [
@@ -346,17 +336,11 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.sentPath)
 
-    val id2 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id2 = mailboxId(server, teamMailbox.mailboxPath)
 
-    val id3 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id3 = mailboxId(server, teamMailbox.inboxPath)
 
     val request =s"""{
                     |  "using": [
@@ -406,17 +390,11 @@ trait TeamMailboxesContract {
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.sentPath)
 
-    val id2 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id2 = mailboxId(server, teamMailbox.mailboxPath)
 
-    val id3 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id3 = mailboxId(server, teamMailbox.inboxPath)
 
     val request =s"""{
                     |  "using": [
@@ -461,6 +439,12 @@ trait TeamMailboxesContract {
            |}""".stripMargin)
   }
 
+  private def mailboxId(server: GuiceJamesServer, path: MailboxPath) = {
+    server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(path.getNamespace, path.getUser.asString(), path.getName)
+      .serialize()
+  }
+
   @Test
   def mailboxGetShouldNotListRightsOfOthers(server: GuiceJamesServer): Unit = {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
@@ -469,9 +453,7 @@ trait TeamMailboxesContract {
       .addMember(teamMailbox, BOB)
       .addMember(teamMailbox, CEDRIC)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
     val request =s"""{
                     |  "using": [
@@ -546,9 +528,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
     val request =
       s"""{
@@ -610,9 +590,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.inboxPath)
 
     val request =
       s"""{
@@ -672,9 +650,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.inboxPath)
 
     val request =
       s"""{
@@ -740,13 +716,9 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.inboxPath)
 
-    val id2 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
-      .serialize()
+    val id2 = mailboxId(server, teamMailbox.sentPath)
 
     val request =
       s"""{
@@ -808,9 +780,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.inboxPath)
 
     val request =
       s"""{
@@ -898,9 +868,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
     val request =
       s"""{
@@ -1065,17 +1033,11 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
-    val id2 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id2 = mailboxId(server, teamMailbox.inboxPath)
 
-    val id3 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
-      .serialize()
+    val id3 = mailboxId(server, teamMailbox.sentPath)
 
     val request =
       s"""{
@@ -1151,17 +1113,11 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
-    val id2 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.inboxPath.getNamespace, teamMailbox.inboxPath.getUser.asString(), teamMailbox.inboxPath.getName)
-      .serialize()
+    val id2 = mailboxId(server, teamMailbox.inboxPath)
 
-    val id3 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.sentPath.getNamespace, teamMailbox.sentPath.getUser.asString(), teamMailbox.sentPath.getName)
-      .serialize()
+    val id3 = mailboxId(server, teamMailbox.sentPath)
 
     val oldState = waitForNextState(server, AccountId.fromUsername(BOB), originalState)
 
@@ -1450,9 +1406,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
     val message: Message = Message.Builder
       .of
@@ -1792,9 +1746,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id = mailboxId(server, teamMailbox.mailboxPath)
 
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
     val message: Message = Message.Builder
@@ -1874,9 +1826,7 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id1 = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
-      .serialize()
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
     val request =
       s"""{
