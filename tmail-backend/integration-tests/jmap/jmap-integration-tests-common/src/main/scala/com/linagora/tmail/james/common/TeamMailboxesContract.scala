@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.common
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -23,7 +24,7 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
-import org.apache.james.jmap.core.UTCDate
+import org.apache.james.jmap.core.{PushState, UTCDate, UuidState}
 import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
@@ -41,6 +42,15 @@ import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsArray, Json}
 import reactor.core.scala.publisher.SMono
+import sttp.capabilities.WebSockets
+import sttp.client3.monad.IdMonad
+import sttp.client3.okhttp.OkHttpSyncBackend
+import sttp.client3.{Identity, RequestT, SttpBackend, asWebSocket, basicRequest}
+import sttp.model.Uri
+import sttp.monad.MonadError
+import sttp.monad.syntax.MonadErrorOps
+import sttp.ws.WebSocketFrame
+import sttp.ws.WebSocketFrame.Text
 
 class TeamMailboxProbeModule extends AbstractModule {
   override def configure(): Unit = {
@@ -72,6 +82,8 @@ trait TeamMailboxesContract {
     .and.`with`.pollDelay(slowPacedPollInterval)
     .await
   private lazy val awaitAtMostTenSeconds = calmlyAwait.atMost(10, TimeUnit.SECONDS)
+  private lazy val backend: SttpBackend[Identity, WebSockets] = OkHttpSyncBackend()
+  private lazy implicit val monadError: MonadError[Identity] = IdMonad
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -2075,4 +2087,78 @@ trait TeamMailboxesContract {
            |""".stripMargin)
   }
 
+  @Test
+  def webSocketShouldPushTeamMailboxStateChanges(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val bobPath = MailboxPath.inbox(BOB)
+    val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobPath)
+    val accountId: AccountId = AccountId.fromUsername(BOB)
+    Thread.sleep(100)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+
+    val response: Either[String, String] =
+      authenticatedRequest(server)
+        .response(asWebSocket[Identity, String] {
+          ws =>
+            ws.send(WebSocketFrame.text(
+              """{
+                |  "@type": "WebSocketPushEnable",
+                |  "dataTypes": ["Mailbox", "Email"]
+                |}""".stripMargin))
+
+            Thread.sleep(100)
+
+            server.getProbe(classOf[MailboxProbeImpl])
+              .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+              .getMessageId.serialize()
+
+            Thread.sleep(100)
+
+            ws.receive()
+              .map { case t: Text =>
+                t.payload
+              }
+        })
+        .send(backend)
+        .body
+
+    Thread.sleep(100)
+    val jmapGuiceProbe: JmapGuiceProbe = server.getProbe(classOf[JmapGuiceProbe])
+    val emailState: State = jmapGuiceProbe.getLatestEmailState(accountId)
+    val mailboxState: State = jmapGuiceProbe.getLatestMailboxState(accountId)
+
+    val globalState: String = PushState.fromOption(Some(UuidState.fromJava(mailboxState)), Some(UuidState.fromJava(emailState))).get.value
+
+    assertThatJson(response.toOption.get)
+      .isEqualTo(
+        s"""{
+           |  "@type":"StateChange",
+           |  "changed":{
+           |    "$ACCOUNT_ID":{
+           |      "Email": "${emailState.getValue}",
+           |      "Mailbox":"${mailboxState.getValue}"}
+           |    },
+           |    "pushState":"$globalState"
+           |  }
+           |}""".stripMargin)
+  }
+
+  private def authenticatedRequest(server: GuiceJamesServer): RequestT[Identity, Either[String, String], Any] = {
+    val port = server.getProbe(classOf[JmapGuiceProbe])
+      .getJmapPort
+      .getValue
+
+    basicRequest.get(Uri.apply(new URI(s"ws://127.0.0.1:$port/jmap/ws")))
+      .header("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
+      .header("Accept", ACCEPT_RFC8621_VERSION_HEADER)
+  }
 }
