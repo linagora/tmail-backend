@@ -1606,7 +1606,7 @@ trait TeamMailboxesContract {
            |                "notFound": [],
            |                "list": [
            |                    {
-           |                        "mailboxIds":{"$id":true}
+           |                        "mailboxIds":{"$id":true},
            |                        "id": "$messageId"
            |                    }
            |                ]
