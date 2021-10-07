@@ -64,6 +64,15 @@ object TeamMailbox {
     TeamMailboxName.fromString(teamMailboxName)
       .map(teamMailboxName => TeamMailbox(domain, teamMailboxName))
       .toOption
+
+  def asTeamMailbox(mailAddress: MailAddress): Option[TeamMailbox] = for {
+    name <- TeamMailboxName.validate(mailAddress.getLocalPart)
+      .map(nameValue => TeamMailboxName(nameValue))
+      .toOption
+    domain = mailAddress.getDomain
+  } yield {
+    TeamMailbox(domain, name)
+  }
 }
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {

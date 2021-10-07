@@ -1,6 +1,8 @@
 package com.linagora.tmail.team
 
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{TEAM_MAILBOX_USER, TEAM_MAILBOX_USERNAME}
+import eu.timepit.refined.auto._
+import org.apache.james.core.{Domain, MailAddress}
 import org.apache.james.mailbox.model.MailboxPath
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -24,13 +26,25 @@ class TeamMailboxTest {
   @Test
   def fromMailboxPathShouldReturnTeamMailboxWhenValid(): Unit = {
     assertThat(TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales")).toJava)
-      .contains(TeamMailbox.apply(TEAM_MAILBOX_USER, TeamMailboxName.apply(TeamMailboxName.validate("sales").toOption.get)))
+      .contains(TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sales")))
   }
 
   @Test
   def fromMailboxPathShouldReturnTeamMailboxWhenValidSubMailbox(): Unit = {
     assertThat(TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales.INBOX")).toJava)
-      .contains(TeamMailbox.apply(TEAM_MAILBOX_USER, TeamMailboxName.apply(TeamMailboxName.validate("sales").toOption.get)))
+      .contains(TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sales")))
+  }
+
+  @Test
+  def asTeamMailboxMailAddressShouldReturnTeamMailboxWhenValid(): Unit = {
+    assertThat(TeamMailbox.asTeamMailbox(new MailAddress("sales@linagora.com")).toJava)
+      .contains(TeamMailbox(Domain.of("linagora.com"), TeamMailboxName("sales")))
+  }
+
+  @Test
+  def asTeamMailboxMailAddressShouldReturnEmptyWhenInvalid(): Unit = {
+    assertThat(TeamMailbox.asTeamMailbox(new MailAddress("sales.invaalid@linagora.com")).toJava)
+      .isEmpty
   }
 
   @Test
