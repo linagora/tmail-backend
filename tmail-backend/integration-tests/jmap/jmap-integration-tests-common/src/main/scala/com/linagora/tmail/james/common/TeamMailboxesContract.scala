@@ -2109,7 +2109,7 @@ trait TeamMailboxesContract {
       .getValue
 
     basicRequest.get(Uri.apply(new URI(s"ws://127.0.0.1:$port/jmap/ws")))
-      .header("Authorization", "Basic Ym9iQGRvbWFpbi50bGQ6Ym9icGFzc3dvcmQ=")
+      .auth.basic(BOB.asString(), BOB_PASSWORD)
       .header("Accept", ACCEPT_RFC8621_VERSION_HEADER)
   }
 }
