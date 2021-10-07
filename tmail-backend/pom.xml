@@ -38,7 +38,7 @@
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
 
-        <module>webadmin</module>
+        <module>webadmin/webadmin-team-mailboxes</module>
     </modules>
 
     <properties>

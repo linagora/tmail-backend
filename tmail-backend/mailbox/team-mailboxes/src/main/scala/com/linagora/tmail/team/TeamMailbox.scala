@@ -37,14 +37,13 @@ object TeamMailboxName {
       .left
       .map(new IllegalArgumentException(_))
 
-  def fromJava(value: java.lang.String): Option[TeamMailboxName] =
+  def fromJava(value: java.lang.String): Either[IllegalArgumentException, TeamMailboxName] =
     validate(value)
       .map(value1 => TeamMailboxName(value1))
-      .toOption
 }
 
 case class TeamMailboxName(value: TeamMailboxNameType) {
-  def valueAsJava(): java.lang.String = value.value
+  def asJava(): java.lang.String = value.value
 }
 
 object TeamMailbox {
@@ -61,9 +60,10 @@ object TeamMailbox {
     case _ => None
   }
 
-  def fromJava(domain: Domain, teamMailboxName: String): Option[TeamMailbox] =
+  def fromJava(domain: Domain, teamMailboxName: java.lang.String): Option[TeamMailbox] =
     TeamMailboxName.fromJava(teamMailboxName)
       .map(teamMailboxName => TeamMailbox(domain, teamMailboxName))
+      .toOption
 }
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
@@ -74,6 +74,8 @@ case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
   def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.${MailboxConstants.INBOX}")
 
   def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.Sent")
+
+  def asMailAddress: MailAddress = new MailAddress(mailboxName.value.value, domain)
 }
 
 case class TeamMailboxNotFoundException() extends RuntimeException
