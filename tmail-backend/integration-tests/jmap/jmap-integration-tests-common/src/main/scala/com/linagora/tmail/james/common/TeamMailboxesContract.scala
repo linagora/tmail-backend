@@ -1018,7 +1018,8 @@ trait TeamMailboxesContract {
         .\("created")
         .get.asInstanceOf[JsArray].value.size
 
-      assertThat(createdSize).isEqualTo(6)
+      val systemMailboxCount = 6
+      assertThat(createdSize).isEqualTo(systemMailboxCount)
     }
 
     jmapGuiceProbe.getLatestMailboxState(AccountId.fromUsername(BOB))
