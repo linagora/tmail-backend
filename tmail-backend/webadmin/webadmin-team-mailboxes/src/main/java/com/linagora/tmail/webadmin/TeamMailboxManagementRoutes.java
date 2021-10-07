@@ -3,18 +3,24 @@ package com.linagora.tmail.webadmin;
 import javax.inject.Inject;
 
 import org.apache.james.core.Domain;
+import org.apache.james.core.Username;
+import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.james.webadmin.utils.Responses;
+import org.eclipse.jetty.http.HttpStatus;
 
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxName;
+import com.linagora.tmail.team.TeamMailboxNotFoundException;
 import com.linagora.tmail.team.TeamMailboxRepository;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import spark.HaltException;
 import spark.Request;
 import spark.Route;
 import spark.Service;
@@ -49,9 +55,23 @@ public class TeamMailboxManagementRoutes implements Routes {
         }
     }
 
+    static class TeamMailboxMemberResponse {
+        private final Username username;
+
+        TeamMailboxMemberResponse(Username username) {
+            this.username = username;
+        }
+
+        public String getUsername() {
+            return username.asString();
+        }
+    }
+
     private static final String TEAM_MAILBOX_DOMAIN_PARAM = ":dom";
     private static final String TEAM_MAILBOX_NAME_PARAM = ":name";
-    public static final String BASE_PATH = "/domains/" + TEAM_MAILBOX_DOMAIN_PARAM + "/team-mailboxes";
+    private static final String MEMBER_USERNAME_PARAM = ":username";
+    public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
+    public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
 
     private final TeamMailboxRepository teamMailboxRepository;
     private final JsonTransformer jsonTransformer;
@@ -73,6 +93,10 @@ public class TeamMailboxManagementRoutes implements Routes {
         service.get(BASE_PATH, getTeamMailboxesByDomain(), jsonTransformer);
         service.delete(BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM, deleteTeamMailbox(), jsonTransformer);
         service.put(BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM, addTeamMailbox(), jsonTransformer);
+
+        service.get(MEMBER_BASE_PATH, getMembers(), jsonTransformer);
+        service.delete(MEMBER_BASE_PATH + Constants.SEPARATOR + MEMBER_USERNAME_PARAM, deleteMember(), jsonTransformer);
+        service.put(MEMBER_BASE_PATH + Constants.SEPARATOR + MEMBER_USERNAME_PARAM, addMember(), jsonTransformer);
     }
 
     private Domain extractDomain(Request request) {
@@ -84,6 +108,19 @@ public class TeamMailboxManagementRoutes implements Routes {
             .fold(e -> {
                 throw e;
             }, x -> x);
+    }
+
+    private Username extractMemberUser(Request request) {
+        return Username.of(request.params(MEMBER_USERNAME_PARAM));
+    }
+
+    private HaltException teamMailboxNotFoundException(TeamMailbox teamMailbox, Exception exception) {
+        return ErrorResponder.builder()
+            .statusCode(HttpStatus.NOT_FOUND_404)
+            .type(ErrorResponder.ErrorType.NOT_FOUND)
+            .message("Invalid get on mailbox team members")
+            .cause(exception)
+            .haltError();
     }
 
     public Route getTeamMailboxesByDomain() {
@@ -113,4 +150,38 @@ public class TeamMailboxManagementRoutes implements Routes {
             return Responses.returnNoContent(response);
         };
     }
+
+    public Route getMembers() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+            return Flux.from(teamMailboxRepository.listMembers(teamMailbox))
+                .map(TeamMailboxMemberResponse::new)
+                .onErrorMap(MailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
+                .collectList()
+                .block();
+        };
+    }
+
+    public Route addMember() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+            Username addUser = extractMemberUser(request);
+            Mono.from(teamMailboxRepository.addMember(teamMailbox, addUser))
+                .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
+                .block();
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route deleteMember() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+            Username removeUser = extractMemberUser(request);
+            Mono.from(teamMailboxRepository.removeMember(teamMailbox, removeUser))
+                .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
+                .block();
+            return Responses.returnNoContent(response);
+        };
+    }
+
 }

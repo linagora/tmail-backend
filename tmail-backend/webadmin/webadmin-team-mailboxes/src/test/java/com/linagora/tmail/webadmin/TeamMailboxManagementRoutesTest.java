@@ -8,6 +8,7 @@ import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
+import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
 
@@ -38,6 +39,7 @@ import reactor.core.publisher.Mono;
 
 public class TeamMailboxManagementRoutesTest {
     private static final String BASE_PATH = "/domains/%s/team-mailboxes";
+    private static final String TEAM_MEMBER_BASE_PATH = BASE_PATH + "/%s/members";
     private static Stream<Arguments> namespaceInvalidSource() {
         return Stream.of(
             Arguments.of("namespace."),
@@ -261,6 +263,36 @@ public class TeamMailboxManagementRoutesTest {
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "Invalid arguments supplied in the user request")
                 .containsEntry("details", "Domain can not be empty nor contain `@` nor `/`");
+        }
+    }
+
+    @Nested
+    class GetTeamMailboxMembersTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MEMBER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void getTeamMailboxMembersShouldReturnErrorWhenTeamMailboxDoesNotExists() {
+            Map<String, Object> errors = given()
+                .get()
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "Invalid get on mailbox team members")
+                .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
         }
     }
 }
