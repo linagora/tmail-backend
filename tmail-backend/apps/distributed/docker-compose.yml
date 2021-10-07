@@ -26,6 +26,12 @@ services:
       - "8000:8000"
     networks:
       - emaily
+    volumes:
+      - [/PATH/TO/RSA_PUBLICKEY]:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - [/PATH/TO/RSA_PRIVATEKEY]:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+      # Key generation:
+      # openssl genrsa -out jwt_privatekey 4096
+      # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2

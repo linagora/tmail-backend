@@ -1,4 +1,4 @@
-= Run TMail in Production
+= Run TMail Distributed version
 :navtitle: Run TMail
 
 This server is the distributed version of TMail relying on:
@@ -31,17 +31,35 @@ docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single
 docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
 ....
 
-Then you can finally start the TMail distributed server:
+To be able to run Tmail distributed server, you need to generate a RSA key pair first.
+A really easy way to generate a basic RSA key pair is like this:
 
 ....
-docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
+# private key
+openssl genrsa -out jwt_privatekey 4096
+# public key
+openssl rsa -in jwt_privatekey -pubout > jwt_publickey
+....
+
+Then you can bind them when starting the TMail docker container:
+
+....
+docker run --network emaily --hostname HOSTNAME \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
+-p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
+--name james -t linagora/tmail-backend:distributed-branch-master
 ....
 
 Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags)
 to pass extra JVM flags. For instance:
 
 ....
-docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
+docker run --network emaily --hostname HOSTNAME -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
+-p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
+--name james -t linagora/tmail-backend:distributed-branch-master
 ....
 
 === With docker-compose
@@ -49,7 +67,18 @@ docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostna
 link:https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed/docker-compose.yml[There is a docker-compose file]
 you can use to run everything in the same network at once.
 
-For this, just start it:
+First you need to generate your RSA keys and replace the local paths by the correct ones pointing to your keys:
+
+....
+services:
+  james:
+    [...]
+    volumes:
+      - [/PATH/TO/RSA_PUBLICKEY]:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - [/PATH/TO/RSA_PRIVATEKEY]:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+....
+
+Then, you can just start it:
 
 ....
 docker-compose up -d
@@ -63,7 +92,11 @@ Disabled by default, its java agent can easily be enabled.
 If you run the distributed server manually, you can do like this:
 
 ....
-docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
+docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+--mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
+-p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
+--name james -t linagora/tmail-backend:distributed-branch-master
 ....
 
 If you use the docker-compose file, you can add an environment variable to the distributed server container:
