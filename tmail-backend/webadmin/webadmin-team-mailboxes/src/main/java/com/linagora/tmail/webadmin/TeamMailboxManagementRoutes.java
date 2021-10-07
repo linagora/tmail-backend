@@ -23,7 +23,7 @@ public class TeamMailboxManagementRoutes implements Routes {
     static class TeamMailboxResponse {
         static TeamMailboxResponse from(TeamMailbox teamMailbox) {
             Preconditions.checkNotNull(teamMailbox);
-            return new TeamMailboxResponse(teamMailbox.mailboxName().asJava(), teamMailbox.asMailAddress().asString());
+            return new TeamMailboxResponse(teamMailbox.mailboxName().asString(), teamMailbox.asMailAddress().asString());
         }
 
         static TeamMailboxResponse of(String name, String emailAddress) {
@@ -80,9 +80,9 @@ public class TeamMailboxManagementRoutes implements Routes {
     }
 
     private TeamMailboxName extractName(Request request) {
-        return TeamMailboxName.fromJava(request.params(TEAM_MAILBOX_NAME_PARAM))
-            .fold(illegalArgumentException -> {
-                throw illegalArgumentException;
+        return TeamMailboxName.fromString(request.params(TEAM_MAILBOX_NAME_PARAM))
+            .fold(e -> {
+                throw e;
             }, x -> x);
     }
 

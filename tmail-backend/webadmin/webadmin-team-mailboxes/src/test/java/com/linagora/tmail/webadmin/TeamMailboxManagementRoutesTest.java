@@ -43,7 +43,8 @@ public class TeamMailboxManagementRoutesTest {
             Arguments.of("namespace."),
             Arguments.of(".namespace"),
             Arguments.of("."),
-            Arguments.of("..")
+            Arguments.of(".."),
+            Arguments.of("marketing.team")
         );
     }
 
