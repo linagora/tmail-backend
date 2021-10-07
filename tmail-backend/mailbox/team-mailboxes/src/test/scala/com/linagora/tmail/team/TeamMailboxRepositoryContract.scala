@@ -54,6 +54,20 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
+  def existsShouldReturnTrueAfterCreate(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
+
+    assertThat(SMono.fromPublisher(testee.exists(TEAM_MAILBOX)).block())
+      .isTrue
+  }
+
+  @Test
+  def existsShouldReturnFalseByDefault(): Unit = {
+    assertThat(SMono.fromPublisher(testee.exists(TEAM_MAILBOX)).block())
+      .isFalse
+  }
+
+  @Test
   def createTeamMailboxShouldNotThrowWhenAssignMailboxExists(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
 

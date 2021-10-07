@@ -31,6 +31,8 @@ trait TeamMailboxRepository {
 
   def listMembers(teamMailbox: TeamMailbox): Publisher[Username]
 
+  def exists(teamMailbox: TeamMailbox): Publisher[Boolean]
+
 }
 
 object TeamMailboxRepositoryImpl {
@@ -164,7 +166,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .filter(teamMailbox1 => teamMailbox1.equals(teamMailbox))
       .hasElements
 
-  private def exists(teamMailbox: TeamMailbox): SMono[Boolean] =
+  def exists(teamMailbox: TeamMailbox): SMono[Boolean] =
     SMono.fromPublisher(mailboxManager.mailboxExists(teamMailbox.mailboxPath, createSession(teamMailbox)))
       .map(b => b)
 }
