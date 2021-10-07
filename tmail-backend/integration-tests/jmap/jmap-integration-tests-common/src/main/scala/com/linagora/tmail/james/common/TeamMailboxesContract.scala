@@ -2,6 +2,8 @@ package com.linagora.tmail.james.common
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.charset.StandardCharsets
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 import com.google.inject.AbstractModule
@@ -15,16 +17,17 @@ import javax.inject.Inject
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
-import org.apache.http.HttpStatus.SC_OK
+import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
+import org.apache.james.jmap.core.UTCDate
 import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.mime4j.dom.Message
@@ -62,6 +65,7 @@ class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) e
 }
 
 trait TeamMailboxesContract {
+  private lazy val UTC_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
   private lazy val slowPacedPollInterval = ONE_HUNDRED_MILLISECONDS
   private lazy val calmlyAwait = Awaitility.`with`
     .pollInterval(slowPacedPollInterval)
@@ -1425,6 +1429,120 @@ trait TeamMailboxesContract {
     val expectedResponse: String = new String(outputStream.toByteArray)
     assertThat(new ByteArrayInputStream(response.getBytes(StandardCharsets.UTF_8)))
       .hasContent(expectedResponse)
+  }
+
+  @Test
+  def uploadAndImportShouldReturnTeamMailboxEmail(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(teamMailbox.mailboxPath.getNamespace, teamMailbox.mailboxPath.getUser.asString(), teamMailbox.mailboxPath.getName)
+      .serialize()
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    val outputStream = new ByteArrayOutputStream()
+    new DefaultMessageWriter().writeMessage(message, outputStream)
+    val content: String = new String(outputStream.toByteArray)
+
+    val blobId: String = `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(content)
+    .when
+      .post(s"/upload/$ACCOUNT_ID")
+    .`then`
+      .statusCode(SC_CREATED)
+      .extract
+      .body
+      .jsonPath()
+      .getString("blobId")
+
+    val receivedAt = ZonedDateTime.now().minusDays(1)
+    val receivedAtString = UTCDate(receivedAt).asUTC.format(UTC_DATE_FORMAT)
+    val request = s"""{
+                     |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+                     |  "methodCalls": [
+                     |    ["Email/import",
+                     |      {
+                     |        "accountId": "$ACCOUNT_ID",
+                     |        "emails": {
+                     |           "K39": {
+                     |             "blobId": "$blobId",
+                     |             "mailboxIds": {
+                     |               "$id1": true
+                     |             },
+                     |             "keywords": {
+                     |               "toto": true
+                     |             },
+                     |             "receivedAt": "$receivedAtString"
+                     |           }
+                     |         }
+                     |      },
+                     |      "c1"],
+                     |    ["Email/get",
+                     |     {
+                     |       "accountId": "$ACCOUNT_ID",
+                     |       "ids": ["#K39"],
+                     |       "properties": ["mailboxIds", "keywords", "receivedAt"]
+                     |     },
+                     |     "c2"]
+                     |  ]
+                     |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState", "methodResponses[1][1].state",
+        "methodResponses[0][1].created.K39.id", "methodResponses[0][1].created.K39.threadId", "methodResponses[0][1].created.K39.blobId",
+        "methodResponses[0][1].created.K39.size", "methodResponses[1][1].list[0].id")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Email/import",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "created": {
+           |                    "K39": {}
+           |                }
+           |            },
+           |            "c1"
+           |        ],
+           |        [
+           |            "Email/get",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "notFound": [],
+           |                "list": [
+           |                    {
+           |                        "keywords": {"toto": true},
+           |                        "mailboxIds": {"1": true},
+           |                        "receivedAt": "$receivedAtString"
+           |                    }
+           |                ]
+           |            },
+           |            "c2"
+           |        ]
+           |    ]
+           |}""".stripMargin)
   }
 
   @Test
