@@ -109,3 +109,26 @@ Return codes:
 - `204` the user is now is no longer a member of the team mailbox (either was not a member or was effectively removed)
 - `400` invalid domain, team mailbox name or user name
 - `404` the domain was not found, the team mailbox cannot be found
+
+=== Listing the TeamMailboxes a user have access to
+
+....
+curl -XPUT http://ip:port/users/bob@domain.tld/team-mailboxes
+....
+
+Returns the list of Team Mailboxes `bob@domain.tld` user have access to :
+
+....
+[
+  {
+     "name": "marketing",
+     "emailAddress": "marketing@domain.tld"
+  },
+...
+]
+....
+
+Return codes:
+
+- `400` Invalid user
+- `404` User not found
