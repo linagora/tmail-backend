@@ -112,11 +112,11 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         addRightForMember(teamMailbox.inboxPath, user, session)
         addRightForMember(teamMailbox.sentPath, user, session)
       })
-      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
+      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .`then`()
   }
 
-  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession) =
+  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession): Unit =
     Try(mailboxManager.applyRightsCommand(
       path,
       MailboxACL.command
@@ -126,7 +126,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       session))
       .fold(_ => (), u => u)
 
-  private def removeRightForMember(path: MailboxPath, user: Username, session: MailboxSession) =
+  private def removeRightForMember(path: MailboxPath, user: Username, session: MailboxSession): Unit =
     Try(mailboxManager.applyRightsCommand(
       path,
       MailboxACL.command
@@ -145,7 +145,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         removeRightForMember(teamMailbox.inboxPath, user, session)
         removeRightForMember(teamMailbox.sentPath, user, session)
       })
-      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
+      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .`then`()
   }
 
