@@ -1,7 +1,7 @@
 = TMail: Additional WebAdmin routes
 :navtitle: Additional WebAdmin routes
 
-The following documents discusses additional webAdmin routes exposed by TMail.
+The following document discusses additional webAdmin routes exposed by TMail.
 
 It follows the conventions of xref:james-project:servers:distributed/operate/webadmin.adoc[existing routes for the Apache James
 Distributed Server].
@@ -116,7 +116,7 @@ Return codes:
 curl -XPUT http://ip:port/users/bob@domain.tld/team-mailboxes
 ....
 
-Returns the list of Team Mailboxes `bob@domain.tld` user have access to :
+Returns the list of Team Mailboxes `bob@domain.tld` user has access to :
 
 ....
 [
