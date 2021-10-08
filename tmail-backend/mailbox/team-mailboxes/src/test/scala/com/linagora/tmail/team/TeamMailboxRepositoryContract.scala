@@ -221,6 +221,12 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
+  def listMemberShouldThrowWhenTeamMailboxDoesNotExists(): Unit = {
+    assertThatThrownBy(()=>SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX)).collectSeq().block().asJava)
+      .isInstanceOf(classOf[TeamMailboxNotFoundException])
+  }
+
+  @Test
   def listTeamMailboxesByUserShouldReturnEmptyByDefault(): Unit = {
     assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(BOB)).collectSeq().block().asJava)
       .isEmpty()

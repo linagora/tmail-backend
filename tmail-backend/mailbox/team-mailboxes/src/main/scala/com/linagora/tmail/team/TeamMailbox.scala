@@ -85,4 +85,6 @@ case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
   def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.Sent")
 }
 
-case class TeamMailboxNotFoundException() extends RuntimeException
+case class TeamMailboxNotFoundException(teamMailbox: TeamMailbox) extends RuntimeException {
+  override def getMessage: String = s"${teamMailbox.mailboxPath.asString()} can not be found"
+}

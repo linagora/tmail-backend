@@ -114,11 +114,11 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         addRightForMember(teamMailbox.inboxPath, user, session)
         addRightForMember(teamMailbox.sentPath, user, session)
       })
-      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
+      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .`then`()
   }
 
-  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession) =
+  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession): Unit =
     Try(mailboxManager.applyRightsCommand(
       path,
       MailboxACL.command
@@ -128,7 +128,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       session))
       .fold(_ => (), u => u)
 
-  private def removeRightForMember(path: MailboxPath, user: Username, session: MailboxSession) =
+  private def removeRightForMember(path: MailboxPath, user: Username, session: MailboxSession): Unit =
     Try(mailboxManager.applyRightsCommand(
       path,
       MailboxACL.command
@@ -147,13 +147,16 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         removeRightForMember(teamMailbox.inboxPath, user, session)
         removeRightForMember(teamMailbox.sentPath, user, session)
       })
-      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException()))
+      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .`then`()
   }
 
   override def listMembers(teamMailbox: TeamMailbox): Publisher[Username] = {
     val session: MailboxSession = createSession(teamMailbox)
-    SMono.fromCallable(() => mailboxManager.listRights(teamMailbox.mailboxPath, session))
+    SMono.fromPublisher(exists(teamMailbox))
+      .filter(b => b)
+      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
+      .map(_ => mailboxManager.listRights(teamMailbox.mailboxPath, session))
       .flatMapIterable(mailboxACL => mailboxACL.getEntries.asScala)
       .map(entryKeyAndRights => entryKeyAndRights._1)
       .filter(entryKey => NameType.user.equals(entryKey.getNameType))
