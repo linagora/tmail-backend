@@ -11,6 +11,7 @@
 *** xref:tmail-backend/jmap-extensions/jmapGpgExtension.adoc[]
 *** xref:tmail-backend/jmap-extensions/longLivedTokens.adoc[]
 *** xref:tmail-backend/jmap-extensions/ticketAuthentication.adoc[]
+** xref:tmail-backend/webadmin.adoc[]
 * xref:tmail-mobile/index.adoc[]
 * xref:ethic.adoc[]
 * xref:roadmap.adoc[]

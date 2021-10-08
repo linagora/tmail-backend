@@ -1,0 +1,111 @@
+= TMail: Additional WebAdmin routes
+:navtitle: Additional WebAdmin routes
+
+The following documents discusses additional webAdmin routes exposed by TMail.
+
+It follows the conventions of xref:james-project:servers:distributed/operate/webadmin.adoc[existing routes for the Apache James
+Distributed Server].
+
+== Team Mailboxes
+
+=== Listing Team Mailboxes for a domain
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes
+....
+
+Returns the list of Team Mailboxes for a given domain:
+
+....
+[
+  {
+     "name": "marketing",
+     "emailAddress": "marketing@domain.tld"
+  },
+...
+]
+....
+
+Return codes:
+
+ - `400` Invalid domain
+ - `404` Domain not found
+
+=== Creating a Team Mailbox
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketting
+....
+
+Allows to create a team mailbox.
+
+Return codes:
+
+ - `204` the team mailbox now exists (existed before or was created)
+ - `400` invalid alias or name
+ - `404` the domain was not found
+ - `409` the team mailbox uses an email address used by another entity (user, group, or an alias)
+
+=== Deleting a Team Mailbox
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketting
+....
+
+Allows to delete a team mailbox.
+
+Return codes:
+
+- `204` the team mailbox now no longer exists (did not exist prior the call or was effectively deleted)
+- `400` invalid alias or name
+- `404` the domain was not found
+
+=== Listing members of a Team Mailbox
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketting/members
+....
+
+Returns the list of members of the `marketing@domain.tld` team mailbox:
+
+....
+[
+  {
+     "username": "bob@domain.tld"
+  },
+...
+]
+....
+
+Return codes:
+
+- `400` Invalid domain
+- `404` Domain not found, or team mailbox not found
+
+=== Adding a member to a Team Mailbox
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/bob@domain.tld
+....
+
+Allows creating `bob@domain.tld` user as a member of `marketing@domain.tld` team mailbox.
+
+Return codes:
+
+- `204` the user is now a member of the team mailbox (either was already a member or was added)
+- `400` invalid domain, team mailbox name or user name
+- `404` the domain was not found, the team mailbox cannot be found
+
+=== Removing a member for a Team Mailbox
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/bob@domain.tld
+....
+
+Allows deleting `bob@domain.tld` user as a member of `marketing@domain.tld` team mailbox.
+
+Return codes:
+
+- `204` the user is now is no longer a member of the team mailbox (either was not a member or was effectively removed)
+- `400` invalid domain, team mailbox name or user name
+- `404` the domain was not found, the team mailbox cannot be found
