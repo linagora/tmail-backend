@@ -1,5 +1,7 @@
 package com.linagora.tmail.webadmin;
 
+import static com.linagora.tmail.webadmin.TeamMailboxFixture.ANDRE;
+import static com.linagora.tmail.webadmin.TeamMailboxFixture.BOB;
 import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX;
 import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX_2;
 import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX_DOMAIN;
@@ -34,6 +36,8 @@ import com.linagora.tmail.team.TeamMailboxRepository;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
 import io.restassured.RestAssured;
+import net.javacrumbs.jsonunit.core.Option;
+import net.javacrumbs.jsonunit.core.internal.Options;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -56,6 +60,13 @@ public class TeamMailboxManagementRoutesTest {
             Arguments.of("@")
         );
     }
+    private static Stream<Arguments> usernameInvalidSource() {
+        return Stream.of(
+            Arguments.of("@"),
+            Arguments.of("aa@aa@aa")
+        );
+    }
+
     private WebAdminServer webAdminServer;
     private TeamMailboxRepository teamMailboxRepository;
 
@@ -291,8 +302,245 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", NOT_FOUND_404)
                 .containsEntry("type", "notFound")
-                .containsEntry("message", "Invalid get on mailbox team members")
+                .containsEntry("message", "The requested team mailbox does not exists")
                 .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
+        }
+
+        @Test
+        void getTeamMailboxMembersShouldReturnEmptyByDefault() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            List<String> members = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .jsonPath()
+                .getList(".");
+
+            assertThat(members).isEmpty();
+        }
+
+        @Test
+        void getTeamMailboxMembersShouldReturnListEntryWhenHasSingleElement() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+            String response  = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .isEqualTo("[" +
+                    "    {" +
+                    "        \"username\": \"bob@linagora.com\"" +
+                    "    }" +
+                    "]");
+        }
+
+        @Test
+        void getTeamMailboxMembersShouldReturnListEntryWhenHasMultipleElement() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, ANDRE)).block();
+            String response  = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+                .isEqualTo("[" +
+                    "    {" +
+                    "        \"username\": \"bob@linagora.com\"" +
+                    "    }," +
+                    "    {" +
+                    "        \"username\": \"andre@linagora.com\"" +
+                    "    }" +
+                    "]");
+        }
+
+        @Test
+        void getTeamMailboxMembersShouldNotReturnEntriesOfAnotherTeamMailbox() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX_2)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX_2, BOB)).block();
+            String response  = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+                .isEqualTo("[]");
+        }
+    }
+
+    @Nested
+    class AddMemberTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MEMBER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void addMemberShouldReturnErrorWhenTeamMailboxDoesNotExists() {
+            Map<String, Object> errors = given()
+                .put("/" + BOB.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists")
+                .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.linagora.tmail.webadmin.TeamMailboxManagementRoutesTest#usernameInvalidSource")
+        void addMemberShouldReturnErrorWhenInvalidUser(String username) {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Map<String, Object> errors = given()
+                .put("/" + username)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid arguments supplied in the user request");
+        }
+
+        @Test
+        void addMemberShouldStoreAssignEntry() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            given()
+                .put("/" + BOB.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
+                .containsExactlyInAnyOrder(BOB);
+        }
+        @Test
+        void addMemberShouldReturn204StatusWhenUserAlreadyInTeamMailbox() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+            given()
+                .put("/" + BOB.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+    }
+
+    @Nested
+    class DeleteMemberTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MEMBER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void deleteMemberShouldReturnErrorWhenTeamMailboxDoesNotExists() {
+            Map<String, Object> errors = given()
+                .delete("/" + BOB.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists")
+                .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.linagora.tmail.webadmin.TeamMailboxManagementRoutesTest#usernameInvalidSource")
+        void deleteMemberShouldReturnErrorWhenInvalidUser(String username) {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Map<String, Object> errors = given()
+                .delete("/" + username)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid arguments supplied in the user request");
+        }
+
+        @Test
+        void deleteMemberShouldRemoveAssignEntry() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+            given()
+                .delete("/" + BOB.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
+                .doesNotContain(BOB);
+        }
+
+        @Test
+        void deleteMemberShouldReturn204StatusWhenUserAlreadyDoesNotInTeamMailbox() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            given()
+                .put("/" + BOB.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void deleteMemberShouldNotRemoveUnAssignEntry() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, ANDRE)).block();
+            given()
+                .delete("/" + BOB.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
+                .contains(ANDRE)
+                .doesNotContain(BOB);
         }
     }
 }

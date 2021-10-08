@@ -4,7 +4,6 @@ import javax.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
-import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
@@ -118,7 +117,7 @@ public class TeamMailboxManagementRoutes implements Routes {
         return ErrorResponder.builder()
             .statusCode(HttpStatus.NOT_FOUND_404)
             .type(ErrorResponder.ErrorType.NOT_FOUND)
-            .message("Invalid get on mailbox team members")
+            .message("The requested team mailbox does not exists")
             .cause(exception)
             .haltError();
     }
@@ -156,7 +155,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
             return Flux.from(teamMailboxRepository.listMembers(teamMailbox))
                 .map(TeamMailboxMemberResponse::new)
-                .onErrorMap(MailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
+                .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
                 .collectList()
                 .block();
         };
