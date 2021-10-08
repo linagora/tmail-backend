@@ -151,7 +151,10 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
 
   override def listMembers(teamMailbox: TeamMailbox): Publisher[Username] = {
     val session: MailboxSession = createSession(teamMailbox)
-    SMono.fromCallable(() => mailboxManager.listRights(teamMailbox.mailboxPath, session))
+    SMono.fromPublisher(exists(teamMailbox))
+      .filter(b => b)
+      .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
+      .map(_ => mailboxManager.listRights(teamMailbox.mailboxPath, session))
       .flatMapIterable(mailboxACL => mailboxACL.getEntries.asScala)
       .map(entryKeyAndRights => entryKeyAndRights._1)
       .filter(entryKey => NameType.user.equals(entryKey.getNameType))
