@@ -25,7 +25,7 @@ import spark.Route;
 import spark.Service;
 
 public class TeamMailboxManagementRoutes implements Routes {
-    static class TeamMailboxResponse {
+    public static class TeamMailboxResponse {
         static TeamMailboxResponse from(TeamMailbox teamMailbox) {
             Preconditions.checkNotNull(teamMailbox);
             return new TeamMailboxResponse(teamMailbox.mailboxName().asString(), teamMailbox.asMailAddress().asString());
