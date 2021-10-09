@@ -46,6 +46,7 @@ class TMailValidRcptHandlerTest {
         usersRepository.addUser(BOB, "12345");
 
         MemoryRecipientRewriteTable rrt = new MemoryRecipientRewriteTable();
+        rrt.setUsersRepository(usersRepository);
         rrt.setDomainList(domainList);
         rrt.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
         rrt.addAliasMapping(MappingSource.fromUser(BOB_ALIAS), BOB.asString());
