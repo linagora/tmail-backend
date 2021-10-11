@@ -2,13 +2,14 @@ package com.linagora.tmail.team
 
 import java.util.stream
 
+import javax.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.rrt.api.{AliasReverseResolver, RecipientRewriteTable}
 import org.apache.james.rrt.lib.CanSendFromImpl
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.SMono
 
-class TMailCanSendFrom(rrt: RecipientRewriteTable, aliasReverseResolver: AliasReverseResolver, teamMailboxRepository: TeamMailboxRepository) extends CanSendFromImpl(rrt, aliasReverseResolver) {
+class TMailCanSendFrom @Inject()(rrt: RecipientRewriteTable, aliasReverseResolver: AliasReverseResolver, teamMailboxRepository: TeamMailboxRepository) extends CanSendFromImpl(rrt, aliasReverseResolver) {
   override def userCanSendFrom(connectedUser: Username, fromUser: Username): Boolean =
     super.userCanSendFrom(connectedUser, fromUser) || validTeamMailbox(connectedUser, fromUser)
 
