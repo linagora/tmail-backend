@@ -25,8 +25,9 @@ import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.mailbox.DefaultMailboxes
 import org.apache.james.mailbox.MessageManager.AppendCommand
-import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.mailbox.model.{MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.mime4j.message.DefaultMessageWriter
 import org.apache.james.mime4j.stream.RawField
@@ -125,6 +126,78 @@ trait TeamMailboxesContract {
            |                        "mayDelete": false
            |                    }
            |                ]
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def EmailSubmissionSetGetShouldAcceptTeamMailbox(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setSender(s"marketing@${DOMAIN.asString()}")
+      .setFrom(s"marketing@${DOMAIN.asString()}")
+      .setTo(BOB.asString)
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+
+    val bobDraftsPath = MailboxPath.forUser(BOB, DefaultMailboxes.DRAFTS)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobDraftsPath)
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl]).appendMessage(BOB.asString(), bobDraftsPath, AppendCommand.builder()
+      .build(message))
+      .getMessageId
+
+    val request =s"""{
+                    |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:ietf:params:jmap:submission"],
+                    |  "methodCalls": [
+                    |     ["EmailSubmission/set", {
+                    |       "accountId": "$ACCOUNT_ID",
+                    |       "create": {
+                    |         "k1490": {
+                    |           "emailId": "${messageId.serialize}",
+                    |           "envelope": {
+                    |             "mailFrom": {"email": "marketing@${DOMAIN.asString()}"},
+                    |             "rcptTo": [{"email": "${BOB.asString}"}]
+                    |           }
+                    |         }
+                    |    }
+                    |  }, "c1"]]
+                    |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "EmailSubmission/set",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |                "created": {
+           |                    "k1490": "$${json-unit.ignore}"
+           |                }
            |            },
            |            "c1"
            |        ]
