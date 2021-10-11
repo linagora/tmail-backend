@@ -7,20 +7,16 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
-import com.google.inject.AbstractModule
-import com.google.inject.multibindings.Multibinder
-import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxRepository, TeamMailboxRepositoryImpl}
+import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
-import javax.inject.Inject
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
-import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
@@ -35,13 +31,12 @@ import org.apache.james.mime4j.dom.Message
 import org.apache.james.mime4j.message.DefaultMessageWriter
 import org.apache.james.mime4j.stream.RawField
 import org.apache.james.modules.MailboxProbeImpl
-import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
+import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsArray, Json}
-import reactor.core.scala.publisher.SMono
 import sttp.capabilities.WebSockets
 import sttp.client3.monad.IdMonad
 import sttp.client3.okhttp.OkHttpSyncBackend
@@ -51,28 +46,6 @@ import sttp.monad.MonadError
 import sttp.monad.syntax.MonadErrorOps
 import sttp.ws.WebSocketFrame
 import sttp.ws.WebSocketFrame.Text
-
-class TeamMailboxProbeModule extends AbstractModule {
-  override def configure(): Unit = {
-    bind(classOf[TeamMailboxRepository]).to(classOf[TeamMailboxRepositoryImpl])
-
-    Multibinder.newSetBinder(binder(), classOf[GuiceProbe])
-      .addBinding()
-      .to(classOf[TeamMailboxProbe])
-  }
-}
-
-class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) extends GuiceProbe {
-  def create(teamMailbox: TeamMailbox): TeamMailboxProbe = {
-    SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
-    this
-  }
-
-  def addMember(teamMailbox: TeamMailbox, member: Username): TeamMailboxProbe = {
-    SMono(teamMailboxRepository.addMember(teamMailbox, member)).block()
-    this
-  }
-}
 
 trait TeamMailboxesContract {
   private lazy val UTC_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
@@ -96,6 +69,67 @@ trait TeamMailboxesContract {
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .build
+  }
+
+  @Test
+  def identityGetShouldListTeamMailbox(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val request =s"""{
+                    |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:submission"],
+                    |  "methodCalls": [[
+                    |    "Identity/get",
+                    |    {
+                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "ids": null
+                    |    },
+                    |    "c1"]]
+                    |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Identity/get",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "list": [
+           |                    {
+           |                        "id": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                        "name": "bob@domain.tld",
+           |                        "email": "bob@domain.tld",
+           |                        "mayDelete": false
+           |                    },
+           |                    {
+           |                        "id": "8ce601ef7ebc085de7557f4354592ac072957939ad00f965e34773cf8edd75b3",
+           |                        "name": "marketing@domain.tld",
+           |                        "email": "marketing@domain.tld",
+           |                        "mayDelete": false
+           |                    }
+           |                ]
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
   }
 
   @Test
