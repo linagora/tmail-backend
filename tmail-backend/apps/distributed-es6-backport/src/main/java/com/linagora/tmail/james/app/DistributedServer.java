@@ -100,6 +100,7 @@ import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.team.TeamMailboxModule;
 
 public class DistributedServer {
     public static final Module WEBADMIN = Modules.combine(
@@ -194,7 +195,8 @@ public class DistributedServer {
                 new JMAPEventBusModule(),
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEventBusModule(),
-                new DistributedTaskSerializationModule());
+                new DistributedTaskSerializationModule(),
+                new TeamMailboxModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()

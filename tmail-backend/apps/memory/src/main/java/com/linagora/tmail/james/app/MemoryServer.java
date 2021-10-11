@@ -56,6 +56,7 @@ import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.team.TeamMailboxModule;
 
 public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
@@ -95,13 +96,14 @@ public class MemoryServer {
         new TicketRoutesModule())
         .with(new TeamMailboxJmapModule());
 
-    public static final Module MODULES = Modules.combine(
-        IN_MEMORY_SERVER_MODULE,
-        PROTOCOLS,
-        JMAP_LINAGORA,
-        WEBADMIN,
-        new DKIMMailetModule(),
-        new SpamAssassinListenerModule());
+    public static final Module MODULES = Modules.override(
+          IN_MEMORY_SERVER_MODULE,
+          PROTOCOLS,
+          JMAP_LINAGORA,
+          WEBADMIN,
+          new DKIMMailetModule(),
+          new SpamAssassinListenerModule())
+        .with(new TeamMailboxModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()
