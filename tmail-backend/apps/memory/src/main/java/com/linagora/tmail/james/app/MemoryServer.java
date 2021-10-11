@@ -101,6 +101,7 @@ public class MemoryServer {
           PROTOCOLS,
           JMAP_LINAGORA,
           WEBADMIN,
+          new TeamMailboxModule(),
           new DKIMMailetModule(),
           new SpamAssassinListenerModule())
         .with(new TeamMailboxModule());
