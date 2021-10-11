@@ -115,6 +115,7 @@ public class DistributedServer {
         new MailboxRoutesModule(),
         new MailQueueRoutesModule(),
         new MailRepositoriesRoutesModule(),
+        new TeamMailboxModule(),
         new SieveRoutesModule(),
         new SwaggerRoutesModule(),
         new WebAdminServerModule(),

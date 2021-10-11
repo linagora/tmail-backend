@@ -6,7 +6,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.james.common.TeamMailboxProbeModule;
 import com.linagora.tmail.james.common.TeamMailboxesContract;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -18,6 +17,6 @@ public class MemoryTeamMailboxesTest implements TeamMailboxesContract {
             .configurationFromClasspath()
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule(), new TeamMailboxProbeModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 }
