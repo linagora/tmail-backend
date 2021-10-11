@@ -4,7 +4,6 @@ import javax.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
-import org.apache.james.rrt.api.MappingConflictException;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
@@ -15,6 +14,7 @@ import org.eclipse.jetty.http.HttpStatus;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxName;
+import com.linagora.tmail.team.TeamMailboxNameConflictException;
 import com.linagora.tmail.team.TeamMailboxNotFoundException;
 import com.linagora.tmail.team.TeamMailboxRepository;
 
@@ -148,7 +148,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             TeamMailboxName teamMailboxName = extractName(request);
             return Mono.from(teamMailboxRepository.createTeamMailbox(new TeamMailbox(domain, teamMailboxName)))
                 .then(Mono.just(Responses.returnNoContent(response)))
-                .onErrorResume(MappingConflictException.class, e -> {
+                .onErrorResume(TeamMailboxNameConflictException.class, e -> {
                     throw ErrorResponder.builder()
                         .statusCode(HttpStatus.CONFLICT_409)
                         .type(ErrorResponder.ErrorType.WRONG_STATE)

@@ -32,5 +32,5 @@ class TeamMailboxUserEntityValidator @Inject()(teamMailboxRepository: TeamMailbo
   private def checkByDomain(username: Username, domain: Domain): SMono[Option[UserEntityValidator.ValidationFailure]] =
     SMono.fromPublisher(teamMailboxRepository.exists(TeamMailbox.fromJava(domain, username.getLocalPart).get))
       .filter(tmbx => tmbx)
-      .map(any => Some(new ValidationFailure("'" + username.asString + "' team-mailbox already exists")))
+      .map(any => Some(new ValidationFailure(s"'${username.asString}' team-mailbox already exists")))
 }

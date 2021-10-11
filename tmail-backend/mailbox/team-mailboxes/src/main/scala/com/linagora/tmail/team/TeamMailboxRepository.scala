@@ -11,7 +11,6 @@ import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider}
-import org.apache.james.rrt.api.MappingConflictException
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -71,17 +70,9 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
     val session: MailboxSession = createSession(teamMailbox)
     val username = Username.fromMailAddress(teamMailbox.asMailAddress)
 
-//    SMono.just(userEntityValidator.canCreate(username, ImmutableSet.of(TEAM_MAILBOX)))
-//      .filter(validationFailure => validationFailure.isPresent)
-//      .map(validationFailure => SMono.error(new MappingConflictException(validationFailure.get.errorMessage)))
-//      .switchIfEmpty(createMailboxReliably(teamMailbox.mailboxPath, session))
-//      .`then`(createMailboxReliably(teamMailbox.inboxPath, session))
-//      .`then`(createMailboxReliably(teamMailbox.sentPath, session))
-//      .`then`()
-
     val validationFailure = _teamMailboxEntityValidator.canCreate(username, ImmutableSet.of(TEAM_MAILBOX))
     if (validationFailure.isPresent) {
-      return SMono.error(new MappingConflictException(validationFailure.get.errorMessage))
+      return SMono.error(TeamMailboxNameConflictException(validationFailure.get.errorMessage))
     }
 
     createMailboxReliably(teamMailbox.mailboxPath, session)
