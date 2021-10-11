@@ -13,9 +13,11 @@ import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
+import reactor.core.scheduler.Schedulers
 
 import javax.inject.Inject
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 import scala.util.Try
 
 trait TeamMailboxRepository {
@@ -59,32 +61,32 @@ object TeamMailboxRepositoryImpl {
 class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
                                           sessionProvider: SessionProvider) extends TeamMailboxRepository {
 
-  private var _teamMailboxEntityValidator: UserEntityValidator = new TeamMailboxUserEntityValidator(this)
+  private var teamMailboxEntityValidator: UserEntityValidator = new TeamMailboxUserEntityValidator(this)
 
   @Inject
   def setValidator(teamMailboxEntityValidator: UserEntityValidator) = {
-    _teamMailboxEntityValidator = teamMailboxEntityValidator
+    this.teamMailboxEntityValidator = teamMailboxEntityValidator
   }
 
   override def createTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
     val session: MailboxSession = createSession(teamMailbox)
     val username = Username.fromMailAddress(teamMailbox.asMailAddress)
 
-    val validationFailure = _teamMailboxEntityValidator.canCreate(username, ImmutableSet.of(TEAM_MAILBOX))
-    if (validationFailure.isPresent) {
-      return SMono.error(TeamMailboxNameConflictException(validationFailure.get.errorMessage))
-    }
-
-    createMailboxReliably(teamMailbox.mailboxPath, session)
-      .`then`(createMailboxReliably(teamMailbox.inboxPath, session))
-      .`then`(createMailboxReliably(teamMailbox.sentPath, session))
-      .`then`()
+    SMono.fromCallable(() => teamMailboxEntityValidator.canCreate(username, ImmutableSet.of(TEAM_MAILBOX)))
+     .subscribeOn(Schedulers.elastic())
+     .flatMap[Unit](maybeValidationFailure => maybeValidationFailure.toScala match {
+        case Some(validationFailure) => SMono.error(TeamMailboxNameConflictException(validationFailure.errorMessage))
+        case None => createMailboxReliably(teamMailbox.mailboxPath, session)
+          .`then`(createMailboxReliably(teamMailbox.inboxPath, session))
+          .`then`(createMailboxReliably(teamMailbox.sentPath, session))
+          .`then`()
+      })
   }
 
   private def createMailboxReliably(path: MailboxPath, session: MailboxSession) =
     SMono.fromCallable(() => mailboxManager.createMailbox(path, session))
       .onErrorResume {
-        case e: MailboxExistsException => SMono.empty
+        case _: MailboxExistsException => SMono.empty
         case e => SMono.error(e)
       }
 
@@ -100,7 +102,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
   private def deleteReliably(path: MailboxPath, session: MailboxSession) =
     SMono.fromCallable(() => mailboxManager.deleteMailbox(path, session))
       .onErrorResume {
-        case e: MailboxNotFoundException => SMono.empty
+        case _: MailboxNotFoundException => SMono.empty
         case e => SMono.error(e)
       }
 

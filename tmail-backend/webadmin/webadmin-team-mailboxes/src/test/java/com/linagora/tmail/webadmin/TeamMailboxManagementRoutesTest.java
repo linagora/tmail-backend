@@ -10,6 +10,8 @@ import static io.restassured.RestAssured.when;
 import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
@@ -24,14 +26,17 @@ import org.apache.james.DefaultUserEntityValidator;
 import org.apache.james.RecipientRewriteTableUserEntityValidator;
 import org.apache.james.UserEntityValidator;
 import org.apache.james.core.Domain;
+import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.rrt.api.MappingConflictException;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.lib.MappingSource;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
+import org.apache.james.user.api.AlreadyExistInUsersRepositoryException;
 import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.user.memory.MemoryUsersRepository;
 import org.apache.james.webadmin.WebAdminServer;
@@ -50,9 +55,9 @@ import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 
 import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
 import net.javacrumbs.jsonunit.core.Option;
 import net.javacrumbs.jsonunit.core.internal.Options;
-import io.restassured.http.ContentType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -248,7 +253,10 @@ public class TeamMailboxManagementRoutesTest {
             .then()
                 .statusCode(NO_CONTENT_204);
         }
+    }
 
+    @Nested
+    class TeamMailboxUserEntityValidatorTest {
         @Test
         void createTeamMailboxShouldNotConflictWithUser() throws UsersRepositoryException {
             usersRepository.addUser(BOB, "whatever");
@@ -308,6 +316,48 @@ public class TeamMailboxManagementRoutesTest {
                 .containsEntry("type", "WrongState")
                 .containsEntry("message", "'bob@linagora.com' already have associated mappings: alias:andre@linagora.com");
         }
+
+        @Test
+        void createUserShouldNotConflictWithTeamMailbox() {
+            when()
+                .put("/bob")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThatThrownBy(() -> usersRepository.addUser(BOB, "whatever"))
+                .isInstanceOf(AlreadyExistInUsersRepositoryException.class)
+                .hasMessage("'bob@linagora.com' team-mailbox already exists");
+        }
+
+        @Test
+        void createGroupShouldNotConflictWithTeamMailbox() {
+            when()
+                .put("/bob")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThatThrownBy(() -> recipientRewriteTable.addGroupMapping(MappingSource.fromUser(BOB), ANDRE.asString()))
+                .isInstanceOf(MappingConflictException.class)
+                .hasMessage("'bob@linagora.com' team-mailbox already exists");
+        }
+
+        @Test
+        void createAliasShouldNotConflictWithTeamMailbox() {
+            when()
+                .put("/bob")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThatThrownBy(() -> recipientRewriteTable.addAliasMapping(MappingSource.fromUser(BOB), ANDRE.asString()))
+                .isInstanceOf(MappingConflictException.class)
+                .hasMessage("'bob@linagora.com' team-mailbox already exists");
+        }
+
+        @Test
+        void teamMailboxUserEntityValidatorShouldNotThrowWhenNameWithDot() {
+            assertThatCode(() -> usersRepository.addUser(Username.of("bob.by@linagora.com"), "whatever"))
+                .doesNotThrowAnyException();
+        }
     }
 
     @Nested
@@ -336,7 +386,7 @@ public class TeamMailboxManagementRoutesTest {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
             given()
                 .delete("/marketing")
-                .then()
+            .then()
                 .statusCode(NO_CONTENT_204);
 
             assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(Domain.of("linagora.com"))).collectList().block())

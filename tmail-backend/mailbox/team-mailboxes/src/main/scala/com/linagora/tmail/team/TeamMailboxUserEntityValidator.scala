@@ -20,17 +20,19 @@ class TeamMailboxUserEntityValidator @Inject()(teamMailboxRepository: TeamMailbo
     if (ignoredTypes.contains(TEAM_MAILBOX)) {
       Optional.empty
     } else {
-      check(username).block()
+      check(username)
         .toJava
     }
 
-  private def check(username: Username): SMono[Option[UserEntityValidator.ValidationFailure]] =
-    SMono.just(username.getDomainPart)
-      .filter(domain => domain.isPresent)
-      .flatMap(domain => checkByDomain(username, domain.get))
+  private def check(username: Username): Option[UserEntityValidator.ValidationFailure] =
+    username.getDomainPart
+      .toScala
+      .flatMap(domain => checkByDomain(username, domain))
 
-  private def checkByDomain(username: Username, domain: Domain): SMono[Option[UserEntityValidator.ValidationFailure]] =
-    SMono.fromPublisher(teamMailboxRepository.exists(TeamMailbox.fromJava(domain, username.getLocalPart).get))
-      .filter(tmbx => tmbx)
-      .map(any => Some(new ValidationFailure(s"'${username.asString}' team-mailbox already exists")))
+  private def checkByDomain(username: Username, domain: Domain): Option[UserEntityValidator.ValidationFailure] =
+    TeamMailbox.fromJava(domain, username.getLocalPart)
+      .flatMap(teamMailbox => SMono.fromPublisher(teamMailboxRepository.exists(teamMailbox))
+        .filter(b => b)
+        .map(_ => new ValidationFailure(s"'${username.asString}' team-mailbox already exists"))
+        .blockOption())
 }
