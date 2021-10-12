@@ -2,6 +2,8 @@ package com.linagora.tmail.team
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
+import org.apache.james.UserEntityValidator
+
 import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.rrt.api.CanSendFrom
@@ -31,5 +33,9 @@ class TeamMailboxModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[GuiceProbe])
       .addBinding()
       .to(classOf[TeamMailboxProbe])
+
+    Multibinder.newSetBinder(binder(), classOf[UserEntityValidator])
+      .addBinding()
+      .to(classOf[TeamMailboxUserEntityValidator])
   }
 }
