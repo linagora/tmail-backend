@@ -104,7 +104,8 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
         case e => SMono.error(e)
       }
 
-  private def createSession(teamMailbox: TeamMailbox): MailboxSession = createSession(teamMailbox.domain)
+  private def createSession(teamMailbox: TeamMailbox): MailboxSession =
+    mailboxManager.createSystemSession(teamMailbox.owner)
 
   private def createSession(domain: Domain): MailboxSession =
     mailboxManager.createSystemSession(Username.fromLocalPartWithDomain("team-mailbox", domain))

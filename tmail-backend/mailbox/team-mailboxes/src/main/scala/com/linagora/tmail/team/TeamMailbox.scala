@@ -77,6 +77,8 @@ object TeamMailbox {
 }
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
+  def owner: Username = Username.fromLocalPartWithDomain("team-mailbox", domain)
+
   def asMailAddress: MailAddress = new MailAddress(mailboxName.value.value, domain)
 
   def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), mailboxName.value)
