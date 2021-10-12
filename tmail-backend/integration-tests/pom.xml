@@ -16,5 +16,30 @@
         <module>jmap/distributed-jmap-integration-tests</module>
         <module>jmap/jmap-integration-tests-common</module>
         <module>jmap/memory-jmap-integration-tests</module>
+
+        <module>smtp/distributed-smtp-integration-tests</module>
+        <module>smtp/memory-smtp-integration-tests</module>
+        <module>smtp/smtp-integration-tests-common</module>
     </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>smtp-integration-tests-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-guice-jmap</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-guice-jmap</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 </project>
