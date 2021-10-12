@@ -64,9 +64,8 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
   private var teamMailboxEntityValidator: UserEntityValidator = new TeamMailboxUserEntityValidator(this)
 
   @Inject
-  def setValidator(teamMailboxEntityValidator: UserEntityValidator) = {
+  def setValidator(teamMailboxEntityValidator: UserEntityValidator): Unit =
     this.teamMailboxEntityValidator = teamMailboxEntityValidator
-  }
 
   override def createTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
     val session: MailboxSession = createSession(teamMailbox)

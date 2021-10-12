@@ -89,6 +89,4 @@ case class TeamMailboxNotFoundException(teamMailbox: TeamMailbox) extends Runtim
   override def getMessage: String = s"${teamMailbox.mailboxPath.asString()} can not be found"
 }
 
-case class TeamMailboxNameConflictException(message: String) extends RuntimeException {
-  override def getMessage: String = message
-}
+case class TeamMailboxNameConflictException(message: String) extends RuntimeException(message)
