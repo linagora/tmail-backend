@@ -14,6 +14,7 @@ import org.eclipse.jetty.http.HttpStatus;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxName;
+import com.linagora.tmail.team.TeamMailboxNameConflictException;
 import com.linagora.tmail.team.TeamMailboxNotFoundException;
 import com.linagora.tmail.team.TeamMailboxRepository;
 
@@ -145,8 +146,16 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             Domain domain = extractDomain(request);
             TeamMailboxName teamMailboxName = extractName(request);
-            Mono.from(teamMailboxRepository.createTeamMailbox(new TeamMailbox(domain, teamMailboxName))).block();
-            return Responses.returnNoContent(response);
+            return Mono.from(teamMailboxRepository.createTeamMailbox(new TeamMailbox(domain, teamMailboxName)))
+                .then(Mono.just(Responses.returnNoContent(response)))
+                .onErrorResume(TeamMailboxNameConflictException.class, e -> {
+                    throw ErrorResponder.builder()
+                        .statusCode(HttpStatus.CONFLICT_409)
+                        .type(ErrorResponder.ErrorType.WRONG_STATE)
+                        .message(e.getMessage())
+                        .haltError();
+                })
+                .block();
         };
     }
 
