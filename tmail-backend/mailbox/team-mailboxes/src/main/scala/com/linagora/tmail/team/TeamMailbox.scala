@@ -7,12 +7,13 @@ import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, MailAddress, Username}
-import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath}
+import org.apache.james.mailbox.model.MailboxConstants.NAMESPACE_PREFIX_CHAR
+import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath, QuotaRoot}
 
 import scala.jdk.OptionConverters._
 
 object TeamMailboxNameSpace {
-  val TEAM_MAILBOX_NAMESPACE: String = MailboxConstants.NAMESPACE_PREFIX_CHAR + "TeamMailbox"
+  val TEAM_MAILBOX_NAMESPACE: String =  s"${NAMESPACE_PREFIX_CHAR}TeamMailbox"
 }
 
 object TeamMailboxName {
@@ -83,6 +84,8 @@ case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
   def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.${MailboxConstants.INBOX}")
 
   def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.Sent")
+
+  def quotaRoot: QuotaRoot = QuotaRoot.quotaRoot(s"$TEAM_MAILBOX_NAMESPACE&${mailboxName.value.value}@${domain.asString()}", Some(domain).toJava)
 }
 
 case class TeamMailboxNotFoundException(teamMailbox: TeamMailbox) extends RuntimeException {
