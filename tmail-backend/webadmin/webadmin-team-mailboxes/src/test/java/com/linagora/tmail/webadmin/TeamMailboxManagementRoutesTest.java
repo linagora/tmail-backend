@@ -104,7 +104,7 @@ public class TeamMailboxManagementRoutesTest {
         usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
 
         InMemoryMailboxManager mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, mailboxManager.getSessionProvider());
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager);
 
         UserEntityValidator validator = UserEntityValidator.aggregate(
             new DefaultUserEntityValidator(usersRepository),

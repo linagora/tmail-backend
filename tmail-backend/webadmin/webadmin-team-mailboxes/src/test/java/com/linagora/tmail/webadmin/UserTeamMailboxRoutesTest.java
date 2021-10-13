@@ -46,7 +46,7 @@ public class UserTeamMailboxRoutesTest {
     @BeforeEach
     void setUp() {
         InMemoryMailboxManager mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, mailboxManager.getSessionProvider());
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager);
         usersRepository = mock(UsersRepository.class);
         UserTeamMailboxRoutes userTeamMailboxRoutes = new UserTeamMailboxRoutes(teamMailboxRepository, new JsonTransformer(), usersRepository);
         webAdminServer = WebAdminUtils.createWebAdminServer(userTeamMailboxRoutes).start();

@@ -10,7 +10,7 @@ import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFou
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
-import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider}
+import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
@@ -58,8 +58,7 @@ object TeamMailboxRepositoryImpl {
     )
 }
 
-class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
-                                          sessionProvider: SessionProvider) extends TeamMailboxRepository {
+class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extends TeamMailboxRepository {
 
   private var teamMailboxEntityValidator: UserEntityValidator = new TeamMailboxUserEntityValidator(this)
 
@@ -108,7 +107,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
   private def createSession(teamMailbox: TeamMailbox): MailboxSession = createSession(teamMailbox.domain)
 
   private def createSession(domain: Domain): MailboxSession =
-    sessionProvider.createSystemSession(Username.fromLocalPartWithDomain("team-mailbox", domain))
+    mailboxManager.createSystemSession(Username.fromLocalPartWithDomain("team-mailbox", domain))
 
   override def listTeamMailboxes(domain: Domain): Publisher[TeamMailbox] =
     SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, createSession(domain)))
@@ -118,7 +117,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .distinct()
 
   override def listTeamMailboxes(username: Username): Publisher[TeamMailbox] =
-    SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, sessionProvider.createSystemSession(username)))
+    SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, mailboxManager.createSystemSession(username)))
       .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
       .distinct()
 

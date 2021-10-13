@@ -36,7 +36,7 @@ class TMailValidRcptHandlerTest {
     @BeforeEach
     void setUp() throws Exception {
         InMemoryIntegrationResources integrationResources = InMemoryIntegrationResources.defaultResources();
-        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), integrationResources.getMailboxManager());
+        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager());
 
         MemoryDomainList domainList = new MemoryDomainList(mock(DNSService.class));
         domainList.configure(DomainListConfiguration.DEFAULT);
