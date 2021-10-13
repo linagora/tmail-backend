@@ -39,7 +39,7 @@
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
         <handlerchain>
-            <handler class="org.apache.james.smtpserver.fastfail.ValidRcptHandler"/>
+            <handler class="com.linagora.tmail.smtp.TMailValidRcptHandler"/>
             <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
         </handlerchain>
     </smtpserver>
@@ -66,7 +66,7 @@
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
         <handlerchain>
-            <handler class="org.apache.james.smtpserver.fastfail.ValidRcptHandler"/>
+            <handler class="com.linagora.tmail.smtp.TMailValidRcptHandler"/>
             <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
         </handlerchain>
     </smtpserver>
@@ -93,7 +93,7 @@
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
         <handlerchain>
-            <handler class="org.apache.james.smtpserver.fastfail.ValidRcptHandler"/>
+            <handler class="com.linagora.tmail.smtp.TMailValidRcptHandler"/>
             <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
         </handlerchain>
     </smtpserver>

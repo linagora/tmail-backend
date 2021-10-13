@@ -9,6 +9,7 @@ import org.apache.james.utils.GuiceProbe;
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.mailet.TmailLocalResourcesModule;
 
 public class TeamMailboxModule extends AbstractModule {
     @Override
@@ -29,5 +30,7 @@ public class TeamMailboxModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), UserEntityValidator.class)
             .addBinding()
             .to(TeamMailboxUserEntityValidator.class);
+
+        install(new TmailLocalResourcesModule());
     }
 }
