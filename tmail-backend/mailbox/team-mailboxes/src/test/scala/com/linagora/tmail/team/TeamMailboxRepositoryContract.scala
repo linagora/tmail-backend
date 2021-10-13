@@ -6,7 +6,7 @@ import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.MailboxACL
-import org.apache.james.mailbox.{MailboxManager, MailboxSession, SessionProvider}
+import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -32,12 +32,10 @@ trait TeamMailboxRepositoryContract {
 
   def mailboxManager: MailboxManager
 
-  def sessionProvider: SessionProvider
-
   @Test
   def createTeamMailboxShouldStoreThreeAssignMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
-    val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME)
+    val session: MailboxSession = mailboxManager.createSystemSession(TEAM_MAILBOX_USERNAME)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.mailboxPath, session))
@@ -77,7 +75,7 @@ trait TeamMailboxRepositoryContract {
   @Test
   def createMailboxWithSamePathShouldFailWhenTeamMailboxExists(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
-    val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME)
+    val session: MailboxSession = mailboxManager.createSystemSession(TEAM_MAILBOX_USERNAME)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThatThrownBy(() => mailboxManager.createMailbox(TEAM_MAILBOX.mailboxPath, session))
@@ -95,7 +93,7 @@ trait TeamMailboxRepositoryContract {
   def deleteTeamMailboxShouldRemoveAllAssignedMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX)).block()
-    val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME)
+    val session: MailboxSession = mailboxManager.createSystemSession(TEAM_MAILBOX_USERNAME)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX.mailboxPath, session))
@@ -115,7 +113,7 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_2)).block()
     SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX)).block()
-    val session: MailboxSession = sessionProvider.createSystemSession(TEAM_MAILBOX_USERNAME_2)
+    val session: MailboxSession = mailboxManager.createSystemSession(TEAM_MAILBOX_USERNAME_2)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_2.mailboxPath, session))
@@ -146,7 +144,7 @@ trait TeamMailboxRepositoryContract {
   def addMemberShouldAddImplicitRights(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX, BOB)).block()
-    val bobSession: MailboxSession = sessionProvider.createSystemSession(BOB)
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
     val entriesRights: util.Map[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX.mailboxPath, bobSession).getEntries
 
     SoftAssertions.assertSoftly(softly => {
@@ -304,17 +302,13 @@ class TeamMailboxRepositoryTest extends TeamMailboxRepositoryContract {
 
   override def mailboxManager: MailboxManager = inMemoryMailboxManager
 
-  override def sessionProvider: SessionProvider = inMemorySessionProvider
-
   var teamMailboxRepositoryImpl: TeamMailboxRepositoryImpl = _
   var inMemoryMailboxManager: InMemoryMailboxManager = _
-  var inMemorySessionProvider: SessionProvider = _
 
   @BeforeEach
   def setUp(): Unit = {
     val resource: InMemoryIntegrationResources = InMemoryIntegrationResources.defaultResources()
     inMemoryMailboxManager = resource.getMailboxManager
-    inMemorySessionProvider = inMemoryMailboxManager.getSessionProvider
-    teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager, inMemorySessionProvider)
+    teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager)
   }
 }
