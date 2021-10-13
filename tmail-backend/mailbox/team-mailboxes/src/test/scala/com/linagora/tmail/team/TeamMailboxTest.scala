@@ -1,9 +1,11 @@
 package com.linagora.tmail.team
 
+import java.util.Optional
+
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{TEAM_MAILBOX_USER, TEAM_MAILBOX_USERNAME}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, MailAddress}
-import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.mailbox.model.{MailboxPath, QuotaRoot}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -33,6 +35,12 @@ class TeamMailboxTest {
   def fromMailboxPathShouldReturnTeamMailboxWhenValidSubMailbox(): Unit = {
     assertThat(TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales.INBOX")).toJava)
       .contains(TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sales")))
+  }
+
+  @Test
+  def quotaRootShouldReturnDesiredValue(): Unit = {
+    assertThat(TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sales")).quotaRoot)
+      .isEqualTo(QuotaRoot.quotaRoot("#TeamMailbox&sales@linagora.com", Optional.of(Domain.of("linagora.com"))))
   }
 
   @Test
