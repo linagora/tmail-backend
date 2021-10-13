@@ -31,6 +31,7 @@
         <module>guice/elasticsearch-v6</module>
         <module>guice/encrypted-mailbox</module>
         <module>guice/protocols/jmap</module>
+        <module>guice/team-mailboxes</module>
 
         <module>integration-tests</module>
 
@@ -218,6 +219,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>team-mailboxes</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>team-mailboxes-guice</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

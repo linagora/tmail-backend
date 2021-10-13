@@ -38,6 +38,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>team-mailboxes-guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-guice-jmap</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
