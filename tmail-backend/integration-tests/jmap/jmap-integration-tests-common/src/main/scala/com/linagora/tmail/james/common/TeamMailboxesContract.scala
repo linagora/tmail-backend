@@ -17,6 +17,7 @@ import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.quota.{QuotaCountLimit, QuotaSizeLimit}
 import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
@@ -31,7 +32,7 @@ import org.apache.james.mailbox.model.{MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.mime4j.message.DefaultMessageWriter
 import org.apache.james.mime4j.stream.RawField
-import org.apache.james.modules.MailboxProbeImpl
+import org.apache.james.modules.{MailboxProbeImpl, QuotaProbesImpl}
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
@@ -2207,6 +2208,258 @@ trait TeamMailboxesContract {
            |    },
            |    "pushState":"$globalState"
            |  }
+           |}""".stripMargin)
+  }
+
+  @Test
+  def teamMailboxesShouldComputeQuotas(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id = mailboxId(server, teamMailbox.inboxPath)
+
+    val bobPath = MailboxPath.inbox(BOB)
+    val bobInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobPath)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+
+    // 2 messages on the team mailbox
+    server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+    server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+    // 1 message in BOB inbox
+    server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), bobPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+
+    val quotaProbe = server.getProbe(classOf[QuotaProbesImpl])
+    quotaProbe.setMaxMessageCount(teamMailbox.quotaRoot, QuotaCountLimit.count(4L))
+    quotaProbe.setMaxMessageCount(quotaProbe.getQuotaRoot(bobPath), QuotaCountLimit.count(5L))
+    quotaProbe.setGlobalMaxStorage(QuotaSizeLimit.size(100 * 1024 * 1024))
+
+    val request =s"""{
+                    |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail",
+                    |    "urn:apache:james:params:jmap:mail:shares", "urn:apache:james:params:jmap:mail:quota"],
+                    |  "methodCalls": [[
+                    |    "Mailbox/get",
+                    |    {
+                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "ids": ["$id", "$bobInboxId"],
+                    |      "properties": ["quotas"]
+                    |    },
+                    |    "c1"]]
+                    |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |	"methodResponses": [
+           |		["Mailbox/get", {
+           |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |			"notFound": [],
+           |			"list": [{
+           |				"id": "${bobInboxId.serialize()}",
+           |				"quotas": {
+           |					"#private&bob@domain.tld": {
+           |						"Storage": {
+           |							"used": 85,
+           |							"max": 104857600
+           |						},
+           |						"Message": {
+           |							"used": 1,
+           |							"max": 5
+           |						}
+           |					}
+           |				}
+           |			}, {
+           |				"id": "$id",
+           |				"quotas": {
+           |					"#TeamMailbox&marketing@domain.tld": {
+           |						"Storage": {
+           |							"used": 170,
+           |							"max": 104857600
+           |						},
+           |						"Message": {
+           |							"used": 2,
+           |							"max": 4
+           |						}
+           |					}
+           |				}
+           |			}]
+           |		}, "c1"]
+           |	]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def teamMailboxesShouldEnforceQuotasUponCreate(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+
+    val quotaProbe = server.getProbe(classOf[QuotaProbesImpl])
+    quotaProbe.setMaxMessageCount(teamMailbox.quotaRoot, QuotaCountLimit.count(2L))
+
+    server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+    server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [["Email/set", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "create": {
+         |        "K39": {
+         |          "mailboxIds": {"$id1":true}
+         |        }
+         |      }
+         |    }, "c1"]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState", "methodResponses[1][1].state",
+        "methodResponses[0][1].created.K39.id", "methodResponses[0][1].created.K39.threadId", "methodResponses[0][1].created.K39.blobId",
+        "methodResponses[0][1].created.K39.size", "methodResponses[1][1].list[0].id")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |	"methodResponses": [
+           |		["Email/set", {
+           |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |			"notCreated": {
+           |				"K39": {
+           |					"type": "overQuota",
+           |					"description": "You have too many messages in #TeamMailbox&marketing@domain.tld"
+           |				}
+           |			}
+           |		}, "c1"]
+           |	]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def teamMailboxesShouldEnforceQuotasUponCopy(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val id1 = mailboxId(server, teamMailbox.mailboxPath)
+    val id2 = mailboxId(server, teamMailbox.inboxPath)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+
+    val quotaProbe = server.getProbe(classOf[QuotaProbesImpl])
+    quotaProbe.setMaxMessageCount(teamMailbox.quotaRoot, QuotaCountLimit.count(2L))
+
+    server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+    val messageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .getMessageId.serialize()
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [["Email/set", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "update": {
+         |        "$messageId": {
+         |          "mailboxIds": {"$id1":true, "$id2":true}
+         |        }
+         |      }
+         |    }, "c1"]]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request).log().all()
+    .when()
+      .post().prettyPeek()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+           |    "methodResponses": [
+           |        [
+           |            "Email/set",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "notUpdated": {
+           |                    "2": {
+           |                        "type": "overQuota",
+           |                        "description": "You have too many messages in #TeamMailbox&marketing@domain.tld"
+           |                    }
+           |                }
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
            |}""".stripMargin)
   }
 
