@@ -48,6 +48,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-mailets</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-backends-cassandra</artifactId>
             <type>test-jar</type>
