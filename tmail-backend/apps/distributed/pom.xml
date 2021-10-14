@@ -44,6 +44,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>mailbox-encrypted-memory</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>team-mailboxes-guice</artifactId>
         </dependency>
         <dependency>
@@ -53,8 +57,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.linagora.tmail</groupId>
-            <artifactId>mailbox-encrypted-memory</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-mailets</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
