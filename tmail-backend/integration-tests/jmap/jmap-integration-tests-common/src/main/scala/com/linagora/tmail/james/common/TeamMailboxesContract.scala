@@ -2432,7 +2432,7 @@ trait TeamMailboxesContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request).log().all()
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
