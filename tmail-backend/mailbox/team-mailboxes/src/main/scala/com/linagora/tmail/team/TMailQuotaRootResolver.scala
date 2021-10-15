@@ -1,5 +1,6 @@
 package com.linagora.tmail.team
 
+import com.google.inject.Inject
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.mailbox.exception.MailboxNotFoundException
@@ -12,7 +13,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.util.Try
 
-class TMailQuotaRootResolver(sessionProvider: SessionProvider, factory: MailboxSessionMapperFactory) extends DefaultUserQuotaRootResolver(sessionProvider, factory) {
+class TMailQuotaRootResolver @Inject()(sessionProvider: SessionProvider, factory: MailboxSessionMapperFactory) extends DefaultUserQuotaRootResolver(sessionProvider, factory) {
   override def getQuotaRoot(mailboxPath: MailboxPath): QuotaRoot = mailboxPath.getNamespace match {
     case TEAM_MAILBOX_NAMESPACE => TeamMailbox.from(mailboxPath)
       .fold(throw new IllegalArgumentException(s"Invalid team mailbox $mailboxPath"))(_.quotaRoot)
