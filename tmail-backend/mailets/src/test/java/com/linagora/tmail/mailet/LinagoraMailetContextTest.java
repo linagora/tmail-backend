@@ -5,9 +5,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.james.core.MailAddress;
 import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.domainlist.api.DomainListException;
 import org.apache.james.domainlist.lib.AbstractDomainList;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
@@ -21,10 +24,13 @@ import org.apache.james.queue.api.MailQueueFactory;
 import org.apache.james.rrt.lib.AbstractRecipientRewriteTable;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.user.memory.MemoryUsersRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.shadow.com.univocity.parsers.common.processor.BatchedObjectColumnProcessor;
 
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepository;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
@@ -107,5 +113,41 @@ public class LinagoraMailetContextTest implements JamesMailetContextContract {
     void isLocalEmailShouldReturnTrueWhenUserDoesNotExistsAndTeamMailboxExists() {
         Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
         assertThat(testee.isLocalEmail(TEAM_MAILBOX.asMailAddress())).isTrue();
+    }
+
+    @Test
+    void localRecipientsShouldReturnAddressWhenTeamMailboxExists() {
+        Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+        assertThat(testee.localRecipients(ImmutableList.of(TEAM_MAILBOX.asMailAddress())))
+            .containsExactlyInAnyOrder(TEAM_MAILBOX.asMailAddress());
+    }
+
+    @Test
+    void localRecipientsShouldReturnOnlyExistingUsersWhenTeamMailboxesDoNotExists() throws Exception {
+        domainList().addDomain(DOMAIN_COM);
+        usersRepository().addUser(USERMAIL, PASSWORD);
+        ImmutableList<MailAddress> mailAddresses = ImmutableList.of(TEAM_MAILBOX.asMailAddress(), mailAddress);
+        assertThat(testee.localRecipients(mailAddresses))
+            .containsExactlyInAnyOrder(mailAddress);
+    }
+
+    @Test
+    void localRecipientsShouldReturnBothExistingUsersAndExistingTeamMailboxes() throws Exception {
+        domainList().addDomain(DOMAIN_COM);
+        usersRepository().addUser(USERMAIL, PASSWORD);
+        Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+        ImmutableList<MailAddress> mailAddresses = ImmutableList.of(TEAM_MAILBOX.asMailAddress(), mailAddress);
+        assertThat(testee.localRecipients(mailAddresses))
+            .containsExactlyInAnyOrder(TEAM_MAILBOX.asMailAddress(), mailAddress);
+    }
+
+    @Test
+    void localRecipientsShouldReturnOnlyExistingTeamMailboxesWhenUsersDoNotExists() {
+        Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+        ImmutableList<MailAddress> mailAddresses = ImmutableList.of(TEAM_MAILBOX.asMailAddress(), mailAddress);
+        assertThat(testee.localRecipients(mailAddresses))
+            .containsExactlyInAnyOrder(TEAM_MAILBOX.asMailAddress());
     }
 }
