@@ -57,7 +57,7 @@ public class InMemoryEncryptedMessageManagerTest {
     @BeforeAll
     static void setUpAll() throws Exception {
         String bouncyCastleProviderClassName = "org.bouncycastle.jce.provider.BouncyCastleProvider";
-        Security.addProvider((Provider)Class.forName(bouncyCastleProviderClassName).getDeclaredConstructor().newInstance());
+        Security.addProvider((Provider) Class.forName(bouncyCastleProviderClassName).getDeclaredConstructor().newInstance());
     }
 
     @BeforeEach
@@ -274,5 +274,23 @@ public class InMemoryEncryptedMessageManagerTest {
 
         assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
             .contains("testmail");
+    }
+
+    @Test
+    void commandAppendShouldNotEncryptWhenMessageEncrypted() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
+
+        MessageManager.AppendCommand messageAppend = MessageManager.AppendCommand
+            .from(ClassLoaderUtils.getSystemResourceAsSharedStream("emailEncrypted.eml"));
+
+        testee.appendMessage(messageAppend, session);
+
+        MessageResultIterator messages = mailboxManager.getMailbox(path, session)
+            .getMessages(MessageRange.all(), FetchGroup.BODY_CONTENT, session);
+        MessageResult result = messages.next();
+
+        assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
+            .contains("content email 123");
     }
 }

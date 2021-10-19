@@ -1,0 +1,21 @@
+To: James User <user@james.org>
+From: James Sender <sender@james.org>
+Subject: Message with text attachment
+Message-ID: <ffaa7bce-fbe3-83b5-de3f-9a7301233615@linagora.com>
+Date: Tue, 5 Sep 2017 09:54:16 +0200
+MIME-Version: 1.0
+Subject: small message
+Content-Type: multipart/encrypted; protocol="application/pgp-encrypted";
+ boundary="-=Part.0.971d815071d48597.17c96cf5798.3a88f426abbc98b8=-"
+
+---=Part.0.971d815071d48597.17c96cf5798.3a88f426abbc98b8=-
+Content-Type: application/pgp-encrypted
+
+Version: 1
+---=Part.0.971d815071d48597.17c96cf5798.3a88f426abbc98b8=-
+Content-Type: application/octet-stream
+
+content email 123
+
+---=Part.0.971d815071d48597.17c96cf5798.3a88f426abbc98b8=---
+
