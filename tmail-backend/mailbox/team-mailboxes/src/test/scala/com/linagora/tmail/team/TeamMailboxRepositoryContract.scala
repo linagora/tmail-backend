@@ -1,5 +1,7 @@
 package com.linagora.tmail.team
 
+import java.util
+
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{ANDRE, BOB, TEAM_MAILBOX, TEAM_MAILBOX_2, TEAM_MAILBOX_USER, TEAM_MAILBOX_USERNAME, TEAM_MAILBOX_USERNAME_2, TEAM_MAILBOX_USER_2}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
@@ -12,7 +14,6 @@ import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.util
 import scala.jdk.CollectionConverters._
 
 object TeamMailboxRepositoryContract {
@@ -295,6 +296,25 @@ trait TeamMailboxRepositoryContract {
       .containsExactlyInAnyOrder(saleTeam)
   }
 
+  @Test
+  def listAllTeamMailboxesShouldReturnStoredEntriesWhenSingle(): Unit = {
+    val saleTeam: TeamMailbox = TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sale"))
+    SMono.fromPublisher(testee.createTeamMailbox(saleTeam)).block()
+
+    assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(TEAM_MAILBOX_USER)).collectSeq().block().asJava)
+      .containsExactlyInAnyOrder(saleTeam)
+  }
+
+  @Test
+  def listAllTeamMailboxesShouldReturnAllEntries(): Unit = {
+    val saleTeam: TeamMailbox = TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sale"))
+    val marketingTeam: TeamMailbox = TeamMailbox(TEAM_MAILBOX_USER_2, TeamMailboxName("marketing"))
+    SMono.fromPublisher(testee.createTeamMailbox(saleTeam)).block()
+    SMono.fromPublisher(testee.createTeamMailbox(marketingTeam)).block()
+
+    assertThat(SFlux.fromPublisher(testee.listTeamMailboxes()).collectSeq().block().asJava)
+      .containsExactlyInAnyOrder(saleTeam, marketingTeam)
+  }
 }
 
 class TeamMailboxRepositoryTest extends TeamMailboxRepositoryContract {

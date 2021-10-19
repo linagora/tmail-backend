@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
+import javax.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
@@ -15,7 +16,6 @@ import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.util.Try
@@ -29,6 +29,8 @@ trait TeamMailboxRepository {
   def listTeamMailboxes(domain: Domain): Publisher[TeamMailbox]
 
   def listTeamMailboxes(username: Username): Publisher[TeamMailbox]
+
+  def listTeamMailboxes(): Publisher[TeamMailbox]
 
   def addMember(teamMailbox: TeamMailbox, addUser: Username): Publisher[Void]
 
@@ -166,6 +168,15 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
       })
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .`then`()
+  }
+
+  override def listTeamMailboxes(): Publisher[TeamMailbox] = {
+    val session = mailboxManager.createSystemSession(Username.of("team-mailboxes"))
+    SFlux.fromIterable(mailboxManager.list(session)
+      .asScala
+      .flatMap(TeamMailbox.from)
+      .distinct
+      .toSeq)
   }
 
   override def listMembers(teamMailbox: TeamMailbox): Publisher[Username] = {
