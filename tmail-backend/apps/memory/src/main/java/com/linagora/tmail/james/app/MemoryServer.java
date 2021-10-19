@@ -56,6 +56,7 @@ import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 
@@ -106,7 +107,7 @@ public class MemoryServer {
           new TeamMailboxRoutesModule(),
           new DKIMMailetModule(),
           new SpamAssassinListenerModule())
-        .with(new TeamMailboxModule());
+        .with(new TeamMailboxModule(), new TMailScanningQuotaSearcherModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()
