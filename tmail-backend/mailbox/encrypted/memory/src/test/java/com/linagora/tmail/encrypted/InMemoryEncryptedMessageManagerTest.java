@@ -251,4 +251,28 @@ public class InMemoryEncryptedMessageManagerTest {
         assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
             .contains("testmail");
     }
+
+    @Test
+    void commandAppendShouldNotEncryptWhenNameSpaceIsNotPrivate() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
+
+        MailboxPath path = new MailboxPath("#TeamMailbox", BOB, "marketing");
+        MailboxId mailboxId = mailboxManager.createMailbox(path, session).get();
+        messageManager = mailboxManager.getMailbox(mailboxId, session);
+
+        MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
+        EncryptedMessageManager testee = new EncryptedMessageManager(messageManager, keystoreManager,
+            new ClearEmailContentFactory(new MessageParser(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
+            emailContentStore);
+
+        testee.appendMessage(MessageManager.AppendCommand.from(message), session);
+
+        MessageResultIterator messages = mailboxManager.getMailbox(path, session)
+            .getMessages(MessageRange.all(), FetchGroup.BODY_CONTENT, session);
+        MessageResult result = messages.next();
+
+        assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
+            .contains("testmail");
+    }
 }
