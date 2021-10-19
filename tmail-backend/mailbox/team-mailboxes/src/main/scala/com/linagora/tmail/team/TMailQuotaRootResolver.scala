@@ -13,12 +13,21 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.util.Try
 
-class TMailQuotaRootResolver @Inject()(sessionProvider: SessionProvider, factory: MailboxSessionMapperFactory) extends DefaultUserQuotaRootResolver(sessionProvider, factory) {
+class TMailQuotaRootResolver @Inject()(sessionProvider: SessionProvider,
+                                       factory: MailboxSessionMapperFactory,
+                                       teamMailboxRepository: TeamMailboxRepository) extends DefaultUserQuotaRootResolver(sessionProvider, factory) {
   override def getQuotaRoot(mailboxPath: MailboxPath): QuotaRoot = mailboxPath.getNamespace match {
     case TEAM_MAILBOX_NAMESPACE => TeamMailbox.from(mailboxPath)
       .fold(throw new IllegalArgumentException(s"Invalid team mailbox $mailboxPath"))(_.quotaRoot)
     case _ => super.getQuotaRoot(mailboxPath)
   }
+
+  override def forMailAddress(username: Username): QuotaRoot = TeamMailbox.asTeamMailbox(username.asMailAddress())
+    .fold(super.forUser(username))(teamMailbox => if (SMono(teamMailboxRepository.exists(teamMailbox)).block()) {
+      teamMailbox.quotaRoot
+    } else {
+      super.forUser(username)
+    })
 
   override def retrieveAssociatedMailboxes(quotaRoot: QuotaRoot, session: MailboxSession): Flux[Mailbox] =
     Flux.from(Try(DefaultUserQuotaRootResolver.QUOTA_ROOT_DESERIALIZER.toParts(quotaRoot.getValue))

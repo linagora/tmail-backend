@@ -25,7 +25,20 @@ class TMailQuotaRootResolverTest {
     val resources = InMemoryIntegrationResources.defaultResources()
     mailboxManager = resources.getMailboxManager
     teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager)
-    testee = new TMailQuotaRootResolver(mailboxManager, resources.getMailboxManager.getMapperFactory)
+    testee = new TMailQuotaRootResolver(mailboxManager, resources.getMailboxManager.getMapperFactory, teamMailboxRepository)
+  }
+
+  @Test
+  def forMailAddressShouldDefaultToUserQuotaRoot(): Unit = {
+    assertThat(testee.forMailAddress(Username.of("bob@linagora.com")))
+      .isEqualTo(bobQuotaRoot)
+  }
+
+  @Test
+  def forMailAddressShouldRecognizeTeamMailboxes(): Unit = {
+    SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
+    assertThat(testee.forMailAddress(Username.of("sales@linagora.com")))
+      .isEqualTo(teamMailbox.quotaRoot)
   }
 
   @Test
