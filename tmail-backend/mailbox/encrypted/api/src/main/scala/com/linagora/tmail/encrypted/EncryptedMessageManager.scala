@@ -3,12 +3,12 @@ package com.linagora.tmail.encrypted
 import java.io.InputStream
 import java.util
 import java.util.Date
-
 import com.linagora.tmail.pgp.Encrypter
+
 import javax.inject.Inject
 import javax.mail.Flags
 import org.apache.james.mailbox.MessageManager.{AppendCommand, AppendResult, MailboxMetaData}
-import org.apache.james.mailbox.model.{ComposedMessageIdWithMetaData, FetchGroup, Mailbox, MailboxACL, MailboxCounters, MailboxId, MailboxPath, MessageRange, MessageResultIterator, SearchQuery}
+import org.apache.james.mailbox.model.{ComposedMessageIdWithMetaData, FetchGroup, Mailbox, MailboxACL, MailboxConstants, MailboxCounters, MailboxId, MailboxPath, MessageRange, MessageResultIterator, SearchQuery}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}
 import org.apache.james.mime4j.codec.DecodeMonitor
 import org.apache.james.mime4j.dom.Message
@@ -76,7 +76,7 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
     SFlux.fromPublisher(keystoreManager.listPublicKeys(session.getUser))
       .collectSeq()
       .flatMap(keys => {
-        if (keys.isEmpty) {
+        if (keys.isEmpty || !getMailboxPath.getNamespace.equals(MailboxConstants.USER_NAMESPACE)) {
           SMono.fromPublisher(messageManager.appendMessageReactive(appendCommand, session))
         } else {
           val messageBuilder: DefaultMessageBuilder = new DefaultMessageBuilder();
