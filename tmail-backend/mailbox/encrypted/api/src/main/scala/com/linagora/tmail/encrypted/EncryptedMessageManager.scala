@@ -1,29 +1,29 @@
 package com.linagora.tmail.encrypted
 
-import java.io.InputStream
-import java.util
-import java.util.Date
 import com.linagora.tmail.pgp.Encrypter
-
-import javax.inject.Inject
-import javax.mail.Flags
 import org.apache.james.mailbox.MessageManager.{AppendCommand, AppendResult, MailboxMetaData}
 import org.apache.james.mailbox.model.{ComposedMessageIdWithMetaData, FetchGroup, Mailbox, MailboxACL, MailboxConstants, MailboxCounters, MailboxId, MailboxPath, MessageRange, MessageResultIterator, SearchQuery}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}
 import org.apache.james.mime4j.codec.DecodeMonitor
 import org.apache.james.mime4j.dom.Message
+import org.apache.james.mime4j.dom.field.ContentTypeField
 import org.apache.james.mime4j.message.DefaultMessageBuilder
 import org.apache.james.mime4j.stream.MimeConfig
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.io.InputStream
+import java.util
+import java.util.Date
+import javax.inject.Inject
+import javax.mail.Flags
 import scala.jdk.CollectionConverters._
 
 class EncryptedMessageManager @Inject()(messageManager: MessageManager,
                                         keystoreManager: KeystoreManager,
                                         clearEmailContentFactory: ClearEmailContentFactory,
                                         encryptedEmailContentStore: EncryptedEmailContentStore) extends MessageManager {
-  
+
   override def getMessageCount(mailboxSession: MailboxSession): Long = messageManager.getMessageCount(mailboxSession)
 
   override def getMailboxCounters(mailboxSession: MailboxSession): MailboxCounters = messageManager.getMailboxCounters(mailboxSession)
@@ -83,11 +83,19 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
           messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
           messageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
           val clearMessage: Message = messageBuilder.parseMessage(appendCommand.getMsgIn.getInputStream)
-          clearEmailContentFactory.from(clearMessage)
-            .fold(e => SMono.error(e),
-              clearContent => storeEncryptedMessage(session, keys, clearMessage, clearContent))
+          if (isMessageEncrypted(clearMessage)) {
+            SMono.fromPublisher(messageManager.appendMessageReactive(appendCommand, session))
+          } else {
+            clearEmailContentFactory.from(clearMessage)
+              .fold(e => SMono.error(e),
+                clearContent => storeEncryptedMessage(session, keys, clearMessage, clearContent))
+          }
         }
       })
+
+  private def isMessageEncrypted(message: Message): Boolean =
+    Option(message.getHeader.getField("Content-Type").asInstanceOf[ContentTypeField])
+      .exists(field => field.getMediaType.equals("multipart") && field.getSubType.equals("encrypted"))
 
   private def storeEncryptedMessage(session: MailboxSession,
                                     keys: Seq[PublicKey],
