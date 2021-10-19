@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets
 
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
+import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.config.ParamConfig
 import io.restassured.config.ParamConfig.UpdateStrategy.REPLACE
@@ -14,7 +15,7 @@ import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.quota.{QuotaCountLimit, QuotaSizeLimit}
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.{MailboxProbeImpl, QuotaProbesImpl}
@@ -22,6 +23,7 @@ import org.apache.james.utils.{DataProbeImpl, WebAdminGuiceProbe}
 import org.apache.james.webadmin.WebAdminUtils
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
+import org.hamcrest.Matchers.hasItem
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 class TeamMailboxesQuotaExtensionsContract {
@@ -114,6 +116,65 @@ class TeamMailboxesQuotaExtensionsContract {
            |        },
            |        "username": "marketing@domain.tld"
            |}""".stripMargin)
+    })
+  }
+
+  @Test
+  def teamMailboxesShouldSendOverQuotaEmails(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+
+    val quotaProbe = server.getProbe(classOf[QuotaProbesImpl])
+    quotaProbe.setMaxMessageCount(teamMailbox.quotaRoot, QuotaCountLimit.count(40L))
+    quotaProbe.setGlobalMaxStorage(QuotaSizeLimit.size(100 * 1024 * 1024))
+
+    // 38 messages on the team mailbox
+    for(_ <- 1 to 38) {
+      server.getProbe(classOf[MailboxProbeImpl])
+        .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+        .getMessageId.serialize()
+    }
+
+
+    calmlyAwait.untilAsserted(() => {
+      val request =
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "urn:ietf:params:jmap:mail",
+           |    "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [["Email/query", {
+           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "filter": {}
+           |    }, "c1"], [
+           |     "Email/get",
+           |     {
+           |       "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |       "properties": ["id", "subject"],
+           |       "#ids": {
+           |         "resultOf":"c1",
+           |         "name":"Email/query",
+           |         "path":"ids/*"
+           |       }
+           |     },
+           |     "c2"]]
+           |}""".stripMargin
+
+      `given`()
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(request)
+      .when()
+        .post()
+      .`then`
+        .body("methodResponses[1][1].list.subject", hasItem("Warning: Your email usage just exceeded a configured threshold"));
     })
   }
 }
