@@ -11,7 +11,7 @@ image::pillars.png[Our 4 development pillars: collaboration, reliability, privac
 - **Collaboration**: TMail offers some xref:tmail-backend/features/index.adoc[Advanced features], including
 **Team mailboxes**.
 - **Reliable**: By the use of noSQL technologies, trusted OpenSource building blocks we can easily and reliably scale TMail to millions of users. Discover TMail
-xref:james-project:servers:distributed/architecture/index.adoc[architecture].
+xref:james-distributed-app::architecture/index.adoc[architecture].
 - **Private and secure**: The xref:tmail-backend/features/encrypted-mailbox.adoc[Encrypted mailbox] keeps your mail safe,
 we are link:https://gdpr-info.eu/[GDPR] compliant, and we leverage the security of our reliable OpenSource building blocks.
 - **Sustainable**: By the use of the link:[JMAP protocol] TMail aims at providing a sustainable protocol adapted to modern use cases.

@@ -9,7 +9,7 @@ content:
       start_path: docs
     - url: ./..
       branches: HEAD
-      start_path: james-project/docs
+      start_path: james-project/server/apps/distributed-app/docs
 ui:
   bundle:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/master/raw/build/ui-bundle.zip?job=bundle-stable

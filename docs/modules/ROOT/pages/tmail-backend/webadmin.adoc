@@ -3,7 +3,7 @@
 
 The following document discusses additional webAdmin routes exposed by TMail.
 
-It follows the conventions of xref:james-project:servers:distributed/operate/webadmin.adoc[existing routes for the Apache James
+It follows the conventions of xref:3.7.0@james-distributed-app:operate/webadmin.adoc[existing routes for the Apache James
 Distributed Server].
 
 == Team Mailboxes

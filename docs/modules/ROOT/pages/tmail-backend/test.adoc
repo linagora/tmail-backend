@@ -40,7 +40,7 @@ docker run --mount type=bind,source=[/ABSOLUTE/PATH/TO]/jwt_publickey,target=/ro
 -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" linagora/tmail-backend:memory-branch-master
 ....
 
-The xref:james-project:servers:distributed/operate/cli.adoc[CLI] can easily be used once your testing server is running:
+The xref:james-distributed-app::operate/cli.adoc[CLI] can easily be used once your testing server is running:
 
 ....
 docker exec james james-cli ListDomains
