@@ -111,7 +111,7 @@ services:
 
 === Using the CLI
 
-The xref:james-project:servers:distributed/operate/cli.adoc[CLI] can easily be used once your distributed server is running:
+The xref:james-distributed-app::operate/cli.adoc[CLI] can easily be used once your distributed server is running:
 
 ....
 docker exec james james-cli ListDomains
