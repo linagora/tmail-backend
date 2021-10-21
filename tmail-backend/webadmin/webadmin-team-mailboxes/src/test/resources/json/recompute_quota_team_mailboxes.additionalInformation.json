@@ -1,0 +1,10 @@
+{
+  "type": "recompute-quota-team-mailboxes",
+  "timestamp": "2007-12-03T10:15:30Z",
+  "domain": "linagora.com",
+  "processedQuotaRoots": 1,
+  "failedQuotaRoots": [
+    "#TeamMailbox&marketing@abc.com@abc.com",
+    "#TeamMailbox&sale@xyz.com@xyz.com"
+  ]
+}

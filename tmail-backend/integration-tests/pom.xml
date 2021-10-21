@@ -20,6 +20,9 @@
         <module>smtp/distributed-smtp-integration-tests</module>
         <module>smtp/memory-smtp-integration-tests</module>
         <module>smtp/smtp-integration-tests-common</module>
+
+        <module>webadmin/webadmin-integration-tests-common</module>
+        <module>webadmin/distributed-webadmin-integration-tests</module>
     </modules>
 
     <dependencyManagement>
@@ -38,6 +41,11 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-guice-jmap</artifactId>
                 <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>webadmin-integration-tests-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
