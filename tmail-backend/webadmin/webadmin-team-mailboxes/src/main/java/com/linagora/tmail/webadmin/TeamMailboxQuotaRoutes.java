@@ -6,6 +6,7 @@ import javax.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.quota.QuotaCountLimit;
+import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
@@ -52,6 +53,10 @@ public class TeamMailboxQuotaRoutes implements Routes {
         service.get(COUNT_LIMIT_PATH, getQuotaCount(), jsonTransformer);
         service.put(COUNT_LIMIT_PATH, updateQuotaCount());
         service.delete(COUNT_LIMIT_PATH, deleteQuotaCount());
+
+        service.get(SIZE_LIMIT_PATH, getQuotaSize(), jsonTransformer);
+        service.put(SIZE_LIMIT_PATH, updateQuotaSize());
+        service.delete(SIZE_LIMIT_PATH, deleteQuotaSize());
     }
 
     private Domain extractDomain(Request request) {
@@ -105,6 +110,35 @@ public class TeamMailboxQuotaRoutes implements Routes {
         return (request, response) -> {
             TeamMailbox teamMailbox = checkTeamMailboxExists(request);
             teamMailboxQuotaService.deleteMaxCountQuota(teamMailbox);
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route getQuotaSize() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = checkTeamMailboxExists(request);
+            Optional<QuotaSizeLimit> maxSizeQuota = teamMailboxQuotaService.getMaxSizeQuota(teamMailbox);
+            if (maxSizeQuota.isPresent()) {
+                return maxSizeQuota.get().asLong();
+            }
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route updateQuotaSize() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = checkTeamMailboxExists(request);
+            QuotaSizeLimit quotaSize = Quotas.quotaSize(request.body());
+
+            teamMailboxQuotaService.defineMaxSizeQuota(teamMailbox, quotaSize);
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route deleteQuotaSize() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = checkTeamMailboxExists(request);
+            teamMailboxQuotaService.deleteMaxSizeQuota(teamMailbox);
             return Responses.returnNoContent(response);
         };
     }
