@@ -21,6 +21,8 @@ xref:tmail-backend/features/encrypted-mailbox.adoc[Read more]...
 
 Manage emails effectively as a team!
 
+image::team-mailbox.jpg[Team mailboxes logo]
+
 Team mailboxes enable everybody in the team:
 
  - Emails are received on an email address dedicated to the team mailbox

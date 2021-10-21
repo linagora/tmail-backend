@@ -59,6 +59,19 @@ JMAP Quota (while waiting for the link:https://datatracker.ietf.org/doc/draft-ie
  - link:https://github.com/apache/james-project/blob/master/server/protocols/jmap-rfc-8621/doc/specs/spec/mail/rights.mdown[urn:apache:james:params:jmap:mail:shares]
 JMAP Sharing adds properties for a user to share access for their mailboxes to each other.
 
+=== Additions to urn:apache:james:params:jmap:mail:shares
+
+We add the `TeamMailbox` namespace to the `urn:apache:james:params:jmap:mail:shares` specification. It allows
+a client application to identify that the mailbox is a team mailbox. The field carries the email address associated to the team mailbox.
+
+Example:
+
+....
+...
+"namespace": "TeamMailbox[marketing@domain.tld]",
+...
+....
+
 == Authentication
 
 JMAP RFC-8620 deliberately does not address authentication concerns, and only assumes authenticated requests are handled.
