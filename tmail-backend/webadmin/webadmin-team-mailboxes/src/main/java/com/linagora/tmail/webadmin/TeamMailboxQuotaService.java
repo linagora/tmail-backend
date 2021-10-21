@@ -5,6 +5,7 @@ import java.util.Optional;
 import javax.inject.Inject;
 
 import org.apache.james.core.quota.QuotaCountLimit;
+import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 
@@ -28,5 +29,17 @@ public class TeamMailboxQuotaService {
 
     public void deleteMaxCountQuota(TeamMailbox teamMailbox) throws MailboxException {
         maxQuotaManager.removeMaxMessage(teamMailbox.quotaRoot());
+    }
+
+    public Optional<QuotaSizeLimit> getMaxSizeQuota(TeamMailbox teamMailbox) throws MailboxException {
+        return maxQuotaManager.getMaxStorage(teamMailbox.quotaRoot());
+    }
+
+    public void defineMaxSizeQuota(TeamMailbox teamMailbox, QuotaSizeLimit quotaSize) throws MailboxException {
+        maxQuotaManager.setMaxStorage(teamMailbox.quotaRoot(), quotaSize);
+    }
+
+    public void deleteMaxSizeQuota(TeamMailbox teamMailbox) throws MailboxException {
+        maxQuotaManager.removeMaxStorage(teamMailbox.quotaRoot());
     }
 }
