@@ -85,4 +85,8 @@ public class RecomputeQuotaTeamMailboxesTask implements Task {
                 .map(QuotaRoot::asString)
                 .collect(ImmutableList.toImmutableList())));
     }
+
+    public Domain getTeamMailboxDomain() {
+        return teamMailboxDomain;
+    }
 }

@@ -7,6 +7,7 @@ import org.apache.james.json.DTOModule;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 
 public class RecomputeQuotaTeamMailboxesTaskAdditionalInformationDTO implements AdditionalInformationDTO {
@@ -32,11 +33,11 @@ public class RecomputeQuotaTeamMailboxesTaskAdditionalInformationDTO implements 
     private final long processedQuotaRoots;
     private final ImmutableList<String> failedQuotaRoots;
 
-    public RecomputeQuotaTeamMailboxesTaskAdditionalInformationDTO(String type,
-                                                                   Instant timestamp,
-                                                                   String domain,
-                                                                   long processedQuotaRoots,
-                                                                   ImmutableList<String> failedQuotaRoots) {
+    public RecomputeQuotaTeamMailboxesTaskAdditionalInformationDTO(@JsonProperty("type") String type,
+                                                                   @JsonProperty("timestamp") Instant timestamp,
+                                                                   @JsonProperty("domain") String domain,
+                                                                   @JsonProperty("processedQuotaRoots") long processedQuotaRoots,
+                                                                   @JsonProperty("failedQuotaRoots") ImmutableList<String> failedQuotaRoots) {
         this.type = type;
         this.timestamp = timestamp;
         this.domain = domain;
