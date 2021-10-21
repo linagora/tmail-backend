@@ -3,6 +3,8 @@
 
 Manage emails effectively as a team!
 
+image::team-mailbox.jpg[Team mailboxes logo]
+
 Team mailboxes enable everybody in the team:
 
 - Emails are received on an email address dedicated to the team mailbox
@@ -11,4 +13,46 @@ Team mailboxes enable everybody in the team:
 
 An example would be `marketting@linagora.com`.
 
-**Coming soon**...
+
+
+== Configuring team mailboxes
+
+An administrator need to customize TMail configuration in order to benefit from Team mailboxes, namely:
+
+ - Rely on the `TMailLocalDelivery` mailet in replacement of `apache/james-project` `LocalDelivery` mailet
+in xref:james-distributed-app::configure/mailetcontainer.adoc[mailetcontainer.xml].
+ - Rely on the `TMailValidRcptHandler` RCPT hook in replacement of `apache/james-project` `ValidRcptHandler` RCPT hook
+in xref:james-distributed-app::configure/smtp.adoc[smtpserver.xml].
+
+== Administrating team mailboxes
+
+An administrator can manage team mailboxes using xref:tmail-backend/webadmin.adoc#_team_mailboxes[Team mailboxes webAdmin routes]:
+
+- Creating/removing a team mailbox
+- Listing team mailboxes of a domain
+- Adding/removing/listing members of a team mailbox
+
+Additionally, we provide xref:tmail-backend/webadmin.adoc#_team_mailboxes_quotas[Team mailboxes quota webAdmin routes] to
+allow managing the quotas allocated to team mailboxes.
+
+== Using team mailboxes via JMAP
+
+Team mailboxes require the use of `urn:apache:james:params:jmap:mail:shares`. This allow contextualizing mailboxes as part of
+`Mailbox/get` operations.
+
+We introduce a xref:tmail-backend/jmap-extensions/index.adoc#_additions_to_urnapachejamesparamsjmapmailshares[TeamMailbox namespace] to
+the `urn:apache:james:params:jmap:mail:shares` JMAP extension.
+
+== Limitation of Team Mailboxes
+
+Team mailboxes MVP does not include, as of today:
+
+ - Fine grain right management for members. As of today a member can read, write, delete email and send replies without any
+limitation possible. We might introduce member profiles in the future to limit their rights.
+ - Delegate members administration to a member. Today all new members needs to be added through webAdmin. We might introduce
+administration right management for members with a JMAP extension for it.
+ - Exposing the Team mailboxes via IMAP. So far, this is a JMAP only feature.
+ - Sub mailboxes management. Today team mailboxes only have a `INBOX` and a `Sent` mailboxes. We could allow users in the
+future to create their own sub-mailboxes for team mailboes in order to allow finner grain classification of emails.
+ - The keyword of emails in team mailboxes (`seen`, `Flagged`, `Answered`, `Forwarded`) are common to all users. This comes
+from James storage structure and will likely not change.
