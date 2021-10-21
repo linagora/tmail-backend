@@ -15,15 +15,19 @@ import org.apache.james.DefaultUserEntityValidator;
 import org.apache.james.RecipientRewriteTableUserEntityValidator;
 import org.apache.james.UserEntityValidator;
 import org.apache.james.core.quota.QuotaCountLimit;
+import org.apache.james.core.quota.QuotaCountUsage;
 import org.apache.james.core.quota.QuotaSizeLimit;
+import org.apache.james.core.quota.QuotaSizeUsage;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
-import org.apache.james.mailbox.inmemory.quota.InMemoryPerUserMaxQuotaManager;
+import org.apache.james.mailbox.inmemory.quota.InMemoryCurrentQuotaManager;
+import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
+import org.apache.james.mailbox.quota.QuotaManager;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.user.memory.MemoryUsersRepository;
@@ -44,19 +48,24 @@ import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import io.restassured.path.json.JsonPath;
 import reactor.core.publisher.Mono;
 
 public class TeamMailboxQuotaRoutesTest {
     private static final String BASE_PATH = "/domains/%s/team-mailboxes";
-    private static final String LIMIT_PATH = "quota/limit";
+    private static final String QUOTA_PATH = "quota";
+    private static final String LIMIT_PATH = QUOTA_PATH + "/limit";
     private static final String LIMIT_COUNT_PATH = LIMIT_PATH + "/count";
     private static final String SIZE_COUNT_PATH = LIMIT_PATH + "/size";
+    private static final String COUNT = "count";
+    private static final String SIZE = "size";
 
     private WebAdminServer webAdminServer;
     private TeamMailboxRepositoryImpl teamMailboxRepository;
     private MemoryUsersRepository usersRepository;
     private MemoryRecipientRewriteTable recipientRewriteTable;
     private MaxQuotaManager maxQuotaManager;
+    private InMemoryCurrentQuotaManager currentQuotaManager;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -69,7 +78,8 @@ public class TeamMailboxQuotaRoutesTest {
         recipientRewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
         usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
 
-        InMemoryMailboxManager mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
+        InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
+        InMemoryMailboxManager mailboxManager = resources.getMailboxManager();
         teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager);
 
         UserEntityValidator validator = UserEntityValidator.aggregate(
@@ -82,8 +92,10 @@ public class TeamMailboxQuotaRoutesTest {
         recipientRewriteTable.setUserEntityValidator(validator);
         teamMailboxRepository.setValidator(validator);
 
-        maxQuotaManager = new InMemoryPerUserMaxQuotaManager();
-        TeamMailboxQuotaService teamMailboxQuotaService = new TeamMailboxQuotaService(maxQuotaManager);
+        maxQuotaManager = resources.getMaxQuotaManager();
+        QuotaManager quotaManager = resources.getQuotaManager();
+        currentQuotaManager = resources.getCurrentQuotaManager();
+        TeamMailboxQuotaService teamMailboxQuotaService = new TeamMailboxQuotaService(maxQuotaManager, quotaManager);
 
         QuotaModule quotaModule = new QuotaModule();
         JsonTransformer jsonTransformer = new JsonTransformer(quotaModule);
@@ -515,6 +527,229 @@ public class TeamMailboxQuotaRoutesTest {
                 .isEmpty();
             softly.assertThat(maxQuotaManager.getMaxStorage(TEAM_MAILBOX.quotaRoot()))
                 .isEmpty();
+            softly.assertAll();
+        }
+    }
+
+    @Nested
+    class GetQuota {
+        @Test
+        void getQuotaShouldReturnNotFoundWhenUserDoesntExist() {
+            when()
+                .get("/" + TEAM_MAILBOX_2.mailboxName().asString() + "/" + QUOTA_PATH)
+            .then()
+                .statusCode(HttpStatus.NOT_FOUND_404);
+        }
+
+        @Test
+        void getQuotaShouldReturnBothWhenValueSpecified() throws Exception {
+            maxQuotaManager.setGlobalMaxStorage(QuotaSizeLimit.size(1111));
+            maxQuotaManager.setGlobalMaxMessage(QuotaCountLimit.count(22));
+            maxQuotaManager.setDomainMaxStorage(TEAM_MAILBOX_DOMAIN, QuotaSizeLimit.size(34));
+            maxQuotaManager.setDomainMaxMessage(TEAM_MAILBOX_DOMAIN, QuotaCountLimit.count(23));
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.size(42));
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(52));
+
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getLong("computed." + SIZE)).isEqualTo(42);
+            softly.assertThat(jsonPath.getLong("computed." + COUNT)).isEqualTo(52);
+            softly.assertThat(jsonPath.getLong("teamMailbox." + SIZE)).isEqualTo(42);
+            softly.assertThat(jsonPath.getLong("teamMailbox." + COUNT)).isEqualTo(52);
+            softly.assertThat(jsonPath.getLong("domain." + SIZE)).isEqualTo(34);
+            softly.assertThat(jsonPath.getLong("domain." + COUNT)).isEqualTo(23);
+            softly.assertThat(jsonPath.getLong("global." + SIZE)).isEqualTo(1111);
+            softly.assertThat(jsonPath.getLong("global." + COUNT)).isEqualTo(22);
+            softly.assertAll();
+        }
+
+        @Test
+        void getQuotaShouldReturnOccupation() throws Exception {
+            QuotaOperation quotaIncrease = new QuotaOperation(TEAM_MAILBOX.quotaRoot(), QuotaCountUsage.count(20), QuotaSizeUsage.size(40));
+
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.size(80));
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(100));
+            currentQuotaManager.increase(quotaIncrease).block();
+
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getLong("occupation.count")).isEqualTo(20);
+            softly.assertThat(jsonPath.getLong("occupation.size")).isEqualTo(40);
+            softly.assertThat(jsonPath.getDouble("occupation.ratio.count")).isEqualTo(0.2);
+            softly.assertThat(jsonPath.getDouble("occupation.ratio.size")).isEqualTo(0.5);
+            softly.assertThat(jsonPath.getDouble("occupation.ratio.max")).isEqualTo(0.5);
+            softly.assertAll();
+        }
+
+        @Test
+        void getQuotaShouldReturnOccupationWhenUnlimited() throws Exception {
+            QuotaOperation quotaIncrease = new QuotaOperation(TEAM_MAILBOX.quotaRoot(), QuotaCountUsage.count(20), QuotaSizeUsage.size(40));
+
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.unlimited());
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.unlimited());
+            currentQuotaManager.increase(quotaIncrease).block();
+
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getLong("occupation.count")).isEqualTo(20);
+            softly.assertThat(jsonPath.getLong("occupation.size")).isEqualTo(40);
+            softly.assertThat(jsonPath.getDouble("occupation.ratio.count")).isEqualTo(0);
+            softly.assertThat(jsonPath.getDouble("occupation.ratio.size")).isEqualTo(0);
+            softly.assertThat(jsonPath.getDouble("occupation.ratio.max")).isEqualTo(0);
+            softly.assertAll();
+        }
+
+        @Test
+        void getQuotaShouldReturnOnlySpecifiedValues() throws Exception {
+            maxQuotaManager.setGlobalMaxStorage(QuotaSizeLimit.size(1111));
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(18));
+            maxQuotaManager.setDomainMaxMessage(TEAM_MAILBOX_DOMAIN, QuotaCountLimit.count(52));
+
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getLong("computed." + SIZE)).isEqualTo(1111);
+            softly.assertThat(jsonPath.getLong("computed." + COUNT)).isEqualTo(18);
+            softly.assertThat(jsonPath.getLong("teamMailbox." + COUNT)).isEqualTo(18);
+            softly.assertThat(jsonPath.getObject("teamMailbox." + SIZE, Long.class)).isNull();
+            softly.assertThat(jsonPath.getObject("domain." + SIZE, Long.class)).isNull();
+            softly.assertThat(jsonPath.getObject("domain." + COUNT, Long.class)).isEqualTo(52);
+            softly.assertThat(jsonPath.getLong("global." + SIZE)).isEqualTo(1111);
+            softly.assertThat(jsonPath.getObject("global." + COUNT, Long.class)).isNull();
+            softly.assertAll();
+        }
+
+        @Test
+        void getQuotaShouldReturnGlobalValuesWhenNoTeamMailboxValuesDefined() throws Exception {
+            maxQuotaManager.setGlobalMaxStorage(QuotaSizeLimit.size(1111));
+            maxQuotaManager.setGlobalMaxMessage(QuotaCountLimit.count(12));
+
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getLong("computed." + SIZE)).isEqualTo(1111);
+            softly.assertThat(jsonPath.getLong("computed." + COUNT)).isEqualTo(12);
+            softly.assertThat(jsonPath.getObject("teamMailbox", Object.class)).isNull();
+            softly.assertThat(jsonPath.getObject("domain", Object.class)).isNull();
+            softly.assertThat(jsonPath.getLong("global." + SIZE)).isEqualTo(1111);
+            softly.assertThat(jsonPath.getLong("global." + COUNT)).isEqualTo(12);
+            softly.assertAll();
+        }
+
+        @Test
+        void getQuotaShouldReturnBothWhenValueSpecifiedAndEscaped() throws MailboxException {
+            int maxStorage = 42;
+            int maxMessage = 52;
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.size(maxStorage));
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(maxMessage));
+
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getLong("teamMailbox." + SIZE)).isEqualTo(maxStorage);
+            softly.assertThat(jsonPath.getLong("teamMailbox." + COUNT)).isEqualTo(maxMessage);
+            softly.assertAll();
+        }
+
+        @Test
+        void getQuotaShouldReturnBothEmptyWhenDefaultValues() {
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getObject(SIZE, Long.class)).isNull();
+            softly.assertThat(jsonPath.getObject(COUNT, Long.class)).isNull();
+            softly.assertAll();
+        }
+
+        @Test
+        void getQuotaShouldReturnSizeWhenNoCount() throws MailboxException {
+            int maxStorage = 42;
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.size(maxStorage));
+
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getLong("teamMailbox." + SIZE)).isEqualTo(maxStorage);
+            softly.assertThat(jsonPath.getObject("teamMailbox." + COUNT, Long.class)).isNull();
+            softly.assertAll();
+        }
+
+        @Test
+        void getQuotaShouldReturnBothWhenNoSize() throws MailboxException {
+            int maxMessage = 42;
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(maxMessage));
+
+            JsonPath jsonPath =
+                when()
+                    .get("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + QUOTA_PATH)
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .contentType(ContentType.JSON)
+                    .extract()
+                    .jsonPath();
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(jsonPath.getObject("teamMailbox." + SIZE, Long.class)).isNull();
+            softly.assertThat(jsonPath.getLong("teamMailbox." + COUNT)).isEqualTo(maxMessage);
             softly.assertAll();
         }
     }

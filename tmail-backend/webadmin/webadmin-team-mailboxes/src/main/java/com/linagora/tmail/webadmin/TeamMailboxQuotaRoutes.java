@@ -73,6 +73,7 @@ public class TeamMailboxQuotaRoutes implements Routes {
         service.delete(SIZE_LIMIT_PATH, deleteQuotaSize());
 
         service.put(LIMIT_PATH, updateQuota());
+        service.get(BASE_PATH, getQuota(), jsonTransformer);
     }
 
     private Domain extractDomain(Request request) {
@@ -175,6 +176,13 @@ public class TeamMailboxQuotaRoutes implements Routes {
                     .cause(e)
                     .haltError();
             }
+        };
+    }
+
+    public Route getQuota() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = checkTeamMailboxExists(request);
+            return teamMailboxQuotaService.getQuota(teamMailbox);
         };
     }
 }
