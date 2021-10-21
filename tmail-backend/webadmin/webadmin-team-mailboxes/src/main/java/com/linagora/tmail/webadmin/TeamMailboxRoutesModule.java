@@ -11,5 +11,6 @@ public class TeamMailboxRoutesModule extends AbstractModule {
         Multibinder<Routes> routesMultibinder = Multibinder.newSetBinder(binder(), Routes.class);
         routesMultibinder.addBinding().to(TeamMailboxManagementRoutes.class);
         routesMultibinder.addBinding().to(UserTeamMailboxRoutes.class);
+        routesMultibinder.addBinding().to(TeamMailboxQuotaRoutes.class);
     }
 }
