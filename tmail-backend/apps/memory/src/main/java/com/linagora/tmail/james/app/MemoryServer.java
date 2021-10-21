@@ -57,6 +57,7 @@ import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 
 public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
@@ -102,6 +103,7 @@ public class MemoryServer {
           JMAP_LINAGORA,
           WEBADMIN,
           new TeamMailboxModule(),
+          new TeamMailboxRoutesModule(),
           new DKIMMailetModule(),
           new SpamAssassinListenerModule())
         .with(new TeamMailboxModule());

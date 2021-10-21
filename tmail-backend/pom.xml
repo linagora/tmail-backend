@@ -128,6 +128,11 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-webadmin-team-mailboxes</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-guice-jmap</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>

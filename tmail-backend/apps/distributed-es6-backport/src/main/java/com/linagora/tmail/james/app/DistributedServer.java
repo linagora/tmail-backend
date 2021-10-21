@@ -101,6 +101,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 
 public class DistributedServer {
     public static final Module WEBADMIN = Modules.combine(
@@ -116,6 +117,7 @@ public class DistributedServer {
         new MailQueueRoutesModule(),
         new MailRepositoriesRoutesModule(),
         new TeamMailboxModule(),
+        new TeamMailboxRoutesModule(),
         new SieveRoutesModule(),
         new SwaggerRoutesModule(),
         new WebAdminServerModule(),
