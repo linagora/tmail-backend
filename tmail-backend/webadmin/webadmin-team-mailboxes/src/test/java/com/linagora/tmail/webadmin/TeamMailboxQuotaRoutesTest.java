@@ -24,19 +24,21 @@ import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.inmemory.quota.InMemoryPerUserMaxQuotaManager;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
-import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.user.memory.MemoryUsersRepository;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
+import org.apache.james.webadmin.jackson.QuotaModule;
 import org.apache.james.webadmin.utils.JsonTransformer;
+import org.assertj.core.api.SoftAssertions;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 
@@ -46,8 +48,9 @@ import reactor.core.publisher.Mono;
 
 public class TeamMailboxQuotaRoutesTest {
     private static final String BASE_PATH = "/domains/%s/team-mailboxes";
-    private static final String LIMIT_COUNT_PATH = "quota/limit/count";
-    private static final String SIZE_COUNT_PATH = "quota/limit/size";
+    private static final String LIMIT_PATH = "quota/limit";
+    private static final String LIMIT_COUNT_PATH = LIMIT_PATH + "/count";
+    private static final String SIZE_COUNT_PATH = LIMIT_PATH + "/size";
 
     private WebAdminServer webAdminServer;
     private TeamMailboxRepositoryImpl teamMailboxRepository;
@@ -82,7 +85,10 @@ public class TeamMailboxQuotaRoutesTest {
         maxQuotaManager = new InMemoryPerUserMaxQuotaManager();
         TeamMailboxQuotaService teamMailboxQuotaService = new TeamMailboxQuotaService(maxQuotaManager);
 
-        TeamMailboxQuotaRoutes teamMailboxQuotaRoutes = new TeamMailboxQuotaRoutes(teamMailboxRepository, teamMailboxQuotaService, new JsonTransformer());
+        QuotaModule quotaModule = new QuotaModule();
+        JsonTransformer jsonTransformer = new JsonTransformer(quotaModule);
+
+        TeamMailboxQuotaRoutes teamMailboxQuotaRoutes = new TeamMailboxQuotaRoutes(teamMailboxRepository, teamMailboxQuotaService, jsonTransformer, ImmutableSet.of(quotaModule));
         webAdminServer = WebAdminUtils.createWebAdminServer(teamMailboxQuotaRoutes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -350,6 +356,166 @@ public class TeamMailboxQuotaRoutesTest {
                 .statusCode(HttpStatus.NO_CONTENT_204);
 
             assertThat(maxQuotaManager.getMaxStorage(TEAM_MAILBOX.quotaRoot())).isEmpty();
+        }
+    }
+
+    @Nested
+    class PutQuota {
+        @Test
+        void putQuotaShouldReturnNotFoundWhenTeamMailboxDoesntExist() {
+            when()
+                .put("/" + TEAM_MAILBOX_2.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.NOT_FOUND_404);
+        }
+
+        @Test
+        void putQuotaWithNegativeCountShouldFail() throws Exception {
+            Map<String, Object> errors = with()
+                .body("{\"count\":-2,\"size\":42}")
+                .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .contentType(ContentType.JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", HttpStatus.BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid quota. Need to be an integer value greater or equal to -1");
+        }
+
+        @Test
+        void putQuotaWithNegativeCountShouldNotUpdatePreviousQuota() throws Exception {
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(52));
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.size(42));
+
+            with()
+                .body("{\"count\":-2,\"size\":42}")
+                .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .contentType(ContentType.JSON);
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(maxQuotaManager.getMaxMessage(TEAM_MAILBOX.quotaRoot()))
+                .contains(QuotaCountLimit.count(52));
+            softly.assertThat(maxQuotaManager.getMaxStorage(TEAM_MAILBOX.quotaRoot()))
+                .contains(QuotaSizeLimit.size(42));
+            softly.assertAll();
+        }
+
+        @Test
+        void putQuotaWithNegativeSizeShouldFail() throws Exception {
+            Map<String, Object> errors = with()
+                .body("{\"count\":52,\"size\":-3}")
+                .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .contentType(ContentType.JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", HttpStatus.BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid quota. Need to be an integer value greater or equal to -1");
+        }
+
+        @Test
+        void putQuotaWithNegativeSizeShouldNotUpdatePreviousQuota() throws Exception {
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(52));
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.size(42));
+
+            with()
+                .body("{\"count\":52,\"size\":-3}")
+                .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .contentType(ContentType.JSON);
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(maxQuotaManager.getMaxMessage(TEAM_MAILBOX.quotaRoot()))
+                .contains(QuotaCountLimit.count(52));
+            softly.assertThat(maxQuotaManager.getMaxStorage(TEAM_MAILBOX.quotaRoot()))
+                .contains(QuotaSizeLimit.size(42));
+            softly.assertAll();
+        }
+
+        @Test
+        void putQuotaShouldUpdateBothQuota() throws Exception {
+            with()
+                .body("{\"count\":52,\"size\":42}")
+                .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.NO_CONTENT_204);
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(maxQuotaManager.getMaxMessage(TEAM_MAILBOX.quotaRoot()))
+                .contains(QuotaCountLimit.count(52));
+            softly.assertThat(maxQuotaManager.getMaxStorage(TEAM_MAILBOX.quotaRoot()))
+                .contains(QuotaSizeLimit.size(42));
+            softly.assertAll();
+        }
+
+        @Test
+        void putQuotaShouldRemoveCount() throws Exception {
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(52));
+
+            with()
+                .body("{\"count\":null,\"size\":42}")
+                .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.NO_CONTENT_204);
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(maxQuotaManager.getMaxMessage(TEAM_MAILBOX.quotaRoot()))
+                .isEmpty();
+            softly.assertThat(maxQuotaManager.getMaxStorage(TEAM_MAILBOX.quotaRoot()))
+                .contains(QuotaSizeLimit.size(42));
+            softly.assertAll();
+        }
+
+        @Test
+        void putQuotaShouldRemoveSize() throws Exception {
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.size(42));
+
+            with()
+                .body("{\"count\":52,\"size\":null}")
+                .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.NO_CONTENT_204);
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(maxQuotaManager.getMaxMessage(TEAM_MAILBOX.quotaRoot()))
+                .contains(QuotaCountLimit.count(52));
+            softly.assertThat(maxQuotaManager.getMaxStorage(TEAM_MAILBOX.quotaRoot()))
+                .isEmpty();
+            softly.assertAll();
+        }
+
+        @Test
+        void putQuotaShouldRemoveBoth() throws Exception {
+            maxQuotaManager.setMaxMessage(TEAM_MAILBOX.quotaRoot(), QuotaCountLimit.count(52));
+            maxQuotaManager.setMaxStorage(TEAM_MAILBOX.quotaRoot(), QuotaSizeLimit.size(42));
+
+            with()
+                .body("{\"count\":null,\"size\":null}")
+                .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
+            .then()
+                .statusCode(HttpStatus.NO_CONTENT_204);
+
+            SoftAssertions softly = new SoftAssertions();
+            softly.assertThat(maxQuotaManager.getMaxMessage(TEAM_MAILBOX.quotaRoot()))
+                .isEmpty();
+            softly.assertThat(maxQuotaManager.getMaxStorage(TEAM_MAILBOX.quotaRoot()))
+                .isEmpty();
+            softly.assertAll();
         }
     }
 }

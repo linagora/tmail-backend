@@ -1,6 +1,8 @@
 package com.linagora.tmail.webadmin;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -9,9 +11,14 @@ import org.apache.james.core.quota.QuotaCountLimit;
 import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.dto.QuotaDTO;
+import org.apache.james.webadmin.dto.ValidatedQuotaDTO;
 import org.apache.james.webadmin.utils.ErrorResponder;
+import org.apache.james.webadmin.utils.JsonExtractor;
 import org.apache.james.webadmin.utils.JsonTransformer;
+import org.apache.james.webadmin.utils.JsonTransformerModule;
 import org.apache.james.webadmin.utils.Responses;
+import org.apache.james.webadmin.validation.QuotaDTOValidator;
 import org.apache.james.webadmin.validation.Quotas;
 import org.eclipse.jetty.http.HttpStatus;
 
@@ -35,12 +42,19 @@ public class TeamMailboxQuotaRoutes implements Routes {
     private final TeamMailboxRepository teamMailboxRepository;
     private final TeamMailboxQuotaService teamMailboxQuotaService;
     private final JsonTransformer jsonTransformer;
+    private final JsonExtractor<QuotaDTO> jsonExtractor;
+    private final QuotaDTOValidator quotaDTOValidator;
 
     @Inject
-    public TeamMailboxQuotaRoutes(TeamMailboxRepository teamMailboxRepository, TeamMailboxQuotaService teamMailboxQuotaService, JsonTransformer jsonTransformer) {
+    public TeamMailboxQuotaRoutes(TeamMailboxRepository teamMailboxRepository,
+                                  TeamMailboxQuotaService teamMailboxQuotaService,
+                                  JsonTransformer jsonTransformer,
+                                  Set<JsonTransformerModule> modules) {
         this.teamMailboxRepository = teamMailboxRepository;
         this.teamMailboxQuotaService = teamMailboxQuotaService;
         this.jsonTransformer = jsonTransformer;
+        this.jsonExtractor = new JsonExtractor<>(QuotaDTO.class, modules.stream().map(JsonTransformerModule::asJacksonModule).collect(Collectors.toList()));
+        this.quotaDTOValidator = new QuotaDTOValidator();
     }
 
     @Override
@@ -57,6 +71,8 @@ public class TeamMailboxQuotaRoutes implements Routes {
         service.get(SIZE_LIMIT_PATH, getQuotaSize(), jsonTransformer);
         service.put(SIZE_LIMIT_PATH, updateQuotaSize());
         service.delete(SIZE_LIMIT_PATH, deleteQuotaSize());
+
+        service.put(LIMIT_PATH, updateQuota());
     }
 
     private Domain extractDomain(Request request) {
@@ -75,7 +91,7 @@ public class TeamMailboxQuotaRoutes implements Routes {
             TeamMailbox teamMailbox = checkTeamMailboxExists(request);
             Optional<QuotaCountLimit> maxCountQuota = teamMailboxQuotaService.getMaxCountQuota(teamMailbox);
             if (maxCountQuota.isPresent()) {
-                return maxCountQuota.get().asLong();
+                return maxCountQuota;
             }
             return Responses.returnNoContent(response);
         };
@@ -119,7 +135,7 @@ public class TeamMailboxQuotaRoutes implements Routes {
             TeamMailbox teamMailbox = checkTeamMailboxExists(request);
             Optional<QuotaSizeLimit> maxSizeQuota = teamMailboxQuotaService.getMaxSizeQuota(teamMailbox);
             if (maxSizeQuota.isPresent()) {
-                return maxSizeQuota.get().asLong();
+                return maxSizeQuota;
             }
             return Responses.returnNoContent(response);
         };
@@ -140,6 +156,25 @@ public class TeamMailboxQuotaRoutes implements Routes {
             TeamMailbox teamMailbox = checkTeamMailboxExists(request);
             teamMailboxQuotaService.deleteMaxSizeQuota(teamMailbox);
             return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route updateQuota() {
+        return (request, response) -> {
+            try {
+                TeamMailbox teamMailbox = checkTeamMailboxExists(request);
+                QuotaDTO quotaDTO = jsonExtractor.parse(request.body());
+                ValidatedQuotaDTO validatedQuotaDTO = quotaDTOValidator.validatedQuotaDTO(quotaDTO);
+                teamMailboxQuotaService.defineQuota(teamMailbox, validatedQuotaDTO);
+                return Responses.returnNoContent(response);
+            } catch (IllegalArgumentException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Quota should be positive or unlimited (-1)")
+                    .cause(e)
+                    .haltError();
+            }
         };
     }
 }
