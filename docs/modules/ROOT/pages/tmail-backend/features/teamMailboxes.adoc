@@ -17,7 +17,7 @@ An example would be `marketting@linagora.com`.
 
 == Configuring team mailboxes
 
-An administrator need to customize TMail configuration in order to benefit from Team mailboxes, namely:
+An administrator needs to customize TMail configuration in order to benefit from Team mailboxes, namely:
 
  - Rely on the `TMailLocalDelivery` mailet in replacement of `apache/james-project` `LocalDelivery` mailet
 in xref:james-distributed-app::configure/mailetcontainer.adoc[mailetcontainer.xml].
@@ -37,7 +37,7 @@ allow managing the quotas allocated to team mailboxes.
 
 == Using team mailboxes via JMAP
 
-Team mailboxes require the use of `urn:apache:james:params:jmap:mail:shares`. This allow contextualizing mailboxes as part of
+Team mailboxes require the use of `urn:apache:james:params:jmap:mail:shares`. This allows contextualizing mailboxes as part of
 `Mailbox/get` operations.
 
 We introduce a xref:tmail-backend/jmap-extensions/index.adoc#_additions_to_urnapachejamesparamsjmapmailshares[TeamMailbox namespace] to
@@ -49,10 +49,10 @@ Team mailboxes MVP does not include, as of today:
 
  - Fine grain right management for members. As of today a member can read, write, delete email and send replies without any
 limitation possible. We might introduce member profiles in the future to limit their rights.
- - Delegate members administration to a member. Today all new members needs to be added through webAdmin. We might introduce
+ - Delegate members administration to a member. Today all new members need to be added through webAdmin. We might introduce
 administration right management for members with a JMAP extension for it.
  - Exposing the Team mailboxes via IMAP. So far, this is a JMAP only feature.
  - Sub mailboxes management. Today team mailboxes only have a `INBOX` and a `Sent` mailboxes. We could allow users in the
-future to create their own sub-mailboxes for team mailboes in order to allow finner grain classification of emails.
+future to create their own sub-mailboxes for team mailboxes in order to allow finer grain classification of emails.
  - The keyword of emails in team mailboxes (`seen`, `Flagged`, `Answered`, `Forwarded`) are common to all users. This comes
 from James storage structure and will likely not change.
