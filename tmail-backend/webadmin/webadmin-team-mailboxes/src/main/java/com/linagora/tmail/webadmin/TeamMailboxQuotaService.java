@@ -7,7 +7,9 @@ import javax.inject.Inject;
 import org.apache.james.core.quota.QuotaCountLimit;
 import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
+import org.apache.james.webadmin.dto.ValidatedQuotaDTO;
 
 import com.linagora.tmail.team.TeamMailbox;
 
@@ -41,5 +43,24 @@ public class TeamMailboxQuotaService {
 
     public void deleteMaxSizeQuota(TeamMailbox teamMailbox) throws MailboxException {
         maxQuotaManager.removeMaxStorage(teamMailbox.quotaRoot());
+    }
+
+    public void defineQuota(TeamMailbox teamMailbox, ValidatedQuotaDTO quota) {
+        try {
+            QuotaRoot quotaRoot = teamMailbox.quotaRoot();
+            if (quota.getCount().isPresent()) {
+                maxQuotaManager.setMaxMessage(quotaRoot, quota.getCount().get());
+            } else {
+                maxQuotaManager.removeMaxMessage(quotaRoot);
+            }
+
+            if (quota.getSize().isPresent()) {
+                maxQuotaManager.setMaxStorage(quotaRoot, quota.getSize().get());
+            } else {
+                maxQuotaManager.removeMaxStorage(quotaRoot);
+            }
+        } catch (MailboxException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
