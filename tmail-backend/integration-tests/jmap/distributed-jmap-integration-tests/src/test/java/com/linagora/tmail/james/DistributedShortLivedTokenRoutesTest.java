@@ -1,7 +1,5 @@
 package com.linagora.tmail.james;
 
-import java.util.Optional;
-
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -14,6 +12,7 @@ import org.apache.james.modules.TestJMAPServerModule;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
@@ -54,7 +53,7 @@ public class DistributedShortLivedTokenRoutesTest implements LinagoraShortLivedT
             .overrideWith(binder -> binder.bind(JMAPDraftConfiguration.class)
                 .toInstance(TestJMAPServerModule
                     .jmapDraftConfigurationBuilder()
-                    .jwtPublicKeyPem(Optional.of(LinagoraTestJMAPServerModule.JWT_PUBLIC_PEM_KEY))
+                    .jwtPublicKeyPem(ImmutableList.of(LinagoraTestJMAPServerModule.JWT_PUBLIC_PEM_KEY))
                     .build())))
         .build();
 }
