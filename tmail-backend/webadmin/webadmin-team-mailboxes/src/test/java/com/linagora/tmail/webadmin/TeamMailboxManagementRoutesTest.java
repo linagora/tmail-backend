@@ -116,7 +116,7 @@ public class TeamMailboxManagementRoutesTest {
         recipientRewriteTable.setUserEntityValidator(validator);
         teamMailboxRepository.setValidator(validator);
 
-        TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository, new JsonTransformer());
+        TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository, domainList, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(teamMailboxManagementRoutes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -243,6 +243,24 @@ public class TeamMailboxManagementRoutesTest {
 
             assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(Domain.of("linagora.com"))).collectList().block())
                 .containsExactlyInAnyOrder(TEAM_MAILBOX);
+        }
+
+        @Test
+        void createTeamMailboxShouldThrowForDomainNotFound() {
+            Map<String, Object> errors = given()
+                .basePath(String.format(BASE_PATH, "notfound.tld"))
+                .put("/marketing")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The domain do not exist: notfound.tld");
         }
 
         @Test
