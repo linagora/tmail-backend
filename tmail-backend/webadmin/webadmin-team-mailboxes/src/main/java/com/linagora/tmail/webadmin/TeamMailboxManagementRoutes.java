@@ -4,6 +4,7 @@ import javax.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
+import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
@@ -74,12 +75,14 @@ public class TeamMailboxManagementRoutes implements Routes {
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
 
     private final TeamMailboxRepository teamMailboxRepository;
+    private final DomainList domainList;
     private final JsonTransformer jsonTransformer;
 
     @Inject
     public TeamMailboxManagementRoutes(TeamMailboxRepository teamMailboxRepository,
-                                       JsonTransformer jsonTransformer) {
+                                       DomainList domainList, JsonTransformer jsonTransformer) {
         this.teamMailboxRepository = teamMailboxRepository;
+        this.domainList = domainList;
         this.jsonTransformer = jsonTransformer;
     }
 
@@ -146,6 +149,14 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             Domain domain = extractDomain(request);
             TeamMailboxName teamMailboxName = extractName(request);
+            if (!domainList.containsDomain(domain)) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The domain do not exist: " + domain.asString())
+                    .haltError();
+            }
+
             return Mono.from(teamMailboxRepository.createTeamMailbox(new TeamMailbox(domain, teamMailboxName)))
                 .then(Mono.just(Responses.returnNoContent(response)))
                 .onErrorResume(TeamMailboxNameConflictException.class, e -> {
