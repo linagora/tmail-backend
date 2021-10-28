@@ -11,6 +11,7 @@ import org.apache.james.user.api.model.User;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.user.ldap.ReadOnlyLDAPUsersDAO;
 import org.apache.james.user.lib.UsersDAO;
+import org.reactivestreams.Publisher;
 import org.slf4j.LoggerFactory;
 
 public class CombinedUserDAO implements UsersDAO {
@@ -57,6 +58,11 @@ public class CombinedUserDAO implements UsersDAO {
     @Override
     public boolean contains(Username name) throws UsersRepositoryException {
         return cassandraUsersDAO.contains(name);
+    }
+
+    @Override
+    public Publisher<Boolean> containsReactive(Username name) {
+        return cassandraUsersDAO.containsReactive(name);
     }
 
     @Override
