@@ -12,8 +12,8 @@ import org.apache.james.events.EventBus
 import org.apache.james.jmap.InjectionKeys
 import org.apache.james.jmap.api.exception.StateMismatchException
 import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule, Version}
-import org.apache.james.jmap.api.model.AccountId
-import org.apache.james.jmap.change.{AccountIdRegistrationKey, StateChangeEvent, TypeName}
+import org.apache.james.jmap.api.model.{AccountId, TypeName}
+import org.apache.james.jmap.change.{AccountIdRegistrationKey, StateChangeEvent}
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}

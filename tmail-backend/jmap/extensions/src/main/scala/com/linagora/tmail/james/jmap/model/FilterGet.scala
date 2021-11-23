@@ -2,8 +2,8 @@ package com.linagora.tmail.james.jmap.model
 
 import com.google.common.collect.ImmutableList
 import org.apache.james.jmap.api.filtering.{Version, Rule => JavaRule}
-import org.apache.james.jmap.change.TypeName
-import org.apache.james.jmap.core.{AccountId, State}
+import org.apache.james.jmap.api.model.{State, TypeName}
+import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.mail.Name
 import org.apache.james.jmap.method.WithAccountId
