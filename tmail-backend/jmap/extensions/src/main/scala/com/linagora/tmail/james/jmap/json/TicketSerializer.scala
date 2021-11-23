@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
-import java.net.{InetAddress, InetSocketAddress}
+import java.net.{InetAddress}
 import java.time.format.DateTimeFormatter
 
 import com.linagora.tmail.james.jmap.ticket.{Ticket, TicketValue}
