@@ -115,15 +115,19 @@ trait TeamMailboxesContract {
            |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |                "list": [
            |                    {
-           |                        "id": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                        "id": "$${json-unit.ignore}",
            |                        "name": "bob@domain.tld",
            |                        "email": "bob@domain.tld",
+           |                        "htmlSignature": "",
+           |                        "textSignature": "",
            |                        "mayDelete": false
            |                    },
            |                    {
-           |                        "id": "8ce601ef7ebc085de7557f4354592ac072957939ad00f965e34773cf8edd75b3",
+           |                        "id": "$${json-unit.ignore}",
            |                        "name": "marketing@domain.tld",
            |                        "email": "marketing@domain.tld",
+           |                        "htmlSignature": "",
+           |                        "textSignature": "",
            |                        "mayDelete": false
            |                    }
            |                ]
