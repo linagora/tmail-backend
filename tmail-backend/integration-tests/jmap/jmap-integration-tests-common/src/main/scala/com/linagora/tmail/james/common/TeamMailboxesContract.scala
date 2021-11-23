@@ -6,13 +6,13 @@ import java.nio.charset.StandardCharsets
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
-
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
@@ -1178,6 +1178,7 @@ trait TeamMailboxesContract {
 
     assertThatJson(response)
       .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState")
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
       .isEqualTo(
         s"""{
            |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
@@ -1613,7 +1614,7 @@ trait TeamMailboxesContract {
            |                "list": [
            |                    {
            |                        "keywords": {"toto": true},
-           |                        "mailboxIds": {"1": true},
+           |                        "mailboxIds": {"$id1": true},
            |                        "receivedAt": "$receivedAtString"
            |                    }
            |                ]
@@ -1780,7 +1781,9 @@ trait TeamMailboxesContract {
       .create(teamMailbox)
       .addMember(teamMailbox, BOB)
 
-    val id = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    val id = server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(MailboxPath.inbox(BOB))
+      .serialize()
 
     val message: Message = Message.Builder
       .of
@@ -1830,7 +1833,7 @@ trait TeamMailboxesContract {
            |            "Email/set",
            |            {
            |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |                "updated": {"1": null}
+           |                "updated": {"$messageId": null}
            |            },
            |            "c1"
            |        ],
@@ -1910,7 +1913,7 @@ trait TeamMailboxesContract {
            |            "Email/set",
            |            {
            |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |                "updated": {"1": null}
+           |                "updated": {"$messageId": null}
            |            },
            |            "c1"
            |        ],
@@ -2158,7 +2161,7 @@ trait TeamMailboxesContract {
       .addMember(teamMailbox, BOB)
 
     val bobPath = MailboxPath.inbox(BOB)
-    val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobPath)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobPath)
     val accountId: AccountId = AccountId.fromUsername(BOB)
     Thread.sleep(100)
 
@@ -2196,8 +2199,8 @@ trait TeamMailboxesContract {
 
     Thread.sleep(100)
     val jmapGuiceProbe: JmapGuiceProbe = server.getProbe(classOf[JmapGuiceProbe])
-    val emailState: State = jmapGuiceProbe.getLatestEmailState(accountId)
-    val mailboxState: State = jmapGuiceProbe.getLatestMailboxState(accountId)
+    val emailState: State = jmapGuiceProbe.getLatestEmailStateWithDelegation(accountId)
+    val mailboxState: State = jmapGuiceProbe.getLatestMailboxStateWithDelegation(accountId)
 
     val globalState: String = PushState.fromOption(Some(UuidState.fromJava(mailboxState)), Some(UuidState.fromJava(emailState))).get.value
 
@@ -2225,7 +2228,9 @@ trait TeamMailboxesContract {
     val id = mailboxId(server, teamMailbox.inboxPath)
 
     val bobPath = MailboxPath.inbox(BOB)
-    val bobInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobPath)
+    val bobInboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(bobPath)
+      .serialize()
 
     val message: Message = Message.Builder
       .of
@@ -2285,7 +2290,7 @@ trait TeamMailboxesContract {
            |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |			"notFound": [],
            |			"list": [{
-           |				"id": "${bobInboxId.serialize()}",
+           |				"id": "$bobInboxId",
            |				"quotas": {
            |					"#private&bob@domain.tld": {
            |						"Storage": {
@@ -2455,7 +2460,7 @@ trait TeamMailboxesContract {
            |            {
            |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |                "notUpdated": {
-           |                    "2": {
+           |                    "$messageId": {
            |                        "type": "overQuota",
            |                        "description": "You have too many messages in #TeamMailbox&marketing@domain.tld"
            |                    }
