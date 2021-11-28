@@ -52,6 +52,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
@@ -68,6 +69,7 @@ public class BlobStoreModulesChooser {
         }
 
         @Provides
+        @Singleton
         BlobStoreDAO blobStoreDAO(@Named(UNENCRYPTED) BlobStoreDAO unencrypted) {
             return new AESBlobStoreDAO(unencrypted, cryptoConfig);
         }
@@ -80,6 +82,7 @@ public class BlobStoreModulesChooser {
 
     static class NoEncryptionModule extends AbstractModule {
         @Provides
+        @Singleton
         BlobStoreDAO blobStoreDAO(@Named(UNENCRYPTED) BlobStoreDAO unencrypted) {
             return unencrypted;
         }
