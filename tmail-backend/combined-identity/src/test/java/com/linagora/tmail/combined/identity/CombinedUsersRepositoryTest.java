@@ -14,6 +14,7 @@ import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.cassandra.CassandraRepositoryConfiguration;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.user.cassandra.CassandraUsersRepositoryModule;
 import org.apache.james.user.ldap.DockerLdapSingleton;
@@ -64,7 +65,7 @@ public class CombinedUsersRepositoryTest {
             readOnlyLDAPUsersDAO.configure(ldapRepositoryConfiguration(ldapContainer, true));
             readOnlyLDAPUsersDAO.init();
 
-            cassandraUsersDAO = new CassandraUsersDAO(new Algorithm.DefaultFactory(), cassandraCluster.getCassandraCluster().getConf());
+            cassandraUsersDAO = new CassandraUsersDAO(cassandraCluster.getCassandraCluster().getConf(), CassandraRepositoryConfiguration.DEFAULT);
             combinedUsersRepository = getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), true, Optional.empty());
         }
 
@@ -103,7 +104,7 @@ public class CombinedUsersRepositoryTest {
             readOnlyLDAPUsersDAO.configure(ldapRepositoryConfiguration(ldapContainer, false));
             readOnlyLDAPUsersDAO.init();
 
-            cassandraUsersDAO = new CassandraUsersDAO(new Algorithm.DefaultFactory(), cassandraCluster.getCassandraCluster().getConf());
+            cassandraUsersDAO = new CassandraUsersDAO(cassandraCluster.getCassandraCluster().getConf(), CassandraRepositoryConfiguration.DEFAULT);
 
             combinedUsersRepository = getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), false, Optional.empty());
         }
