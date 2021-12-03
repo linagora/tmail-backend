@@ -382,14 +382,14 @@ public interface CombinedUsersRepositoryContract {
 
         @Test
         default void updateUserShouldThrowWhenUserDoesNotBelongToDomainList(CombinedTestSystem testSystem) {
-            assertThatThrownBy(() -> testee().updateUser(new DefaultUser(testSystem.userWithUnknowDomain, Algorithm.DEFAULT_FACTORY.of("hasAlg"))))
+            assertThatThrownBy(() -> testee().updateUser(new DefaultUser(testSystem.userWithUnknowDomain, Algorithm.of("hasAlg"), Algorithm.of("hasAlg"))))
                 .isInstanceOf(InvalidUsernameException.class)
                 .hasMessage("Domain does not exist in DomainList");
         }
 
         @Test
         default void updateUserShouldNotThrowInvalidUsernameExceptionWhenInvalidUser(CombinedTestSystem testSystem) {
-            assertThatThrownBy(() -> testee().updateUser(new DefaultUser(testSystem.invalidUsername, Algorithm.DEFAULT_FACTORY.of("hasAlg"))))
+            assertThatThrownBy(() -> testee().updateUser(new DefaultUser(testSystem.invalidUsername, Algorithm.of("hasAlg"), Algorithm.of("hasAlg"))))
                 .isNotInstanceOf(InvalidUsernameException.class);
         }
 
@@ -432,7 +432,7 @@ public interface CombinedUsersRepositoryContract {
 
         @Test
         default void updateUserShouldThrow(CombinedTestSystem testSystem) {
-            User user = new DefaultUser(testSystem.toUsername("user-not-exit"), Algorithm.DEFAULT_FACTORY.of("hasAlg"));
+            User user = new DefaultUser(testSystem.toUsername("user-not-exit"), Algorithm.of("hasAlg"), Algorithm.of("hasAlg"));
 
             assertThatThrownBy(() -> testee().updateUser(user))
                 .isInstanceOf(UsersRepositoryException.class)
