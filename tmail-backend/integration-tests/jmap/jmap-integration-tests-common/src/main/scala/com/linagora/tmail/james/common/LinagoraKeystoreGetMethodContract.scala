@@ -1,10 +1,10 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
-
 import com.linagora.tmail.james.common.LinagoraKeystoreGetMethodContract.{PGP_KEY_ARMORED, PGP_KEY_ARMORED2, PGP_KEY_ID, PGP_KEY_ID2}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
+import io.restassured.filter.log.LogDetail
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus
@@ -44,6 +44,7 @@ trait LinagoraKeystoreGetMethodContract {
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .log(LogDetail.ALL)
       .build()
   }
 
@@ -74,7 +75,7 @@ trait LinagoraKeystoreGetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post()
+      .post().prettyPeek()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
