@@ -44,7 +44,6 @@ trait LinagoraKeystoreGetMethodContract {
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
-      .log(LogDetail.ALL)
       .build()
   }
 
@@ -75,7 +74,7 @@ trait LinagoraKeystoreGetMethodContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
-      .post().prettyPeek()
+      .post()
     .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)

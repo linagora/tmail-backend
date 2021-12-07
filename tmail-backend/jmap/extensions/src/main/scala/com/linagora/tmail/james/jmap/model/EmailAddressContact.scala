@@ -1,15 +1,18 @@
 package com.linagora.tmail.james.jmap.model
 
+import com.google.common.collect.{HashMultimap, Multimap, Multimaps, TreeMultimap}
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.util
 import java.util.UUID
+import scala.collection.immutable.HashSet
+import scala.collection.mutable
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 case class EmailAddressContact (id: UUID, address: String) {
-  def isContain(part: String): Boolean = {
-    address.contains(part);
-  }
+  def contains(part: String): Boolean = address.contains(part)
 }
 
 trait EmailAddressContactSearchEngine {
@@ -20,24 +23,25 @@ trait EmailAddressContactSearchEngine {
 }
 
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {
-  var emailList: Map[AccountId, Set[EmailAddressContact]] = Map()
+  val emailList: Multimap[AccountId, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
 
   override def index(accountId: AccountId, address: EmailAddressContact): Publisher[Unit] = {
-    var mailListPerAcc: Set[EmailAddressContact] = Set()
-    if (emailList.contains(accountId)) {
-      mailListPerAcc = emailList.apply(accountId)
-    }
-    mailListPerAcc = mailListPerAcc + address
-    emailList = emailList + (accountId -> mailListPerAcc)
-    SFlux.fromIterable(emailList).`then`()
+    SMono.fromCallable(() => {
+      if (emailList.containsKey(accountId)) {
+        emailList.get(accountId).add(address)
+      } else {
+        emailList.put(accountId, address)
+      }
+    }).`then`()
+
   }
 
   override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] = {
-    var addressList: Set[EmailAddressContact] = Set()
-    if (emailList.contains(accountId)) {
-      addressList = emailList.apply(accountId)
+    var addressList: Iterable[EmailAddressContact] = Set()
+    if (emailList.containsKey(accountId)) {
+      addressList = emailList.get(accountId).asScala
     }
     val fullList: SFlux[EmailAddressContact] = SFlux.fromIterable(addressList)
-    fullList.filter(e => e.address.contains(part))
+    fullList.filter(_.address.contains(part))
   }
 }
