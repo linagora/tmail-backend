@@ -1,14 +1,11 @@
 package com.linagora.tmail.james.jmap.model
 
-import com.google.common.collect.{HashMultimap, Multimap, Multimaps, TreeMultimap}
+import com.google.common.collect.{HashMultimap, Multimap, Multimaps}
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.util
 import java.util.UUID
-import scala.collection.immutable.HashSet
-import scala.collection.mutable
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 case class EmailAddressContact (id: UUID, address: String) {
