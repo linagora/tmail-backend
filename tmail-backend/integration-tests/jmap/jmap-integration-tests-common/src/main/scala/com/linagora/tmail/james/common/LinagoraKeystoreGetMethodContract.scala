@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+
 import com.linagora.tmail.james.common.LinagoraKeystoreGetMethodContract.{PGP_KEY_ARMORED, PGP_KEY_ARMORED2, PGP_KEY_ID, PGP_KEY_ID2}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -10,11 +12,9 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture._
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.utils.DataProbeImpl
 import org.junit.jupiter.api.{BeforeEach, Test}
-
-import java.nio.charset.StandardCharsets
 
 object LinagoraKeystoreGetMethodContract {
   private val PGP_KEY: Array[Byte] = ClassLoader.getSystemClassLoader
