@@ -34,11 +34,6 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
   }
 
   override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] = {
-    var addressList: Iterable[EmailAddressContact] = Set()
-    if (emailList.containsKey(accountId)) {
-      addressList = emailList.get(accountId).asScala
-    }
-    val fullList: SFlux[EmailAddressContact] = SFlux.fromIterable(addressList)
-    fullList.filter(_.address.contains(part))
+    SFlux.fromIterable(emailList.get(accountId).asScala).filter(_.address.contains(part))
   }
 }
