@@ -22,18 +22,11 @@ trait EmailAddressContactSearchEngine {
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {
   val emailList: Multimap[AccountId, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
 
-  override def index(accountId: AccountId, address: EmailAddressContact): Publisher[Unit] = {
-    SMono.fromCallable(() => {
-      if (emailList.containsKey(accountId)) {
-        emailList.get(accountId).add(address)
-      } else {
-        emailList.put(accountId, address)
-      }
-    }).`then`()
+  override def index(accountId: AccountId, address: EmailAddressContact): Publisher[Unit] =
+    SMono.fromCallable(() => emailList.put(accountId, address)).`then`()
 
-  }
 
-  override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] = {
-    SFlux.fromIterable(emailList.get(accountId).asScala).filter(_.address.contains(part))
-  }
+  override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] =
+      SFlux.fromIterable(emailList.get(accountId).asScala)
+           .filter(_.address.contains(part))
 }
