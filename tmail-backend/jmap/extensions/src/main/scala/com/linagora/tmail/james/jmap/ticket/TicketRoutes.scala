@@ -3,7 +3,6 @@ package com.linagora.tmail.james.jmap.ticket
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.stream
-
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.json.TicketSerializer
@@ -13,6 +12,7 @@ import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, NO_CONTENT, UNAUTHORIZED}
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus}
+
 import javax.inject.{Inject, Named}
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
@@ -21,7 +21,7 @@ import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
 import org.apache.james.jmap.json.ResponseSerializer
-import org.apache.james.jmap.routes.ForbiddenException
+import org.apache.james.jmap.routes.{ForbiddenException, JmapUrlEndpointResolver}
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsObject, Json}
@@ -55,8 +55,9 @@ case class TicketRoutesCapability(properties: TicketRoutesCapabilityProperties) 
 }
 
 case class TicketRoutesCapabilityProperties(configuration: JmapRfc8621Configuration) extends CapabilityProperties {
-  val generationEndpoint: URL = new URL(s"${configuration.urlPrefix}/$ENDPOINT")
-  val revocationEndpoint: URL = new URL(s"${configuration.urlPrefix}/$ENDPOINT")
+  val urlEndpointResolver: JmapUrlEndpointResolver = JmapUrlEndpointResolver.from(configuration)
+  val generationEndpoint: URL = new URL(s"${urlEndpointResolver.urlPrefix}/$ENDPOINT")
+  val revocationEndpoint: URL = new URL(s"${urlEndpointResolver.urlPrefix}/$ENDPOINT")
 
   override def jsonify(): JsObject = Json.obj(
     ("generationEndpoint", generationEndpoint.toString),

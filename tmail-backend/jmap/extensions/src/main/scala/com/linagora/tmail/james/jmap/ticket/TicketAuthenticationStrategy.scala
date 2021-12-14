@@ -2,11 +2,13 @@ package com.linagora.tmail.james.jmap.ticket
 
 import cats.implicits._
 import io.netty.handler.codec.http.QueryStringDecoder
+
 import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.JmapRfc8621Configuration
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.{AuthenticationChallenge, AuthenticationScheme, AuthenticationStrategy}
+import org.apache.james.jmap.routes.JmapUrlEndpointResolver
 import org.apache.james.mailbox.{MailboxSession, SessionProvider}
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
@@ -17,6 +19,8 @@ import scala.jdk.CollectionConverters._
 class TicketAuthenticationStrategy @Inject() (ticketManager: TicketManager,
                                               sessionProvider: SessionProvider,
                                               configuration: JmapRfc8621Configuration) extends AuthenticationStrategy {
+  val urlEndpointResolver: JmapUrlEndpointResolver = JmapUrlEndpointResolver.from(configuration)
+
   override def createMailboxSession(httpRequest: HttpServerRequest): Mono[MailboxSession] =
     retrieveTicket(httpRequest)
       .fold(_ => SMono.error(new UnauthorizedException("Invalid ticket passed as a query parameter")),
@@ -32,7 +36,7 @@ class TicketAuthenticationStrategy @Inject() (ticketManager: TicketManager,
 
   override def correspondingChallenge(): AuthenticationChallenge = AuthenticationChallenge.of(
     AuthenticationScheme.of("Ticket"),
-    Map("realm" -> configuration.urlPrefix.toString).asJava)
+    Map("realm" -> urlEndpointResolver.urlPrefix).asJava)
 
   private def retrieveTicket(httpRequest: HttpServerRequest): Either[IllegalArgumentException, Option[TicketValue]] =
     queryParam(httpRequest, "ticket")
