@@ -72,7 +72,7 @@ class TMailMailboxAppenderTest {
   @Test
   def appendShouldAddMessageToDesiredTeamMailbox(): Unit = {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
-    testee.append(mimeMessage, USER, EMPTY_FOLDER)
+    testee.append(mimeMessage, USER, EMPTY_FOLDER).block()
     val messages = mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath, tmSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, tmSession)
 
@@ -82,7 +82,7 @@ class TMailMailboxAppenderTest {
   @Test
   def appendShouldAddMessageToDesiredTeamMailboxOmittingFolderValue(): Unit = {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
-    testee.append(mimeMessage, USER, FOLDER)
+    testee.append(mimeMessage, USER, FOLDER).block()
     val messages = mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath, tmSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, tmSession)
 
@@ -95,7 +95,7 @@ class TMailMailboxAppenderTest {
     val mailboxPath = MailboxPath.forUser(USER, FOLDER)
     mailboxManager.createMailbox(mailboxPath, userSession)
 
-    testee.append(mimeMessage, USER, FOLDER)
+    testee.append(mimeMessage, USER, FOLDER).block()
     val messages = mailboxManager.getMailbox(mailboxPath, userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
@@ -107,7 +107,7 @@ class TMailMailboxAppenderTest {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
 
     ConcurrentTestRunner.builder
-      .operation((a: Int, b: Int) => testee.append(mimeMessage, USER, FOLDER))
+      .operation((a: Int, b: Int) => testee.append(mimeMessage, USER, FOLDER).block())
       .threadCount(100)
       .runSuccessfullyWithin(Duration.ofMinutes(1))
   }
@@ -117,7 +117,7 @@ class TMailMailboxAppenderTest {
    */
   @Test
   def appendShouldAddMessageToDesiredMailbox(): Unit = {
-    testee.append(mimeMessage, USER, FOLDER)
+    testee.append(mimeMessage, USER, FOLDER).block()
     val messages = mailboxManager.getMailbox(MailboxPath.forUser(USER, FOLDER), userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
@@ -128,7 +128,7 @@ class TMailMailboxAppenderTest {
   def appendShouldAddMessageToDesiredMailboxWhenMailboxExists(): Unit = {
     val mailboxPath = MailboxPath.forUser(USER, FOLDER)
     mailboxManager.createMailbox(mailboxPath, userSession)
-    testee.append(mimeMessage, USER, FOLDER)
+    testee.append(mimeMessage, USER, FOLDER).block()
 
     val messages = mailboxManager.getMailbox(mailboxPath, userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
@@ -138,13 +138,13 @@ class TMailMailboxAppenderTest {
 
   @Test
   def appendShouldNotAppendToEmptyFolder(): Unit = {
-    assertThatThrownBy(() => testee.append(mimeMessage, USER, EMPTY_FOLDER))
+    assertThatThrownBy(() => testee.append(mimeMessage, USER, EMPTY_FOLDER).block())
       .isInstanceOf(classOf[MessagingException])
   }
 
   @Test
   def appendShouldRemovePathSeparatorAsFirstChar(): Unit = {
-    testee.append(mimeMessage, USER, "." + FOLDER)
+    testee.append(mimeMessage, USER, "." + FOLDER).block()
     val messages = mailboxManager.getMailbox(MailboxPath.forUser(USER, FOLDER), userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
@@ -153,7 +153,7 @@ class TMailMailboxAppenderTest {
 
   @Test
   def appendShouldReplaceSlashBySeparator(): Unit = {
-    testee.append(mimeMessage, USER, FOLDER + "/any")
+    testee.append(mimeMessage, USER, FOLDER + "/any").block()
     val messages = mailboxManager.getMailbox(MailboxPath.forUser(USER, FOLDER + ".any"), userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
@@ -163,7 +163,7 @@ class TMailMailboxAppenderTest {
   @RepeatedTest(20)
   def appendShouldNotFailInConcurrentEnvironment(): Unit = {
     ConcurrentTestRunner.builder
-      .operation((a: Int, b: Int) => testee.append(mimeMessage, USER, FOLDER + "/any"))
+      .operation((a: Int, b: Int) => testee.append(mimeMessage, USER, FOLDER + "/any").block())
       .threadCount(100)
       .runSuccessfullyWithin(Duration.ofMinutes(1))
   }
