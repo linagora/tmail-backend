@@ -72,6 +72,10 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.james</groupId>
+            <artifactId>apache-james-backends-es-v7</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
