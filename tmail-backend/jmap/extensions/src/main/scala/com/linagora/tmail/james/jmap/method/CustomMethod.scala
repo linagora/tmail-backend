@@ -6,7 +6,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_ECHO
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.MethodName
-import org.apache.james.jmap.core.{Capability, CapabilityProperties}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
 import org.apache.james.jmap.method.{InvocationWithContext, Method}
 import org.apache.james.mailbox.MailboxSession
 import org.reactivestreams.Publisher
@@ -31,7 +31,13 @@ case object CustomCapability extends Capability {
 
 class CustomCapabilitiesModule extends AbstractModule {
   @ProvidesIntoSet
-  private def capability(): Capability = CustomCapability
+  private def capability(): CapabilityFactory = CustomCapabilityFactory
+}
+
+case object CustomCapabilityFactory extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability = CustomCapability
+
+  override def id(): CapabilityIdentifier = LINAGORA_ECHO
 }
 
 class CustomMethodModule extends AbstractModule {
