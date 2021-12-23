@@ -9,7 +9,7 @@ import eu.timepit.refined.auto._
 import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Capability, CapabilityProperties, ClientId, Id, Invocation, ServerId, SetError}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, SetError, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -29,7 +29,13 @@ case object KeystoreCapability extends Capability {
 
 class KeystoreCapabilitiesModule extends AbstractModule {
   @ProvidesIntoSet
-  private def capability(): Capability = KeystoreCapability
+  private def capability(): CapabilityFactory = KeystoreCapabilityFactory
+}
+
+case object KeystoreCapabilityFactory extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability = KeystoreCapability
+
+  override def id(): CapabilityIdentifier = LINAGORA_PGP
 }
 
 class KeystoreSetMethodModule extends AbstractModule {

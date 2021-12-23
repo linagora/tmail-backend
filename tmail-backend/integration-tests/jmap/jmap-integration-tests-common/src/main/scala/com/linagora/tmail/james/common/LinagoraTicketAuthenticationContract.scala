@@ -7,12 +7,25 @@ import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus.{SC_OK, SC_UNAUTHORIZED}
 import org.apache.james.GuiceJamesServer
+import org.apache.james.jmap.core.JmapRfc8621Configuration
+import org.apache.james.jmap.core.JmapRfc8621Configuration.{UPLOAD_LIMIT_DEFAULT, URL_PREFIX_DEFAULT, WEBSOCKET_URL_PREFIX_DEFAULT}
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, baseRequestSpecBuilder, getHeadersWith}
-import org.apache.james.jmap.rfc8621.contract.SessionRoutesContract.expected_session_object
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
+
+import scala.jdk.CollectionConverters._
+
+object LinagoraTicketAuthenticationContract {
+  def jmapConfiguration(): JmapRfc8621Configuration = JmapRfc8621Configuration(
+    urlPrefixString = URL_PREFIX_DEFAULT,
+    websocketPrefixString = WEBSOCKET_URL_PREFIX_DEFAULT,
+    maxUploadSize = UPLOAD_LIMIT_DEFAULT,
+    dynamicJmapPrefixResolutionEnabled = true,
+    authenticationStrategies = Some(List("JWTAuthenticationStrategy", "BasicAuthenticationStrategy",
+      "com.linagora.tmail.james.jmap.ticket.TicketAuthenticationStrategy").asJava))
+}
 
 trait LinagoraTicketAuthenticationContract {
 
@@ -213,6 +226,29 @@ trait LinagoraTicketAuthenticationContract {
       .isEqualTo("""{
           |  "generationEndpoint":"http://localhost/jmap/ws/ticket",
           |  "revocationEndpoint":"http://localhost/jmap/ws/ticket"
+          |}""".stripMargin)
+  }
+  @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
+  def customPrefixCanBeUsed(): Unit = {
+    val sessionJson: String = `given`()
+      .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .header("X-JMAP-PREFIX","http://custom")
+      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(sessionJson)
+      .inPath("capabilities.com:linagora:params:jmap:ws:ticket")
+      .isEqualTo("""{
+          |  "generationEndpoint":"http://custom/jmap/ws/ticket",
+          |  "revocationEndpoint":"http://custom/jmap/ws/ticket"
           |}""".stripMargin)
   }
 }

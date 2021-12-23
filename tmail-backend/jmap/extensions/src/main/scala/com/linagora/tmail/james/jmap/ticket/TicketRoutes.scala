@@ -3,6 +3,7 @@ package com.linagora.tmail.james.jmap.ticket
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.stream
+
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.json.TicketSerializer
@@ -12,11 +13,10 @@ import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, NO_CONTENT, UNAUTHORIZED}
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus}
-
 import javax.inject.{Inject, Named}
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
-import org.apache.james.jmap.core.{Capability, CapabilityProperties, JmapRfc8621Configuration, ProblemDetails}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, JmapRfc8621Configuration, ProblemDetails, UrlPrefixes}
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
@@ -43,21 +43,26 @@ case class TicketRoutesModule() extends AbstractModule {
   }
 
   @ProvidesIntoSet
-  private def capability(configuration: JmapRfc8621Configuration): Capability = TicketRoutesCapability(TicketRoutesCapabilityProperties(configuration))
+  private def capability(): CapabilityFactory = TicketRoutesCapabilityFactory
 }
 
 object TicketRoutesCapability {
   val LINAGORA_WS_TICKET: CapabilityIdentifier = "com:linagora:params:jmap:ws:ticket"
 }
 
+case object TicketRoutesCapabilityFactory extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability = TicketRoutesCapability(TicketRoutesCapabilityProperties(urlPrefixes.httpUrlPrefix.toString))
+
+  override def id(): CapabilityIdentifier = LINAGORA_WS_TICKET
+}
+
 case class TicketRoutesCapability(properties: TicketRoutesCapabilityProperties) extends Capability {
   val identifier: CapabilityIdentifier = LINAGORA_WS_TICKET
 }
 
-case class TicketRoutesCapabilityProperties(configuration: JmapRfc8621Configuration) extends CapabilityProperties {
-  val urlEndpointResolver: JmapUrlEndpointResolver = JmapUrlEndpointResolver.from(configuration)
-  val generationEndpoint: URL = new URL(s"${urlEndpointResolver.urlPrefix}/$ENDPOINT")
-  val revocationEndpoint: URL = new URL(s"${urlEndpointResolver.urlPrefix}/$ENDPOINT")
+case class TicketRoutesCapabilityProperties(urlPrefix: String) extends CapabilityProperties {
+  val generationEndpoint: URL = new URL(s"$urlPrefix/$ENDPOINT")
+  val revocationEndpoint: URL = new URL(s"$urlPrefix/$ENDPOINT")
 
   override def jsonify(): JsObject = Json.obj(
     ("generationEndpoint", generationEndpoint.toString),

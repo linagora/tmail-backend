@@ -21,12 +21,6 @@ import com.linagora.tmail.james.common.LinagoraTicketAuthenticationContract;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedTicketRoutesTest implements LinagoraTicketAuthenticationContract {
-    private static Optional<List<String>> AUTH_LIST = Optional.of(ImmutableList.of(
-        "JWTAuthenticationStrategy",
-        "BasicAuthenticationStrategy",
-        "com.linagora.tmail.james.jmap.ticket.TicketAuthenticationStrategy"
-    ));
-
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
@@ -46,7 +40,6 @@ public class DistributedTicketRoutesTest implements LinagoraTicketAuthentication
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> binder.bind(JmapRfc8621Configuration.class)
-                .toInstance(JmapRfc8621Configuration.LOCALHOST_CONFIGURATION()
-                    .withAuthenticationStrategies(AUTH_LIST))))
+                .toInstance(LinagoraTicketAuthenticationContract.jmapConfiguration())))
         .build();
 }

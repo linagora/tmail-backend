@@ -9,7 +9,7 @@ import com.linagora.tmail.james.jmap.model.{LongLivedTokenCreationId, LongLivedT
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Capability, CapabilityProperties, ClientId, Id, Invocation, ServerId}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.{ProcessingContext, SessionSupplier}
@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
-
 import javax.inject.Inject
 
 case object LongLivedTokenCapabilityProperties extends CapabilityProperties {
@@ -39,7 +38,13 @@ class LongLivedTokenSetMethodModule extends AbstractModule {
   }
 
   @ProvidesIntoSet
-  private def capability(): Capability = LongLivedTokenCapability
+  private def capability(): CapabilityFactory = LongLivedTokenCapabilityFactory
+}
+
+case object LongLivedTokenCapabilityFactory extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability = LongLivedTokenCapability
+
+  override def id(): CapabilityIdentifier = LINAGORA_LONG_LIVED_TOKEN
 }
 
 class LongLivedTokenSetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore,

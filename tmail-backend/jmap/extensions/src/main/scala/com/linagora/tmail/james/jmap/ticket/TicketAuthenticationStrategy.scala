@@ -19,7 +19,6 @@ import scala.jdk.CollectionConverters._
 class TicketAuthenticationStrategy @Inject() (ticketManager: TicketManager,
                                               sessionProvider: SessionProvider,
                                               configuration: JmapRfc8621Configuration) extends AuthenticationStrategy {
-  val urlEndpointResolver: JmapUrlEndpointResolver = JmapUrlEndpointResolver.from(configuration)
 
   override def createMailboxSession(httpRequest: HttpServerRequest): Mono[MailboxSession] =
     retrieveTicket(httpRequest)
@@ -36,7 +35,7 @@ class TicketAuthenticationStrategy @Inject() (ticketManager: TicketManager,
 
   override def correspondingChallenge(): AuthenticationChallenge = AuthenticationChallenge.of(
     AuthenticationScheme.of("Ticket"),
-    Map("realm" -> urlEndpointResolver.urlPrefix).asJava)
+    Map("realm" -> configuration.urlPrefixString).asJava)
 
   private def retrieveTicket(httpRequest: HttpServerRequest): Either[IllegalArgumentException, Option[TicketValue]] =
     queryParam(httpRequest, "ticket")
