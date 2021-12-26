@@ -4,7 +4,12 @@ import com.linagora.tmail.james.jmap.model.EmailAddressContact;
 import com.linagora.tmail.james.jmap.model.EmailAddressContactSearchEngine;
 import org.apache.james.backends.es.v7.*;
 import org.apache.james.jmap.api.model.AccountId;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.Mono;
 import scala.runtime.BoxedUnit;
 
 public class ESEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
@@ -37,6 +42,14 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     @Override
     public Publisher<EmailAddressContact> autoComplete(AccountId accountId, String part) {
-        return null;
+        Mono.fromRunnable(() -> {
+            SearchRequest request = new SearchRequest("posts");
+            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+            QueryBuilder matchQueryBuilder = QueryBuilders.boolQuery()
+                    .filter(QueryBuilders.matchQuery("accountId", accountId.getIdentifier()))
+                    .should(QueryBuilders.matchQuery("address", "part"));
+            sourceBuilder.query(matchQueryBuilder);
+            request.source(sourceBuilder);
+        }).then();
     }
 }
