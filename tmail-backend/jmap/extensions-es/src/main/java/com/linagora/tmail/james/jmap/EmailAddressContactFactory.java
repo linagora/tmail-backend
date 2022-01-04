@@ -84,12 +84,12 @@ public class EmailAddressContactFactory {
         private void createAliasIfNeeded(ReactorElasticSearchClient client, IndexName indexName, AliasName aliasName) throws IOException {
             if(!aliasExist(client, aliasName)) {
                 client.indices()
-                        .updateAliases(
-                                new IndicesAliasesRequest().addAliasAction(
-                                        new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
-                                                .index(indexName.getValue())
-                                                .alias(aliasName.getValue())),
-                                RequestOptions.DEFAULT);
+                    .updateAliases(
+                        new IndicesAliasesRequest().addAliasAction(
+                            new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
+                                .index(indexName.getValue())
+                                .alias(aliasName.getValue())),
+                                       RequestOptions.DEFAULT);
             }
         }
 
@@ -147,8 +147,8 @@ public class EmailAddressContactFactory {
                             .startObject("tokenizer")
                                 .startObject("contact_tokenizer")
                                     .field("type", "ngram")
-                                    .field("min_gram", 2)
-                                    .field("max_gram", 20)
+                                    .field("min_gram", 3)
+                                    .field("max_gram", 3)
                                     .startArray("token_chars")
                                         .value("letter")
                                         .value("digit")
@@ -158,8 +158,8 @@ public class EmailAddressContactFactory {
                         .endObject()
                     .endObject();
         }
-
     }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AutoCompletePerformer.class);
     private static final String INDEX_ALREADY_EXISTS_EXCEPTION_MESSAGE = "type=resource_already_exists_exception";
 

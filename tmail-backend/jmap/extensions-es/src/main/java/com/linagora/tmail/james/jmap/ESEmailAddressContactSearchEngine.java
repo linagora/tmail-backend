@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.linagora.tmail.james.jmap.model.AccountEmailContact;
 import com.linagora.tmail.james.jmap.model.EmailAddressContact;
 import com.linagora.tmail.james.jmap.model.EmailAddressContactSearchEngine;
 import org.apache.james.backends.es.v7.*;
@@ -9,16 +11,13 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import scala.runtime.BoxedUnit;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.UUID;
+import java.util.function.Function;
 
 public class ESEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final IndexName INDEX_NAME = new IndexName("email_contact");
@@ -26,6 +25,7 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     private static final RoutingKey ROUTING_KEY = RoutingKey.fromString("routing");
     private static final DocumentId DOCUMENT_ID = DocumentId.fromString("1");
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final EmailAddressContactFactory factory;
     private final ElasticSearchIndexer indexer;
@@ -41,13 +41,9 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
 
 
     @Override
-    public Publisher<BoxedUnit> index(AccountId accountId, EmailAddressContact contact) {
-        String content = String.format("{" +
-                "\"accountId\": \"%s\"," +
-                "\"id\": \"%s\", \"address\": \"%s\"" + "}", accountId.toString(), contact.id().variant(), contact.address());
-
-
-        return this.indexer.index(DOCUMENT_ID, content, ROUTING_KEY).map(e -> BoxedUnit.UNIT);
+    public Publisher<Void> index(AccountId accountId, EmailAddressContact contact) {
+        return Mono.fromCallable(() -> objectMapper.writeValueAsString(new AccountEmailContact(accountId, contact)))
+                .flatMap(content -> indexer.index(DOCUMENT_ID, content, ROUTING_KEY)).then();
     }
 
     @Override
@@ -59,20 +55,12 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
                 .should(QueryBuilders.matchQuery("address", "part"));
         sourceBuilder.query(matchQueryBuilder);
         request.source(sourceBuilder);
-        // A search request needs a client to invoke `search` method, a client could get in Test, which means
-        // i need a client as parameters to pass to this method, which will change the interface then it seems
-        // not quite right.
-        Mono<SearchResponse> searchResponseMono = client.search(request, RequestOptions.DEFAULT);
-        SearchResponse response = searchResponseMono.block();
-        List<EmailAddressContact> emailAddressContacts = new ArrayList<>();
-        for (SearchHit hit : response.getHits().getHits()) {
-            emailAddressContacts.add(new EmailAddressContact(UUID.fromString((String) hit.getSourceAsMap()
-                    .get("id")), (String) hit.getSourceAsMap().get("address")));
-        }
-        return Flux.fromIterable(emailAddressContacts);
-//        return client.search(request, RequestOptions.DEFAULT)
-//                .flatMap(res -> new EmailAddressContact(
-//                        UUID.fromString((String) res.getHits().getHits()[0].getSourceAsMap().get("id")),
-//                        (String) res.getHits().getHits()[0].getSourceAsMap().get("address")));
+        return client.search(request, RequestOptions.DEFAULT)
+                .map(searchResponse -> searchResponse.getHits().getHits())
+                .map(Arrays::asList)
+                .flatMapIterable(Function.identity())
+                .map(hit -> new EmailAddressContact(UUID.fromString((String) hit.getSourceAsMap().get("id")),
+                        (String) hit.getSourceAsMap().get("address")));
+
     }
 }
