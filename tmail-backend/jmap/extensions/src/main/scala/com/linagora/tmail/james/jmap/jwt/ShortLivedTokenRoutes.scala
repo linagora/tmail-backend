@@ -1,5 +1,9 @@
 package com.linagora.tmail.james.jmap.jwt
 
+import java.nio.charset.StandardCharsets
+import java.time.{Clock, Duration, ZonedDateTime}
+import java.util.stream
+
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Singleton}
@@ -10,6 +14,7 @@ import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, Device
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, FORBIDDEN, INTERNAL_SERVER_ERROR, UNAUTHORIZED}
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus, QueryStringDecoder}
+import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.ProblemDetails
@@ -24,10 +29,6 @@ import reactor.core.scala.publisher.SMono
 import reactor.core.scheduler.Schedulers
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
-import java.nio.charset.StandardCharsets
-import java.time.{Clock, Duration, ZonedDateTime}
-import java.util.stream
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 case class ShortLivedTokenRoutesModule() extends AbstractModule {
@@ -127,24 +128,25 @@ class ShortLivedTokenRoutes @Inject()(@Named(LongLivedTokenInjectKeys.JMAP) val 
       .flatMap(_.asScala)
       .headOption
 
-  private def handleException(throwable: Throwable, response: HttpServerResponse): SMono[Unit] = throwable match {
-    case e: UnauthorizedException =>
-      respondDetails(response,
-        ProblemDetails(status = UNAUTHORIZED, detail = e.getMessage),
-        UNAUTHORIZED)
-    case e: IllegalArgumentException =>
-      respondDetails(response,
-        ProblemDetails(status = BAD_REQUEST, detail = s"Invalid request: ${e.getMessage}"),
-        BAD_REQUEST)
-    case _: ForbiddenException =>
-      respondDetails(response,
-        ProblemDetails(status = FORBIDDEN, detail = "Using token other accounts is forbidden"),
-        FORBIDDEN)
-    case e =>
-      respondDetails(response,
-        ProblemDetails(status = INTERNAL_SERVER_ERROR, detail = e.getMessage),
-        INTERNAL_SERVER_ERROR)
-  }
+  private def handleException(throwable: Throwable, response: HttpServerResponse): SMono[Unit] = 
+    throwable match {
+      case e: UnauthorizedException =>
+        respondDetails(response,
+          ProblemDetails(status = UNAUTHORIZED, detail = e.getMessage),
+          UNAUTHORIZED)
+      case e: IllegalArgumentException =>
+        respondDetails(response,
+          ProblemDetails(status = BAD_REQUEST, detail = s"Invalid request: ${e.getMessage}"),
+          BAD_REQUEST)
+      case _: ForbiddenException =>
+        respondDetails(response,
+          ProblemDetails(status = FORBIDDEN, detail = "Using token other accounts is forbidden"),
+          FORBIDDEN)
+      case e =>
+        respondDetails(response,
+          ProblemDetails(status = INTERNAL_SERVER_ERROR, detail = e.getMessage),
+          INTERNAL_SERVER_ERROR)
+    }
 
   private def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails, statusCode: HttpResponseStatus = BAD_REQUEST): SMono[Unit] =
     SMono.fromPublisher(httpServerResponse.status(statusCode)

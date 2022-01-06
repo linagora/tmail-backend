@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.common
 
+import java.util.stream.Stream
+
 import com.linagora.tmail.james.common.LinagoraShortLivedTokenRoutesContract.{BASE_PATH, DEVICE_ID}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -8,7 +10,7 @@ import io.restassured.http.ContentType.JSON
 import io.restassured.http.Header
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus
-import org.apache.http.HttpStatus.{SC_INTERNAL_SERVER_ERROR, SC_OK, SC_UNAUTHORIZED}
+import org.apache.http.HttpStatus.{SC_OK, SC_UNAUTHORIZED}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, AUTHORIZATION_HEADER, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, ECHO_REQUEST_OBJECT, USER_TOKEN, baseRequestSpecBuilder, getHeadersWith}
 import org.apache.james.utils.DataProbeImpl
@@ -16,8 +18,6 @@ import org.junit.jupiter.api.{BeforeEach, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 import play.api.libs.json.{JsString, Json}
-
-import java.util.stream.Stream
 
 object LinagoraShortLivedTokenRoutesContract {
   val BASE_PATH: String = "/token"
