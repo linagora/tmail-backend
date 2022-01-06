@@ -16,30 +16,43 @@ import scala.jdk.javaapi.OptionConverters;
 public class LinagoraTestJMAPServerModule extends TestJMAPServerModule {
     public static final String JWT_PUBLIC_PEM_KEY =
         "-----BEGIN PUBLIC KEY-----\n" +
-            "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCVnxAOpup/rtGzn+xUaBRFSe34\n" +
-            "H7YyiM6YBD1bh5rkoi9pB6fvs1vDlXzBmR0Zl6kn3g+2ChW0lqMkmv73Y2Lv3WZK\n" +
-            "NZ3DUR3lfBFbvYGQyFyib+e4MY1yWkj3sumMl1wdUB4lKLHLIRv9X1xCqvbSHEtq\n" +
-            "zoZF4vgBYx0VmuJslwIDAQAB\n" +
-            "-----END PUBLIC KEY-----";
+            "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6SkmZr94bvC8qN58Wy9/\n" +
+            "7vOjdFtAOWEfeWuHl+4Tz1Inpubh+9/ZSkgcMp36W7R1O1EjYIbctrkC8Et+HaGu\n" +
+            "CgvKyqsUZgNZDa2VPljaWzjzAjgBEWKM8p06dAfrombcl26tw3vnv1fRL7y1Ajip\n" +
+            "g41aVfrwmXTZOJeuFxDUhHs5eppQj5xEmkMiCyFettdvMJZUq3xJOfUaqu0cgKQU\n" +
+            "D355VO+tKmCnMjWC1W7YSUGoL/l6DtE2deG2WRWvN2bpjgXqwYoELGkqMw03Ww4D\n" +
+            "z6gjBXjeb9Ka/05hhh31vdTvS0rY+eUgQ+UOTT6siHrMwv4rFZq+lafJ7hqU1VQC\n" +
+            "CwIDAQAB\n" +
+            "-----END PUBLIC KEY-----\n";
 
     public static final String JWT_PRIVATE_PEM_KEY =
-        "-----BEGIN PRIVATE KEY-----\n" +
-            "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAJWfEA6m6n+u0bOf\n" +
-            "7FRoFEVJ7fgftjKIzpgEPVuHmuSiL2kHp++zW8OVfMGZHRmXqSfeD7YKFbSWoySa\n" +
-            "/vdjYu/dZko1ncNRHeV8EVu9gZDIXKJv57gxjXJaSPey6YyXXB1QHiUoscshG/1f\n" +
-            "XEKq9tIcS2rOhkXi+AFjHRWa4myXAgMBAAECgYA0FsxgTXwWN6aKAoMkX5evB63x\n" +
-            "VBj6PuatxcwWsX8bWdtnlWLB8I9h6Akm3UdkQYiCeKy/k4M6+7aQZ+Wb+t3WW9H9\n" +
-            "pNE/WlrkvQ9bKGluy26ZMDFRYbofEM3u7AoFkZzZrojaW0T0kH41fE3i+0sKfI3Z\n" +
-            "863jtl6qLDb+Dx/sAQJBAMd15r/mPisRaGWMms+Mnwd27gA7mfjXHSLhmE8D7HdX\n" +
-            "hjsItIdS2Vk+s9clngz8R3ogzXA8GH5HCTKQaMTIRxECQQDACISYYJWI2d+OktgA\n" +
-
-            "N3dxk8paAv1Vqnm3b/4oA/JlSWZ7vheKZk6IdiyCyjgVBlNBT1gOImt15hotThX3\n" +
-            "4AknAkEAxKkZ13GDMGGchiuI5ESo8+ouJaqeWHx4bNDzpEyhFNYGMiSWIqrsRBMP\n" +
-            "rHyZhgIj02WOSS/nknIlvmYl9oflkQJAc0rp6N5cCPzd9qh9HKwwfzU/EQmoda1T\n" +
-            "RGntyrKL7nnCGNsJISPJVK62jJPCVgUlKRntARdzMybCYp72G4sbkwJAKk7ggvsc\n" +
-            "RBTITDA7nbywahtKAnPgjbK/qHeJMVH2ePL9HveFAf3YRpa07zVlienbv/kjULKP\n" +
-            "HJGoXJNY/TNbMQ==\n" +
-            "-----END PRIVATE KEY-----";
+        "-----BEGIN RSA PRIVATE KEY-----\n" +
+            "MIIEpQIBAAKCAQEA6SkmZr94bvC8qN58Wy9/7vOjdFtAOWEfeWuHl+4Tz1Inpubh\n" +
+            "+9/ZSkgcMp36W7R1O1EjYIbctrkC8Et+HaGuCgvKyqsUZgNZDa2VPljaWzjzAjgB\n" +
+            "EWKM8p06dAfrombcl26tw3vnv1fRL7y1Ajipg41aVfrwmXTZOJeuFxDUhHs5eppQ\n" +
+            "j5xEmkMiCyFettdvMJZUq3xJOfUaqu0cgKQUD355VO+tKmCnMjWC1W7YSUGoL/l6\n" +
+            "DtE2deG2WRWvN2bpjgXqwYoELGkqMw03Ww4Dz6gjBXjeb9Ka/05hhh31vdTvS0rY\n" +
+            "+eUgQ+UOTT6siHrMwv4rFZq+lafJ7hqU1VQCCwIDAQABAoIBAFMnbt+kF8KRLueW\n" +
+            "+YjXxuukjr33sU8FeWEnXWNs8Dm3VhbrLttSeT9Jumy+9MPx9wFhrZlGX772+rpS\n" +
+            "YjcVK2m/zOI843iCZyc+qgRjUfTIubon2RGnMRdxxaAOFxaDUtbbDTOzo/IU0rEQ\n" +
+            "vwl8xc/6AKa7aUWBa9sIFXl6ciCQ15fMs6x+gsFWM/mwpaS1Bmll1UX8GC3SjijI\n" +
+            "UHcK83UuJhO5FTlLjdumpApw1Bbj+Pdhnt3fo5JmySKsCU3fnjaIRjA0bDhYW5r5\n" +
+            "JVZrk6oEczWYcTzv1NXpAoFK/5mqZkMqTNthkcleJ15R9sw+UTcFsehWm4LiLD4I\n" +
+            "DPNIKNkCgYEA+2Nk9R/JdPHRfqEptlN4Vk2oLixxfns6UgBc6t0VmFaumLi6FFwx\n" +
+            "48ynfsMAHris0uc6uBl/f7kiY6EQ7beG8BzFy74BLNmJlsy4gxTqGAm3k9WijI24\n" +
+            "n4qgKOs/4RqQqajxOfpHs+JRUo7pRKXchMsOXzMBglmFJB6T1qs6t08CgYEA7XAn\n" +
+            "KDrzxsFJCzcCFMjD59L9wwDAku4w6Pv7MzvtcEv01E/EmOv3PebQeFAyZBeVxATG\n" +
+            "y1bkaS4VRl637BL2BX0jz6qaG+mqUBSEIF878If6eBkMV0de0rmhUzpYiMCN88yv\n" +
+            "/qRUXcVTMPz1SFxbhMvzgpxJb01u6/NATjZPWoUCgYEAi0Jvff8i6b7AEAcVhWRO\n" +
+            "CHkyjomeQbPgBecfkhfxS5fRVtcWdgrwtEH+E5HQsjQZwSfI9o1hfQ7BBzIFn7qI\n" +
+            "bOFzjT9vhTnpJ3m3SR4/5BsV8DZrurMTsIXp3WEc3QWLWAE3yKdmKzdXV4XFoXrE\n" +
+            "Y2fdSU2HK3+N6wlpWoU2nK8CgYEAojfYmNTGDkmpxN69LkQIDE+Ljfnql7fidJsL\n" +
+            "gXJ1Ax7x00f4Ul4Mmh8i2MA53UZ7zONSikQAY5fXcy9tSv2dVhysJcox5dYbxQBv\n" +
+            "UMqf4fKU/g5m7w5Uy3WFsZ4QNMYRdbqnlzrgZPxWnQaF8f0fjbfl05tBVKi7mrqj\n" +
+            "eYwDZR0CgYEA26t/ukwT2nwoy1uOQDA2H+Ntr3+p+/v7F/9okdudzMZTWG1Xt0CB\n" +
+            "htsUgGktQ0L9EqD+oJYCT5A86Xpzs8crXdnGWb3Nsd5pNvRTMbgjdFxEhya1lzDD\n" +
+            "MY+QgMz8y6XlPlFM9z+ULNifAe3iM5JPBZQ+xx/MSi/0G94NNeeAFQs=\n" +
+            "-----END RSA PRIVATE KEY-----";
 
     @Provides
     @Singleton
