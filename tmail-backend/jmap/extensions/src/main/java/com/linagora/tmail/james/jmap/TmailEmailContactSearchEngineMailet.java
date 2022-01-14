@@ -7,12 +7,14 @@ import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMailet;
 import reactor.core.publisher.Flux;
 
+import javax.inject.Inject;
 import javax.mail.MessagingException;
 import java.util.UUID;
 
 public class TmailEmailContactSearchEngineMailet extends GenericMailet {
     final EmailAddressContactSearchEngine emailAddressContactSearchEngine;
 
+    @Inject
     public TmailEmailContactSearchEngineMailet(EmailAddressContactSearchEngine emailAddressContactSearchEngine) {
         this.emailAddressContactSearchEngine = emailAddressContactSearchEngine;
     }
@@ -23,6 +25,6 @@ public class TmailEmailContactSearchEngineMailet extends GenericMailet {
             .map(recipient -> emailAddressContactSearchEngine
                  .index(AccountId.fromString(mail.getMaybeSender().asString()),
                         new EmailAddressContact(UUID.fromString(recipient.getLocalPart()),
-                                                recipient.getLocalPart()+"@"+recipient.getDomain())));
+                                                recipient.getLocalPart()+"@"+recipient.getDomain().asString())));
     }
 }
