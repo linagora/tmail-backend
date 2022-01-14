@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap;
 
+import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer;
+import com.fasterxml.jackson.databind.ser.std.UUIDSerializer;
 import com.linagora.tmail.james.jmap.model.EmailAddressContact;
 import com.linagora.tmail.james.jmap.model.EmailAddressContactSearchEngine;
 import org.apache.james.jmap.api.model.AccountId;
@@ -24,7 +26,6 @@ public class TmailEmailContactSearchEngineMailet extends GenericMailet {
         Flux.fromIterable(mail.getRecipients())
             .map(recipient -> emailAddressContactSearchEngine
                  .index(AccountId.fromString(mail.getMaybeSender().asString()),
-                        new EmailAddressContact(UUID.fromString(recipient.getLocalPart()),
-                                                recipient.getLocalPart()+"@"+recipient.getDomain().asString())));
+                        new EmailAddressContact(recipient)));
     }
 }

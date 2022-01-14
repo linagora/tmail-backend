@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap.model
 
 import com.google.common.collect.{HashMultimap, Multimap, Multimaps}
+import org.apache.james.core.MailAddress
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -10,6 +11,9 @@ import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 case class EmailAddressContact (id: UUID, address: String) {
   def contains(part: String): Boolean = address.contains(part)
+  def this(mailAddress: MailAddress){
+    this(UUID.fromString(mailAddress.hashCode().toString), mailAddress.asString())
+  }
 }
 
 trait EmailAddressContactSearchEngine {
