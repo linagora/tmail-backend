@@ -1,6 +1,10 @@
 package com.linagora.tmail.james.common
 
+import java.net.URL
+
+import com.google.inject.Module
 import com.linagora.tmail.james.common.LinagoraShortLivedTokenRoutesContract.DEVICE_ID
+import com.linagora.tmail.james.jmap.oidc.WebFingerConfiguration
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.authentication.NoAuthScheme
@@ -10,6 +14,11 @@ import org.apache.http.HttpStatus.{SC_BAD_REQUEST, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, baseRequestSpecBuilder}
 import org.junit.jupiter.api.{BeforeEach, Test}
+
+object WebFingerRoutesContract {
+  val MODULE: Module = binder => binder.bind(classOf[WebFingerConfiguration])
+    .toInstance(new WebFingerConfiguration(Some(new URL("https://auth.linagora.com/auth/realms/jmap"))))
+}
 
 trait WebFingerRoutesContract {
   @BeforeEach

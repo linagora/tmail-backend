@@ -63,13 +63,4 @@ public class LinagoraTestJMAPServerModule extends TestJMAPServerModule {
     JwtPrivateKeyProvider jwtPrivateKeyProvider() {
         return new JwtPrivateKeyProvider(new JwtPrivateKeyConfiguration(OptionConverters.toScala(Optional.of(JWT_PRIVATE_PEM_KEY))));
     }
-
-    @Override
-    protected void configure() {
-        try {
-            bind(WebFingerConfiguration.class).toInstance(new WebFingerConfiguration(Some.apply(new URL("https://auth.linagora.com/auth/realms/jmap"))));
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-    }
 }

@@ -17,6 +17,6 @@ public class MemoryWebFingerTest implements WebFingerRoutesContract {
             .configurationFromClasspath()
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule(), WebFingerRoutesContract.MODULE()))
         .build();
 }
