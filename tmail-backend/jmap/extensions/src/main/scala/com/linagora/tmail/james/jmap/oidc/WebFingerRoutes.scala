@@ -111,7 +111,7 @@ class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends J
         ProblemDetails(status = BAD_REQUEST, detail = e.getMessage),
         BAD_REQUEST)
     case e =>
-      LOGGER.error("Unexpected error upon uploads", e)
+      LOGGER.error("Unexpected error upon WebFinger resolution", e)
       respondDetails(response,
         ProblemDetails(status = INTERNAL_SERVER_ERROR, detail = e.getMessage),
         INTERNAL_SERVER_ERROR)
