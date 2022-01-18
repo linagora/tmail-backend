@@ -8,7 +8,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>jmap-extensions-es</artifactId>
+    <artifactId>jmap-extensions-es-v7</artifactId>
 
     <dependencies>
         <dependency>
