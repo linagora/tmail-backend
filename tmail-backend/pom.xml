@@ -46,7 +46,7 @@
 
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
-        <module>jmap/extensions-es</module>
+        <module>jmap/extensions-es-v7</module>
 
         <module>smtp-extensions</module>
 
