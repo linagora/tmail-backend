@@ -4,15 +4,9 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
 
-import org.apache.james.backends.es.v7.IndexName;
-import org.apache.james.backends.es.v7.WriteAliasName;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 public class EmailAddressContactMappingFactory {
-    // TODO configuration POJO for these index/alias settings
-    public static final IndexName INDEX_NAME = new IndexName("email_contact");
-    public static final WriteAliasName ALIAS_NAME = new WriteAliasName("email_contact_alias");
-
     public static XContentBuilder generateSetting() throws IOException {
         return jsonBuilder()
             .startObject()

@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.model;
 
-import static com.linagora.tmail.james.jmap.EmailAddressContactMappingFactory.ALIAS_NAME;
-import static com.linagora.tmail.james.jmap.EmailAddressContactMappingFactory.INDEX_NAME;
+import static com.linagora.tmail.james.jmap.ElasticSearchContactConfiguration.DEFAULT_CONFIGURATION;
 
 import org.apache.james.backends.es.v7.DockerElasticSearchExtension;
 import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
@@ -28,11 +27,12 @@ public class ESEmailAddressContactSearchTest implements EmailAddressContactSearc
     void setUp() throws Exception {
         ReactorElasticSearchClient client = elasticSearch.getDockerElasticSearch().clientProvider().get();
         new IndexCreationFactory(ElasticSearchConfiguration.DEFAULT_CONFIGURATION)
-            .useIndex(INDEX_NAME)
-            .addAlias(ALIAS_NAME)
+            .useIndex(DEFAULT_CONFIGURATION.getIndexName())
+            .addAlias(DEFAULT_CONFIGURATION.getWriteAliasName())
+            .addAlias(DEFAULT_CONFIGURATION.getReadAliasName())
             .createIndexAndAliases(client, EmailAddressContactMappingFactory.generateSetting());
 
-        searchEngine = new ESEmailAddressContactSearchEngine(client);
+        searchEngine = new ESEmailAddressContactSearchEngine(client, DEFAULT_CONFIGURATION);
     }
 
     @Override

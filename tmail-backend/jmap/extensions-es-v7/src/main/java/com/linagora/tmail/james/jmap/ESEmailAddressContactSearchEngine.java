@@ -1,7 +1,5 @@
 package com.linagora.tmail.james.jmap;
 
-import static com.linagora.tmail.james.jmap.EmailAddressContactMappingFactory.ALIAS_NAME;
-
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.function.Function;
@@ -34,10 +32,12 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     private final ElasticSearchIndexer indexer;
     private final ReactorElasticSearchClient client;
+    private final ElasticSearchContactConfiguration configuration;
 
-    public ESEmailAddressContactSearchEngine(ReactorElasticSearchClient client) {
+    public ESEmailAddressContactSearchEngine(ReactorElasticSearchClient client, ElasticSearchContactConfiguration contactConfiguration) {
         this.client = client;
-        this.indexer = new ElasticSearchIndexer(client, ALIAS_NAME);
+        this.indexer = new ElasticSearchIndexer(client, contactConfiguration.getWriteAliasName());
+        this.configuration = contactConfiguration;
     }
 
     @Override
@@ -50,7 +50,7 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     @Override
     public Publisher<EmailAddressContact> autoComplete(AccountId accountId, String part) {
-        SearchRequest request = new SearchRequest(ALIAS_NAME.getValue());
+        SearchRequest request = new SearchRequest(configuration.getReadAliasName().getValue());
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
         QueryBuilder matchQueryBuilder = QueryBuilders.boolQuery()
             .filter(QueryBuilders.matchQuery("accountId", accountId.getIdentifier()))
