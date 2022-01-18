@@ -12,8 +12,14 @@ case class EmailAddressContact (id: UUID, address: String) {
   def contains(part: String): Boolean = address.contains(part)
 }
 
+case class AccountEmailContact (accountId: String, id: UUID, address: String) {
+  def this(accountId: AccountId, emailAddressContact: EmailAddressContact) {
+    this(accountId.getIdentifier, emailAddressContact.id, emailAddressContact.address)
+  }
+}
+
 trait EmailAddressContactSearchEngine {
-  def index(accountId: AccountId, contact: EmailAddressContact): Publisher[Unit]
+  def index(accountId: AccountId, contact: EmailAddressContact): Publisher[Void]
 
   def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
 
@@ -22,7 +28,7 @@ trait EmailAddressContactSearchEngine {
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {
   val emailList: Multimap[AccountId, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
 
-  override def index(accountId: AccountId, address: EmailAddressContact): Publisher[Unit] =
+  override def index(accountId: AccountId, address: EmailAddressContact): Publisher[Void] =
     SMono.fromCallable(() => emailList.put(accountId, address)).`then`()
 
 
