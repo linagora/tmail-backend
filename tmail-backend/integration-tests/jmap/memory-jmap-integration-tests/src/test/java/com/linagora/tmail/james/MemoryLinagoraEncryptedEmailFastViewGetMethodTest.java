@@ -1,5 +1,7 @@
 package com.linagora.tmail.james;
 
+import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.james.JamesServerBuilder;
@@ -27,6 +29,7 @@ public class MemoryLinagoraEncryptedEmailFastViewGetMethodTest implements Linago
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .mailbox(new MailboxConfiguration(true))
+            .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

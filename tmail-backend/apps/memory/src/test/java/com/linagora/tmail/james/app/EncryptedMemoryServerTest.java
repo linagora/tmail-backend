@@ -5,6 +5,7 @@ import static io.restassured.RestAssured.requestSpecification;
 import static io.restassured.RestAssured.with;
 import static io.restassured.http.ContentType.JSON;
 import static org.apache.http.HttpStatus.SC_OK;
+import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.apache.james.jmap.JMAPTestingConstants.ALICE;
 import static org.apache.james.jmap.JMAPTestingConstants.ALICE_PASSWORD;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
@@ -61,11 +62,13 @@ import io.restassured.specification.RequestSpecification;
 
 class EncryptedMemoryServerTest implements JamesServerContract, JmapJamesServerContract {
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir -> MemoryConfiguration.builder()
-        .workingDirectory(tmpDir)
-        .configurationFromClasspath()
-        .mailbox(new MailboxConfiguration(true))
-        .build())
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
+        MemoryConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .mailbox(new MailboxConfiguration(true))
+            .usersRepository(DEFAULT)
+            .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class)))

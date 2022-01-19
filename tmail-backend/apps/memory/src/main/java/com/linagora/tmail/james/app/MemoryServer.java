@@ -9,6 +9,7 @@ import java.util.List;
 import org.apache.james.FakeSearchMailboxModule;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
+import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.modules.BlobExportMechanismModule;
@@ -16,6 +17,7 @@ import org.apache.james.modules.BlobMemoryModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.MemoryDataModule;
+import org.apache.james.modules.data.MemoryUsersRepositoryModule;
 import org.apache.james.modules.eventstore.MemoryEventStoreModule;
 import org.apache.james.modules.mailbox.MemoryMailboxModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
@@ -126,6 +128,8 @@ public class MemoryServer {
     public static GuiceJamesServer createServer(MemoryConfiguration configuration) {
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
+            .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
+                .chooseModules(configuration.getUsersRepositoryImplementation()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 

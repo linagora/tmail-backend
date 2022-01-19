@@ -3,6 +3,7 @@ package com.linagora.tmail.james.app;
 import java.io.File;
 import java.util.Optional;
 
+import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.server.core.JamesServerResourceLoader;
@@ -20,11 +21,13 @@ public class MemoryConfiguration implements Configuration {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<String> rootDirectory;
         private Optional<ConfigurationPath> configurationPath;
+        private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
 
         private Builder() {
             mailboxConfiguration = Optional.empty();
             rootDirectory = Optional.empty();
             configurationPath = Optional.empty();
+            usersRepositoryImplementation = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -60,6 +63,10 @@ public class MemoryConfiguration implements Configuration {
             return this;
         }
 
+        public Builder usersRepository(UsersRepositoryModuleChooser.Implementation implementation) {
+            this.usersRepositoryImplementation = Optional.of(implementation);
+            return this;
+        }
 
         public MemoryConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
@@ -77,10 +84,14 @@ public class MemoryConfiguration implements Configuration {
                 .workingDirectory(directories.getRootDirectory())
                 .build());
 
+            UsersRepositoryModuleChooser.Implementation usersRepositoryChoice = usersRepositoryImplementation.orElseGet(
+                () -> UsersRepositoryModuleChooser.Implementation.parse(configurationProvider));
+
             return new MemoryConfiguration(
                 configurationPath,
                 directories,
-                mailboxConfiguration);
+                mailboxConfiguration,
+                usersRepositoryChoice);
         }
     }
 
@@ -91,11 +102,13 @@ public class MemoryConfiguration implements Configuration {
     private final ConfigurationPath configurationPath;
     private final JamesDirectoriesProvider directories;
     private final MailboxConfiguration mailboxConfiguration;
+    private final UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation;
 
-    public MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, MailboxConfiguration mailboxConfiguration) {
+    public MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, MailboxConfiguration mailboxConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) {
         this.configurationPath = configurationPath;
         this.directories = directories;
         this.mailboxConfiguration = mailboxConfiguration;
+        this.usersRepositoryImplementation = usersRepositoryImplementation;
     }
 
     @Override
@@ -110,5 +123,9 @@ public class MemoryConfiguration implements Configuration {
 
     public MailboxConfiguration mailboxConfiguration() {
         return mailboxConfiguration;
+    }
+
+    public UsersRepositoryModuleChooser.Implementation getUsersRepositoryImplementation() {
+        return usersRepositoryImplementation;
     }
 }

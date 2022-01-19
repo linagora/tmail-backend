@@ -1,5 +1,6 @@
 package com.linagora.tmail.james;
 
+import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
 
 import org.apache.james.JamesServerBuilder;
@@ -21,6 +22,7 @@ public class MemoryLinagoraFilterGetMethodTest implements LinagoraFilterGetMetho
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
+            .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
