@@ -1,5 +1,7 @@
 package com.linagora.tmail.james;
 
+import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
+
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.utils.GuiceProbe;
@@ -23,6 +25,7 @@ public class MemoryLinagoraLongLivedTokenSetMethodTest implements LinagoraLongLi
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .mailbox(new MailboxConfiguration(true))
+            .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

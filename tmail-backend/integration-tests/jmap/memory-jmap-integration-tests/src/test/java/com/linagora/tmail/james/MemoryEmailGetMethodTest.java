@@ -19,6 +19,8 @@
 
 package com.linagora.tmail.james;
 
+import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.james.JamesServerBuilder;
@@ -38,6 +40,7 @@ public class MemoryEmailGetMethodTest implements EmailGetMethodContract {
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
+            .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))

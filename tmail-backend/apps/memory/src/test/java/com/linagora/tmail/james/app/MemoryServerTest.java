@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.app;
 
+import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.GuiceJamesServer;
@@ -21,11 +22,13 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 class MemoryServerTest implements JamesServerContract, JmapJamesServerContract, MailsShouldBeWellReceived {
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir -> MemoryConfiguration.builder()
-        .workingDirectory(tmpDir)
-        .configurationFromClasspath()
-        .mailbox(new MailboxConfiguration(false))
-        .build())
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
+        MemoryConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .mailbox(new MailboxConfiguration(false))
+            .usersRepository(DEFAULT)
+            .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class)))
