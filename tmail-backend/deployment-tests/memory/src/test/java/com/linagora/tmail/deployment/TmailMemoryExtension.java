@@ -16,7 +16,8 @@ public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallba
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
-        .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME));
+        .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME))
+        .withExposedPorts(25, 143, 80);
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) {
