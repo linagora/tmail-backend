@@ -1,18 +1,18 @@
 package com.linagora.tmail.james.jmap.jwt
 
-import java.security.Security
-import java.time.ZonedDateTime
-import java.util.Optional
-
 import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.jmap.jwt.Fixture.{validPrivateKey, validPublicKey}
 import com.linagora.tmail.james.jmap.jwt.JwtSignerTest.{bob, differentValidPublicKey, expiredExpirationTime, now, validExpirationTime}
 import org.apache.james.core.Username
-import org.apache.james.jwt.{JwtConfiguration, JwtTokenVerifier, PublicKeyProvider, PublicKeyReader}
+import org.apache.james.jwt.{DefaultPublicKeyProvider, JwtConfiguration, JwtTokenVerifier, PublicKeyReader}
 import org.apache.james.utils.UpdatableTickingClock
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.jupiter.api.{BeforeAll, BeforeEach, Test}
+
+import java.security.Security
+import java.time.ZonedDateTime
+import java.util.Optional
 
 object JwtSignerTest {
   private val bob = Username.of("bob")
@@ -48,7 +48,7 @@ class JwtSignerTest {
     val clock = new UpdatableTickingClock(now.toInstant)
     jwtSigner = new JwtSigner(clock, privateKeyProvider)
 
-    val publicKeyProvider = new PublicKeyProvider(new JwtConfiguration(ImmutableList.of(validPublicKey)), new PublicKeyReader)
+    val publicKeyProvider = new DefaultPublicKeyProvider(new JwtConfiguration(ImmutableList.of(validPublicKey)), new PublicKeyReader)
     jwtTokenVerifier = new JwtTokenVerifier(publicKeyProvider)
   }
 
@@ -96,7 +96,7 @@ class JwtSignerTest {
 
   @Test
   def verifyShouldReturnFalseWhenKeysAreNotPaired(): Unit = {
-    val otherPublicKeyProvider = new PublicKeyProvider(new JwtConfiguration(ImmutableList.of(differentValidPublicKey)), new PublicKeyReader)
+    val otherPublicKeyProvider = new DefaultPublicKeyProvider(new JwtConfiguration(ImmutableList.of(differentValidPublicKey)), new PublicKeyReader)
     val otherJwtTokenVerifier = new JwtTokenVerifier(otherPublicKeyProvider)
 
     val jwtToken = jwtSigner.sign(bob, validExpirationTime)
