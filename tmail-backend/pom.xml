@@ -48,6 +48,8 @@
         <module>jmap/extensions-cassandra</module>
         <module>jmap/extensions-es-v7</module>
 
+        <module>rate-limiter/rate-limiter-api</module>
+
         <module>smtp-extensions</module>
 
         <module>webadmin/webadmin-team-mailboxes</module>
