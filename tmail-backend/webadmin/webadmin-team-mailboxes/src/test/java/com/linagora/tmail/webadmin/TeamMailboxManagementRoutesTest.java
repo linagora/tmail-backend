@@ -163,7 +163,7 @@ public class TeamMailboxManagementRoutesTest {
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "Invalid arguments supplied in the user request")
-                .containsEntry("details", "Domain can not be empty nor contain `@` nor `/`");
+                .containsEntry("details", "Domain parts ASCII chars must be a-z A-Z 0-9 - or _");
         }
 
         @Test
@@ -437,7 +437,7 @@ public class TeamMailboxManagementRoutesTest {
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "Invalid arguments supplied in the user request")
-                .containsEntry("details", "Domain can not be empty nor contain `@` nor `/`");
+                .containsEntry("details", "Domain parts ASCII chars must be a-z A-Z 0-9 - or _");
         }
     }
 
