@@ -1,5 +1,8 @@
 package com.linagora.tmail.rate.limiter.api
 
+import java.time.Duration
+import java.util.UUID
+
 import com.linagora.tmail.rate.limiter.api.LimitTypes.{COUNT, LimitTypes, SIZE}
 import com.linagora.tmail.rate.limiter.api.OperationLimitations.{DELIVERY_LIMITATIONS_NAME, RELAY_LIMITATIONS_NAME, TRANSIT_LIMITATIONS_NAME}
 import com.linagora.tmail.rate.limiter.api.OperationLimitationsType.OperationLimitationsType
@@ -7,11 +10,10 @@ import com.linagora.tmail.rate.limiter.api.RateLimitingPlanName.RateLimitingPlan
 import eu.timepit.refined
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.collection.NonEmpty
+import org.apache.james.core.Username
 import org.apache.james.rate.limiter.api.AllowedQuantity
 import org.apache.james.rate.limiter.api.AllowedQuantity.AllowedQuantity
 
-import java.time.Duration
-import java.util.UUID
 import scala.util.Try
 
 object LimitTypes {
@@ -165,3 +167,4 @@ case class RateLimitingPlanCreateRequest(name: RateLimitingPlanName, operationLi
 
 case class RateLimitingPlanResetRequest(id: RateLimitingPlanId, name: RateLimitingPlanName, operationLimitations: OperationLimitationsType)
 
+case class UsernameToRateLimitingPlanId(username: Username, rateLimitingPlanId: RateLimitingPlanId)
