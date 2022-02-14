@@ -80,10 +80,12 @@ case class RateLimitation(name: String, period: Duration, limits: LimitTypes)
 object RateLimitingPlanId {
   def generate: RateLimitingPlanId = RateLimitingPlanId(UUID.randomUUID())
 
-  def from(value: String): Try[RateLimitingPlanId] = Try(RateLimitingPlanId(UUID.fromString(value)))
+  def parse(string: String): RateLimitingPlanId = RateLimitingPlanId(UUID.fromString(string))
 }
 
-case class RateLimitingPlanId(value: UUID)
+case class RateLimitingPlanId(value: UUID) {
+  def serialize(): String = value.toString
+}
 
 object RateLimitingPlanName {
   type RateLimitingPlanName = String Refined NonEmpty

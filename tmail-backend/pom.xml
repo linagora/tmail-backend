@@ -54,6 +54,7 @@
         <module>smtp-extensions</module>
 
         <module>webadmin/webadmin-team-mailboxes</module>
+        <module>webadmin/webadmin-rate-limit</module>
     </modules>
 
     <properties>
