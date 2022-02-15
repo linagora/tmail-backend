@@ -13,7 +13,7 @@ trait RateLimitationPlanRepository {
 
   def get(id: RateLimitingPlanId): Publisher[RateLimitingPlan]
 
-  def planExists(id: RateLimitingPlanId): Publisher[Boolean]
+  def planExists(id: RateLimitingPlanId): Publisher[java.lang.Boolean]
 
   def list(): Publisher[RateLimitingPlan]
 }
@@ -45,5 +45,5 @@ class InMemoryRateLimitationPlanRepository() extends RateLimitationPlanRepositor
     SFlux.fromIterable(rateLimitingPlanStore)
       .map(_._2)
 
-  override def planExists(id: RateLimitingPlanId): Publisher[Boolean] = SMono.justOrEmpty(rateLimitingPlanStore.get(id)).hasElement
+  override def planExists(id: RateLimitingPlanId): Publisher[java.lang.Boolean] = SMono.just(rateLimitingPlanStore.contains(id))
 }
