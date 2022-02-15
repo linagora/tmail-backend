@@ -63,6 +63,7 @@ import org.apache.james.modules.spamassassin.SpamAssassinListenerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.modules.webadmin.CassandraRoutesModule;
 import org.apache.james.modules.webadmin.InconsistencySolvingRoutesModule;
+import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -204,7 +205,8 @@ public class DistributedServer {
             new RabbitMailQueueRoutesModule(),
             new RabbitMQEventBusModule(),
             new DistributedTaskSerializationModule(),
-            new TeamMailboxModule());
+            new TeamMailboxModule(),
+            new RedisRateLimiterModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()

@@ -29,6 +29,7 @@ import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.TaskManagerModule;
 import org.apache.james.modules.spamassassin.SpamAssassinListenerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultModule;
+import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
@@ -111,7 +112,9 @@ public class MemoryServer {
           new TeamMailboxRoutesModule(),
           new DKIMMailetModule(),
           new SpamAssassinListenerModule())
-        .with(new TeamMailboxModule(), new TMailScanningQuotaSearcherModule());
+        .with(new TeamMailboxModule(),
+            new TMailScanningQuotaSearcherModule(),
+            new MemoryRateLimiterModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()
