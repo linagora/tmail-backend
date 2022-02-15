@@ -153,6 +153,12 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-rate-limiter-api</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>jmap-extensions-cassandra</artifactId>
                 <version>${project.version}</version>
             </dependency>
