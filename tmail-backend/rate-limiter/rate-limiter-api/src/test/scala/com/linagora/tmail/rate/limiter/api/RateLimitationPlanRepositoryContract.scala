@@ -1,9 +1,10 @@
 package com.linagora.tmail.rate.limiter.api
 
 import com.linagora.tmail.rate.limiter.api.LimitTypes.LimitTypes
-import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepositoryContract.{CREATION_REQUEST, RELAY_LIMITS, RESET_REQUEST, TRANSIT_LIMITS}
+import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepositoryContract.{CREATION_REQUEST, CREATION_REQUEST_WITH_MULTI_OPERATIONS, RESET_REQUEST}
+import eu.timepit.refined.auto._
 import org.apache.james.rate.limiter.api.AllowedQuantity
-import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -22,12 +23,30 @@ object RateLimitationPlanRepositoryContract {
   val RELAY_LIMITS: RelayLimitations = RelayLimitations(Seq(RATE_LIMITATION))
 
   val CREATION_REQUEST: RateLimitingPlanCreateRequest = RateLimitingPlanCreateRequest(
-    name = RateLimitingPlanName("name1"),
-    operationLimitations = Seq(TRANSIT_LIMITS))
+    name = "name1",
+    operationLimitations = OperationLimitationsType.liftOrThrow(Seq(TRANSIT_LIMITS)))
   val RESET_REQUEST: RateLimitingPlanResetRequest = RateLimitingPlanResetRequest(
     id = RateLimitingPlanId.generate,
-    name = RateLimitingPlanName("new name"),
-    operationLimitations = Seq(TRANSIT_LIMITS))
+    name = "new name",
+    operationLimitations = OperationLimitationsType.liftOrThrow(Seq(TRANSIT_LIMITS)))
+
+  val CREATION_REQUEST_WITH_MULTI_OPERATIONS: RateLimitingPlanCreateRequest = RateLimitingPlanCreateRequest(
+    name = "complex_plan",
+    operationLimitations = OperationLimitationsType.liftOrThrow(Seq(
+      TransitLimitations(Seq(
+        RateLimitation(name = "limit1",
+          period = Duration.ofMinutes(1),
+          limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(1)), Size(AllowedQuantity.liftOrThrow(10000))))),
+        RateLimitation(name = "limit2",
+          period = Duration.ofMinutes(2),
+          limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(2)), Size(AllowedQuantity.liftOrThrow(20000))))))),
+      RelayLimitations(Seq(
+        RateLimitation(name = "limit3",
+          period = Duration.ofMinutes(3),
+          limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(3)), Size(AllowedQuantity.liftOrThrow(30000))))),
+        RateLimitation(name = "limit4",
+          period = Duration.ofMinutes(4),
+          limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(4)), Size(AllowedQuantity.liftOrThrow(40000))))))))))
 }
 
 trait RateLimitationPlanRepositoryContract {
@@ -40,7 +59,8 @@ trait RateLimitationPlanRepositoryContract {
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(rateLimitingPlan.id).isNotNull
-      softly.assertThat(rateLimitingPlan.operationLimitations.asJava).containsExactlyInAnyOrderElementsOf(CREATION_REQUEST.operationLimitations.asJava)
+      softly.assertThat(rateLimitingPlan.operationLimitations.asJava)
+        .containsExactlyInAnyOrderElementsOf(CREATION_REQUEST.operationLimitations.value.asJava)
       softly.assertThat(rateLimitingPlan.name).isEqualTo(CREATION_REQUEST.name)
     })
   }
@@ -66,23 +86,27 @@ trait RateLimitationPlanRepositoryContract {
   }
 
   @Test
+  def createShouldWorkWhenHaveSeveralOperationLimitations(): Unit = {
+    val rateLimitingPlan: RateLimitingPlan = SMono.fromPublisher(testee.create(CREATION_REQUEST_WITH_MULTI_OPERATIONS))
+      .block()
+
+    assertThat(SFlux.fromPublisher(testee.list()).collectSeq().block().asJava)
+      .containsExactlyInAnyOrder(rateLimitingPlan)
+  }
+
+  @Test
   def updateShouldThrowWhenIdNotFound(): Unit = {
     assertThatThrownBy(() => SMono.fromPublisher(testee.update(RESET_REQUEST)).block())
       .isInstanceOf(classOf[RateLimitingPlanNotFoundException])
   }
 
   @Test
-  def updateShouldReturnRateLimitingPlan(): Unit = {
+  def updateShouldNotThrowWhenIdExists(): Unit = {
     val rateLimitingPlan: RateLimitingPlan = SMono.fromPublisher(testee.create(CREATION_REQUEST))
       .block()
 
-    val updatedResult: RateLimitingPlan = SMono.fromPublisher(testee.update(RESET_REQUEST.copy(id = rateLimitingPlan.id))).block()
-
-    SoftAssertions.assertSoftly(softly => {
-      softly.assertThat(updatedResult.id).isEqualTo(rateLimitingPlan.id)
-      softly.assertThat(updatedResult.operationLimitations.asJava).containsExactlyInAnyOrderElementsOf(RESET_REQUEST.operationLimitations.asJava)
-      softly.assertThat(updatedResult.name).isEqualTo(RESET_REQUEST.name)
-    })
+    assertThatCode(() => SMono.fromPublisher(testee.update(RESET_REQUEST.copy(id = rateLimitingPlan.id))).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
@@ -90,11 +114,13 @@ trait RateLimitationPlanRepositoryContract {
     val rateLimitingPlan: RateLimitingPlan = SMono.fromPublisher(testee.create(CREATION_REQUEST))
       .block()
 
-    val updatedResult: RateLimitingPlan = SMono.fromPublisher(testee.update(RESET_REQUEST.copy(id = rateLimitingPlan.id))).block()
+    SMono.fromPublisher(testee.update(RESET_REQUEST.copy(id = rateLimitingPlan.id))).block()
 
-    assertThat(SMono.fromPublisher(testee.get(rateLimitingPlan.id))
-      .block())
-      .isEqualTo(updatedResult)
+    assertThat(SMono.fromPublisher(testee.get(rateLimitingPlan.id)).block())
+      .isEqualTo(RateLimitingPlan(
+        id = rateLimitingPlan.id,
+        name = RESET_REQUEST.name,
+        operationLimitations = RESET_REQUEST.operationLimitations))
   }
 
   @Test
@@ -160,7 +186,7 @@ trait RateLimitationPlanRepositoryContract {
   def listShouldReturnStoredEntriesWhenHasSeveralElement(): Unit = {
     val rateLimitingPlan: RateLimitingPlan = SMono.fromPublisher(testee.create(CREATION_REQUEST))
       .block()
-    val rateLimitingPlan2: RateLimitingPlan = SMono.fromPublisher(testee.create(CREATION_REQUEST.copy(name = RateLimitingPlanName("name2"))))
+    val rateLimitingPlan2: RateLimitingPlan = SMono.fromPublisher(testee.create(CREATION_REQUEST_WITH_MULTI_OPERATIONS))
       .block()
 
     assertThat(SFlux.fromPublisher(testee.list()).collectSeq().block().asJava)

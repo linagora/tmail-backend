@@ -9,7 +9,7 @@ trait RateLimitationPlanRepository {
 
   def create(creationRequest: RateLimitingPlanCreateRequest): Publisher[RateLimitingPlan]
 
-  def update(resetRequest: RateLimitingPlanResetRequest): Publisher[RateLimitingPlan]
+  def update(resetRequest: RateLimitingPlanResetRequest): Publisher[Unit]
 
   def get(id: RateLimitingPlanId): Publisher[RateLimitingPlan]
 
@@ -31,14 +31,10 @@ class InMemoryRateLimitationPlanRepository() extends RateLimitationPlanRepositor
       rateLimitingPlan
     })
 
-  override def update(resetRequest: RateLimitingPlanResetRequest): Publisher[RateLimitingPlan] =
+  override def update(resetRequest: RateLimitingPlanResetRequest): Publisher[Unit] =
     SMono.justOrEmpty(rateLimitingPlanStore.get(resetRequest.id))
       .switchIfEmpty(SMono.error(new RateLimitingPlanNotFoundException))
-      .map(rateLimitingPlan => {
-        val newRateLimitingPlan: RateLimitingPlan = RateLimitingPlan.update(rateLimitingPlan, resetRequest)
-        rateLimitingPlanStore.update(newRateLimitingPlan.id, newRateLimitingPlan)
-        newRateLimitingPlan
-      })
+      .map(rateLimitingPlan => rateLimitingPlanStore.update(resetRequest.id, RateLimitingPlan.update(rateLimitingPlan, resetRequest)))
 
   override def get(id: RateLimitingPlanId): Publisher[RateLimitingPlan] =
     SMono.justOrEmpty(rateLimitingPlanStore.get(id))
