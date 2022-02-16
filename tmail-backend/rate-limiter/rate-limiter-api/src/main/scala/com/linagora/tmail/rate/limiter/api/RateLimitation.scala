@@ -95,7 +95,7 @@ object RateLimitingPlanName {
   def liftOrThrow(value: String): RateLimitingPlanName =
     refined.refineV[NonEmpty](value) match {
       case Right(value) => value
-      case Left(_) => throw new IllegalArgumentException("value should not be empty")
+      case Left(_) => throw new IllegalArgumentException("Rate limiting plan name should not be empty")
     }
 }
 
