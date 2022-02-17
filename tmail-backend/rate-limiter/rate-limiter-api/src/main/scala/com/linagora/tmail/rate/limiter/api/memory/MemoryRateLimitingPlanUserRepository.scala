@@ -1,8 +1,7 @@
 package com.linagora.tmail.rate.limiter.api.memory
 
 import com.google.common.base.Preconditions
-import com.linagora.tmail.rate.limiter.api.RateLimitingPlanUserRepository
-import com.linagora.tmail.rate.limiter.model.{RateLimitationPlanNotFoundException, RateLimitingPlanId}
+import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
 import org.apache.james.core.Username
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -30,6 +29,6 @@ class MemoryRateLimitingPlanUserRepository extends RateLimitingPlanUserRepositor
   override def getPlanByUser(username: Username): SMono[RateLimitingPlanId] = {
     Preconditions.checkNotNull(username)
     SMono.justOrEmpty(table.get(username))
-      .switchIfEmpty(SMono.error(RateLimitationPlanNotFoundException(username)))
+      .switchIfEmpty(SMono.error(RateLimitingPlanNotFoundException()))
   }
 }

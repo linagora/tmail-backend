@@ -3,7 +3,6 @@ package com.linagora.tmail.rate.limiter.api
 import java.util.UUID
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanUserRepositoryContract.{ALICE, BOB, PLAN_ID_1, PLAN_ID_2}
-import com.linagora.tmail.rate.limiter.model.{RateLimitationPlanNotFoundException, RateLimitingPlanId}
 import org.apache.james.core.Username
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
@@ -66,7 +65,7 @@ trait RateLimitingPlanUserRepositoryContract {
     SMono.fromPublisher(testee.revokePlan(BOB)).block()
 
     assertThatThrownBy(() => SMono.fromPublisher(testee.getPlanByUser(BOB)).block())
-      .isInstanceOf(classOf[RateLimitationPlanNotFoundException])
+      .isInstanceOf(classOf[RateLimitingPlanNotFoundException])
   }
 
   @Test
@@ -89,7 +88,7 @@ trait RateLimitingPlanUserRepositoryContract {
   @Test
   def getPlanByUserWhenNotFoundShouldThrowException(): Unit = {
     assertThatThrownBy(() => SMono.fromPublisher(testee.getPlanByUser(BOB)).block())
-      .isInstanceOf(classOf[RateLimitationPlanNotFoundException])
+      .isInstanceOf(classOf[RateLimitingPlanNotFoundException])
   }
 
   @Test
