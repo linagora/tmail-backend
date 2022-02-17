@@ -1,6 +1,5 @@
 package com.linagora.tmail.rate.limiter.api
 
-import com.linagora.tmail.rate.limiter.model.RateLimitingPlanId
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 
