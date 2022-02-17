@@ -110,7 +110,6 @@ object OperationLimitations {
   val RELAY_LIMITATIONS_NAME: String = "RelayLimitations"
   val DELIVERY_LIMITATIONS_NAME: String = "DeliveryLimitations"
 
-
   def liftOrThrow(operationName: String, rateLimitations: Seq[RateLimitation]): OperationLimitations =
     from(operationName, rateLimitations) match {
       case Right(value) => value
