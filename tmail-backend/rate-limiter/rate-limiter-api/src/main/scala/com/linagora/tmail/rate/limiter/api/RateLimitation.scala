@@ -14,8 +14,6 @@ import org.apache.james.core.Username
 import org.apache.james.rate.limiter.api.AllowedQuantity
 import org.apache.james.rate.limiter.api.AllowedQuantity.AllowedQuantity
 
-import scala.util.Try
-
 object LimitTypes {
   val SIZE: String = "size"
   val COUNT: String = "count"
