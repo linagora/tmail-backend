@@ -1,4 +1,4 @@
-package com.linagora.tmail.rate.limiter.cassandra
+package com.linagora.tmail.rate.limiter.api.cassandra.table
 
 import com.datastax.driver.core.DataType.{bigint, frozenList, text, uuid}
 import com.datastax.driver.core.schemabuilder.Create
@@ -9,7 +9,7 @@ object CassandraRateLimitPlanTable {
   val TABLE_NAME: String = "rate_limit_plan"
   val PLAN_ID: String = "plan_id"
   val PLAN_NAME: String = "plan_name"
-  val OPERATION_LIMITATION_NAME: String = "operation_limitation_name";
+  val OPERATION_LIMITATION_NAME: String = "operation_limitation_name"
   val RATE_LIMITATIONS: String = "rate_limitations"
 
   val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
