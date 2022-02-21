@@ -1,22 +1,3 @@
-/****************************************************************
- * Licensed to the Apache Software Foundation (ASF) under one   *
- * or more contributor license agreements.  See the NOTICE file *
- * distributed with this work for additional information        *
- * regarding copyright ownership.  The ASF licenses this file   *
- * to you under the Apache License, Version 2.0 (the            *
- * "License"); you may not use this file except in compliance   *
- * with the License.  You may obtain a copy of the License at   *
- *                                                              *
- *   http://www.apache.org/licenses/LICENSE-2.0                 *
- *                                                              *
- * Unless required by applicable law or agreed to in writing,   *
- * software distributed under the License is distributed on an  *
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
- * KIND, either express or implied.  See the License for the    *
- * specific language governing permissions and limitations      *
- * under the License.                                           *
- ****************************************************************/
-
 package com.linagora.tmail.webadmin;
 
 import static io.restassured.RestAssured.given;
@@ -38,8 +19,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.rate.limiter.api.InMemoryRateLimitationPlanRepository;
 import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepository;
@@ -78,26 +57,26 @@ public class RateLimitPlanManagementRoutesTest {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  },\n" +
                 "    {\n" +
                 "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"period\": \"1 day\",\n" +
+                "      \"period\": 86400,\n" +
                 "      \"count\": 1000,\n" +
                 "      \"size\": 4096\n" +
                 "    }\n" +
                 "  ],\n" +
                 "  \"relayLimits\": [{\n" +
                 "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  }],\n" +
                 "  \"deliveryLimits\": [{\n" +
                 "    \"name\": \"deliveryMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  " +
@@ -121,26 +100,26 @@ public class RateLimitPlanManagementRoutesTest {
                     "  \"planName\": \"planName1\",\n" +
                     "  \"transitLimits\": [{\n" +
                     "    \"name\": \"receivedMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  },\n" +
                     "    {\n" +
                     "      \"name\": \"receivedMailsPerDay\",\n" +
-                    "      \"period\": \"86400 second\",\n" +
+                    "      \"period\": 86400,\n" +
                     "      \"count\": 1000,\n" +
                     "      \"size\": 4096\n" +
                     "    }\n" +
                     "  ],\n" +
                     "  \"relayLimits\": [{\n" +
                     "    \"name\": \"relayMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  }],\n" +
                     "  \"deliveryLimits\": [{\n" +
                     "    \"name\": \"deliveryMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  " +
@@ -153,13 +132,13 @@ public class RateLimitPlanManagementRoutesTest {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  },\n" +
                 "    {\n" +
                 "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"period\": \"1 day\",\n" +
+                "      \"period\": 86400,\n" +
                 "      \"count\": 1000,\n" +
                 "      \"size\": 4096\n" +
                 "    }\n" +
@@ -183,13 +162,13 @@ public class RateLimitPlanManagementRoutesTest {
                     "  \"planName\": \"planName1\",\n" +
                     "  \"transitLimits\": [{\n" +
                     "    \"name\": \"receivedMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  },\n" +
                     "    {\n" +
                     "      \"name\": \"receivedMailsPerDay\",\n" +
-                    "      \"period\": \"86400 second\",\n" +
+                    "      \"period\": 86400,\n" +
                     "      \"count\": 1000,\n" +
                     "      \"size\": 4096\n" +
                     "    }\n" +
@@ -267,14 +246,14 @@ public class RateLimitPlanManagementRoutesTest {
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "JSON payload of the request is not valid");
-            assertThat(errors.get("details").toString()).contains("Operation limitation arrays must have at least a entry.");
+            assertThat(errors.get("details").toString()).contains("Operation limitation arrays must have at least one entry.");
         }
 
         @Test
         void shouldReturnBadRequestWhenMissingRateLimitationNameField() {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "}]\n" +
@@ -335,7 +314,7 @@ public class RateLimitPlanManagementRoutesTest {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"size\": 2048\n" +
                 "}]\n" +
                 "}";
@@ -365,7 +344,7 @@ public class RateLimitPlanManagementRoutesTest {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": -100,\n" +
                 "    \"size\": 2048\n" +
                 "}]\n" +
@@ -394,7 +373,7 @@ public class RateLimitPlanManagementRoutesTest {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100\n" +
                 "}]\n" +
                 "}";
@@ -424,7 +403,7 @@ public class RateLimitPlanManagementRoutesTest {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": -2048\n" +
                 "}]\n" +
@@ -433,7 +412,7 @@ public class RateLimitPlanManagementRoutesTest {
             Map<String, Object> errors = given()
                 .body(json)
                 .post(String.format(CREATE_A_PLAN_PATH, "planName1"))
-                .then()
+            .then()
                 .statusCode(BAD_REQUEST_400)
                 .contentType(JSON)
                 .extract()
@@ -449,40 +428,11 @@ public class RateLimitPlanManagementRoutesTest {
         }
 
         @Test
-        void shouldReturnBadRequestWhenInvalidPeriodString() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"invalid period\",\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "}]\n" +
-                "}";
-
-            Map<String, Object> errors = given()
-                .body(json)
-                .post(String.format(CREATE_A_PLAN_PATH, "planName1"))
-            .then()
-                .statusCode(BAD_REQUEST_400)
-                .contentType(JSON)
-                .extract()
-                .body()
-                .jsonPath()
-                .getMap(".");
-
-            assertThat(errors)
-                .containsEntry("statusCode", BAD_REQUEST_400)
-                .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", "Invalid arguments supplied in the user request")
-                .containsEntry("details", "Supplied value do not follow the unit format (number optionally suffixed with a string representing the unit");
-        }
-
-        @Test
         void shouldReturnBadRequestWhenNegativePeriod() {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"-1 hour\",\n" +
+                "    \"period\": -3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "}]\n" +
@@ -503,21 +453,15 @@ public class RateLimitPlanManagementRoutesTest {
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "Invalid arguments supplied in the user request")
-                .containsEntry("details", "Duration amount should be positive");
+                .containsEntry("details", "requirement failed: Rate limitation period must not be negative");
         }
 
-        @ParameterizedTest
-        @ValueSource(strings = {"2s", "2 s", "2 sec", "2 Sec", "2 second", "2 seconds",
-            "2m", "2 m", "2 min", "2 mins", "2 minute", "2 Minute", "2 minutes",
-            "2h", "2 h", "2 hour", "2 Hour", "2 hours",
-            "2d", "2 d", "2 day", "2 Day", "2 days",
-            "2w", "2 w", "2 week", "2 Week", "2 weeks",
-            "2months", "2 months", "2 month", "2 Month"})
-        void shouldSucceedWhenValidPeriod(String period) {
+        @Test
+        void shouldSucceedWhenValidPeriod() {
             String json = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"" + period + "\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "}]\n" +
@@ -539,26 +483,26 @@ public class RateLimitPlanManagementRoutesTest {
             String createPlanJson = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  },\n" +
                 "    {\n" +
                 "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"period\": \"1 day\",\n" +
+                "      \"period\": 86400,\n" +
                 "      \"count\": 1000,\n" +
                 "      \"size\": 4096\n" +
                 "    }\n" +
                 "  ],\n" +
                 "  \"relayLimits\": [{\n" +
                 "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  }],\n" +
                 "  \"deliveryLimits\": [{\n" +
                 "    \"name\": \"deliveryMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "}]\n" +
@@ -579,20 +523,20 @@ public class RateLimitPlanManagementRoutesTest {
                 "  \"planName\": \"newPlanName\",\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  },\n" +
                 "    {\n" +
                 "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"period\": \"1 day\",\n" +
+                "      \"period\": 86400,\n" +
                 "      \"count\": 1000,\n" +
                 "      \"size\": 4096\n" +
                 "    }\n" +
                 "  ],\n" +
                 "  \"relayLimits\": [{\n" +
                 "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  }],\n" +
@@ -622,20 +566,20 @@ public class RateLimitPlanManagementRoutesTest {
                 "  \"planName\": \"newPlanName\",\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  },\n" +
                 "    {\n" +
                 "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"period\": \"1 day\",\n" +
+                "      \"period\": 86400,\n" +
                 "      \"count\": 1000,\n" +
                 "      \"size\": 4096\n" +
                 "    }\n" +
                 "  ],\n" +
                 "  \"relayLimits\": [{\n" +
                 "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  }],\n" +
@@ -666,7 +610,7 @@ public class RateLimitPlanManagementRoutesTest {
                 ",\n" +
                 "  \"relayLimits\": [{\n" +
                 "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  }],\n" +
@@ -696,7 +640,7 @@ public class RateLimitPlanManagementRoutesTest {
                 "  \"planName\": \"\",\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  }],\n" +
@@ -730,26 +674,26 @@ public class RateLimitPlanManagementRoutesTest {
             String createPlanJson = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  },\n" +
                 "    {\n" +
                 "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"period\": \"1 day\",\n" +
+                "      \"period\": 86400,\n" +
                 "      \"count\": 1000,\n" +
                 "      \"size\": 4096\n" +
                 "    }\n" +
                 "  ],\n" +
                 "  \"relayLimits\": [{\n" +
                 "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  }],\n" +
                 "  \"deliveryLimits\": [{\n" +
                 "    \"name\": \"deliveryMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  " +
@@ -783,26 +727,26 @@ public class RateLimitPlanManagementRoutesTest {
                     "  \"planName\": \"oldPlanName\",\n" +
                     "  \"transitLimits\": [{\n" +
                     "    \"name\": \"receivedMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  },\n" +
                     "    {\n" +
                     "      \"name\": \"receivedMailsPerDay\",\n" +
-                    "      \"period\": \"86400 second\",\n" +
+                    "      \"period\": 86400,\n" +
                     "      \"count\": 1000,\n" +
                     "      \"size\": 4096\n" +
                     "    }\n" +
                     "  ],\n" +
                     "  \"relayLimits\": [{\n" +
                     "    \"name\": \"relayMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  }],\n" +
                     "  \"deliveryLimits\": [{\n" +
                     "    \"name\": \"deliveryMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  }]\n" +
@@ -854,26 +798,26 @@ public class RateLimitPlanManagementRoutesTest {
             String createPlanJson = "{\n" +
                 "  \"transitLimits\": [{\n" +
                 "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  },\n" +
                 "    {\n" +
                 "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"period\": \"1 day\",\n" +
+                "      \"period\": 86400,\n" +
                 "      \"count\": 1000,\n" +
                 "      \"size\": 4096\n" +
                 "    }\n" +
                 "  ],\n" +
                 "  \"relayLimits\": [{\n" +
                 "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  }],\n" +
                 "  \"deliveryLimits\": [{\n" +
                 "    \"name\": \"deliveryMailsPerHour\",\n" +
-                "    \"period\": \"1 hour\",\n" +
+                "    \"period\": 3600,\n" +
                 "    \"count\": 100,\n" +
                 "    \"size\": 2048\n" +
                 "  " +
@@ -910,26 +854,26 @@ public class RateLimitPlanManagementRoutesTest {
                     "  \"planName\": \"plan2\",\n" +
                     "  \"transitLimits\": [{\n" +
                     "    \"name\": \"receivedMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  },\n" +
                     "    {\n" +
                     "      \"name\": \"receivedMailsPerDay\",\n" +
-                    "      \"period\": \"86400 second\",\n" +
+                    "      \"period\": 86400,\n" +
                     "      \"count\": 1000,\n" +
                     "      \"size\": 4096\n" +
                     "    }\n" +
                     "  ],\n" +
                     "  \"relayLimits\": [{\n" +
                     "    \"name\": \"relayMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  }],\n" +
                     "  \"deliveryLimits\": [{\n" +
                     "    \"name\": \"deliveryMailsPerHour\",\n" +
-                    "    \"period\": \"3600 second\",\n" +
+                    "    \"period\": 3600,\n" +
                     "    \"count\": 100,\n" +
                     "    \"size\": 2048\n" +
                     "  }]\n" +
@@ -939,26 +883,26 @@ public class RateLimitPlanManagementRoutesTest {
                     "    \"planName\": \"plan1\",\n" +
                     "    \"transitLimits\": [{\n" +
                     "      \"name\": \"receivedMailsPerHour\",\n" +
-                    "      \"period\": \"3600 second\",\n" +
+                    "      \"period\": 3600,\n" +
                     "      \"count\": 100,\n" +
                     "      \"size\": 2048\n" +
                     "    },\n" +
                     "      {\n" +
                     "        \"name\": \"receivedMailsPerDay\",\n" +
-                    "        \"period\": \"86400 second\",\n" +
+                    "        \"period\": 86400,\n" +
                     "        \"count\": 1000,\n" +
                     "        \"size\": 4096\n" +
                     "      }\n" +
                     "    ],\n" +
                     "    \"relayLimits\": [{\n" +
                     "      \"name\": \"relayMailsPerHour\",\n" +
-                    "      \"period\": \"3600 second\",\n" +
+                    "      \"period\": 3600,\n" +
                     "      \"count\": 100,\n" +
                     "      \"size\": 2048\n" +
                     "    }],\n" +
                     "    \"deliveryLimits\": [{\n" +
                     "      \"name\": \"deliveryMailsPerHour\",\n" +
-                    "      \"period\": \"3600 second\",\n" +
+                    "      \"period\": 3600,\n" +
                     "      \"count\": 100,\n" +
                     "      \"size\": 2048\n" +
                     "    }]\n" +

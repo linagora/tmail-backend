@@ -1,7 +1,6 @@
 package com.linagora.tmail.webadmin
 
 import java.time.Duration
-import java.time.temporal.ChronoUnit
 import java.util
 import java.util.Optional
 
@@ -10,7 +9,6 @@ import com.linagora.tmail.rate.limiter.api.{Count, DeliveryLimitations, LimitTyp
 import com.linagora.tmail.webadmin.model.{GetAllRateLimitPlanResponseDTO, OperationLimitationsDTO, RateLimitationDTO, RateLimitingPlanCreateRequestDTO, RateLimitingPlanDTO, RateLimitingPlanResetRequestDTO}
 import javax.inject.Inject
 import org.apache.james.rate.limiter.api.AllowedQuantity
-import org.apache.james.util.DurationParser
 import org.apache.james.webadmin.Constants.SEPARATOR
 import org.apache.james.webadmin.Routes
 import org.apache.james.webadmin.utils.{ErrorResponder, JsonExtractor, JsonTransformer, Responses}
@@ -26,10 +24,10 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlan
                                               jsonTransformer: JsonTransformer) extends Routes {
   private val PLAN_ID_PARAM = ":planId"
   private val PLAN_NAME_PARAM = ":planName"
-  private val BASE_PATH = SEPARATOR + "rate-limit-plans"
-  private val CREATE_A_PLAN_PATH = BASE_PATH + SEPARATOR + PLAN_NAME_PARAM
-  private val UPDATE_A_PLAN_PATH = BASE_PATH + SEPARATOR + PLAN_ID_PARAM
-  private val GET_A_PLAN_PATH = BASE_PATH + SEPARATOR + PLAN_ID_PARAM
+  private val BASE_PATH =  s"${SEPARATOR}rate-limit-plans"
+  private val CREATE_A_PLAN_PATH = s"$BASE_PATH$SEPARATOR$PLAN_NAME_PARAM"
+  private val UPDATE_A_PLAN_PATH = s"$BASE_PATH$SEPARATOR$PLAN_ID_PARAM"
+  private val GET_A_PLAN_PATH = s"$BASE_PATH$SEPARATOR$PLAN_ID_PARAM"
   private val GET_ALL_PLAN_PATH = BASE_PATH
 
   val createRequestExtractor = new JsonExtractor[RateLimitingPlanCreateRequestDTO](classOf[RateLimitingPlanCreateRequestDTO])
@@ -44,13 +42,12 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlan
     service.get(GET_ALL_PLAN_PATH, getAllPlan, jsonTransformer)
   }
 
-  private def createAPlan: Route = (request: Request, response: Response) => {
+  private def createAPlan: Route = (request: Request, response: Response) =>
     SMono.fromPublisher(planRepository.create(toCreateRequest(request)))
       .map(toRateLimitingPlanDTO)
       .block()
-  }
 
-  private def updateAPlan: Route = (request: Request, response: Response) => {
+  private def updateAPlan: Route = (request: Request, response: Response) =>
     SMono.fromPublisher(planRepository.update(toResetRequest(request)))
       .onErrorResume { case e: RateLimitingPlanNotFoundException => SMono.error(
         ErrorResponder.builder()
@@ -61,9 +58,8 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlan
       }
       .`then`(SMono.just(Responses.returnNoContent(response)))
       .block()
-  }
 
-  private def getAPlan: Route = (request: Request, response: Response) => {
+  private def getAPlan: Route = (request: Request, response: Response) =>
     SMono.fromPublisher(planRepository.get(extractRateLimitingPlanId(request)))
       .map(toRateLimitingPlanDTO)
       .onErrorResume { case e: RateLimitingPlanNotFoundException => SMono.error(
@@ -74,36 +70,29 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlan
           .haltError())
       }
       .block()
-  }
 
-  private def getAllPlan: Route = (request: Request, response: Response) => {
+  private def getAllPlan: Route = (request: Request, response: Response) =>
     SFlux.fromPublisher(planRepository.list())
       .map(toRateLimitingPlanDTO)
       .collectSeq()
       .map(seq => new GetAllRateLimitPlanResponseDTO(seq.toList.asJava))
       .block()
-  }
 
-  private def toRateLimitingPlanDTO(rateLimitingPlan: RateLimitingPlan): RateLimitingPlanDTO = {
+  private def toRateLimitingPlanDTO(rateLimitingPlan: RateLimitingPlan): RateLimitingPlanDTO =
     new RateLimitingPlanDTO(rateLimitingPlan.id.serialize(),
       rateLimitingPlan.name.value,
       toOperationLimitationsDTO(rateLimitingPlan.operationLimitations, OperationLimitations.TRANSIT_LIMITATIONS_NAME),
       toOperationLimitationsDTO(rateLimitingPlan.operationLimitations, OperationLimitations.RELAY_LIMITATIONS_NAME),
-      toOperationLimitationsDTO(rateLimitingPlan.operationLimitations, OperationLimitations.DELIVERY_LIMITATIONS_NAME)
-    )
-  }
+      toOperationLimitationsDTO(rateLimitingPlan.operationLimitations, OperationLimitations.DELIVERY_LIMITATIONS_NAME))
 
-  private def toOperationLimitationsDTO(operationLimitation: Seq[OperationLimitations], operationType: String): Optional[OperationLimitationsDTO] = {
+  private def toOperationLimitationsDTO(operationLimitation: Seq[OperationLimitations], operationType: String): Optional[OperationLimitationsDTO] =
     operationLimitation.find(_.asString().equals(operationType))
       .map(transitLimitation => new OperationLimitationsDTO(transitLimitation.rateLimitations().map(toRateLimitationDTO).toList.asJava))
       .toJava
-  }
 
   private def toRateLimitationDTO(rateLimitation: RateLimitation): RateLimitationDTO =
-    new RateLimitationDTO(rateLimitation.name, toPeriodString(rateLimitation.period),
+    new RateLimitationDTO(rateLimitation.name, rateLimitation.period.getSeconds,
       extractLimitType(rateLimitation, LimitTypes.COUNT), extractLimitType(rateLimitation, LimitTypes.SIZE))
-
-  private def toPeriodString(duration: Duration): String = String.format("%s second", duration.getSeconds)
 
   private def extractLimitType(rateLimitation: RateLimitation, typeString: String): Long =
     rateLimitation.limits.value
@@ -139,32 +128,28 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlan
       OperationLimitationsType.liftOrThrow(combinedLimitations))
   }
 
-  private def toTransitLimitation(dto: OperationLimitationsDTO): TransitLimitations = {
+  private def toTransitLimitation(dto: OperationLimitationsDTO): TransitLimitations =
     TransitLimitations(dto.getRateLimitationDTOList
       .stream()
       .map(rateLimitationDTO => toRateLimitation(rateLimitationDTO))
       .toScala(Seq))
-  }
 
-  private def toRelayLimitation(dto: OperationLimitationsDTO): RelayLimitations = {
+  private def toRelayLimitation(dto: OperationLimitationsDTO): RelayLimitations =
     RelayLimitations(dto.getRateLimitationDTOList
       .stream()
       .map(rateLimitationDTO => toRateLimitation(rateLimitationDTO))
       .toScala(Seq))
-  }
 
-  private def toDeliveryLimitation(dto: OperationLimitationsDTO): DeliveryLimitations = {
+  private def toDeliveryLimitation(dto: OperationLimitationsDTO): DeliveryLimitations =
     DeliveryLimitations(dto.getRateLimitationDTOList
       .stream()
       .map(rateLimitationDTO => toRateLimitation(rateLimitationDTO))
       .toScala(Seq))
+
+  private def toRateLimitation(dto: RateLimitationDTO): RateLimitation = {
+    require(dto.getPeriod.>=(0), "Rate limitation period must not be negative")
+    RateLimitation(name = dto.getName, period = Duration.ofSeconds(dto.getPeriod), limits = toLimitTypes(dto.getCount, dto.getSize))
   }
-
-  private def toRateLimitation(dto: RateLimitationDTO): RateLimitation =
-    RateLimitation(name = dto.getName, period = toDuration(dto.getPeriod), limits = toLimitTypes(dto.getCount, dto.getSize))
-
-  private def toDuration(period: String): Duration =
-    DurationParser.parse(period, ChronoUnit.SECONDS)
 
   private def toLimitTypes(count: Long, size: Long): LimitTypes = {
     val countType: Count = Count(AllowedQuantity.liftOrThrow(count))
