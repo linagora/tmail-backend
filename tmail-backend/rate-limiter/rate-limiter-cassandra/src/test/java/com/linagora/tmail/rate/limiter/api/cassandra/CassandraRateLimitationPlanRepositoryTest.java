@@ -1,4 +1,4 @@
-package com.linagora.tmail.rate.limiter.cassandra;
+package com.linagora.tmail.rate.limiter.api.cassandra;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
@@ -9,6 +9,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepository;
 import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepositoryContract;
+import com.linagora.tmail.rate.limiter.api.cassandra.dao.CassandraRateLimitPlanDAO;
+import com.linagora.tmail.rate.limiter.api.cassandra.table.CassandraRateLimitPlanTable;
 
 public class CassandraRateLimitationPlanRepositoryTest implements RateLimitationPlanRepositoryContract {
 
