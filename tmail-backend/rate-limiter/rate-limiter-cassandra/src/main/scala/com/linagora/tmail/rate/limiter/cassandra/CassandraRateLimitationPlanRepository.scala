@@ -2,11 +2,10 @@ package com.linagora.tmail.rate.limiter.cassandra
 
 import com.google.common.base.Preconditions
 import com.linagora.tmail.rate.limiter.api.{RateLimitationPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanResetRequest}
+import javax.inject.Inject
 import org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import javax.inject.Inject
 
 class CassandraRateLimitationPlanRepository @Inject()(cassandraRateLimitPlanDAO: CassandraRateLimitPlanDAO) extends RateLimitationPlanRepository {
 
@@ -29,7 +28,7 @@ class CassandraRateLimitationPlanRepository @Inject()(cassandraRateLimitPlanDAO:
       .`then`(create(resetRequest.id, RateLimitingPlanEntry.from(resetRequest)))
       .`then`()
 
-  override def planExists(id: RateLimitingPlanId): Publisher[Boolean] = cassandraRateLimitPlanDAO.planExists(id)
+  override def planExists(id: RateLimitingPlanId): Publisher[java.lang.Boolean] = cassandraRateLimitPlanDAO.planExists(id).map(boolean2Boolean)
 
   override def get(id: RateLimitingPlanId): Publisher[RateLimitingPlan] =
     cassandraRateLimitPlanDAO.list(id)
