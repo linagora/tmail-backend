@@ -147,8 +147,8 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlan
       .toScala(Seq))
 
   private def toRateLimitation(dto: RateLimitationDTO): RateLimitation = {
-    require(dto.getPeriod.>=(0), "Rate limitation period must not be negative")
-    RateLimitation(name = dto.getName, period = Duration.ofSeconds(dto.getPeriod), limits = toLimitTypes(dto.getCount, dto.getSize))
+    require(dto.getPeriodInSeconds.>=(0), "Rate limitation period must not be negative")
+    RateLimitation(name = dto.getName, period = Duration.ofSeconds(dto.getPeriodInSeconds), limits = toLimitTypes(dto.getCount, dto.getSize))
   }
 
   private def toLimitTypes(count: Long, size: Long): LimitTypes = {

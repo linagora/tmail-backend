@@ -5,17 +5,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RateLimitationDTO {
     private final String name;
-    private final Long period;
+    private final Long periodInSeconds;
     private final Long count;
     private final Long size;
 
     @JsonCreator
     public RateLimitationDTO(@JsonProperty(value = "name", required = true) String name,
-                             @JsonProperty(value = "period", required = true) Long period,
+                             @JsonProperty(value = "periodInSeconds", required = true) Long periodInSeconds,
                              @JsonProperty(value = "count", required = true) Long count,
                              @JsonProperty(value = "size", required = true) Long size) {
         this.name = name;
-        this.period = period;
+        this.periodInSeconds = periodInSeconds;
         this.count = count;
         this.size = size;
     }
@@ -24,8 +24,8 @@ public class RateLimitationDTO {
         return name;
     }
 
-    public Long getPeriod() {
-        return period;
+    public Long getPeriodInSeconds() {
+        return periodInSeconds;
     }
 
     public Long getCount() {
