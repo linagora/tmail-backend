@@ -103,12 +103,12 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlan
 
   private def toCreateRequest(request: Request): RateLimitingPlanCreateRequest = {
     val createRequestDTO = createRequestExtractor.parse(request.body())
-    val combinedLimitations = util.List.of(createRequestDTO.getTransitLimits.map(toTransitLimitation).toScala,
-      createRequestDTO.getDeliveryLimits.map(toDeliveryLimitation).toScala,
-      createRequestDTO.getRelayLimits.map(toRelayLimitation).toScala)
-      .stream()
-      .filter(_.isDefined)
-      .map(_.get)
+    val combinedLimitations = java.util.stream.Stream.of(
+      createRequestDTO.getOrDefault("transitLimits", Optional.empty()).map(toTransitLimitation),
+      createRequestDTO.getOrDefault("deliveryLimits", Optional.empty()).map(toDeliveryLimitation),
+      createRequestDTO.getOrDefault("relayLimits", Optional.empty()).map(toRelayLimitation))
+      .filter(_.isPresent)
+      .map(_.get().asInstanceOf[OperationLimitations])
       .toScala(Seq)
 
     RateLimitingPlanCreateRequest(extractRateLimitingPlanName(request), OperationLimitationsType.liftOrThrow(combinedLimitations))
