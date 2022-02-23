@@ -1,5 +1,9 @@
 package com.linagora.tmail.webadmin.model;
 
+import static com.linagora.tmail.webadmin.model.RateLimitingPlanCreateRequestDTO.DELIVERY_LIMIT_KEY;
+import static com.linagora.tmail.webadmin.model.RateLimitingPlanCreateRequestDTO.RELAY_LIMIT_KEY;
+import static com.linagora.tmail.webadmin.model.RateLimitingPlanCreateRequestDTO.TRANSIT_LIMIT_KEY;
+
 import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -13,9 +17,9 @@ public class RateLimitingPlanResetRequestDTO {
 
     @JsonCreator
     public RateLimitingPlanResetRequestDTO(@JsonProperty(value = "planName", required = true) String planName,
-                                           @JsonProperty("transitLimits") Optional<OperationLimitationsDTO> transitLimitationsDTO,
-                                           @JsonProperty("relayLimits") Optional<OperationLimitationsDTO> relayLimitationsDTO,
-                                           @JsonProperty("deliveryLimits") Optional<OperationLimitationsDTO> deliveryLimitationsDTO) {
+                                           @JsonProperty(TRANSIT_LIMIT_KEY) Optional<OperationLimitationsDTO> transitLimitationsDTO,
+                                           @JsonProperty(RELAY_LIMIT_KEY) Optional<OperationLimitationsDTO> relayLimitationsDTO,
+                                           @JsonProperty(DELIVERY_LIMIT_KEY) Optional<OperationLimitationsDTO> deliveryLimitationsDTO) {
         this.planName = planName;
         this.transitLimits = transitLimitationsDTO;
         this.relayLimits = relayLimitationsDTO;
