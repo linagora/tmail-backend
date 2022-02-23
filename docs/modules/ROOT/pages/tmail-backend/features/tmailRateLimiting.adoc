@@ -1,0 +1,51 @@
+= TMail Rate Limiting
+:navtitle: TMail Rate Limiting
+
+Manage email rate limiting plans and apply them to your users!
+
+TMail Rate Limiting enable the administrator to manage rate limiting plans and apply those plans to users:
+
+- Administrator can manage rate limiting plans
+- Administrator can manage which rate limiting plans apply to which users
+- Administrator can configure mailet configuration, so it can retrieve rate limiting plans and apply to according users
+
+== Manage rate limiting plans via webadmin
+
+The administrator can manage rate limiting plans using xref:tmail-backend/webadmin.adoc#_rate_limiting[Rate Limiting Plan Management Routes]:
+
+- Creating/updating/getting rate limiting plans
+- Attaching/getting/removing plan of a user. Getting list of users belonging to a plan.
+
+The administrator only can apply a plan to a user.
+
+Because of limited number of plans, we do not support removing rate limiting plans.
+
+== Apply rate limiting plans
+An administrator needs to rely on the `EnforceRateLimitingPlan` mailet in order to apply rate limiting plans.
+
+Configure mailets to apply rate limiting to senders:
+
+....
+<mailet match="All" class="EnforceRateLimitingPlan">
+    <keyPrefix>some-prefix</keyPrefix>
+    <operationLimitation>TransitLimitations</operationLimitation>
+    <exceededProcessor>tooMuchMails</exceededProcessor>
+</mailet>
+<mailet match="All" class="EnforceRateLimitingPlan">
+    <keyPrefix>some-prefix</keyPrefix>
+    <operationLimitation>RelayLimitations</operationLimitation>
+    <exceededProcessor>tooMuchMails</exceededProcessor>
+</mailet>
+....
+
+Configure mailet to apply rate limiting to recipients:
+
+....
+<mailet match="All" class="EnforceRateLimitingPlan">
+    <keyPrefix>some-prefix</keyPrefix>
+    <operationLimitation>DeliveryLimitations</operationLimitation>
+    <exceededProcessor>tooMuchMails</exceededProcessor>
+</mailet>
+....
+
+Exceeded emails will be transferred to `tooMuchMails` processor. Please customize this mailet depends on your will.
