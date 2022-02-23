@@ -32,3 +32,15 @@ Team mailboxes enable everybody in the team:
 An example would be `marketting@linagora.com`.
 
 xref:tmail-backend/features/teamMailboxes.adoc[Read more]...
+
+== TMail Rate Limiting
+
+Manage email rate limiting plans and apply them to your users!
+
+TMail Rate Limiting enables the administrator to manage rate limiting plans and apply those plans to users:
+
+- Administrator can manage rate limiting plans
+- Administrator can manage which rate limiting plans apply to which users
+- Administrator can configure mailet configuration, so it can retrieve rate limiting plans and apply to according users
+
+xref:tmail-backend/features/tmailRateLimiting.adoc[Read more]...
