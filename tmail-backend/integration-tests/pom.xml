@@ -23,6 +23,9 @@
 
         <module>webadmin/webadmin-integration-tests-common</module>
         <module>webadmin/distributed-webadmin-integration-tests</module>
+
+        <module>rate-limiter/rate-limiter-integration-tests-common</module>
+        <module>rate-limiter/distributed-rate-limiter-integration-tests</module>
     </modules>
 
     <dependencyManagement>
@@ -46,6 +49,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>webadmin-integration-tests-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>rate-limiter-integration-tests-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
