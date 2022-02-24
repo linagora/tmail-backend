@@ -5,6 +5,7 @@ import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
+import static org.eclipse.jetty.http.HttpStatus.CREATED_201;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
@@ -83,48 +84,18 @@ public class RateLimitPlanManagementRoutesTest {
                 "}]\n" +
                 "}";
 
-            String response = given()
+            Map<String, Object> response = given()
                 .body(json)
                 .post(String.format(CREATE_A_PLAN_PATH, "planName1"))
             .then()
-                .statusCode(OK_200)
+                .statusCode(CREATED_201)
                 .contentType(JSON)
                 .extract()
                 .body()
-                .asString();
+                .jsonPath()
+                .getMap(".");
 
-            assertThatJson(response)
-                .whenIgnoringPaths("planId")
-                .isEqualTo("{\n" +
-                    "  \"planId\": \"53dda8c9-6643-4e42-8845-e06267e9098d\",\n" +
-                    "  \"planName\": \"planName1\",\n" +
-                    "  \"transitLimits\": [{\n" +
-                    "    \"name\": \"receivedMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  },\n" +
-                    "    {\n" +
-                    "      \"name\": \"receivedMailsPerDay\",\n" +
-                    "      \"periodInSeconds\": 86400,\n" +
-                    "      \"count\": 1000,\n" +
-                    "      \"size\": 4096\n" +
-                    "    }\n" +
-                    "  ],\n" +
-                    "  \"relayLimits\": [{\n" +
-                    "    \"name\": \"relayMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  }],\n" +
-                    "  \"deliveryLimits\": [{\n" +
-                    "    \"name\": \"deliveryMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  " +
-                    "}]\n" +
-                    "}");
+            assertThat(response).containsOnlyKeys("planId");
         }
 
         @Test
@@ -145,38 +116,18 @@ public class RateLimitPlanManagementRoutesTest {
                 "]\n" +
                 "}";
 
-            String response = given()
+            Map<String, Object> response = given()
                 .body(json)
                 .post(String.format(CREATE_A_PLAN_PATH, "planName1"))
             .then()
-                .statusCode(OK_200)
+                .statusCode(CREATED_201)
                 .contentType(JSON)
                 .extract()
                 .body()
-                .asString();
+                .jsonPath()
+                .getMap(".");
 
-            assertThatJson(response)
-                .whenIgnoringPaths("planId")
-                .isEqualTo("{\n" +
-                    "  \"planId\": \"b0cd165e-63e9-4312-a549-3e1a54075627\",\n" +
-                    "  \"planName\": \"planName1\",\n" +
-                    "  \"transitLimits\": [{\n" +
-                    "    \"name\": \"receivedMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  },\n" +
-                    "    {\n" +
-                    "      \"name\": \"receivedMailsPerDay\",\n" +
-                    "      \"periodInSeconds\": 86400,\n" +
-                    "      \"count\": 1000,\n" +
-                    "      \"size\": 4096\n" +
-                    "    }\n" +
-                    "  ],\n" +
-                    "  \"relayLimits\": null,\n" +
-                    "  \"deliveryLimits\": null" +
-                    "\n" +
-                    "}");
+            assertThat(response).containsOnlyKeys("planId");
         }
 
         @Test
@@ -471,7 +422,7 @@ public class RateLimitPlanManagementRoutesTest {
                 .body(json)
                 .post(String.format(CREATE_A_PLAN_PATH, "planName1"))
             .then()
-                .statusCode(OK_200)
+                .statusCode(CREATED_201)
                 .contentType(JSON);
         }
     }
@@ -512,7 +463,7 @@ public class RateLimitPlanManagementRoutesTest {
                 .body(createPlanJson)
                 .post(String.format(CREATE_A_PLAN_PATH, "oldPlanName"))
             .then()
-                .statusCode(OK_200)
+                .statusCode(CREATED_201)
                 .contentType(JSON)
                 .extract()
                 .body()
@@ -704,7 +655,7 @@ public class RateLimitPlanManagementRoutesTest {
                 .body(createPlanJson)
                 .post(String.format(CREATE_A_PLAN_PATH, "oldPlanName"))
             .then()
-                .statusCode(OK_200)
+                .statusCode(CREATED_201)
                 .contentType(JSON)
                 .extract()
                 .body()
@@ -828,14 +779,14 @@ public class RateLimitPlanManagementRoutesTest {
                 .body(createPlanJson)
                 .post(String.format(CREATE_A_PLAN_PATH, "plan1"))
             .then()
-                .statusCode(OK_200)
+                .statusCode(CREATED_201)
                 .contentType(JSON);
 
             given()
                 .body(createPlanJson)
                 .post(String.format(CREATE_A_PLAN_PATH, "plan2"))
             .then()
-                .statusCode(OK_200)
+                .statusCode(CREATED_201)
                 .contentType(JSON);
 
             String response = given()

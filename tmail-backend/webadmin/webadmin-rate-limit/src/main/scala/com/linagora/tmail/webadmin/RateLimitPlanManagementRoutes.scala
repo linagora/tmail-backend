@@ -7,13 +7,13 @@ import com.linagora.tmail.rate.limiter.api.LimitTypes.LimitTypes
 import com.linagora.tmail.rate.limiter.api.OperationLimitations.{DELIVERY_LIMITATIONS_NAME, RELAY_LIMITATIONS_NAME, TRANSIT_LIMITATIONS_NAME}
 import com.linagora.tmail.rate.limiter.api.{Count, LimitTypes, OperationLimitations, OperationLimitationsType, RateLimitation, RateLimitationPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanResetRequest, Size}
 import com.linagora.tmail.webadmin.model.RateLimitingPlanCreateRequestDTO.{DELIVERY_LIMIT_KEY, RELAY_LIMIT_KEY, TRANSIT_LIMIT_KEY}
-import com.linagora.tmail.webadmin.model.{GetAllRateLimitPlanResponseDTO, OperationLimitationsDTO, RateLimitationDTO, RateLimitingPlanCreateRequestDTO, RateLimitingPlanDTO, RateLimitingPlanResetRequestDTO}
+import com.linagora.tmail.webadmin.model.{GetAllRateLimitPlanResponseDTO, OperationLimitationsDTO, RateLimitationDTO, RateLimitingPlanCreateRequestDTO, RateLimitingPlanDTO, RateLimitingPlanIdResponse, RateLimitingPlanResetRequestDTO}
 import javax.inject.Inject
 import org.apache.james.rate.limiter.api.AllowedQuantity
 import org.apache.james.webadmin.Constants.SEPARATOR
 import org.apache.james.webadmin.Routes
 import org.apache.james.webadmin.utils.{ErrorResponder, JsonExtractor, JsonTransformer, Responses}
-import org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404
+import org.eclipse.jetty.http.HttpStatus.{CREATED_201, NOT_FOUND_404}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import spark.{Request, Response, Route, Service}
 
@@ -45,7 +45,10 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlan
 
   private def createAPlan: Route = (request: Request, response: Response) =>
     SMono.fromPublisher(planRepository.create(toCreateRequest(request)))
-      .map(toRateLimitingPlanDTO)
+      .map(plan => {
+        response.status(CREATED_201)
+        new RateLimitingPlanIdResponse(plan.id.serialize())
+      })
       .block()
 
   private def updateAPlan: Route = (request: Request, response: Response) =>
