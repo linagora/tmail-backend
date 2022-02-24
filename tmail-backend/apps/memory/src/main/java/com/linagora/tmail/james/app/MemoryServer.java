@@ -60,8 +60,10 @@ import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 
 public class MemoryServer {
@@ -114,7 +116,9 @@ public class MemoryServer {
           new SpamAssassinListenerModule())
         .with(new TeamMailboxModule(),
             new TMailScanningQuotaSearcherModule(),
-            new MemoryRateLimiterModule());
+            new MemoryRateLimiterModule(),
+            new MemoryRateLimitingModule(),
+            new RateLimitPlanRoutesModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()

@@ -133,7 +133,17 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-rate-limiter-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-webadmin-team-mailboxes</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>webadmin-rate-limit</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

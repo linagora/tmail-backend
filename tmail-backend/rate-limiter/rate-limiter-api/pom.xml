@@ -41,6 +41,10 @@
             <artifactId>caffeine</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-scala-extensions_${scala.base}</artifactId>
         </dependency>
