@@ -102,7 +102,9 @@ import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 
 public class DistributedServer {
@@ -118,6 +120,7 @@ public class DistributedServer {
         new MailboxRoutesModule(),
         new MailQueueRoutesModule(),
         new MailRepositoriesRoutesModule(),
+        new RateLimitPlanRoutesModule(),
         new TeamMailboxModule(),
         new TeamMailboxRoutesModule(),
         new SieveRoutesModule(),
@@ -206,7 +209,8 @@ public class DistributedServer {
             new RabbitMQEventBusModule(),
             new DistributedTaskSerializationModule(),
             new TeamMailboxModule(),
-            new RedisRateLimiterModule());
+            new RedisRateLimiterModule(),
+            new CassandraRateLimitingModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
