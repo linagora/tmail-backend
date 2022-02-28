@@ -1,10 +1,13 @@
 package com.linagora.tmail.mailets
 
+import com.codahale.metrics.MetricRegistry
 import com.linagora.tmail.mailets.EnforceRateLimitingPlanTest.{USER1, USER2}
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingPlanUserRepository
-import com.linagora.tmail.rate.limiter.api.{DeliveryLimitations, InMemoryRateLimitationPlanRepository, LimitTypes, OperationLimitationsType, RateLimitation, RateLimitationPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanResetRequest, RateLimitingPlanUserRepository, RelayLimitations, TransitLimitations}
+import com.linagora.tmail.rate.limiter.api.{DeliveryLimitations, InMemoryRateLimitationPlanRepository, LimitTypes, OperationLimitationsType, RateLimitation, RateLimitationPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanUserRepository, RelayLimitations, TransitLimitations}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
+import org.apache.james.metrics.api.NoopGaugeRegistry
+import org.apache.james.metrics.dropwizard.DropWizardGaugeRegistry
 import org.apache.james.rate.limiter.redis.{RedisRateLimiterConfiguration, RedisRateLimiterFactory}
 import org.apache.james.rate.limiter.{DockerRedis, RedisExtension}
 import org.apache.james.util.Size.parse
@@ -33,8 +36,8 @@ class EnforceRateLimitingPlanTest {
   var redisRateLimiterFactory: RedisRateLimiterFactory = _
 
   def testee(mailetConfig: MailetConfig): EnforceRateLimitingPlan = {
-
-    val mailet: EnforceRateLimitingPlan = new EnforceRateLimitingPlan(rateLimitationPlanRepository, rateLimitingPlanUserRepository, redisRateLimiterFactory)
+    val mailet: EnforceRateLimitingPlan = new EnforceRateLimitingPlan(rateLimitationPlanRepository, rateLimitingPlanUserRepository, redisRateLimiterFactory,
+      new NoopGaugeRegistry())
     mailet.init(mailetConfig)
     mailet
   }
@@ -640,71 +643,66 @@ class EnforceRateLimitingPlanTest {
         .build()))
         .doesNotThrowAnyException()
     }
+
+    @Test
+    def cacheExpirationShouldSupportUnits(): Unit = {
+      assertThat(testee(FakeMailetConfig.builder()
+        .mailetName("EnforceRateLimitingPlan")
+        .setProperty("operationLimitation", "TransitLimitations")
+        .setProperty("cacheExpiration", "2h")
+        .build()).parseCacheExpiration())
+        .isEqualTo(Some(Duration.ofHours(2)))
+    }
+
+
+    @Test
+    def cacheExpirationWithNoUnitShouldDefaultToSeconds(): Unit = {
+      assertThat(testee(FakeMailetConfig.builder()
+        .mailetName("EnforceRateLimitingPlan")
+        .setProperty("operationLimitation", "TransitLimitations")
+        .setProperty("cacheExpiration", "2")
+        .build()).parseCacheExpiration())
+        .isEqualTo(Some(Duration.ofSeconds(2)))
+    }
+
+    @Test
+    def shouldFailWhenBadCacheExpiration(): Unit = {
+      assertThatThrownBy(() => testee(FakeMailetConfig.builder()
+        .mailetName("EnforceRateLimitingPlan")
+        .setProperty("operationLimitation", "TransitLimitations")
+        .setProperty("cacheExpiration", "bad")
+        .build()).parseCacheExpiration())
+        .isInstanceOf(classOf[IllegalArgumentException])
+    }
   }
 
   @Test
-  def mailetShouldReloadNewSpecOfPlanWhenHasChanged(): Unit = {
-    val mailet: EnforceRateLimitingPlan = testee(FakeMailetConfig.builder()
+  def planShouldBeCachedWhenConfigurationIsProvided(): Unit = {
+    val metricRegistry: MetricRegistry = new MetricRegistry()
+    val gaugeRegistry: DropWizardGaugeRegistry = new DropWizardGaugeRegistry(metricRegistry)
+
+    val mailet: EnforceRateLimitingPlan = new EnforceRateLimitingPlan(rateLimitationPlanRepository, rateLimitingPlanUserRepository, redisRateLimiterFactory,
+      gaugeRegistry)
+
+    mailet.init(FakeMailetConfig.builder()
       .mailetName("EnforceRateLimitingPlan")
       .setProperty("operationLimitation", "TransitLimitations")
       .setProperty("precision", "1s")
-      .setProperty("cacheExpiration", "2s")
+      .setProperty("cacheExpiration", "2m")
       .build())
 
-    val mail1: Mail = FakeMail.builder()
-      .name("mail1")
-      .sender(USER1.asString())
-      .recipients("rcpt1@linagora.com")
-      .state("transport")
-      .build()
-
-    val mail2: Mail = FakeMail.builder()
-      .name("mail2")
-      .sender(USER1.asString())
-      .recipients("rcpt2@linagora.com")
-      .state("transport")
-      .build()
-
-    mailet.service(mail1)
-    mailet.service(mail2)
-
-    assertSoftly(softly => {
-      softly.assertThat(mail1.getState).isEqualTo("transport")
-      softly.assertThat(mail2.getState).isEqualTo("error")
-    })
-
-    // update plan with new spec
-    val newCountLimit: Int = 5
-    SMono.fromPublisher(rateLimitingPlanUserRepository.getPlanByUser(USER1))
-      .flatMap(id => SMono.fromPublisher(rateLimitationPlanRepository.update(RateLimitingPlanResetRequest(
-        id = id,
-        name = "new name",
-        operationLimitations = OperationLimitationsType.liftOrThrow(Seq(TransitLimitations(Seq(RateLimitation(
-          name = "transit limit 2",
-          period = Duration.ofSeconds(100),
-          limits = LimitTypes.from(Map(("count", newCountLimit))))))))))))
-      .block()
-
-    IntStream.range(0, newCountLimit)
+    val sentCount: Int = 10;
+    IntStream.range(0, sentCount)
       .forEach(index => {
         val mail: Mail = FakeMail.builder()
-          .name("mail3")
+          .name("mail" + index)
           .sender(USER1.asString())
-          .recipients("rcpt2@linagora.com")
+          .recipients("rcpt1@linagora.com")
           .state("transport")
           .build()
         mailet.service(mail)
-        assertThat(mail.getState).isEqualTo("transport")
       })
-
-    val mail6: Mail = FakeMail.builder()
-      .name("mail3")
-      .sender(USER1.asString())
-      .recipients("rcpt2@linagora.com")
-      .state("transport")
-      .build()
-
-    mailet.service(mail6)
-    assertThat(mail6.getState).isEqualTo("error")
+    assertThat(metricRegistry.getGauges.get("TransitLimitations.rate_limiting_plan.cache.get.hitCount").getValue)
+      .isEqualTo(java.lang.Long.valueOf(sentCount - 1))
   }
 }
