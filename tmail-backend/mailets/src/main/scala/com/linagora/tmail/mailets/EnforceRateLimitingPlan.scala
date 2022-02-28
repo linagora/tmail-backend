@@ -1,19 +1,23 @@
 package com.linagora.tmail.mailets
 
+import com.google.common.annotations.VisibleForTesting
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableList
 import com.linagora.tmail.mailets.EnforceRateLimitingPlan.{ACCEPTABLE_OPERATIONS, LIMIT_PER_RECIPIENTS_OPERATIONS, LIMIT_PER_SENDER_OPERATIONS}
 import com.linagora.tmail.rate.limiter.api.OperationLimitations.{DELIVERY_LIMITATIONS_NAME, RELAY_LIMITATIONS_NAME, TRANSIT_LIMITATIONS_NAME}
-import com.linagora.tmail.rate.limiter.api.{OperationLimitations, RateLimitationPlanRepository, RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
+import com.linagora.tmail.rate.limiter.api.{CacheRateLimitingPlan, OperationLimitations, RateLimitationPlanRepository, RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.lifecycle.api.LifecycleUtil
+import org.apache.james.metrics.api.GaugeRegistry
 import org.apache.james.rate.limiter.api.{AcceptableRate, RateExceeded, RateLimiterFactory, RateLimitingResult, Rule, Rules}
 import org.apache.james.transport.mailets.{KeyPrefix, PrecisionParsingUtil}
+import org.apache.james.util.DurationParser
 import org.apache.mailet.Mail
 import org.apache.mailet.base.GenericMailet
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import java.time.Duration
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 import scala.util.Using
@@ -26,13 +30,15 @@ object EnforceRateLimitingPlan {
 
 class EnforceRateLimitingPlan @Inject()(planRepository: RateLimitationPlanRepository,
                                         planUserRepository: RateLimitingPlanUserRepository,
-                                        rateLimiterFactory: RateLimiterFactory) extends GenericMailet {
+                                        rateLimiterFactory: RateLimiterFactory,
+                                        gaugeRegistry: GaugeRegistry) extends GenericMailet {
 
   private var operationLimitation: String = _
   private var exceededProcessor: String = _
   private var rateLimitSender: Boolean = _
   private var rateLimitRecipient: Boolean = _
   private var planRateLimiterResolver: PlanRateLimiterResolver = _
+  private var planStore: RateLimitationPlanRepository = _
 
   override def init(): Unit = {
     exceededProcessor = getInitParameter("exceededProcessor", Mail.ERROR)
@@ -42,11 +48,23 @@ class EnforceRateLimitingPlan @Inject()(planRepository: RateLimitationPlanReposi
     Preconditions.checkArgument(operationLimitation != null && operationLimitation.nonEmpty, "`operationLimitation` is compulsory".asInstanceOf[Object])
     Preconditions.checkArgument(ACCEPTABLE_OPERATIONS.contains(operationLimitation), s"`operationLimitation` must be [${String.join(", ", ACCEPTABLE_OPERATIONS.asJava)}]".asInstanceOf[Object])
 
+    planStore = parseCacheExpiration()
+      .map(duration => new CacheRateLimitingPlan(planRepository, duration, gaugeRegistry, Some(operationLimitation)))
+      .getOrElse(planRepository)
+
     planRateLimiterResolver = PlanRateLimiterResolver(
       rateLimiterFactory = rateLimiterFactory,
       keyPrefix = Option(getInitParameter("keyPrefix")).map(KeyPrefix),
       precision = PrecisionParsingUtil.parsePrecision(getMailetConfig))
   }
+
+  @VisibleForTesting
+  def parseCacheExpiration(): Option[Duration] = Option(getInitParameter("cacheExpiration"))
+    .map(string => DurationParser.parse(string, ChronoUnit.SECONDS))
+    .map(duration => {
+      Preconditions.checkArgument(!duration.isZero && !duration.isNegative, "`cacheExpiration` must be positive".asInstanceOf[Object])
+      duration
+    })
 
   override def service(mail: Mail): Unit =
     if (rateLimitSender) {
@@ -67,7 +85,7 @@ class EnforceRateLimitingPlan @Inject()(planRepository: RateLimitationPlanReposi
       }
 
   private def retrieveRateLimiter(id: RateLimitingPlanId): SMono[Seq[TmailPlanRateLimiter]] =
-    SMono.fromPublisher(planRepository.get(id))
+    SMono.fromPublisher(planStore.get(id))
       .flatMapIterable(_.operationLimitations)
       .filter(_.asString().equals(operationLimitation))
       .next()
