@@ -1,19 +1,18 @@
 package com.linagora.tmail.james.jmap.method
 
-import java.io.{ByteArrayInputStream, InputStream}
 import com.linagora.tmail.encrypted.{EncryptedAttachmentBlobId, EncryptedEmailContentStore}
-
-import javax.inject.Inject
 import org.apache.james.blob.api.BlobStore
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.jmap.api.model.Size
 import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.mail.BlobId
-import org.apache.james.jmap.routes.{Applicable, Blob, BlobResolutionResult, BlobResolver, NonApplicable, UploadRoutes}
+import org.apache.james.jmap.routes.{Applicable, Blob, BlobResolutionResult, BlobResolver, NonApplicable}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.{ContentType, MessageId}
 import reactor.core.scala.publisher.SMono
 
+import java.io.{ByteArrayInputStream, InputStream}
+import javax.inject.Inject
 import scala.util.{Success, Try}
 
 case class EncryptedAttachmentBlob(blobId: BlobId, bytes: Array[Byte]) extends Blob {

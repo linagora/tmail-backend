@@ -6,11 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.commons.configuration2.ex.ConversionException;
+import org.apache.james.FakePropertiesProvider;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.modules.mailbox.ConfigurationComponent;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
 import org.junit.jupiter.api.Test;
-import org.apache.james.FakePropertiesProvider;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 

@@ -3,11 +3,6 @@ package com.linagora.tmail.james.jmap.model
 import cats.implicits.toTraverseOps
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.mail.{EmailSubmissionAddress, Envelope}
-import org.apache.james.jmap.method.MessageMimeMessageSource
-import org.apache.james.lifecycle.api.LifecycleUtil
-import org.apache.james.mailbox.model.MessageResult
-import org.apache.james.mime4j.dom.Message
-import org.apache.james.server.core.MimeMessageWrapper
 
 import javax.mail.Address
 import javax.mail.Message.RecipientType

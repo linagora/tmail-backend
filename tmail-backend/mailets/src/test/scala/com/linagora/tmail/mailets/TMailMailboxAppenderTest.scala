@@ -24,7 +24,7 @@ import eu.timepit.refined.auto._
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
-import org.apache.james.mailbox.model.{FetchGroup, MailboxPath, MessageRange, MessageResultIterator}
+import org.apache.james.mailbox.model.{FetchGroup, MailboxPath, MessageRange}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.apache.james.util.concurrency.ConcurrentTestRunner
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}

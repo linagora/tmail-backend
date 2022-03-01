@@ -1,8 +1,6 @@
 package com.linagora.tmail.module;
 
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Optional;
 
 import javax.inject.Singleton;
@@ -12,9 +10,7 @@ import org.apache.james.modules.TestJMAPServerModule;
 import com.google.inject.Provides;
 import com.linagora.tmail.james.jmap.jwt.JwtPrivateKeyConfiguration;
 import com.linagora.tmail.james.jmap.jwt.JwtPrivateKeyProvider;
-import com.linagora.tmail.james.jmap.oidc.WebFingerConfiguration;
 
-import scala.Some;
 import scala.jdk.javaapi.OptionConverters;
 
 public class LinagoraTestJMAPServerModule extends TestJMAPServerModule {

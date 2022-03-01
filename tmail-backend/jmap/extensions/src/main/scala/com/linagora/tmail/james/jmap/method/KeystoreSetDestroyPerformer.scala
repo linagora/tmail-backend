@@ -1,13 +1,11 @@
 package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.encrypted.{KeyId, KeystoreManager}
-import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.model.KeystoreSetRequest
-import javax.inject.Inject
-import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
-import org.apache.james.metrics.api.MetricFactory
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+import javax.inject.Inject
 
 object DestroyResults {
   def merge(currentResults: DestroyResults, entry: DestroyResult): DestroyResults =
