@@ -32,7 +32,7 @@ case class KeystoreCassandraModule() extends AbstractModule {
 class CassandraKeystoreManager @Inject()(cassandraKeystoreDAO: CassandraKeystoreDAO) extends KeystoreManager {
   override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =
     computeKeyId(payload)
-      .fold(e => SMono.raiseError(new IllegalArgumentException(e)),
+      .fold(e => SMono.error(new IllegalArgumentException(e)),
         keyId => cassandraKeystoreDAO.insert(username, PublicKey(keyId, payload))
           .`then`(SMono.just(keyId)))
 
