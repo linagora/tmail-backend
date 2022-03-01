@@ -22,9 +22,8 @@ case class EmailAddressContact(id: UUID, address: MailAddress) {
 }
 
 case class AccountEmailContact(accountId: String, id: UUID, address: MailAddress) {
-  def this(accountId: AccountId, emailAddressContact: EmailAddressContact) {
+  def this(accountId: AccountId, emailAddressContact: EmailAddressContact) =
     this(accountId.getIdentifier, emailAddressContact.id, emailAddressContact.address)
-  }
 }
 
 trait EmailAddressContactSearchEngine {

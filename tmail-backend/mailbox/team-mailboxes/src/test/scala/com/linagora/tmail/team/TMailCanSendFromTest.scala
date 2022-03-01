@@ -52,6 +52,8 @@ class TMailCanSendFromTest extends CanSendFromContract {
 
       case Mapping.Type.DomainAlias =>
         rrt.addDomainAliasMapping(MappingSource.fromDomain(alias), domain)
+
+      case _ =>
     }
   }
 
