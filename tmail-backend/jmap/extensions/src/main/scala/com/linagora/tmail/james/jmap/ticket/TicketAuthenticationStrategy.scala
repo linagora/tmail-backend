@@ -8,7 +8,6 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.core.JmapRfc8621Configuration
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.{AuthenticationChallenge, AuthenticationScheme, AuthenticationStrategy}
-import org.apache.james.jmap.routes.JmapUrlEndpointResolver
 import org.apache.james.mailbox.{MailboxSession, SessionProvider}
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono

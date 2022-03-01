@@ -1,8 +1,5 @@
 package com.linagora.tmail.james;
 
-import java.util.List;
-import java.util.Optional;
-
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -11,7 +8,6 @@ import org.apache.james.jmap.core.JmapRfc8621Configuration;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.RabbitMQExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;

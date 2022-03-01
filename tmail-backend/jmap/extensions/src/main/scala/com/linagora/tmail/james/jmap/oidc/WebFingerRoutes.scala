@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.util.stream
 
 import com.google.inject.multibindings.Multibinder
-import com.google.inject.{AbstractModule, Provides, Singleton}
+import com.google.inject.{AbstractModule, Provides}
 import com.linagora.tmail.james.jmap.ticket.TicketRoutes.LOGGER
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, INTERNAL_SERVER_ERROR}

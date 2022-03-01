@@ -1,9 +1,9 @@
 package com.linagora.tmail.james.jmap.json
 
-import org.apache.james.jmap.core.{AccountId, Id, UuidState}
+import eu.timepit.refined.auto._
+import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.apache.james.mailbox.inmemory.{InMemoryId, InMemoryMessageId}
 import org.apache.james.mailbox.model.MessageId
-import eu.timepit.refined.auto._
 
 object Fixture {
   lazy val ACCOUNT_ID: AccountId = AccountId("aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8")

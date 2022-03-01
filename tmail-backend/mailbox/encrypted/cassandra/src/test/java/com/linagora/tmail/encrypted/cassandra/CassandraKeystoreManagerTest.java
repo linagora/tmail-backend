@@ -9,8 +9,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreManagerContract;
-import com.linagora.tmail.encrypted.cassandra.CassandraKeystoreDAO;
-import com.linagora.tmail.encrypted.cassandra.CassandraKeystoreManager;
 import com.linagora.tmail.encrypted.cassandra.table.CassandraKeystoreModule;
 
 public class CassandraKeystoreManagerTest implements KeystoreManagerContract {

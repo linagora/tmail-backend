@@ -10,9 +10,7 @@ import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import play.api.libs.json.{JsValue, Json}
-
-import java.util.UUID;
+import play.api.libs.json.{JsValue, Json};
 
 object LongLivedTokenSerializerTest {
   lazy val LONG_LIVED_TOKEN_ID: LongLivedTokenId = LongLivedTokenId.parse("57b8ffe6-4587-4912-886a-6affc83efd90").toOption.get

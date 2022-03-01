@@ -20,7 +20,6 @@ import org.apache.james.user.cassandra.CassandraUsersRepositoryModule;
 import org.apache.james.user.ldap.DockerLdapSingleton;
 import org.apache.james.user.ldap.LdapGenericContainer;
 import org.apache.james.user.ldap.ReadOnlyLDAPUsersDAO;
-import org.apache.james.user.lib.model.Algorithm;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;

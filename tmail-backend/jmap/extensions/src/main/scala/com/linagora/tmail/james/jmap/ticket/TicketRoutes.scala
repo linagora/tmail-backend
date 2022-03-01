@@ -16,12 +16,12 @@ import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus}
 import javax.inject.{Inject, Named}
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
-import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, JmapRfc8621Configuration, ProblemDetails, UrlPrefixes}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, ProblemDetails, UrlPrefixes}
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
 import org.apache.james.jmap.json.ResponseSerializer
-import org.apache.james.jmap.routes.{ForbiddenException, JmapUrlEndpointResolver}
+import org.apache.james.jmap.routes.ForbiddenException
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsObject, Json}
