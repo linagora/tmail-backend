@@ -27,7 +27,7 @@ class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Usernam
 
   override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =
     computeKeyId(payload)
-      .fold(e => SMono.raiseError(new IllegalArgumentException(e)), keyId => usernameExists(username)
+      .fold(e => SMono.error(new IllegalArgumentException(e)), keyId => usernameExists(username)
         .fold(_ => create(username, keyId, payload), _ => update(username, keyId, payload)))
 
   override def listPublicKeys(username: Username): Publisher[PublicKey] =
