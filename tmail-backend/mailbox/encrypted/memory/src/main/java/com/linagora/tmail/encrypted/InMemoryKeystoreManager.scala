@@ -21,9 +21,7 @@ case class KeystoreMemoryModule() extends AbstractModule {
 
 class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Username, Set[PublicKey]]) extends KeystoreManager {
 
-  def this() {
-    this(keystore = scala.collection.concurrent.TrieMap())
-  }
+  def this() = this(keystore = scala.collection.concurrent.TrieMap())
 
   override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =
     computeKeyId(payload)

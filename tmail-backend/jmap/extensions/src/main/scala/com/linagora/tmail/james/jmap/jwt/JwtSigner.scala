@@ -14,7 +14,7 @@ class JwtSigner @Inject() (clock: Clock, jwtPrivateKeyProvider: JwtPrivateKeyPro
     JWTToken(Jwts.builder()
       .setId(UUID.randomUUID().toString)
       .setSubject(user.asString())
-      .signWith(SignatureAlgorithm.RS256, jwtPrivateKeyProvider.privateKey)
+      .signWith(jwtPrivateKeyProvider.privateKey, SignatureAlgorithm.RS256)
       .setIssuedAt(Date.from(clock.instant()))
       .setExpiration(Date.from(validUntil.toInstant))
       .compact())

@@ -30,9 +30,7 @@ class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
                                                    emailContentStore: scala.collection.concurrent.Map[MessageId, EncryptedEmailContent] = scala.collection.concurrent.TrieMap(),
                                                    messageIdBlobIdStore: scala.collection.concurrent.Map[MessageId, Map[Int, BlobId]] = scala.collection.concurrent.TrieMap()) extends EncryptedEmailContentStore {
 
-  def this(blobstoreImpl: BlobStore) {
-    this(blobStore = blobstoreImpl)
-  }
+  def this(blobstoreImpl: BlobStore) = this(blobStore = blobstoreImpl)
 
   override def store(messageId: MessageId, encryptedEmailContent: EncryptedEmailContent): Publisher[Unit] =
     storeAttachment(messageId, encryptedEmailContent.encryptedAttachmentContents)
