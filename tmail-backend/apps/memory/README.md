@@ -32,7 +32,7 @@ docker run linagora/tmail-backend-memory
 If not, you need to bind them to the container for TMail to start:
 
 ```
-docker --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
+docker run --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
 --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
 linagora/tmail-backend-memory
 ```
