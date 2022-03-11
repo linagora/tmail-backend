@@ -5,7 +5,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.collection.concurrent.Map
 
-trait RateLimitationPlanRepository {
+trait RateLimitingPlanRepository {
 
   def create(creationRequest: RateLimitingPlanCreateRequest): Publisher[RateLimitingPlan]
 
@@ -20,7 +20,7 @@ trait RateLimitationPlanRepository {
 
 case class RateLimitingPlanNotFoundException() extends RuntimeException
 
-class InMemoryRateLimitationPlanRepository() extends RateLimitationPlanRepository {
+class InMemoryRateLimitingPlanRepository() extends RateLimitingPlanRepository {
 
   val rateLimitingPlanStore: Map[RateLimitingPlanId, RateLimitingPlan] = scala.collection.concurrent.TrieMap()
 

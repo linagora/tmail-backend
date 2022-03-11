@@ -21,8 +21,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.linagora.tmail.rate.limiter.api.InMemoryRateLimitationPlanRepository;
-import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepository;
+import com.linagora.tmail.rate.limiter.api.InMemoryRateLimitingPlanRepository;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepository;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanId;
 
 import io.restassured.RestAssured;
@@ -35,11 +35,11 @@ public class RateLimitPlanManagementRoutesTest {
     private static final String GET_ALL_PLAN_PATH = "/rate-limit-plans";
 
     private WebAdminServer webAdminServer;
-    private RateLimitationPlanRepository planRepository;
+    private RateLimitingPlanRepository planRepository;
 
     @BeforeEach
     void setUp() {
-        planRepository = new InMemoryRateLimitationPlanRepository();
+        planRepository = new InMemoryRateLimitingPlanRepository();
         RateLimitPlanManagementRoutes routes = new RateLimitPlanManagementRoutes(planRepository, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(routes).start();
 

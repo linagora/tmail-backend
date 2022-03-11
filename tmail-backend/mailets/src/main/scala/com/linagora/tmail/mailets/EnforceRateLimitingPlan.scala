@@ -5,7 +5,7 @@ import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableList
 import com.linagora.tmail.mailets.EnforceRateLimitingPlan.{ACCEPTABLE_OPERATIONS, LIMIT_PER_RECIPIENTS_OPERATIONS, LIMIT_PER_SENDER_OPERATIONS}
 import com.linagora.tmail.rate.limiter.api.OperationLimitations.{DELIVERY_LIMITATIONS_NAME, RELAY_LIMITATIONS_NAME, TRANSIT_LIMITATIONS_NAME}
-import com.linagora.tmail.rate.limiter.api.{CacheRateLimitingPlan, OperationLimitations, RateLimitationPlanRepository, RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
+import com.linagora.tmail.rate.limiter.api.{CacheRateLimitingPlan, OperationLimitations, RateLimitingPlanRepository, RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.lifecycle.api.LifecycleUtil
 import org.apache.james.metrics.api.GaugeRegistry
@@ -28,7 +28,7 @@ object EnforceRateLimitingPlan {
   val ACCEPTABLE_OPERATIONS: Set[String] = LIMIT_PER_SENDER_OPERATIONS ++ LIMIT_PER_RECIPIENTS_OPERATIONS
 }
 
-class EnforceRateLimitingPlan @Inject()(planRepository: RateLimitationPlanRepository,
+class EnforceRateLimitingPlan @Inject()(planRepository: RateLimitingPlanRepository,
                                         planUserRepository: RateLimitingPlanUserRepository,
                                         rateLimiterFactory: RateLimiterFactory,
                                         gaugeRegistry: GaugeRegistry) extends GenericMailet {
@@ -38,7 +38,7 @@ class EnforceRateLimitingPlan @Inject()(planRepository: RateLimitationPlanReposi
   private var rateLimitSender: Boolean = _
   private var rateLimitRecipient: Boolean = _
   private var planRateLimiterResolver: PlanRateLimiterResolver = _
-  private var planStore: RateLimitationPlanRepository = _
+  private var planStore: RateLimitingPlanRepository = _
 
   override def init(): Unit = {
     exceededProcessor = getInitParameter("exceededProcessor", Mail.ERROR)

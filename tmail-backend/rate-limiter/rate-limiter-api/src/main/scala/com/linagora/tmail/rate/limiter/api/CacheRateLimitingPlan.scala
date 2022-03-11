@@ -13,8 +13,8 @@ import java.util.concurrent.Executor
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.jdk.FutureConverters._
 
-class CacheRateLimitingPlan(repository: RateLimitationPlanRepository, expireDuration: Duration, gaugeRegistry: GaugeRegistry,
-                            gaugePrefix: Option[String] = None) extends RateLimitationPlanRepository {
+class CacheRateLimitingPlan(repository: RateLimitingPlanRepository, expireDuration: Duration, gaugeRegistry: GaugeRegistry,
+                            gaugePrefix: Option[String] = None) extends RateLimitingPlanRepository {
 
   private val cacheLoaderGet: AsyncCacheLoader[RateLimitingPlanId, RateLimitingPlan] =
     (key: RateLimitingPlanId, executor: Executor) => Mono.from(repository.get(key))
