@@ -4,7 +4,7 @@ import com.linagora.tmail.integration.RateLimitingPlanIntegrationContract.{DOMAI
 import io.restassured.RestAssured
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
-import org.apache.http.HttpStatus.{SC_NO_CONTENT, SC_OK}
+import org.apache.http.HttpStatus.{SC_CREATED, SC_NO_CONTENT}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailets.configuration.Constants.{LOCALHOST_IP, PASSWORD, awaitAtMostOneMinute}
@@ -91,7 +91,7 @@ trait RateLimitingPlanIntegrationContract {
     .when()
       .post()
     .`then`()
-      .statusCode(SC_OK)
+      .statusCode(SC_CREATED)
       .contentType(JSON)
       .extract()
       .jsonPath()
