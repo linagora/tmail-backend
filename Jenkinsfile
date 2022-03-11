@@ -82,7 +82,11 @@ Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANC
     }
     post {
         success {
-            build (job: 'Gatling Imap build/master', propagate: false, wait: false)
+            script {
+                if (env.BRANCH_NAME == master) {
+                    build (job: 'Gatling Imap build/master', propagate: false, wait: false)
+                }
+            }
         }
     }
 }
