@@ -12,14 +12,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.rate.limiter.api.CacheRateLimitingPlan;
-import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepository;
-import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepositoryContract;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepository;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract;
 import com.linagora.tmail.rate.limiter.api.cassandra.dao.CassandraRateLimitPlanDAO;
 import com.linagora.tmail.rate.limiter.api.cassandra.table.CassandraRateLimitPlanTable;
 
 import scala.jdk.javaapi.OptionConverters;
 
-public class CacheCassandraRateLimitingPlanRepositoryTest implements RateLimitationPlanRepositoryContract {
+public class CacheCassandraRateLimitingPlanRepositoryTest implements RateLimitingPlanRepositoryContract {
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
@@ -30,12 +30,12 @@ public class CacheCassandraRateLimitingPlanRepositoryTest implements RateLimitat
     @BeforeEach
     void setUp(CassandraCluster cassandra) {
         CassandraRateLimitPlanDAO dao = new CassandraRateLimitPlanDAO(cassandra.getConf());
-        RateLimitationPlanRepository rateLimitationPlanRepository = new CassandraRateLimitationPlanRepository(dao);
-        repository = new CacheRateLimitingPlan(rateLimitationPlanRepository, Duration.ofMinutes(2), new NoopGaugeRegistry(), OptionConverters.toScala(Optional.empty()));
+        RateLimitingPlanRepository rateLimitingPlanRepository = new CassandraRateLimitingPlanRepository(dao);
+        repository = new CacheRateLimitingPlan(rateLimitingPlanRepository, Duration.ofMinutes(2), new NoopGaugeRegistry(), OptionConverters.toScala(Optional.empty()));
     }
 
     @Override
-    public RateLimitationPlanRepository testee() {
+    public RateLimitingPlanRepository testee() {
         return repository;
     }
 }

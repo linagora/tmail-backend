@@ -5,7 +5,7 @@ import java.util.Optional
 
 import com.linagora.tmail.rate.limiter.api.LimitTypes.LimitTypes
 import com.linagora.tmail.rate.limiter.api.OperationLimitations.{DELIVERY_LIMITATIONS_NAME, RELAY_LIMITATIONS_NAME, TRANSIT_LIMITATIONS_NAME}
-import com.linagora.tmail.rate.limiter.api.{Count, LimitTypes, OperationLimitations, OperationLimitationsType, RateLimitation, RateLimitationPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanResetRequest, Size}
+import com.linagora.tmail.rate.limiter.api.{Count, LimitTypes, OperationLimitations, OperationLimitationsType, RateLimitation, RateLimitingPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanResetRequest, Size}
 import com.linagora.tmail.webadmin.model.RateLimitingPlanCreateRequestDTO.{DELIVERY_LIMIT_KEY, RELAY_LIMIT_KEY, TRANSIT_LIMIT_KEY}
 import com.linagora.tmail.webadmin.model.{GetAllRateLimitPlanResponseDTO, OperationLimitationsDTO, RateLimitationDTO, RateLimitingPlanCreateRequestDTO, RateLimitingPlanDTO, RateLimitingPlanIdResponse, RateLimitingPlanResetRequestDTO}
 import javax.inject.Inject
@@ -21,7 +21,7 @@ import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters._
 
-class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitationPlanRepository,
+class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitingPlanRepository,
                                               jsonTransformer: JsonTransformer) extends Routes {
   private val PLAN_ID_PARAM = ":planId"
   private val PLAN_NAME_PARAM = ":planName"

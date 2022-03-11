@@ -13,9 +13,9 @@ import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.james.webadmin.utils.Responses;
 
-import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepository;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanId;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanNotFoundException;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepository;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanUserRepository;
 import com.linagora.tmail.webadmin.model.RateLimitingPlanIdResponse;
 
@@ -37,12 +37,12 @@ public class RateLimitPlanUserRoutes implements Routes {
     private static final String GET_PLAN_OF_USER_PATH = USERS_PATH + SEPARATOR + USERNAME_PARAM + RATE_LIMIT_BASE_PATH;
 
     private final RateLimitingPlanUserRepository planUserRepository;
-    private final RateLimitationPlanRepository planRepository;
+    private final RateLimitingPlanRepository planRepository;
     private final UsersRepository usersRepository;
     private final JsonTransformer jsonTransformer;
 
     @Inject
-    public RateLimitPlanUserRoutes(RateLimitingPlanUserRepository planUserRepository, RateLimitationPlanRepository planRepository,
+    public RateLimitPlanUserRoutes(RateLimitingPlanUserRepository planUserRepository, RateLimitingPlanRepository planRepository,
                                    UsersRepository usersRepository, JsonTransformer jsonTransformer) {
         this.planUserRepository = planUserRepository;
         this.planRepository = planRepository;

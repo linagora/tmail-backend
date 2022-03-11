@@ -5,14 +5,14 @@ import org.junit.jupiter.api.BeforeEach
 
 import java.time.Duration
 
-class CacheInMemoryRateLimitingPlanRepositoryTest extends RateLimitationPlanRepositoryContract {
-  var repository: RateLimitationPlanRepository = _
+class CacheInMemoryRateLimitingPlanRepositoryTest extends RateLimitingPlanRepositoryContract {
+  var repository: RateLimitingPlanRepository = _
 
-  override def testee: RateLimitationPlanRepository = repository
+  override def testee: RateLimitingPlanRepository = repository
 
   @BeforeEach
   def beforeEach(): Unit = {
-    val inMemoryRepository: RateLimitationPlanRepository = new InMemoryRateLimitationPlanRepository()
+    val inMemoryRepository: RateLimitingPlanRepository = new InMemoryRateLimitingPlanRepository()
     repository = new CacheRateLimitingPlan(inMemoryRepository, Duration.ofMinutes(2), new NoopGaugeRegistry)
   }
 }

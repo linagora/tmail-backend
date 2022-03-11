@@ -1,7 +1,7 @@
 package com.linagora.tmail.rate.limiter.api
 
 import com.linagora.tmail.rate.limiter.api.LimitTypes.LimitTypes
-import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepositoryContract.{CREATION_REQUEST, CREATION_REQUEST_WITH_MULTI_OPERATIONS, RESET_REQUEST}
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract.{CREATION_REQUEST, CREATION_REQUEST_WITH_MULTI_OPERATIONS, RESET_REQUEST}
 import eu.timepit.refined.auto._
 import org.apache.james.rate.limiter.api.AllowedQuantity
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
 
 case class TestPJ(name: String, limits: LimitTypes)
 
-object RateLimitationPlanRepositoryContract {
+object RateLimitingPlanRepositoryContract {
   val COUNT: Count = Count(AllowedQuantity.liftOrThrow(1))
   val SIZE: Size = Size(AllowedQuantity.liftOrThrow(10000))
   val LIMIT_TYPES: LimitTypes = LimitTypes.liftOrThrow(Set(COUNT, SIZE))
@@ -49,8 +49,8 @@ object RateLimitationPlanRepositoryContract {
           limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(4)), Size(AllowedQuantity.liftOrThrow(40000))))))))))
 }
 
-trait RateLimitationPlanRepositoryContract {
-  def testee: RateLimitationPlanRepository
+trait RateLimitingPlanRepositoryContract {
+  def testee: RateLimitingPlanRepository
 
   @Test
   def createShouldReturnRateLimitingPlan(): Unit = {
@@ -194,13 +194,13 @@ trait RateLimitationPlanRepositoryContract {
   }
 }
 
-class InMemoryRateLimitationPlanRepositoryTest extends RateLimitationPlanRepositoryContract {
-  var inMemoryRateLimitationPlanRepository: InMemoryRateLimitationPlanRepository = _
+class InMemoryRateLimitingPlanRepositoryTest extends RateLimitingPlanRepositoryContract {
+  var inMemoryRateLimitationPlanRepository: InMemoryRateLimitingPlanRepository = _
 
-  override def testee: RateLimitationPlanRepository = inMemoryRateLimitationPlanRepository
+  override def testee: RateLimitingPlanRepository = inMemoryRateLimitationPlanRepository
 
   @BeforeEach
   def beforeEach(): Unit = {
-    inMemoryRateLimitationPlanRepository = new InMemoryRateLimitationPlanRepository();
+    inMemoryRateLimitationPlanRepository = new InMemoryRateLimitingPlanRepository();
   }
 }

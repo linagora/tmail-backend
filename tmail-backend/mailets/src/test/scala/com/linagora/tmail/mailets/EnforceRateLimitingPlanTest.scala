@@ -3,7 +3,7 @@ package com.linagora.tmail.mailets
 import com.codahale.metrics.MetricRegistry
 import com.linagora.tmail.mailets.EnforceRateLimitingPlanTest.{USER1, USER2}
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingPlanUserRepository
-import com.linagora.tmail.rate.limiter.api.{DeliveryLimitations, InMemoryRateLimitationPlanRepository, LimitTypes, OperationLimitationsType, RateLimitation, RateLimitationPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanUserRepository, RelayLimitations, TransitLimitations}
+import com.linagora.tmail.rate.limiter.api.{DeliveryLimitations, InMemoryRateLimitingPlanRepository, LimitTypes, OperationLimitationsType, RateLimitation, RateLimitingPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanUserRepository, RelayLimitations, TransitLimitations}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.metrics.api.NoopGaugeRegistry
@@ -31,7 +31,7 @@ object EnforceRateLimitingPlanTest {
 @ExtendWith(Array(classOf[RedisExtension]))
 class EnforceRateLimitingPlanTest {
 
-  var rateLimitationPlanRepository: RateLimitationPlanRepository = _
+  var rateLimitationPlanRepository: RateLimitingPlanRepository = _
   var rateLimitingPlanUserRepository: RateLimitingPlanUserRepository = _
   var redisRateLimiterFactory: RedisRateLimiterFactory = _
 
@@ -44,7 +44,7 @@ class EnforceRateLimitingPlanTest {
 
   @BeforeEach
   def setup(redis: DockerRedis): Unit = {
-    rateLimitationPlanRepository = new InMemoryRateLimitationPlanRepository
+    rateLimitationPlanRepository = new InMemoryRateLimitingPlanRepository
     rateLimitingPlanUserRepository = new MemoryRateLimitingPlanUserRepository
     redisRateLimiterFactory = new RedisRateLimiterFactory(RedisRateLimiterConfiguration.from(redis.redisURI().toString, isCluster = false))
 

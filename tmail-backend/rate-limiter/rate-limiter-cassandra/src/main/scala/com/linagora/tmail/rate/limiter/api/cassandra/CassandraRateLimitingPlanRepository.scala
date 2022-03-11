@@ -2,13 +2,13 @@ package com.linagora.tmail.rate.limiter.api.cassandra
 
 import com.google.common.base.Preconditions
 import com.linagora.tmail.rate.limiter.api.cassandra.dao.{CassandraRateLimitPlanDAO, RateLimitingPlanEntry}
-import com.linagora.tmail.rate.limiter.api.{RateLimitationPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanResetRequest}
+import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanResetRequest}
 import javax.inject.Inject
 import org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-class CassandraRateLimitationPlanRepository @Inject()(cassandraRateLimitPlanDAO: CassandraRateLimitPlanDAO) extends RateLimitationPlanRepository {
+class CassandraRateLimitingPlanRepository @Inject()(cassandraRateLimitPlanDAO: CassandraRateLimitPlanDAO) extends RateLimitingPlanRepository {
 
   override def create(creationRequest: RateLimitingPlanCreateRequest): Publisher[RateLimitingPlan] =
     SMono.fromCallable(() => RateLimitingPlanId.generate)

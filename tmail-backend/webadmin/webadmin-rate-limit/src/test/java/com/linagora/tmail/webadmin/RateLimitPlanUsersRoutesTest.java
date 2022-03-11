@@ -30,9 +30,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import com.linagora.tmail.rate.limiter.api.InMemoryRateLimitationPlanRepository;
-import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepository;
-import com.linagora.tmail.rate.limiter.api.RateLimitationPlanRepositoryContract;
+import com.linagora.tmail.rate.limiter.api.InMemoryRateLimitingPlanRepository;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepository;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanId;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanNotFoundException;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanUserRepository;
@@ -61,11 +61,11 @@ public class RateLimitPlanUsersRoutesTest {
     private WebAdminServer webAdminServer;
     private UsersRepository usersRepository;
     private RateLimitingPlanUserRepository planUserRepository;
-    private RateLimitationPlanRepository planRepository;
+    private RateLimitingPlanRepository planRepository;
 
     @BeforeEach
     void setUp() {
-        planRepository = new InMemoryRateLimitationPlanRepository();
+        planRepository = new InMemoryRateLimitingPlanRepository();
         planUserRepository = new MemoryRateLimitingPlanUserRepository();
         usersRepository = mock(UsersRepository.class);
         RateLimitPlanUserRoutes rateLimitPlanUserRoutes = new RateLimitPlanUserRoutes(planUserRepository, planRepository, usersRepository, new JsonTransformer());
@@ -162,7 +162,7 @@ public class RateLimitPlanUsersRoutesTest {
         @Test
         void shouldSucceedWhenPlanExists() throws UsersRepositoryException {
             when(usersRepository.contains(BOB)).thenReturn(true);
-            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
 
             String response = given()
                 .put(String.format(ATTACH_PLAN_TO_USER_PATH, BOB.asString(), planId.serialize()))
@@ -182,8 +182,8 @@ public class RateLimitPlanUsersRoutesTest {
         @Test
         void shouldOverridePreviousPlanWithNewPlan() throws UsersRepositoryException {
             when(usersRepository.contains(BOB)).thenReturn(true);
-            RateLimitingPlanId previousPlanId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
-            RateLimitingPlanId newPlanId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId previousPlanId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId newPlanId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
 
             given()
                 .put(String.format(ATTACH_PLAN_TO_USER_PATH, BOB.asString(), previousPlanId.serialize()))
@@ -212,7 +212,7 @@ public class RateLimitPlanUsersRoutesTest {
         @Test
         void shouldBeIdempotent() throws UsersRepositoryException {
             when(usersRepository.contains(BOB)).thenReturn(true);
-            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
 
             given()
                 .put(String.format(ATTACH_PLAN_TO_USER_PATH, BOB.asString(), planId.serialize()))
@@ -283,7 +283,7 @@ public class RateLimitPlanUsersRoutesTest {
         @Test
         void shouldReturnUsersWhenPlanExistsAndHasUsersAttached() throws UsersRepositoryException {
             when(usersRepository.contains(BOB)).thenReturn(true);
-            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
             Mono.from(planUserRepository.applyPlan(BOB, planId)).block();
             Mono.from(planUserRepository.applyPlan(ANDRE, planId)).block();
 
@@ -303,7 +303,7 @@ public class RateLimitPlanUsersRoutesTest {
         @Test
         void shouldReturnEmptyWhenPlanExistsAndHasNonUsersAttached() throws UsersRepositoryException {
             when(usersRepository.contains(BOB)).thenReturn(true);
-            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
 
             String response = given()
                 .get(String.format(GET_USERS_OF_PLAN_PATH, planId.serialize()))
@@ -382,7 +382,7 @@ public class RateLimitPlanUsersRoutesTest {
         @Test
         void shouldReturnPlanIdWhenUserHasAPlan() throws UsersRepositoryException {
             when(usersRepository.contains(BOB)).thenReturn(true);
-            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
             Mono.from(planUserRepository.applyPlan(BOB, planId)).block();
 
             JsonPath jsonPath = given()
@@ -441,7 +441,7 @@ public class RateLimitPlanUsersRoutesTest {
         @Test
         void shouldRevokePlanOfUser() throws UsersRepositoryException {
             when(usersRepository.contains(BOB)).thenReturn(true);
-            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
             Mono.from(planUserRepository.applyPlan(BOB, planId)).block();
 
             String response = given()
@@ -461,7 +461,7 @@ public class RateLimitPlanUsersRoutesTest {
         @Test
         void shouldBeIdempotent() throws UsersRepositoryException {
             when(usersRepository.contains(BOB)).thenReturn(true);
-            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitationPlanRepositoryContract.CREATION_REQUEST())).block().id();
+            RateLimitingPlanId planId = Mono.from(planRepository.create(RateLimitingPlanRepositoryContract.CREATION_REQUEST())).block().id();
             Mono.from(planUserRepository.applyPlan(BOB, planId)).block();
 
             given()
