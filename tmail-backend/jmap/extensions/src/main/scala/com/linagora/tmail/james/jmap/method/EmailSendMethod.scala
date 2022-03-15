@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.jmap.method
 
+import java.time.ZonedDateTime
+import java.util.Date
+
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.json.EmailSendSerializer
@@ -7,6 +10,10 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.EmailSubmissionHelper.resolveEnvelope
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationRequest, EmailSendCreationRequestInvalidException, EmailSendCreationResponse, EmailSendRequest, EmailSendResults, EmailSetCreationFailure, EmailSetCreationResult, EmailSetCreationSuccess, EmailSubmissionCreationRequest, MimeMessageSourceImpl}
 import eu.timepit.refined.auto._
+import javax.annotation.PreDestroy
+import javax.inject.Inject
+import javax.mail.Flags
+import javax.mail.internet.{InternetAddress, MimeMessage}
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.JMAPConfiguration
 import org.apache.james.jmap.api.model.Size
@@ -21,7 +28,7 @@ import org.apache.james.jmap.routes.{BlobResolvers, ProcessingContext, SessionSu
 import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MessageId}
-import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager}
+import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.mime4j.message.DefaultMessageWriter
@@ -37,15 +44,9 @@ import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
 
-import java.time.ZonedDateTime
-import java.util.Date
-import javax.annotation.PreDestroy
-import javax.inject.Inject
-import javax.mail.Flags
-import javax.mail.internet.{InternetAddress, MimeMessage}
 import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
 import scala.jdk.OptionConverters._
+import scala.util.{Failure, Success, Try}
 
 class EmailSendMethodModule extends AbstractModule {
   override def configure(): Unit = {
@@ -206,7 +207,10 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
         mailImpl.setMessageNoCopy(message)
         mailImpl
       })
-      _ <- SMono(queue.enqueueReactive(mail)).`then`(SMono.just(submissionId))
+      _ <- SMono(queue.enqueueReactive(mail))
+        .`then`(SMono.fromCallable(() => LifecycleUtil.dispose(mail))
+          .subscribeOn(Schedulers.elastic()))
+        .`then`(SMono.just(submissionId))
     } yield {
       EmailSendCreationResponse(
         emailSubmissionId = submissionId,
@@ -240,7 +244,6 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
       Success(mimeMessage)
     }
   }
-
 
 
   private def append(clientId: EmailSendCreationId,
