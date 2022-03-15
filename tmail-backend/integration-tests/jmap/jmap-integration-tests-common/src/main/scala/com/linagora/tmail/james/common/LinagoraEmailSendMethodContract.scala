@@ -1,9 +1,5 @@
 package com.linagora.tmail.james.common
 
-import java.nio.charset.StandardCharsets
-import java.time.Duration
-import java.util.concurrent.TimeUnit
-
 import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract.{BOB_INBOX_PATH, HTML_BODY}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -33,6 +29,9 @@ import org.awaitility.core.ConditionFactory
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsString, JsValue, Json}
 
+import java.nio.charset.StandardCharsets
+import java.time.Duration
+import java.util.concurrent.TimeUnit
 import scala.jdk.CollectionConverters._
 
 object LinagoraEmailSendMethodContract {
@@ -1704,6 +1703,91 @@ trait LinagoraEmailSendMethodContract {
       .inPath("methodResponses[1]")
       .isAbsent()
   }
+
+  @Test
+  def tooBigEmailsShouldBeRejected(server: GuiceJamesServer): Unit = {
+    val request: String =
+      s"""
+         |{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:ietf:params:jmap:submission",
+         |    "com:linagora:params:jmap:pgp"
+         |  ],
+         |  "methodCalls": [
+         |    [
+         |      "Email/send",
+         |      {
+         |        "accountId": "$ACCOUNT_ID",
+         |        "create": {
+         |          "K87": {
+         |            "email/create": {
+         |              "mailboxIds": {
+         |                "${getBobInboxId(server).serialize}": true
+         |              },
+         |              "subject": "World domination",
+         |              "htmlBody": [
+         |                {
+         |                  "partId": "a49d",
+         |                  "type": "text/html"
+         |                }
+         |              ],
+         |              "bodyValues": {
+         |                "a49d": {
+         |                  "value": "${"0123456789\\r\\n".repeat(1024 * 1024)}",
+         |                  "isTruncated": false,
+         |                  "isEncodingProblem": false
+         |                }
+         |              }
+         |            },
+         |            "emailSubmission/set": {
+         |              "envelope": {
+         |                "mailFrom": {
+         |                  "email": "${BOB.asString}"
+         |                },
+         |                "rcptTo": [
+         |                  {
+         |                    "email": "${BOB.asString}"
+         |                  }
+         |                ]
+         |              }
+         |            }
+         |          }
+         |        }
+         |      },
+         |      "c1"
+         |    ]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].notCreated.K87.description")
+      .inPath("methodResponses[0][1].notCreated.K87")
+      .isEqualTo(
+        s"""{
+           |    "type": "tooLarge"
+           |}""".stripMargin)
+
+    val description = assertThatJson(response)
+      .withIgnorePlaceholder("@")
+      .inPath("methodResponses[0][1].notCreated.K87.description")
+      .asString()
+    description.endsWith(" bytes while the maximum allowed is 10485760")
+    description.startsWith("Attempt to create a message of ")
+  }
+
   //endregion
 
   //region basic valid request

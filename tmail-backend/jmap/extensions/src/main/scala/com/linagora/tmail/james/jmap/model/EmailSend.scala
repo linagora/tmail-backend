@@ -12,7 +12,7 @@ import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UTCDate, UuidState}
 import org.apache.james.jmap.json.EmailSetSerializer
 import org.apache.james.jmap.mail.{BlobId, DestroyIds, EmailCreationRequest, EmailCreationResponse, EmailSet, EmailSetRequest, EmailSubmissionId, Envelope, ThreadId, UnparsedMessageId}
-import org.apache.james.jmap.method.WithAccountId
+import org.apache.james.jmap.method.{SizeExceededException, WithAccountId}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.mime4j.dom.Message
@@ -221,7 +221,8 @@ object EmailSendResults {
 
   def notCreated(emailSendCreationId: EmailSendCreationId, throwable: Throwable): EmailSendResults = {
     val setError: SetError = throwable match {
-      case invalidException: EmailSendCreationRequestInvalidException =>invalidException.error
+      case invalidException: EmailSendCreationRequestInvalidException => invalidException.error
+      case exceededException: SizeExceededException => SetError.tooLarge(SetErrorDescription(exceededException.getMessage))
       case error: Throwable => SetError.serverFail(SetErrorDescription(error.getMessage))
     }
     EmailSendResults(None, Some(Map(emailSendCreationId -> setError)), Map.empty)
