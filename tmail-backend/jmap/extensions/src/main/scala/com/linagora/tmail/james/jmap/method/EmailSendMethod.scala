@@ -8,6 +8,7 @@ import com.linagora.tmail.james.jmap.model.EmailSubmissionHelper.resolveEnvelope
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationRequest, EmailSendCreationRequestInvalidException, EmailSendCreationResponse, EmailSendRequest, EmailSendResults, EmailSetCreationFailure, EmailSetCreationResult, EmailSetCreationSuccess, EmailSubmissionCreationRequest, MimeMessageSourceImpl}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{MailAddress, Username}
+import org.apache.james.jmap.JMAPConfiguration
 import org.apache.james.jmap.api.model.Size
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, EMAIL_SUBMISSION, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -15,12 +16,12 @@ import org.apache.james.jmap.core.{Invocation, UTCDate, UuidState}
 import org.apache.james.jmap.json.{EmailSetSerializer, ResponseSerializer}
 import org.apache.james.jmap.mail.{BlobId, EmailCreationRequest, EmailCreationResponse, EmailSubmissionId, Envelope, ThreadId}
 import org.apache.james.jmap.method.EmailSubmissionSetMethod.{LOGGER, MAIL_METADATA_USERNAME_ATTRIBUTE}
-import org.apache.james.jmap.method.{EmailSetMethod, ForbiddenFromException, ForbiddenMailFromException, InvocationWithContext, Method, MethodRequiringAccountId, NoRecipientException}
+import org.apache.james.jmap.method.{EmailSetMethod, ForbiddenFromException, ForbiddenMailFromException, InvocationWithContext, Method, MethodRequiringAccountId, NoRecipientException, SizeExceededException}
 import org.apache.james.jmap.routes.{BlobResolvers, ProcessingContext, SessionSupplier}
 import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MessageId}
-import org.apache.james.mailbox.{MailboxManager, MailboxSession}
+import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager}
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.mime4j.message.DefaultMessageWriter
@@ -44,6 +45,7 @@ import javax.mail.Flags
 import javax.mail.internet.{InternetAddress, MimeMessage}
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
+import scala.jdk.OptionConverters._
 
 class EmailSendMethodModule extends AbstractModule {
   override def configure(): Unit = {
@@ -70,6 +72,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
                                 htmlTextExtractor: HtmlTextExtractor,
                                 mailboxManager: MailboxManager,
                                 emailSetMethod: EmailSetMethod,
+                                configuration: JMAPConfiguration,
                                 val metricFactory: MetricFactory,
                                 val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[EmailSendRequest] with Startable {
 
@@ -238,6 +241,8 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
     }
   }
 
+
+
   private def append(clientId: EmailSendCreationId,
                      request: EmailCreationRequest,
                      message: Message,
@@ -246,12 +251,19 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
     for {
       mailbox <- SMono(mailboxManager.getMailboxReactive(mailboxIds.head, mailboxSession))
       messageAsBytes = DefaultMessageWriter.asBytes(message)
-      appendCommand = AppendCommand.builder()
+      appendCommandEither = Right(AppendCommand.builder()
         .recent()
         .withFlags(request.keywords.map(_.asFlags).getOrElse(new Flags()))
         .withInternalDate(Date.from(request.receivedAt.getOrElse(UTCDate(ZonedDateTime.now())).asUTC.toInstant))
-        .build(messageAsBytes)
-      appendResult <- SMono(mailbox.appendMessageReactive(appendCommand, mailboxSession))
+        .build(messageAsBytes))
+        .flatMap(appendCommand =>
+          configuration.getMaximumSendSize.toScala
+            .filter(limit => appendCommand.getMsgIn.size() > limit)
+            .map(limit => Left(SizeExceededException(appendCommand.getMsgIn.size(), limit)))
+            .getOrElse(Right(appendCommand)))
+
+      appendResult <- appendCommandEither.fold(SMono.error(_),
+        appendCommand => SMono(mailbox.appendMessageReactive(appendCommand, mailboxSession)))
     } yield {
       val blobId: Option[BlobId] = BlobId.of(appendResult.getId.getMessageId).toOption
       val threadId: ThreadId = ThreadId.fromJava(appendResult.getThreadId)
