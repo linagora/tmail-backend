@@ -228,6 +228,7 @@
                             <port>465</port> <!-- SMTP + STARTTLS -->
                             <port>587</port> <!-- SMTPS -->
                             <port>4000</port> <!-- GLOWROOT, if activated -->
+                            <port>4190</port> <!-- ManageSieve, if activated -->
                             <port>8000</port> <!-- WEBADMIN -->
                         </ports>
                         <appRoot>/root</appRoot>
