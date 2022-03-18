@@ -1,0 +1,69 @@
+= Security
+:navtitle: Our ethic
+
+== Security features and recommendations
+
+Team-Mail allow one user to encrypt his email at REST with PGP keys. xref:tmail-backend/features/encrypted-mailbox.adoc[Read more...]
+
+link:https://github.com/apache/james-project/blob/master/server/apps/distributed-app/docs/modules/ROOT/pages/operate/security.adoc#threats[Threat model] described by the James community fully applies.
+
+link:https://github.com/apache/james-project/blob/master/server/apps/distributed-app/docs/modules/ROOT/pages/operate/security.adoc#best-practices[Best practices] described by the James community fully applies.
+
+== Known security vulnerabilities
+
+=== Server side request forgery in JMAP Push
+
+Prior 0.4.3 release an authenticated user could perform server side request forgery by using JMAP PUSH subscriptions.
+
+*Mitigation*: Upgrade to Team-Mail server version 0.4.3. Strict firewalling of your internal network could also be
+viable.
+
+=== CVE-2021-38542 STARTTLS command injection
+
+Prior 0.4.3 release TMail is subject to CVE-2021-38542, allowing man in the middle attacks
+that could result in STARTTLS command injection for the IMAP protocol.
+
+*Mitigation*: Upgrade to Team-Mail server version 0.4.1.
+
+=== CVE-2021-40110: A IMAP vulnerable to a ReDoS
+
+Using Jazzer fuzzer, we identified that an IMAP user can craft IMAP LIST commands to orchestrate
+a Denial Of Service using a vulnerable Regular expression.
+
+This affected Team-Mail prior to 0.4.1.
+
+*Mitigation*: Upgrade to Team-Mail server version 0.4.1.
+
+=== CVE-2021-40111: IMAP parsing Denial Of Service
+
+While fuzzing with Jazzer the IMAP parsing stack we discover that crafted APPEND and STATUS IMAP command
+could be used to trigger infinite loops resulting in expensive CPU computations and OutOfMemory exceptions.
+This can be used for a Denial Of Service attack. The IMAP user needs to be authenticated to exploit this vulnerability.
+
+This affected Team-Mail prior to 0.4.1.
+
+*Mitigation*: Upgrade to Team-Mail server version 0.4.1.
+
+== Active steps we are taking toward improving security
+
+We actively review both our dependencies and docker images with link:https://snyk.io/advisor/[Snyk].
+
+We use tools to fuzz our parsing code, namely link:https://github.com/CodeIntelligenceTesting/jazzer[Jazzer].
+
+We perform static analysis review with tools like link:https://snyk.io/advisor/[Snyk] and link:https://docs.sonarqube.org/latest/analysis/languages/java/[Sonar].
+
+Additional suggestions welcomed.
+
+== Reporting security vulnerabilities
+
+To ensure safety of our users, security process needs to happen privately.
+
+Here are the steps:
+
+- 1. Reporter email the issues privately to `openpaas-james[AT]linagora.com`.
+- 2. We will then evaluate the validity of your report, and write back to you.
+- 3. We will propose a fix that we will review with you.
+- 4. We will propose a draft for the announcement that we will review with you.
+- 4. We will propose you a schedule for the release and the announcements.
+
+You will be credited in the vulnerability report for your findings.
