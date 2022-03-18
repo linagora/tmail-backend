@@ -40,6 +40,7 @@ import org.apache.james.modules.metrics.CassandraMetricsModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.JMAPServerModule;
 import org.apache.james.modules.protocols.JmapEventBusModule;
+import org.apache.james.modules.protocols.ManageSieveServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
@@ -156,6 +157,7 @@ public class DistributedServer {
         new CassandraVacationModule(),
         new IMAPServerModule(),
         JMAP,
+        new ManageSieveServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
         WEBADMIN);
