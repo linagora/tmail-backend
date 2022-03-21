@@ -16,6 +16,6 @@ Here are the steps:
  accounts for vacation and will generally be quicker.
  - 3. We will propose a fix that we will review with you. 
  - 4. We will propose a draft for the announcement that we will review with you. 
- - 4. We will propose you a schedule for the release and the announcements.
+ - 5. We will propose you a schedule for the release and the announcements.
  
 You will be credited in the vulnerability report for your findings.
