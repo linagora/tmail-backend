@@ -5,9 +5,12 @@ import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+
+import org.apache.james.events.Event
+import org.apache.james.events.Event.EventId
+
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.jdk.OptionConverters._
 
@@ -35,7 +38,20 @@ trait EmailAddressContactSearchEngine {
   def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact]
 
   def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
+}
 
+trait TmailEvent extends Event {
+}
+
+trait TmailContactUserEvent extends TmailEvent {
+}
+
+case class TmailContactUserAddedEvent(eventId: EventId, username: Username, contact: ContactFields) extends TmailContactUserEvent {
+  override def getUsername: Username = username
+
+  override def isNoop: Boolean = false
+
+  override def getEventId: EventId = eventId
 }
 
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {
