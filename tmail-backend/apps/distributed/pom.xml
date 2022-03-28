@@ -348,10 +348,10 @@
                             <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <url>https://github.com/jvm-profiling-tools/async-profiler/releases/download/v2.0/async-profiler-2.0-linux-x64.tar.gz</url>
+                            <url>https://github.com/jvm-profiling-tools/async-profiler/releases/download/v2.7/async-profiler-2.7-linux-x64.tar.gz</url>
                             <unpack>true</unpack>
                             <outputDirectory>${project.build.directory}</outputDirectory>
-                            <md5>50764faa05521fdc36a5e3f6d6628d75</md5>
+                            <md5>49a792398a9d67e19fba8fc34e66ff66</md5>
                         </configuration>
                     </execution>
                 </executions>
@@ -436,7 +436,7 @@
                                 <into>/root/glowroot</into>
                             </path>
                             <path>
-                                <from>target/async-profiler-2.0-linux-x64</from>
+                                <from>target/async-profiler-2.7-linux-x64</from>
                                 <into>/root/async-profiler</into>
                             </path>
                             <path>
