@@ -4,10 +4,12 @@ import java.util.Arrays;
 import java.util.UUID;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.backends.es.v7.DocumentId;
 import org.apache.james.backends.es.v7.ElasticSearchIndexer;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
 import org.apache.james.backends.es.v7.RoutingKey;
+import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.jmap.api.model.AccountId;
 import org.elasticsearch.action.search.SearchRequest;
@@ -46,6 +48,11 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
         return Mono.fromCallable(() -> objectMapper.writeValueAsString(new AccountEmailContact(accountId, emailAddressContact)))
             .flatMap(content -> indexer.index(DOCUMENT_ID, content, ROUTING_KEY))
             .thenReturn(emailAddressContact);
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> index(Domain domain, MailAddress address) {
+        throw new NotImplementedException("Not implemented yet!");
     }
 
     @Override

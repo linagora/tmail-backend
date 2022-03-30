@@ -1,14 +1,13 @@
 package com.linagora.tmail.james.jmap.contact
 
-import java.nio.charset.StandardCharsets
-import java.util.UUID
-
 import com.google.common.collect.{HashMultimap, Multimap, Multimaps}
-import org.apache.james.core.MailAddress
+import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 object EmailAddressContact {
@@ -29,12 +28,15 @@ case class AccountEmailContact(accountId: String, id: UUID, address: MailAddress
 trait EmailAddressContactSearchEngine {
   def index(accountId: AccountId, address: MailAddress): Publisher[EmailAddressContact]
 
+  def index(domain: Domain, address: MailAddress): Publisher[EmailAddressContact]
+
   def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
 
 }
 
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {
   val emailList: Multimap[AccountId, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
+  val domainList: Multimap[Domain, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
 
   override def index(accountId: AccountId, address: MailAddress): Publisher[EmailAddressContact] =
     index(accountId, EmailAddressContact.of(address))
@@ -43,7 +45,18 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     SMono.fromCallable(() => emailList.put(accountId, addressContact))
       .`then`(SMono.just(addressContact))
 
-  override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] =
+  override def index(domain: Domain, address: MailAddress): Publisher[EmailAddressContact] =
+    index(domain, EmailAddressContact.of(address))
+
+  private def index(domain: Domain, addressContact: EmailAddressContact): Publisher[EmailAddressContact] =
+    SMono.fromCallable(() => domainList.put(domain, addressContact))
+      .`then`(SMono.just(addressContact))
+
+  override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] = {
+    val domain = Username.of(accountId.getIdentifier).getDomainPart.get // TODO: evaluate optional
+    SFlux.concat(
+      SFlux.fromIterable(domainList.get(domain).asScala),
       SFlux.fromIterable(emailList.get(accountId).asScala)
-        .filter(_.contains(part))
+    ).filter(_.contains(part))
+  }
 }
