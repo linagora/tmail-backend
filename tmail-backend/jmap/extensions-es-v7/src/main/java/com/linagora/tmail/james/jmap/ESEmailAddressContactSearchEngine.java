@@ -4,10 +4,12 @@ import java.util.Arrays;
 import java.util.UUID;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.backends.es.v7.DocumentId;
 import org.apache.james.backends.es.v7.ElasticSearchIndexer;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
 import org.apache.james.backends.es.v7.RoutingKey;
+import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.jmap.api.model.AccountId;
 import org.elasticsearch.action.search.SearchRequest;
@@ -20,6 +22,7 @@ import org.reactivestreams.Publisher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.james.jmap.contact.AccountEmailContact;
+import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 
@@ -41,11 +44,16 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<EmailAddressContact> index(AccountId accountId, MailAddress address) {
-        EmailAddressContact emailAddressContact = EmailAddressContact.of(address);
+    public Publisher<EmailAddressContact> index(AccountId accountId, ContactFields fields) {
+        EmailAddressContact emailAddressContact = EmailAddressContact.of(fields);
         return Mono.fromCallable(() -> objectMapper.writeValueAsString(new AccountEmailContact(accountId, emailAddressContact)))
             .flatMap(content -> indexer.index(DOCUMENT_ID, content, ROUTING_KEY))
             .thenReturn(emailAddressContact);
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> index(Domain domain, ContactFields fields) {
+        throw new NotImplementedException("Not implemented yet!");
     }
 
     @Override
@@ -62,6 +70,6 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
             .map(Arrays::asList)
             .flatMapIterable(Function.identity())
             .map(Throwing.function(hit -> new EmailAddressContact(UUID.fromString((String) hit.getSourceAsMap().get("id")),
-                new MailAddress((String) hit.getSourceAsMap().get("address")))));
+                new ContactFields(new MailAddress((String) hit.getSourceAsMap().get("address")), "", ""))));
     }
 }
