@@ -14,30 +14,25 @@ import scala.jdk.OptionConverters._
 object EmailAddressContact {
   private def computeId(mailAddress: MailAddress): UUID = UUID.nameUUIDFromBytes(mailAddress.asString().getBytes(StandardCharsets.UTF_8))
 
-  def of(address: MailAddress): EmailAddressContact = EmailAddressContact(computeId(address), address)
-
-  def of(address: MailAddress, firstname: String, surname: String): EmailAddressContact =
-    EmailAddressContact(computeId(address), address, firstname, surname)
+  def of(fields: ContactFields): EmailAddressContact = EmailAddressContact(computeId(fields.address), fields)
 }
 
-case class EmailAddressContact(id: UUID, address: MailAddress, firstname: String = "", surname: String = "") {
+case class EmailAddressContact(id: UUID, fields: ContactFields)
+
+case class ContactFields(address: MailAddress, firstname: String = "", surname: String = "") {
   def contains(part: String): Boolean =
-    address.asString().contains(part) ||
-      (firstname != null && firstname.contains(part)) ||
-      (surname != null && surname.contains(part))
+    address.asString().contains(part) || firstname.contains(part) || surname.contains(part)
 }
 
 case class AccountEmailContact(accountId: String, id: UUID, address: MailAddress) {
   def this(accountId: AccountId, emailAddressContact: EmailAddressContact) =
-    this(accountId.getIdentifier, emailAddressContact.id, emailAddressContact.address)
+    this(accountId.getIdentifier, emailAddressContact.id, emailAddressContact.fields.address)
 }
 
 trait EmailAddressContactSearchEngine {
-  def index(accountId: AccountId, address: MailAddress): Publisher[EmailAddressContact]
+  def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact]
 
-  def index(accountId: AccountId, address: MailAddress, firstname: String, surname: String): Publisher[EmailAddressContact]
-
-  def index(domain: Domain, address: MailAddress, firstname: String, surname: String): Publisher[EmailAddressContact]
+  def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact]
 
   def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
 
@@ -47,18 +42,15 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
   val emailList: Multimap[AccountId, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
   val domainList: Multimap[Domain, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
 
-  override def index(accountId: AccountId, address: MailAddress): Publisher[EmailAddressContact] =
-    index(accountId, EmailAddressContact.of(address))
-
-  override def index(accountId: AccountId, address: MailAddress, firstname: String, surname: String): Publisher[EmailAddressContact] =
-    index(accountId, EmailAddressContact.of(address, firstname, surname))
+  override def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact] =
+    index(accountId, EmailAddressContact.of(fields))
 
   private def index(accountId: AccountId, addressContact: EmailAddressContact) =
     SMono.fromCallable(() => emailList.put(accountId, addressContact))
       .`then`(SMono.just(addressContact))
 
-  override def index(domain: Domain, address: MailAddress, firstname: String, surname: String): Publisher[EmailAddressContact] =
-    index(domain, EmailAddressContact.of(address, firstname, surname))
+  override def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact] =
+    index(domain, EmailAddressContact.of(fields))
 
   private def index(domain: Domain, addressContact: EmailAddressContact): Publisher[EmailAddressContact] =
     SMono.fromCallable(() => domainList.put(domain, addressContact))
@@ -69,6 +61,6 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     SFlux.concat(
       maybeDomain.map(domain => SFlux.fromIterable(domainList.get(domain).asScala)).getOrElse(SFlux.empty),
       SFlux.fromIterable(emailList.get(accountId).asScala)
-    ).filter(_.contains(part))
+    ).filter(_.fields.contains(part))
   }
 }

@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, domain, firstnameA, firstnameB, mailAddressA, mailAddressB, otherFirstname, otherLastName, otherMailAddress, surnameA, surnameB}
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, otherContactEmptyNameFields, otherContactFields}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.assertThat
@@ -14,17 +14,22 @@ object EmailAddressContactSearchEngineContract {
   private val accountIdB: AccountId = AccountId.fromUsername(Username.fromLocalPartWithDomain("doraemon", domain))
 
   private val mailAddressA: MailAddress = new MailAddress("nobita@linagora.com")
-  private val mailAddressB: MailAddress = new MailAddress("nobito@linagora.com")
-
   private val firstnameA: String = "John"
   private val surnameA: String = "Carpenter"
+  private val contactEmptyNameFieldsA: ContactFields = ContactFields(mailAddressA)
+  private val contactFieldsA: ContactFields = ContactFields(mailAddressA, firstnameA, surnameA)
 
+  private val mailAddressB: MailAddress = new MailAddress("nobito@linagora.com")
   private val firstnameB: String = "Marie"
   private val surnameB: String = "Carpenter"
+  private val contactEmptyNameFieldsB: ContactFields = ContactFields(mailAddressB)
+  private val contactFieldsB: ContactFields = ContactFields(mailAddressB, firstnameB, surnameB)
 
   private val otherMailAddress: MailAddress = new MailAddress("nobitu@other.com")
   private val otherFirstname: String = "Johnny"
-  private val otherLastName: String = "Ariepent"
+  private val otherSurname: String = "Ariepent"
+  private val otherContactEmptyNameFields: ContactFields = ContactFields(otherMailAddress)
+  private val otherContactFields: ContactFields = ContactFields(otherMailAddress, otherFirstname, otherSurname)
 }
 
 trait EmailAddressContactSearchEngineContract {
@@ -32,17 +37,17 @@ trait EmailAddressContactSearchEngineContract {
 
   @Test
   def indexShouldReturnMatched(): Unit = {
-    SMono(testee().index(accountId, mailAddressA)).block()
-    SMono(testee().index(accountId, mailAddressB)).block()
+    SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
+    SMono(testee().index(accountId, contactEmptyNameFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressA, mailAddressB)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactEmptyNameFieldsA, contactEmptyNameFieldsB)
   }
 
   @Test
   def indexShouldReturnNoMatch(): Unit = {
-    SMono(testee().index(accountId, mailAddressA)).block()
-    SMono(testee().index(accountId, mailAddressB)).block()
+    SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
+    SMono(testee().index(accountId, contactEmptyNameFieldsB)).block()
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -56,7 +61,7 @@ trait EmailAddressContactSearchEngineContract {
 
   @Test
   def indexWithDifferentAccount(): Unit = {
-    SMono(testee().index(accountId, mailAddressA)).block()
+    SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountIdB, "bit")).asJava().collectList().block())
       .isEmpty()
@@ -64,17 +69,17 @@ trait EmailAddressContactSearchEngineContract {
 
   @Test
   def indexDomainShouldReturnMatched(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressA, mailAddressB)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB)
   }
 
   @Test
   def indexDomainShouldReturnNoMatch(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -82,36 +87,36 @@ trait EmailAddressContactSearchEngineContract {
 
   @Test
   def indexShouldMatchDomainAndPersonalContacts(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
-    SMono(testee().index(accountId, otherMailAddress)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+    SMono(testee().index(accountId, otherContactEmptyNameFields)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressA, mailAddressB, otherMailAddress)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB, otherContactEmptyNameFields)
   }
 
   @Test
   def indexShouldReturnFirstnameMatched(): Unit = {
-    SMono(testee().index(accountId, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(accountId, mailAddressB, firstnameB, surnameB)).block()
+    SMono(testee().index(accountId, contactFieldsA)).block()
+    SMono(testee().index(accountId, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ari")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressB)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ari")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsB)
   }
 
   @Test
   def indexShouldReturnSurnameMatched(): Unit = {
-    SMono(testee().index(accountId, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(accountId, mailAddressB, firstnameB, surnameB)).block()
+    SMono(testee().index(accountId, contactFieldsA)).block()
+    SMono(testee().index(accountId, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressA, mailAddressB)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB)
   }
 
   @Test
   def indexShouldReturnNoNameMatch(): Unit = {
-    SMono(testee().index(accountId, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(accountId, mailAddressB, firstnameB, surnameB)).block()
+    SMono(testee().index(accountId, contactFieldsA)).block()
+    SMono(testee().index(accountId, contactFieldsB)).block()
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -119,26 +124,26 @@ trait EmailAddressContactSearchEngineContract {
 
   @Test
   def indexDomainShouldReturnFirstnameMatched(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ari")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressB)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ari")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsB)
   }
 
   @Test
   def indexDomainShouldReturnSurnameMatched(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressA, mailAddressB)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB)
   }
 
   @Test
   def indexDomainShouldReturnNoNameMatch(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -146,31 +151,31 @@ trait EmailAddressContactSearchEngineContract {
 
   @Test
   def indexShouldMatchFirstnameDomainAndPersonalContacts(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
-    SMono(testee().index(accountId, otherMailAddress, otherFirstname, otherLastName)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+    SMono(testee().index(accountId, otherContactFields)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ohn")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressA, otherMailAddress)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ohn")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, otherContactFields)
   }
 
   @Test
   def indexShouldMatchLastnameDomainAndPersonalContacts(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
-    SMono(testee().index(accountId, otherMailAddress, otherFirstname, otherLastName)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+    SMono(testee().index(accountId, otherContactFields)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressA, mailAddressB, otherMailAddress)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
   }
 
   @Test
   def indexShouldMixMatchDomainAndPersonalContacts(): Unit = {
-    SMono(testee().index(domain, mailAddressA, firstnameA, surnameA)).block()
-    SMono(testee().index(domain, mailAddressB, firstnameB, surnameB)).block()
-    SMono(testee().index(accountId, otherMailAddress, otherFirstname, otherLastName)).block()
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+    SMono(testee().index(accountId, otherContactFields)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "rie")).asJava().map(_.address).collectList().block())
-      .containsOnly(mailAddressB, otherMailAddress)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "rie")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsB, otherContactFields)
   }
 }
