@@ -51,7 +51,12 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<EmailAddressContact> index(Domain domain, MailAddress address) {
+    public Publisher<EmailAddressContact> index(AccountId accountId, MailAddress address, String firstname, String surname) {
+        throw new NotImplementedException("Not implemented yet!");
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> index(Domain domain, MailAddress address, String firstname, String surname) {
         throw new NotImplementedException("Not implemented yet!");
     }
 
@@ -69,6 +74,6 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
             .map(Arrays::asList)
             .flatMapIterable(Function.identity())
             .map(Throwing.function(hit -> new EmailAddressContact(UUID.fromString((String) hit.getSourceAsMap().get("id")),
-                new MailAddress((String) hit.getSourceAsMap().get("address")))));
+                new MailAddress((String) hit.getSourceAsMap().get("address")), "", "")));
     }
 }
