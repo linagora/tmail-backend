@@ -9,6 +9,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 import scala.jdk.CollectionConverters.CollectionHasAsScala
+import scala.jdk.OptionConverters._
 
 object EmailAddressContact {
   private def computeId(mailAddress: MailAddress): UUID = UUID.nameUUIDFromBytes(mailAddress.asString().getBytes(StandardCharsets.UTF_8))
@@ -64,9 +65,9 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       .`then`(SMono.just(addressContact))
 
   override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] = {
-    val domain = Username.of(accountId.getIdentifier).getDomainPart.get // TODO: evaluate optional
+    val maybeDomain: Option[Domain] = Username.of(accountId.getIdentifier).getDomainPart.toScala
     SFlux.concat(
-      SFlux.fromIterable(domainList.get(domain).asScala),
+      maybeDomain.map(domain => SFlux.fromIterable(domainList.get(domain).asScala)).getOrElse(SFlux.empty),
       SFlux.fromIterable(emailList.get(accountId).asScala)
     ).filter(_.contains(part))
   }
