@@ -40,11 +40,9 @@ trait EmailAddressContactSearchEngine {
   def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
 }
 
-trait TmailEvent extends Event {
-}
+trait TmailEvent extends Event
 
-trait TmailContactUserEvent extends TmailEvent {
-}
+trait TmailContactUserEvent extends TmailEvent
 
 case class TmailContactUserAddedEvent(eventId: EventId, username: Username, contact: ContactFields) extends TmailContactUserEvent {
   override def getUsername: Username = username
