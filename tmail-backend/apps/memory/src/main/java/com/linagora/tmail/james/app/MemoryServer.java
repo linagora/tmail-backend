@@ -46,8 +46,10 @@ import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreInMemoryModule;
+import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
@@ -88,6 +90,7 @@ public class MemoryServer {
 
     public static final Module JMAP_LINAGORA = Modules.override(
         JMAP,
+        new ContactAutocompleteMethodModule(),
         new CustomMethodModule(),
         new EncryptedEmailDetailedViewGetMethodModule(),
         new EncryptedEmailFastViewGetMethodModule(),
@@ -120,7 +123,8 @@ public class MemoryServer {
             new TMailScanningQuotaSearcherModule(),
             new MemoryRateLimiterModule(),
             new MemoryRateLimitingModule(),
-            new RateLimitPlanRoutesModule());
+            new RateLimitPlanRoutesModule(),
+            new InMemoryEmailAddressContactSearchEngineModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()

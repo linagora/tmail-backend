@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap.contact
 
 import com.google.common.collect.{HashMultimap, Multimap, Multimaps}
+import com.google.inject.{AbstractModule, Scopes}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
@@ -10,6 +11,14 @@ import java.nio.charset.StandardCharsets
 import java.util.UUID
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.jdk.OptionConverters._
+
+case class InMemoryEmailAddressContactSearchEngineModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[InMemoryEmailAddressContactSearchEngine]).in(Scopes.SINGLETON)
+
+    bind(classOf[EmailAddressContactSearchEngine]).to(classOf[InMemoryEmailAddressContactSearchEngine])
+  }
+}
 
 object EmailAddressContact {
   private def computeId(mailAddress: MailAddress): UUID = UUID.nameUUIDFromBytes(mailAddress.asString().getBytes(StandardCharsets.UTF_8))
