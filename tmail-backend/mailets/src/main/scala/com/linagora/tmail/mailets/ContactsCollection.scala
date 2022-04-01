@@ -12,8 +12,8 @@ import org.apache.james.events.{EventBus, RegistrationKey}
 import org.apache.james.mime4j.util.MimeUtil
 import org.apache.mailet.base.GenericMailet
 import org.apache.mailet.{Attribute, AttributeName, AttributeValue, Mail, MailetException}
+import play.api.libs.json.{JsValue, Json, Writes}
 import reactor.core.scala.publisher.{SFlux, SMono}
-import reactor.core.scheduler.Schedulers
 
 class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
 
@@ -42,7 +42,7 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
       .map(extractContactField)
 
   private def extractContactField(internetAddress: InternetAddress): ContactFields  =
-    ContactFields(new MailAddress(internetAddress))
+    ContactFields(new MailAddress(internetAddress), firstname = Option(internetAddress.getPersonal).getOrElse(""))
 
   private def dispatchEvents(contacts: Seq[ContactFields]): Unit =
     SFlux.fromIterable(contacts)
@@ -52,11 +52,20 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
         contact = contact),
         NO_REGISTRATION_KEYS)))
       .collectSeq()
-      .subscribeOn(Schedulers.elastic())
       .block()
 
   private def appendAttributeToMail(mail: Mail, contacts: Seq[ContactFields]): Unit =
     mail.setAttribute(new Attribute(attributeName,
-      AttributeValue.of(contacts.map(_.address.toString).mkString("[", ",", "]"))))
+      AttributeValue.of(ContactFieldSerializer.serialize(contacts).toString())))
 }
 
+object ContactFieldSerializer {
+
+  private implicit val contactFieldReads: Writes[ContactFields] = (contact: ContactFields) => Json.obj(
+    "address" -> contact.address.asString(),
+    "firstname" -> contact.firstname,
+    "surname" -> contact.surname
+  )
+
+  def serialize(contactFields: Seq[ContactFields]): JsValue = Json.toJson(contactFields)
+}

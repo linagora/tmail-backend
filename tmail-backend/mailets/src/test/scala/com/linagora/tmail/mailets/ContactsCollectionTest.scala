@@ -5,6 +5,7 @@ import java.util.Optional
 
 import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
 import com.linagora.tmail.mailets.ContactsCollectionTest.{ATTRIBUTE_NAME, MAILET_CONFIG, RECIPIENT, SENDER}
+import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.james.core.MailAddress
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
@@ -153,8 +154,11 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    assertThat(getAttributeValue(mail))
-      .hasValue(s"[$RECIPIENT]")
+    val attributeValue = getAttributeValue(mail)
+    assertThat(attributeValue).isPresent
+
+    assertThatJson(attributeValue.get())
+      .isEqualTo(s"""[{"address":"$RECIPIENT","firstname":"","surname":""}]""")
   }
 
   @Test
@@ -192,8 +196,8 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    assertThat(getAttributeValue(mail))
-      .hasValue(s"[$RECIPIENT,cc@domain.tld]")
+    assertThatJson(getAttributeValue(mail).get())
+      .isEqualTo("""[{"address":"recipient1@domain.tld","firstname":"","surname":""},{"address":"cc@domain.tld","firstname":"","surname":""}]""")
 
     assertThat(eventListener.contactReceived())
       .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("cc@domain.tld")))
@@ -217,8 +221,8 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    assertThat(getAttributeValue(mail))
-      .hasValue(s"[$RECIPIENT,bcc@domain.tld]")
+    assertThatJson(getAttributeValue(mail).get())
+      .isEqualTo("""[{"address":"recipient1@domain.tld","firstname":"","surname":""},{"address":"bcc@domain.tld","firstname":"","surname":""}]""")
 
     assertThat(eventListener.contactReceived())
       .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("bcc@domain.tld")))
@@ -233,8 +237,7 @@ class ContactsCollectionTest {
       .name("mail1")
       .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
         .setSender(SENDER)
-        .addToRecipient(s"RecipientName1 <$RECIPIENT>")
-        .addCcRecipient("cc@domain.tld")
+        .addToRecipient(s"Recipient Name1 <$RECIPIENT>")
         .setSubject("Subject 01")
         .setText("Content mail 123"))
       .sender(SENDER)
@@ -243,11 +246,11 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    assertThat(getAttributeValue(mail))
-      .hasValue(s"[$RECIPIENT,cc@domain.tld]")
+    assertThatJson(getAttributeValue(mail).get())
+      .isEqualTo("""[{"address":"recipient1@domain.tld","firstname":"Recipient Name1","surname":""}]""")
 
     assertThat(eventListener.contactReceived())
-      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("cc@domain.tld")))
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT), firstname = "Recipient Name1"))
   }
 
   private def getAttributeValue(mail: Mail): Optional[String] =
