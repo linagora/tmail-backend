@@ -5,6 +5,7 @@ import java.util.Optional
 
 import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
 import com.linagora.tmail.mailets.ContactsCollectionTest.{ATTRIBUTE_NAME, MAILET_CONFIG, RECIPIENT, SENDER}
+import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.james.core.MailAddress
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
@@ -153,8 +154,9 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    assertThat(getAttributeValue(mail))
-      .hasValue(s"[$RECIPIENT]")
+    val attributeValue = getAttributeValue(mail)
+    assertThat(attributeValue).isPresent
+    assertThatJson(attributeValue.get).isEqualTo(s"""{"userEmail":"$SENDER","emails":["$RECIPIENT"]}""")
   }
 
   @Test
@@ -192,8 +194,8 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    assertThat(getAttributeValue(mail))
-      .hasValue(s"[$RECIPIENT,cc@domain.tld]")
+    assertThatJson(getAttributeValue(mail).get)
+      .isEqualTo(s"""{"userEmail":"$SENDER","emails":["$RECIPIENT", "cc@domain.tld"]}""")
 
     assertThat(eventListener.contactReceived())
       .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("cc@domain.tld")))
@@ -217,8 +219,8 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    assertThat(getAttributeValue(mail))
-      .hasValue(s"[$RECIPIENT,bcc@domain.tld]")
+    assertThatJson(getAttributeValue(mail).get)
+      .isEqualTo(s"""{"userEmail":"$SENDER","emails":["$RECIPIENT", "bcc@domain.tld"]}""")
 
     assertThat(eventListener.contactReceived())
       .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("bcc@domain.tld")))
@@ -243,8 +245,8 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    assertThat(getAttributeValue(mail))
-      .hasValue(s"[$RECIPIENT,cc@domain.tld]")
+    assertThatJson(getAttributeValue(mail).get)
+      .isEqualTo(s"""{"userEmail":"$SENDER","emails":["$RECIPIENT", "cc@domain.tld"]}""")
 
     assertThat(eventListener.contactReceived())
       .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT), firstname = "RecipientName1"), ContactFields(new MailAddress("cc@domain.tld")))

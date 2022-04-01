@@ -1,6 +1,8 @@
 package com.linagora.tmail.mailets
 
-import com.google.common.collect.ImmutableSet
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
+import com.google.common.collect.{ImmutableList, ImmutableSet}
 import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
 import javax.inject.Inject
 import javax.mail.Message
@@ -10,14 +12,41 @@ import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.{EventBus, RegistrationKey}
 import org.apache.james.mime4j.util.MimeUtil
+import org.apache.james.transport.mailets.ContactExtractor.ExtractedContacts
 import org.apache.mailet.base.GenericMailet
 import org.apache.mailet.{Attribute, AttributeName, AttributeValue, Mail, MailetException}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
+
+/**
+ * <p><b>ContactsCollection</b> allows extracting the recipient's contact of a message
+ *  and dispatch ContactUserAddedEvent to eventBus, in order to index contact asynchronously.
+ *  This mailet also stores them as JSON in a specified message attribute.</p>
+ *
+ * <p>Here is the JSON format:</p>
+ * <pre><code>
+ * {
+ *   "userEmail" : "sender@james.org",
+ *   "emails" : [ "to@james.org", "cc@james.org" ]
+ * }
+ * </code></pre>
+ *
+ * <p>Sample configuration:</p>
+ *
+ * <pre><code>
+ * &lt;mailet match="All" class="ContactsCollection"&gt;
+ *   &lt;attribute&gt;ExtractedContacts&lt;/attribute&gt;
+ * &lt;/mailet&gt;
+ * </code></pre>
+ */
+
 class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
 
-  private var attributeName: AttributeName = _
   private val NO_REGISTRATION_KEYS: ImmutableSet[RegistrationKey] = ImmutableSet.of
+  private val OBJECT_MAPPER: ObjectMapper = new ObjectMapper().registerModule(new Jdk8Module)
+  private var attributeName: AttributeName = _
 
   override def init(): Unit =
     attributeName = Option(getInitParameter("attribute"))
@@ -35,12 +64,9 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
     Seq(Message.RecipientType.TO, Message.RecipientType.CC, Message.RecipientType.BCC)
       .flatMap(recipientType => Option(mail.getMessage.getHeader(recipientType.toString, ",")))
       .flatMap(header => InternetAddress.parseHeader(header, false).toSeq)
-      .map(_.toString)
-      .map(MimeUtil.unscrambleHeaderValue)
-      .map(new InternetAddress(_))
       .map(extractContactField)
 
-  private def extractContactField(internetAddress: InternetAddress): ContactFields  =
+  private def extractContactField(internetAddress: InternetAddress): ContactFields =
     ContactFields(new MailAddress(internetAddress), firstname = Option(internetAddress.getPersonal).getOrElse(""))
 
   private def dispatchEvents(contacts: Seq[ContactFields]): Unit =
@@ -54,7 +80,10 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
       .block()
 
   private def appendAttributeToMail(mail: Mail, contacts: Seq[ContactFields]): Unit =
-    mail.setAttribute(new Attribute(attributeName,
-      AttributeValue.of(contacts.map(_.address.toString).mkString("[", ",", "]"))))
+    mail.getMaybeSender.asOptional().toScala
+      .map(mailAddress => new ExtractedContacts(mailAddress.asString, ImmutableList.copyOf(contacts.map(_.address.asString()).asJava)))
+      .map(extractedContact => OBJECT_MAPPER.writeValueAsString(extractedContact))
+      .foreach(extractedContactJson => mail.setAttribute(new Attribute(attributeName, AttributeValue.of(extractedContactJson))))
+
 }
 
