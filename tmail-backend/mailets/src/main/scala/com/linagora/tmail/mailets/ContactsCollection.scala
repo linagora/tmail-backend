@@ -12,7 +12,6 @@ import org.apache.james.events.{EventBus, RegistrationKey}
 import org.apache.james.mime4j.util.MimeUtil
 import org.apache.mailet.base.GenericMailet
 import org.apache.mailet.{Attribute, AttributeName, AttributeValue, Mail, MailetException}
-import play.api.libs.json.{JsValue, Json, Writes}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
@@ -56,16 +55,6 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
 
   private def appendAttributeToMail(mail: Mail, contacts: Seq[ContactFields]): Unit =
     mail.setAttribute(new Attribute(attributeName,
-      AttributeValue.of(ContactFieldSerializer.serialize(contacts).toString())))
+      AttributeValue.of(contacts.map(_.address.toString).mkString("[", ",", "]"))))
 }
 
-object ContactFieldSerializer {
-
-  private implicit val contactFieldReads: Writes[ContactFields] = (contact: ContactFields) => Json.obj(
-    "address" -> contact.address.asString(),
-    "firstname" -> contact.firstname,
-    "surname" -> contact.surname
-  )
-
-  def serialize(contactFields: Seq[ContactFields]): JsValue = Json.toJson(contactFields)
-}
