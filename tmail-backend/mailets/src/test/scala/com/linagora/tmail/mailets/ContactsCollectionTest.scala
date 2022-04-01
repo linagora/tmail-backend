@@ -1,19 +1,25 @@
 package com.linagora.tmail.mailets
 
 import java.util
+import java.util.Optional
 
+import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
 import com.linagora.tmail.mailets.ContactsCollectionTest.{ATTRIBUTE_NAME, MAILET_CONFIG, RECIPIENT, SENDER}
+import org.apache.james.core.MailAddress
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.delivery.InVmEventDelivery
 import org.apache.james.events.{Event, EventBus, Group, InVMEventBus, MemoryEventDeadLetters, RetryBackoffConfiguration}
 import org.apache.james.metrics.tests.RecordingMetricFactory
 import org.apache.mailet.base.test.{FakeMail, FakeMailetConfig}
-import org.apache.mailet.{AttributeName, MailetConfig, MailetException}
+import org.apache.mailet.{AttributeName, Mail, MailetConfig, MailetException}
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
+
+import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 object ContactsCollectionTest {
   val ATTRIBUTE_NAME: AttributeName = AttributeName.of("AttributeValue1")
@@ -32,7 +38,11 @@ class TestEventListener(events: util.ArrayList[Event] = new util.ArrayList[Event
 
   override def getDefaultGroup: Group = new Group
 
-  def eventReceived(): util.ArrayList[Event] = events
+  def eventReceived(): util.List[Event] = events
+
+  def contactReceived(): util.List[ContactFields] = events.asScala
+    .map(_.asInstanceOf[TmailContactUserAddedEvent])
+    .map(_.contact).asJava
 }
 
 class ContactsCollectionTest {
@@ -69,7 +79,7 @@ class ContactsCollectionTest {
   }
 
   @Test
-  def serviceShouldDispatchEventWhenHasRecipients(): Unit = {
+  def serviceShouldDispatchEventWhenHasRecipient(): Unit = {
     mailet.init(MAILET_CONFIG)
 
     val mail: FakeMail = FakeMail.builder()
@@ -84,7 +94,46 @@ class ContactsCollectionTest {
       .build()
 
     mailet.service(mail)
-    assertThat(eventListener.eventReceived()).hasSize(1)
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)))
+  }
+
+  @Test
+  def serviceShouldDispatchSeveralEventWhenHasSeveralRecipient(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(RECIPIENT, "recipient2@domain.tld")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient(RECIPIENT)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("recipient2@domain.tld")))
+  }
+
+  @Test
+  def serviceShouldNotDispatchEventWhenMailHasNotRecipient(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .build()
+
+    mailet.service(mail)
+    assertThat(eventListener.eventReceived()).isEmpty()
   }
 
   @Test
@@ -104,11 +153,105 @@ class ContactsCollectionTest {
 
     mailet.service(mail)
 
-    val attribute = mail.getAttribute(ATTRIBUTE_NAME)
-
-    assertThat(attribute).isPresent
-    assertThat(attribute.get.getValue.value().asInstanceOf[String])
-      .isEqualTo(s"[$RECIPIENT]")
+    assertThat(getAttributeValue(mail))
+      .hasValue(s"[$RECIPIENT]")
   }
 
+  @Test
+  def serviceShouldNotAddAttributeWhenMailHasNotRecipient(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .build()
+
+    mailet.service(mail)
+    assertThat(getAttributeValue(mail)).isEmpty
+  }
+
+  @Test
+  def serviceShouldCollectContactsFromCCRecipient(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(RECIPIENT)
+        .addCcRecipient("cc@domain.tld")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient(RECIPIENT)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(getAttributeValue(mail))
+      .hasValue(s"[$RECIPIENT,cc@domain.tld]")
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("cc@domain.tld")))
+  }
+
+  @Test
+  def serviceShouldCollectContactsFromBCCRecipient(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(RECIPIENT)
+        .addBccRecipient("bcc@domain.tld")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient(RECIPIENT)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(getAttributeValue(mail))
+      .hasValue(s"[$RECIPIENT,bcc@domain.tld]")
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("bcc@domain.tld")))
+  }
+
+
+  @Test
+  def serviceShouldPreserveRecipientsEmailAddress(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(s"RecipientName1 <$RECIPIENT>")
+        .addCcRecipient("cc@domain.tld")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient(RECIPIENT)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(getAttributeValue(mail))
+      .hasValue(s"[$RECIPIENT,cc@domain.tld]")
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress("cc@domain.tld")))
+  }
+
+  private def getAttributeValue(mail: Mail): Optional[String] =
+    mail.getAttribute(ATTRIBUTE_NAME)
+      .toScala.map(_.getValue.value().asInstanceOf[String])
+      .toJava
 }

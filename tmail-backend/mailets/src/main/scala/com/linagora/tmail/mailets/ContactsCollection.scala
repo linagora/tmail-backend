@@ -20,11 +20,10 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
   private var attributeName: AttributeName = _
   private val NO_REGISTRATION_KEYS: ImmutableSet[RegistrationKey] = ImmutableSet.of
 
-  override def init(): Unit = {
+  override def init(): Unit =
     attributeName = Option(getInitParameter("attribute"))
       .map(AttributeName.of)
       .getOrElse(throw new MailetException("No value for `attribute` parameter was provided."))
-  }
 
   override def service(mail: Mail): Unit =
     if (CollectionUtils.isNotEmpty(mail.getRecipients)) {
@@ -40,8 +39,10 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
       .map(_.toString)
       .map(MimeUtil.unscrambleHeaderValue)
       .map(new InternetAddress(_))
-      .map(new MailAddress(_))
-      .map(ContactFields(_))
+      .map(extractContactField)
+
+  private def extractContactField(internetAddress: InternetAddress): ContactFields  =
+    ContactFields(new MailAddress(internetAddress))
 
   private def dispatchEvents(contacts: Seq[ContactFields]): Unit =
     SFlux.fromIterable(contacts)
