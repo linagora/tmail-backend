@@ -2,7 +2,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine
+import com.linagora.tmail.james.jmap.contact.{EmailAddressContact, EmailAddressContactSearchEngine}
 import com.linagora.tmail.james.jmap.json.ContactSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT
 import com.linagora.tmail.james.jmap.model.{Contact, ContactAutocompleteRequest, ContactAutocompleteResponse, ContactFirstname, ContactId, ContactSurname}
@@ -87,6 +87,7 @@ class ContactAutocompleteMethod @Inject()(serializer: ContactSerializer,
   private def executeAutocomplete(session: MailboxSession, request: ContactAutocompleteRequest, limit: Limit.Limit): SMono[ContactAutocompleteResponse] =
     SFlux.fromPublisher(emailAddressContactSearchEngine.autoComplete(
         AccountId.fromUsername(session.getUser), request.filter.text.value))
+      .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
       .take(limit.value)
       .map(contact => Contact(ContactId(contact.id),
         contact.fields.address,

@@ -638,7 +638,7 @@ trait LinagoraContactAutocompleteMethodContract {
   def limitShouldBeTakenIntoAccount(server: GuiceJamesServer): Unit = {
     val contactCreatedA = server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(bobAccountId, contactA)
-    val contactCreatedB = server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
+    server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(DOMAIN, contactB)
 
     val request =
@@ -677,10 +677,10 @@ trait LinagoraContactAutocompleteMethodContract {
                     |		  {
                     |			  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
                     |			  "list": [{
-                    |         "id": "${contactCreatedB.id.toString}",
-                    |				  "firstname": "$firstnameB",
-                    |				  "surname": "$surnameB",
-                    |				  "emailAddress": "$mailAddressB"
+                    |         "id": "${contactCreatedA.id.toString}",
+                    |				  "firstname": "$firstnameA",
+                    |				  "surname": "$surnameA",
+                    |				  "emailAddress": "$mailAddressA"
                     |			  }]
                     |		  },
                     |		  "c1"
