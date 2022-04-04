@@ -71,5 +71,6 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       maybeDomain.map(domain => SFlux.fromIterable(domainList.get(domain).asScala)).getOrElse(SFlux.empty),
       SFlux.fromIterable(emailList.get(accountId).asScala)
     ).filter(_.fields.contains(part))
+      .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
   }
 }
