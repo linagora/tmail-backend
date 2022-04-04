@@ -50,7 +50,7 @@ trait LinagoraContactAutocompleteMethodContract {
   def contactAutocompleteShouldFailWhenWrongAccountId(): Unit = {
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -116,7 +116,7 @@ trait LinagoraContactAutocompleteMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["error", {
-         |      "description":"Missing capability(ies): com:linagora:params:jmap:autocomplete","type":"unknownMethod"
+         |      "description":"Missing capability(ies): com:linagora:params:jmap:contact:autocomplete","type":"unknownMethod"
          |    }, "c1"]
          |  ]
          |}""".stripMargin)
@@ -129,7 +129,7 @@ trait LinagoraContactAutocompleteMethodContract {
 
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -179,7 +179,7 @@ trait LinagoraContactAutocompleteMethodContract {
   def contactAutocompleteShouldReturnEmptyListWhenNoContactFound(): Unit = {
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -229,7 +229,7 @@ trait LinagoraContactAutocompleteMethodContract {
 
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -290,7 +290,7 @@ trait LinagoraContactAutocompleteMethodContract {
 
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -345,7 +345,7 @@ trait LinagoraContactAutocompleteMethodContract {
 
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -400,7 +400,7 @@ trait LinagoraContactAutocompleteMethodContract {
 
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -456,7 +456,7 @@ trait LinagoraContactAutocompleteMethodContract {
   def filterTextShouldBeAString(): Unit = {
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -501,7 +501,7 @@ trait LinagoraContactAutocompleteMethodContract {
   def filterTextShouldBeCompulsory(): Unit = {
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -546,7 +546,7 @@ trait LinagoraContactAutocompleteMethodContract {
   def filterShouldBeCompulsory(): Unit = {
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -590,7 +590,7 @@ trait LinagoraContactAutocompleteMethodContract {
   def shouldReturnInvalidArgumentsWhenInvalidFilterCondition(): Unit = {
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
@@ -643,7 +643,7 @@ trait LinagoraContactAutocompleteMethodContract {
 
     val request =
       s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:autocomplete"],
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
