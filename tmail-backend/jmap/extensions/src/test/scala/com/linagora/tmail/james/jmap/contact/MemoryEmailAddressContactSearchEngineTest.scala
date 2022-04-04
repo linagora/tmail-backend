@@ -11,4 +11,7 @@ class MemoryEmailAddressContactSearchEngineTest extends EmailAddressContactSearc
   def beforeEach(): Unit = {
     inMemoryEmailAddressContactSearchEngine = new InMemoryEmailAddressContactSearchEngine()
   }
+
+  override def awaitDocumentsIndexed(documentCount: Long): Unit = {
+  }
 }
