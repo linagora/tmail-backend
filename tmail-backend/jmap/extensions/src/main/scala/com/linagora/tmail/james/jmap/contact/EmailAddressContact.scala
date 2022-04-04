@@ -1,16 +1,16 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.google.common.collect.{HashMultimap, Multimap, Multimaps}
-import com.google.inject.{AbstractModule, Scopes}
-import org.apache.james.core.{Domain, MailAddress, Username}
-import org.apache.james.jmap.api.model.AccountId
-import org.reactivestreams.Publisher
-import reactor.core.scala.publisher.{SFlux, SMono}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
+import com.google.common.collect.{HashMultimap, Multimap, Multimaps}
+import com.google.inject.{AbstractModule, Scopes}
+import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.events.Event
 import org.apache.james.events.Event.EventId
+import org.apache.james.jmap.api.model.AccountId
+import org.reactivestreams.Publisher
+import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.jdk.OptionConverters._
@@ -34,11 +34,6 @@ case class EmailAddressContact(id: UUID, fields: ContactFields)
 case class ContactFields(address: MailAddress, firstname: String = "", surname: String = "") {
   def contains(part: String): Boolean =
     address.asString().contains(part) || firstname.contains(part) || surname.contains(part)
-}
-
-case class AccountEmailContact(accountId: String, id: UUID, address: MailAddress) {
-  def this(accountId: AccountId, emailAddressContact: EmailAddressContact) =
-    this(accountId.getIdentifier, emailAddressContact.id, emailAddressContact.fields.address)
 }
 
 trait EmailAddressContactSearchEngine {
@@ -83,8 +78,12 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     val maybeDomain: Option[Domain] = Username.of(accountId.getIdentifier).getDomainPart.toScala
     SFlux.concat(
       maybeDomain.map(domain => SFlux.fromIterable(domainList.get(domain).asScala)).getOrElse(SFlux.empty),
-      SFlux.fromIterable(emailList.get(accountId).asScala)
-    ).filter(_.fields.contains(part))
+      SFlux.fromIterable(emailList.get(accountId).asScala))
+      .filter(lowerCaseContact(_).fields.contains(part.toLowerCase))
       .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
   }
+
+  private def lowerCaseContact(contact: EmailAddressContact): EmailAddressContact =
+    EmailAddressContact(contact.id, ContactFields(address = new MailAddress(contact.fields.address.asString().toLowerCase),
+      firstname = contact.fields.firstname.toLowerCase, surname = contact.fields.surname.toLowerCase))
 }

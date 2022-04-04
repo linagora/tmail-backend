@@ -1,9 +1,10 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, otherContactEmptyNameFields, otherContactFields}
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -27,18 +28,25 @@ object EmailAddressContactSearchEngineContract {
 
   private val otherMailAddress: MailAddress = new MailAddress("nobitu@other.com")
   private val otherFirstname: String = "Johnny"
-  private val otherSurname: String = "Ariepent"
+  private val otherSurname: String = "Carariepent"
   private val otherContactEmptyNameFields: ContactFields = ContactFields(otherMailAddress)
   private val otherContactFields: ContactFields = ContactFields(otherMailAddress, otherFirstname, otherSurname)
+
+  private val otherMailAddressUpperCase: MailAddress = new MailAddress("JOHNDOE@OTHER.COM")
+  private val otherContactFieldsWithUppercaseEmail: ContactFields = ContactFields(otherMailAddressUpperCase, otherFirstname, otherSurname)
 }
 
 trait EmailAddressContactSearchEngineContract {
   def testee(): EmailAddressContactSearchEngine
 
+  def awaitDocumentsIndexed(documentCount: Long): Unit
+
   @Test
   def indexShouldReturnMatched(): Unit = {
     SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
     SMono(testee().index(accountId, contactEmptyNameFieldsB)).block()
+
+    awaitDocumentsIndexed(2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactEmptyNameFieldsA, contactEmptyNameFieldsB)
@@ -48,6 +56,8 @@ trait EmailAddressContactSearchEngineContract {
   def indexShouldReturnNoMatch(): Unit = {
     SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
     SMono(testee().index(accountId, contactEmptyNameFieldsB)).block()
+
+    awaitDocumentsIndexed(2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -63,6 +73,8 @@ trait EmailAddressContactSearchEngineContract {
   def indexWithDifferentAccount(): Unit = {
     SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
 
+    awaitDocumentsIndexed(1)
+
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountIdB, "bit")).asJava().collectList().block())
       .isEmpty()
   }
@@ -72,6 +84,8 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
+    awaitDocumentsIndexed(2)
+
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsA, contactFieldsB)
   }
@@ -80,6 +94,8 @@ trait EmailAddressContactSearchEngineContract {
   def indexDomainShouldReturnNoMatch(): Unit = {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -91,6 +107,8 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactEmptyNameFields)).block()
 
+    awaitDocumentsIndexed(3)
+
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsA, contactFieldsB, otherContactEmptyNameFields)
   }
@@ -100,7 +118,9 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ari")).asJava().map(_.fields).collectList().block())
+    awaitDocumentsIndexed(2)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsB)
   }
 
@@ -109,7 +129,9 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+    awaitDocumentsIndexed(2)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Carpent")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsA, contactFieldsB)
   }
 
@@ -117,6 +139,8 @@ trait EmailAddressContactSearchEngineContract {
   def indexShouldReturnNoNameMatch(): Unit = {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -127,7 +151,9 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ari")).asJava().map(_.fields).collectList().block())
+    awaitDocumentsIndexed(2)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsB)
   }
 
@@ -136,7 +162,9 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+    awaitDocumentsIndexed(2)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Carpent")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsA, contactFieldsB)
   }
 
@@ -144,6 +172,8 @@ trait EmailAddressContactSearchEngineContract {
   def indexDomainShouldReturnNoNameMatch(): Unit = {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -155,7 +185,9 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ohn")).asJava().map(_.fields).collectList().block())
+    awaitDocumentsIndexed(3)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "John")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsA, otherContactFields)
   }
 
@@ -165,7 +197,9 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+    awaitDocumentsIndexed(3)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
   }
 
@@ -175,7 +209,51 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "rie")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsB, otherContactFields)
+    awaitDocumentsIndexed(3)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+  }
+
+  @Test
+  def firstnameAndSurnameAutoCompleteShouldSupportBothLowerCaseAndUpperCase(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+    SMono(testee().index(accountId, otherContactFields)).block()
+
+    awaitDocumentsIndexed(3)
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "CAR")).asJava().map(_.fields).collectList().block())
+        .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+      softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "car")).asJava().map(_.fields).collectList().block())
+        .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+    })
+  }
+
+  @Test
+  def emailAutoCompleteShouldSupportBothLowerCaseAndUpperCase(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(accountId, otherContactFields)).block()
+    SMono(testee().index(accountId, otherContactFieldsWithUppercaseEmail)).block()
+
+    awaitDocumentsIndexed(3)
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "nobita@linagora.com")).asJava().map(_.fields).collectList().block())
+        .containsOnly(contactFieldsA)
+      softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "NOBITA@LINAGORA.COM")).asJava().map(_.fields).collectList().block())
+        .containsOnly(contactFieldsA)
+
+      softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "nobitu@other.com")).asJava().map(_.fields).collectList().block())
+        .containsOnly(otherContactFields)
+      softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "NOBITU@OTHER.COM")).asJava().map(_.fields).collectList().block())
+        .containsOnly(otherContactFields)
+
+      softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "JOHNDOE@OTHER.COM")).asJava().map(_.fields).collectList().block())
+        .containsOnly(otherContactFieldsWithUppercaseEmail)
+      softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "johndoe@other.com")).asJava().map(_.fields).collectList().block())
+        .containsOnly(otherContactFieldsWithUppercaseEmail)
+    })
   }
 }

@@ -1,22 +1,3 @@
-/****************************************************************
- * Licensed to the Apache Software Foundation (ASF) under one   *
- * or more contributor license agreements.  See the NOTICE file *
- * distributed with this work for additional information        *
- * regarding copyright ownership.  The ASF licenses this file   *
- * to you under the Apache License, Version 2.0 (the            *
- * "License"); you may not use this file except in compliance   *
- * with the License.  You may obtain a copy of the License at   *
- *                                                              *
- *   http://www.apache.org/licenses/LICENSE-2.0                 *
- *                                                              *
- * Unless required by applicable law or agreed to in writing,   *
- * software distributed under the License is distributed on an  *
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
- * KIND, either express or implied.  See the License for the    *
- * specific language governing permissions and limitations      *
- * under the License.                                           *
- ****************************************************************/
-
 package com.linagora.tmail.james.jmap;
 
 import java.util.Objects;
@@ -30,36 +11,76 @@ import org.apache.james.backends.es.v7.WriteAliasName;
 public class ElasticSearchContactConfiguration {
 
     public static class Builder {
-        private Optional<IndexName> indexName;
-        private Optional<ReadAliasName> readAliasName;
-        private Optional<WriteAliasName> writeAliasName;
+        private Optional<IndexName> userContactIndexName;
+        private Optional<IndexName> domainContactIndexName;
+        private Optional<ReadAliasName> userContactReadAliasName;
+        private Optional<WriteAliasName> userContactWriteAliasName;
+        private Optional<ReadAliasName> domainContactReadAliasName;
+        private Optional<WriteAliasName> domainContactWriteAliasName;
+        private Optional<Integer> maxNgramDiff;
+        private Optional<Integer> minNgram;
 
         Builder() {
-            indexName = Optional.empty();
-            readAliasName = Optional.empty();
-            writeAliasName = Optional.empty();
+            userContactIndexName = Optional.empty();
+            domainContactIndexName = Optional.empty();
+            userContactReadAliasName = Optional.empty();
+            userContactWriteAliasName = Optional.empty();
+            domainContactReadAliasName = Optional.empty();
+            domainContactWriteAliasName = Optional.empty();
+            maxNgramDiff = Optional.empty();
+            minNgram = Optional.empty();
         }
 
-        Builder indexName(Optional<IndexName> indexName) {
-            this.indexName = indexName;
+        Builder userContactIndexName(Optional<IndexName> userContactIndexName) {
+            this.userContactIndexName = userContactIndexName;
             return this;
         }
 
-        Builder readAliasName(Optional<ReadAliasName> readAliasName) {
-            this.readAliasName = readAliasName;
+        Builder domainContactIndexName(Optional<IndexName> domainContactIndexName) {
+            this.domainContactIndexName = domainContactIndexName;
             return this;
         }
 
-        Builder writeAliasName(Optional<WriteAliasName> writeAliasName) {
-            this.writeAliasName = writeAliasName;
+        Builder userContactReadAliasName(Optional<ReadAliasName> userContactReadAliasName) {
+            this.userContactReadAliasName = userContactReadAliasName;
+            return this;
+        }
+
+        Builder userContactWriteAliasName(Optional<WriteAliasName> userContactWriteAliasName) {
+            this.userContactWriteAliasName = userContactWriteAliasName;
+            return this;
+        }
+
+        Builder domainContactReadAliasName(Optional<ReadAliasName> domainContactReadAliasName) {
+            this.domainContactReadAliasName = domainContactReadAliasName;
+            return this;
+        }
+
+        Builder domainContactWriteAliasName(Optional<WriteAliasName> domainContactWriteAliasName) {
+            this.domainContactWriteAliasName = domainContactWriteAliasName;
+            return this;
+        }
+
+        Builder maxNgramDiff(Optional<Integer> maxNgramDiff) {
+            this.maxNgramDiff = maxNgramDiff;
+            return this;
+        }
+
+        Builder minNgram(Optional<Integer> minNgram) {
+            this.minNgram = minNgram;
             return this;
         }
 
         public ElasticSearchContactConfiguration build() {
             return new ElasticSearchContactConfiguration(
-                indexName.orElse(INDEX_NAME),
-                readAliasName.orElse(ALIAS_READ_NAME),
-                writeAliasName.orElse(ALIAS_WRITE_NAME));
+                userContactIndexName.orElse(DEFAULT_INDEX_USER_CONTACT_NAME),
+                domainContactIndexName.orElse(DEFAULT_INDEX_DOMAIN_CONTACT_NAME),
+                userContactReadAliasName.orElse(DEFAULT_ALIAS_READ_USER_CONTACT_NAME),
+                userContactWriteAliasName.orElse(DEFAULT_ALIAS_WRITE_USER_CONTACT_NAME),
+                domainContactReadAliasName.orElse(DEFAULT_ALIAS_READ_DOMAIN_CONTACT_NAME),
+                domainContactWriteAliasName.orElse(DEFAULT_ALIAS_WRITE_DOMAIN_CONTACT_NAME),
+                maxNgramDiff.orElse(DEFAULT_MAX_NGRAM_DIFF),
+                minNgram.orElse(DEFAULT_MIN_NGRAM));
         }
     }
 
@@ -67,60 +88,129 @@ public class ElasticSearchContactConfiguration {
         return new Builder();
     }
 
-    private static final String ELASTICSEARCH_INDEX_NAME = "elasticsearch.index.contact.name";
-    private static final String ELASTICSEARCH_ALIAS_READ_NAME = "elasticsearch.alias.read.contact.name";
-    private static final String ELASTICSEARCH_ALIAS_WRITE_NAME = "elasticsearch.alias.write.contact.name";
+    private static final String ELASTICSEARCH_INDEX_USER_CONTACT_NAME = "elasticsearch.index.contact.user.name";
+    private static final String ELASTICSEARCH_INDEX_DOMAIN_CONTACT_NAME = "elasticsearch.index.contact.domain.name";
+    private static final String ELASTICSEARCH_ALIAS_READ_USER_CONTACT_NAME = "elasticsearch.alias.read.contact.user.name";
+    private static final String ELASTICSEARCH_ALIAS_WRITE_USER_CONTACT_NAME = "elasticsearch.alias.write.contact.user.name";
+    private static final String ELASTICSEARCH_ALIAS_READ_DOMAIN_CONTACT_NAME = "elasticsearch.alias.read.contact.domain.name";
+    private static final String ELASTICSEARCH_ALIAS_WRITE_DOMAIN_CONTACT_NAME = "elasticsearch.alias.write.contact.domain.name";
+    private static final String ELASTICSEARCH_INDEX_CONTACT_MAX_NGRAM_DIFF = "elasticsearch.index.contact.max.ngram.diff";
+    private static final String ELASTICSEARCH_INDEX_CONTACT_MIN_NGRAM = "elasticsearch.index.contact.min.ngram";
 
-    public static final IndexName INDEX_NAME = new IndexName("email_contact");
-    public static final WriteAliasName ALIAS_WRITE_NAME = new WriteAliasName("email_contact_write_alias");
-    public static final ReadAliasName ALIAS_READ_NAME = new ReadAliasName("email_contact_read_alias");
+    public static final IndexName DEFAULT_INDEX_USER_CONTACT_NAME = new IndexName("user_contact");
+    public static final IndexName DEFAULT_INDEX_DOMAIN_CONTACT_NAME = new IndexName("domain_contact");
+    public static final WriteAliasName DEFAULT_ALIAS_WRITE_USER_CONTACT_NAME = new WriteAliasName("user_contact_write_alias");
+    public static final ReadAliasName DEFAULT_ALIAS_READ_USER_CONTACT_NAME = new ReadAliasName("user_contact_read_alias");
+    public static final WriteAliasName DEFAULT_ALIAS_WRITE_DOMAIN_CONTACT_NAME = new WriteAliasName("domain_contact_write_alias");
+    public static final ReadAliasName DEFAULT_ALIAS_READ_DOMAIN_CONTACT_NAME = new ReadAliasName("domain_contact_read_alias");
+    public static final Integer DEFAULT_MAX_NGRAM_DIFF = 27;
+    public static final Integer DEFAULT_MIN_NGRAM = 3;
 
     public static final ElasticSearchContactConfiguration DEFAULT_CONFIGURATION = builder().build();
 
     public static ElasticSearchContactConfiguration fromProperties(Configuration configuration) {
         return builder()
-            .indexName(computeContactIndexName(configuration))
-            .readAliasName(computeContactReadAlias(configuration))
-            .writeAliasName(computeContactWriteAlias(configuration))
+            .userContactIndexName(computeUserContactIndexName(configuration))
+            .domainContactIndexName(computeDomainContactIndexName(configuration))
+            .userContactReadAliasName(computeUserContactReadAlias(configuration))
+            .userContactWriteAliasName(computeUserContactWriteAlias(configuration))
+            .domainContactReadAliasName(computeDomainContactReadAlias(configuration))
+            .domainContactWriteAliasName(computeDomainContactWriteAlias(configuration))
+            .maxNgramDiff(computeMaxNgramDiff(configuration))
+            .minNgram(computeMinNgram(configuration))
             .build();
     }
 
-    static Optional<IndexName> computeContactIndexName(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_INDEX_NAME))
+    static Optional<IndexName> computeUserContactIndexName(Configuration configuration) {
+        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_INDEX_USER_CONTACT_NAME))
                 .map(IndexName::new);
     }
 
-    static Optional<WriteAliasName> computeContactWriteAlias(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_WRITE_NAME))
+    static Optional<IndexName> computeDomainContactIndexName(Configuration configuration) {
+        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_INDEX_DOMAIN_CONTACT_NAME))
+            .map(IndexName::new);
+    }
+
+    static Optional<WriteAliasName> computeUserContactWriteAlias(Configuration configuration) {
+        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_WRITE_USER_CONTACT_NAME))
                 .map(WriteAliasName::new);
     }
 
-    static Optional<ReadAliasName> computeContactReadAlias(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_READ_NAME))
+    static Optional<ReadAliasName> computeUserContactReadAlias(Configuration configuration) {
+        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_READ_USER_CONTACT_NAME))
                 .map(ReadAliasName::new);
     }
 
-    private final IndexName indexName;
-    private final ReadAliasName readAliasName;
-    private final WriteAliasName writeAliasName;
-
-    private ElasticSearchContactConfiguration(IndexName indexName, ReadAliasName readAliasName,
-                                              WriteAliasName writeAliasName) {
-        this.indexName = indexName;
-        this.readAliasName = readAliasName;
-        this.writeAliasName = writeAliasName;
+    static Optional<WriteAliasName> computeDomainContactWriteAlias(Configuration configuration) {
+        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_WRITE_DOMAIN_CONTACT_NAME))
+            .map(WriteAliasName::new);
     }
 
-    public IndexName getIndexName() {
-        return indexName;
+    static Optional<ReadAliasName> computeDomainContactReadAlias(Configuration configuration) {
+        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_READ_DOMAIN_CONTACT_NAME))
+            .map(ReadAliasName::new);
     }
 
-    public ReadAliasName getReadAliasName() {
-        return readAliasName;
+    static Optional<Integer> computeMaxNgramDiff(Configuration configuration) {
+        return Optional.ofNullable(configuration.getInteger(ELASTICSEARCH_INDEX_CONTACT_MAX_NGRAM_DIFF, null));
     }
 
-    public WriteAliasName getWriteAliasName() {
-        return writeAliasName;
+    static Optional<Integer> computeMinNgram(Configuration configuration) {
+        return Optional.ofNullable(configuration.getInteger(ELASTICSEARCH_INDEX_CONTACT_MIN_NGRAM, null));
+    }
+
+    private final IndexName userContactIndexName;
+    private final IndexName domainContactIndexName;
+    private final ReadAliasName userContactReadAliasName;
+    private final WriteAliasName userContactWriteAliasName;
+    private final ReadAliasName domainContactReadAliasName;
+    private final WriteAliasName domainContactWriteAliasName;
+    private final int maxNgramDiff;
+    private final int minNgram;
+
+    private ElasticSearchContactConfiguration(IndexName userContactIndexName, IndexName domainContactIndexName, ReadAliasName userContactReadAliasName,
+                                              WriteAliasName userContactWriteAliasName, ReadAliasName domainContactReadAliasName, WriteAliasName domainContactWriteAliasName,
+                                              int maxNgramDiff, int minNgram) {
+        this.userContactIndexName = userContactIndexName;
+        this.domainContactIndexName = domainContactIndexName;
+        this.userContactReadAliasName = userContactReadAliasName;
+        this.userContactWriteAliasName = userContactWriteAliasName;
+        this.domainContactReadAliasName = domainContactReadAliasName;
+        this.domainContactWriteAliasName = domainContactWriteAliasName;
+        this.maxNgramDiff = maxNgramDiff;
+        this.minNgram = minNgram;
+    }
+
+    public IndexName getUserContactIndexName() {
+        return userContactIndexName;
+    }
+
+    public IndexName getDomainContactIndexName() {
+        return domainContactIndexName;
+    }
+
+    public ReadAliasName getUserContactReadAliasName() {
+        return userContactReadAliasName;
+    }
+
+    public WriteAliasName getUserContactWriteAliasName() {
+        return userContactWriteAliasName;
+    }
+
+    public ReadAliasName getDomainContactReadAliasName() {
+        return domainContactReadAliasName;
+    }
+
+    public WriteAliasName getDomainContactWriteAliasName() {
+        return domainContactWriteAliasName;
+    }
+
+    public int getMaxNgramDiff() {
+        return maxNgramDiff;
+    }
+
+    public int getMinNgram() {
+        return minNgram;
     }
 
     @Override
@@ -128,15 +218,21 @@ public class ElasticSearchContactConfiguration {
         if (o instanceof ElasticSearchContactConfiguration) {
             ElasticSearchContactConfiguration that = (ElasticSearchContactConfiguration) o;
 
-            return Objects.equals(this.indexName, that.indexName)
-                && Objects.equals(this.readAliasName, that.readAliasName)
-                && Objects.equals(this.writeAliasName, that.writeAliasName);
+            return Objects.equals(this.userContactIndexName, that.userContactIndexName)
+                && Objects.equals(this.domainContactIndexName, that.domainContactIndexName)
+                && Objects.equals(this.userContactReadAliasName, that.userContactReadAliasName)
+                && Objects.equals(this.userContactWriteAliasName, that.userContactWriteAliasName)
+                && Objects.equals(this.domainContactReadAliasName, that.domainContactReadAliasName)
+                && Objects.equals(this.domainContactWriteAliasName, that.domainContactWriteAliasName)
+                && Objects.equals(this.maxNgramDiff, that.maxNgramDiff)
+                && Objects.equals(this.minNgram, that.minNgram);
         }
         return false;
     }
 
     @Override
     public final int hashCode() {
-        return Objects.hash(indexName, readAliasName, writeAliasName, writeAliasName);
+        return Objects.hash(userContactIndexName, domainContactIndexName, userContactReadAliasName, userContactWriteAliasName,
+            domainContactReadAliasName, domainContactWriteAliasName, maxNgramDiff, minNgram);
     }
 }
