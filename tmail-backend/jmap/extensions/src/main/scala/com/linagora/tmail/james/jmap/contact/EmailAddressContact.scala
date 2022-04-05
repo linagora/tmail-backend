@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap.contact
 
 import com.google.common.collect.{HashMultimap, Multimap, Multimaps}
+import com.google.inject.{AbstractModule, Scopes}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
@@ -13,6 +14,14 @@ import org.apache.james.events.Event.EventId
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.jdk.OptionConverters._
+
+case class InMemoryEmailAddressContactSearchEngineModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[InMemoryEmailAddressContactSearchEngine]).in(Scopes.SINGLETON)
+
+    bind(classOf[EmailAddressContactSearchEngine]).to(classOf[InMemoryEmailAddressContactSearchEngine])
+  }
+}
 
 object EmailAddressContact {
   private def computeId(mailAddress: MailAddress): UUID = UUID.nameUUIDFromBytes(mailAddress.asString().getBytes(StandardCharsets.UTF_8))
@@ -76,5 +85,6 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       maybeDomain.map(domain => SFlux.fromIterable(domainList.get(domain).asScala)).getOrElse(SFlux.empty),
       SFlux.fromIterable(emailList.get(accountId).asScala)
     ).filter(_.fields.contains(part))
+      .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
   }
 }
