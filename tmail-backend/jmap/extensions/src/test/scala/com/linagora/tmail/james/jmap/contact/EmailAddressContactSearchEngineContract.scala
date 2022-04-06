@@ -1,9 +1,9 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail}
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -255,5 +255,59 @@ trait EmailAddressContactSearchEngineContract {
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "johndoe@other.com")).asJava().map(_.fields).collectList().block())
         .containsOnly(otherContactFieldsWithUppercaseEmail)
     })
+  }
+
+  @Test
+  def deleteShouldDeletePersonalContact(): Unit = {
+    SMono(testee().index(accountId, otherContactFields)).block()
+
+    SMono(testee().delete(accountId, otherMailAddress)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+      .isEmpty()
+  }
+
+  @Test
+  def deleteShouldDeleteDomainContact(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+
+    SMono(testee().delete(domain, mailAddressA)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+      .isEmpty()
+  }
+
+  @Test
+  def deleteShouldNotDeleteOtherPersonalContact(): Unit = {
+    SMono(testee().index(accountId, contactFieldsA)).block()
+    SMono(testee().index(accountId, otherContactFields)).block()
+
+    SMono(testee().delete(accountId, otherMailAddress)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA)
+  }
+
+  @Test
+  def deleteShouldNotDeleteOtherDomainContact(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+
+    SMono(testee().delete(domain, mailAddressA)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "pen")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsB)
+  }
+
+  @Test
+  def deletePersonalContactShouldBeIdempotent(): Unit = {
+    assertThatCode(() => SMono(testee().delete(accountId, otherMailAddress)).block())
+      .doesNotThrowAnyException()
+  }
+
+  @Test
+  def deleteDomainContactShouldBeIdempotent(): Unit = {
+    assertThatCode(() => SMono(testee().delete(domain, mailAddressA)).block())
+      .doesNotThrowAnyException()
   }
 }

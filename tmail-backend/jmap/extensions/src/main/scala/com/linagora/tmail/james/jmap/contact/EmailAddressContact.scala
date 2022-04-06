@@ -41,6 +41,10 @@ trait EmailAddressContactSearchEngine {
 
   def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact]
 
+  def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void]
+
+  def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void]
+
   def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
 }
 
@@ -73,6 +77,26 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
   private def index(domain: Domain, addressContact: EmailAddressContact): Publisher[EmailAddressContact] =
     SMono.fromCallable(() => domainList.put(domain, addressContact))
       .`then`(SMono.just(addressContact))
+
+  override def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void] =
+    getContact(accountId, mailAddress)
+      .map(contact => emailList.remove(accountId, contact))
+      .`then`()
+
+  private def getContact(accountId: AccountId, mailAddress: MailAddress): SMono[EmailAddressContact] =
+    SFlux.fromIterable(emailList.get(accountId).asScala)
+      .filter(_.fields.address.equals(mailAddress))
+      .singleOrEmpty()
+
+  override def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void] =
+    getDomainContact(domain, mailAddress)
+      .map(contact => domainList.remove(domain, contact))
+      .`then`()
+
+  private def getDomainContact(domain: Domain, mailAddress: MailAddress): SMono[EmailAddressContact] =
+    SFlux.fromIterable(domainList.get(domain).asScala)
+      .filter(_.fields.address.equals(mailAddress))
+      .singleOrEmpty()
 
   override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] = {
     val maybeDomain: Option[Domain] = Username.of(accountId.getIdentifier).getDomainPart.toScala
