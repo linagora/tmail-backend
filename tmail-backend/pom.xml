@@ -28,6 +28,7 @@
 
         <module>deployment-tests</module>
 
+        <module>guice/distributed</module>
         <module>guice/elasticsearch-v6</module>
         <module>guice/encrypted-mailbox</module>
         <module>guice/protocols/jmap</module>
@@ -131,6 +132,16 @@
                 <artifactId>jmap-extensions</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jmap-extensions-es-v7</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-guice-distributed</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>

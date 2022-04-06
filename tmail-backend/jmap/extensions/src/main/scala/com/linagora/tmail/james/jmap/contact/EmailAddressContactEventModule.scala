@@ -1,14 +1,31 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.google.inject.AbstractModule
 import com.google.inject.multibindings.ProvidesIntoSet
 import com.google.inject.name.Named
-import org.apache.james.events.EventListener.ReactiveGroupEventListener
+import com.google.inject.{AbstractModule, Provides, Singleton}
+import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys
+import org.apache.james.events.EventBus
+import org.apache.james.lifecycle.api.Startable
+import org.apache.james.utils.{InitializationOperation, InitilizationOperationBuilder}
 
-class EmailAddressContactEventModule extends AbstractModule {
+class MemoryEmailAddressContactModule extends AbstractModule {
 
-  @Named("TMAIL_GROUP_EVENT_LISTENER")
+  override def configure(): Unit = {
+    install(new InMemoryEmailAddressContactSearchEngineModule)
+  }
+
   @ProvidesIntoSet
-  def tmailGroupEventListener(tmailContactListener: EmailAddressContactListener): ReactiveGroupEventListener = tmailContactListener
+  def registerListener(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) eventBus: EventBus,
+                       emailAddressContactListener: EmailAddressContactListener): InitializationOperation = {
+    InitilizationOperationBuilder.forClass(classOf[EmailAddressContactEventLoader])
+      .init(() => eventBus.register(emailAddressContactListener))
+  }
+
+  @Provides
+  @Singleton
+  @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
+  def provideInVMEventBus(eventBus: EventBus): EventBus = eventBus
 
 }
+
+class EmailAddressContactEventLoader extends Startable

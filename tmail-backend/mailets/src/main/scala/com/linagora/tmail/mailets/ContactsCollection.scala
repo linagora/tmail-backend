@@ -3,8 +3,9 @@ package com.linagora.tmail.mailets
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.google.common.collect.{ImmutableList, ImmutableSet}
+import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys
 import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
-import javax.inject.Inject
+import javax.inject.{Inject, Named}
 import javax.mail.Message
 import javax.mail.internet.InternetAddress
 import org.apache.commons.collections.CollectionUtils
@@ -42,7 +43,7 @@ import scala.jdk.OptionConverters._
  * </code></pre>
  */
 
-class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
+class ContactsCollection @Inject()(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) eventBus: EventBus) extends GenericMailet {
 
   private val NO_REGISTRATION_KEYS: ImmutableSet[RegistrationKey] = ImmutableSet.of
   private val OBJECT_MAPPER: ObjectMapper = new ObjectMapper().registerModule(new Jdk8Module)
