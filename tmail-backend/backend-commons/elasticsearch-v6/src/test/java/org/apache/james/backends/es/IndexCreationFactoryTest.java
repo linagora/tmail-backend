@@ -19,16 +19,65 @@
 
 package org.apache.james.backends.es;
 
+import static org.apache.james.backends.es.NodeMappingFactory.ANALYZER;
+import static org.apache.james.backends.es.NodeMappingFactory.TYPE;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
+import java.util.Optional;
 
+import org.elasticsearch.ElasticsearchStatusException;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 class IndexCreationFactoryTest {
+    public static XContentBuilder getValidIndexSetting() throws IOException {
+        return jsonBuilder()
+            .startObject()
+                .startObject("settings")
+                    .startObject("analysis")
+                        .startObject(ANALYZER)
+                            .startObject("email_ngram_filter_analyzer")
+                                .field("tokenizer", "uax_url_email")
+                                .startArray("filter")
+                                    .value("ngram_filter")
+                                .endArray()
+                            .endObject()
+                        .endObject()
+                        .startObject("filter")
+                            .startObject("ngram_filter")
+                                .field(TYPE, "ngram")
+                                .field("min_gram", 3)
+                                .field("max_gram", 13)
+                            .endObject()
+                        .endObject()
+                    .endObject()
+                .endObject()
+            .endObject();
+    }
+
+    public static XContentBuilder getInvalidIndexSetting() throws IOException {
+        return jsonBuilder()
+            .startObject()
+                .startObject("settings")
+                    .startObject("analysis")
+                        .startObject(ANALYZER)
+                            .startObject("invalid_analyzer")
+                                .field("tokenizer", "invalid_tokenizer")
+                                .startArray("filter")
+                                    .value("ngram_filter")
+                                .endArray()
+                            .endObject()
+                        .endObject()
+                    .endObject()
+                .endObject()
+            .endObject();
+    }
+
     private static final IndexName INDEX_NAME = new IndexName("index");
     private static final ReadAliasName ALIAS_NAME = new ReadAliasName("alias");
 
@@ -39,10 +88,6 @@ class IndexCreationFactoryTest {
     @BeforeEach
     void setUp() {
         client = elasticSearch.getDockerElasticSearch().clientProvider().get();
-        new IndexCreationFactory(ElasticSearchConfiguration.DEFAULT_CONFIGURATION)
-            .useIndex(INDEX_NAME)
-            .addAlias(ALIAS_NAME)
-            .createIndexAndAliases(client);
     }
 
     @AfterEach
@@ -52,6 +97,11 @@ class IndexCreationFactoryTest {
 
     @Test
     void createIndexAndAliasShouldNotThrowWhenCalledSeveralTime() {
+        new IndexCreationFactory(ElasticSearchConfiguration.DEFAULT_CONFIGURATION)
+            .useIndex(INDEX_NAME)
+            .addAlias(ALIAS_NAME)
+            .createIndexAndAliases(client);
+
         new IndexCreationFactory(ElasticSearchConfiguration.DEFAULT_CONFIGURATION)
             .useIndex(INDEX_NAME)
             .addAlias(ALIAS_NAME)
@@ -73,5 +123,23 @@ class IndexCreationFactoryTest {
                 .useIndex(INDEX_NAME)
                 .addAlias(null))
             .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void customIndexSettingShouldNotThrowWhenValidSetting() throws IOException {
+        new IndexCreationFactory(ElasticSearchConfiguration.DEFAULT_CONFIGURATION)
+            .useIndex(INDEX_NAME)
+            .addAlias(ALIAS_NAME)
+            .createIndexAndAliases(client, Optional.of(getValidIndexSetting()), Optional.empty());
+    }
+
+    @Test
+    void customIndexSettingShouldThrowWhenInvalidSetting() {
+        assertThatThrownBy(() ->
+            new IndexCreationFactory(ElasticSearchConfiguration.DEFAULT_CONFIGURATION)
+                .useIndex(INDEX_NAME)
+                .addAlias(ALIAS_NAME)
+                .createIndexAndAliases(client, Optional.of(getInvalidIndexSetting()), Optional.empty()))
+            .isInstanceOf(ElasticsearchStatusException.class);
     }
 }
