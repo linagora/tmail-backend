@@ -25,4 +25,9 @@ public class MemoryLinagoraContactAutocompleteMethodTest implements LinagoraCont
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceContactAutocompleteModule()))
         .build();
+
+    @Override
+    public void awaitDocumentsIndexed(long documentCount) {
+
+    }
 }

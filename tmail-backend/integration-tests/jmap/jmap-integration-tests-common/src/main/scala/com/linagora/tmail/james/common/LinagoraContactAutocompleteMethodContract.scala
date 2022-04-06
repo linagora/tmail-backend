@@ -34,6 +34,8 @@ object LinagoraContactAutocompleteMethodContract {
 }
 
 trait LinagoraContactAutocompleteMethodContract {
+  def awaitDocumentsIndexed(documentCount: Long): Unit
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
@@ -126,6 +128,8 @@ trait LinagoraContactAutocompleteMethodContract {
   def contactAutocompleteShouldWork(server: GuiceJamesServer): Unit = {
     val contactCreated = server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(bobAccountId, contactA)
+
+    awaitDocumentsIndexed(1)
 
     val request =
       s"""{
@@ -227,6 +231,8 @@ trait LinagoraContactAutocompleteMethodContract {
     val contactCreatedB = server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(DOMAIN, contactB)
 
+    awaitDocumentsIndexed(2)
+
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
@@ -288,6 +294,8 @@ trait LinagoraContactAutocompleteMethodContract {
     server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(DOMAIN, contactB)
 
+    awaitDocumentsIndexed(2)
+
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
@@ -343,6 +351,8 @@ trait LinagoraContactAutocompleteMethodContract {
     val contactCreatedB = server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(DOMAIN, contactB)
 
+    awaitDocumentsIndexed(2)
+
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
@@ -350,7 +360,7 @@ trait LinagoraContactAutocompleteMethodContract {
          |    "TMailContact/autocomplete",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "filter": {"text":"ari"}
+         |      "filter": {"text":"mari"}
          |    },
          |    "c1"]]
          |}""".stripMargin
@@ -398,6 +408,8 @@ trait LinagoraContactAutocompleteMethodContract {
     val contactCreatedB = server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(DOMAIN, contactB)
 
+    awaitDocumentsIndexed(2)
+
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
@@ -405,7 +417,7 @@ trait LinagoraContactAutocompleteMethodContract {
          |    "TMailContact/autocomplete",
          |    {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "filter": {"text":"pen"}
+         |      "filter": {"text":"Car"}
          |    },
          |    "c1"]]
          |}""".stripMargin
@@ -640,6 +652,8 @@ trait LinagoraContactAutocompleteMethodContract {
       .index(bobAccountId, contactA)
     server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(DOMAIN, contactB)
+
+    awaitDocumentsIndexed(2)
 
     val request =
       s"""{
