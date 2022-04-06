@@ -10,8 +10,6 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
 
-import javax.inject.Inject;
-
 import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
@@ -38,7 +36,6 @@ public class ContactMappingFactory {
     private final ElasticSearchConfiguration elasticSearchConfiguration;
     private final ElasticSearchContactConfiguration contactConfiguration;
 
-    @Inject
     public ContactMappingFactory(ElasticSearchConfiguration configuration, ElasticSearchContactConfiguration contactConfiguration) {
         this.elasticSearchConfiguration = configuration;
         this.contactConfiguration = contactConfiguration;
