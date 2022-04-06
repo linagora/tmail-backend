@@ -41,6 +41,10 @@ trait EmailAddressContactSearchEngine {
 
   def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact]
 
+  def update(accountId: AccountId, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact]
+
+  def update(domain: Domain, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact]
+
   def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void]
 
   def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void]
@@ -77,6 +81,14 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
   private def index(domain: Domain, addressContact: EmailAddressContact): Publisher[EmailAddressContact] =
     SMono.fromCallable(() => domainList.put(domain, addressContact))
       .`then`(SMono.just(addressContact))
+
+  override def update(accountId: AccountId, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact] =
+    SMono.fromPublisher(delete(accountId, mailAddress))
+      .`then`(SMono.fromPublisher(index(accountId, updatedFields)))
+
+  override def update(domain: Domain, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact] =
+    SMono.fromPublisher(delete(domain, mailAddress))
+      .`then`(SMono.fromPublisher(index(domain, updatedFields)))
 
   override def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void] =
     getContact(accountId, mailAddress)
