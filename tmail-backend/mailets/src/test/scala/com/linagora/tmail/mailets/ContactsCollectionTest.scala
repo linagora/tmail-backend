@@ -6,7 +6,7 @@ import java.util.Optional
 import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
 import com.linagora.tmail.mailets.ContactsCollectionTest.{ATTRIBUTE_NAME, MAILET_CONFIG, RECIPIENT, SENDER}
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
-import org.apache.james.core.MailAddress
+import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.delivery.InVmEventDelivery
@@ -97,6 +97,29 @@ class ContactsCollectionTest {
     mailet.service(mail)
     assertThat(eventListener.contactReceived())
       .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)))
+  }
+
+  @Test
+  def eventHasBeenDispatchedShouldHasUsernameIsSender(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(RECIPIENT)
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient(RECIPIENT)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.eventReceived())
+      .hasSize(1)
+    assertThat(eventListener.eventReceived().get(0).getUsername)
+      .isEqualTo(Username.of(SENDER))
   }
 
   @Test
