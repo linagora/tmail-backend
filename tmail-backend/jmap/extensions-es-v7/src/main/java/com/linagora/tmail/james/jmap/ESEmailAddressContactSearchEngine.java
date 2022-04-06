@@ -78,6 +78,16 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
+    public Publisher<EmailAddressContact> update(AccountId accountId, MailAddress mailAddress, ContactFields updatedFields) {
+        throw new NotImplementedException("Not implemented yet!");
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> update(Domain domain, MailAddress mailAddress, ContactFields updatedFields) {
+        throw new NotImplementedException("Not implemented yet!");
+    }
+
+    @Override
     public Publisher<Void> delete(AccountId accountId, MailAddress address) {
         throw new NotImplementedException("Not implemented yet!");
     }

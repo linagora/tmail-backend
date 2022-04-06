@@ -310,4 +310,62 @@ trait EmailAddressContactSearchEngineContract {
     assertThatCode(() => SMono(testee().delete(domain, mailAddressA)).block())
       .doesNotThrowAnyException()
   }
+
+  @Test
+  def updatePersonalContactShouldSucceed(): Unit = {
+    SMono(testee().index(accountId, otherContactFields)).block()
+
+    SMono(testee().update(accountId, otherMailAddress, contactFieldsA)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA)
+  }
+
+  @Test
+  def updateDomainContactShouldSucceed(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+
+    SMono(testee().update(domain, mailAddressA, contactFieldsB)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ari")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsB)
+  }
+
+  @Test
+  def updatePersonalContactShouldCreateContactIfNotExist(): Unit = {
+    SMono(testee().update(accountId, otherMailAddress, contactFieldsA)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA)
+  }
+
+  @Test
+  def updateDomainContactShouldCreateContactIfNotExist(): Unit = {
+    SMono(testee().update(domain, mailAddressA, contactFieldsB)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ari")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsB)
+  }
+
+  @Test
+  def updatePersonalContactShouldOnlyUpdateTargetedContact(): Unit = {
+    SMono(testee().index(accountId, contactFieldsA)).block()
+    SMono(testee().index(accountId, otherContactFields)).block()
+
+    SMono(testee().update(accountId, otherMailAddress, contactFieldsB)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ohn")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA)
+  }
+
+  @Test
+  def updateDomainContactShouldOnlyUpdateTargetedContact(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, otherContactFields)).block()
+
+    SMono(testee().update(domain, otherMailAddress, contactFieldsB)).block()
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "ohn")).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA)
+  }
 }
