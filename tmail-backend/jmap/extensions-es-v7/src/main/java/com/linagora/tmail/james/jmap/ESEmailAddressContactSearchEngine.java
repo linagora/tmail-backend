@@ -12,6 +12,7 @@ import java.util.UUID;
 import javax.inject.Inject;
 import javax.mail.internet.AddressException;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.backends.es.v7.DocumentId;
 import org.apache.james.backends.es.v7.ElasticSearchIndexer;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
@@ -74,6 +75,16 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
             .flatMap(content -> domainContactIndexer.index(computeDomainContactDocumentId(domain, fields.address()), content,
                 RoutingKey.fromString(fields.address().asString())))
             .thenReturn(emailAddressContact);
+    }
+
+    @Override
+    public Publisher<Void> delete(AccountId accountId, MailAddress address) {
+        throw new NotImplementedException("Not implemented yet!");
+    }
+
+    @Override
+    public Publisher<Void> delete(Domain domain, MailAddress address) {
+        throw new NotImplementedException("Not implemented yet!");
     }
 
     @Override
