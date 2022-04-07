@@ -82,7 +82,7 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
       .collectSeq()
       .`then`()
 
-  private def appendAttributeToMail(sender: MailAddress, mail: Mail, contacts: Seq[ContactFields]) =
+  private def appendAttributeToMail(sender: MailAddress, mail: Mail, contacts: Seq[ContactFields]): SMono[String] =
     SMono.just(sender)
       .map(mailAddress => new ExtractedContacts(mailAddress.asString, ImmutableList.copyOf(contacts.map(_.address.asString()).asJava)))
       .map(extractedContact => OBJECT_MAPPER.writeValueAsString(extractedContact))
