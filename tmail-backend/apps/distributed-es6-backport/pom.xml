@@ -62,6 +62,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>jmap-extensions-es-v6</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>mailbox-encrypted-cassandra</artifactId>
         </dependency>
         <dependency>

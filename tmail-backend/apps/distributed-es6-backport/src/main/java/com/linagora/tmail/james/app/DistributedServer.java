@@ -89,6 +89,7 @@ import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
+import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
@@ -99,6 +100,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
+import com.linagora.tmail.james.jmap.module.ES6ContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
@@ -131,6 +133,7 @@ public class DistributedServer {
         new WebAdminMailOverWebModule());
 
     public static final Module JMAP = Modules.override(
+        new ContactAutocompleteMethodModule(),
         new CassandraJmapModule(),
         new CustomMethodModule(),
         new EncryptedEmailContentStoreCassandraModule(),
@@ -209,7 +212,8 @@ public class DistributedServer {
                 new DistributedTaskSerializationModule(),
                 new TeamMailboxModule(),
                 new RedisRateLimiterModule(),
-                new CassandraRateLimitingModule());
+                new CassandraRateLimitingModule(),
+                new ES6ContactAutoCompleteModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
