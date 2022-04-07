@@ -114,7 +114,7 @@ trait WebFingerRoutesContract {
     .when()
       .basePath(".well-known/webfinger")
       .queryParam("resource", "https://jmap.linagora.com")
-      .queryParam("rel", "http%3A%2F%2Fopenid.net%2Fspecs%2Fconnect%2F1.0%2Fissuer")
+      .queryParam("rel", "http://openid.net/specs/connect/1.0/issuer")
       .get()
     .`then`()
       .statusCode(SC_OK)
