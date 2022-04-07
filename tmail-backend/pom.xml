@@ -46,6 +46,7 @@
 
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
+        <module>jmap/extensions-es-v6</module>
         <module>jmap/extensions-es-v7</module>
 
         <module>rate-limiter/rate-limiter-api</module>
@@ -171,6 +172,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>jmap-extensions-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jmap-extensions-es-v6</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
