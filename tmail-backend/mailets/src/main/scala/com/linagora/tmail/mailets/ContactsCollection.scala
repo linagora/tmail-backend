@@ -55,9 +55,12 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
 
   override def service(mail: Mail): Unit =
     if (CollectionUtils.isNotEmpty(mail.getRecipients)) {
-      val contacts: Seq[ContactFields] = extractRecipientsContacts(mail)
-      dispatchEvents(contacts)
-      appendAttributeToMail(mail, contacts)
+     SMono.justOrEmpty(mail.getMaybeSender.asOptional().toScala)
+        .map(sender => extractRecipientsContacts(mail) -> sender)
+        .flatMap {
+          case (contacts, sender) => SFlux.zip(appendAttributeToMail(sender, mail, contacts), dispatchEvents(sender, contacts))
+            .`then`()
+        }.block()
     }
 
   private def extractRecipientsContacts(mail: Mail): Seq[ContactFields] =
@@ -69,21 +72,20 @@ class ContactsCollection @Inject()(eventBus: EventBus) extends GenericMailet {
   private def extractContactField(internetAddress: InternetAddress): ContactFields =
     ContactFields(new MailAddress(internetAddress), firstname = Option(internetAddress.getPersonal).getOrElse(""))
 
-  private def dispatchEvents(contacts: Seq[ContactFields]): Unit =
+  private def dispatchEvents(sender: MailAddress, contacts: Seq[ContactFields]): SMono[Unit] =
     SFlux.fromIterable(contacts)
       .flatMap(contact => SMono.fromPublisher(eventBus.dispatch(TmailContactUserAddedEvent(
         eventId = EventId.random(),
-        username = Username.fromMailAddress(contact.address),
+        username = Username.fromMailAddress(sender),
         contact = contact),
         NO_REGISTRATION_KEYS)))
       .collectSeq()
-      .block()
+      .`then`()
 
-  private def appendAttributeToMail(mail: Mail, contacts: Seq[ContactFields]): Unit =
-    mail.getMaybeSender.asOptional().toScala
+  private def appendAttributeToMail(sender: MailAddress, mail: Mail, contacts: Seq[ContactFields]): SMono[String] =
+    SMono.just(sender)
       .map(mailAddress => new ExtractedContacts(mailAddress.asString, ImmutableList.copyOf(contacts.map(_.address.asString()).asJava)))
       .map(extractedContact => OBJECT_MAPPER.writeValueAsString(extractedContact))
-      .foreach(extractedContactJson => mail.setAttribute(new Attribute(attributeName, AttributeValue.of(extractedContactJson))))
-
+      .doOnNext(extractedContactJson => mail.setAttribute(new Attribute(attributeName, AttributeValue.of(extractedContactJson))))
 }
 
