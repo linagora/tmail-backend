@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
+import org.elasticsearch.index.query.QueryBuilder
 import org.junit.jupiter.api.BeforeEach
 
 class MemoryEmailAddressContactSearchEngineTest extends EmailAddressContactSearchEngineContract {
@@ -12,6 +13,6 @@ class MemoryEmailAddressContactSearchEngineTest extends EmailAddressContactSearc
     inMemoryEmailAddressContactSearchEngine = new InMemoryEmailAddressContactSearchEngine()
   }
 
-  override def awaitDocumentsIndexed(documentCount: Long): Unit = {
+  override def awaitDocumentsIndexed(query: QueryBuilder, documentCount: Long): Unit = {
   }
 }
