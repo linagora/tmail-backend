@@ -7,16 +7,17 @@ import static com.linagora.tmail.james.jmap.ContactMappingFactory.EMAIL;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.FIRSTNAME;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.SURNAME;
 
+import java.util.List;
 import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.mail.internet.AddressException;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.backends.es.v7.DocumentId;
 import org.apache.james.backends.es.v7.ElasticSearchIndexer;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
 import org.apache.james.backends.es.v7.RoutingKey;
+import org.apache.james.backends.es.v7.UpdatedRepresentation;
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -40,6 +41,7 @@ import com.linagora.tmail.james.jmap.dto.DomainContactDocument;
 import com.linagora.tmail.james.jmap.dto.UserContactDocument;
 
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 public class ESEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final String DELIMITER = ":";
@@ -79,22 +81,48 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     @Override
     public Publisher<EmailAddressContact> update(AccountId accountId, MailAddress mailAddress, ContactFields updatedFields) {
-        throw new NotImplementedException("Not implemented yet!");
+        if (mailAddress.equals(updatedFields.address())) {
+            EmailAddressContact updatedEmailAddressContact = EmailAddressContact.of(updatedFields);
+            return Mono.fromCallable(() -> mapper.writeValueAsString(new UserContactDocument(accountId, updatedEmailAddressContact)))
+                .flatMap(content -> userContactIndexer.update(
+                    List.of(new UpdatedRepresentation(computeUserContactDocumentId(accountId, mailAddress), content)),
+                    RoutingKey.fromString(mailAddress.asString())))
+                .thenReturn(updatedEmailAddressContact);
+        } else {
+            return Mono.zip(Mono.from(delete(accountId, mailAddress)), Mono.from(index(accountId, updatedFields)))
+                .map(Tuple2::getT2);
+        }
     }
 
     @Override
     public Publisher<EmailAddressContact> update(Domain domain, MailAddress mailAddress, ContactFields updatedFields) {
-        throw new NotImplementedException("Not implemented yet!");
+        if (mailAddress.equals(updatedFields.address())) {
+            EmailAddressContact updatedEmailAddressContact = EmailAddressContact.of(updatedFields);
+            return Mono.fromCallable(() -> mapper.writeValueAsString(new DomainContactDocument(domain, updatedEmailAddressContact)))
+                .flatMap(content -> domainContactIndexer.update(
+                    List.of(new UpdatedRepresentation(computeDomainContactDocumentId(domain, mailAddress), content)),
+                    RoutingKey.fromString(mailAddress.asString())))
+                .thenReturn(updatedEmailAddressContact);
+        } else {
+            return Mono.zip(Mono.from(delete(domain, mailAddress)), Mono.from(index(domain, updatedFields)))
+                .map(Tuple2::getT2);
+        }
     }
 
     @Override
     public Publisher<Void> delete(AccountId accountId, MailAddress address) {
-        throw new NotImplementedException("Not implemented yet!");
+        return userContactIndexer.delete(
+                List.of(computeUserContactDocumentId(accountId, address)),
+                RoutingKey.fromString(address.asString()))
+            .then();
     }
 
     @Override
     public Publisher<Void> delete(Domain domain, MailAddress address) {
-        throw new NotImplementedException("Not implemented yet!");
+        return domainContactIndexer.delete(
+                List.of(computeDomainContactDocumentId(domain, address)),
+                RoutingKey.fromString(address.asString()))
+            .then();
     }
 
     @Override
