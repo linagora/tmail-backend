@@ -1,9 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import java.nio.charset.StandardCharsets
-import java.util.UUID
-
-import com.google.common.collect.{HashMultimap, Multimap, Multimaps}
+import com.google.common.collect.{HashBasedTable, Table}
 import com.google.inject.{AbstractModule, Scopes}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.events.Event
@@ -12,6 +9,8 @@ import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.jdk.OptionConverters._
 
@@ -65,21 +64,21 @@ case class TmailContactUserAddedEvent(eventId: EventId, username: Username, cont
 }
 
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {
-  val emailList: Multimap[AccountId, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
-  val domainList: Multimap[Domain, EmailAddressContact] = Multimaps.synchronizedSetMultimap(HashMultimap.create())
+  private val userContactList: Table[AccountId, MailAddress, EmailAddressContact] = HashBasedTable.create
+  private val domainContactList: Table[Domain, MailAddress, EmailAddressContact] = HashBasedTable.create
 
   override def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact] =
     index(accountId, EmailAddressContact.of(fields))
 
   private def index(accountId: AccountId, addressContact: EmailAddressContact) =
-    SMono.fromCallable(() => emailList.put(accountId, addressContact))
+    SMono.fromCallable(() => userContactList.put(accountId, addressContact.fields.address, addressContact))
       .`then`(SMono.just(addressContact))
 
   override def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact] =
     index(domain, EmailAddressContact.of(fields))
 
   private def index(domain: Domain, addressContact: EmailAddressContact): Publisher[EmailAddressContact] =
-    SMono.fromCallable(() => domainList.put(domain, addressContact))
+    SMono.fromCallable(() => domainContactList.put(domain, addressContact.fields.address, addressContact))
       .`then`(SMono.just(addressContact))
 
   override def update(accountId: AccountId, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact] =
@@ -91,30 +90,18 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       .`then`(SMono.fromPublisher(index(domain, updatedFields)))
 
   override def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void] =
-    getContact(accountId, mailAddress)
-      .map(contact => emailList.remove(accountId, contact))
+    SMono.fromCallable(() => userContactList.remove(accountId, mailAddress))
       .`then`()
-
-  private def getContact(accountId: AccountId, mailAddress: MailAddress): SMono[EmailAddressContact] =
-    SFlux.fromIterable(emailList.get(accountId).asScala)
-      .filter(_.fields.address.equals(mailAddress))
-      .singleOrEmpty()
 
   override def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void] =
-    getDomainContact(domain, mailAddress)
-      .map(contact => domainList.remove(domain, contact))
+    SMono.fromCallable(() => domainContactList.remove(domain, mailAddress))
       .`then`()
-
-  private def getDomainContact(domain: Domain, mailAddress: MailAddress): SMono[EmailAddressContact] =
-    SFlux.fromIterable(domainList.get(domain).asScala)
-      .filter(_.fields.address.equals(mailAddress))
-      .singleOrEmpty()
 
   override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] = {
     val maybeDomain: Option[Domain] = Username.of(accountId.getIdentifier).getDomainPart.toScala
     SFlux.concat(
-      maybeDomain.map(domain => SFlux.fromIterable(domainList.get(domain).asScala)).getOrElse(SFlux.empty),
-      SFlux.fromIterable(emailList.get(accountId).asScala))
+      maybeDomain.map(domain => SFlux.fromIterable(domainContactList.row(domain).values().asScala)).getOrElse(SFlux.empty),
+      SFlux.fromIterable(userContactList.row(accountId).values().asScala))
       .filter(lowerCaseContact(_).fields.contains(part.toLowerCase))
       .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
   }
