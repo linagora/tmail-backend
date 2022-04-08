@@ -84,7 +84,7 @@ class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends J
   def asWebFingerRequest(resource: Option[String], rel: Option[String]): Try[WebFingerRequest] = (resource, rel) match {
     case (None, _) => Failure(new IllegalArgumentException("'resource' query parameter is compulsory"))
     case (_, None) => Failure(new IllegalArgumentException("'rel' query parameter is compulsory"))
-    case (Some(resource), Some("http%3A%2F%2Fopenid.net%2Fspecs%2Fconnect%2F1.0%2Fissuer")) =>
+    case (Some(resource), Some("http://openid.net/specs/connect/1.0/issuer")) =>
       Try(WebFingerRequest(new URL(URLDecoder.decode(resource, StandardCharsets.UTF_8))))
     case _ => Failure(new IllegalArgumentException(s"'rel' supports only '$REL' (URL encoded: ${URLEncoder.encode(REL.toString, StandardCharsets.UTF_8)})"))
   }
