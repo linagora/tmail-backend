@@ -86,6 +86,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore;
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
+import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
@@ -213,7 +214,8 @@ public class DistributedServer {
                 new TeamMailboxModule(),
                 new RedisRateLimiterModule(),
                 new CassandraRateLimitingModule(),
-                new ES6ContactAutoCompleteModule());
+                new ES6ContactAutoCompleteModule(),
+                new DistributedEmailAddressContactEventModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
