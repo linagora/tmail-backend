@@ -101,6 +101,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
+import com.linagora.tmail.james.jmap.module.ES7ContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
@@ -216,6 +217,7 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new RedisRateLimiterModule(),
             new CassandraRateLimitingModule(),
+            new ES7ContactAutoCompleteModule(),
             new DistributedEmailAddressContactEventModule());
 
     public static void main(String[] args) throws Exception {
