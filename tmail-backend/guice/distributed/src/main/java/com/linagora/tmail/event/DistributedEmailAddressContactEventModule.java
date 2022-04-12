@@ -26,7 +26,6 @@ import com.google.inject.name.Names;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 import com.linagora.tmail.james.jmap.contact.TmailJmapEventSerializer;
-import com.linagora.tmail.james.jmap.module.ES7ContactAutoCompleteModule;
 
 import reactor.rabbitmq.Sender;
 
@@ -35,7 +34,6 @@ public class DistributedEmailAddressContactEventModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        install(new ES7ContactAutoCompleteModule());
         bind(EventBusId.class).annotatedWith(Names.named(EmailAddressContactInjectKeys.AUTOCOMPLETE)).toInstance(EventBusId.random());
     }
 

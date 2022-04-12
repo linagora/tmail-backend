@@ -32,6 +32,11 @@
         <dependencies>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>contact-autocomplete-integration-test-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>smtp-integration-tests-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
