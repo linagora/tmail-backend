@@ -16,7 +16,7 @@ import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -55,11 +55,11 @@ public class ES6EmailAddressContactAutoCompleteTest implements EmailAddressConta
     }
 
     @Override
-    public void awaitDocumentsIndexed(long documentCount) {
+    public void awaitDocumentsIndexed(QueryBuilder query, long documentCount) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
                     new SearchRequest(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
-                        .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery())),
+                        .source(new SearchSourceBuilder().query(query)),
                     RequestOptions.DEFAULT)
                 .block()
                 .getHits().getTotalHits()).isEqualTo(documentCount));
