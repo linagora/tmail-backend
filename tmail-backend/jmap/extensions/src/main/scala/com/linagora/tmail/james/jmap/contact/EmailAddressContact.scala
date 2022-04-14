@@ -40,9 +40,9 @@ trait EmailAddressContactSearchEngine {
 
   def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact]
 
-  def update(accountId: AccountId, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact]
+  def update(accountId: AccountId, updatedFields: ContactFields): Publisher[EmailAddressContact]
 
-  def update(domain: Domain, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact]
+  def update(domain: Domain, updatedFields: ContactFields): Publisher[EmailAddressContact]
 
   def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void]
 
@@ -81,13 +81,11 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     SMono.fromCallable(() => domainContactList.put(domain, addressContact.fields.address, addressContact))
       .`then`(SMono.just(addressContact))
 
-  override def update(accountId: AccountId, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact] =
-    SMono.fromPublisher(delete(accountId, mailAddress))
-      .`then`(SMono.fromPublisher(index(accountId, updatedFields)))
+  override def update(accountId: AccountId, updatedFields: ContactFields): Publisher[EmailAddressContact] =
+    SMono.fromCallable(() => userContactList.put(accountId, updatedFields.address, EmailAddressContact.of(updatedFields)))
 
-  override def update(domain: Domain, mailAddress: MailAddress, updatedFields: ContactFields): Publisher[EmailAddressContact] =
-    SMono.fromPublisher(delete(domain, mailAddress))
-      .`then`(SMono.fromPublisher(index(domain, updatedFields)))
+  override def update(domain: Domain, updatedFields: ContactFields): Publisher[EmailAddressContact] =
+    SMono.fromCallable(() => domainContactList.put(domain, updatedFields.address, EmailAddressContact.of(updatedFields)))
 
   override def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void] =
     SMono.fromCallable(() => userContactList.remove(accountId, mailAddress))

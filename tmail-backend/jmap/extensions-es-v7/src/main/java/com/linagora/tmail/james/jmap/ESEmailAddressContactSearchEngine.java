@@ -17,7 +17,6 @@ import org.apache.james.backends.es.v7.DocumentId;
 import org.apache.james.backends.es.v7.ElasticSearchIndexer;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
 import org.apache.james.backends.es.v7.RoutingKey;
-import org.apache.james.backends.es.v7.UpdatedRepresentation;
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -41,7 +40,6 @@ import com.linagora.tmail.james.jmap.dto.DomainContactDocument;
 import com.linagora.tmail.james.jmap.dto.UserContactDocument;
 
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
 
 public class ESEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final String DELIMITER = ":";
@@ -80,33 +78,13 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<EmailAddressContact> update(AccountId accountId, MailAddress mailAddress, ContactFields updatedFields) {
-        if (mailAddress.equals(updatedFields.address())) {
-            EmailAddressContact updatedEmailAddressContact = EmailAddressContact.of(updatedFields);
-            return Mono.fromCallable(() -> mapper.writeValueAsString(new UserContactDocument(accountId, updatedEmailAddressContact)))
-                .flatMap(content -> userContactIndexer.update(
-                    List.of(new UpdatedRepresentation(computeUserContactDocumentId(accountId, mailAddress), content)),
-                    RoutingKey.fromString(mailAddress.asString())))
-                .thenReturn(updatedEmailAddressContact);
-        } else {
-            return Mono.zip(Mono.from(delete(accountId, mailAddress)), Mono.from(index(accountId, updatedFields)))
-                .map(Tuple2::getT2);
-        }
+    public Publisher<EmailAddressContact> update(AccountId accountId, ContactFields updatedFields) {
+        return index(accountId, updatedFields);
     }
 
     @Override
-    public Publisher<EmailAddressContact> update(Domain domain, MailAddress mailAddress, ContactFields updatedFields) {
-        if (mailAddress.equals(updatedFields.address())) {
-            EmailAddressContact updatedEmailAddressContact = EmailAddressContact.of(updatedFields);
-            return Mono.fromCallable(() -> mapper.writeValueAsString(new DomainContactDocument(domain, updatedEmailAddressContact)))
-                .flatMap(content -> domainContactIndexer.update(
-                    List.of(new UpdatedRepresentation(computeDomainContactDocumentId(domain, mailAddress), content)),
-                    RoutingKey.fromString(mailAddress.asString())))
-                .thenReturn(updatedEmailAddressContact);
-        } else {
-            return Mono.zip(Mono.from(delete(domain, mailAddress)), Mono.from(index(domain, updatedFields)))
-                .map(Tuple2::getT2);
-        }
+    public Publisher<EmailAddressContact> update(Domain domain, ContactFields updatedFields) {
+        return index(domain, updatedFields);
     }
 
     @Override
