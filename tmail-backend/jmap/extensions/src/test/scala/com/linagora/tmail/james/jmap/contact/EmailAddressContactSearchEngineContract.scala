@@ -413,4 +413,60 @@ trait EmailAddressContactSearchEngineContract {
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "John")).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsA)
   }
+
+  @Test
+  def listAccountContactsShouldReturnEmptyWhenNone(): Unit = {
+    assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().map(_.fields).collectList().block())
+      .isEmpty()
+  }
+
+  @Test
+  def listAccountContactsShouldReturnContacts(): Unit = {
+    SMono(testee().index(accountId, contactFieldsA)).block()
+    SMono(testee().index(accountId, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+
+    assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB)
+  }
+
+  @Test
+  def listAccountContactsShouldNotReturnDomainContacts(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+
+    assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().map(_.fields).collectList().block())
+      .isEmpty()
+  }
+
+  @Test
+  def listDomainContactsShouldReturnEmptyWhenNone(): Unit = {
+    assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().map(_.fields).collectList().block())
+      .isEmpty()
+  }
+
+  @Test
+  def listDomainContactsShouldReturnContacts(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+
+    assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB)
+  }
+
+  @Test
+  def listDomainContactsShouldNotReturnAccountContacts(): Unit = {
+    SMono(testee().index(accountId, contactFieldsA)).block()
+    SMono(testee().index(accountId, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+
+    assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().map(_.fields).collectList().block())
+      .isEmpty()
+  }
 }

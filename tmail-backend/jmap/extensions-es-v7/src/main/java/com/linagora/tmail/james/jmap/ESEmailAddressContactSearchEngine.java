@@ -120,6 +120,32 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
     }
 
+    @Override
+    public Publisher<EmailAddressContact> list(AccountId accountId) {
+        SearchRequest request = new SearchRequest(configuration.getUserContactReadAliasName().getValue())
+            .source(new SearchSourceBuilder()
+                .query(QueryBuilders.boolQuery()
+                    .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))
+                    .minimumShouldMatch(1)));
+
+        return client.search(request, RequestOptions.DEFAULT)
+            .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
+            .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> list(Domain domain) {
+        SearchRequest request = new SearchRequest(configuration.getDomainContactReadAliasName().getValue())
+            .source(new SearchSourceBuilder()
+                .query(QueryBuilders.boolQuery()
+                    .should(QueryBuilders.termQuery(DOMAIN, domain.asString()))
+                    .minimumShouldMatch(1)));
+
+        return client.search(request, RequestOptions.DEFAULT)
+            .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
+            .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
+    }
+
     private DocumentId computeUserContactDocumentId(AccountId accountId, MailAddress mailAddress) {
         return DocumentId.fromString(String.join(DELIMITER, accountId.getIdentifier(), mailAddress.asString()));
     }
