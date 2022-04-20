@@ -5,7 +5,10 @@ import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.eclipse.jetty.http.HttpHeader.LOCATION;
 import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
+import static org.eclipse.jetty.http.HttpStatus.CREATED_201;
+import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
 import static org.mockito.Mockito.mock;
 
@@ -34,6 +37,7 @@ import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEn
 
 import io.restassured.RestAssured;
 import net.javacrumbs.jsonunit.core.internal.Options;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 class EmailAddressContactRoutesTest {
@@ -161,6 +165,219 @@ class EmailAddressContactRoutesTest {
                     "\"" + mailAddressA + "\"," +
                     "\"" + mailAddressB + "\"" +
                     "]");
+        }
+    }
+
+    @Nested
+    class CreateContactTest {
+        @Test
+        void createContactShouldStoreEntry() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            String request = "{" +
+                "  \"emailAddress\": \"john@contact.com\"," +
+                "  \"firstname\": \"John\"," +
+                "  \"surname\": \"Carpenter\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(CREATED_201);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(contact -> contact.fields())
+                    .collectList()
+                    .block())
+                .containsExactly(contactFields);
+        }
+
+        @Test
+        void createContactShouldReturnIdAndLocationHeader() {
+            String request = "{" +
+                "  \"emailAddress\": \"john@contact.com\"," +
+                "  \"firstname\": \"John\"," +
+                "  \"surname\": \"Carpenter\"" +
+                "}";
+
+            String response = given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(CREATED_201)
+                .header(LOCATION.asString(), "/domains/contact.com/contacts/john")
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response).isEqualTo("{\"id\":\"${json-unit.ignore}\"}");
+        }
+
+        @Test
+        void createContactShouldStoreEntryWithEmptyNames() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), "", "");
+            String request = "{" +
+                "  \"emailAddress\": \"john@contact.com\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(CREATED_201);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                .map(contact -> contact.fields())
+                .collectList()
+                .block())
+                .containsExactly(contactFields);
+        }
+
+        @Test
+        void createContactShouldStoreEntryWithOnlyFirstname() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, "");
+            String request = "{" +
+                "  \"emailAddress\": \"john@contact.com\"," +
+                "  \"firstname\": \"John\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(CREATED_201);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                .map(contact -> contact.fields())
+                .collectList()
+                .block())
+                .containsExactly(contactFields);
+        }
+
+        @Test
+        void createContactShouldStoreEntryWithOnlySurname() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), "", surnameA);
+            String request = "{" +
+                "  \"emailAddress\": \"john@contact.com\"," +
+                "  \"surname\": \"Carpenter\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(CREATED_201);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                .map(contact -> contact.fields())
+                .collectList()
+                .block())
+                .containsExactly(contactFields);
+        }
+
+        @Test
+        void createContactShouldBeIdempotent() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            String request = "{" +
+                "  \"emailAddress\": \"john@contact.com\"," +
+                "  \"firstname\": \"John\"," +
+                "  \"surname\": \"Carpenter\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(CREATED_201);
+
+            given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(CREATED_201);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(contact -> contact.fields())
+                    .collectList()
+                    .block())
+                .containsExactly(contactFields);
+        }
+
+        @Test
+        void createContactShouldThrowForDomainNotFound() {
+            String request = "{" +
+                "  \"emailAddress\": \"john@contact.com\"" +
+                "}";
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(DOMAINS_CONTACTS_PATH, "notfound.tld"))
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The domain does not exist: notfound.tld");
+        }
+
+        @Test
+        void createContactShouldThrowWhenDomainDifferentFromEmailDomain() {
+            String request = "{" +
+                "  \"emailAddress\": \"john@other.com\"" +
+                "}";
+
+            Map<String, Object> errors = given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "The domain contact.com does not match the one in the mail address: other.com");
+        }
+
+        @Test
+        void createContactShouldThrowWhenEmailAddressIsWrong() {
+            String request = "{" +
+                "  \"emailAddress\": \"john@bob@contact.com\"" +
+                "}";
+
+            Map<String, Object> errors = given()
+                .body(request)
+            .when()
+                .post()
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid character at 8 in 'john@bob@contact.com'");
         }
     }
 }
