@@ -49,6 +49,10 @@ trait EmailAddressContactSearchEngine {
   def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void]
 
   def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
+
+  def list(accountId: AccountId): Publisher[EmailAddressContact]
+
+  def list(domain: Domain): Publisher[EmailAddressContact]
 }
 
 trait TmailEvent extends Event
@@ -107,4 +111,10 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
   private def lowerCaseContact(contact: EmailAddressContact): EmailAddressContact =
     EmailAddressContact(contact.id, ContactFields(address = new MailAddress(contact.fields.address.asString().toLowerCase),
       firstname = contact.fields.firstname.toLowerCase, surname = contact.fields.surname.toLowerCase))
+
+  override def list(accountId: AccountId): Publisher[EmailAddressContact] =
+    SFlux.fromIterable(userContactList.row(accountId).values().asScala)
+
+  override def list(domain: Domain): Publisher[EmailAddressContact] =
+    SFlux.fromIterable(domainContactList.row(domain).values().asScala)
 }
