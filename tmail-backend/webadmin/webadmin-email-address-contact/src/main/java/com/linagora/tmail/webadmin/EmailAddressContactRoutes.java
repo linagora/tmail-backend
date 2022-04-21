@@ -30,6 +30,8 @@ import spark.Service;
 public class EmailAddressContactRoutes implements Routes {
     private static final String CONTACT_DOMAIN_PARAM = ":dom";
     private static final String CONTACT_ADDRESS_PARAM = ":address";
+
+    private static final String ALL_DOMAINS_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + "contacts";
     private static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + CONTACT_DOMAIN_PARAM + Constants.SEPARATOR + "contacts";
 
     private final EmailAddressContactSearchEngine emailAddressContactSearchEngine;
@@ -56,6 +58,7 @@ public class EmailAddressContactRoutes implements Routes {
     @Override
     public void define(Service service) {
         service.get(BASE_PATH, getContactsByDomain(), jsonTransformer);
+        service.get(ALL_DOMAINS_PATH, getContacts(), jsonTransformer);
         service.post(BASE_PATH, createContact(), jsonTransformer);
     }
 
@@ -71,6 +74,14 @@ public class EmailAddressContactRoutes implements Routes {
                 .collectList()
                 .block();
         };
+    }
+
+    public Route getContacts() {
+        return (request, response) ->
+            Flux.from(emailAddressContactSearchEngine.listDomainsContacts())
+                .map(contact -> contact.fields().address().asString())
+                .collectList()
+                .block();
     }
 
     public Route createContact() {
