@@ -156,6 +156,11 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>webadmin-email-address-contact</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>webadmin-rate-limit</artifactId>
                 <version>${project.version}</version>
             </dependency>

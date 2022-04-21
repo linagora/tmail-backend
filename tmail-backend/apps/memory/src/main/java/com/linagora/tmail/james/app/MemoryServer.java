@@ -66,6 +66,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 
@@ -124,7 +125,8 @@ public class MemoryServer {
             new MemoryRateLimiterModule(),
             new MemoryRateLimitingModule(),
             new RateLimitPlanRoutesModule(),
-            new MemoryEmailAddressContactModule());
+            new MemoryEmailAddressContactModule(),
+            new EmailAddressContactRoutesModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()

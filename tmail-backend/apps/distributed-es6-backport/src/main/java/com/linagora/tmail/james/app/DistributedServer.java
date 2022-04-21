@@ -108,6 +108,7 @@ import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 
@@ -131,7 +132,8 @@ public class DistributedServer {
         new WebAdminServerModule(),
         new WebAdminReIndexingTaskSerializationModule(),
         new MessagesRoutesModule(),
-        new WebAdminMailOverWebModule());
+        new WebAdminMailOverWebModule(),
+        new EmailAddressContactRoutesModule());
 
     public static final Module JMAP = Modules.override(
         new ContactAutocompleteMethodModule(),
