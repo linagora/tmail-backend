@@ -22,6 +22,7 @@ import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.webadmin.model.ContactNameUpdateDTO;
 import com.linagora.tmail.webadmin.model.EmailAddressContactDTO;
 import com.linagora.tmail.webadmin.model.EmailAddressContactIdResponse;
+import com.linagora.tmail.webadmin.model.EmailAddressContactResponse;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -67,6 +68,7 @@ public class EmailAddressContactRoutes implements Routes {
         service.post(BASE_PATH, createContact(), jsonTransformer);
         service.delete(CRUD_PATH, deleteContact(), jsonTransformer);
         service.put(CRUD_PATH, updateContact(), jsonTransformer);
+        service.get(CRUD_PATH, getContactInfo(), jsonTransformer);
     }
 
     private Domain extractDomain(Request request) {
@@ -181,6 +183,26 @@ public class EmailAddressContactRoutes implements Routes {
 
                 return Mono.from(emailAddressContactSearchEngine.update(domain, updatedFields))
                     .then(Mono.just(Responses.returnNoContent(response)))
+                    .block();
+            } catch (AddressException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Mail address is wrong. Be sure to include only the local part in the path")
+                    .haltError();
+            }
+        });
+    }
+
+    public Route getContactInfo() {
+        return ((request, response) -> {
+            Domain domain = extractDomain(request);
+
+            try {
+                MailAddress mailAddress = new MailAddress(extractAddressLocalPart(request), domain);
+
+                return Mono.from(emailAddressContactSearchEngine.get(domain, mailAddress))
+                    .map(EmailAddressContactResponse::from)
                     .block();
             } catch (AddressException e) {
                 throw ErrorResponder.builder()
