@@ -497,4 +497,58 @@ trait EmailAddressContactSearchEngineContract {
     assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
       .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
   }
+
+  @Test
+  def getAccountContactShouldReturnContact(): Unit = {
+    SMono(testee().index(accountId, contactFieldsA)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+
+    assertThat(SMono.fromPublisher(testee().get(accountId, mailAddressA)).asJava().map(_.fields).block())
+      .isEqualTo(contactFieldsA)
+  }
+
+  @Test
+  def getAccountContactShouldReturnEmptyWhenNone(): Unit = {
+    assertThat(SMono.fromPublisher(testee().get(accountId, mailAddressA)).asJava().block())
+      .isNull()
+  }
+
+  @Test
+  def getAccountContactShouldReturnTheRightContact(): Unit = {
+    SMono(testee().index(accountId, contactFieldsA)).block()
+    SMono(testee().index(accountId, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+
+    assertThat(SMono.fromPublisher(testee().get(accountId, mailAddressA)).asJava().map(_.fields).block())
+      .isEqualTo(contactFieldsA)
+  }
+
+  @Test
+  def getDomainContactShouldReturnContact(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+
+    assertThat(SMono.fromPublisher(testee().get(domain, mailAddressA)).asJava().map(_.fields).block())
+      .isEqualTo(contactFieldsA)
+  }
+
+  @Test
+  def getDomainContactShouldReturnEmptyWhenNone(): Unit = {
+    assertThat(SMono.fromPublisher(testee().get(domain, mailAddressA)).asJava().block())
+      .isNull()
+  }
+
+  @Test
+  def getDomainContactShouldReturnTheRightContact(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+
+    assertThat(SMono.fromPublisher(testee().get(domain, mailAddressA)).asJava().map(_.fields).block())
+      .isEqualTo(contactFieldsA)
+  }
 }

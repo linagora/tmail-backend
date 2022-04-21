@@ -8,6 +8,7 @@ import static com.linagora.tmail.james.jmap.ContactMappingFactory.FIRSTNAME;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.SURNAME;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import javax.inject.Inject;
@@ -21,6 +22,8 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -154,6 +157,38 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
         return client.search(request, RequestOptions.DEFAULT)
             .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> get(AccountId accountId, MailAddress mailAddress) {
+        return client.get(new GetRequest(configuration.getUserContactReadAliasName().getValue())
+                    .id(computeUserContactDocumentId(accountId, mailAddress).asString())
+                    .routing(mailAddress.asString()),
+                RequestOptions.DEFAULT)
+            .filter(GetResponse::isExists)
+            .map(GetResponse::getSourceAsMap)
+            .map(Throwing.function(this::extractContactFromSource).sneakyThrow());
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> get(Domain domain, MailAddress mailAddress) {
+        return client.get(new GetRequest(configuration.getDomainContactReadAliasName().getValue())
+                    .id(computeDomainContactDocumentId(domain, mailAddress).asString())
+                    .routing(mailAddress.asString()),
+                RequestOptions.DEFAULT)
+            .filter(GetResponse::isExists)
+            .map(GetResponse::getSourceAsMap)
+            .map(Throwing.function(this::extractContactFromSource).sneakyThrow());
+    }
+
+    private EmailAddressContact extractContactFromSource(Map<String, Object> source) throws AddressException {
+        return new EmailAddressContact(
+            UUID.fromString((String) source.get(CONTACT_ID)),
+            new ContactFields(
+                new MailAddress((String) source.get(EMAIL)),
+                (String) source.get(FIRSTNAME),
+                (String) source.get(SURNAME)
+            ));
     }
 
     private DocumentId computeUserContactDocumentId(AccountId accountId, MailAddress mailAddress) {

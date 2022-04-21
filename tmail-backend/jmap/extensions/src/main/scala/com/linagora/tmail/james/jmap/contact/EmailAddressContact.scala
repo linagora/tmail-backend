@@ -55,6 +55,10 @@ trait EmailAddressContactSearchEngine {
   def list(domain: Domain): Publisher[EmailAddressContact]
 
   def listDomainsContacts(): Publisher[EmailAddressContact]
+
+  def get(accountId: AccountId, mailAddress: MailAddress): Publisher[EmailAddressContact]
+
+  def get(domain: Domain, mailAddress: MailAddress): Publisher[EmailAddressContact]
 }
 
 trait TmailEvent extends Event
@@ -122,4 +126,14 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
 
   override def listDomainsContacts(): Publisher[EmailAddressContact] =
     SFlux.fromIterable(domainContactList.values().asScala)
+
+  override def get(accountId: AccountId, mailAddress: MailAddress): Publisher[EmailAddressContact] =
+    SFlux.fromIterable(userContactList.row(accountId).values().asScala)
+      .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
+      .singleOrEmpty()
+
+  override def get(domain: Domain, mailAddress: MailAddress): Publisher[EmailAddressContact] =
+    SFlux.fromIterable(domainContactList.row(domain).values().asScala)
+      .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
+      .singleOrEmpty()
 }
