@@ -3,6 +3,8 @@ package com.linagora.tmail.james.jmap.contact
 import com.google.common.collect.{HashBasedTable, Table}
 import com.google.inject.{AbstractModule, Scopes}
 import org.apache.james.core.{Domain, MailAddress, Username}
+import org.apache.james.events.Event
+import org.apache.james.events.Event.EventId
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -47,6 +49,18 @@ trait EmailAddressContactSearchEngine {
   def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void]
 
   def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
+}
+
+trait TmailEvent extends Event
+
+trait TmailContactUserEvent extends TmailEvent
+
+case class TmailContactUserAddedEvent(eventId: EventId, username: Username, contact: ContactFields) extends TmailContactUserEvent {
+  override def getUsername: Username = username
+
+  override def isNoop: Boolean = false
+
+  override def getEventId: EventId = eventId
 }
 
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {

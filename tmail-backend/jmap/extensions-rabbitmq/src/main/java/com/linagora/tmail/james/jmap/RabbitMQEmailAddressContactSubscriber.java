@@ -8,20 +8,18 @@ import static org.apache.james.util.ReactorUtils.publishIfPresent;
 import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import java.util.Set;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
-import org.apache.james.events.EventBus;
-import org.apache.james.events.RegistrationKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableSet;
+import com.google.common.base.Preconditions;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactMessage;
-import com.linagora.tmail.james.jmap.contact.TmailEvent;
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactMessageHandler;
 import com.linagora.tmail.james.jmap.json.EmailAddressContactMessageSerializer;
 import com.rabbitmq.client.Delivery;
 
@@ -37,44 +35,78 @@ import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 
 public class RabbitMQEmailAddressContactSubscriber implements Closeable {
+    static class RabbitMQConfiguration {
+        public static RabbitMQConfiguration from(Configuration config) {
+            return new RabbitMQConfiguration(
+                config.getString("address.contact.exchange", "AddressContactExchangeDefault"),
+                config.getString("address.contact.queue", "AddressContactQueueDefault"),
+                config.getString("address.contact.routingKey", "AddressContactRoutingKeyDefault"));
+        }
+
+        private final String exchangeName;
+        private final String queueName;
+        private final String routingKey;
+
+        public RabbitMQConfiguration(String exchangeName, String queueName, String routingKey) {
+            Preconditions.checkArgument(StringUtils.isNotBlank(exchangeName));
+            Preconditions.checkArgument(StringUtils.isNotBlank(queueName));
+            Preconditions.checkArgument(StringUtils.isNotBlank(routingKey));
+            this.exchangeName = exchangeName;
+            this.queueName = queueName;
+            this.routingKey = routingKey;
+        }
+
+        public String getExchangeName() {
+            return exchangeName;
+        }
+
+        public String getQueueName() {
+            return queueName;
+        }
+
+        public String getRoutingKey() {
+            return routingKey;
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQEmailAddressContactSubscriber.class);
 
-    // TODO: Should parse from configure file
-    public static final String EXCHANGE_NAME = "EmailAddressContactExchange";
-    public static final String QUEUE_NAME = "EmailAddressContactQueue";
-    public static final String ROUTING_KEY = "EmailAddressContactRoutingKey";
-    private static final Set<RegistrationKey> EVENT_REGISTRATION_KEY = ImmutableSet.of();
-
+    private final RabbitMQConfiguration rabbitMQConfiguration;
     private final ReceiverProvider receiverProvider;
     private final Sinks.Many<EmailAddressContactMessage> listener;
+    private final EmailAddressContactMessageHandler messageHandler;
     private final Sender sender;
-    private final EventBus eventBus;
     private Disposable listenQueueHandle;
+    private Disposable messageConsume;
 
     @Inject
-    public RabbitMQEmailAddressContactSubscriber(ReceiverProvider receiverProvider, Sender sender,
-                                                 @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBus eventBus) {
+    public RabbitMQEmailAddressContactSubscriber(ReceiverProvider receiverProvider,
+                                                 Sender sender,
+                                                 EmailAddressContactMessageHandler messageHandler,
+                                                 Configuration configuration) {
+        this.rabbitMQConfiguration = RabbitMQConfiguration.from(configuration);
         this.receiverProvider = receiverProvider;
+        this.messageHandler = messageHandler;
         this.sender = sender;
-        this.eventBus = eventBus;
         this.listener = Sinks.many().multicast().directBestEffort();
     }
 
     public void start() {
-        sender.declareExchange(ExchangeSpecification.exchange(EXCHANGE_NAME)).block();
-        sender.declare(QueueSpecification.queue(QUEUE_NAME).durable(!DURABLE).autoDelete(AUTO_DELETE)).block();
-        sender.bind(BindingSpecification.binding(EXCHANGE_NAME, ROUTING_KEY, QUEUE_NAME)).block();
+        sender.declareExchange(ExchangeSpecification.exchange(rabbitMQConfiguration.getExchangeName())).block();
+        sender.declare(QueueSpecification.queue(rabbitMQConfiguration.getQueueName()).durable(!DURABLE).autoDelete(AUTO_DELETE)).block();
+        sender.bind(BindingSpecification.binding(rabbitMQConfiguration.getExchangeName(), rabbitMQConfiguration.getRoutingKey(), rabbitMQConfiguration.getQueueName())).block();
         listenQueueHandle = consumeQueue();
+        messageConsume = messageConsume();
     }
 
     private Disposable consumeQueue() {
         return Flux.using(receiverProvider::createReceiver,
-                receiver -> receiver.consumeAutoAck(QUEUE_NAME),
+                receiver -> receiver.consumeAutoAck(rabbitMQConfiguration.getQueueName()),
                 Receiver::close)
             .subscribeOn(Schedulers.elastic())
             .map(this::toMessage)
             .handle(publishIfPresent())
-            .subscribe(event -> listener.emitNext(event, Sinks.EmitFailureHandler.FAIL_FAST));
+            .subscribe(event -> listener.emitNext(event, (signalType, emission) -> true));
     }
 
     private Optional<EmailAddressContactMessage> toMessage(Delivery delivery) {
@@ -87,12 +119,24 @@ public class RabbitMQEmailAddressContactSubscriber implements Closeable {
         }
     }
 
-    private Mono<Void> dispatchEvent(TmailEvent tmailEvent) {
-        return eventBus.dispatch(tmailEvent, EVENT_REGISTRATION_KEY);
+    public Flux<EmailAddressContactMessage> receivedMessages() {
+        return listener.asFlux();
+    }
+
+    private Disposable messageConsume() {
+        return receivedMessages()
+            .flatMap(message -> Mono.from(messageHandler.handler(message))
+                .onErrorResume(error -> {
+                    LOGGER.error("Error when consume message '{}'", message, error);
+                    return Mono.empty();
+                }))
+            .subscribeOn(Schedulers.elastic())
+            .subscribe();
     }
 
     @Override
     public void close() {
         Optional.ofNullable(listenQueueHandle).ifPresent(Disposable::dispose);
+        Optional.ofNullable(messageConsume).ifPresent(Disposable::dispose);
     }
 }

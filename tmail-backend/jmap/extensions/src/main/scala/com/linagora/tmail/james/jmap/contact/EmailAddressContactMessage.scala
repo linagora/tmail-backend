@@ -3,42 +3,9 @@ package com.linagora.tmail.james.jmap.contact
 import com.linagora.tmail.james.jmap.contact.TmailContactMessageScope.{DOMAIN, USER}
 import com.linagora.tmail.james.jmap.contact.TmailContactMessageType.{ADDITION, REMOVAL, UPDATE}
 import org.apache.james.core.{Domain, MailAddress, Username}
-import org.apache.james.events.Event.EventId
 
 import java.util.Locale
 import scala.util.Try
-
-object EmailAddressContactMessage {
-  def asEvent(message: EmailAddressContactMessage): Either[IllegalArgumentException, TmailEvent] =
-    message.scope match {
-      case User => asContactUserEvent(message)
-      case Domain => asContactDomainEvent(message)
-    }
-
-  def maybeEvent(message: EmailAddressContactMessage): Option[TmailEvent] =
-    asEvent(message) match {
-      case Left(_) => None
-      case Right(value) => Some(value)
-    }
-
-  private def asContactUserEvent(message: EmailAddressContactMessage): Either[IllegalArgumentException, TmailContactUserEvent] =
-    ContactOwner.asUsername(message.owner)
-      .map(username =>
-        message.messageType match {
-          case Addition => TmailContactUserAddedEvent(EventId.random(), username, MessageEntry.toContactField(message.entry))
-          case Update => TmailContactUserUpdatedEvent(EventId.random(), username, MessageEntry.toContactField(message.entry))
-          case Removal => TmailContactUserRemovedEvent(EventId.random(), username, message.entry.address)
-        })
-
-  private def asContactDomainEvent(message: EmailAddressContactMessage): Either[IllegalArgumentException, TmailContactDomainEvent] =
-    ContactOwner.asDomain(message.owner)
-      .map(domain =>
-        message.messageType match {
-          case Addition => TmailContactDomainAddedEvent(EventId.random(), domain, MessageEntry.toContactField(message.entry))
-          case Update => TmailContactDomainUpdatedEvent(EventId.random(), domain, MessageEntry.toContactField(message.entry))
-          case Removal => TmailContactDomainRemovedEvent(EventId.random(), domain, message.entry.address)
-        })
-}
 
 case class EmailAddressContactMessage(messageType: TmailContactMessageType,
                                       scope: TmailContactMessageScope,
