@@ -19,6 +19,7 @@ import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
+import com.linagora.tmail.webadmin.model.ContactNameUpdateDTO;
 import com.linagora.tmail.webadmin.model.EmailAddressContactDTO;
 import com.linagora.tmail.webadmin.model.EmailAddressContactIdResponse;
 
@@ -40,7 +41,8 @@ public class EmailAddressContactRoutes implements Routes {
     private final DomainList domainList;
     private final JsonTransformer jsonTransformer;
 
-    private final JsonExtractor<EmailAddressContactDTO> jsonExtractor;
+    private final JsonExtractor<EmailAddressContactDTO> jsonExtractorContact;
+    private final JsonExtractor<ContactNameUpdateDTO> jsonExtractorName;
 
     @Inject
     public EmailAddressContactRoutes(EmailAddressContactSearchEngine emailAddressContactSearchEngine,
@@ -48,7 +50,8 @@ public class EmailAddressContactRoutes implements Routes {
         this.emailAddressContactSearchEngine = emailAddressContactSearchEngine;
         this.domainList = domainList;
         this.jsonTransformer = jsonTransformer;
-        this.jsonExtractor = new JsonExtractor<>(EmailAddressContactDTO.class);
+        this.jsonExtractorContact = new JsonExtractor<>(EmailAddressContactDTO.class);
+        this.jsonExtractorName = new JsonExtractor<>(ContactNameUpdateDTO.class);
     }
 
 
@@ -63,6 +66,7 @@ public class EmailAddressContactRoutes implements Routes {
         service.get(ALL_DOMAINS_PATH, getContacts(), jsonTransformer);
         service.post(BASE_PATH, createContact(), jsonTransformer);
         service.delete(CRUD_PATH, deleteContact(), jsonTransformer);
+        service.put(CRUD_PATH, updateContact(), jsonTransformer);
     }
 
     private Domain extractDomain(Request request) {
@@ -97,7 +101,7 @@ public class EmailAddressContactRoutes implements Routes {
             verifyDomain(domain);
 
             try {
-                EmailAddressContactDTO emailAddressContactDTO = jsonExtractor.parse(request.body());
+                EmailAddressContactDTO emailAddressContactDTO = jsonExtractorContact.parse(request.body());
                 ContactFields contactFields = new ContactFields(
                     new MailAddress(emailAddressContactDTO.getEmailAddress()),
                     emailAddressContactDTO.getFirstname().orElse(""),
@@ -150,6 +154,32 @@ public class EmailAddressContactRoutes implements Routes {
                 MailAddress mailAddress = new MailAddress(extractAddressLocalPart(request), domain);
 
                 return Mono.from(emailAddressContactSearchEngine.delete(domain, mailAddress))
+                    .then(Mono.just(Responses.returnNoContent(response)))
+                    .block();
+            } catch (AddressException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Mail address is wrong. Be sure to include only the local part in the path")
+                    .haltError();
+            }
+        });
+    }
+
+    public Route updateContact() {
+        return ((request, response) -> {
+            Domain domain = extractDomain(request);
+            verifyDomain(domain);
+
+            try {
+                MailAddress mailAddress = new MailAddress(extractAddressLocalPart(request), domain);
+                ContactNameUpdateDTO contactNameUpdateDTO = jsonExtractorName.parse(request.body());
+                ContactFields updatedFields = new ContactFields(
+                    mailAddress,
+                    contactNameUpdateDTO.getFirstname().orElse(""),
+                    contactNameUpdateDTO.getSurname().orElse(""));
+
+                return Mono.from(emailAddressContactSearchEngine.update(domain, updatedFields))
                     .then(Mono.just(Responses.returnNoContent(response)))
                     .block();
             } catch (AddressException e) {

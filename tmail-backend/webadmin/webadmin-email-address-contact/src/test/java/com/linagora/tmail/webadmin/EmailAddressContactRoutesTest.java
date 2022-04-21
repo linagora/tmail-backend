@@ -524,4 +524,141 @@ class EmailAddressContactRoutesTest {
                 .containsEntry("message", "Mail address is wrong. Be sure to include only the local part in the path");
         }
     }
+
+    @Nested
+    class UpdateContactTest {
+        @Test
+        void updateContactShouldSucceedWhenContactExists() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String request = "{" +
+                "  \"firstname\": \"Bob\"," +
+                "  \"surname\": \"Loop\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .put("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "Bob", "Loop"));
+        }
+
+        @Test
+        void updateContactShouldCreateContactWhenNotExists() throws Exception {
+            String request = "{" +
+                "  \"firstname\": \"John\"," +
+                "  \"surname\": \"Carpenter\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .put("/john")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA));
+        }
+
+        @Test
+        void updateContactShouldOnlyUseMailAddressLocalPart() {
+            String request = "{" +
+                "  \"firstname\": \"John\"," +
+                "  \"surname\": \"Carpenter\"" +
+                "}";
+
+            Map<String, Object> errors = given()
+                .body(request)
+            .when()
+                .put("/" + mailAddressA)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Mail address is wrong. Be sure to include only the local part in the path");
+        }
+
+        @Test
+        void updateContactShouldSucceedWhenSurnameMissing() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String request = "{" +
+                "  \"firstname\": \"Bobby\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .put("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "Bobby", ""));
+        }
+
+        @Test
+        void updateContactShouldSucceedWhenFirstnameMissing() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String request = "{" +
+                "  \"surname\": \"Loop\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .put("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "", "Loop"));
+        }
+
+        @Test
+        void updateContactShouldSucceedWhenNamesMissing() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            given()
+                .body("{}")
+            .when()
+                .put("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "", ""));
+        }
+    }
 }
