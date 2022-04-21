@@ -661,4 +661,131 @@ class EmailAddressContactRoutesTest {
                 .containsOnly(new ContactFields(new MailAddress(mailAddressA), "", ""));
         }
     }
+
+    @Nested
+    class GetContactInfoTest {
+        @Test
+        void getContactShouldReturnContact() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String response = given()
+                .get("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .isEqualTo("{" +
+                    "  \"id\": \"${json-unit.ignore}\"," +
+                    "  \"emailAddress\": \"" + mailAddressA + "\"," +
+                    "  \"firstname\": \"" + firstnameA + "\"," +
+                    "  \"surname\": \"" + surnameA + "\"" +
+                    "}");
+        }
+
+        @Test
+        void getContactShouldReturnEmptyBodyWhenNone() {
+            String response = given()
+                .get("/john")
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .isNull();
+        }
+
+        @Test
+        void getContactShouldOnlyUseMailAddressLocalPart() {
+            Map<String, Object> errors = given()
+                .get("/" + mailAddressA)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Mail address is wrong. Be sure to include only the local part in the path");
+        }
+
+        @Test
+        void getContactShouldReturnContactWithMissingSurname() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, "");
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String response = given()
+                .get("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .isEqualTo("{" +
+                    "  \"id\": \"${json-unit.ignore}\"," +
+                    "  \"emailAddress\": \"" + mailAddressA + "\"," +
+                    "  \"firstname\": \"" + firstnameA + "\"," +
+                    "  \"surname\": null" +
+                    "}");
+        }
+
+        @Test
+        void getContactShouldReturnContactWithMissingFistname() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), "", surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String response = given()
+                .get("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .isEqualTo("{" +
+                    "  \"id\": \"${json-unit.ignore}\"," +
+                    "  \"emailAddress\": \"" + mailAddressA + "\"," +
+                    "  \"firstname\": null," +
+                    "  \"surname\": \"" + surnameA + "\"" +
+                    "}");
+        }
+
+        @Test
+        void getContactShouldReturnContactWithMissingFullName() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), "", "");
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String response = given()
+                .get("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .isEqualTo("{" +
+                    "  \"id\": \"${json-unit.ignore}\"," +
+                    "  \"emailAddress\": \"" + mailAddressA + "\"," +
+                    "  \"firstname\": null," +
+                    "  \"surname\": null" +
+                    "}");
+        }
+    }
 }
