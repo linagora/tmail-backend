@@ -42,6 +42,7 @@ import reactor.core.publisher.Mono;
 
 class EmailAddressContactRoutesTest {
     private static final String DOMAINS_CONTACTS_PATH = "/domains/%s/contacts";
+    private static final String ALL_DOMAINS_PATH = "/domains/contacts";
     private static final Domain CONTACT_DOMAIN = Domain.of("contact.com");
 
     private static final String mailAddressA = "john@" + CONTACT_DOMAIN.asString();
@@ -164,6 +165,102 @@ class EmailAddressContactRoutesTest {
                 .isEqualTo("[" +
                     "\"" + mailAddressA + "\"," +
                     "\"" + mailAddressB + "\"" +
+                    "]");
+        }
+    }
+
+    @Nested
+    class GetAllContactsTest {
+        @Test
+        void getContactsShouldReturnEmptyByDefault() {
+            List<String> contacts = given()
+                .basePath(ALL_DOMAINS_PATH)
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList(".");
+
+            assertThat(contacts).isEmpty();
+        }
+
+        @Test
+        void getContactsShouldReturnListEntryWhenHasSingleElement() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String response = given()
+                .basePath(ALL_DOMAINS_PATH)
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .isEqualTo("[" +
+                    "\"" + mailAddressA + "\"" +
+                    "]");
+        }
+
+        @Test
+        void getContactsShouldReturnListEntryWhenHasMultipleElement() throws Exception {
+            ContactFields contactFieldsA = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFieldsA)).block();
+
+            ContactFields contactFieldsB = new ContactFields(new MailAddress(mailAddressB), firstnameB, surnameB);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFieldsB)).block();
+
+            String response = given()
+                .basePath(ALL_DOMAINS_PATH)
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .withOptions(new Options(IGNORING_ARRAY_ORDER))
+                .isEqualTo("[" +
+                    "\"" + mailAddressA + "\"," +
+                    "\"" + mailAddressB + "\"" +
+                    "]");
+        }
+
+        @Test
+        void getContactsShouldReturnAllEntriesWhenMultipleDomains() throws Exception {
+            ContactFields contactFieldsA = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFieldsA)).block();
+
+            ContactFields contactFieldsB = new ContactFields(new MailAddress(mailAddressB), firstnameB, surnameB);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFieldsB)).block();
+
+            ContactFields contactFieldsC = new ContactFields(new MailAddress("bob@other.com"), "Bob", "Other");
+            Mono.from(emailAddressContactSearchEngine.index(Domain.of("other.com"), contactFieldsC)).block();
+
+            String response = given()
+                .basePath(ALL_DOMAINS_PATH)
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .withOptions(new Options(IGNORING_ARRAY_ORDER))
+                .isEqualTo("[" +
+                    "\"" + mailAddressA + "\"," +
+                    "\"" + mailAddressB + "\"," +
+                    "\"bob@other.com\"" +
                     "]");
         }
     }
