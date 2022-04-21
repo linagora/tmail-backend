@@ -469,4 +469,32 @@ trait EmailAddressContactSearchEngineContract {
     assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().map(_.fields).collectList().block())
       .isEmpty()
   }
+
+  @Test
+  def listDomainsContactsShouldReturnEmptyWhenNone(): Unit = {
+    assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
+      .isEmpty()
+  }
+
+  @Test
+  def listDomainsContactsShouldReturnDomainContact(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+
+    assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA)
+  }
+
+  @Test
+  def listDomainsContactsShouldReturnContactsFromAllDomains(): Unit = {
+    SMono(testee().index(domain, contactFieldsA)).block()
+    SMono(testee().index(domain, contactFieldsB)).block()
+    SMono(testee().index(Domain.of("other.com"), otherContactFields)).block()
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
+
+    assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
+      .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+  }
 }

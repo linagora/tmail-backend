@@ -146,6 +146,16 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
     }
 
+    @Override
+    public Publisher<EmailAddressContact> listDomainsContacts() {
+        SearchRequest request = new SearchRequest(configuration.getDomainContactReadAliasName().getValue())
+            .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery()));
+
+        return client.search(request, RequestOptions.DEFAULT)
+            .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
+            .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
+    }
+
     private DocumentId computeUserContactDocumentId(AccountId accountId, MailAddress mailAddress) {
         return DocumentId.fromString(String.join(DELIMITER, accountId.getIdentifier(), mailAddress.asString()));
     }
