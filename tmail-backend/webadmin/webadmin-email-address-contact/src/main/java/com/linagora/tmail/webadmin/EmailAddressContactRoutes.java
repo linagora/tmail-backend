@@ -14,6 +14,7 @@ import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonExtractor;
 import org.apache.james.webadmin.utils.JsonTransformer;
+import org.apache.james.webadmin.utils.Responses;
 import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.james.jmap.contact.ContactFields;
@@ -33,6 +34,7 @@ public class EmailAddressContactRoutes implements Routes {
 
     private static final String ALL_DOMAINS_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + "contacts";
     private static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + CONTACT_DOMAIN_PARAM + Constants.SEPARATOR + "contacts";
+    private static final String CRUD_PATH = BASE_PATH + Constants.SEPARATOR + CONTACT_ADDRESS_PARAM;
 
     private final EmailAddressContactSearchEngine emailAddressContactSearchEngine;
     private final DomainList domainList;
@@ -60,10 +62,15 @@ public class EmailAddressContactRoutes implements Routes {
         service.get(BASE_PATH, getContactsByDomain(), jsonTransformer);
         service.get(ALL_DOMAINS_PATH, getContacts(), jsonTransformer);
         service.post(BASE_PATH, createContact(), jsonTransformer);
+        service.delete(CRUD_PATH, deleteContact(), jsonTransformer);
     }
 
     private Domain extractDomain(Request request) {
         return Domain.of(request.params(CONTACT_DOMAIN_PARAM));
+    }
+
+    private String extractAddressLocalPart(Request request) {
+        return request.params(CONTACT_ADDRESS_PARAM);
     }
 
     public Route getContactsByDomain() {
@@ -133,5 +140,25 @@ public class EmailAddressContactRoutes implements Routes {
                 .message("The domain " + domain.asString() + " does not match the one in the mail address: " + mailAddress.getDomain().asString())
                 .haltError();
         }
+    }
+
+    public Route deleteContact() {
+        return ((request, response) -> {
+            Domain domain = extractDomain(request);
+
+            try {
+                MailAddress mailAddress = new MailAddress(extractAddressLocalPart(request), domain);
+
+                return Mono.from(emailAddressContactSearchEngine.delete(domain, mailAddress))
+                    .then(Mono.just(Responses.returnNoContent(response)))
+                    .block();
+            } catch (AddressException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Mail address is wrong. Be sure to include only the local part in the path")
+                    .haltError();
+            }
+        });
     }
 }

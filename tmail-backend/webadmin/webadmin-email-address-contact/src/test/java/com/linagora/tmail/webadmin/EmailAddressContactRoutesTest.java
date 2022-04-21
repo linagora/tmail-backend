@@ -9,6 +9,7 @@ import static org.eclipse.jetty.http.HttpHeader.LOCATION;
 import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
 import static org.eclipse.jetty.http.HttpStatus.CREATED_201;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
+import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
 import static org.mockito.Mockito.mock;
 
@@ -33,6 +34,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import com.linagora.tmail.james.jmap.contact.ContactFields;
+import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 
 import io.restassured.RestAssured;
@@ -284,7 +286,7 @@ class EmailAddressContactRoutesTest {
                 .statusCode(CREATED_201);
 
             assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
-                    .map(contact -> contact.fields())
+                    .map(EmailAddressContact::fields)
                     .collectList()
                     .block())
                 .containsExactly(contactFields);
@@ -327,7 +329,7 @@ class EmailAddressContactRoutesTest {
                 .statusCode(CREATED_201);
 
             assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
-                .map(contact -> contact.fields())
+                .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
                 .containsExactly(contactFields);
@@ -349,7 +351,7 @@ class EmailAddressContactRoutesTest {
                 .statusCode(CREATED_201);
 
             assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
-                .map(contact -> contact.fields())
+                .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
                 .containsExactly(contactFields);
@@ -371,7 +373,7 @@ class EmailAddressContactRoutesTest {
                 .statusCode(CREATED_201);
 
             assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
-                .map(contact -> contact.fields())
+                .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
                 .containsExactly(contactFields);
@@ -401,7 +403,7 @@ class EmailAddressContactRoutesTest {
                 .statusCode(CREATED_201);
 
             assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
-                    .map(contact -> contact.fields())
+                    .map(EmailAddressContact::fields)
                     .collectList()
                     .block())
                 .containsExactly(contactFields);
@@ -475,6 +477,51 @@ class EmailAddressContactRoutesTest {
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "Invalid character at 8 in 'john@bob@contact.com'");
+        }
+    }
+
+    @Nested
+    class DeleteContactTest {
+        @Test
+        void deleteContactShouldRemoveEntry() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            given()
+                .delete("/" + contactFields.address().getLocalPart())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .doesNotContain(contactFields);
+        }
+
+        @Test
+        void deleteContactShouldBeIdempotent() {
+            given()
+                .delete("/john")
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void deleteContactShouldOnlyUseMailAddressLocalPart() {
+            Map<String, Object> errors = given()
+                .delete("/" + mailAddressA)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Mail address is wrong. Be sure to include only the local part in the path");
         }
     }
 }
