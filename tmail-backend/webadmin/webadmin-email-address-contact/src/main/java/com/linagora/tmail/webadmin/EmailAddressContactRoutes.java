@@ -159,11 +159,7 @@ public class EmailAddressContactRoutes implements Routes {
                     .then(Mono.just(Responses.returnNoContent(response)))
                     .block();
             } catch (AddressException e) {
-                throw ErrorResponder.builder()
-                    .statusCode(HttpStatus.BAD_REQUEST_400)
-                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                    .message("Mail address is wrong. Be sure to include only the local part in the path")
-                    .haltError();
+                return throwAddressException();
             }
         });
     }
@@ -185,11 +181,7 @@ public class EmailAddressContactRoutes implements Routes {
                     .then(Mono.just(Responses.returnNoContent(response)))
                     .block();
             } catch (AddressException e) {
-                throw ErrorResponder.builder()
-                    .statusCode(HttpStatus.BAD_REQUEST_400)
-                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                    .message("Mail address is wrong. Be sure to include only the local part in the path")
-                    .haltError();
+                return throwAddressException();
             }
         });
     }
@@ -205,12 +197,16 @@ public class EmailAddressContactRoutes implements Routes {
                     .map(EmailAddressContactResponse::from)
                     .block();
             } catch (AddressException e) {
-                throw ErrorResponder.builder()
-                    .statusCode(HttpStatus.BAD_REQUEST_400)
-                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                    .message("Mail address is wrong. Be sure to include only the local part in the path")
-                    .haltError();
+                return throwAddressException();
             }
         });
+    }
+
+    private Object throwAddressException() {
+        throw ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message("Mail address is wrong. Be sure to include only the local part in the path")
+            .haltError();
     }
 }
