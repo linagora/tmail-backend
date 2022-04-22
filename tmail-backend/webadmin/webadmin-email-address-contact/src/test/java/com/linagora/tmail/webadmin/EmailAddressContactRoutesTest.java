@@ -597,7 +597,7 @@ class EmailAddressContactRoutesTest {
         }
 
         @Test
-        void updateContactShouldSucceedWhenSurnameMissing() throws Exception {
+        void updateContactShouldKeepOriginalSurnameWhenSurnameMissing() throws Exception {
             ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
             Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
 
@@ -616,11 +616,11 @@ class EmailAddressContactRoutesTest {
                     .map(EmailAddressContact::fields)
                     .collectList()
                     .block())
-                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "Bobby", ""));
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "Bobby", surnameA));
         }
 
         @Test
-        void updateContactShouldSucceedWhenFirstnameMissing() throws Exception {
+        void updateContactShouldKeepOriginalFirstnameWhenFirstnameMissing() throws Exception {
             ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
             Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
 
@@ -639,11 +639,11 @@ class EmailAddressContactRoutesTest {
                     .map(EmailAddressContact::fields)
                     .collectList()
                     .block())
-                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "", "Loop"));
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), firstnameA, "Loop"));
         }
 
         @Test
-        void updateContactShouldSucceedWhenNamesMissing() throws Exception {
+        void updateContactShouldKeepOriginalNamesWhenNamesMissing() throws Exception {
             ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
             Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
 
@@ -652,6 +652,78 @@ class EmailAddressContactRoutesTest {
             .when()
                 .put("/" + contactFields.address().getLocalPart())
             .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA));
+        }
+
+        @Test
+        void updateContactShouldUpdateFirstnameWhenPresentAndEmptyString() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String request = "{" +
+                "  \"firstname\": \"\"," +
+                "  \"surname\": \"Loop\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .put("/" + contactFields.address().getLocalPart())
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "", "Loop"));
+        }
+
+        @Test
+        void updateContactShouldUpdateSurnameWhenPresentAndEmptyString() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String request = "{" +
+                "  \"firstname\": \"Bobby\"," +
+                "  \"surname\": \"\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .put("/" + contactFields.address().getLocalPart())
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "Bobby", ""));
+        }
+
+        @Test
+        void updateContactShouldUpdateNamesWhenPresentAndEmptyString() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA);
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+
+            String request = "{" +
+                "  \"firstname\": \"\"," +
+                "  \"surname\": \"\"" +
+                "}";
+
+            given()
+                .body(request)
+            .when()
+                .put("/" + contactFields.address().getLocalPart())
+                .then()
                 .statusCode(NO_CONTENT_204);
 
             assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
