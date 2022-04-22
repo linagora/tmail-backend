@@ -1,7 +1,5 @@
-
 package com.linagora.tmail.james.jmap;
 
-import static org.apache.james.backends.rabbitmq.Constants.AUTO_DELETE;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.util.ReactorUtils.publishIfPresent;
 
@@ -93,7 +91,7 @@ public class RabbitMQEmailAddressContactSubscriber implements Closeable {
 
     public void start() {
         sender.declareExchange(ExchangeSpecification.exchange(rabbitMQConfiguration.getExchangeName())).block();
-        sender.declare(QueueSpecification.queue(rabbitMQConfiguration.getQueueName()).durable(!DURABLE).autoDelete(AUTO_DELETE)).block();
+        sender.declare(QueueSpecification.queue(rabbitMQConfiguration.getQueueName()).durable(DURABLE)).block();
         sender.bind(BindingSpecification.binding(rabbitMQConfiguration.getExchangeName(), rabbitMQConfiguration.getRoutingKey(), rabbitMQConfiguration.getQueueName())).block();
         listenQueueHandle = consumeQueue();
         messageConsume = messageConsume();
