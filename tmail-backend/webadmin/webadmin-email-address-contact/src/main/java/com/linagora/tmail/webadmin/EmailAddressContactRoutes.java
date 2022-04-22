@@ -18,6 +18,7 @@ import org.apache.james.webadmin.utils.Responses;
 import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.james.jmap.contact.ContactFields;
+import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.webadmin.model.ContactNameUpdateDTO;
 import com.linagora.tmail.webadmin.model.EmailAddressContactDTO;
@@ -195,6 +196,13 @@ public class EmailAddressContactRoutes implements Routes {
 
                 return Mono.from(emailAddressContactSearchEngine.get(domain, mailAddress))
                     .map(EmailAddressContactResponse::from)
+                    .onErrorResume(ContactNotFoundException.class, e -> {
+                        throw ErrorResponder.builder()
+                            .statusCode(HttpStatus.NOT_FOUND_404)
+                            .type(ErrorResponder.ErrorType.NOT_FOUND)
+                            .message(e.getMessage())
+                            .haltError();
+                    })
                     .block();
             } catch (AddressException e) {
                 return throwAddressException();

@@ -35,6 +35,10 @@ case class ContactFields(address: MailAddress, firstname: String = "", surname: 
     address.asString().contains(part) || firstname.contains(part) || surname.contains(part)
 }
 
+case class ContactNotFoundException(mailAddress: MailAddress) extends RuntimeException {
+  override def getMessage: String = s"The contact ${mailAddress.asString()} can not be found"
+}
+
 trait EmailAddressContactSearchEngine {
   def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact]
 
@@ -131,9 +135,11 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     SFlux.fromIterable(userContactList.row(accountId).values().asScala)
       .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
       .singleOrEmpty()
+      .switchIfEmpty(SMono.error(ContactNotFoundException(mailAddress)))
 
   override def get(domain: Domain, mailAddress: MailAddress): Publisher[EmailAddressContact] =
     SFlux.fromIterable(domainContactList.row(domain).values().asScala)
       .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
       .singleOrEmpty()
+      .switchIfEmpty(SMono.error(ContactNotFoundException(mailAddress)))
 }
