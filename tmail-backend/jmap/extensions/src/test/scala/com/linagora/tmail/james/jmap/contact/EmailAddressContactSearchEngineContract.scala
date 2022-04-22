@@ -50,7 +50,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactEmptyNameFieldsA, contactEmptyNameFieldsB)
+      .containsExactlyInAnyOrder(contactEmptyNameFieldsA, contactEmptyNameFieldsB)
   }
 
   @Test
@@ -88,7 +88,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
   }
 
   @Test
@@ -111,7 +111,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB, otherContactEmptyNameFields)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactEmptyNameFields)
   }
 
   @Test
@@ -122,7 +122,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsB)
   }
 
   @Test
@@ -133,7 +133,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Carpent")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
   }
 
   @Test
@@ -155,7 +155,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsB)
   }
 
   @Test
@@ -166,7 +166,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Carpent")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
   }
 
   @Test
@@ -189,7 +189,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "John")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, otherContactFields)
+      .containsExactlyInAnyOrder(contactFieldsA, otherContactFields)
   }
 
   @Test
@@ -201,7 +201,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
   }
 
   @Test
@@ -213,7 +213,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
   }
 
   @Test
@@ -226,9 +226,9 @@ trait EmailAddressContactSearchEngineContract {
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "CAR")).asJava().map(_.fields).collectList().block())
-        .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+        .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "car")).asJava().map(_.fields).collectList().block())
-        .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+        .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
     })
   }
 
@@ -242,19 +242,19 @@ trait EmailAddressContactSearchEngineContract {
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "nobita@linagora.com")).asJava().map(_.fields).collectList().block())
-        .containsOnly(contactFieldsA)
+        .containsExactlyInAnyOrder(contactFieldsA)
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "NOBITA@LINAGORA.COM")).asJava().map(_.fields).collectList().block())
-        .containsOnly(contactFieldsA)
+        .containsExactlyInAnyOrder(contactFieldsA)
 
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "nobitu@other.com")).asJava().map(_.fields).collectList().block())
-        .containsOnly(otherContactFields)
+        .containsExactlyInAnyOrder(otherContactFields)
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "NOBITU@OTHER.COM")).asJava().map(_.fields).collectList().block())
-        .containsOnly(otherContactFields)
+        .containsExactlyInAnyOrder(otherContactFields)
 
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "JOHNDOE@OTHER.COM")).asJava().map(_.fields).collectList().block())
-        .containsOnly(otherContactFieldsWithUppercaseEmail)
+        .containsExactlyInAnyOrder(otherContactFieldsWithUppercaseEmail)
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "johndoe@other.com")).asJava().map(_.fields).collectList().block())
-        .containsOnly(otherContactFieldsWithUppercaseEmail)
+        .containsExactlyInAnyOrder(otherContactFieldsWithUppercaseEmail)
     })
   }
 
@@ -298,7 +298,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA)
+      .containsExactlyInAnyOrder(contactFieldsA)
   }
 
   @Test
@@ -313,7 +313,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsB)
   }
 
   @Test
@@ -341,7 +341,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchQuery("surname", "Carpenter"), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
-      .containsOnly(updatedContact)
+      .containsExactlyInAnyOrder(updatedContact)
   }
 
   @Test
@@ -357,7 +357,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchQuery("firstname", "Marie"), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
-      .containsOnly(updatedContact)
+      .containsExactlyInAnyOrder(updatedContact)
   }
 
   @Test
@@ -367,7 +367,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA)
+      .containsExactlyInAnyOrder(contactFieldsA)
   }
 
   @Test
@@ -377,7 +377,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsB)
   }
 
   @Test
@@ -394,7 +394,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchQuery("firstname", "Marie"), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "John")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA)
+      .containsExactlyInAnyOrder(contactFieldsA)
   }
 
   @Test
@@ -411,7 +411,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchQuery("firstname", "Marie"), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "John")).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA)
+      .containsExactlyInAnyOrder(contactFieldsA)
   }
 
   @Test
@@ -428,7 +428,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
 
     assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
   }
 
   @Test
@@ -456,7 +456,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
 
     assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
   }
 
   @Test
@@ -483,7 +483,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
 
     assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA)
+      .containsExactlyInAnyOrder(contactFieldsA)
   }
 
   @Test
@@ -495,7 +495,7 @@ trait EmailAddressContactSearchEngineContract {
     awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
 
     assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
-      .containsOnly(contactFieldsA, contactFieldsB, otherContactFields)
+      .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
   }
 
   @Test
