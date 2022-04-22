@@ -173,18 +173,38 @@ public class EmailAddressContactRoutes implements Routes {
             try {
                 MailAddress mailAddress = new MailAddress(extractAddressLocalPart(request), domain);
                 ContactNameUpdateDTO contactNameUpdateDTO = jsonExtractorName.parse(request.body());
-                ContactFields updatedFields = new ContactFields(
-                    mailAddress,
-                    contactNameUpdateDTO.getFirstname().orElse(""),
-                    contactNameUpdateDTO.getSurname().orElse(""));
 
-                return Mono.from(emailAddressContactSearchEngine.update(domain, updatedFields))
+                return fillUpMissingNameFields(domain, mailAddress, contactNameUpdateDTO)
+                    .flatMap(updatedContact -> Mono.from(emailAddressContactSearchEngine.update(domain, updatedContact)))
                     .then(Mono.just(Responses.returnNoContent(response)))
                     .block();
             } catch (AddressException e) {
                 return throwAddressException();
             }
         });
+    }
+
+    private Mono<ContactFields> fillUpMissingNameFields(Domain domain, MailAddress mailAddress, ContactNameUpdateDTO updatedFields) {
+        if (updatedFields.getFirstname().isEmpty() || updatedFields.getSurname().isEmpty()) {
+            return Mono.from(emailAddressContactSearchEngine.get(domain, mailAddress))
+                .map(contact -> fillUp(contact.fields(), updatedFields))
+                .defaultIfEmpty(fromDTOToContactFields(mailAddress, updatedFields));
+        }
+        return Mono.just(fromDTOToContactFields(mailAddress, updatedFields));
+    }
+
+    private ContactFields fillUp(ContactFields presentFields, ContactNameUpdateDTO updatedFields) {
+        return new ContactFields(
+            presentFields.address(),
+            updatedFields.getFirstname().orElse(presentFields.firstname()),
+            updatedFields.getSurname().orElse(presentFields.surname()));
+    }
+
+    private ContactFields fromDTOToContactFields(MailAddress mailAddress, ContactNameUpdateDTO contactNameUpdateDTO) {
+        return new ContactFields(
+            mailAddress,
+            contactNameUpdateDTO.getFirstname().orElse(""),
+            contactNameUpdateDTO.getSurname().orElse(""));
     }
 
     public Route getContactInfo() {
