@@ -688,18 +688,20 @@ class EmailAddressContactRoutesTest {
         }
 
         @Test
-        void getContactShouldReturnEmptyBodyWhenNone() {
-            String response = given()
+        void getContactShouldReturnNotFoundWhenNone() {
+            Map<String, Object> errors = given()
                 .get("/john")
             .then()
-                .statusCode(OK_200)
-                .contentType(JSON)
+                .statusCode(NOT_FOUND_404)
                 .extract()
                 .body()
-                .asString();
+                .jsonPath()
+                .getMap(".");
 
-            assertThatJson(response)
-                .isNull();
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The contact john@contact.com can not be found");
         }
 
         @Test
@@ -743,7 +745,7 @@ class EmailAddressContactRoutesTest {
         }
 
         @Test
-        void getContactShouldReturnContactWithMissingFistname() throws Exception {
+        void getContactShouldReturnContactWithMissingFirstname() throws Exception {
             ContactFields contactFields = new ContactFields(new MailAddress(mailAddressA), "", surnameA);
             Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
 

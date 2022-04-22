@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.contact
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
-import org.assertj.core.api.Assertions.{assertThat, assertThatCode}
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import org.junit.jupiter.api.Test
@@ -509,9 +509,9 @@ trait EmailAddressContactSearchEngineContract {
   }
 
   @Test
-  def getAccountContactShouldReturnEmptyWhenNone(): Unit = {
-    assertThat(SMono.fromPublisher(testee().get(accountId, mailAddressA)).asJava().block())
-      .isNull()
+  def getAccountContactShouldReturnNotFoundExceptionWhenDoesNotExist(): Unit = {
+    assertThatThrownBy(() => SMono.fromPublisher(testee().get(accountId, mailAddressA)).asJava().block())
+      .isInstanceOf(classOf[ContactNotFoundException])
   }
 
   @Test
@@ -536,9 +536,9 @@ trait EmailAddressContactSearchEngineContract {
   }
 
   @Test
-  def getDomainContactShouldReturnEmptyWhenNone(): Unit = {
-    assertThat(SMono.fromPublisher(testee().get(domain, mailAddressA)).asJava().block())
-      .isNull()
+  def getDomainContactShouldReturnNotFoundExceptionWhenDoesNotExist(): Unit = {
+    assertThatThrownBy(() => SMono.fromPublisher(testee().get(domain, mailAddressA)).asJava().block())
+      .isInstanceOf(classOf[ContactNotFoundException])
   }
 
   @Test

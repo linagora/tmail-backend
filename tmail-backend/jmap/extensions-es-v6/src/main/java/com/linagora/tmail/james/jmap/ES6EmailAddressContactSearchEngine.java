@@ -37,6 +37,7 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
+import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.dto.DomainContactDocument;
@@ -167,7 +168,8 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
                 RequestOptions.DEFAULT)
             .filter(GetResponse::isExists)
             .map(GetResponse::getSourceAsMap)
-            .map(Throwing.function(this::extractContactFromSource).sneakyThrow());
+            .map(Throwing.function(this::extractContactFromSource).sneakyThrow())
+            .switchIfEmpty(Mono.error(new ContactNotFoundException(mailAddress)));
     }
 
     @Override
@@ -178,7 +180,8 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
                 RequestOptions.DEFAULT)
             .filter(GetResponse::isExists)
             .map(GetResponse::getSourceAsMap)
-            .map(Throwing.function(this::extractContactFromSource).sneakyThrow());
+            .map(Throwing.function(this::extractContactFromSource).sneakyThrow())
+            .switchIfEmpty(Mono.error(new ContactNotFoundException(mailAddress)));
     }
 
     private EmailAddressContact extractContactFromSource(Map<String, Object> source) throws AddressException {
