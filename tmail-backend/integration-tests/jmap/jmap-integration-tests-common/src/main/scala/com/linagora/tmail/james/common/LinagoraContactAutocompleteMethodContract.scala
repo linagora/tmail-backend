@@ -1,14 +1,12 @@
 package com.linagora.tmail.james.common
 
-import java.time.Duration
-import java.util.concurrent.TimeUnit
-
-import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract.{bobAccountId, calmlyAwait, contactA, contactB, firstnameA, firstnameB, mailAddressA, mailAddressB, surnameA, surnameB}
+import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract.{basePath, bobAccountId, calmlyAwait, contactA, contactB, firstnameA, firstnameB, mailAddressA, mailAddressB, surnameA, surnameB, webAdminApi}
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe
 import com.linagora.tmail.james.jmap.contact.ContactFields
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
+import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
@@ -21,14 +19,22 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.modules.protocols.SmtpGuiceProbe
-import org.apache.james.utils.{DataProbeImpl, SMTPMessageSender}
+import org.apache.james.utils.{DataProbeImpl, SMTPMessageSender, WebAdminGuiceProbe}
+import org.apache.james.webadmin.WebAdminUtils
 import org.apache.mailet.base.test.FakeMail
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
+import org.eclipse.jetty.http.HttpStatus.{CREATED_201, NO_CONTENT_204}
 import org.junit.jupiter.api.{BeforeEach, Test}
 
+import java.time.Duration
+import java.util.concurrent.TimeUnit
+
 object LinagoraContactAutocompleteMethodContract {
+  private var webAdminApi: RequestSpecification = _
+  private val basePath: String = s"/domains/${DOMAIN.asString}/contacts"
+
   private val bobAccountId: AccountId = AccountId.fromUsername(BOB)
 
   private val mailAddressA: MailAddress = new MailAddress("nobita@linagora.com")
@@ -61,6 +67,10 @@ trait LinagoraContactAutocompleteMethodContract {
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .build
+
+    webAdminApi = WebAdminUtils.buildRequestSpecification(server.getProbe(classOf[WebAdminGuiceProbe]).getWebAdminPort)
+      .setBasePath(basePath)
+      .build()
   }
 
   @Test
@@ -743,6 +753,55 @@ trait LinagoraContactAutocompleteMethodContract {
     bobShouldHaveAndreContact()
   }
 
+  @Test
+  def contactShouldBeIndexedWhenWebadmin(): Unit = {
+    val request: String =
+      s"""{
+         |  "emailAddress": "${ANDRE.asString()}",
+         |  "firstname": "Andre",
+         |  "surname": "Dupond"
+         |}""".stripMargin
+
+    `given`
+      .spec(webAdminApi)
+      .body(request)
+    .when()
+      .post()
+    .`then`()
+      .statusCode(CREATED_201)
+
+    bobShouldHaveAndreContact()
+  }
+
+  @Test
+  def contactShouldBeRemovedWhenWebadmin(): Unit = {
+    val request: String =
+      s"""{
+         |  "emailAddress": "${ANDRE.asString()}",
+         |  "firstname": "Andre",
+         |  "surname": "Dupond"
+         |}""".stripMargin
+
+    `given`
+      .spec(webAdminApi)
+      .body(request)
+    .when()
+      .post()
+    .`then`()
+      .statusCode(CREATED_201)
+
+    bobShouldHaveAndreContact()
+
+    `given`
+      .spec(webAdminApi)
+    .when()
+      .delete(s"/${ANDRE.getLocalPart}")
+    .`then`()
+      .statusCode(NO_CONTENT_204)
+
+    bobShouldNotHaveAndreContact()
+  }
+
   private def bobShouldHaveAndreContact(): Unit = {
     val request: String =
       s"""{
@@ -801,6 +860,59 @@ trait LinagoraContactAutocompleteMethodContract {
              |        ]
              |    ]
              |}""".stripMargin)
+    }
+  }
+
+  private def bobShouldNotHaveAndreContact(): Unit = {
+    val request: String =
+      s"""{
+         |    "using": [
+         |        "urn:ietf:params:jmap:core",
+         |        "com:linagora:params:jmap:contact:autocomplete"
+         |    ],
+         |    "methodCalls": [
+         |        [
+         |            "TMailContact/autocomplete",
+         |            {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "filter": {
+         |                    "text": "andre"
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin
+
+    calmlyAwait.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
+      val response: String = `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(request)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      assertThatJson(response)
+        .withOptions(new Options(IGNORING_ARRAY_ORDER))
+        .isEqualTo(s"""{
+                      |  "sessionState": "${SESSION_STATE.value}",
+                      |  "methodResponses": [
+                      |    [
+                      |      "TMailContact/autocomplete",
+                      |      {
+                      |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                      |        "list": [],
+                      |        "limit": 256
+                      |      },
+                      |      "c1"
+                      |    ]
+                      |  ]
+                      |}""".stripMargin)
     }
   }
 }
