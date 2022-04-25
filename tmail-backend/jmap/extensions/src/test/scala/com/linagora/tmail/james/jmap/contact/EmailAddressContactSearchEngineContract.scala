@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
@@ -8,6 +8,8 @@ import org.assertj.core.api.SoftAssertions
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+import java.util.stream.IntStream
 
 object EmailAddressContactSearchEngineContract {
   private val domain: Domain = Domain.of("linagora.com")
@@ -35,6 +37,8 @@ object EmailAddressContactSearchEngineContract {
 
   private val otherMailAddressUpperCase: MailAddress = new MailAddress("JOHNDOE@OTHER.COM")
   private val otherContactFieldsWithUppercaseEmail: ContactFields = ContactFields(otherMailAddressUpperCase, otherFirstname, otherSurname)
+
+  private val bigContactsNumber: Int = 1000
 }
 
 trait EmailAddressContactSearchEngineContract {
@@ -443,6 +447,17 @@ trait EmailAddressContactSearchEngineContract {
   }
 
   @Test
+  def listAccountContactsShouldBeAbleToReturnLargeNumberOfResults(): Unit = {
+    IntStream.range(0, bigContactsNumber)
+      .forEach((i: Int) => SMono(testee().index(accountId, ContactFields(new MailAddress(s"test$i@linagora.com")))).block())
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, bigContactsNumber)
+
+    assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().collectList().block().size())
+      .isEqualTo(bigContactsNumber)
+  }
+
+  @Test
   def listDomainContactsShouldReturnEmptyWhenNone(): Unit = {
     assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().map(_.fields).collectList().block())
       .isEmpty()
@@ -471,6 +486,17 @@ trait EmailAddressContactSearchEngineContract {
   }
 
   @Test
+  def listDomainContactsShouldBeAbleToReturnLargeNumberOfResults(): Unit = {
+    IntStream.range(0, bigContactsNumber)
+      .forEach((i: Int) => SMono(testee().index(domain, ContactFields(new MailAddress(s"test$i@linagora.com")))).block())
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, bigContactsNumber)
+
+    assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().collectList().block().size())
+      .isEqualTo(bigContactsNumber)
+  }
+
+  @Test
   def listDomainsContactsShouldReturnEmptyWhenNone(): Unit = {
     assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
       .isEmpty()
@@ -496,6 +522,17 @@ trait EmailAddressContactSearchEngineContract {
 
     assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
+  }
+
+  @Test
+  def listDomainsContactsShouldBeAbleToReturnLargeNumberOfResults(): Unit = {
+    IntStream.range(0, bigContactsNumber)
+      .forEach((i: Int) => SMono(testee().index(domain, ContactFields(new MailAddress(s"test$i@linagora.com")))).block())
+
+    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, bigContactsNumber)
+
+    assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().collectList().block().size())
+      .isEqualTo(bigContactsNumber)
   }
 
   @Test

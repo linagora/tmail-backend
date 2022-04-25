@@ -18,6 +18,7 @@ import org.apache.james.backends.es.v7.DocumentId;
 import org.apache.james.backends.es.v7.ElasticSearchIndexer;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
 import org.apache.james.backends.es.v7.RoutingKey;
+import org.apache.james.backends.es.v7.search.ScrolledSearch;
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -26,6 +27,7 @@ import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -47,6 +49,7 @@ import reactor.core.publisher.Mono;
 
 public class ESEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final String DELIMITER = ":";
+    private static final TimeValue TIMEOUT = TimeValue.timeValueMinutes(1);
 
     private final ElasticSearchIndexer userContactIndexer;
     private final ElasticSearchIndexer domainContactIndexer;
@@ -127,36 +130,39 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
     @Override
     public Publisher<EmailAddressContact> list(AccountId accountId) {
         SearchRequest request = new SearchRequest(configuration.getUserContactReadAliasName().getValue())
+            .scroll(TIMEOUT)
             .source(new SearchSourceBuilder()
                 .query(QueryBuilders.boolQuery()
                     .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))
                     .minimumShouldMatch(1)));
 
-        return client.search(request, RequestOptions.DEFAULT)
-            .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
+        return new ScrolledSearch(client, request)
+            .searchHits()
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
     }
 
     @Override
     public Publisher<EmailAddressContact> list(Domain domain) {
         SearchRequest request = new SearchRequest(configuration.getDomainContactReadAliasName().getValue())
+            .scroll(TIMEOUT)
             .source(new SearchSourceBuilder()
                 .query(QueryBuilders.boolQuery()
                     .should(QueryBuilders.termQuery(DOMAIN, domain.asString()))
                     .minimumShouldMatch(1)));
 
-        return client.search(request, RequestOptions.DEFAULT)
-            .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
+        return new ScrolledSearch(client, request)
+            .searchHits()
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
     }
 
     @Override
     public Publisher<EmailAddressContact> listDomainsContacts() {
         SearchRequest request = new SearchRequest(configuration.getDomainContactReadAliasName().getValue())
+            .scroll(TIMEOUT)
             .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery()));
 
-        return client.search(request, RequestOptions.DEFAULT)
-            .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
+        return new ScrolledSearch(client, request)
+            .searchHits()
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
     }
 
