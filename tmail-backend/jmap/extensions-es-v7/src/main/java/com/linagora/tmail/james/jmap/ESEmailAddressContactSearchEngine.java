@@ -203,9 +203,10 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     private EmailAddressContact extractContentFromHit(SearchHit hit) throws AddressException {
-        return new EmailAddressContact(UUID.fromString((String) hit.getSourceAsMap().get(CONTACT_ID)),
-            new ContactFields(new MailAddress(((String) hit.getSourceAsMap().get(EMAIL))),
-                (String) hit.getSourceAsMap().get(FIRSTNAME),
-                (String) hit.getSourceAsMap().get(SURNAME)));
+        Map<String, Object> source = hit.getSourceAsMap();
+        return new EmailAddressContact(UUID.fromString((String) source.get(CONTACT_ID)),
+            new ContactFields(new MailAddress(((String) source.get(EMAIL))),
+                (String) source.get(FIRSTNAME),
+                (String) source.get(SURNAME)));
     }
 }
