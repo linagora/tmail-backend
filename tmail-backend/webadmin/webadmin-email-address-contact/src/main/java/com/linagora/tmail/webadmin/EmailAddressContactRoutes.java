@@ -35,7 +35,7 @@ public class EmailAddressContactRoutes implements Routes {
     private static final String CONTACT_DOMAIN_PARAM = ":dom";
     private static final String CONTACT_ADDRESS_PARAM = ":address";
 
-    private static final String ALL_DOMAINS_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + "contacts";
+    private static final String ALL_DOMAINS_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + "contacts" + Constants.SEPARATOR + "all";
     private static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + CONTACT_DOMAIN_PARAM + Constants.SEPARATOR + "contacts";
     private static final String CRUD_PATH = BASE_PATH + Constants.SEPARATOR + CONTACT_ADDRESS_PARAM;
 
