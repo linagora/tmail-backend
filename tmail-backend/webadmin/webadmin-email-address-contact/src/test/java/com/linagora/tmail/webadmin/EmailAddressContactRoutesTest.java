@@ -44,7 +44,7 @@ import reactor.core.publisher.Mono;
 
 class EmailAddressContactRoutesTest {
     private static final String DOMAINS_CONTACTS_PATH = "/domains/%s/contacts";
-    private static final String ALL_DOMAINS_PATH = "/domains/contacts";
+    private static final String ALL_DOMAINS_PATH = "/domains/contacts/all";
     private static final Domain CONTACT_DOMAIN = Domain.of("contact.com");
 
     private static final String mailAddressA = "john@" + CONTACT_DOMAIN.asString();
