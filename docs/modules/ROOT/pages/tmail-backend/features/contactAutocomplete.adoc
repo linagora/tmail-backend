@@ -1,0 +1,54 @@
+= Contact Autocomplete
+:navtitle: Contact Autocomplete
+
+TMail allows users to have an easy and performant contact autocomplete experience.
+
+Contacts can be stored in many ways in TMail:
+
+- storing recipients as personal contacts when sending a mail via a mailet
+- synchronisation with LDAP for all domain contacts via a LSC script
+- synchronization with external third-party contact app via RabbitMQ
+
+The user is able to autocomplete over his personal contacts and domain contacts via a JMAP method.
+
+== Storing account contacts when sending mails
+
+An administrator needs to rely on the `ContactsCollection` mailet in `mailetcontainer.xml` configuration file
+in order to extract the recipient contacts of a message and index them asynchronously. This mailet also stores
+them as JSON in a specified message attribute.
+
+For example:
+
+....
+<mailet match="SenderIsLocal" class="com.linagora.tmail.mailets.ContactsCollection">
+    <attribute>ExtractedContacts</attribute>
+</mailet>
+....
+
+== Manage domain contacts via WebAdmin
+
+An administrator can manage domain contacts using xref:tmail-backend/webadmin.adoc#_domain_contacts[Domain contacts management routes]:
+//TODO: create page
+
+- Creating/updating/getting/removing contacts to a domain
+- Listing contacts from a domain
+- Listing all contacts regardless of their domain
+
+Note that the LSC script will use these routes as well to synchronize domain contacts from your LDAP to TMail.
+
+== Running LSC scripts to synchronize contacts from a LDAP
+
+//TODO
+
+== Synchronizing account contacts with third-party applications via RabbitMQ
+
+//TODO
+
+== Autocomplete with JMAP
+
+The client can easily get an autocomplete over its domain and account contacts via a simple JMAP method.
+
+The autocomplete does a full search on the email address, while the search on names is simpler as we only do it
+from the first characters. The search for a contact is also not case-sensitive.
+
+//TODO add a read more link to a JMAP page describing the method

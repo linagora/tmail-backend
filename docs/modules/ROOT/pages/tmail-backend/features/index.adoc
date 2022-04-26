@@ -44,3 +44,19 @@ TMail Rate Limiting enables the administrator to manage rate limiting plans and 
 - Administrator can configure mailet configuration, so it can retrieve rate limiting plans and apply to according users
 
 xref:tmail-backend/features/tmailRateLimiting.adoc[Read more]...
+
+== Contact autocomplete
+
+TMail allows users to have an easy and performant contact autocomplete experience.
+
+A contact must be composed of an email address, but can also have optionally a firstname and surname.
+
+Contacts can be stored in many ways in TMail:
+
+- storing recipients as personal contacts when sending a mail via a mailet
+- synchronisation with LDAP for all domain contacts via a LSC script
+- synchronization with external third-party contact app via RabbitMQ
+
+The user is able to autocomplete over his personal contacts and domain contacts via a JMAP method.
+
+xref:tmail-backend/features/contactAutocomplete.adoc[Read more]...
