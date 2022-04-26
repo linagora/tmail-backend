@@ -5,7 +5,7 @@ import org.apache.james.core.MailAddress
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
 import play.api.libs.json.{JsError, JsPath, JsResult, JsString, JsSuccess, JsValue, Json, Reads}
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object EmailAddressContactMessageSerializer {
 
@@ -42,8 +42,13 @@ object EmailAddressContactMessageSerializer {
   def deserializeEmailAddressContactMessage(input: JsValue): JsResult[EmailAddressContactMessage] = Json.fromJson[EmailAddressContactMessage](input)
 
   def deserializeEmailAddressContactMessageAsJava(input: String): EmailAddressContactMessage =
-    deserializeEmailAddressContactMessage(Json.parse(input)) match {
-      case JsError(errors) => throw new IllegalArgumentException(errors.toString())
-      case JsSuccess(value, _) => value
+    Try(Json.parse(input))
+      .map(jsValue => deserializeEmailAddressContactMessage(jsValue) match {
+        case JsError(errors) => throw new IllegalArgumentException("Can not deserialize. " + errors.toString())
+        case JsSuccess(value, _) => value
+      })
+    match {
+      case Success(value) => value
+      case Failure(exception) => throw new IllegalArgumentException("Input is not a json. " + exception.getMessage)
     }
 }
