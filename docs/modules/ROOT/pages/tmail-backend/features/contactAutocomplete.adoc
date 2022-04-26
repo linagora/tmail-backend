@@ -28,7 +28,6 @@ For example:
 == Manage domain contacts via WebAdmin
 
 An administrator can manage domain contacts using xref:tmail-backend/webadmin.adoc#_domain_contacts[Domain contacts management routes]:
-//TODO: create page
 
 - Creating/updating/getting/removing contacts to a domain
 - Listing contacts from a domain
