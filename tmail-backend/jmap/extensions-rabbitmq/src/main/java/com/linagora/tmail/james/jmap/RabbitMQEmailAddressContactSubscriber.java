@@ -3,6 +3,7 @@ package com.linagora.tmail.james.jmap;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.apache.james.backends.rabbitmq.Constants.REQUEUE;
+import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
@@ -130,7 +131,7 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
 
     private Disposable messagesConsume() {
         return delivery()
-            .flatMap(delivery -> messageConsume(delivery, new String(delivery.getBody(), StandardCharsets.UTF_8)))
+            .flatMap(delivery -> messageConsume(delivery, new String(delivery.getBody(), StandardCharsets.UTF_8)), DEFAULT_CONCURRENCY)
             .subscribeOn(Schedulers.elastic())
             .subscribe();
     }
