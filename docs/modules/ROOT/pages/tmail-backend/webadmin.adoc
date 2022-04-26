@@ -407,3 +407,124 @@ Return codes:
 - `204` Revoke plan of that user successfully
 - `400` Invalid request
 - `404` User is not found
+
+== Domain contacts
+
+=== Create a contact
+
+....
+curl -XPOST http://ip:port/domains/{domain}/contacts
+{
+    "emailAddress": "bob@domain.tld",
+    "firstname": "Bob",
+    "surname": "Carpenter"
+}
+....
+
+Creates a new contact attached to a domain
+
+The `firstname` and `surname` fields are optional.
+
+Returns the id of the created contact, as well as a Location header to communicate the URL of the created entry:
+
+....
+Location: /domains/domain.tld/contacts/bob
+{
+    "id": "6b427e04-11de-4674-a4e7-136986d9129e"
+}
+....
+
+Return codes:
+
+- `201` Contact created successfully
+- `400` Invalid domain or mail address, or the domain and the mail address domain don't match
+- `404` Domain not found
+
+=== Update a contact
+
+....
+curl -XPUT http://ip:port/domains/{domain}/contacts/{username}
+{
+    "firstname": "Bobby",
+    "surname": "Dupond"
+}
+....
+
+Update the names of a contact. If contact did not exist, it gets created.
+
+The `firstname` and `surname` fields are optional. If a field is omitted, it will not be updated.
+
+Return codes:
+
+- `204` Updated contact successfully
+- `400` Invalid domain or mail address
+- `404` Domain not found
+
+=== Delete a contact
+
+....
+curl -XDELETE http://ip:port/domains/{domain}/contacts/{username}
+....
+
+Deletes a contact.
+
+Return codes:
+
+- `204` Deleted contact successfully
+- `400` Invalid domain or mail address
+
+=== Get a contact
+
+....
+curl -XGET http://ip:port/domains/{domain}/contacts/{username}
+....
+
+Return information of that domain contact:
+
+....
+{
+    "id": "6b427e04-11de-4674-a4e7-136986d9129e",
+    "emailAddress": "bob@domain.tld",
+    "firstname": "Bob",
+    "surname": "Carpenter"
+}
+....
+
+Return codes:
+
+- `200` Get contact successfully
+- `400` Invalid domain or mail address
+- `404` Contact not found
+
+=== List all contacts of a domain
+
+....
+curl -XGET http://ip:port/domains/{domain}/contacts
+....
+
+Returns the list of all contact mail addresses belonging to the domain:
+
+....
+["bob@domain.tld", "marie@domain.tld"]
+....
+
+Return codes:
+
+- `200` Retrieve the list of contacts successfully
+- `400` Invalid domain
+
+=== List all contacts from all domains
+
+....
+curl -XGET http://ip:port/domains/contacts/all
+....
+
+Returns the list of all contact mail addresses from all domains:
+
+....
+["bob@domain.tld", "marie@domain.tld", "andre@otherdomain.tld"]
+....
+
+Return codes:
+
+- `200` Retrieve the list of contacts successfully
