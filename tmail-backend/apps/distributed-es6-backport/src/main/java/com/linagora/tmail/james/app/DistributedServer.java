@@ -79,6 +79,7 @@ import com.linagora.tmail.blob.blobid.list.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
+import com.linagora.tmail.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.KeystoreManager;
@@ -217,7 +218,8 @@ public class DistributedServer {
                 new RedisRateLimiterModule(),
                 new CassandraRateLimitingModule(),
                 new ES6ContactAutoCompleteModule(),
-                new DistributedEmailAddressContactEventModule());
+                new DistributedEmailAddressContactEventModule(),
+                new RabbitMQEmailAddressContactModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()

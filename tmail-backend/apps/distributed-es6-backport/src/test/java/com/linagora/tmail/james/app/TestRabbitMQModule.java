@@ -18,6 +18,7 @@ import org.apache.james.queue.rabbitmq.view.cassandra.configuration.CassandraMai
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.james.jmap.RabbitMQEmailAddressContactConfiguration;
 
 public class TestRabbitMQModule extends AbstractModule {
     private static final int MAX_THREE_RETRIES = 3;
@@ -27,6 +28,8 @@ public class TestRabbitMQModule extends AbstractModule {
     private static final int HANDSHAKE_TIMEOUT_OF_ONE_SECOND = 1000;
     private static final int SHUTDOWN_TIMEOUT_OF_ONE_SECOND = 1000;
     private static final int NETWORK_RECOVERY_INTERVAL_OF_ONE_SECOND = 1000;
+    private static final String ADDRESS_CONTACT_EXCHANGE = "AddressContactExchangeForTesting";
+    private static final String ADDRESS_CONTACT_QUEUE = "AddressContactQueueForTesting";
 
     private final DockerRabbitMQ rabbitMQ;
 
@@ -69,6 +72,15 @@ public class TestRabbitMQModule extends AbstractModule {
     @Singleton
     private RabbitMQMailQueueConfiguration getMailQueueSizeConfiguration() {
         return RabbitMQMailQueueConfiguration.sizeMetricsEnabled();
+    }
+
+    @Provides
+    @Singleton
+    public RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration(RabbitMQConfiguration rabbitMQConfiguration) {
+        return new RabbitMQEmailAddressContactConfiguration(ADDRESS_CONTACT_EXCHANGE, ADDRESS_CONTACT_QUEUE,
+            rabbitMQConfiguration.getUri(),
+            rabbitMQConfiguration.getManagementUri(),
+            rabbitMQConfiguration.getManagementCredentials());
     }
 
     public static class QueueCleanUp implements CleanupTasksPerformer.CleanupTask {
