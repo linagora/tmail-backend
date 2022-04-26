@@ -10,15 +10,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 
-import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.lifecycle.api.Startable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.jmap.contact.ContactMessageHandlerResult;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactMessageHandler;
@@ -37,57 +35,21 @@ import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 
 public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeable {
-    static class RabbitMQConfiguration {
-        static final String DEAD_LETTER_EXCHANGE_PREFIX = "TmailQueue-dead-letter-exchange-";
-        static final String DEAD_LETTER_QUEUE_PREFIX = "TmailQueue-dead-letter-queue-";
-
-        public static RabbitMQConfiguration from(Configuration config) {
-            return new RabbitMQConfiguration(
-                config.getString("address.contact.exchange", "AddressContactExchangeDefault"),
-                config.getString("address.contact.queue", "AddressContactQueueDefault"));
-        }
-
-        private final String exchangeName;
-        private final String queueName;
-
-        public RabbitMQConfiguration(String exchangeName, String queueName) {
-            Preconditions.checkArgument(StringUtils.isNotBlank(exchangeName));
-            Preconditions.checkArgument(StringUtils.isNotBlank(queueName));
-            this.exchangeName = exchangeName;
-            this.queueName = queueName;
-        }
-
-        public String getExchangeName() {
-            return exchangeName;
-        }
-
-        public String getQueueName() {
-            return queueName;
-        }
-
-        public String getDeadLetterExchange() {
-            return DEAD_LETTER_EXCHANGE_PREFIX + getQueueName();
-        }
-
-        public String getDeadLetterQueue() {
-            return DEAD_LETTER_QUEUE_PREFIX + getQueueName();
-        }
-    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQEmailAddressContactSubscriber.class);
 
-    private final RabbitMQConfiguration rabbitMQConfiguration;
+    private final RabbitMQEmailAddressContactConfiguration rabbitMQConfiguration;
     private final ReceiverProvider receiverProvider;
     private final EmailAddressContactMessageHandler messageHandler;
     private final Sender sender;
     private Disposable messageConsume;
 
     @Inject
-    public RabbitMQEmailAddressContactSubscriber(ReceiverProvider receiverProvider,
-                                                 Sender sender,
-                                                 EmailAddressContactMessageHandler messageHandler,
-                                                 Configuration configuration) {
-        this.rabbitMQConfiguration = RabbitMQConfiguration.from(configuration);
+    public RabbitMQEmailAddressContactSubscriber(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) ReceiverProvider receiverProvider,
+                                                 @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) Sender sender,
+                                                 RabbitMQEmailAddressContactConfiguration configuration,
+                                                 EmailAddressContactMessageHandler messageHandler) {
+        this.rabbitMQConfiguration = configuration;
         this.receiverProvider = receiverProvider;
         this.messageHandler = messageHandler;
         this.sender = sender;

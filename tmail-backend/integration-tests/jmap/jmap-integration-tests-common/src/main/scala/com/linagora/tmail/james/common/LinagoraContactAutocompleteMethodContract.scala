@@ -837,7 +837,7 @@ trait LinagoraContactAutocompleteMethodContract {
     }
   }
 
-  private def bobShouldHaveAndreContact(): Unit = {
+  def bobShouldHaveAndreContact(): Unit = {
     val request: String =
       s"""{
          |    "using": [

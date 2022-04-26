@@ -26,12 +26,12 @@ import org.apache.james.jmap.rfc8621.contract.MailboxQueryMethodContract;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.apache.james.modules.RabbitMQExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedMailboxQueryMethodTest implements MailboxQueryMethodContract {

@@ -29,7 +29,6 @@ import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.apache.james.modules.RabbitMQExtension;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -38,6 +37,7 @@ import com.datastax.driver.core.utils.UUIDs;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedMailboxSetMethodTest implements MailboxSetMethodContract {

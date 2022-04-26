@@ -8,7 +8,6 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -19,6 +18,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;

@@ -1,6 +1,9 @@
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.james.app.TestRabbitMQModule.ADDRESS_CONTACT_EXCHANGE;
 import static com.linagora.tmail.james.jmap.ElasticSearchContactConfiguration.DEFAULT_CONFIGURATION;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
@@ -10,10 +13,11 @@ import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
+import org.apache.james.backends.rabbitmq.RabbitMQExtension;
+import org.apache.james.jmap.rfc8621.contract.Fixture;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
 import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.apache.james.modules.RabbitMQExtension;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
@@ -22,6 +26,7 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
@@ -31,14 +36,23 @@ import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract
 import com.linagora.tmail.james.common.module.JmapGuiceContactAutocompleteModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
+import reactor.core.publisher.Mono;
+import reactor.rabbitmq.OutboundMessage;
+
 public class DistributedLinagoraContactAutoCompleteMethodTest implements LinagoraContactAutocompleteMethodContract {
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
         .with().pollInterval(ONE_HUNDRED_MILLISECONDS)
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
         .await();
+    private static final com.linagora.tmail.james.app.RabbitMQExtension rabbitMQExtensionModule = new com.linagora.tmail.james.app.RabbitMQExtension();
 
     @RegisterExtension
     DockerOpenDistroExtension openDistroExtension = new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE);
+
+    @RegisterExtension
+    RabbitMQExtension rabbitMQExtension = RabbitMQExtension.dockerRabbitMQ(rabbitMQExtensionModule.dockerRabbitMQ())
+        .restartPolicy(RabbitMQExtension.DockerRestartPolicy.PER_CLASS)
+        .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -53,7 +67,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
             .build())
         .extension(new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE))
         .extension(new CassandraExtension())
-        .extension(new RabbitMQExtension())
+        .extension(rabbitMQExtensionModule)
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
@@ -76,5 +90,28 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
                     RequestOptions.DEFAULT)
                 .block()
                 .getHits().getTotalHits().value).isEqualTo(documentCount));
+    }
+
+    @Test
+    void contactShouldBeIndexedWhenAQMPUserAddedMessage() {
+        String aqmpUserAddedMessage = String.format("{ " +
+            "   \"type\": \"addition\"," +
+            "   \"scope\": \"user\", " +
+            "   \"owner\" : \"%s\"," +
+            "   \"entry\": {" +
+            "        \"address\": \"%s\"," +
+            "        \"firstname\": \"Alice\"," +
+            "        \"surname\": \"Watson\"" +
+            "    }" +
+            "}", Fixture.BOB().asString(), Fixture.ANDRE().asString());
+
+        rabbitMQExtension.getSender()
+            .send(Mono.just(new OutboundMessage(
+                ADDRESS_CONTACT_EXCHANGE,
+                EMPTY_ROUTING_KEY,
+                aqmpUserAddedMessage.getBytes(UTF_8))))
+            .block();
+
+        bobShouldHaveAndreContact();
     }
 }

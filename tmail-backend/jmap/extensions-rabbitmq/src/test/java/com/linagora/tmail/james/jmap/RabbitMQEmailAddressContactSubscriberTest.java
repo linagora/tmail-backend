@@ -7,14 +7,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.awaitility.Durations.TEN_SECONDS;
+import static org.mockito.Mockito.mock;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.api.model.AccountId;
 import org.junit.jupiter.api.AfterEach;
@@ -42,26 +44,27 @@ public class RabbitMQEmailAddressContactSubscriberTest {
 
     private EmailAddressContactSearchEngine searchEngine;
     private RabbitMQEmailAddressContactSubscriber subscriber;
-    private String aqmpContactExchange;
-    private String aqmpContactDeadLetterQueue;
+    private RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration;
 
 
     @BeforeEach
     void setup() {
         String aqmpSuffix = UUID.randomUUID().toString();
-        aqmpContactExchange = "AddressContactExchangeForTesting" + aqmpSuffix;
+        String aqmpContactExchange = "AddressContactExchangeForTesting" + aqmpSuffix;
         String aqmpContactQueue = "AddressContactQueueForTesting" + aqmpSuffix;
-        aqmpContactDeadLetterQueue = "TmailQueue-dead-letter-queue-" + aqmpContactQueue;
 
-        PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("address.contact.exchange", aqmpContactExchange);
-        configuration.addProperty("address.contact.queue", aqmpContactQueue);
+        rabbitMQEmailAddressContactConfiguration = new RabbitMQEmailAddressContactConfiguration(
+            aqmpContactExchange,
+            aqmpContactQueue,
+            URI.create("amqp://james:james@rabbitmqhost:5672"),
+            URI.create("http://james:james@rabbitmqhost:15672/api/"),
+            mock(RabbitMQConfiguration.ManagementCredentials.class));
 
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         subscriber = new RabbitMQEmailAddressContactSubscriber(rabbitMQExtension.getReceiverProvider(),
             rabbitMQExtension.getSender(),
-            new EmailAddressContactMessageHandler(searchEngine),
-            configuration);
+            rabbitMQEmailAddressContactConfiguration,
+            new EmailAddressContactMessageHandler(searchEngine));
         subscriber.start();
     }
 
@@ -346,7 +349,7 @@ public class RabbitMQEmailAddressContactSubscriberTest {
     private void sendMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                aqmpContactExchange,
+                rabbitMQEmailAddressContactConfiguration.getExchangeName(),
                 EMPTY_ROUTING_KEY,
                 message.getBytes(UTF_8))))
             .block();
@@ -354,7 +357,7 @@ public class RabbitMQEmailAddressContactSubscriberTest {
 
     private Flux<String> deadLetterMessageFlux() {
         return Flux.using(() -> rabbitMQExtension.getReceiverProvider().createReceiver(),
-                receiver -> receiver.consumeAutoAck(aqmpContactDeadLetterQueue),
+                receiver -> receiver.consumeAutoAck(rabbitMQEmailAddressContactConfiguration.getDeadLetterQueue()),
                 Receiver::close)
             .map(delivery -> new String(delivery.getBody(), UTF_8));
     }
