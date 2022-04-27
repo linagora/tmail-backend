@@ -1,0 +1,114 @@
+= JMAP contact autocomplete
+:navtitle: JMAP contact autocomplete
+
+This extension allows users, when composing an email, to search recipients in his list of domain and personal contacts
+based on his input.
+
+== Additions to the capabilities object
+
+Servers supporting the JMAP contact autocomplete extension advertise it via the
+`com:linagora:params:jmap:contact:autocomplete` capability.
+
+The value of this property in the JMAP session capabilities property is an empty object.
+
+The value of this property in an account’s accountCapabilities property is an empty object.
+
+== Contact
+
+The `Contact` object represents a personal or domain contact related to the user.
+
+It has the following fields:
+
+- *id*: `String, immutable`. The computed identifier of the Contact.
+- *email*: `String, immutable`. The email address of the Contact.
+- *firstname*: `String, mutable, optional`. The firstname of the Contact.
+- *surname*: `String, mutable, optional`. The surname of the Contact.
+
+Example:
+
+....
+{
+  "id": "02242f08-515c-4170-945e-64afa991f149",
+  "emailAddress": "bparker@linagora.com"
+  "firstname": "Bob",
+  "surname": "Parker"
+}
+....
+
+== TMailContact/autocomplete
+
+The method is similar to a standard `/query` JMAP method, simplified.
+
+It takes the following arguments:
+
+- *accountId*: `Id` The id of the account to use.
+- *filter*: `ContactFilter` Determines the set of contacts returned in the result. The filter is mandatory here.
+A `ContactFilter` has one property:
+  * *text*: `String` The input on which the user is trying to perform an autocomplete on his contacts.
+- *limit*: `UnsignedInt|null` The maximum number of results to return. If null, no limit presumed. The server MAY choose
+to enforce a maximum limit argument. In this case, if a greater value is given (or if it is null), the limit is clamped
+to the maximum; the new limit is returned with the response so the client is aware.
+
+The response has the following arguments:
+
+- *accountId*: `Id` The id of the account used for the call.
+- *list*: `Contact[]` The list of contacts matching the filter query from the request. Note that the autocomplete method
+does a full search on the email address, while only doing a partial search for names just looking at the first characters.
+- *limit*: `UnsignedInt` (if set by the server) The limit enforced by the server on the maximum number of results to
+return. This is only returned if the server set a limit or used a different limit than that given in the request.
+
+== Example
+
+Suppose the user has 2 personal contacts:
+
+- {"email": "john@domain.tld", "firstname": "John", "surname: "Doe"}
+- {"email": "marie@otherdomain.tld", "firstname": "", "surname: ""}
+
+And 2 domain contacts:
+
+- {"email": "bparker@linagora.com", "firstname": "Bob", "surname: "Parker"}
+- {"email": "mdupond@linagora.com", "firstname": "Marie", "surname: "Dupond"}
+
+The user is composing a new email and start typing the recipient he is looking for, doing a JMAP autocomplete method
+towards TMail backend for finding his contact:
+
+....
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
+  "methodCalls": [[
+    "TMailContact/autocomplete",
+    {
+      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+      "filter": {"text":"marie"}
+    },
+    "c1"]]
+}
+....
+
+Will return:
+
+....
+{
+  "sessionState": "${SESSION_STATE.value}",
+  "methodResponses": [
+    [
+      "TMailContact/autocomplete",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "list": [{
+          "id": "2",
+          "firstname": "",
+          "surname": "",
+          "emailAddress": "marie@otherdomain.tld"
+        }, {
+          "id": "4",
+          "firstname": "Marie",
+          "surname": "Dupond",
+          "emailAddress": "mdupond@linagora.com"
+        }]
+      },
+      "c1"
+    ]
+  ]
+}
+....
