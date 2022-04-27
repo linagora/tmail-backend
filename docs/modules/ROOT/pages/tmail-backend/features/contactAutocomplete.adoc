@@ -37,7 +37,14 @@ Note that the LSC script will use these routes as well to synchronize domain con
 
 == Running LSC scripts to synchronize contacts from a LDAP
 
-//TODO
+You can use LSC scripts to synchronize your contacts from a LDAP to TMail domain contacts.
+
+For this, you should use the link:https://github.com/linagora/tmail-lsc[TMail LSC plugin].
+
+For more information about how to run that script for the synchronization, you can read the `README.md` of the project.
+You will find what you need to link:https://github.com/linagora/tmail-lsc#configuration[configure] and
+link:https://github.com/linagora/tmail-lsc#usage[use] the LSC plugin and also more information regarding
+link:https://github.com/linagora/tmail-lsc#domain-contact-synchronization[domain contact synchronization].
 
 == Synchronizing account contacts with third-party applications via RabbitMQ
 
