@@ -25,7 +25,7 @@ import org.apache.mailet.base.test.FakeMail
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
-import org.eclipse.jetty.http.HttpStatus.{CREATED_201, NO_CONTENT_204}
+import org.eclipse.jetty.http.HttpStatus.{CREATED_201, NO_CONTENT_204, OK_200}
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 import java.time.Duration
@@ -800,6 +800,41 @@ trait LinagoraContactAutocompleteMethodContract {
       .statusCode(NO_CONTENT_204)
 
     bobShouldNotHaveAndreContact()
+  }
+
+  @Test
+  def contactShouldBeReturnedWithWebadminListingAllRoute(): Unit = {
+    val request: String =
+      s"""{
+         |  "emailAddress": "${ANDRE.asString()}",
+         |  "firstname": "Andre",
+         |  "surname": "Dupond"
+         |}""".stripMargin
+
+    `given`
+      .spec(webAdminApi)
+      .body(request)
+    .when()
+      .post()
+    .`then`()
+      .statusCode(CREATED_201)
+
+    calmlyAwait.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
+      val response: String = `given`
+        .spec(webAdminApi)
+      .when()
+        .basePath("/domains/contacts/all")
+        .get()
+      .`then`()
+        .statusCode(OK_200)
+        .contentType(JSON)
+        .extract()
+        .body()
+        .asString()
+
+      assertThatJson(response)
+        .isEqualTo(s"[\"${ANDRE.asString()}\"]")
+    }
   }
 
   private def bobShouldHaveAndreContact(): Unit = {
