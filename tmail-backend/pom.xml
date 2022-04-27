@@ -49,6 +49,7 @@
         <module>jmap/extensions-cassandra</module>
         <module>jmap/extensions-es-v6</module>
         <module>jmap/extensions-es-v7</module>
+        <module>jmap/extensions-rabbitmq</module>
 
         <module>rate-limiter/rate-limiter-api</module>
         <module>rate-limiter/rate-limiter-cassandra</module>
