@@ -50,4 +50,4 @@ The client can easily get an autocomplete over its domain and account contacts v
 The autocomplete does a full search on the email address, while the search on names is simpler as we only do it
 from the first characters. The search for a contact is also not case-sensitive.
 
-//TODO add a read more link to a JMAP page describing the method
+xref:tmail-backend/jmap-extensions/contactAutocomplete.adoc[Read more]...
