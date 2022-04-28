@@ -48,7 +48,91 @@ link:https://github.com/linagora/tmail-lsc#domain-contact-synchronization[domain
 
 == Synchronizing account contacts with third-party applications via RabbitMQ
 
-//TODO
+If you need to synchronize contacts with TMail from an external third-party contact application, you can also use RabbitMQ.
+
+You will need to configure TMail to connect to a RabbitMQ instance that will consume messages sent by the third-party app
+on a dedicated queue.
+
+In your `rabbitmq.properties` file in TMail, you need to add those extra fields:
+
+- `address.contact.uri`: the URI of RabbitMQ having messages related to contacts from the third-party app.
+- `address.contact.user`: the username to access the RabbitMQ instance.
+- `address.contact.password`: the password to access the RabbitMQ instance.
+- `address.contact.queue`: the queue name for contacts on RabbitMQ.
+
+TMail will create an exchange for the contact queue depending on the name of the latest, following this pattern:
+`TmailExchange-{address.contact.queue}`.
+
+In addition, as well, TMail will create a queue and exchange for dead letters, meaning every message failing to be
+consumed correctly to TMail will be stored there where you can check, investigate what was wrong, replay them, ...
+Those queues are named according to the following pattern:
+
+- Dead letter exchange name = "TmailQueue-dead-letter-exchange-{address.contact.exchange}"
+- Dead letter queue name = "TmailQueue-dead-letter-queue-{address.contact.queue}"
+
+Then you need to configure your third-party app to send message to the contact exchange and TMail will listen to the
+bound queue and consume them.
+
+For this, you need to respect the structure of the contact message declared as follow:
+
+- *type*: `String` What type of operation you want to do on that contact. There is 3 possibilities here:
+  * `addition` Adding a new contact
+  * `removal` Removing a contact
+  * `update` Updating the names of a contact
+- *scope*: `String` The scope that the contact is targeted to. There is actually 2:
+  * `user`: The contact is personal to the user
+  * `domain`: The contact belongs to a domain
+- *owner*: `String` The entity the contact belongs to. If the scope is `user`, the owner should be the user it belongs
+to. If the scope is `domain`, the owner should be the domain it belongs to.
+- *entry*: `MessageEntry` The entry with the detailed information of the contact.
+A `MessageEntry` is composed of the following fields:
+  * *address*: `String` The mail address of the contact. It has to be a valid mail address.
+  * *firstname*: `String` The first name of the contact. It's optional.
+  * *surname*: `String` the surname of the contact. It's optional.
+
+For example:
+
+- Adding a user contact:
+....
+{
+  "type": "addition",
+  "scope": "user",
+  "owner" : "bob@domain.tld",
+  "entry": {
+    "address": "alice@domain.tld",
+    "firstname": "Alice",
+    "surname": "Watson"
+  }
+}
+....
+
+- Removing a domain contact:
+....
+{
+  "type": "removal",
+  "scope": "domain",
+  "owner" : "domain.tld",
+  "entry": {
+    "address": "alice@domain.tld",
+    "firstname": "Alice",
+    "surname": "Watson"
+  }
+}
+....
+
+- Updating the name of an existing user contact:
+....
+{
+  "type": "update",
+  "scope": "user",
+  "owner" : "bob@domain.tld",
+  "entry": {
+    "address": "alice@domain.tld",
+    "firstname": "Bob",
+    "surname": "Parker"
+  }
+}
+....
 
 == Autocomplete with JMAP
 
