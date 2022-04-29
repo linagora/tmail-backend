@@ -36,7 +36,7 @@ import reactor.rabbitmq.OutboundMessage;
 import reactor.rabbitmq.Receiver;
 
 
-public class RabbitMQEmailAddressContactSubscriberTest {
+class RabbitMQEmailAddressContactSubscriberTest {
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
@@ -57,7 +57,6 @@ public class RabbitMQEmailAddressContactSubscriberTest {
             aqmpContactExchange,
             aqmpContactQueue,
             URI.create("amqp://james:james@rabbitmqhost:5672"),
-            URI.create("http://james:james@rabbitmqhost:15672/api/"),
             mock(RabbitMQConfiguration.ManagementCredentials.class));
 
         searchEngine = new InMemoryEmailAddressContactSearchEngine();

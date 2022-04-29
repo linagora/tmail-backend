@@ -32,7 +32,7 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration(@Named("rabbitmq") org.apache.commons.configuration2.Configuration configuration) {
+    public RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration(@Named("rabbitmq") Configuration configuration) {
         return RabbitMQEmailAddressContactConfiguration.from(configuration);
     }
 
@@ -42,7 +42,7 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
     public RabbitMQConfiguration getMailQueueConfiguration(RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration) {
         return RabbitMQConfiguration.builder()
             .amqpUri(rabbitMQEmailAddressContactConfiguration.getAmqpUri())
-            .managementUri(rabbitMQEmailAddressContactConfiguration.getManagementUri())
+            .managementUri(rabbitMQEmailAddressContactConfiguration.getAmqpUri())
             .managementCredentials(rabbitMQEmailAddressContactConfiguration.getManagementCredentials())
             .build();
     }
@@ -51,7 +51,7 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
     @Provides
     @Singleton
     public ReactorRabbitMQChannelPool provideReactorRabbitMQChannelPool(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) SimpleConnectionPool simpleConnectionPool,
-                                                                        @Named(RABBITMQ_CONTACT_CONFIGURATION_NAME) Provider<org.apache.commons.configuration2.Configuration> configuration) {
+                                                                        @Named(RABBITMQ_CONTACT_CONFIGURATION_NAME) Provider<Configuration> configuration) {
         ReactorRabbitMQChannelPool channelPool = new ReactorRabbitMQChannelPool(
             simpleConnectionPool.getResilientConnection(),
             provideChannelPoolConfiguration(configuration));
@@ -94,7 +94,7 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
             .init(instance::start);
     }
 
-    private ReactorRabbitMQChannelPool.Configuration provideChannelPoolConfiguration(Provider<org.apache.commons.configuration2.Configuration> configuration) {
+    private ReactorRabbitMQChannelPool.Configuration provideChannelPoolConfiguration(Provider<Configuration> configuration) {
         try {
             return ReactorRabbitMQChannelPool.Configuration.from(configuration.get());
         } catch (Exception e) {
