@@ -50,11 +50,9 @@ class RabbitMQEmailAddressContactSubscriberTest {
     @BeforeEach
     void setup() {
         String aqmpSuffix = UUID.randomUUID().toString();
-        String aqmpContactExchange = "AddressContactExchangeForTesting" + aqmpSuffix;
         String aqmpContactQueue = "AddressContactQueueForTesting" + aqmpSuffix;
 
         rabbitMQEmailAddressContactConfiguration = new RabbitMQEmailAddressContactConfiguration(
-            aqmpContactExchange,
             aqmpContactQueue,
             URI.create("amqp://james:james@rabbitmqhost:5672"),
             mock(RabbitMQConfiguration.ManagementCredentials.class));

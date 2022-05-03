@@ -14,8 +14,8 @@ public class RabbitMQEmailAddressContactConfiguration {
     static final String AQMP_URI_PROPERTY = "address.contact.uri";
     static final String AQMP_MANAGEMENT_USER = "address.contact.user";
     static final String AQMP_MANAGEMENT_PASSWORD = "address.contact.password";
-    static final String AQMP_EXCHANGE_NAME_PROPERTY = "address.contact.exchange";
     static final String AQMP_QUEUE_NAME_PROPERTY = "address.contact.queue";
+    static final String AQMP_EXCHANGE_PREFIX = "TmailExchange-";
 
     public static RabbitMQEmailAddressContactConfiguration from(Configuration configuration) {
         String aqmpURIAsString = configuration.getString(AQMP_URI_PROPERTY);
@@ -31,32 +31,26 @@ public class RabbitMQEmailAddressContactConfiguration {
             String.format("You need to specify the %s property as password of rabbitmq account", AQMP_MANAGEMENT_PASSWORD));
         RabbitMQConfiguration.ManagementCredentials managementCredential = new RabbitMQConfiguration.ManagementCredentials(managementUser, managementPassword.toCharArray());
 
-        String exchangeName = configuration.getString(AQMP_EXCHANGE_NAME_PROPERTY);
-        Preconditions.checkState(!Strings.isNullOrEmpty(exchangeName),
-            String.format("You need to specify the %s property as exchange name for contact address feature", AQMP_EXCHANGE_NAME_PROPERTY));
         String queueName = configuration.getString(AQMP_QUEUE_NAME_PROPERTY);
         Preconditions.checkState(!Strings.isNullOrEmpty(queueName),
             String.format("You need to specify the %s property as queue name for contact address feature", AQMP_QUEUE_NAME_PROPERTY));
-        return new RabbitMQEmailAddressContactConfiguration(exchangeName, queueName, aqmpUri, managementCredential);
+        return new RabbitMQEmailAddressContactConfiguration(queueName, aqmpUri, managementCredential);
     }
 
-    private final String exchangeName;
     private final String queueName;
     private final URI amqpUri;
     private final RabbitMQConfiguration.ManagementCredentials managementCredentials;
 
-    public RabbitMQEmailAddressContactConfiguration(String exchangeName,
-                                                    String queueName,
+    public RabbitMQEmailAddressContactConfiguration(String queueName,
                                                     URI amqpUri,
                                                     RabbitMQConfiguration.ManagementCredentials managementCredentials) {
-        this.exchangeName = exchangeName;
         this.queueName = queueName;
         this.amqpUri = amqpUri;
         this.managementCredentials = managementCredentials;
     }
 
     public String getExchangeName() {
-        return exchangeName;
+        return AQMP_EXCHANGE_PREFIX + queueName;
     }
 
     public String getQueueName() {
