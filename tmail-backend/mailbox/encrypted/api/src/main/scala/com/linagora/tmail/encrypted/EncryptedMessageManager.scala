@@ -1,6 +1,12 @@
 package com.linagora.tmail.encrypted
 
+import java.io.InputStream
+import java.util
+import java.util.Date
+
 import com.linagora.tmail.pgp.Encrypter
+import javax.inject.Inject
+import javax.mail.Flags
 import org.apache.james.mailbox.MessageManager.{AppendCommand, AppendResult, MailboxMetaData}
 import org.apache.james.mailbox.model.{ComposedMessageIdWithMetaData, FetchGroup, Mailbox, MailboxACL, MailboxConstants, MailboxCounters, MailboxId, MailboxPath, MessageRange, MessageResultIterator, SearchQuery}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}
@@ -12,11 +18,6 @@ import org.apache.james.mime4j.stream.MimeConfig
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.io.InputStream
-import java.util
-import java.util.Date
-import javax.inject.Inject
-import javax.mail.Flags
 import scala.jdk.CollectionConverters._
 
 class EncryptedMessageManager @Inject()(messageManager: MessageManager,
@@ -29,8 +30,6 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
   override def getMailboxCounters(mailboxSession: MailboxSession): MailboxCounters = messageManager.getMailboxCounters(mailboxSession)
 
   override def isWriteable(session: MailboxSession): Boolean = messageManager.isWriteable(session)
-
-  override def isModSeqPermanent(session: MailboxSession): Boolean = messageManager.isModSeqPermanent(session)
 
   override def expunge(set: MessageRange, mailboxSession: MailboxSession): util.Iterator[MessageUid] = messageManager.expunge(set, mailboxSession)
 
@@ -67,8 +66,8 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
 
   override def getApplicableFlags(session: MailboxSession): Flags = messageManager.getApplicableFlags(session)
 
-  override def getMetaData(resetRecent: Boolean, mailboxSession: MailboxSession, fetchGroup: MailboxMetaData.FetchGroup): MessageManager.MailboxMetaData =
-    messageManager.getMetaData(resetRecent, mailboxSession, fetchGroup)
+  override def getMetaData(recentMode: MailboxMetaData.RecentMode, mailboxSession: MailboxSession, fetchGroup: MailboxMetaData.FetchGroup): MessageManager.MailboxMetaData =
+    messageManager.getMetaData(recentMode, mailboxSession, fetchGroup)
 
   override def getResolvedAcl(mailboxSession: MailboxSession): MailboxACL = messageManager.getResolvedAcl(mailboxSession)
 
@@ -79,7 +78,7 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
         if (keys.isEmpty || !getMailboxPath.getNamespace.equals(MailboxConstants.USER_NAMESPACE)) {
           SMono.fromPublisher(messageManager.appendMessageReactive(appendCommand, session))
         } else {
-          val messageBuilder: DefaultMessageBuilder = new DefaultMessageBuilder();
+          val messageBuilder: DefaultMessageBuilder = new DefaultMessageBuilder()
           messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
           messageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
           val clearMessage: Message = messageBuilder.parseMessage(appendCommand.getMsgIn.getInputStream)
@@ -115,4 +114,6 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
   }
 
   override def getMailboxCountersReactive(mailboxSession: MailboxSession): Publisher[MailboxCounters] = messageManager.getMailboxCountersReactive(mailboxSession)
+
+  override def getPermanentFlags(session: MailboxSession): Flags = messageManager.getPermanentFlags(session)
 }

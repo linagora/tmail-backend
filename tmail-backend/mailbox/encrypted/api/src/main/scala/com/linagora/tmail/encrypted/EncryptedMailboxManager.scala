@@ -1,5 +1,9 @@
 package com.linagora.tmail.encrypted
 
+import java.util.Optional
+import java.{lang, util}
+
+import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager.{MailboxCapabilities, MailboxRenamedResult, MessageCapabilities, SearchCapabilities}
 import org.apache.james.mailbox.model.search.MailboxQuery
@@ -8,10 +12,6 @@ import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager}
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.SMono
-
-import java.util.Optional
-import java.{lang, util}
-import javax.inject.Inject
 
 class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
                                         keystoreManager: KeystoreManager,
@@ -135,4 +135,9 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
   override def getMailboxReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MessageManager] =
     SMono.fromPublisher(mailboxManager.getMailboxReactive(mailboxPath, session))
       .map(messageManager => new EncryptedMessageManager(messageManager, keystoreManager, clearEmailContentFactory, encryptedEmailContentStore))
+
+  override def hasRight(mailbox: Mailbox, right: MailboxACL.Right, session: MailboxSession): Boolean = mailboxManager.hasRight(mailbox, right, session)
+
+  override def listRights(mailbox: Mailbox, identifier: MailboxACL.EntryKey, session: MailboxSession): util.List[MailboxACL.Rfc4314Rights] =
+    mailboxManager.listRights(mailbox, identifier, session)
 }

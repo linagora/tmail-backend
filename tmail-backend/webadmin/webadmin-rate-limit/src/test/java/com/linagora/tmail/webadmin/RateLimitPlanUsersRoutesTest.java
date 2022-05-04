@@ -31,15 +31,16 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import com.linagora.tmail.rate.limiter.api.InMemoryRateLimitingPlanRepository;
-import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepository;
-import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanId;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanNotFoundException;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepository;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanUserRepository;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingPlanUserRepository;
 
 import io.restassured.RestAssured;
 import io.restassured.path.json.JsonPath;
+import net.javacrumbs.jsonunit.core.Option;
 import reactor.core.publisher.Mono;
 
 public class RateLimitPlanUsersRoutesTest {
@@ -297,6 +298,7 @@ public class RateLimitPlanUsersRoutesTest {
                 .asString();
 
             assertThatJson(response)
+                .when(Option.IGNORING_ARRAY_ORDER)
                 .isEqualTo("[\"bob@linagora.com\", \"andre@linagora.com\"]");
         }
 

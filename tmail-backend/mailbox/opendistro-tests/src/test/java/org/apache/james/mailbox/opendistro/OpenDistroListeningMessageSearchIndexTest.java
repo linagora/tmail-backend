@@ -33,7 +33,6 @@ import org.apache.james.mailbox.elasticsearch.v7.query.QueryConverter;
 import org.apache.james.mailbox.elasticsearch.v7.search.ElasticSearchSearcher;
 import org.apache.james.mailbox.extractor.ParsedContent;
 import org.apache.james.mailbox.extractor.TextExtractor;
-import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.mailbox.manager.ManagerTestProvisionner;
@@ -147,6 +146,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     ElasticSearchIndexer elasticSearchIndexer;
     ElasticSearchSearcher elasticSearchSearcher;
     SessionProviderImpl sessionProvider;
+    MessageId.Factory messageIdFactory;
 
     @RegisterExtension
     DockerOpenDistroExtension openDistro = new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE);
@@ -160,7 +160,7 @@ class OpenDistroListeningMessageSearchIndexTest {
             ZoneId.of("UTC"),
             IndexAttachments.YES);
 
-        InMemoryMessageId.Factory messageIdFactory = new InMemoryMessageId.Factory();
+        messageIdFactory = new InMemoryMessageId.Factory();
 
         client = MailboxIndexCreationUtil.prepareDefaultClient(
             openDistro.getDockerOpenDistro().clientProvider().get(),
@@ -169,8 +169,6 @@ class OpenDistroListeningMessageSearchIndexTest {
         elasticSearchSearcher = new ElasticSearchSearcher(client,
             new QueryConverter(new CriterionConverter()),
             ElasticSearchSearcher.DEFAULT_SEARCH_SIZE,
-            new InMemoryId.Factory(),
-            messageIdFactory,
             MailboxElasticSearchConstants.DEFAULT_MAILBOX_READ_ALIAS,
             new MailboxIdRoutingKeyFactory());
 
@@ -182,7 +180,7 @@ class OpenDistroListeningMessageSearchIndexTest {
         elasticSearchIndexer = new ElasticSearchIndexer(client, MailboxElasticSearchConstants.DEFAULT_MAILBOX_WRITE_ALIAS);
         
         testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, elasticSearchIndexer, elasticSearchSearcher,
-            messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory());
+            messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory(), messageIdFactory);
         session = sessionProvider.createSystemSession(USERNAME);
 
         mailbox = mapperFactory.getMailboxMapper(session).create(MailboxPath.forUser(USERNAME, DefaultMailboxes.INBOX), UidValidity.generate()).block();
@@ -246,7 +244,7 @@ class OpenDistroListeningMessageSearchIndexTest {
             IndexAttachments.YES);
 
         testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, elasticSearchIndexer, elasticSearchSearcher,
-            messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory());
+            messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory(), messageIdFactory);
 
         testee.add(session, mailbox, MESSAGE_WITH_ATTACHMENT).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 1L);
