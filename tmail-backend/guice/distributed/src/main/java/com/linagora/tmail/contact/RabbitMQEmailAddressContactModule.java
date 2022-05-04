@@ -9,6 +9,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQConnectionFactory;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
+import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.slf4j.Logger;
@@ -51,10 +52,12 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
     @Provides
     @Singleton
     public ReactorRabbitMQChannelPool provideReactorRabbitMQChannelPool(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) SimpleConnectionPool simpleConnectionPool,
-                                                                        @Named(RABBITMQ_CONTACT_CONFIGURATION_NAME) Provider<Configuration> configuration) {
+                                                                        @Named(RABBITMQ_CONTACT_CONFIGURATION_NAME) Provider<Configuration> configuration,
+                                                                        MetricFactory metricFactory) {
         ReactorRabbitMQChannelPool channelPool = new ReactorRabbitMQChannelPool(
             simpleConnectionPool.getResilientConnection(),
-            provideChannelPoolConfiguration(configuration));
+            provideChannelPoolConfiguration(configuration),
+            metricFactory);
         channelPool.start();
         return channelPool;
     }
