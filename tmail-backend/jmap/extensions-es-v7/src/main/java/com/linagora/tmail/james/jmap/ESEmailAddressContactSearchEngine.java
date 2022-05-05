@@ -111,9 +111,10 @@ public class ESEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<EmailAddressContact> autoComplete(AccountId accountId, String part) {
+    public Publisher<EmailAddressContact> autoComplete(AccountId accountId, String part, int limit) {
         SearchRequest request = new SearchRequest(configuration.getUserContactReadAliasName().getValue(), configuration.getDomainContactReadAliasName().getValue())
             .source(new SearchSourceBuilder()
+                .size(limit)
                 .query(QueryBuilders.boolQuery()
                     .must(QueryBuilders.multiMatchQuery(part, EMAIL, FIRSTNAME, SURNAME))
                     .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))

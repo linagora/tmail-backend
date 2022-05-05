@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.jmap.contact
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
+
 import com.google.common.collect.{HashBasedTable, Table}
 import com.google.inject.{AbstractModule, Scopes}
 import org.apache.james.core.{Domain, MailAddress, Username}
@@ -9,8 +12,6 @@ import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.nio.charset.StandardCharsets
-import java.util.UUID
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.jdk.OptionConverters._
 
@@ -52,7 +53,7 @@ trait EmailAddressContactSearchEngine {
 
   def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void]
 
-  def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact]
+  def autoComplete(accountId: AccountId, part: String, limit: Int = 256): Publisher[EmailAddressContact]
 
   def list(accountId: AccountId): Publisher[EmailAddressContact]
 
@@ -109,13 +110,14 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     SMono.fromCallable(() => domainContactList.remove(domain, mailAddress))
       .`then`()
 
-  override def autoComplete(accountId: AccountId, part: String): Publisher[EmailAddressContact] = {
+  override def autoComplete(accountId: AccountId, part: String, limit: Int): Publisher[EmailAddressContact] = {
     val maybeDomain: Option[Domain] = Username.of(accountId.getIdentifier).getDomainPart.toScala
     SFlux.concat(
       maybeDomain.map(domain => SFlux.fromIterable(domainContactList.row(domain).values().asScala)).getOrElse(SFlux.empty),
       SFlux.fromIterable(userContactList.row(accountId).values().asScala))
       .filter(lowerCaseContact(_).fields.contains(part.toLowerCase))
       .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
+      .take(limit)
   }
 
   private def lowerCaseContact(contact: EmailAddressContact): EmailAddressContact =

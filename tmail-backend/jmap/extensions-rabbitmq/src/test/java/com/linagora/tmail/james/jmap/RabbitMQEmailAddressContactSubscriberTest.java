@@ -87,7 +87,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1));
     }
@@ -106,7 +106,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1));
     }
@@ -125,7 +125,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1));
 
@@ -142,7 +142,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1)
                 .allSatisfy(contact -> assertThat(contact.fields().firstname()).isEqualTo("UpdateFirstName"))
@@ -163,7 +163,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1));
 
@@ -179,7 +179,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
                 .collectList().block())
                 .isEmpty());
     }
@@ -198,7 +198,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1));
     }
@@ -217,7 +217,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1));
 
@@ -233,7 +233,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1)
                 .allSatisfy(contact -> assertThat(contact.fields().firstname()).isEqualTo("UpdateFirstName"))
@@ -254,7 +254,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1));
 
@@ -270,7 +270,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("any@domain.tld"), "alice", 10))
                 .collectList().block())
                 .isEmpty());
     }
@@ -303,7 +303,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
             "}");
 
         await().timeout(ONE_MINUTE).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice"))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
                 .collectList().block())
                 .hasSize(1));
     }
