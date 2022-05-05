@@ -7,6 +7,7 @@ import com.linagora.tmail.james.jmap.json.ContactSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT
 import com.linagora.tmail.james.jmap.model.{Contact, ContactAutocompleteRequest, ContactAutocompleteResponse, ContactFirstname, ContactId, ContactSurname}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -19,8 +20,6 @@ import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import javax.inject.Inject
 
 case object ContactCapabilityProperties extends CapabilityProperties {
   override def jsonify(): JsObject = Json.obj()
@@ -82,8 +81,7 @@ class ContactAutocompleteMethod @Inject()(serializer: ContactSerializer,
 
   private def executeAutocomplete(session: MailboxSession, request: ContactAutocompleteRequest, limit: Limit.Limit): SMono[ContactAutocompleteResponse] =
     SFlux.fromPublisher(emailAddressContactSearchEngine.autoComplete(
-        AccountId.fromUsername(session.getUser), request.filter.text.value))
-      .take(limit.value)
+        AccountId.fromUsername(session.getUser), request.filter.text.value, limit.value))
       .map(contact => Contact(ContactId(contact.id),
         contact.fields.address,
         ContactFirstname(contact.fields.firstname),

@@ -38,7 +38,7 @@ class EmailAddressContactListenerIntegrationTest {
   @Test
   def shouldIndexContactWhenHasContactUserAddedEvent(): Unit = {
     eventBus.dispatch(CONTACT_ADDED_EVENT, NO_KEYS).block()
-    assertThat(SFlux.fromPublisher(searchEngine.autoComplete(ACCOUNT_ID, "contact1"))
+    assertThat(SFlux.fromPublisher(searchEngine.autoComplete(ACCOUNT_ID, "contact1", 1))
       .map(_.fields)
       .collectSeq().block().asJava)
       .containsExactlyInAnyOrder(CONTACT)
@@ -48,7 +48,7 @@ class EmailAddressContactListenerIntegrationTest {
   def indexShouldBeIdempotent(): Unit = {
     eventBus.dispatch(CONTACT_ADDED_EVENT, NO_KEYS).block()
     eventBus.dispatch(CONTACT_ADDED_EVENT, NO_KEYS).block()
-    assertThat(SFlux.fromPublisher(searchEngine.autoComplete(ACCOUNT_ID, "contact1"))
+    assertThat(SFlux.fromPublisher(searchEngine.autoComplete(ACCOUNT_ID, "contact1", 1))
       .map(_.fields)
       .collectSeq().block().asJava)
       .containsExactlyInAnyOrder(CONTACT)
