@@ -1,19 +1,32 @@
 package com.linagora.tmail.james.common
 
+import java.net.URI
+
+import com.linagora.tmail.james.common.LinagoraTicketAuthenticationContract.{WEB_SOCKET_ECHO_REQUEST, WEB_SOCKET_ECHO_RESPONSE}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, `with`, requestSpecification}
 import io.restassured.authentication.NoAuthScheme
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
-import org.apache.http.HttpStatus.{SC_OK, SC_UNAUTHORIZED}
+import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.JmapRfc8621Configuration
 import org.apache.james.jmap.core.JmapRfc8621Configuration.{UPLOAD_LIMIT_DEFAULT, URL_PREFIX_DEFAULT, WEBSOCKET_URL_PREFIX_DEFAULT}
-import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
+import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, baseRequestSpecBuilder, getHeadersWith}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
+import sttp.capabilities.WebSockets
+import sttp.client3.monad.IdMonad
+import sttp.client3.okhttp.OkHttpSyncBackend
+import sttp.client3.{Identity, RequestT, SttpBackend, asWebSocket, basicRequest}
+import sttp.model.Uri
+import sttp.monad.MonadError
+import sttp.monad.syntax.MonadErrorOps
+import sttp.ws.WebSocketFrame
+import sttp.ws.WebSocketFrame.Text
 
 import scala.jdk.CollectionConverters._
 
@@ -25,9 +38,42 @@ object LinagoraTicketAuthenticationContract {
     dynamicJmapPrefixResolutionEnabled = true,
     authenticationStrategies = Some(List("JWTAuthenticationStrategy", "BasicAuthenticationStrategy",
       "com.linagora.tmail.james.jmap.ticket.TicketAuthenticationStrategy").asJava))
+
+  val WEB_SOCKET_ECHO_REQUEST: Text = WebSocketFrame.text(
+    """{
+      |  "@type": "Request",
+      |  "id": "req-36",
+      |  "using": [ "urn:ietf:params:jmap:core"],
+      |  "methodCalls": [
+      |    [
+      |      "Core/echo",
+      |      {
+      |        "arg1": "arg1data",
+      |        "arg2": "arg2data"
+      |      },
+      |      "c1"
+      |    ]
+      |  ]
+      |}""".stripMargin)
+
+  val WEB_SOCKET_ECHO_RESPONSE: String =
+    """{
+      |  "@type":"Response",
+      |  "requestId":"req-36",
+      |  "sessionState":"2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+      |  "methodResponses":[
+      |    ["Core/echo",
+      |      {
+      |        "arg1":"arg1data",
+      |        "arg2":"arg2data"
+      |      },"c1"]
+      |  ]
+      |}""".stripMargin
 }
 
 trait LinagoraTicketAuthenticationContract {
+  private lazy val backend: SttpBackend[Identity, WebSockets] = OkHttpSyncBackend()
+  private lazy implicit val monadError: MonadError[Identity] = IdMonad
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -42,168 +88,37 @@ trait LinagoraTicketAuthenticationContract {
   }
 
   @Test
-  def ticketShouldGrantAuth(): Unit = {
-    val ticket: String = `given`()
-      .basePath("/jmap/ws/ticket")
-      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body("")
-    .when()
-      .post()
-    .`then`()
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .jsonPath()
-      .getString("value")
+  def ticketShouldGrantAuth(server: GuiceJamesServer): Unit = {
+    val ticket: String = getTicket
 
-    val request =
-      """{
-        |  "using": [
-        |    "urn:ietf:params:jmap:core", "com:linagora:params:jmap:echo"
-        |  ],
-        |  "methodCalls": [
-        |    [
-        |      "Linagora/echo",
-        |      {
-        |        "arg1": "arg1data",
-        |        "arg2": "arg2data"
-        |      },
-        |      "c1"
-        |    ]
-        |  ]
-        |}""".stripMargin
+    val response: Either[String, String] = sendWebSocketRequest(server, ticket)
 
-    val response: String = `given`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
-      .queryParam("ticket", ticket)
-    .when()
-      .post()
-    .`then`
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .asString()
-
-    assertThatJson(response)
-      .isEqualTo(
-        s"""{
-          |  "sessionState": "${SESSION_STATE.value}",
-          |  "methodResponses": [
-          |    [
-          |      "Linagora/echo",
-          |      {
-          |        "arg1": "arg1data",
-          |        "arg2": "arg2data"
-          |      },
-          |      "c1"
-          |    ]
-          |  ]
-          |}""".stripMargin)
+    assertThatJson(response.toOption.get)
+      .isEqualTo(WEB_SOCKET_ECHO_RESPONSE)
   }
 
   @Test
-  def ticketShouldBeSingleUse(): Unit = {
-    val ticket: String = `given`()
-      .basePath("/jmap/ws/ticket")
-      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body("")
-    .when()
-      .post()
-    .`then`()
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .jsonPath()
-      .getString("value")
+  def ticketShouldBeSingleUse(server: GuiceJamesServer): Unit = {
+    val ticket: String = getTicket
 
-    val request =
-      """{
-        |  "using": [
-        |    "urn:ietf:params:jmap:core", "com:linagora:params:jmap:echo"
-        |  ],
-        |  "methodCalls": [
-        |    [
-        |      "Linagora/echo",
-        |      {
-        |        "arg1": "arg1data",
-        |        "arg2": "arg2data"
-        |      },
-        |      "c1"
-        |    ]
-        |  ]
-        |}""".stripMargin
+    sendWebSocketRequest(server, ticket)
 
-    `with`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
-      .queryParam("ticket", ticket)
-      .post()
-
-    `given`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
-      .queryParam("ticket", ticket)
-    .when()
-      .post()
-    .`then`
-      .statusCode(SC_UNAUTHORIZED)
+    assertThatThrownBy(() => sendWebSocketRequest(server, ticket))
+      .hasRootCauseMessage("Expected HTTP 101 response but was '401 Unauthorized'")
   }
 
   @Test
-  def ticketShouldBeRevocable(): Unit = {
-    val ticket: String = `given`()
-      .basePath("/jmap/ws/ticket")
-      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body("")
-    .when()
-      .post()
-    .`then`()
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .jsonPath()
-      .getString("value")
-
-    val request =
-      """{
-        |  "using": [
-        |    "urn:ietf:params:jmap:core", "com:linagora:params:jmap:echo"
-        |  ],
-        |  "methodCalls": [
-        |    [
-        |      "Linagora/echo",
-        |      {
-        |        "arg1": "arg1data",
-        |        "arg2": "arg2data"
-        |      },
-        |      "c1"
-        |    ]
-        |  ]
-        |}""".stripMargin
+  def ticketShouldBeRevocable(server: GuiceJamesServer): Unit = {
+    val ticket: String = getTicket
 
     `with`()
       .basePath(s"/jmap/ws/ticket/$ticket")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
-      .body(request)
       .delete()
 
-    `given`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
-      .queryParam("ticket", ticket)
-    .when()
-      .post()
-    .`then`
-      .statusCode(SC_UNAUTHORIZED)
+    assertThatThrownBy(() => sendWebSocketRequest(server, ticket))
+      .hasRootCauseMessage("Expected HTTP 101 response but was '401 Unauthorized'")
   }
 
   @Test
@@ -251,4 +166,40 @@ trait LinagoraTicketAuthenticationContract {
           |  "revocationEndpoint":"http://custom/jmap/ws/ticket"
           |}""".stripMargin)
   }
+
+  private def sendWebSocketRequest(server: GuiceJamesServer, ticket: String) =
+    authenticatedRequest(server, ticket)
+      .response(asWebSocket[Identity, String] {
+        ws =>
+          ws.send(WEB_SOCKET_ECHO_REQUEST)
+
+          ws.receive()
+            .map { case t: Text => t.payload }
+      })
+      .send(backend)
+      .body
+
+  private def authenticatedRequest(server: GuiceJamesServer, ticketValue: String): RequestT[Identity, Either[String, String], Any] = {
+    val port = server.getProbe(classOf[JmapGuiceProbe])
+      .getJmapPort
+      .getValue
+
+    basicRequest.get(Uri.apply(new URI(s"ws://127.0.0.1:$port/jmap/ws")).addParam("ticket", ticketValue))
+      .header("Accept", ACCEPT_RFC8621_VERSION_HEADER)
+  }
+
+  private def getTicket: String = `given`()
+      .basePath("/jmap/ws/ticket")
+      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body("")
+    .when()
+      .post()
+    .`then`()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .jsonPath()
+      .getString("value")
 }
