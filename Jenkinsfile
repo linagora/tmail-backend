@@ -1,6 +1,6 @@
 pipeline {
     agent {
-      label 'jdk11'
+      label 'jdk17'
     }
 
     options {
