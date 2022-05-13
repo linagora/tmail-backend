@@ -26,6 +26,13 @@ object Forwards {
   val FORWARD_ID: Id = Id.validate("singleton").toOption.get
   val UNPARSED_SINGLETON: UnparsedForwardId = UnparsedForwardId(FORWARD_ID)
 
+  def asRfc8621(forwards: List[MailAddress], mailAddress: MailAddress): Forwards = Forwards(
+    id = ForwardId(),
+    localCopy = LocalCopy(forwards.contains(mailAddress)),
+    forwards = forwards.filter(!_.equals(mailAddress))
+      .map(Forward)
+  )
+
   val allProperties: Properties = Properties("id", "localCopy", "forwards")
   val idProperty: Properties = Properties("id")
 

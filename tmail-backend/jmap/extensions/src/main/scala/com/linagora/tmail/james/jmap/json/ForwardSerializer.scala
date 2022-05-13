@@ -5,7 +5,7 @@ import com.linagora.tmail.james.jmap.model.{Forward, ForwardGetRequest, ForwardG
 import eu.timepit.refined
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.Id.IdConstraint
-import org.apache.james.jmap.core.Properties
+import org.apache.james.jmap.core.{Properties, UuidState}
 import play.api.libs.json._
 
 class ForwardSerializer {
@@ -29,12 +29,14 @@ class ForwardSerializer {
   }
 
   private implicit val localCopyWrites: Writes[LocalCopy] = Json.valueWrites[LocalCopy]
-  private implicit val mailAddressWrites: Writes[MailAddress] = Json.valueWrites[MailAddress]
-  private implicit val forwardWrites: Writes[Forward] = Json.writes[Forward]
+  private implicit val mailAddressWrites: Writes[MailAddress] = mailAddress => JsString(mailAddress.asString)
+  private implicit val forwardWrites: Writes[Forward] = Json.valueWrites[Forward]
   private implicit val forwardsWrites: Writes[Forwards] = Json.writes[Forwards]
 
   private implicit val forwardNotFoundWrites: Writes[ForwardNotFound] =
     notFound => JsArray(notFound.value.toList.map(id => JsString(id.id.value)))
+
+  private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
 
   private implicit val forwardGetResponseWrites: Writes[ForwardGetResponse] = Json.writes[ForwardGetResponse]
 
