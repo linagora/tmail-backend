@@ -21,6 +21,7 @@ import org.apache.james.rrt.api.RecipientRewriteTable
 import org.apache.james.rrt.lib.{Mapping, MappingSource}
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
+import reactor.core.scheduler.Schedulers
 
 import javax.inject.Inject
 import scala.jdk.StreamConverters._
@@ -125,12 +126,13 @@ class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
 
   private def getForwardsSingleton(mailboxSession: MailboxSession): SMono[Forwards] = {
     val userMailAddress: MailAddress = mailboxSession.getUser.asMailAddress
-    SMono.just(recipientRewriteTable.getStoredMappings(MappingSource.fromMailAddress(userMailAddress))
+    SMono.fromCallable(() => recipientRewriteTable.getStoredMappings(MappingSource.fromMailAddress(userMailAddress))
         .select(Mapping.Type.Forward)
         .asStream()
         .map(mapping => mapping.asMailAddress()
           .orElseThrow(() => new IllegalStateException(s"Can not compute address for mapping ${mapping.asString}")))
         .toScala(List))
+      .subscribeOn(Schedulers.elastic)
       .map(mappings => Forwards.asRfc8621(mappings, userMailAddress))
   }
 }
