@@ -74,7 +74,7 @@ trait LinagoraForwardGetMethodContract {
          |      "list": [
          |        {
          |          "id":"singleton",
-         |          "localCopy": false,
+         |          "localCopy": true,
          |          "forwards": []
          |        }
          |      ],
@@ -455,7 +455,7 @@ trait LinagoraForwardGetMethodContract {
          |      "list": [
          |        {
          |          "id":"singleton",
-         |          "localCopy": false,
+         |          "localCopy": true,
          |          "forwards": []
          |        }
          |      ],
@@ -541,7 +541,7 @@ trait LinagoraForwardGetMethodContract {
          |      "list": [
          |        {
          |          "id":"singleton",
-         |          "localCopy": false,
+         |          "localCopy": true,
          |          "forwards": []
          |        }
          |      ],
@@ -667,7 +667,7 @@ trait LinagoraForwardGetMethodContract {
          |      "list": [
          |        {
          |          "id":"singleton",
-         |          "localCopy": false,
+         |          "localCopy": true,
          |          "forwards": []
          |        }
          |      ],
@@ -759,7 +759,7 @@ trait LinagoraForwardGetMethodContract {
          |      "list": [
          |        {
          |          "id":"singleton",
-         |          "localCopy": false
+         |          "localCopy": true
          |        }
          |      ],
          |      "notFound": []
@@ -805,7 +805,7 @@ trait LinagoraForwardGetMethodContract {
          |      "list": [
          |        {
          |          "id":"singleton",
-         |          "localCopy": false
+         |          "localCopy": true
          |        }
          |      ],
          |      "notFound": []

@@ -28,7 +28,7 @@ object Forwards {
 
   def asRfc8621(forwards: List[MailAddress], mailAddress: MailAddress): Forwards = Forwards(
     id = ForwardId(),
-    localCopy = LocalCopy(forwards.contains(mailAddress)),
+    localCopy = LocalCopy(forwards.isEmpty || forwards.contains(mailAddress)),
     forwards = forwards.filter(!_.equals(mailAddress))
       .map(Forward)
   )
