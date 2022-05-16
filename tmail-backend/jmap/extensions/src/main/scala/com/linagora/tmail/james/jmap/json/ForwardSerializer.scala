@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.Forwards.FORWARD_ID
-import com.linagora.tmail.james.jmap.model.{Forward, ForwardGetRequest, ForwardGetResponse, ForwardId, ForwardIds, ForwardNotFound, Forwards, LocalCopy, UnparsedForwardId}
+import com.linagora.tmail.james.jmap.model.{Forward, ForwardGetRequest, ForwardGetResponse, ForwardIds, ForwardNotFound, Forwards, LocalCopy, UnparsedForwardId}
 import eu.timepit.refined
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.Id.IdConstraint
@@ -20,13 +19,6 @@ class ForwardSerializer {
   private implicit val forwardIdsReads: Reads[ForwardIds] = Json.valueReads[ForwardIds]
 
   private implicit val forwardGetRequestReads: Reads[ForwardGetRequest] = Json.reads[ForwardGetRequest]
-
-  private implicit val forwardIdWrites: Writes[ForwardId] = _ => JsString(FORWARD_ID.value)
-  private implicit val forwardIdReads: Reads[ForwardId] = {
-    case JsString("singleton") => JsSuccess(ForwardId())
-    case JsString(_) => JsError("Only singleton is supported as a ForwardId")
-    case _ => JsError("Expecting JsString(singleton) to represent a ForwardId")
-  }
 
   private implicit val localCopyWrites: Writes[LocalCopy] = Json.valueWrites[LocalCopy]
   private implicit val mailAddressWrites: Writes[MailAddress] = mailAddress => JsString(mailAddress.asString)
