@@ -19,6 +19,7 @@ object CapabilityIdentifier {
   val LINAGORA_PGP: CapabilityIdentifier = "com:linagora:params:jmap:pgp"
   val LINAGORA_LONG_LIVED_TOKEN: CapabilityIdentifier = "com:linagora:params:long:lived:token"
   val LINAGORA_CONTACT: CapabilityIdentifier = "com:linagora:params:jmap:contact:autocomplete"
+  val LINAGORA_FORWARD: CapabilityIdentifier = "com:linagora:params:jmap:forward"
 }
 
 case object CustomCapabilityProperties extends CapabilityProperties {
