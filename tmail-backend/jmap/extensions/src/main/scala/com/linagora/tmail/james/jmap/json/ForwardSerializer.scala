@@ -7,7 +7,7 @@ import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.{Properties, UuidState}
 import play.api.libs.json._
 
-class ForwardSerializer {
+object ForwardSerializer {
   private implicit val unparsedForwardIdWrites: Writes[UnparsedForwardId] = Json.valueWrites[UnparsedForwardId]
   private implicit val unparsedForwardIdReads: Reads[UnparsedForwardId] = {
     case JsString(string) => refined.refineV[IdConstraint](string)

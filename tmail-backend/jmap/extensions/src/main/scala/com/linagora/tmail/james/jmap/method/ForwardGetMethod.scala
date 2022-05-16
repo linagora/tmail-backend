@@ -76,7 +76,6 @@ case class ForwardGetResult(forwards: Set[Forwards], notFound: ForwardNotFound) 
 }
 
 class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
-                                 serializer: ForwardSerializer,
                                  val metricFactory: MetricFactory,
                                  val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[ForwardGetRequest] {
   override val methodName: Invocation.MethodName = MethodName("Forward/get")
@@ -90,7 +89,7 @@ class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
         .map(forwardResult => forwardResult.asResponse(request.accountId))
         .map(forwardGetResponse => Invocation(
           methodName = methodName,
-          arguments = Arguments(serializer.serialize(forwardGetResponse, requestedProperties).as[JsObject]),
+          arguments = Arguments(ForwardSerializer.serialize(forwardGetResponse, requestedProperties).as[JsObject]),
           methodCallId = invocation.invocation.methodCallId))
       case invalidProperties: Properties => SMono.just(Invocation.error(errorCode = ErrorCode.InvalidArguments,
         description = s"The following properties [${invalidProperties.format}] do not exist.",
@@ -101,7 +100,7 @@ class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
   }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, ForwardGetRequest] =
-    serializer.deserializeForwardGetRequest(invocation.arguments.value) match {
+    ForwardSerializer.deserializeForwardGetRequest(invocation.arguments.value) match {
       case JsSuccess(forwardGetRequest, _) => Right(forwardGetRequest)
       case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
     }
