@@ -89,7 +89,7 @@ class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
         .map(forwardResult => forwardResult.asResponse(request.accountId))
         .map(forwardGetResponse => Invocation(
           methodName = methodName,
-          arguments = Arguments(ForwardSerializer.serialize(forwardGetResponse, requestedProperties).as[JsObject]),
+          arguments = Arguments(ForwardSerializer.serializeForwardGetResponse(forwardGetResponse, requestedProperties).as[JsObject]),
           methodCallId = invocation.invocation.methodCallId))
       case invalidProperties: Properties => SMono.just(Invocation.error(errorCode = ErrorCode.InvalidArguments,
         description = s"The following properties [${invalidProperties.format}] do not exist.",
