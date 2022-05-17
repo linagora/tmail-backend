@@ -403,7 +403,7 @@
                 </executions>
                 <configuration>
                     <from>
-                        <image>eclipse-temurin:11-jre-focal</image>
+                        <image>eclipse-temurin:18-jre-focal</image>
                     </from>
                     <to>
                         <image>linagora/tmail-backend-distributed</image>
@@ -425,12 +425,6 @@
                             <port>8000</port> <!-- WEBADMIN -->
                         </ports>
                         <appRoot>/root</appRoot>
-                        <jvmFlags>
-                            <jvmFlag>-Dlogback.configurationFile=/root/conf/logback.xml</jvmFlag>
-                            <jvmFlag>-Dworking.directory=/root/</jvmFlag>
-                            <!-- Prevents Logjam (CVE-2015-4000) -->
-                            <jvmFlag>-Djdk.tls.ephemeralDHKeySize=2048</jvmFlag>
-                        </jvmFlags>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
                     </container>
                     <extraDirectories>

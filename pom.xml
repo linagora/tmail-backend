@@ -30,6 +30,22 @@
                     <groupId>com.google.cloud.tools</groupId>
                     <artifactId>jib-maven-plugin</artifactId>
                     <version>2.7.0</version>
+                    <configuration>
+                        <container>
+                            <jvmFlags>
+                                <jvmFlag>-Dlogback.configurationFile=/root/conf/logback.xml</jvmFlag>
+                                <jvmFlag>-Dworking.directory=/root/</jvmFlag>
+                                <!-- Prevents Logjam (CVE-2015-4000) -->
+                                <jvmFlag>-Djdk.tls.ephemeralDHKeySize=2048</jvmFlag>
+                                <jvmFlag>--add-opens=java.base/java.lang=ALL-UNNAMED</jvmFlag>
+                                <jvmFlag>--add-opens=java.base/java.math=ALL-UNNAMED</jvmFlag>
+                                <jvmFlag>--add-opens=java.base/java.util=ALL-UNNAMED</jvmFlag>
+                                <jvmFlag>--add-opens=java.base/java.util.concurrent=ALL-UNNAMED</jvmFlag>
+                                <jvmFlag>--add-opens=java.base/java.net=ALL-UNNAMED</jvmFlag>
+                                <jvmFlag>--add-opens=java.base/java.text=ALL-UNNAMED</jvmFlag>
+                            </jvmFlags>
+                        </container>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>com.googlecode.maven-download-plugin</groupId>
