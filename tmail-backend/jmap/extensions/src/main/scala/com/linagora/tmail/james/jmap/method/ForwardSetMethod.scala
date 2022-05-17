@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.json.ForwardSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWARD
-import com.linagora.tmail.james.jmap.model.{ForwardSetError, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateFailure, ForwardSetUpdateResult, ForwardSetUpdateResults, ForwardSetUpdateSuccess, ForwardUpdateRequest}
+import com.linagora.tmail.james.jmap.model.{ForwardId, ForwardSetError, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateFailure, ForwardSetUpdateResult, ForwardSetUpdateResults, ForwardSetUpdateSuccess, ForwardUpdateRequest}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
@@ -97,7 +97,7 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
         case (deletedForwards, addedForwards) => deleteMappings(mappingSource, deletedForwards)
           .thenMany(addMappings(mappingSource, addedForwards))
       }.`then`()
-      .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure("todo", error)))
+      .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)))
       .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateSuccess))
 
   private def retrieveMappings(mappingSource: MappingSource): SMono[Seq[MailAddress]] =
