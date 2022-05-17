@@ -99,6 +99,7 @@ import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModul
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
+import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
@@ -148,6 +149,7 @@ public class DistributedServer {
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
         new ForwardGetMethodModule(),
+        new ForwardSetMethodModule(),
         new JMAPServerModule(),
         new JmapEventBusModule(),
         new KeystoreCassandraModule(),

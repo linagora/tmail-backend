@@ -57,6 +57,7 @@ import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModul
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
+import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
@@ -102,6 +103,7 @@ public class MemoryServer {
         new ForwardGetMethodModule(),
         new InMemoryEncryptedEmailContentStoreModule(),
         new KeystoreMemoryModule(),
+        new ForwardSetMethodModule(),
         new KeystoreSetMethodModule(),
         new KeystoreGetMethodModule(),
         new LongLivedTokenGetMethodModule(),
