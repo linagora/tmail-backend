@@ -60,3 +60,16 @@ Contacts can be stored in many ways in TMail:
 The user is able to autocomplete over his personal contacts and domain contacts via a JMAP method.
 
 xref:tmail-backend/features/contactAutocomplete.adoc[Read more]...
+
+== Forwards
+
+image::forward.png[Forward logo]
+
+TMail allows users to configure their account to forward mails to other mail addresses via JMAP methods.
+
+This simple feature can be useful when one of your users is on vacation or leaves your organization then it's easier
+to just forward emails in some cases to other people that can treat them.
+
+Users can also decide to keep a local copy of the forwarded mails.
+
+xref:tmail-backend/jmap-extensions/forwards.adoc[Read more]...
