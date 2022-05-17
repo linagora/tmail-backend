@@ -1,0 +1,106 @@
+= JMAP forwards
+:navtitle: JMAP forwards
+
+This extension allows users to be able to forward their emails to other users, and also to choose to keep a local
+copy of the mail or not when forwarding.
+
+== Additions to the capabilities object
+
+Servers supporting the JMAP forwards extension advertise it via the
+`com:linagora:params:jmap:forward` capability.
+
+The value of this property in the JMAP session capabilities property is an empty object.
+
+The value of this property in an account’s accountCapabilities property is an empty object.
+
+== Forward object
+
+The `Forward` object represents a list of email addresses to forward mails to when present.
+
+It has the following fields:
+
+- *id*: `Id` (immutable; server-set) The id of the object. There is only ever one Forward object,
+and its id is "singleton".
+- *localCopy*: `Boolean` Should a local copy of the email be kept in the owner's inbox when forwarding
+emails or not?
+- *forwards*: `EmailAddress[]` List of email addresses to forward mails to.
+
+Example:
+
+....
+{
+   "id": "singleton",
+   "localCopy": false,
+   "forwards": ["bob@domain.org", "alice@domain.org"]
+}
+....
+
+If the forwards list is empty the feature is considered disabled and no rewriting takes place.
+
+== Methods
+
+=== Forward/get
+
+This is a standard “/get” method for the Forward object:
+
+- There MUST only be exactly one Forward object in an account. It MUST have the id “singleton”.
+
+=== Forward/set
+
+This is a standard `/set` method for the Forward object:
+
+- As this is a singleton object, `create` and `destroy` are not supported.
+
+=== Example
+
+....
+{
+    "using": [ "urn:ietf:params:jmap:core",
+               "com:linagora:params:jmap:forward" ],
+    "methodCalls": [
+          ["Forward/set", {
+                "accountId": "123",
+                "update": {
+                    "singleton": {
+                        "localCopy": true,
+                        "forwards": [
+                            "bob@domain.org",
+                            "alice@domain.org"
+                        ]
+                    }
+                }
+          }, "c1"],
+          ["Forward/get", {
+                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                "ids": ["singleton"]
+          }, "c2" ]
+    ]
+}
+....
+
+Will return:
+
+....
+{
+      "sessionState": "abcdefghij",
+      "methodResponses": [
+            ["Forward/set", {
+                  "accountId": "123",
+                  "newState": "1",
+                  "updated": {"singleton":{}}
+            }, "c1"],
+            ["Forward/get", {
+                   "accountId": "123",
+                   "notFound": [],
+                   "state": "1",
+                   "list": [
+                        {
+                            "id": "singleton",
+                            "localCopy": true,
+                            "forwards": [ "bob@domain.org", "alice@domain.org" ]
+                        }
+                   ]
+            }, "c2" ]
+      ]
+}
+....
