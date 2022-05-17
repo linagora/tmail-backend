@@ -857,11 +857,6 @@ trait LinagoraForwardSetMethodContract {
       .authenticate(BOB.asString(), BOB_PASSWORD)
       .sendMessage(mail)
 
-    baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
-      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .build
-
     CALMLY_AWAIT.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
       assertThat(listAllMessageResult(server, ANDRE)).hasSize(1)
     }
@@ -1014,6 +1009,58 @@ trait LinagoraForwardSetMethodContract {
 
     CALMLY_AWAIT.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
       assertThat(listAllMessageResult(server, ANDRE)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).hasSize(1)
+    }
+  }
+
+  @Test
+  def messageShouldBeForwardedToDestinationForwardsAndOwner(server: GuiceJamesServer): Unit = {
+    assertThat(listAllMessageResult(server, ANDRE)).hasSize(0)
+    assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+
+    val request: String =
+      s"""{
+         |    "using": [ "urn:ietf:params:jmap:core",
+         |               "com:linagora:params:jmap:forward" ],
+         |    "methodCalls": [
+         |      ["Forward/set", {
+         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "update": {
+         |            "singleton": {
+         |                "localCopy": true,
+         |                "forwards": [ "${ANDRE.asMailAddress().asString()}"]
+         |            }
+         |        }
+         |      }, "c1"]
+         |    ]
+         |  }""".stripMargin
+
+    `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(CEDRIC.asString())
+        .addToRecipient(BOB.asString())
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(CEDRIC.asString())
+      .recipient(BOB.asString())
+      .build()
+
+    new SMTPMessageSender(DOMAIN.asString())
+      .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)
+      .authenticate(CEDRIC.asString(), CEDRIC_PASSWORD)
+      .sendMessage(mail)
+
+    CALMLY_AWAIT.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
+      assertThat(listAllMessageResult(server, ANDRE)).hasSize(1)
       assertThat(listAllMessageResult(server, BOB)).hasSize(1)
     }
   }
