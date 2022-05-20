@@ -131,18 +131,14 @@ public class SearchModuleChooser {
     }
 
     public static List<Module> chooseModules(SearchConfiguration searchConfiguration) {
-        switch (searchConfiguration.getImplementation()) {
-            case ElasticSearch:
-                return ImmutableList.of(
-                    new ElasticSearchClientModule(),
-                    new ElasticSearchMailboxModule(),
-                    new ReIndexingModule());
-            case Scanning:
-                return ImmutableList.of(
-                    new ScanningQuotaSearchModule(),
-                    new ScanningSearchModule());
-            default:
-                throw new RuntimeException("Unsupported search implementation " + searchConfiguration.getImplementation());
-        }
+        return switch (searchConfiguration.getImplementation()) {
+            case ElasticSearch -> ImmutableList.of(
+                new ElasticSearchClientModule(),
+                new ElasticSearchMailboxModule(),
+                new ReIndexingModule());
+            case Scanning -> ImmutableList.of(
+                new ScanningQuotaSearchModule(),
+                new ScanningSearchModule());
+        };
     }
 }

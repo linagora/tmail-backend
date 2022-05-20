@@ -150,27 +150,22 @@ public class CriterionConverter {
     }
 
     private QueryBuilder convertTextCriterion(SearchQuery.TextCriterion textCriterion) {
-        switch (textCriterion.getType()) {
-        case BODY:
-            return boolQuery()
-                    .should(matchQuery(JsonMessageConstants.TEXT_BODY, textCriterion.getOperator().getValue()))
-                    .should(matchQuery(JsonMessageConstants.HTML_BODY, textCriterion.getOperator().getValue()));
-        case FULL:
-            return boolQuery()
-                    .should(matchQuery(JsonMessageConstants.TEXT_BODY, textCriterion.getOperator().getValue()))
-                    .should(matchQuery(JsonMessageConstants.HTML_BODY, textCriterion.getOperator().getValue()))
-                    .should(matchQuery(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.TEXT_CONTENT,
-                        textCriterion.getOperator().getValue()));
-        case ATTACHMENTS:
-            return boolQuery()
-                    .should(matchQuery(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.TEXT_CONTENT,
-                        textCriterion.getOperator().getValue()));
-        case ATTACHMENT_FILE_NAME:
-            return boolQuery()
+        return switch (textCriterion.getType()) {
+            case BODY -> boolQuery()
+                .should(matchQuery(JsonMessageConstants.TEXT_BODY, textCriterion.getOperator().getValue()))
+                .should(matchQuery(JsonMessageConstants.HTML_BODY, textCriterion.getOperator().getValue()));
+            case FULL -> boolQuery()
+                .should(matchQuery(JsonMessageConstants.TEXT_BODY, textCriterion.getOperator().getValue()))
+                .should(matchQuery(JsonMessageConstants.HTML_BODY, textCriterion.getOperator().getValue()))
+                .should(matchQuery(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.TEXT_CONTENT,
+                    textCriterion.getOperator().getValue()));
+            case ATTACHMENTS -> boolQuery()
+                .should(matchQuery(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.TEXT_CONTENT,
+                    textCriterion.getOperator().getValue()));
+            case ATTACHMENT_FILE_NAME -> boolQuery()
                 .should(termQuery(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.FILENAME,
                     textCriterion.getOperator().getValue()));
-        }
-        throw new RuntimeException("Unknown SCOPE for text criterion");
+        };
     }
 
     private QueryBuilder dateRangeFilter(String field, SearchQuery.DateOperator dateOperator) {
@@ -193,16 +188,11 @@ public class CriterionConverter {
     }
 
     private BiFunction<BoolQueryBuilder, QueryBuilder, BoolQueryBuilder> convertConjunctionType(SearchQuery.Conjunction type) {
-        switch (type) {
-            case AND:
-                return BoolQueryBuilder::must;
-            case OR:
-                return BoolQueryBuilder::should;
-            case NOR:
-                return BoolQueryBuilder::mustNot;
-            default:
-                throw new RuntimeException("Unexpected conjunction criteria " + type);
-        }
+        return switch (type) {
+            case AND -> BoolQueryBuilder::must;
+            case OR -> BoolQueryBuilder::should;
+            case NOR -> BoolQueryBuilder::mustNot;
+        };
     }
 
     @SuppressWarnings("ReturnValueIgnored")
@@ -237,16 +227,11 @@ public class CriterionConverter {
     }
 
     private QueryBuilder createNumericFilter(String fieldName, SearchQuery.NumericOperator operator) {
-        switch (operator.getType()) {
-        case EQUALS:
-            return boolQuery().filter(rangeQuery(fieldName).gte(operator.getValue()).lte(operator.getValue()));
-        case GREATER_THAN:
-            return boolQuery().filter(rangeQuery(fieldName).gt(operator.getValue()));
-        case LESS_THAN:
-            return boolQuery().filter(rangeQuery(fieldName).lt(operator.getValue()));
-        default:
-            throw new RuntimeException("A non existing numeric operator was triggered");
-        }
+        return switch (operator.getType()) {
+            case EQUALS -> boolQuery().filter(rangeQuery(fieldName).gte(operator.getValue()).lte(operator.getValue()));
+            case GREATER_THAN -> boolQuery().filter(rangeQuery(fieldName).gt(operator.getValue()));
+            case LESS_THAN -> boolQuery().filter(rangeQuery(fieldName).lt(operator.getValue()));
+        };
     }
 
     private BoolQueryBuilder convertUid(SearchQuery.UidCriterion uidCriterion) {
@@ -294,15 +279,11 @@ public class CriterionConverter {
     }
 
     private QueryBuilder convertDateOperator(String field, SearchQuery.DateComparator dateComparator, String lowDateString, String upDateString) {
-        switch (dateComparator) {
-        case BEFORE:
-            return rangeQuery(field).lte(upDateString);
-        case AFTER:
-            return rangeQuery(field).gt(lowDateString);
-        case ON:
-            return rangeQuery(field).lte(upDateString).gte(lowDateString);
-        }
-        throw new RuntimeException("Unknown date operator");
+        return switch (dateComparator) {
+            case BEFORE -> rangeQuery(field).lte(upDateString);
+            case AFTER -> rangeQuery(field).gt(lowDateString);
+            case ON -> rangeQuery(field).lte(upDateString).gte(lowDateString);
+        };
     }
 
 }

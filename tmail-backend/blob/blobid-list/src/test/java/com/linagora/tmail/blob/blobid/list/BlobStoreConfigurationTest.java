@@ -159,11 +159,12 @@ public class BlobStoreConfigurationTest {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
 
         assertThatThrownBy(() -> BlobStoreConfiguration.from(configuration)).isInstanceOf(IllegalStateException.class)
-            .hasMessage("deduplication.enable property is missing please use one of the supported values in: true, false\n" +
-                "If you choose to enable deduplication, the mails with the same content will be stored only once.\n" +
-                "Warning: Once this feature is enabled, there is no turning back as turning it off will lead to the deletion of all\n" +
-                "the mails sharing the same content once one is deleted.\n" +
-                "Upgrade note: If you are upgrading from James 3.5 or older, the deduplication was enabled.");
+            .hasMessage("""
+                deduplication.enable property is missing please use one of the supported values in: true, false
+                If you choose to enable deduplication, the mails with the same content will be stored only once.
+                Warning: Once this feature is enabled, there is no turning back as turning it off will lead to the deletion of all
+                the mails sharing the same content once one is deleted.
+                Upgrade note: If you are upgrading from James 3.5 or older, the deduplication was enabled.""");
     }
 
     @Test
@@ -171,7 +172,7 @@ public class BlobStoreConfigurationTest {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", "true");
 
-        assertThat(BlobStoreConfiguration.from(configuration).isSingleSaveEnabled())
+        assertThat(BlobStoreConfiguration.from(configuration).singleSaveEnabled())
             .isFalse();
     }
 
@@ -181,7 +182,7 @@ public class BlobStoreConfigurationTest {
         configuration.addProperty("deduplication.enable", "true");
         configuration.addProperty("single.save.enable", "true");
 
-        assertThat(BlobStoreConfiguration.from(configuration).isSingleSaveEnabled())
+        assertThat(BlobStoreConfiguration.from(configuration).singleSaveEnabled())
             .isTrue();
     }
 
@@ -191,7 +192,7 @@ public class BlobStoreConfigurationTest {
         configuration.addProperty("deduplication.enable", "true");
         configuration.addProperty("single.save.enable", "false");
 
-        assertThat(BlobStoreConfiguration.from(configuration).isSingleSaveEnabled())
+        assertThat(BlobStoreConfiguration.from(configuration).singleSaveEnabled())
             .isFalse();
     }
 

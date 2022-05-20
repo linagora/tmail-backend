@@ -52,14 +52,14 @@ public class TmailLocalResources implements LocalResources {
         Collection<MailAddress> localUsersMailAddresses = localResources.localEmails(mailAddresses);
         List<MailAddress> mailAddressesLeft = mailAddresses.stream()
             .filter(m -> !localUsersMailAddresses.contains(m))
-            .collect(ImmutableList.toImmutableList());
+            .toList();
 
         List<MailAddress> teamMailboxesMailAddresses = Flux.fromIterable(mailAddressesLeft)
             .<TeamMailbox>handle((mailAddress, sink) -> OptionConverters.toJava(TeamMailbox.asTeamMailbox(mailAddress)).ifPresent(sink::next))
             .filterWhen(teamMailbox -> Mono.from(teamMailboxRepository.exists(teamMailbox))
                 .map(Boolean.TRUE::equals))
             .map(TeamMailbox::asMailAddress)
-            .collect(ImmutableList.toImmutableList())
+            .collectList()
             .block();
 
         return ImmutableList.<MailAddress>builder()

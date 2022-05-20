@@ -2,7 +2,6 @@ package com.linagora.tmail.webadmin;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -53,7 +52,7 @@ public class TeamMailboxQuotaRoutes implements Routes {
         this.teamMailboxRepository = teamMailboxRepository;
         this.teamMailboxQuotaService = teamMailboxQuotaService;
         this.jsonTransformer = jsonTransformer;
-        this.jsonExtractor = new JsonExtractor<>(QuotaDTO.class, modules.stream().map(JsonTransformerModule::asJacksonModule).collect(Collectors.toList()));
+        this.jsonExtractor = new JsonExtractor<>(QuotaDTO.class, modules.stream().map(JsonTransformerModule::asJacksonModule).toList());
         this.quotaDTOValidator = new QuotaDTOValidator();
     }
 

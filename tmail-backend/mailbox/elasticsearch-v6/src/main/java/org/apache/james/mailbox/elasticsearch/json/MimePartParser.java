@@ -70,27 +70,19 @@ public class MimePartParser {
 
     private void processMimePart(MimeTokenStream stream, EntityState state) {
         switch (state) {
-            case T_START_MULTIPART:
-            case T_START_MESSAGE:
-                stackCurrent();
-                break;
-            case T_START_HEADER:
-                currentlyBuildMimePart = MimePart.builder();
-                break;
-            case T_FIELD:
-                currentlyBuildMimePart.addToHeaders(stream.getField());
-                break;
-            case T_BODY:
+            case T_START_MULTIPART, T_START_MESSAGE -> stackCurrent();
+            case T_START_HEADER -> currentlyBuildMimePart = MimePart.builder();
+            case T_FIELD -> currentlyBuildMimePart.addToHeaders(stream.getField());
+            case T_BODY -> {
                 manageBodyExtraction(stream);
                 closeMimePart();
-                break;
-            case T_END_MULTIPART:
-            case T_END_MESSAGE:
+            }
+            case T_END_MULTIPART, T_END_MESSAGE -> {
                 unstackToCurrent();
                 closeMimePart();
-                break;
-            default:
-                break;
+            }
+            default -> {
+            }
         }
     }
 

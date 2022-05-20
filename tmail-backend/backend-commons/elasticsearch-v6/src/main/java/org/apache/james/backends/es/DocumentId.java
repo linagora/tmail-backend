@@ -19,41 +19,18 @@
 
 package org.apache.james.backends.es;
 
-import java.util.Objects;
-
 import org.elasticsearch.common.Strings;
 
 import com.google.common.base.Preconditions;
 
-public class DocumentId {
+public record DocumentId(String value) {
 
     public static DocumentId fromString(String value) {
-        return new DocumentId(value);
-    }
-
-    private final String value;
-
-    private DocumentId(String value) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(value), "DocumentId must be specified");
-        this.value = value;
+        return new DocumentId(value);
     }
 
     public String asString() {
         return value;
-    }
-
-    @Override
-    public final boolean equals(Object o) {
-        if (o instanceof DocumentId) {
-            DocumentId that = (DocumentId) o;
-
-            return Objects.equals(this.value, that.value);
-        }
-        return false;
-    }
-
-    @Override
-    public final int hashCode() {
-        return Objects.hash(value);
     }
 }

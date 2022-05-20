@@ -55,34 +55,34 @@ public class RateLimitPlanManagementRoutesTest {
     class CreateAPlanTest {
         @Test
         void shouldSucceed() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  },\n" +
-                "    {\n" +
-                "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"periodInSeconds\": 86400,\n" +
-                "      \"count\": 1000,\n" +
-                "      \"size\": 4096\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"relayLimits\": [{\n" +
-                "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  }],\n" +
-                "  \"deliveryLimits\": [{\n" +
-                "    \"name\": \"deliveryMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  " +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  },
+                    {
+                      "name": "receivedMailsPerDay",
+                      "periodInSeconds": 86400,
+                      "count": 1000,
+                      "size": 4096
+                    }
+                  ],
+                  "relayLimits": [{
+                    "name": "relayMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }],
+                  "deliveryLimits": [{
+                    "name": "deliveryMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }]
+                }""";
 
             Map<String, Object> response = given()
                 .body(json)
@@ -100,21 +100,22 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldSucceedWhenOnlyTransitLimits() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  },\n" +
-                "    {\n" +
-                "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"periodInSeconds\": 86400,\n" +
-                "      \"count\": 1000,\n" +
-                "      \"size\": 4096\n" +
-                "    }\n" +
-                "]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  },
+                    {
+                      "name": "receivedMailsPerDay",
+                      "periodInSeconds": 86400,
+                      "count": 1000,
+                      "size": 4096
+                    }
+                ]
+                }""";
 
             Map<String, Object> response = given()
                 .body(json)
@@ -154,11 +155,12 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenAllEntryAreNull() {
-            String json = "{\n" +
-                "  \"transitLimits\": null,\n" +
-                "  \"relayLimits\": null,\n" +
-                "  \"deliveryLimits\": null\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": null,
+                  "relayLimits": null,
+                  "deliveryLimits": null
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -202,13 +204,14 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenMissingRateLimitationNameField() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                }]
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -232,13 +235,14 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenMissingRateLimitationPeriodField() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "count": 100,
+                    "size": 2048
+                }]
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -262,13 +266,14 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenMissingRateLimitationCountField() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"size\": 2048\n" +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "size": 2048
+                }]
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -292,14 +297,15 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenNegativeCount() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": -100,\n" +
-                "    \"size\": 2048\n" +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": -100,
+                    "size": 2048
+                }]
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -321,13 +327,14 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenMissingRateLimitationSizeField() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100\n" +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100
+                }]
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -351,14 +358,15 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenNegativeSize() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": -2048\n" +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": -2048
+                }]
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -380,14 +388,15 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenNegativePeriod() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": -3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": -3600,
+                    "count": 100,
+                    "size": 2048
+                }]
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -409,14 +418,15 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldSucceedWhenValidPeriod() {
-            String json = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "}]\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                }]
+                }""";
 
              given()
                 .body(json)
@@ -431,33 +441,34 @@ public class RateLimitPlanManagementRoutesTest {
     class UpdateAPlanTest {
         @Test
         void shouldSucceedWhenPlanExists() {
-            String createPlanJson = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  },\n" +
-                "    {\n" +
-                "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"periodInSeconds\": 86400,\n" +
-                "      \"count\": 1000,\n" +
-                "      \"size\": 4096\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"relayLimits\": [{\n" +
-                "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  }],\n" +
-                "  \"deliveryLimits\": [{\n" +
-                "    \"name\": \"deliveryMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "}]\n" +
-                "}";
+            String createPlanJson = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  },
+                    {
+                      "name": "receivedMailsPerDay",
+                      "periodInSeconds": 86400,
+                      "count": 1000,
+                      "size": 4096
+                    }
+                  ],
+                  "relayLimits": [{
+                    "name": "relayMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }],
+                  "deliveryLimits": [{
+                    "name": "deliveryMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                }]
+                }""";
 
             String oldPlanId = given()
                 .body(createPlanJson)
@@ -470,29 +481,30 @@ public class RateLimitPlanManagementRoutesTest {
                 .jsonPath()
                 .getString("planId");
 
-            String updatePlanJson = "{\n" +
-                "  \"planName\": \"newPlanName\",\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  },\n" +
-                "    {\n" +
-                "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"periodInSeconds\": 86400,\n" +
-                "      \"count\": 1000,\n" +
-                "      \"size\": 4096\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"relayLimits\": [{\n" +
-                "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  }],\n" +
-                "  \"deliveryLimits\": null\n" +
-                "}";
+            String updatePlanJson = """
+                {
+                  "planName": "newPlanName",
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  },
+                    {
+                      "name": "receivedMailsPerDay",
+                      "periodInSeconds": 86400,
+                      "count": 1000,
+                      "size": 4096
+                    }
+                  ],
+                  "relayLimits": [{
+                    "name": "relayMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }],
+                  "deliveryLimits": null
+                }""";
 
             String response = given()
                 .body(updatePlanJson)
@@ -513,29 +525,30 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnNotFoundWhenPlanNotFound() {
-            String json = "{\n" +
-                "  \"planName\": \"newPlanName\",\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  },\n" +
-                "    {\n" +
-                "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"periodInSeconds\": 86400,\n" +
-                "      \"count\": 1000,\n" +
-                "      \"size\": 4096\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"relayLimits\": [{\n" +
-                "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  }],\n" +
-                "  \"deliveryLimits\": null\n" +
-                "}";
+            String json = """
+                {
+                  "planName": "newPlanName",
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  },
+                    {
+                      "name": "receivedMailsPerDay",
+                      "periodInSeconds": 86400,
+                      "count": 1000,
+                      "size": 4096
+                    }
+                  ],
+                  "relayLimits": [{
+                    "name": "relayMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }],
+                  "deliveryLimits": null
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -556,17 +569,17 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenMissingPlanName() {
-            String json = "{\n" +
-                "  \"transitLimits\": null" +
-                ",\n" +
-                "  \"relayLimits\": [{\n" +
-                "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  }],\n" +
-                "  \"deliveryLimits\": null\n" +
-                "}";
+            String json = """
+                {
+                  "transitLimits": null,
+                  "relayLimits": [{
+                    "name": "relayMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }],
+                  "deliveryLimits": null
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -587,17 +600,18 @@ public class RateLimitPlanManagementRoutesTest {
 
         @Test
         void shouldReturnBadRequestWhenPlanNameIsEmpty() {
-            String json = "{\n" +
-                "  \"planName\": \"\",\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  }],\n" +
-                "  \"relayLimits\": null,\n" +
-                "\"deliveryLimits\": null\n" +
-                "}";
+            String json = """
+                {
+                  "planName": "",
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }],
+                  "relayLimits": null,
+                "deliveryLimits": null
+                }""";
 
             Map<String, Object> errors = given()
                 .body(json)
@@ -622,34 +636,34 @@ public class RateLimitPlanManagementRoutesTest {
     class GetAPlanTest {
         @Test
         void shouldSucceedWhenPlanExists() {
-            String createPlanJson = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  },\n" +
-                "    {\n" +
-                "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"periodInSeconds\": 86400,\n" +
-                "      \"count\": 1000,\n" +
-                "      \"size\": 4096\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"relayLimits\": [{\n" +
-                "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  }],\n" +
-                "  \"deliveryLimits\": [{\n" +
-                "    \"name\": \"deliveryMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  " +
-                "}]\n" +
-                "}";
+            String createPlanJson = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  },
+                    {
+                      "name": "receivedMailsPerDay",
+                      "periodInSeconds": 86400,
+                      "count": 1000,
+                      "size": 4096
+                    }
+                  ],
+                  "relayLimits": [{
+                    "name": "relayMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }],
+                  "deliveryLimits": [{
+                    "name": "deliveryMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }]
+                }""";
 
             String oldPlanId = given()
                 .body(createPlanJson)
@@ -673,35 +687,36 @@ public class RateLimitPlanManagementRoutesTest {
 
             assertThatJson(response)
                 .whenIgnoringPaths("planId")
-                .isEqualTo("{\n" +
-                    "  \"planId\": \"18828c8d-35c3-4ac8-bfac-1d3c0588b40c\",\n" +
-                    "  \"planName\": \"oldPlanName\",\n" +
-                    "  \"transitLimits\": [{\n" +
-                    "    \"name\": \"receivedMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  },\n" +
-                    "    {\n" +
-                    "      \"name\": \"receivedMailsPerDay\",\n" +
-                    "      \"periodInSeconds\": 86400,\n" +
-                    "      \"count\": 1000,\n" +
-                    "      \"size\": 4096\n" +
-                    "    }\n" +
-                    "  ],\n" +
-                    "  \"relayLimits\": [{\n" +
-                    "    \"name\": \"relayMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  }],\n" +
-                    "  \"deliveryLimits\": [{\n" +
-                    "    \"name\": \"deliveryMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  }]\n" +
-                    "}");
+                .isEqualTo("""
+                    {
+                      "planId": "18828c8d-35c3-4ac8-bfac-1d3c0588b40c",
+                      "planName": "oldPlanName",
+                      "transitLimits": [{
+                        "name": "receivedMailsPerHour",
+                        "periodInSeconds": 3600,
+                        "count": 100,
+                        "size": 2048
+                      },
+                        {
+                          "name": "receivedMailsPerDay",
+                          "periodInSeconds": 86400,
+                          "count": 1000,
+                          "size": 4096
+                        }
+                      ],
+                      "relayLimits": [{
+                        "name": "relayMailsPerHour",
+                        "periodInSeconds": 3600,
+                        "count": 100,
+                        "size": 2048
+                      }],
+                      "deliveryLimits": [{
+                        "name": "deliveryMailsPerHour",
+                        "periodInSeconds": 3600,
+                        "count": 100,
+                        "size": 2048
+                      }]
+                    }""");
         }
 
         @Test
@@ -746,34 +761,34 @@ public class RateLimitPlanManagementRoutesTest {
     class GetAllPlanTest {
         @Test
         void shouldReturnPlansWhenPlansExist() {
-            String createPlanJson = "{\n" +
-                "  \"transitLimits\": [{\n" +
-                "    \"name\": \"receivedMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  },\n" +
-                "    {\n" +
-                "      \"name\": \"receivedMailsPerDay\",\n" +
-                "      \"periodInSeconds\": 86400,\n" +
-                "      \"count\": 1000,\n" +
-                "      \"size\": 4096\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"relayLimits\": [{\n" +
-                "    \"name\": \"relayMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  }],\n" +
-                "  \"deliveryLimits\": [{\n" +
-                "    \"name\": \"deliveryMailsPerHour\",\n" +
-                "    \"periodInSeconds\": 3600,\n" +
-                "    \"count\": 100,\n" +
-                "    \"size\": 2048\n" +
-                "  " +
-                "}]\n" +
-                "}";
+            String createPlanJson = """
+                {
+                  "transitLimits": [{
+                    "name": "receivedMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  },
+                    {
+                      "name": "receivedMailsPerDay",
+                      "periodInSeconds": 86400,
+                      "count": 1000,
+                      "size": 4096
+                    }
+                  ],
+                  "relayLimits": [{
+                    "name": "relayMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }],
+                  "deliveryLimits": [{
+                    "name": "deliveryMailsPerHour",
+                    "periodInSeconds": 3600,
+                    "count": 100,
+                    "size": 2048
+                  }]
+                }""";
 
             given()
                 .body(createPlanJson)
@@ -800,65 +815,66 @@ public class RateLimitPlanManagementRoutesTest {
 
             assertThatJson(response)
                 .whenIgnoringPaths("[0].planId", "[0].planName", "[1].planId", "[1].planName")
-                .isEqualTo("[{\n" +
-                    "  \"planId\": \"02d64e08-488c-4094-87c8-a511b242e802\",\n" +
-                    "  \"planName\": \"plan2\",\n" +
-                    "  \"transitLimits\": [{\n" +
-                    "    \"name\": \"receivedMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  },\n" +
-                    "    {\n" +
-                    "      \"name\": \"receivedMailsPerDay\",\n" +
-                    "      \"periodInSeconds\": 86400,\n" +
-                    "      \"count\": 1000,\n" +
-                    "      \"size\": 4096\n" +
-                    "    }\n" +
-                    "  ],\n" +
-                    "  \"relayLimits\": [{\n" +
-                    "    \"name\": \"relayMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  }],\n" +
-                    "  \"deliveryLimits\": [{\n" +
-                    "    \"name\": \"deliveryMailsPerHour\",\n" +
-                    "    \"periodInSeconds\": 3600,\n" +
-                    "    \"count\": 100,\n" +
-                    "    \"size\": 2048\n" +
-                    "  }]\n" +
-                    "},\n" +
-                    "  {\n" +
-                    "    \"planId\": \"5bb06b65-1b54-4ff4-8bad-ec5f425d9db6\",\n" +
-                    "    \"planName\": \"plan1\",\n" +
-                    "    \"transitLimits\": [{\n" +
-                    "      \"name\": \"receivedMailsPerHour\",\n" +
-                    "      \"periodInSeconds\": 3600,\n" +
-                    "      \"count\": 100,\n" +
-                    "      \"size\": 2048\n" +
-                    "    },\n" +
-                    "      {\n" +
-                    "        \"name\": \"receivedMailsPerDay\",\n" +
-                    "        \"periodInSeconds\": 86400,\n" +
-                    "        \"count\": 1000,\n" +
-                    "        \"size\": 4096\n" +
-                    "      }\n" +
-                    "    ],\n" +
-                    "    \"relayLimits\": [{\n" +
-                    "      \"name\": \"relayMailsPerHour\",\n" +
-                    "      \"periodInSeconds\": 3600,\n" +
-                    "      \"count\": 100,\n" +
-                    "      \"size\": 2048\n" +
-                    "    }],\n" +
-                    "    \"deliveryLimits\": [{\n" +
-                    "      \"name\": \"deliveryMailsPerHour\",\n" +
-                    "      \"periodInSeconds\": 3600,\n" +
-                    "      \"count\": 100,\n" +
-                    "      \"size\": 2048\n" +
-                    "    }]\n" +
-                    "  }\n" +
-                    "]");
+                .isEqualTo("""
+                    [{
+                      "planId": "02d64e08-488c-4094-87c8-a511b242e802",
+                      "planName": "plan2",
+                      "transitLimits": [{
+                        "name": "receivedMailsPerHour",
+                        "periodInSeconds": 3600,
+                        "count": 100,
+                        "size": 2048
+                      },
+                        {
+                          "name": "receivedMailsPerDay",
+                          "periodInSeconds": 86400,
+                          "count": 1000,
+                          "size": 4096
+                        }
+                      ],
+                      "relayLimits": [{
+                        "name": "relayMailsPerHour",
+                        "periodInSeconds": 3600,
+                        "count": 100,
+                        "size": 2048
+                      }],
+                      "deliveryLimits": [{
+                        "name": "deliveryMailsPerHour",
+                        "periodInSeconds": 3600,
+                        "count": 100,
+                        "size": 2048
+                      }]
+                    },
+                      {
+                        "planId": "5bb06b65-1b54-4ff4-8bad-ec5f425d9db6",
+                        "planName": "plan1",
+                        "transitLimits": [{
+                          "name": "receivedMailsPerHour",
+                          "periodInSeconds": 3600,
+                          "count": 100,
+                          "size": 2048
+                        },
+                          {
+                            "name": "receivedMailsPerDay",
+                            "periodInSeconds": 86400,
+                            "count": 1000,
+                            "size": 4096
+                          }
+                        ],
+                        "relayLimits": [{
+                          "name": "relayMailsPerHour",
+                          "periodInSeconds": 3600,
+                          "count": 100,
+                          "size": 2048
+                        }],
+                        "deliveryLimits": [{
+                          "name": "deliveryMailsPerHour",
+                          "periodInSeconds": 3600,
+                          "count": 100,
+                          "size": 2048
+                        }]
+                      }
+                    ]""");
         }
 
         @Test

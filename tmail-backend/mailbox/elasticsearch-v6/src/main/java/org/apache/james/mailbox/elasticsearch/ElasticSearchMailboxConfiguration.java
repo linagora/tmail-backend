@@ -160,9 +160,7 @@ public class ElasticSearchMailboxConfiguration {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof ElasticSearchMailboxConfiguration) {
-            ElasticSearchMailboxConfiguration that = (ElasticSearchMailboxConfiguration) o;
-
+        if (o instanceof ElasticSearchMailboxConfiguration that) {
             return Objects.equals(this.indexAttachment, that.indexAttachment)
                 && Objects.equals(this.indexMailboxName, that.indexMailboxName)
                 && Objects.equals(this.readAliasMailboxName, that.readAliasMailboxName)

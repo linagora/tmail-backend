@@ -29,7 +29,6 @@ import java.util.Optional;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.tree.ImmutableNode;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.data.LdapUsersRepositoryModule;
 import org.apache.james.modules.data.CassandraUsersRepositoryModule;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
@@ -44,16 +43,11 @@ public class UsersRepositoryModuleChooser {
     private static final Logger LOGGER = LoggerFactory.getLogger(UsersRepositoryModuleChooser.class);
 
     public static List<Module> chooseModules(Implementation implementation) {
-        switch (implementation) {
-            case LDAP:
-                return ImmutableList.of(new LdapUsersRepositoryModule());
-            case COMBINED:
-                return ImmutableList.of(new CombinedUsersRepositoryModule());
-            case DEFAULT:
-                return ImmutableList.of(new CassandraUsersRepositoryModule());
-            default:
-                throw new NotImplementedException(implementation + " is not a supported option");
-        }
+        return switch (implementation) {
+            case LDAP -> ImmutableList.of(new LdapUsersRepositoryModule());
+            case COMBINED -> ImmutableList.of(new CombinedUsersRepositoryModule());
+            case DEFAULT -> ImmutableList.of(new CassandraUsersRepositoryModule());
+        };
     }
 
     public static List<Module> chooseModules(FileConfigurationProvider fileConfigurationProvider) {

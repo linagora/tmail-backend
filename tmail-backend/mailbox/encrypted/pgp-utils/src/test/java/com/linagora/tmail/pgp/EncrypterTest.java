@@ -116,15 +116,18 @@ class EncrypterTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         defaultMessageWriter.writeMessage(encryptedMessage, out);
 
-        String encryptedMessageAsString = new String(out.toByteArray(), StandardCharsets.UTF_8);
+        String encryptedMessageAsString = out.toString(StandardCharsets.UTF_8);
         assertThat(encryptedMessageAsString)
-            .startsWith("MIME-Version: 1.0\r\n" +
-                "Subject: small message\r\n" +
-                "Content-Type: multipart/encrypted; protocol=\"application/pgp-encrypted\";\r\n" +
-                " boundary=\"");
-        assertThat(encryptedMessageAsString).contains("Content-Type: application/pgp-encrypted\r\n" +
-            "\r\n" +
-            "Version: 1\r\n");
+            .startsWith("""
+                MIME-Version: 1.0\r
+                Subject: small message\r
+                Content-Type: multipart/encrypted; protocol="application/pgp-encrypted";\r
+                 boundary=\"""");
+        assertThat(encryptedMessageAsString).contains("""
+            Content-Type: application/pgp-encrypted\r
+            \r
+            Version: 1\r
+            """);
         assertThat(encryptedMessageAsString)
             .contains("Content-Type: application/octet-stream", "-----BEGIN PGP MESSAGE-----");
     }
@@ -163,20 +166,22 @@ class EncrypterTest {
             .readAllBytes();
 
         assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
-            .isEqualTo("MIME-Version: 1.0\r\n" +
-                "Subject: small message\r\n" +
-                "Content-Type: multipart/report;\r\n" +
-                " boundary=\"-=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=-\"\r\n" +
-                "\r\n" +
-                "---=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=-\r\n" +
-                "Content-Type: text/plain; charset=UTF-8\r\n" +
-                "Content-Transfer-Encoding: quoted-printable\r\n" +
-                "\r\n" +
-                "first\r\n" +
-                "---=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=-\r\n" +
-                "Content-Type: message/disposition-notification\r\n" +
-                "\r\n" +
-                "Final-Recipient: rfc822; final_recipient\r\n" +
-                "---=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=---\r\n");
+            .isEqualTo("""
+                MIME-Version: 1.0\r
+                Subject: small message\r
+                Content-Type: multipart/report;\r
+                 boundary="-=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=-"\r
+                \r
+                ---=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=-\r
+                Content-Type: text/plain; charset=UTF-8\r
+                Content-Transfer-Encoding: quoted-printable\r
+                \r
+                first\r
+                ---=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=-\r
+                Content-Type: message/disposition-notification\r
+                \r
+                Final-Recipient: rfc822; final_recipient\r
+                ---=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=---\r
+                """);
     }
 }

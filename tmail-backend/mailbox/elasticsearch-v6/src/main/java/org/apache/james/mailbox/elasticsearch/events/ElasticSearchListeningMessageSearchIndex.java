@@ -178,7 +178,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
         return elasticSearchIndexer
             .delete(expungedUids.stream()
                 .map(uid ->  indexIdFor(mailboxId, uid))
-                .collect(ImmutableList.toImmutableList()),
+                .toList(),
                 routingKeyFactory.from(mailboxId))
             .then();
     }
@@ -202,7 +202,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
                 updatedFlags -> createUpdatedDocumentPartFromUpdatedFlags(mailboxId, updatedFlags))
                 .sneakyThrow())
             .window(FLAGS_UPDATE_PROCESSING_WINDOW_SIZE)
-            .concatMap(flux -> flux.collect(ImmutableList.toImmutableList())
+            .concatMap(flux -> flux.collectList()
                 .flatMap(updates -> elasticSearchIndexer.update(updates, routingKey)))
             .then();
     }

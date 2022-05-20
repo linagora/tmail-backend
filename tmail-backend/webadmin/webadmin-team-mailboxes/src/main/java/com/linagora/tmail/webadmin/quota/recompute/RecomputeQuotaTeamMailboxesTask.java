@@ -2,6 +2,7 @@ package com.linagora.tmail.webadmin.quota.recompute;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.james.core.Domain;
@@ -10,7 +11,6 @@ import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.task.TaskType;
 
-import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.webadmin.quota.recompute.RecomputeQuotaTeamMailboxesService.Context;
 
 import reactor.core.scheduler.Schedulers;
@@ -22,10 +22,11 @@ public class RecomputeQuotaTeamMailboxesTask implements Task {
         private final Instant instant;
         private final Domain domain;
         private final long processedQuotaRoots;
-        private final ImmutableList<String> failedQuotaRoots;
+        private final List<String> failedQuotaRoots;
 
         public Details(Instant instant, Domain domain,
-                       long processedQuotaRoots, ImmutableList<String> failedQuotaRoots) {
+                       long processedQuotaRoots,
+                       List<String> failedQuotaRoots) {
             this.instant = instant;
             this.domain = domain;
             this.processedQuotaRoots = processedQuotaRoots;
@@ -40,7 +41,7 @@ public class RecomputeQuotaTeamMailboxesTask implements Task {
             return processedQuotaRoots;
         }
 
-        public ImmutableList<String> getFailedQuotaRoots() {
+        public List<String> getFailedQuotaRoots() {
             return failedQuotaRoots;
         }
 
@@ -83,7 +84,7 @@ public class RecomputeQuotaTeamMailboxesTask implements Task {
             snapshot.getFailedQuotaRoots()
                 .stream()
                 .map(QuotaRoot::asString)
-                .collect(ImmutableList.toImmutableList())));
+                .toList()));
     }
 
     public Domain getTeamMailboxDomain() {

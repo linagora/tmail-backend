@@ -129,22 +129,10 @@ public class HeaderCollection {
 
         private void handleSpecificHeader(String headerName, String headerValue, String rawHeaderValue) {
             switch (headerName) {
-                case TO:
-                case FROM:
-                case CC:
-                case BCC:
-                case REPLY_TO:
-                    manageAddressField(headerName, rawHeaderValue);
-                    break;
-                case SUBJECT:
-                    subjectSet.add(headerValue);
-                    break;
-                case DATE:
-                    sentDate = SentDateComparator.toISODate(headerValue);
-                    break;
-                case MESSAGE_ID:
-                    messageID = Optional.ofNullable(headerValue);
-                    break;
+                case TO, FROM, CC, BCC, REPLY_TO -> manageAddressField(headerName, rawHeaderValue);
+                case SUBJECT -> subjectSet.add(headerValue);
+                case DATE -> sentDate = SentDateComparator.toISODate(headerValue);
+                case MESSAGE_ID -> messageID = Optional.ofNullable(headerValue);
             }
         }
 
