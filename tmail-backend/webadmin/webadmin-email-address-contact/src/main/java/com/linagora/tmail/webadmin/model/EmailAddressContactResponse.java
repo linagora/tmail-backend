@@ -11,8 +11,7 @@ public record EmailAddressContactResponse(String id, String emailAddress, Option
             emailAddressContact.id().toString(),
             emailAddressContact.fields().address().asString(),
             nameOrEmpty(emailAddressContact.fields().firstname()),
-            nameOrEmpty(emailAddressContact.fields().surname())
-        );
+            nameOrEmpty(emailAddressContact.fields().surname()));
     }
 
     private static Optional<String> nameOrEmpty(String name) {

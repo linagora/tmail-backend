@@ -134,9 +134,7 @@ public class ElasticSearchQuotaConfiguration {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof ElasticSearchQuotaConfiguration) {
-            ElasticSearchQuotaConfiguration that = (ElasticSearchQuotaConfiguration) o;
-
+        if (o instanceof ElasticSearchQuotaConfiguration that) {
             return Objects.equals(this.indexQuotaRatioName, that.indexQuotaRatioName)
                 && Objects.equals(this.readAliasQuotaRatioName, that.readAliasQuotaRatioName)
                 && Objects.equals(this.writeAliasQuotaRatioName, that.writeAliasQuotaRatioName);

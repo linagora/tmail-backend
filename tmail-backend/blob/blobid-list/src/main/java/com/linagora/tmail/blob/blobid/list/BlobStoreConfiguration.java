@@ -24,7 +24,6 @@
 package com.linagora.tmail.blob.blobid.list;
 
 import java.io.FileNotFoundException;
-import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
@@ -37,11 +36,12 @@ import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.MoreObjects;
-
 import io.vavr.control.Try;
 
-public class BlobStoreConfiguration {
+public record BlobStoreConfiguration(boolean cacheEnabled,
+                                     StorageStrategy storageStrategy,
+                                     Optional<CryptoConfig> cryptoConfig,
+                                     boolean singleSaveEnabled) {
     private static final Logger LOGGER = LoggerFactory.getLogger(BlobStoreConfiguration.class);
 
     @FunctionalInterface
@@ -133,11 +133,12 @@ public class BlobStoreConfiguration {
     static BlobStoreConfiguration from(Configuration configuration) {
         boolean cacheEnabled = configuration.getBoolean(CACHE_ENABLE_PROPERTY, false);
         boolean deduplicationEnabled = Try.ofCallable(() -> configuration.getBoolean(DEDUPLICATION_ENABLE_PROPERTY))
-                .getOrElseThrow(() -> new IllegalStateException("deduplication.enable property is missing please use one of the supported values in: true, false\n" +
-                        "If you choose to enable deduplication, the mails with the same content will be stored only once.\n" +
-                        "Warning: Once this feature is enabled, there is no turning back as turning it off will lead to the deletion of all\n" +
-                        "the mails sharing the same content once one is deleted.\n" +
-                        "Upgrade note: If you are upgrading from James 3.5 or older, the deduplication was enabled."));
+                .getOrElseThrow(() -> new IllegalStateException("""
+                    deduplication.enable property is missing please use one of the supported values in: true, false
+                    If you choose to enable deduplication, the mails with the same content will be stored only once.
+                    Warning: Once this feature is enabled, there is no turning back as turning it off will lead to the deletion of all
+                    the mails sharing the same content once one is deleted.
+                    Upgrade note: If you are upgrading from James 3.5 or older, the deduplication was enabled."""));
         Optional<CryptoConfig> cryptoConfig = parseCryptoConfig(configuration);
 
         boolean singleSaveEnabled = configuration.getBoolean(SINGLE_SAVE_ENABLE_PROPERTY, false);
@@ -166,61 +167,5 @@ public class BlobStoreConfiguration {
                 .build());
         }
         return Optional.empty();
-    }
-
-    private final boolean cacheEnabled;
-    private final StorageStrategy storageStrategy;
-    private final Optional<CryptoConfig> cryptoConfig;
-    private final boolean singleSaveEnabled;
-
-    BlobStoreConfiguration(boolean cacheEnabled, StorageStrategy storageStrategy, Optional<CryptoConfig> cryptoConfig, boolean singleSaveEnabled) {
-        this.cacheEnabled = cacheEnabled;
-        this.storageStrategy = storageStrategy;
-        this.cryptoConfig = cryptoConfig;
-        this.singleSaveEnabled = singleSaveEnabled;
-    }
-
-    public boolean cacheEnabled() {
-        return cacheEnabled;
-    }
-
-    public StorageStrategy storageStrategy() {
-        return storageStrategy;
-    }
-
-    public Optional<CryptoConfig> getCryptoConfig() {
-        return cryptoConfig;
-    }
-
-    public boolean isSingleSaveEnabled() {
-        return singleSaveEnabled;
-    }
-
-    @Override
-    public final boolean equals(Object o) {
-        if (o instanceof BlobStoreConfiguration) {
-            BlobStoreConfiguration that = (BlobStoreConfiguration) o;
-
-            return Objects.equals(this.cacheEnabled, that.cacheEnabled)
-                && Objects.equals(this.storageStrategy, that.storageStrategy)
-                && Objects.equals(this.cryptoConfig, that.cryptoConfig)
-                && Objects.equals(this.singleSaveEnabled, that.singleSaveEnabled);
-        }
-        return false;
-    }
-
-    @Override
-    public final int hashCode() {
-        return Objects.hash(cacheEnabled, storageStrategy, cryptoConfig, singleSaveEnabled);
-    }
-
-    @Override
-    public String toString() {
-        return MoreObjects.toStringHelper(this)
-            .add("cacheEnabled", cacheEnabled)
-            .add("storageStrategy", storageStrategy.name())
-            .add("cryptoConfig", cryptoConfig)
-            .add("singleSaveEnabled", singleSaveEnabled)
-            .toString();
     }
 }

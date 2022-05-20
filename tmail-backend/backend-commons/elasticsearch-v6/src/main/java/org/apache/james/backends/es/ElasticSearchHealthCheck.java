@@ -24,7 +24,6 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
@@ -68,14 +67,9 @@ public class ElasticSearchHealthCheck implements HealthCheck {
 
     @VisibleForTesting
     Result toHealthCheckResult(ClusterHealthResponse response) {
-        switch (response.getStatus()) {
-            case GREEN:
-            case YELLOW:
-                return Result.healthy(COMPONENT_NAME);
-            case RED:
-                return Result.unhealthy(COMPONENT_NAME, response.getClusterName() + " status is RED");
-            default:
-                throw new NotImplementedException("Un-handled ElasticSearch cluster status");
-        }
+        return switch (response.getStatus()) {
+            case GREEN, YELLOW -> Result.healthy(COMPONENT_NAME);
+            case RED -> Result.unhealthy(COMPONENT_NAME, response.getClusterName() + " status is RED");
+        };
     }
 }

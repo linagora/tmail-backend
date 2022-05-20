@@ -44,7 +44,16 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-public class ElasticSearchConfiguration {
+public record ElasticSearchConfiguration(ImmutableList<Host> hosts,
+                                         int nbShards,
+                                         int nbReplica,
+                                         int waitForActiveShards,
+                                         int minDelay,
+                                         int maxRetries,
+                                         Duration requestTimeout,
+                                         HostScheme hostScheme,
+                                         Optional<Credential> credential,
+                                         SSLConfiguration sslConfiguration) {
 
     public enum HostScheme {
         HTTP("http"),
@@ -68,36 +77,16 @@ public class ElasticSearchConfiguration {
         }
     }
 
-    public static class Credential {
-
+    public record Credential(String username, char[] password) {
         public static Credential of(String username, String password) {
-            return new Credential(username, password);
-        }
-
-        private final String username;
-        private final char[] password;
-
-        private Credential(String username, String password) {
             Preconditions.checkNotNull(username, "username cannot be null when password is specified");
             Preconditions.checkNotNull(password, "password cannot be null when username is specified");
-
-            this.username = username;
-            this.password = password.toCharArray();
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public char[] getPassword() {
-            return password;
+            return new Credential(username, password.toCharArray());
         }
 
         @Override
-        public final boolean equals(Object o) {
-            if (o instanceof Credential) {
-                Credential that = (Credential) o;
-
+        public boolean equals(Object o) {
+            if (o instanceof Credential that) {
                 return Objects.equals(this.username, that.username)
                     && Arrays.equals(this.password, that.password);
             }
@@ -105,7 +94,7 @@ public class ElasticSearchConfiguration {
         }
 
         @Override
-        public final int hashCode() {
+        public int hashCode() {
             return Objects.hash(username, Arrays.hashCode(password));
         }
     }
@@ -156,7 +145,7 @@ public class ElasticSearchConfiguration {
                 Preconditions.checkNotNull(filePath, "%s cannot be null when %s is specified",
                     ELASTICSEARCH_HTTPS_TRUST_STORE_PATH, ELASTICSEARCH_HTTPS_TRUST_STORE_PASSWORD);
                 Preconditions.checkNotNull(password,
-                     "%s cannot be null when %s is specified",
+                    "%s cannot be null when %s is specified",
                     ELASTICSEARCH_HTTPS_TRUST_STORE_PASSWORD, ELASTICSEARCH_HTTPS_TRUST_STORE_PATH);
                 Preconditions.checkArgument(Files.exists(Paths.get(filePath)),
                     "the file '%s' from property '%s' doesn't exist", filePath, ELASTICSEARCH_HTTPS_TRUST_STORE_PATH);
@@ -175,9 +164,7 @@ public class ElasticSearchConfiguration {
 
             @Override
             public final boolean equals(Object o) {
-                if (o instanceof SSLTrustStore) {
-                    SSLTrustStore that = (SSLTrustStore) o;
-
+                if (o instanceof SSLTrustStore that) {
                     return Objects.equals(this.file, that.file)
                         && Arrays.equals(this.password, that.password);
                 }
@@ -258,7 +245,7 @@ public class ElasticSearchConfiguration {
             Preconditions.checkNotNull(strategy);
             Preconditions.checkNotNull(trustStore);
             Preconditions.checkNotNull(hostNameVerifier);
-            Preconditions.checkArgument(strategy != OVERRIDE || trustStore.isPresent(),  "%s strategy requires trustStore to be present", OVERRIDE.name());
+            Preconditions.checkArgument(strategy != OVERRIDE || trustStore.isPresent(), "%s strategy requires trustStore to be present", OVERRIDE.name());
 
             this.strategy = strategy;
             this.trustStore = trustStore;
@@ -279,9 +266,7 @@ public class ElasticSearchConfiguration {
 
         @Override
         public final boolean equals(Object o) {
-            if (o instanceof SSLConfiguration) {
-                SSLConfiguration that = (SSLConfiguration) o;
-
+            if (o instanceof SSLConfiguration that) {
                 return Objects.equals(this.strategy, that.strategy)
                     && Objects.equals(this.trustStore, that.trustStore)
                     && Objects.equals(this.hostNameVerifier, that.hostNameVerifier);
@@ -495,7 +480,7 @@ public class ElasticSearchConfiguration {
         return Optional.of(Credential.of(username, password));
     }
 
-    private static ImmutableList<Host> getHosts(Configuration propertiesReader) throws ConfigurationException {
+    private static List<Host> getHosts(Configuration propertiesReader) throws ConfigurationException {
         Optional<String> masterHost = Optional.ofNullable(
             propertiesReader.getString(ELASTICSEARCH_MASTER_HOST, null));
         Optional<Integer> masterPort = Optional.ofNullable(
@@ -507,11 +492,11 @@ public class ElasticSearchConfiguration {
         if (masterHost.isPresent()) {
             return ImmutableList.of(
                 Host.from(masterHost.get(),
-                masterPort.get()));
+                    masterPort.get()));
         } else {
             return multiHosts.stream()
                 .map(ipAndPort -> Host.parse(ipAndPort, DEFAULT_PORT_AS_OPTIONAL))
-                .collect(ImmutableList.toImmutableList());
+                .toList();
         }
     }
 
@@ -528,95 +513,5 @@ public class ElasticSearchConfiguration {
         if (multiHosts.isEmpty() && !masterHost.isPresent()) {
             throw new ConfigurationException("You should specify either (" + ELASTICSEARCH_MASTER_HOST + " and " + ELASTICSEARCH_PORT + ") or " + ELASTICSEARCH_HOSTS);
         }
-    }
-
-    private final ImmutableList<Host> hosts;
-    private final int nbShards;
-    private final int nbReplica;
-    private final int waitForActiveShards;
-    private final int minDelay;
-    private final int maxRetries;
-    private final Duration requestTimeout;
-    private final HostScheme hostScheme;
-    private final Optional<Credential> credential;
-    private final SSLConfiguration sslConfiguration;
-
-    private ElasticSearchConfiguration(ImmutableList<Host> hosts, int nbShards, int nbReplica, int waitForActiveShards, int minDelay, int maxRetries, Duration requestTimeout,
-                                       HostScheme hostScheme, Optional<Credential> credential, SSLConfiguration sslConfiguration) {
-        this.hosts = hosts;
-        this.nbShards = nbShards;
-        this.nbReplica = nbReplica;
-        this.waitForActiveShards = waitForActiveShards;
-        this.minDelay = minDelay;
-        this.maxRetries = maxRetries;
-        this.requestTimeout = requestTimeout;
-        this.hostScheme = hostScheme;
-        this.credential = credential;
-        this.sslConfiguration = sslConfiguration;
-    }
-
-    public ImmutableList<Host> getHosts() {
-        return hosts;
-    }
-
-    public int getNbShards() {
-        return nbShards;
-    }
-
-    public int getNbReplica() {
-        return nbReplica;
-    }
-
-    public int getWaitForActiveShards() {
-        return waitForActiveShards;
-    }
-
-    public int getMinDelay() {
-        return minDelay;
-    }
-
-    public int getMaxRetries() {
-        return maxRetries;
-    }
-
-    public Duration getRequestTimeout() {
-        return requestTimeout;
-    }
-
-    public HostScheme getHostScheme() {
-        return hostScheme;
-    }
-
-    public Optional<Credential> getCredential() {
-        return credential;
-    }
-
-    public SSLConfiguration getSslConfiguration() {
-        return sslConfiguration;
-    }
-
-    @Override
-    public final boolean equals(Object o) {
-        if (o instanceof ElasticSearchConfiguration) {
-            ElasticSearchConfiguration that = (ElasticSearchConfiguration) o;
-
-            return Objects.equals(this.nbShards, that.nbShards)
-                && Objects.equals(this.nbReplica, that.nbReplica)
-                && Objects.equals(this.waitForActiveShards, that.waitForActiveShards)
-                && Objects.equals(this.minDelay, that.minDelay)
-                && Objects.equals(this.maxRetries, that.maxRetries)
-                && Objects.equals(this.hosts, that.hosts)
-                && Objects.equals(this.requestTimeout, that.requestTimeout)
-                && Objects.equals(this.hostScheme, that.hostScheme)
-                && Objects.equals(this.credential, that.credential)
-                && Objects.equals(this.sslConfiguration, that.sslConfiguration);
-        }
-        return false;
-    }
-
-    @Override
-    public final int hashCode() {
-        return Objects.hash(hosts, nbShards, nbReplica, waitForActiveShards, minDelay, maxRetries, requestTimeout,
-            hostScheme, credential, sslConfiguration);
     }
 }

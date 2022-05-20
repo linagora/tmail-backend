@@ -120,21 +120,18 @@ public class BlobStoreModulesChooser {
     }
 
     private static ImmutableList<Module> chooseStoragePolicyModule(StorageStrategy storageStrategy) {
-        switch (storageStrategy) {
-            case DEDUPLICATION:
-                Module deduplicationModule = binder -> binder.bind(BlobStore.class)
-                    .annotatedWith(Names.named(CachedBlobStore.BACKEND))
-                    .to(DeDuplicationBlobStore.class);
-                return ImmutableList.of(new BlobDeduplicationGCModule(), deduplicationModule);
-            case PASSTHROUGH:
-                return ImmutableList.of(
+        return switch (storageStrategy) {
+            case DEDUPLICATION ->
+                ImmutableList.of(new BlobDeduplicationGCModule(),
                     binder -> binder.bind(BlobStore.class)
                         .annotatedWith(Names.named(CachedBlobStore.BACKEND))
-                        .to(PassThroughBlobStore.class),
-                    new BlobStoreAPIModule());
-            default:
-                throw new RuntimeException("Unknown storage strategy " + storageStrategy.name());
-        }
+                        .to(DeDuplicationBlobStore.class));
+            case PASSTHROUGH -> ImmutableList.of(
+                binder -> binder.bind(BlobStore.class)
+                    .annotatedWith(Names.named(CachedBlobStore.BACKEND))
+                    .to(PassThroughBlobStore.class),
+                new BlobStoreAPIModule());
+        };
     }
 
     static class StoragePolicyConfigurationSanityEnforcementModule extends AbstractModule {
@@ -162,8 +159,8 @@ public class BlobStoreModulesChooser {
     @VisibleForTesting
     public static List<Module> chooseModules(BlobStoreConfiguration choosingConfiguration) {
         return ImmutableList.<Module>builder()
-            .add(chooseEncryptionModule(choosingConfiguration.getCryptoConfig()))
-            .add(chooseObjectStorageModule(choosingConfiguration.isSingleSaveEnabled()))
+            .add(chooseEncryptionModule(choosingConfiguration.cryptoConfig()))
+            .add(chooseObjectStorageModule(choosingConfiguration.singleSaveEnabled()))
             .addAll(chooseStoragePolicyModule(choosingConfiguration.storageStrategy()))
             .add(new StoragePolicyConfigurationSanityEnforcementModule(choosingConfiguration))
             .build();

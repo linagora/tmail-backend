@@ -121,14 +121,14 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitingPlanRe
   private def toResetRequest(request: Request): RateLimitingPlanResetRequest = {
     val resetRequestDTO = resetRequestExtractor.parse(request.body())
     val combinedLimitations = java.util.stream.Stream.of(
-      resetRequestDTO.getTransitLimits.map(toOperationLimitation(TRANSIT_LIMITATIONS_NAME, _)),
-      resetRequestDTO.getDeliveryLimits.map(toOperationLimitation(DELIVERY_LIMITATIONS_NAME, _)),
-      resetRequestDTO.getRelayLimits.map(toOperationLimitation(RELAY_LIMITATIONS_NAME, _)))
+      resetRequestDTO.transitLimits.map(toOperationLimitation(TRANSIT_LIMITATIONS_NAME, _)),
+      resetRequestDTO.deliveryLimits.map(toOperationLimitation(DELIVERY_LIMITATIONS_NAME, _)),
+      resetRequestDTO.relayLimits.map(toOperationLimitation(RELAY_LIMITATIONS_NAME, _)))
       .filter(_.isPresent)
       .map(_.get)
       .toScala(Seq)
 
-    RateLimitingPlanResetRequest(extractRateLimitingPlanId(request), RateLimitingPlanName.liftOrThrow(resetRequestDTO.getPlanName),
+    RateLimitingPlanResetRequest(extractRateLimitingPlanId(request), RateLimitingPlanName.liftOrThrow(resetRequestDTO.planName),
       OperationLimitationsType.liftOrThrow(combinedLimitations))
   }
 
@@ -139,8 +139,8 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitingPlanRe
       .toScala(Seq))
 
   private def toRateLimitation(dto: RateLimitationDTO): RateLimitation = {
-    require(dto.getPeriodInSeconds.>=(0), "Rate limitation period must not be negative")
-    RateLimitation(name = dto.getName, period = Duration.ofSeconds(dto.getPeriodInSeconds), limits = toLimitTypes(dto.getCount, dto.getSize))
+    require(dto.periodInSeconds.>=(0), "Rate limitation period must not be negative")
+    RateLimitation(name = dto.name, period = Duration.ofSeconds(dto.periodInSeconds), limits = toLimitTypes(dto.count, dto.size))
   }
 
   private def toLimitTypes(count: Long, size: Long): LimitTypes = {

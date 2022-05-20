@@ -38,31 +38,24 @@ public class SortConverter {
     }
 
     private static FieldSortBuilder getSortClause(SearchQuery.Sort.SortClause clause) {
-        switch (clause) {
-            case Arrival :
-                return SortBuilders.fieldSort(JsonMessageConstants.DATE);
-            case MailboxCc :
-                return SortBuilders.fieldSort(JsonMessageConstants.CC + PATH_SEPARATOR + JsonMessageConstants.EMailer.ADDRESS
+        return switch (clause) {
+            case Arrival -> SortBuilders.fieldSort(JsonMessageConstants.DATE);
+            case MailboxCc ->
+                SortBuilders.fieldSort(JsonMessageConstants.CC + PATH_SEPARATOR + JsonMessageConstants.EMailer.ADDRESS
                     + PATH_SEPARATOR + NodeMappingFactory.RAW);
-            case MailboxFrom :
-                return SortBuilders.fieldSort(JsonMessageConstants.FROM + PATH_SEPARATOR + JsonMessageConstants.EMailer.ADDRESS
+            case MailboxFrom ->
+                SortBuilders.fieldSort(JsonMessageConstants.FROM + PATH_SEPARATOR + JsonMessageConstants.EMailer.ADDRESS
                     + PATH_SEPARATOR + NodeMappingFactory.RAW);
-            case MailboxTo :
-                return SortBuilders.fieldSort(JsonMessageConstants.TO + PATH_SEPARATOR + JsonMessageConstants.EMailer.ADDRESS
+            case MailboxTo ->
+                SortBuilders.fieldSort(JsonMessageConstants.TO + PATH_SEPARATOR + JsonMessageConstants.EMailer.ADDRESS
                     + PATH_SEPARATOR + NodeMappingFactory.RAW);
-            case BaseSubject :
-                return SortBuilders.fieldSort(JsonMessageConstants.SUBJECT + PATH_SEPARATOR + NodeMappingFactory.RAW);
-            case Size :
-                return SortBuilders.fieldSort(JsonMessageConstants.SIZE);
-            case SentDate :
-                return SortBuilders.fieldSort(JsonMessageConstants.SENT_DATE);
-            case Uid :
-                return SortBuilders.fieldSort(JsonMessageConstants.UID);
-            case Id:
-                return SortBuilders.fieldSort(JsonMessageConstants.MESSAGE_ID);
-            default:
-                throw new RuntimeException("Sort is not implemented");
-        }
+            case BaseSubject ->
+                SortBuilders.fieldSort(JsonMessageConstants.SUBJECT + PATH_SEPARATOR + NodeMappingFactory.RAW);
+            case Size -> SortBuilders.fieldSort(JsonMessageConstants.SIZE);
+            case SentDate -> SortBuilders.fieldSort(JsonMessageConstants.SENT_DATE);
+            case Uid -> SortBuilders.fieldSort(JsonMessageConstants.UID);
+            case Id -> SortBuilders.fieldSort(JsonMessageConstants.MESSAGE_ID);
+        };
     }
 
     private static SortOrder getOrder(SearchQuery.Sort sort) {

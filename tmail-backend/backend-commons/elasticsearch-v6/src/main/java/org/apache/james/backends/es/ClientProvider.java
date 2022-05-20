@@ -79,7 +79,7 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
         }
 
         private void configureHostScheme(HttpAsyncClientBuilder builder) {
-            HostScheme scheme = configuration.getHostScheme();
+            HostScheme scheme = configuration.hostScheme();
 
             switch (scheme) {
                 case HTTP:
@@ -108,43 +108,32 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
 
             SSLContextBuilder sslContextBuilder = new SSLContextBuilder();
 
-            SSLValidationStrategy strategy = configuration.getSslConfiguration()
+            SSLValidationStrategy strategy = configuration.sslConfiguration()
                 .getStrategy();
 
-            switch (strategy) {
-                case DEFAULT:
-                    return sslContextBuilder.build();
-                case IGNORE:
-                    return sslContextBuilder.loadTrustMaterial(TRUST_ALL)
-                        .build();
-                case OVERRIDE:
-                    return applyTrustStore(sslContextBuilder)
-                        .build();
-                default:
-                    throw new NotImplementedException(
-                        String.format("unrecognized strategy '%s'", strategy.name()));
-            }
+            return switch (strategy) {
+                case DEFAULT -> sslContextBuilder.build();
+                case IGNORE -> sslContextBuilder.loadTrustMaterial(TRUST_ALL)
+                    .build();
+                case OVERRIDE -> applyTrustStore(sslContextBuilder)
+                    .build();
+            };
         }
 
         private HostnameVerifier hostnameVerifier() {
-            HostNameVerifier hostnameVerifier = configuration.getSslConfiguration()
+            HostNameVerifier hostnameVerifier = configuration.sslConfiguration()
                 .getHostNameVerifier();
 
-            switch (hostnameVerifier) {
-                case DEFAULT:
-                    return new DefaultHostnameVerifier();
-                case ACCEPT_ANY_HOSTNAME:
-                    return ACCEPT_ANY_HOSTNAME;
-                default:
-                    throw new NotImplementedException(
-                        String.format("unrecognized HostNameVerifier '%s'", hostnameVerifier.name()));
-            }
+            return switch (hostnameVerifier) {
+                case DEFAULT -> new DefaultHostnameVerifier();
+                case ACCEPT_ANY_HOSTNAME -> ACCEPT_ANY_HOSTNAME;
+            };
         }
 
         private SSLContextBuilder applyTrustStore(SSLContextBuilder sslContextBuilder) throws CertificateException, NoSuchAlgorithmException,
             KeyStoreException, IOException {
 
-            SSLTrustStore trustStore = configuration.getSslConfiguration()
+            SSLTrustStore trustStore = configuration.sslConfiguration()
                 .getTrustStore()
                 .orElseThrow(() -> new IllegalStateException("SSLTrustStore cannot to be empty"));
 
@@ -153,11 +142,11 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
         }
 
         private void configureAuthentication(HttpAsyncClientBuilder builder) {
-            configuration.getCredential()
+            configuration.credential()
                 .ifPresent(credential -> {
                     CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
                     credentialsProvider.setCredentials(AuthScope.ANY,
-                        new UsernamePasswordCredentials(credential.getUsername(), String.valueOf(credential.getPassword())));
+                        new UsernamePasswordCredentials(credential.username(), String.valueOf(credential.password())));
                     builder.setDefaultCredentialsProvider(credentialsProvider);
                 });
         }
@@ -180,13 +169,13 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
     }
 
     private RestHighLevelClient connect(ElasticSearchConfiguration configuration) {
-        Duration waitDelay = Duration.ofMillis(configuration.getMinDelay());
+        Duration waitDelay = Duration.ofMillis(configuration.minDelay());
         boolean suppressLeadingZeroElements = true;
         boolean suppressTrailingZeroElements = true;
         return Mono.fromCallable(() -> connectToCluster(configuration))
             .doOnError(e -> LOGGER.warn("Error establishing ElasticSearch connection. Next retry scheduled in {}",
                 DurationFormatUtils.formatDurationWords(waitDelay.toMillis(), suppressLeadingZeroElements, suppressTrailingZeroElements), e))
-            .retryWhen(Retry.backoff(configuration.getMaxRetries(), waitDelay).scheduler(Schedulers.elastic()))
+            .retryWhen(Retry.backoff(configuration.maxRetries(), waitDelay).scheduler(Schedulers.elastic()))
             .publishOn(Schedulers.elastic())
             .block();
     }
@@ -198,12 +187,12 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
             RestClient
                 .builder(hostsToHttpHosts())
                 .setHttpClientConfigCallback(httpAsyncClientConfigurer::configure)
-                .setMaxRetryTimeoutMillis(Math.toIntExact(configuration.getRequestTimeout().toMillis())));
+                .setMaxRetryTimeoutMillis(Math.toIntExact(configuration.requestTimeout().toMillis())));
     }
 
     private HttpHost[] hostsToHttpHosts() {
-        return configuration.getHosts().stream()
-            .map(host -> new HttpHost(host.getHostName(), host.getPort(), configuration.getHostScheme().name()))
+        return configuration.hosts().stream()
+            .map(host -> new HttpHost(host.getHostName(), host.getPort(), configuration.hostScheme().name()))
             .toArray(HttpHost[]::new);
     }
 

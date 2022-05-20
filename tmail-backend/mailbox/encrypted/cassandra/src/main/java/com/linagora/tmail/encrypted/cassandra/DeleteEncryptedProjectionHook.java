@@ -1,8 +1,8 @@
 package com.linagora.tmail.encrypted.cassandra;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -58,9 +58,7 @@ public class DeleteEncryptedProjectionHook implements PreDeletionHook {
 
         @Override
         public final boolean equals(Object o) {
-            if (o instanceof DeletedMessageMailboxContext) {
-                DeletedMessageMailboxContext that = (DeletedMessageMailboxContext) o;
-
+            if (o instanceof DeletedMessageMailboxContext that) {
                 return Objects.equals(this.messageId, that.getMessageId())
                     && Objects.equals(this.owner, that.getOwner())
                     && Objects.equals(this.ownerMailboxes, that.getOwnerMailboxes());
@@ -105,11 +103,11 @@ public class DeleteEncryptedProjectionHook implements PreDeletionHook {
         return messageIdManager.getMessage(messageId, FetchGroup.HEADERS, session)
             .stream()
             .map(MessageResult::getMailboxId)
-            .collect(Collectors.toList());
+            .toList();
     }
 
     private boolean isMessageStillAccessible(DeletedMessageMailboxContext deleteContext) throws MailboxException {
-        return deleteContext.getOwnerMailboxes()
+        return new HashSet<>(deleteContext.getOwnerMailboxes())
             .containsAll(getListMailBoxIds(deleteContext.getMessageId(),
                 sessionProvider.createSystemSession(deleteContext.getOwner())));
     }

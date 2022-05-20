@@ -4,15 +4,10 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
-public class GetAllRateLimitPlanResponseDTO {
-    private final List<RateLimitingPlanDTO> list;
-
-    public GetAllRateLimitPlanResponseDTO(List<RateLimitingPlanDTO> list) {
-        this.list = list;
-    }
-
+public record GetAllRateLimitPlanResponseDTO(List<RateLimitingPlanDTO> list) {
+    @Override
     @JsonValue
-    public List<RateLimitingPlanDTO> getList() {
+    public List<RateLimitingPlanDTO> list() {
         return list;
     }
 }

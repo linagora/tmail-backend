@@ -34,8 +34,6 @@ import org.apache.james.mailbox.model.SearchQuery;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 
-import com.google.common.collect.ImmutableList;
-
 public class QueryConverter {
 
 
@@ -69,10 +67,10 @@ public class QueryConverter {
         if (mailboxIds.isEmpty()) {
             return Optional.empty();
         }
-        ImmutableList<String> ids = mailboxIds.stream()
+        return Optional.of(termsQuery(JsonMessageConstants.MAILBOX_ID,
+            mailboxIds.stream()
                 .map(MailboxId::serialize)
-                .collect(ImmutableList.toImmutableList());
-        return Optional.of(termsQuery(JsonMessageConstants.MAILBOX_ID, ids));
+                .toList()));
     }
 
 }

@@ -34,33 +34,22 @@ public class DateResolutionFormatter {
     }
 
     public static ZonedDateTime computeLowerDate(ZonedDateTime date, SearchQuery.DateResolution resolution) {
-        switch (resolution) {
-            case Year:
-                return date.truncatedTo(ChronoUnit.DAYS).withDayOfYear(1);
-            case Month:
-                return date.truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1);
-            default:
-                return date.truncatedTo(convertDateResolutionField(resolution));
-        }
+        return switch (resolution) {
+            case Year -> date.truncatedTo(ChronoUnit.DAYS).withDayOfYear(1);
+            case Month -> date.truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1);
+            default -> date.truncatedTo(convertDateResolutionField(resolution));
+        };
     }
 
     private static TemporalUnit convertDateResolutionField(SearchQuery.DateResolution resolution) {
-        switch (resolution) {
-            case Year:
-                return ChronoUnit.YEARS;
-            case Month:
-                return ChronoUnit.MONTHS;
-            case Day:
-                return ChronoUnit.DAYS;
-            case Hour:
-                return ChronoUnit.HOURS;
-            case Minute:
-                return ChronoUnit.MINUTES;
-            case Second:
-                return ChronoUnit.SECONDS;
-            default:
-                throw new RuntimeException("Unknown Date resolution used");
-        }
+        return switch (resolution) {
+            case Year -> ChronoUnit.YEARS;
+            case Month -> ChronoUnit.MONTHS;
+            case Day -> ChronoUnit.DAYS;
+            case Hour -> ChronoUnit.HOURS;
+            case Minute -> ChronoUnit.MINUTES;
+            case Second -> ChronoUnit.SECONDS;
+        };
     }
 
     public static ZonedDateTime convertDateToZonedDateTime(Date date) {

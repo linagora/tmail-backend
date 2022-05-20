@@ -19,45 +19,21 @@
 
 package org.apache.james.backends.es;
 
-import java.util.Objects;
-
 import org.elasticsearch.common.Strings;
 
 import com.google.common.base.Preconditions;
 
-public class RoutingKey {
+public record RoutingKey(String value) {
     public interface Factory<T> {
         RoutingKey from(T t);
     }
 
     public static RoutingKey fromString(String value) {
-        return new RoutingKey(value);
-    }
-
-
-    private final String value;
-
-    private RoutingKey(String value) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(value), "RoutingKey must be specified");
-        this.value = value;
+        return new RoutingKey(value);
     }
 
     public String asString() {
         return value;
-    }
-
-    @Override
-    public final boolean equals(Object o) {
-        if (o instanceof RoutingKey) {
-            RoutingKey that = (RoutingKey) o;
-
-            return Objects.equals(this.value, that.value);
-        }
-        return false;
-    }
-
-    @Override
-    public final int hashCode() {
-        return Objects.hash(value);
     }
 }

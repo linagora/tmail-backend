@@ -48,9 +48,7 @@ public class RecomputeQuotaTeamMailboxesService {
 
             @Override
             public final boolean equals(Object o) {
-                if (o instanceof Snapshot) {
-                    Snapshot that = (Snapshot) o;
-
+                if (o instanceof Snapshot that) {
                     return Objects.equals(this.processedQuotaRootCount, that.processedQuotaRootCount)
                         && Objects.equals(this.failedQuotaRoots, that.failedQuotaRoots);
                 }

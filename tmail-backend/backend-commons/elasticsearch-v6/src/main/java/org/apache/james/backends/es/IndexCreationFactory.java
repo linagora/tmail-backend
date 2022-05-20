@@ -199,9 +199,9 @@ public class IndexCreationFactory {
 
     @Inject
     public IndexCreationFactory(ElasticSearchConfiguration configuration) {
-        this.nbShards = configuration.getNbShards();
-        this.nbReplica = configuration.getNbReplica();
-        this.waitForActiveShards = configuration.getWaitForActiveShards();
+        this.nbShards = configuration.nbShards();
+        this.nbReplica = configuration.nbReplica();
+        this.waitForActiveShards = configuration.waitForActiveShards();
     }
 
     public AliasSpecificationStep useIndex(IndexName indexName) {

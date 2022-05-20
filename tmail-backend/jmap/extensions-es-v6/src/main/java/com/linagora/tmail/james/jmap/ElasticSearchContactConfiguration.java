@@ -215,9 +215,7 @@ public class ElasticSearchContactConfiguration {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof ElasticSearchContactConfiguration) {
-            ElasticSearchContactConfiguration that = (ElasticSearchContactConfiguration) o;
-
+        if (o instanceof ElasticSearchContactConfiguration that) {
             return Objects.equals(this.userContactIndexName, that.userContactIndexName)
                 && Objects.equals(this.domainContactIndexName, that.domainContactIndexName)
                 && Objects.equals(this.userContactReadAliasName, that.userContactReadAliasName)

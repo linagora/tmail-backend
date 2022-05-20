@@ -164,10 +164,10 @@ class EmailAddressContactRoutesTest {
 
             assertThatJson(response)
                 .withOptions(new Options(IGNORING_ARRAY_ORDER))
-                .isEqualTo("[" +
-                    "\"" + mailAddressA + "\"," +
-                    "\"" + mailAddressB + "\"" +
-                    "]");
+                .isEqualTo("""
+                    ["%s", "%s"]
+                    """.formatted(mailAddressA, mailAddressB));
+
         }
     }
 

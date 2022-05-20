@@ -39,8 +39,6 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 
-import com.google.common.collect.ImmutableList;
-
 import reactor.core.publisher.Flux;
 
 public class ElasticSearchQuotaSearcher implements QuotaSearcher {
@@ -62,7 +60,7 @@ public class ElasticSearchQuotaSearcher implements QuotaSearcher {
             return searchHits(query)
                 .map(SearchHit::getId)
                 .map(Username::of)
-                .collect(ImmutableList.toImmutableList())
+                .collectList()
                 .block();
         } catch (Exception e) {
             throw new RuntimeException("Unexpected exception while executing " + query, e);

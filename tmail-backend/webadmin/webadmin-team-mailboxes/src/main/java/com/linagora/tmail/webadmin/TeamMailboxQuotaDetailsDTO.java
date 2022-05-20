@@ -78,15 +78,11 @@ public class TeamMailboxQuotaDetailsDTO {
         }
 
         public Builder valueForScope(Quota.Scope scope, ValidatedQuotaDTO value) {
-            switch (scope) {
-                case Global:
-                    return global(value);
-                case Domain:
-                    return domain(value);
-                case User:
-                    return teamMailbox(value);
-            }
-            return this;
+            return switch (scope) {
+                case Global -> global(value);
+                case Domain -> domain(value);
+                case User -> teamMailbox(value);
+            };
         }
 
         public TeamMailboxQuotaDetailsDTO build() {

@@ -94,9 +94,7 @@ public class QuotaRatioAsJson {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof QuotaRatioAsJson) {
-            QuotaRatioAsJson that = (QuotaRatioAsJson) o;
-
+        if (o instanceof QuotaRatioAsJson that) {
             return Objects.equals(this.quotaRatio, that.quotaRatio)
                 && Objects.equals(this.user, that.user)
                 && Objects.equals(this.domain, that.domain);

@@ -9,36 +9,18 @@ import java.util.Optional;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class RateLimitingPlanResetRequestDTO {
-    private final String planName;
-    private final Optional<OperationLimitationsDTO> transitLimits;
-    private final Optional<OperationLimitationsDTO> relayLimits;
-    private final Optional<OperationLimitationsDTO> deliveryLimits;
-
+public record RateLimitingPlanResetRequestDTO(String planName,
+                                              Optional<OperationLimitationsDTO> transitLimits,
+                                              Optional<OperationLimitationsDTO> relayLimits,
+                                              Optional<OperationLimitationsDTO> deliveryLimits) {
     @JsonCreator
     public RateLimitingPlanResetRequestDTO(@JsonProperty(value = "planName", required = true) String planName,
-                                           @JsonProperty(TRANSIT_LIMIT_KEY) Optional<OperationLimitationsDTO> transitLimitationsDTO,
-                                           @JsonProperty(RELAY_LIMIT_KEY) Optional<OperationLimitationsDTO> relayLimitationsDTO,
-                                           @JsonProperty(DELIVERY_LIMIT_KEY) Optional<OperationLimitationsDTO> deliveryLimitationsDTO) {
+                                           @JsonProperty(TRANSIT_LIMIT_KEY) Optional<OperationLimitationsDTO> transitLimits,
+                                           @JsonProperty(RELAY_LIMIT_KEY) Optional<OperationLimitationsDTO> relayLimits,
+                                           @JsonProperty(DELIVERY_LIMIT_KEY) Optional<OperationLimitationsDTO> deliveryLimits) {
         this.planName = planName;
-        this.transitLimits = transitLimitationsDTO;
-        this.relayLimits = relayLimitationsDTO;
-        this.deliveryLimits = deliveryLimitationsDTO;
-    }
-
-    public String getPlanName() {
-        return planName;
-    }
-
-    public Optional<OperationLimitationsDTO> getTransitLimits() {
-        return transitLimits;
-    }
-
-    public Optional<OperationLimitationsDTO> getRelayLimits() {
-        return relayLimits;
-    }
-
-    public Optional<OperationLimitationsDTO> getDeliveryLimits() {
-        return deliveryLimits;
+        this.transitLimits = transitLimits;
+        this.relayLimits = relayLimits;
+        this.deliveryLimits = deliveryLimits;
     }
 }
