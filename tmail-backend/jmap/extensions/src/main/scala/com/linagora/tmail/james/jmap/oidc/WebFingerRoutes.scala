@@ -6,7 +6,7 @@ import java.util.stream
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides}
-import com.linagora.tmail.james.jmap.ticket.TicketRoutes.LOGGER
+import com.linagora.tmail.james.jmap.oidc.WebFingerRoutes.LOGGER
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, INTERNAL_SERVER_ERROR}
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus, QueryStringDecoder}
@@ -17,6 +17,7 @@ import org.apache.james.jmap.core.ProblemDetails
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
 import org.apache.james.utils.PropertiesProvider
+import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsString, Json, Writes}
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
@@ -55,6 +56,10 @@ case class WebFingerModule() extends AbstractModule {
   def configuration(propertiesProvider: PropertiesProvider): WebFingerConfiguration =
     Try(propertiesProvider.getConfiguration("jmap"))
       .fold(_ => WebFingerConfiguration(None), WebFingerConfiguration.parse)
+}
+
+object WebFingerRoutes {
+  val LOGGER: Logger = LoggerFactory.getLogger(classOf[WebFingerRoutes])
 }
 
 class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends JMAPRoutes {
