@@ -32,7 +32,7 @@
     <artifactId>james-server-guice-elasticsearch-v6</artifactId>
     <packaging>jar</packaging>
 
-    <name>Apache James :: Server :: ElasticSearch - guice modules - v6</name>
+    <name>Tmail :: Guice :: Server ElasticSearch v6</name>
     <description>Guice injections for the ElasticSearch search engine - v6 backport</description>
 
     <properties>
