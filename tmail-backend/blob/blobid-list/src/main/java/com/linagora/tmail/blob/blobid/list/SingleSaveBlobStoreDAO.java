@@ -37,6 +37,11 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
+    public Publisher<InputStream> readReactive(BucketName bucketName, BlobId blobId) {
+        return blobStoreDAO.readReactive(bucketName, blobId);
+    }
+
+    @Override
     public Publisher<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
         return blobStoreDAO.readBytes(bucketName, blobId);
     }
