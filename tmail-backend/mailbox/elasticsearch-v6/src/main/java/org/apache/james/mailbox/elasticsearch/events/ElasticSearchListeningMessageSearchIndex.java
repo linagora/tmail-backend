@@ -69,6 +69,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -94,7 +95,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
                                                     @Named(MailboxElasticSearchConstants.InjectionNames.MAILBOX) ElasticSearchIndexer indexer,
                                                     ElasticSearchSearcher searcher, MessageToElasticSearchJson messageToElasticSearchJson,
                                                     SessionProvider sessionProvider, RoutingKey.Factory<MailboxId> routingKeyFactory) {
-        super(factory, sessionProvider);
+        super(factory, ImmutableSet.of(), sessionProvider);
         this.elasticSearchIndexer = indexer;
         this.messageToElasticSearchJson = messageToElasticSearchJson;
         this.searcher = searcher;
@@ -118,7 +119,7 @@ public class ElasticSearchListeningMessageSearchIndex extends ListeningMessageSe
     }
     
     @Override
-    public Flux<MessageUid> search(MailboxSession session, Mailbox mailbox, SearchQuery searchQuery) {
+    public Flux<MessageUid> doSearch(MailboxSession session, Mailbox mailbox, SearchQuery searchQuery) {
         Preconditions.checkArgument(session != null, "'session' is mandatory");
         Optional<Integer> noLimit = Optional.empty();
 

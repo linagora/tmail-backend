@@ -31,6 +31,7 @@ import org.apache.james.mailbox.elasticsearch.v7.json.MessageToElasticSearchJson
 import org.apache.james.mailbox.elasticsearch.v7.query.CriterionConverter;
 import org.apache.james.mailbox.elasticsearch.v7.query.QueryConverter;
 import org.apache.james.mailbox.elasticsearch.v7.search.ElasticSearchSearcher;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.extractor.ParsedContent;
 import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
@@ -73,6 +74,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
 class OpenDistroListeningMessageSearchIndexTest {
@@ -179,7 +181,7 @@ class OpenDistroListeningMessageSearchIndexTest {
 
         elasticSearchIndexer = new ElasticSearchIndexer(client, MailboxElasticSearchConstants.DEFAULT_MAILBOX_WRITE_ALIAS);
         
-        testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, elasticSearchIndexer, elasticSearchSearcher,
+        testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, ImmutableSet.of(), elasticSearchIndexer, elasticSearchSearcher,
             messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory(), messageIdFactory);
         session = sessionProvider.createSystemSession(USERNAME);
 
@@ -193,7 +195,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
     
     @Test
-    void addShouldIndexMessageWithoutAttachment() {
+    void addShouldIndexMessageWithoutAttachment() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 1L);
 
@@ -203,7 +205,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void addShouldIndexMessageWithAttachment() {
+    void addShouldIndexMessageWithAttachment() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_WITH_ATTACHMENT).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 1L);
 
@@ -213,7 +215,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void addShouldBeIndempotent() {
+    void addShouldBeIndempotent() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         testee.add(session, mailbox, MESSAGE_1).block();
 
@@ -225,7 +227,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void addShouldIndexMultipleMessages() {
+    void addShouldIndexMultipleMessages() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         testee.add(session, mailbox, MESSAGE_2).block();
 
@@ -237,13 +239,13 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void addShouldIndexEmailBodyWhenNotIndexableAttachment() {
+    void addShouldIndexEmailBodyWhenNotIndexableAttachment() throws MailboxException {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new FailingTextExtractor(),
             ZoneId.of("Europe/Paris"),
             IndexAttachments.YES);
 
-        testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, elasticSearchIndexer, elasticSearchSearcher,
+        testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, ImmutableSet.of(), elasticSearchIndexer, elasticSearchSearcher,
             messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory(), messageIdFactory);
 
         testee.add(session, mailbox, MESSAGE_WITH_ATTACHMENT).block();
@@ -266,7 +268,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void deleteShouldRemoveIndex() {
+    void deleteShouldRemoveIndex() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 1L);
 
@@ -279,7 +281,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void deleteShouldOnlyRemoveIndexesPassedAsArguments() {
+    void deleteShouldOnlyRemoveIndexesPassedAsArguments() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         testee.add(session, mailbox, MESSAGE_2).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 2L);
@@ -293,7 +295,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void deleteShouldRemoveMultipleIndexes() {
+    void deleteShouldRemoveMultipleIndexes() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         testee.add(session, mailbox, MESSAGE_2).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 2L);
@@ -307,7 +309,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void deleteShouldBeIdempotent() {
+    void deleteShouldBeIdempotent() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 1L);
 
@@ -338,7 +340,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void updateShouldUpdateIndex() {
+    void updateShouldUpdateIndex() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 1L);
 
@@ -359,7 +361,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void updateShouldNotUpdateNorThrowOnUnknownMessageUid() {
+    void updateShouldNotUpdateNorThrowOnUnknownMessageUid() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 1L);
 
@@ -379,7 +381,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void updateShouldBeIdempotent() {
+    void updateShouldBeIdempotent() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 1L);
 
@@ -420,7 +422,7 @@ class OpenDistroListeningMessageSearchIndexTest {
     }
 
     @Test
-    void deleteAllShouldRemoveAllIndexes() {
+    void deleteAllShouldRemoveAllIndexes() throws MailboxException {
         testee.add(session, mailbox, MESSAGE_1).block();
         testee.add(session, mailbox, MESSAGE_2).block();
         awaitForElasticSearch(QueryBuilders.matchAllQuery(), 2L);
