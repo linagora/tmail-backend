@@ -73,7 +73,7 @@
                 <plugin>
                     <groupId>net.alchim31.maven</groupId>
                     <artifactId>scala-maven-plugin</artifactId>
-                    <version>3.4.4</version>
+                    <version>4.6.1</version>
                     <configuration>
                         <args>
                             <arg>-Xlog-implicits</arg>
