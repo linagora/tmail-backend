@@ -13,7 +13,7 @@
     <artifactId>encrypted-mailbox-guice</artifactId>
     <packaging>jar</packaging>
 
-    <name>Apache James :: Server :: ElasticSearch - guice modules - v6</name>
+    <name>Tmail :: Guice :: EncryptedMailbox</name>
     <description>Guice injections for the EncryptedMailbox</description>
 
     <dependencies>
