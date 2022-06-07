@@ -140,4 +140,6 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
 
   override def listRights(mailbox: Mailbox, identifier: MailboxACL.EntryKey, session: MailboxSession): util.List[MailboxACL.Rfc4314Rights] =
     mailboxManager.listRights(mailbox, identifier, session)
+
+  override def loginAsOtherUser(givenUserid: Username, otherUserId: Username): MailboxSession = mailboxManager.loginAsOtherUser(givenUserid, otherUserId)
 }
