@@ -16,11 +16,9 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.MountableFile;
 
 public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEachCallback {
-    private static final int ONE_TIME = 1;
 
     private final Network network;
     private final GenericContainer<?> cassandra;
@@ -48,7 +46,7 @@ public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEa
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-distributed-esv6-testing" + UUID.randomUUID()))
-            .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME))
+            .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80);
     }
 

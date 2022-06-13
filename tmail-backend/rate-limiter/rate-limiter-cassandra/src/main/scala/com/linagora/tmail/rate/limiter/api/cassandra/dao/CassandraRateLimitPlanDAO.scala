@@ -4,10 +4,11 @@ import java.time.Duration
 import java.util
 import java.util.UUID
 
-import com.datastax.driver.core.DataType.{bigint, text}
-import com.datastax.driver.core.querybuilder.QueryBuilder
-import com.datastax.driver.core.querybuilder.QueryBuilder.{bindMarker, insertInto, select}
-import com.datastax.driver.core.{DataType, PreparedStatement, Row, Session, TupleType, TupleValue}
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.`type`.{DataTypes, TupleType}
+import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
+import com.datastax.oss.driver.api.core.data.TupleValue
+import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.rate.limiter.api.cassandra.table.CassandraRateLimitPlanHeaderEntry.{RATE_LIMITATION_DURATION_INDEX, RATE_LIMITATION_NAME_INDEX, RATE_LIMITS_INDEX}
 import com.linagora.tmail.rate.limiter.api.cassandra.table.CassandraRateLimitPlanTable.{OPERATION_LIMITATION_NAME, PLAN_ID, PLAN_NAME, RATE_LIMITATIONS, TABLE_NAME}
 import com.linagora.tmail.rate.limiter.api.{LimitTypes, OperationLimitations, RateLimitation, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanResetRequest}
@@ -37,47 +38,51 @@ case class RateLimitingPlanEntry(planId: UUID,
                                  planName: String,
                                  operationLimitations: OperationLimitations)
 
-class CassandraRateLimitPlanDAO @Inject()(session: Session) {
+class CassandraRateLimitPlanDAO @Inject()(session: CqlSession) {
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
-  private val rateLimitationsTuple: TupleType = session.getCluster.getMetadata.newTupleType(text(), bigint(), DataType.map(text(), bigint()))
+  private val rateLimitationsTuple: TupleType = DataTypes.tupleOf(DataTypes.TEXT, DataTypes.BIGINT, DataTypes.frozenMapOf(DataTypes.TEXT, DataTypes.BIGINT))
 
   private val insertStatement: PreparedStatement = session.prepare(insertInto(TABLE_NAME)
     .value(PLAN_ID, bindMarker(PLAN_ID))
     .value(PLAN_NAME, bindMarker(PLAN_NAME))
     .value(OPERATION_LIMITATION_NAME, bindMarker(OPERATION_LIMITATION_NAME))
-    .value(RATE_LIMITATIONS, bindMarker(RATE_LIMITATIONS)))
+    .value(RATE_LIMITATIONS, bindMarker(RATE_LIMITATIONS))
+    .build())
 
-  private val deleteStatement: PreparedStatement = session.prepare(QueryBuilder.delete().from(TABLE_NAME)
-    .where(QueryBuilder.eq(PLAN_ID, bindMarker(PLAN_ID))))
+  private val deleteStatement: PreparedStatement = session.prepare(deleteFrom(TABLE_NAME)
+    .whereColumn(PLAN_ID).isEqualTo(bindMarker(PLAN_ID))
+    .build())
 
-  private val selectStatement: PreparedStatement = session.prepare(select.from(TABLE_NAME)
-    .where(QueryBuilder.eq(PLAN_ID, bindMarker(PLAN_ID))))
+  private val selectStatement: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
+    .all()
+    .whereColumn(PLAN_ID).isEqualTo(bindMarker(PLAN_ID))
+    .build())
 
-  private val selectAllStatement: PreparedStatement = session.prepare(select.from(TABLE_NAME))
+  private val selectAllStatement: PreparedStatement = session.prepare(selectFrom(TABLE_NAME).all().build())
 
   def insert(insertEntry: RateLimitingPlanEntry): SMono[Void] =
     SMono.fromPublisher(executor.executeVoid(insertStatement
-      .bind.setUUID(PLAN_ID, insertEntry.planId)
+      .bind().setUuid(PLAN_ID, insertEntry.planId)
       .setString(PLAN_NAME, insertEntry.planName)
       .setString(OPERATION_LIMITATION_NAME, insertEntry.operationLimitations.asString())
-      .setList(RATE_LIMITATIONS, toTupleList(insertEntry.operationLimitations.rateLimitations()))))
+      .setList(RATE_LIMITATIONS, toTupleList(insertEntry.operationLimitations.rateLimitations()), classOf[TupleValue])))
 
   def delete(planId: RateLimitingPlanId): SMono[Void] =
-    SMono.fromPublisher(executor.executeVoid(deleteStatement.bind
-      .setUUID(PLAN_ID, planId.value)))
+    SMono.fromPublisher(executor.executeVoid(deleteStatement.bind()
+      .setUuid(PLAN_ID, planId.value)))
 
   def list(planId: RateLimitingPlanId): SFlux[RateLimitingPlanEntry] =
     SFlux.fromPublisher(executor.executeRows(selectStatement
-      .bind.setUUID(PLAN_ID, planId.value)))
+      .bind().setUuid(PLAN_ID, planId.value)))
       .map(readRow)
 
   def planExists(planId: RateLimitingPlanId): SMono[Boolean] =
     SMono.fromPublisher(executor.executeReturnExists(selectStatement
-      .bind.setUUID(PLAN_ID, planId.value)))
+      .bind().setUuid(PLAN_ID, planId.value)))
       .map(_.booleanValue())
 
   def list(): SFlux[RateLimitingPlanEntry] =
-    SFlux.fromPublisher(executor.executeRows(selectAllStatement.bind))
+    SFlux.fromPublisher(executor.executeRows(selectAllStatement.bind()))
       .map(readRow)
 
   private def readRow(row: Row): RateLimitingPlanEntry = {
@@ -93,7 +98,7 @@ class CassandraRateLimitPlanDAO @Inject()(session: Session) {
       }).toSeq
 
     RateLimitingPlanEntry(
-      planId = row.getUUID(PLAN_ID),
+      planId = row.getUuid(PLAN_ID),
       planName = row.getString(PLAN_NAME),
       operationLimitations = OperationLimitations.liftOrThrow(row.getString(OPERATION_LIMITATION_NAME), rateLimitations))
   }

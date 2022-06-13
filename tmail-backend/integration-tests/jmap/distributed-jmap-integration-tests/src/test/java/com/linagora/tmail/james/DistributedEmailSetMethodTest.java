@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.datastax.driver.core.utils.UUIDs;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -64,7 +64,7 @@ public class DistributedEmailSetMethodTest implements EmailSetMethodContract {
 
     @Override
     public MessageId randomMessageId() {
-        return MESSAGE_ID_FACTORY.of(UUIDs.timeBased());
+        return MESSAGE_ID_FACTORY.of(Uuids.timeBased());
     }
 
     @Override

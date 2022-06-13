@@ -2,10 +2,12 @@ package com.linagora.tmail.encrypted.cassandra
 
 import java.util
 
-import com.datastax.driver.core.DataType.{cint, frozenMap, text}
-import com.datastax.driver.core.querybuilder.QueryBuilder
-import com.datastax.driver.core.querybuilder.QueryBuilder.{bindMarker, insertInto, select, delete => deleteBuilder}
-import com.datastax.driver.core.{CodecRegistry, PreparedStatement, Row, Session, TypeCodec, TypeTokens}
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.`type`.DataTypes
+import com.datastax.oss.driver.api.core.`type`.codec.TypeCodec
+import com.datastax.oss.driver.api.core.`type`.codec.registry.CodecRegistry
+import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
+import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.encrypted.cassandra.table.EncryptedEmailTable.{ENCRYPTED_ATTACHMENT_METADATA, ENCRYPTED_HTML, ENCRYPTED_PREVIEW, HAS_ATTACHMENT, MESSAGE_ID, POSITION_BLOB_ID_MAPPING, TABLE_NAME}
 import com.linagora.tmail.encrypted.{EncryptedAttachmentMetadata, EncryptedEmailDetailedView, EncryptedHtml, EncryptedPreview}
 import javax.inject.Inject
@@ -17,10 +19,9 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
 
-class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: BlobId.Factory) {
+class CassandraEncryptedEmailDAO @Inject()(session: CqlSession, blobIdFactory: BlobId.Factory) {
   private val MAP_OF_POSITION_BLOBID_CODEC: TypeCodec[util.Map[java.lang.Integer, String]] =
-    CodecRegistry.DEFAULT_INSTANCE.codecFor(frozenMap(cint(), text),
-      TypeTokens.mapOf(classOf[java.lang.Integer], classOf[String]))
+    CodecRegistry.DEFAULT.codecFor(DataTypes.frozenMapOf(DataTypes.INT, DataTypes.TEXT))
 
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
 
@@ -30,40 +31,44 @@ class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: Blob
     .value(ENCRYPTED_HTML, bindMarker(ENCRYPTED_HTML))
     .value(HAS_ATTACHMENT, bindMarker(HAS_ATTACHMENT))
     .value(ENCRYPTED_ATTACHMENT_METADATA, bindMarker(ENCRYPTED_ATTACHMENT_METADATA))
-    .value(POSITION_BLOB_ID_MAPPING, bindMarker(POSITION_BLOB_ID_MAPPING)))
+    .value(POSITION_BLOB_ID_MAPPING, bindMarker(POSITION_BLOB_ID_MAPPING))
+    .build())
 
   private val listBlobIdsStatement: PreparedStatement = session.prepare(
-    select(POSITION_BLOB_ID_MAPPING)
-      .from(TABLE_NAME))
+    selectFrom(TABLE_NAME).column(POSITION_BLOB_ID_MAPPING).build())
 
-  private val selectStatement: PreparedStatement = session.prepare(select.from(TABLE_NAME)
-    .where(QueryBuilder.eq(MESSAGE_ID, bindMarker(MESSAGE_ID))))
+  private val selectStatement: PreparedStatement = session.prepare(
+    selectFrom(TABLE_NAME)
+      .all()
+      .whereColumn(MESSAGE_ID).isEqualTo(bindMarker(MESSAGE_ID))
+      .build())
 
-  private val deleteStatement: PreparedStatement = session.prepare(deleteBuilder.from(TABLE_NAME)
-    .where(QueryBuilder.eq(MESSAGE_ID, bindMarker(MESSAGE_ID))))
+  private val deleteStatement: PreparedStatement = session.prepare(deleteFrom(TABLE_NAME)
+    .whereColumn(MESSAGE_ID).isEqualTo(bindMarker(MESSAGE_ID))
+    .build())
 
   def insert(cassandraMessageId: CassandraMessageId, encryptedEmailDetailed: EncryptedEmailDetailedView, positionBlobIdMapping: Map[Int, BlobId]): SMono[Unit] =
-    SMono.fromPublisher(executor.executeVoid(insertStatement.bind
-      .setUUID(MESSAGE_ID, cassandraMessageId.get())
+    SMono.fromPublisher(executor.executeVoid(insertStatement.bind()
+      .setUuid(MESSAGE_ID, cassandraMessageId.get())
       .setString(ENCRYPTED_PREVIEW, encryptedEmailDetailed.encryptedPreview.value)
       .setString(ENCRYPTED_HTML, encryptedEmailDetailed.encryptedHtml.value)
-      .setBool(HAS_ATTACHMENT, encryptedEmailDetailed.hasAttachment)
+      .setBoolean(HAS_ATTACHMENT, encryptedEmailDetailed.hasAttachment)
       .setString(ENCRYPTED_ATTACHMENT_METADATA, encryptedEmailDetailed.encryptedAttachmentMetadata
         .map(metadata => metadata.value)
         .orNull)
       .setMap(POSITION_BLOB_ID_MAPPING, positionBlobIdMapping
-        .map(mapping => mapping._1 -> mapping._2.asString())
-        .asJava)))
+        .map(mapping => Integer.valueOf(mapping._1) -> mapping._2.asString())
+        .asJava, classOf[Integer], classOf[String])))
       .`then`()
 
   def get(cassandraMessageId: CassandraMessageId): SMono[EncryptedEmailDetailedView] =
-    SMono.fromPublisher(executor.executeSingleRow(selectStatement.bind
-      .setUUID(MESSAGE_ID, cassandraMessageId.get())))
+    SMono.fromPublisher(executor.executeSingleRow(selectStatement.bind()
+      .setUuid(MESSAGE_ID, cassandraMessageId.get())))
       .map(row => readRow(cassandraMessageId, row))
 
   def delete(cassandraMessageId: CassandraMessageId): SMono[Unit] =
-    SMono.fromPublisher(executor.executeVoid(deleteStatement.bind
-      .setUUID(MESSAGE_ID, cassandraMessageId.get())))
+    SMono.fromPublisher(executor.executeVoid(deleteStatement.bind()
+      .setUuid(MESSAGE_ID, cassandraMessageId.get())))
       .`then`()
 
   def getBlobId(cassandraMessageId: CassandraMessageId, position: Int): SMono[BlobId] =
@@ -88,13 +93,13 @@ class CassandraEncryptedEmailDAO @Inject()(session: Session, blobIdFactory: Blob
       id = cassandraMessageId,
       encryptedPreview = EncryptedPreview(row.getString(ENCRYPTED_PREVIEW)),
       encryptedHtml = EncryptedHtml(row.getString(ENCRYPTED_HTML)),
-      hasAttachment = row.getBool(HAS_ATTACHMENT),
+      hasAttachment = row.getBoolean(HAS_ATTACHMENT),
       encryptedAttachmentMetadata = Option(row.getString(ENCRYPTED_ATTACHMENT_METADATA))
         .map(value => EncryptedAttachmentMetadata(value)))
 
   private def getMapOfPositionBlobId(cassandraMessageId: CassandraMessageId): SMono[util.Map[Integer, String]] =
-    SMono.fromPublisher(executor.executeSingleRow(selectStatement.bind
-      .setUUID(MESSAGE_ID, cassandraMessageId.get())))
+    SMono.fromPublisher(executor.executeSingleRow(selectStatement.bind()
+      .setUuid(MESSAGE_ID, cassandraMessageId.get())))
       .map(row => row.get(POSITION_BLOB_ID_MAPPING, MAP_OF_POSITION_BLOBID_CODEC))
 }
 
