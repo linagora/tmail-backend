@@ -2,7 +2,7 @@ package com.linagora.tmail.encrypted.cassandra;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -11,7 +11,6 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MetadataWithMailboxId;
 import org.apache.james.mailbox.SessionProvider;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.extension.PreDeletionHook;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.Mailbox;
@@ -21,7 +20,6 @@ import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.reactivestreams.Publisher;
 
-import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore;
@@ -33,43 +31,7 @@ import reactor.core.publisher.Mono;
 public class DeleteEncryptedProjectionHook implements PreDeletionHook {
     private static final int CONCURRENCY = 8;
 
-    static class DeletedMessageMailboxContext {
-        private final MessageId messageId;
-        private final Username owner;
-        private final List<MailboxId> ownerMailboxes;
-
-        DeletedMessageMailboxContext(MessageId messageId, Username owner, List<MailboxId> ownerMailboxes) {
-            this.messageId = messageId;
-            this.owner = owner;
-            this.ownerMailboxes = ownerMailboxes;
-        }
-
-        MessageId getMessageId() {
-            return messageId;
-        }
-
-        Username getOwner() {
-            return owner;
-        }
-
-        List<MailboxId> getOwnerMailboxes() {
-            return ownerMailboxes;
-        }
-
-        @Override
-        public final boolean equals(Object o) {
-            if (o instanceof DeletedMessageMailboxContext that) {
-                return Objects.equals(this.messageId, that.getMessageId())
-                    && Objects.equals(this.owner, that.getOwner())
-                    && Objects.equals(this.ownerMailboxes, that.getOwnerMailboxes());
-            }
-            return false;
-        }
-
-        @Override
-        public final int hashCode() {
-            return Objects.hash(messageId, owner, ownerMailboxes);
-        }
+    record DeletedMessageMailboxContext(MessageId messageId, Username owner, List<MailboxId> ownerMailboxes) {
     }
 
     private final EncryptedEmailContentStore encryptedEmailContentStore;
@@ -94,22 +56,16 @@ public class DeleteEncryptedProjectionHook implements PreDeletionHook {
     public Publisher<Void> notifyDelete(DeleteOperation deleteOperation) {
         Preconditions.checkNotNull(deleteOperation);
         return getDeletedMessageMailboxContexts(deleteOperation)
-            .filter(Throwing.predicate(this::isMessageStillAccessible))
-            .flatMap(deleteContext -> Mono.from(encryptedEmailContentStore.delete(deleteContext.getMessageId())))
+            .filterWhen(this::isMessageStillAccessible)
+            .flatMap(deleteContext -> Mono.from(encryptedEmailContentStore.delete(deleteContext.messageId())))
             .then();
     }
 
-    private List<MailboxId> getListMailBoxIds(MessageId messageId, MailboxSession session) throws MailboxException {
-        return messageIdManager.getMessage(messageId, FetchGroup.HEADERS, session)
-            .stream()
+    private Mono<Boolean> isMessageStillAccessible(DeletedMessageMailboxContext deleteContext) {
+        return Flux.from(messageIdManager.getMessagesReactive(ImmutableList.of(deleteContext.messageId()), FetchGroup.MINIMAL, sessionProvider.createSystemSession(deleteContext.owner())))
             .map(MessageResult::getMailboxId)
-            .toList();
-    }
-
-    private boolean isMessageStillAccessible(DeletedMessageMailboxContext deleteContext) throws MailboxException {
-        return new HashSet<>(deleteContext.getOwnerMailboxes())
-            .containsAll(getListMailBoxIds(deleteContext.getMessageId(),
-                sessionProvider.createSystemSession(deleteContext.getOwner())));
+            .collect(Collectors.toSet())
+            .map(listMailbox -> new HashSet<>(deleteContext.ownerMailboxes()).containsAll(listMailbox));
     }
 
     private Flux<DeletedMessageMailboxContext> getDeletedMessageMailboxContexts(DeleteOperation deleteOperation) {

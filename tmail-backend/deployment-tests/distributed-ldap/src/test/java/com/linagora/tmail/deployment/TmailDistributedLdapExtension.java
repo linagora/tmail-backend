@@ -16,12 +16,10 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
 
 public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterEachCallback {
-    private static final int ONE_TIME = 1;
 
     private final Network network;
     private final GenericContainer<?> cassandra;
@@ -65,8 +63,8 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
-            .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME))
             .withCreateContainerCmdModifier(cmder -> cmder.withName("tmail-distributed-ldap-testing" + UUID.randomUUID()))
+            .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80);
     }
 

@@ -1,8 +1,6 @@
 package com.linagora.tmail.rate.limiter.api.cassandra.table
 
-import com.datastax.driver.core.DataType.{bigint, frozenList, text, uuid}
-import com.datastax.driver.core.schemabuilder.Create
-import com.datastax.driver.core.{CodecRegistry, DataType, ProtocolVersion, TupleType}
+import com.datastax.oss.driver.api.core.`type`.DataTypes
 import org.apache.james.backends.cassandra.components.CassandraModule
 
 object CassandraRateLimitPlanTable {
@@ -14,15 +12,15 @@ object CassandraRateLimitPlanTable {
 
   val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
     .comment("Hold Rate Limiting Plan - Use to management.")
-    .statement((statement: Create) => statement
-      .addPartitionKey(PLAN_ID, uuid)
-      .addStaticColumn(PLAN_NAME, text)
-      .addClusteringColumn(OPERATION_LIMITATION_NAME, text)
-      .addColumn(RATE_LIMITATIONS,
-        frozenList(TupleType.of(ProtocolVersion.NEWEST_SUPPORTED, CodecRegistry.DEFAULT_INSTANCE,
-          text(),
-          bigint(),
-          DataType.frozenMap(text, bigint())))))
+    .statement(statement => types => statement
+      .withPartitionKey(PLAN_ID, DataTypes.UUID)
+      .withStaticColumn(PLAN_NAME, DataTypes.TEXT)
+      .withClusteringColumn(OPERATION_LIMITATION_NAME, DataTypes.TEXT)
+      .withColumn(RATE_LIMITATIONS,
+        DataTypes.frozenListOf(DataTypes.tupleOf(
+          DataTypes.TEXT,
+          DataTypes.BIGINT,
+          DataTypes.frozenMapOf(DataTypes.TEXT,  DataTypes.BIGINT)))))
     .build
 }
 

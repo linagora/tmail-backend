@@ -11,7 +11,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.datastax.driver.core.utils.UUIDs;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
@@ -56,6 +56,6 @@ public class DistributedLinagoraEncryptedEmailDetailedViewGetMethodTest implemen
 
     @Override
     public MessageId randomMessageId() {
-        return MESSAGE_ID_FACTORY.of(UUIDs.timeBased());
+        return MESSAGE_ID_FACTORY.of(Uuids.timeBased());
     }
 }

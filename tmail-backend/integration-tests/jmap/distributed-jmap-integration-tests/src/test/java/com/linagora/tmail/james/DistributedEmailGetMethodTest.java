@@ -30,7 +30,7 @@ import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.datastax.driver.core.utils.UUIDs;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -61,6 +61,6 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
 
     @Override
     public MessageId randomMessageId() {
-        return MESSAGE_ID_FACTORY.of(UUIDs.timeBased());
+        return MESSAGE_ID_FACTORY.of(Uuids.timeBased());
     }
 }

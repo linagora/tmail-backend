@@ -8,18 +8,16 @@ import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.MountableFile;
 
 public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallback {
-    private static final int ONE_TIME = 1;
 
     private final GenericContainer<?> container = new GenericContainer<>("linagora/tmail-backend-memory:latest")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
-        .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME))
         .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-memory-testing" + UUID.randomUUID()))
+        .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
         .withExposedPorts(25, 143, 80);
 
     @Override
