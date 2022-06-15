@@ -43,6 +43,7 @@ import org.apache.james.modules.protocols.JmapEventBusModule;
 import org.apache.james.modules.protocols.ManageSieveServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
+import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
 import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
 import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.DLPRoutesModule;
@@ -246,6 +247,7 @@ public class DistributedServer {
 
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
+            .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.getMailQueueViewChoice()))
             .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))

@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
+import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
@@ -26,6 +27,8 @@ public class DistributedJamesConfiguration implements Configuration {
         private Optional<String> rootDirectory;
         private Optional<ConfigurationPath> configurationPath;
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
+        private Optional<MailQueueViewChoice> mailQueueViewChoice;
+
 
         private Builder() {
             searchConfiguration = Optional.empty();
@@ -34,6 +37,7 @@ public class DistributedJamesConfiguration implements Configuration {
             configurationPath = Optional.empty();
             blobStoreConfiguration = Optional.empty();
             usersRepositoryImplementation = Optional.empty();
+            mailQueueViewChoice = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -84,6 +88,11 @@ public class DistributedJamesConfiguration implements Configuration {
             return this;
         }
 
+        public Builder mailQueueViewChoice(MailQueueViewChoice mailQueueViewChoice) {
+            this.mailQueueViewChoice = Optional.of(mailQueueViewChoice);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -109,13 +118,18 @@ public class DistributedJamesConfiguration implements Configuration {
             UsersRepositoryModuleChooser.Implementation usersRepositoryChoice = usersRepositoryImplementation.orElseGet(
                 () -> UsersRepositoryModuleChooser.Implementation.parse(configurationProvider));
 
+            MailQueueViewChoice mailQueueViewChoice = this.mailQueueViewChoice.orElseGet(Throwing.supplier(
+                () -> MailQueueViewChoice.parse(
+                    new PropertiesProvider(fileSystem, configurationPath))));
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
                 mailboxConfiguration,
                 blobStoreConfiguration,
                 searchConfiguration,
-                usersRepositoryChoice);
+                usersRepositoryChoice,
+                mailQueueViewChoice);
         }
     }
 
@@ -129,14 +143,18 @@ public class DistributedJamesConfiguration implements Configuration {
     private final BlobStoreConfiguration blobStoreConfiguration;
     private final SearchConfiguration searchConfiguration;
     private final UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation;
+    private final MailQueueViewChoice mailQueueViewChoice;
 
-    public DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, MailboxConfiguration mailboxConfiguration, BlobStoreConfiguration blobStoreConfiguration, SearchConfiguration searchConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) {
+    public DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, MailboxConfiguration mailboxConfiguration,
+                                         BlobStoreConfiguration blobStoreConfiguration, SearchConfiguration searchConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
+                                         MailQueueViewChoice mailQueueViewChoice) {
         this.configurationPath = configurationPath;
         this.directories = directories;
         this.mailboxConfiguration = mailboxConfiguration;
         this.blobStoreConfiguration = blobStoreConfiguration;
         this.searchConfiguration = searchConfiguration;
         this.usersRepositoryImplementation = usersRepositoryImplementation;
+        this.mailQueueViewChoice = mailQueueViewChoice;
     }
 
     @Override
@@ -147,6 +165,10 @@ public class DistributedJamesConfiguration implements Configuration {
     @Override
     public JamesDirectoriesProvider directories() {
         return directories;
+    }
+
+    public MailQueueViewChoice getMailQueueViewChoice() {
+        return mailQueueViewChoice;
     }
 
     public BlobStoreConfiguration blobStoreConfiguration() {
