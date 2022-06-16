@@ -22,7 +22,6 @@ package org.apache.james.mailbox.elasticsearch.json;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 
-import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.model.ContentType.MediaType;
 import org.apache.james.mailbox.model.ContentType.SubType;
 import org.apache.james.mime4j.stream.Field;
@@ -33,15 +32,11 @@ public class RootMimePartContainerBuilder implements MimePartContainerBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RootMimePartContainerBuilder.class);
 
-    private MimePart rootMimePart;
+    private MimePart.ParsedMimePart rootMimePart;
 
     @Override
-    public MimePart build() {
+    public MimePart.ParsedMimePart build() {
         return rootMimePart;
-    }
-
-    @Override public MimePartContainerBuilder using(TextExtractor textExtractor) {
-        return this;
     }
 
     @Override
@@ -57,7 +52,7 @@ public class RootMimePartContainerBuilder implements MimePartContainerBuilder {
     }
 
     @Override
-    public MimePartContainerBuilder addChild(MimePart mimePart) {
+    public MimePartContainerBuilder addChild(MimePart.ParsedMimePart mimePart) {
         if (rootMimePart == null) {
             rootMimePart = mimePart;
         } else {

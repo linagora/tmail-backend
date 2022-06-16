@@ -26,9 +26,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.elasticsearch.IndexAttachments;
@@ -40,8 +37,9 @@ import org.apache.james.mime4j.MimeException;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+
+import reactor.core.publisher.Mono;
 
 public class IndexableMessage {
 
@@ -53,8 +51,8 @@ public class IndexableMessage {
                 return ZonedDateTime.now();
             }
             return ZonedDateTime.ofInstant(
-                    Instant.ofEpochMilli(message.getInternalDate().getTime()),
-                    zoneId);
+                Instant.ofEpochMilli(message.getInternalDate().getTime()),
+                zoneId);
         }
 
         private IndexAttachments indexAttachments;
@@ -66,7 +64,7 @@ public class IndexableMessage {
         private Builder() {
         }
 
-        public IndexableMessage build() {
+        public Mono<IndexableMessage> build() {
             Preconditions.checkNotNull(message.getMailboxId());
             Preconditions.checkNotNull(textExtractor);
             Preconditions.checkNotNull(indexAttachments);
@@ -99,83 +97,77 @@ public class IndexableMessage {
             return this;
         }
 
-        private IndexableMessage instantiateIndexedMessage() throws IOException, MimeException {
+        private Mono<IndexableMessage> instantiateIndexedMessage() throws IOException, MimeException {
             String messageId = SearchUtil.getSerializedMessageIdIfSupportedByUnderlyingStorageOrNull(message);
             String threadId = SearchUtil.getSerializedThreadIdIfSupportedByUnderlyingStorageOrNull(message);
-            MimePart parsingResult = new MimePartParser(message, textExtractor).parse();
 
-            Optional<String> bodyText = parsingResult.locateFirstTextBody();
-            Optional<String> bodyHtml = parsingResult.locateFirstHtmlBody();
+            return new MimePartParser(message, textExtractor).parse()
+                .asMimePart(textExtractor)
+                .map(parsingResult -> {
 
-            boolean hasAttachment = MessageAttachmentMetadata.hasNonInlinedAttachment(message.getAttachments());
-            List<MimePart> attachments = setFlattenedAttachments(parsingResult, indexAttachments);
+                    Optional<String> bodyText = parsingResult.locateFirstTextBody();
+                    Optional<String> bodyHtml = parsingResult.locateFirstHtmlBody();
 
-            HeaderCollection headerCollection = parsingResult.getHeaderCollection();
-            ZonedDateTime internalDate = getSanitizedInternalDate(message, zoneId);
+                    boolean hasAttachment = MessageAttachmentMetadata.hasNonInlinedAttachment(message.getAttachments());
+                    List<MimePart> attachments = setFlattenedAttachments(parsingResult, indexAttachments);
 
-            List<HeaderCollection.Header> headers = headerCollection.getHeaders();
-            Subjects subjects = Subjects.from(headerCollection.getSubjectSet());
-            EMailers from = EMailers.from(headerCollection.getFromAddressSet());
-            EMailers to = EMailers.from(headerCollection.getToAddressSet());
-            EMailers cc = EMailers.from(headerCollection.getCcAddressSet());
-            EMailers bcc = EMailers.from(headerCollection.getBccAddressSet());
-            String sentDate = DATE_TIME_FORMATTER.format(headerCollection.getSentDate().orElse(internalDate));
-            Optional<String> mimeMessageID = headerCollection.getMessageID();
+                    HeaderCollection headerCollection = parsingResult.getHeaderCollection();
+                    ZonedDateTime internalDate = getSanitizedInternalDate(message, zoneId);
 
-            String text = Stream.of(from.serialize(),
-                        to.serialize(),
-                        cc.serialize(),
-                        bcc.serialize(),
-                        subjects.serialize(),
-                        bodyText.orElse(null),
-                        bodyHtml.orElse(null))
-                    .filter(Predicate.not(Strings::isNullOrEmpty))
-                    .collect(Collectors.joining(" "));
+                    List<HeaderCollection.Header> headers = headerCollection.getHeaders();
+                    Subjects subjects = Subjects.from(headerCollection.getSubjectSet());
+                    EMailers from = EMailers.from(headerCollection.getFromAddressSet());
+                    EMailers to = EMailers.from(headerCollection.getToAddressSet());
+                    EMailers cc = EMailers.from(headerCollection.getCcAddressSet());
+                    EMailers bcc = EMailers.from(headerCollection.getBccAddressSet());
+                    String sentDate = DATE_TIME_FORMATTER.format(headerCollection.getSentDate().orElse(internalDate));
+                    Optional<String> mimeMessageID = headerCollection.getMessageID();
 
-            long uid = message.getUid().asLong();
-            String mailboxId = message.getMailboxId().serialize();
-            ModSeq modSeq = message.getModSeq();
-            long size = message.getFullContentOctets();
-            String date = DATE_TIME_FORMATTER.format(getSanitizedInternalDate(message, zoneId));
-            String mediaType = message.getMediaType();
-            String subType = message.getSubType();
-            boolean isAnswered = message.isAnswered();
-            boolean isDeleted = message.isDeleted();
-            boolean isDraft = message.isDraft();
-            boolean isFlagged = message.isFlagged();
-            boolean isRecent = message.isRecent();
-            boolean isUnRead = !message.isSeen();
-            String[] userFlags = message.createFlags().getUserFlags();
+                    long uid = message.getUid().asLong();
+                    String mailboxId = message.getMailboxId().serialize();
+                    ModSeq modSeq = message.getModSeq();
+                    long size = message.getFullContentOctets();
+                    String date = DATE_TIME_FORMATTER.format(getSanitizedInternalDate(message, zoneId));
+                    String mediaType = message.getMediaType();
+                    String subType = message.getSubType();
+                    boolean isAnswered = message.isAnswered();
+                    boolean isDeleted = message.isDeleted();
+                    boolean isDraft = message.isDraft();
+                    boolean isFlagged = message.isFlagged();
+                    boolean isRecent = message.isRecent();
+                    boolean isUnRead = !message.isSeen();
+                    String[] userFlags = message.createFlags().getUserFlags();
 
-            return new IndexableMessage(
-                    attachments,
-                    bcc,
-                    bodyHtml,
-                    bodyText,
-                    cc,
-                    date,
-                    from,
-                    hasAttachment,
-                    headers,
-                    isAnswered,
-                    isDeleted,
-                    isDraft,
-                    isFlagged,
-                    isRecent,
-                    isUnRead,
-                    mailboxId,
-                    mediaType,
-                    messageId,
-                    threadId,
-                    modSeq,
-                    sentDate,
-                    size,
-                    subjects,
-                    subType,
-                    to,
-                    uid,
-                    userFlags,
-                    mimeMessageID);
+                    return new IndexableMessage(
+                        attachments,
+                        bcc,
+                        bodyHtml,
+                        bodyText,
+                        cc,
+                        date,
+                        from,
+                        hasAttachment,
+                        headers,
+                        isAnswered,
+                        isDeleted,
+                        isDraft,
+                        isFlagged,
+                        isRecent,
+                        isUnRead,
+                        mailboxId,
+                        mediaType,
+                        messageId,
+                        threadId,
+                        modSeq,
+                        sentDate,
+                        size,
+                        subjects,
+                        subType,
+                        to,
+                        uid,
+                        userFlags,
+                        mimeMessageID);
+                });
         }
 
         private List<MimePart> setFlattenedAttachments(MimePart parsingResult, IndexAttachments indexAttachments) {

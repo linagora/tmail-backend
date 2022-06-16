@@ -30,6 +30,8 @@ import org.apache.james.mailbox.model.ContentType.MediaType;
 import org.apache.james.mailbox.model.ContentType.SubType;
 import org.apache.james.mailbox.store.mail.model.Message;
 import org.apache.james.mime4j.MimeException;
+import org.apache.james.mime4j.codec.DecodeMonitor;
+import org.apache.james.mime4j.field.LenientFieldParser;
 import org.apache.james.mime4j.message.DefaultBodyDescriptorBuilder;
 import org.apache.james.mime4j.message.MaximalBodyDescriptor;
 import org.apache.james.mime4j.stream.EntityState;
@@ -42,12 +44,13 @@ import com.google.common.base.Preconditions;
 
 public class MimePartParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(MimePartParser.class);
+    private static final LenientFieldParser FIELD_PARSER = new LenientFieldParser();
 
     private final Message message;
     private final TextExtractor textExtractor;
     private final MimeTokenStream stream;
     private final Deque<MimePartContainerBuilder> builderStack;
-    private MimePart result;
+    private MimePart.ParsedMimePart result;
     private MimePartContainerBuilder currentlyBuildMimePart;
 
     public MimePartParser(Message message, TextExtractor textExtractor) {
@@ -57,10 +60,10 @@ public class MimePartParser {
         this.currentlyBuildMimePart = new RootMimePartContainerBuilder();
         this.stream = new MimeTokenStream(
             MimeConfig.PERMISSIVE,
-            new DefaultBodyDescriptorBuilder());
+            new DefaultBodyDescriptorBuilder(null, FIELD_PARSER, DecodeMonitor.SILENT));
     }
 
-    public MimePart parse() throws IOException, MimeException {
+    public MimePart.ParsedMimePart parse() throws IOException, MimeException {
         stream.parse(message.getFullContent());
         for (EntityState state = stream.getState(); state != EntityState.T_END_OF_STREAM; state = stream.next()) {
             processMimePart(stream, state);
@@ -70,19 +73,27 @@ public class MimePartParser {
 
     private void processMimePart(MimeTokenStream stream, EntityState state) {
         switch (state) {
-            case T_START_MULTIPART, T_START_MESSAGE -> stackCurrent();
-            case T_START_HEADER -> currentlyBuildMimePart = MimePart.builder();
-            case T_FIELD -> currentlyBuildMimePart.addToHeaders(stream.getField());
-            case T_BODY -> {
+            case T_START_MULTIPART:
+            case T_START_MESSAGE:
+                stackCurrent();
+                break;
+            case T_START_HEADER:
+                currentlyBuildMimePart = MimePart.builder(textExtractor::applicable);
+                break;
+            case T_FIELD:
+                currentlyBuildMimePart.addToHeaders(stream.getField());
+                break;
+            case T_BODY:
                 manageBodyExtraction(stream);
                 closeMimePart();
-            }
-            case T_END_MULTIPART, T_END_MESSAGE -> {
+                break;
+            case T_END_MULTIPART:
+            case T_END_MESSAGE:
                 unstackToCurrent();
                 closeMimePart();
-            }
-            default -> {
-            }
+                break;
+            default:
+                break;
         }
     }
 
@@ -94,9 +105,9 @@ public class MimePartParser {
     private void unstackToCurrent() {
         currentlyBuildMimePart = builderStack.pop();
     }
-    
+
     private void closeMimePart() {
-        MimePart bodyMimePart = currentlyBuildMimePart.using(textExtractor).build();
+        MimePart.ParsedMimePart bodyMimePart = currentlyBuildMimePart.build();
         if (!builderStack.isEmpty()) {
             builderStack.peek().addChild(bodyMimePart);
         } else {
