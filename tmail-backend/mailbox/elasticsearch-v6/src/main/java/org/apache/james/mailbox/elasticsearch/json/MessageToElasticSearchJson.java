@@ -20,12 +20,10 @@
 package org.apache.james.mailbox.elasticsearch.json;
 
 import java.time.ZoneId;
-import java.util.List;
 
 import javax.inject.Inject;
 import javax.mail.Flags;
 
-import org.apache.james.core.Username;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.elasticsearch.IndexAttachments;
 import org.apache.james.mailbox.extractor.TextExtractor;
@@ -35,7 +33,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Preconditions;
+
+import reactor.core.publisher.Mono;
 
 public class MessageToElasticSearchJson {
 
@@ -58,24 +59,26 @@ public class MessageToElasticSearchJson {
         this(textExtractor, ZoneId.systemDefault(), indexAttachments);
     }
 
-    public String convertToJson(MailboxMessage message, List<Username> usernames) throws JsonProcessingException {
+    public Mono<String> convertToJson(MailboxMessage message) {
         Preconditions.checkNotNull(message);
 
-        return mapper.writeValueAsString(IndexableMessage.builder()
-                .message(message)
-                .extractor(textExtractor)
-                .zoneId(zoneId)
-                .indexAttachments(indexAttachments)
-                .build());
+        return IndexableMessage.builder()
+            .message(message)
+            .extractor(textExtractor)
+            .zoneId(zoneId)
+            .indexAttachments(indexAttachments)
+            .build()
+            .map(Throwing.function(mapper::writeValueAsString));
     }
 
-    public String convertToJsonWithoutAttachment(MailboxMessage message, List<Username> usernames) throws JsonProcessingException {
-        return mapper.writeValueAsString(IndexableMessage.builder()
-                .message(message)
-                .extractor(textExtractor)
-                .zoneId(zoneId)
-                .indexAttachments(IndexAttachments.NO)
-                .build());
+    public Mono<String> convertToJsonWithoutAttachment(MailboxMessage message) {
+        return IndexableMessage.builder()
+            .message(message)
+            .extractor(textExtractor)
+            .zoneId(zoneId)
+            .indexAttachments(IndexAttachments.NO)
+            .build()
+            .map(Throwing.function(mapper::writeValueAsString));
     }
 
     public String getUpdatedJsonMessagePart(Flags flags, ModSeq modSeq) throws JsonProcessingException {

@@ -56,6 +56,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import reactor.core.publisher.Mono;
+
 class IndexableMessageTest {
     static final MessageUid MESSAGE_UID = MessageUid.of(154);
 
@@ -67,16 +69,16 @@ class IndexableMessageTest {
     @BeforeEach
     void setUp() throws Exception {
         textExtractor = new TikaTextExtractor(new RecordingMetricFactory(), new TikaHttpClientImpl(TikaConfiguration.builder()
-                .host(tika.getIp())
-                .port(tika.getPort())
-                .timeoutInMillis(tika.getTimeoutInMillis())
-                .build()));
+            .host(tika.getIp())
+            .port(tika.getPort())
+            .timeoutInMillis(tika.getTimeoutInMillis())
+            .build()));
     }
 
     @Test
     void hasAttachmentsShouldReturnTrueWhenNonInlined() throws IOException {
         //Given
-        MailboxMessage  mailboxMessage = mock(MailboxMessage.class);
+        MailboxMessage mailboxMessage = mock(MailboxMessage.class);
         TestId mailboxId = TestId.of(1);
         when(mailboxMessage.getMailboxId())
             .thenReturn(mailboxId);
@@ -103,11 +105,11 @@ class IndexableMessageTest {
 
         // When
         IndexableMessage indexableMessage = IndexableMessage.builder()
-                .message(mailboxMessage)
-                .extractor(new DefaultTextExtractor())
-                .zoneId(ZoneId.of("Europe/Paris"))
-                .indexAttachments(IndexAttachments.YES)
-                .build();
+            .message(mailboxMessage)
+            .extractor(new DefaultTextExtractor())
+            .zoneId(ZoneId.of("Europe/Paris"))
+            .indexAttachments(IndexAttachments.YES)
+            .build().block();
 
         // Then
         assertThat(indexableMessage.getHasAttachment()).isTrue();
@@ -116,7 +118,7 @@ class IndexableMessageTest {
     @Test
     void hasAttachmentsShouldReturnFalseWhenEmptyAttachments() throws IOException {
         //Given
-        MailboxMessage  mailboxMessage = mock(MailboxMessage.class);
+        MailboxMessage mailboxMessage = mock(MailboxMessage.class);
         TestId mailboxId = TestId.of(1);
         when(mailboxMessage.getMailboxId())
             .thenReturn(mailboxId);
@@ -135,11 +137,11 @@ class IndexableMessageTest {
 
         // When
         IndexableMessage indexableMessage = IndexableMessage.builder()
-                .message(mailboxMessage)
-                .extractor(new DefaultTextExtractor())
-                .zoneId(ZoneId.of("Europe/Paris"))
-                .indexAttachments(IndexAttachments.NO)
-                .build();
+            .message(mailboxMessage)
+            .extractor(new DefaultTextExtractor())
+            .zoneId(ZoneId.of("Europe/Paris"))
+            .indexAttachments(IndexAttachments.NO)
+            .build().block();
 
         // Then
         assertThat(indexableMessage.getHasAttachment()).isFalse();
@@ -165,11 +167,11 @@ class IndexableMessageTest {
 
         // When
         IndexableMessage indexableMessage = IndexableMessage.builder()
-                .message(mailboxMessage)
-                .extractor(new DefaultTextExtractor())
-                .zoneId(ZoneId.of("Europe/Paris"))
-                .indexAttachments(IndexAttachments.NO)
-                .build();
+            .message(mailboxMessage)
+            .extractor(new DefaultTextExtractor())
+            .zoneId(ZoneId.of("Europe/Paris"))
+            .indexAttachments(IndexAttachments.NO)
+            .build().block();
 
         // Then
         assertThat(indexableMessage.getAttachments()).isEmpty();
@@ -195,11 +197,11 @@ class IndexableMessageTest {
 
         // When
         IndexableMessage indexableMessage = IndexableMessage.builder()
-                .message(mailboxMessage)
-                .extractor(new DefaultTextExtractor())
-                .zoneId(ZoneId.of("Europe/Paris"))
-                .indexAttachments(IndexAttachments.YES)
-                .build();
+            .message(mailboxMessage)
+            .extractor(new DefaultTextExtractor())
+            .zoneId(ZoneId.of("Europe/Paris"))
+            .indexAttachments(IndexAttachments.YES)
+            .build().block();
 
         // Then
         assertThat(indexableMessage.getAttachments()).isNotEmpty();
@@ -224,18 +226,20 @@ class IndexableMessageTest {
             .thenReturn(MESSAGE_UID);
 
         TextExtractor textExtractor = mock(TextExtractor.class);
-        when(textExtractor.extractContent(any(), any()))
-            .thenReturn(new ParsedContent(Optional.of("first attachment content"), ImmutableMap.of()))
-            .thenThrow(new RuntimeException("second cannot be parsed"))
-            .thenReturn(new ParsedContent(Optional.of("third attachment content"), ImmutableMap.of()));
+        when(textExtractor.applicable(any())).thenReturn(true);
+        when(textExtractor.extractContentReactive(any(), any()))
+            .thenReturn(Mono.just(new ParsedContent(Optional.of("first attachment content"), ImmutableMap.of())))
+            .thenReturn(Mono.error(new RuntimeException("second cannot be parsed")))
+            .thenReturn(Mono.just(new ParsedContent(Optional.of("third attachment content"), ImmutableMap.of())));
 
         // When
         IndexableMessage indexableMessage = IndexableMessage.builder()
-                .message(mailboxMessage)
-                .extractor(textExtractor)
-                .zoneId(ZoneId.of("Europe/Paris"))
-                .indexAttachments(IndexAttachments.YES)
-                .build();
+            .message(mailboxMessage)
+            .extractor(textExtractor)
+            .zoneId(ZoneId.of("Europe/Paris"))
+            .indexAttachments(IndexAttachments.YES)
+            .build()
+            .block();
 
         // Then
         String NO_TEXTUAL_BODY = "The textual body is not present";
@@ -246,10 +250,10 @@ class IndexableMessageTest {
 
     @Test
     void shouldHandleCorrectlyMessageIdHavingSerializeMethodThatReturnNull() throws Exception {
-       MessageId invalidMessageIdThatReturnNull = mock(MessageId.class);
-       when(invalidMessageIdThatReturnNull.serialize())
-           .thenReturn(null);
-       
+        MessageId invalidMessageIdThatReturnNull = mock(MessageId.class);
+        when(invalidMessageIdThatReturnNull.serialize())
+            .thenReturn(null);
+
         // When
         MailboxMessage mailboxMessage = mock(MailboxMessage.class);
         TestId mailboxId = TestId.of(1);
@@ -267,11 +271,11 @@ class IndexableMessageTest {
             .thenReturn(MESSAGE_UID);
 
         IndexableMessage indexableMessage = IndexableMessage.builder()
-                .message(mailboxMessage)
-                .extractor(textExtractor)
-                .zoneId(ZoneId.of("Europe/Paris"))
-                .indexAttachments(IndexAttachments.YES)
-                .build();
+            .message(mailboxMessage)
+            .extractor(textExtractor)
+            .zoneId(ZoneId.of("Europe/Paris"))
+            .indexAttachments(IndexAttachments.YES)
+            .build().block();
 
         // Then
         assertThat(indexableMessage.getMessageId()).isNull();
@@ -279,7 +283,7 @@ class IndexableMessageTest {
 
     @Test
     void shouldHandleCorrectlyNullMessageId() throws Exception {
-       
+
         // When
         MailboxMessage mailboxMessage = mock(MailboxMessage.class);
         TestId mailboxId = TestId.of(1);
@@ -297,11 +301,11 @@ class IndexableMessageTest {
             .thenReturn(MESSAGE_UID);
 
         IndexableMessage indexableMessage = IndexableMessage.builder()
-                .message(mailboxMessage)
-                .extractor(textExtractor)
-                .zoneId(ZoneId.of("Europe/Paris"))
-                .indexAttachments(IndexAttachments.YES)
-                .build();
+            .message(mailboxMessage)
+            .extractor(textExtractor)
+            .zoneId(ZoneId.of("Europe/Paris"))
+            .indexAttachments(IndexAttachments.YES)
+            .build().block();
 
         // Then
         assertThat(indexableMessage.getMessageId()).isNull();

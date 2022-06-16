@@ -19,11 +19,13 @@
 
 package org.apache.james.mailbox.elasticsearch.json;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.FilenameUtils;
@@ -33,16 +35,18 @@ import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.model.ContentType;
 import org.apache.james.mailbox.model.ContentType.MediaType;
 import org.apache.james.mailbox.model.ContentType.SubType;
-import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.mime4j.stream.Field;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Preconditions;
+import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public class MimePart {
 
@@ -50,16 +54,17 @@ public class MimePart {
 
         private final HeaderCollection.Builder headerCollectionBuilder;
         private Optional<InputStream> bodyContent;
-        private final List<MimePart> children;
+        private final List<ParsedMimePart> children;
         private Optional<MediaType> mediaType;
         private Optional<SubType> subType;
         private Optional<String> fileName;
         private Optional<String> fileExtension;
         private Optional<String> contentDisposition;
         private Optional<Charset> charset;
-        private TextExtractor textExtractor;
+        private Predicate<ContentType> shouldCaryOverContent;
 
-        private Builder() {
+        private Builder(Predicate<ContentType> shouldCaryOverContent) {
+            this.shouldCaryOverContent = shouldCaryOverContent;
             children = Lists.newArrayList();
             headerCollectionBuilder = HeaderCollection.builder();
             this.bodyContent = Optional.empty();
@@ -69,7 +74,6 @@ public class MimePart {
             this.fileExtension = Optional.empty();
             this.contentDisposition = Optional.empty();
             this.charset = Optional.empty();
-            this.textExtractor = new DefaultTextExtractor();
         }
 
         @Override
@@ -85,7 +89,7 @@ public class MimePart {
         }
 
         @Override
-        public Builder addChild(MimePart mimePart) {
+        public Builder addChild(ParsedMimePart mimePart) {
             children.add(mimePart);
             return this;
         }
@@ -116,52 +120,94 @@ public class MimePart {
         }
 
         @Override
-        public MimePartContainerBuilder using(TextExtractor textExtractor) {
-            Preconditions.checkArgument(textExtractor != null, "Provided text extractor should not be null");
-            this.textExtractor = textExtractor;
-            return this;
-        }
-
-        @Override
         public MimePartContainerBuilder charset(Charset charset) {
             this.charset = Optional.of(charset);
             return this;
         }
 
+        private Optional<ContentType> computeContentType() {
+            if (mediaType.isPresent() && subType.isPresent()) {
+                return Optional.of(ContentType.of(
+                    ContentType.MimeType.of(mediaType.get(), subType.get()),
+                    charset));
+            } else {
+                return Optional.empty();
+            }
+        }
+
         @Override
-        public MimePart build() {
-            Optional<ParsedContent> parsedContent = parseContent(textExtractor);
-            return new MimePart(
+        public ParsedMimePart build() {
+            final Optional<ContentType> contentType = computeContentType();
+            return new ParsedMimePart(
                 headerCollectionBuilder.build(),
-                parsedContent.flatMap(ParsedContent::getTextualContent),
+                bodyContent.filter(any -> shouldCaryOverContent.test(contentType.orElse(null))),
+                charset,
                 mediaType,
                 subType,
+                contentType,
                 fileName,
                 fileExtension,
                 contentDisposition,
                 children);
         }
+    }
 
-        private Optional<ParsedContent> parseContent(TextExtractor textExtractor) {
-            if (bodyContent.isPresent()) {
-                try {
-                    return Optional.of(extractText(textExtractor, bodyContent.get()));
-                } catch (Throwable e) {
-                    LOGGER.warn("Failed parsing attachment", e);
-                }
-            }
-            return Optional.empty();
+    public static class ParsedMimePart {
+        private final HeaderCollection headerCollection;
+        private final Optional<byte[]> bodyContent;
+        private final Optional<Charset> charset;
+        private final Optional<MediaType> mediaType;
+        private final Optional<SubType> subType;
+        private Optional<ContentType> contentType;
+        private final Optional<String> fileName;
+        private final Optional<String> fileExtension;
+        private final Optional<String> contentDisposition;
+        private final List<ParsedMimePart> attachments;
+
+        public ParsedMimePart(HeaderCollection headerCollection, Optional<InputStream> bodyContent, Optional<Charset> charset,
+                              Optional<MediaType> mediaType,
+                              Optional<SubType> subType, Optional<ContentType> contentType, Optional<String> fileName, Optional<String> fileExtension,
+                              Optional<String> contentDisposition, List<ParsedMimePart> attachments) {
+            this.headerCollection = headerCollection;
+            this.mediaType = mediaType;
+            this.subType = subType;
+            this.contentType = contentType;
+            this.fileName = fileName;
+            this.fileExtension = fileExtension;
+            this.contentDisposition = contentDisposition;
+            this.attachments = attachments;
+            this.charset = charset;
+
+            this.bodyContent = bodyContent.map(Throwing.function(IOUtils::toByteArray));
         }
 
-        private ParsedContent extractText(TextExtractor textExtractor, InputStream bodyContent) throws Exception {
-            if (shouldPerformTextExtraction()) {
-                return textExtractor.extractContent(
-                    bodyContent,
-                    computeContentType().orElse(null));
+        public Mono<MimePart> asMimePart(TextExtractor textExtractor) {
+            return Flux.fromIterable(attachments)
+                .concatMap(attachment -> attachment.asMimePart(textExtractor))
+                .collectList()
+                .flatMap(attachments -> extractText(textExtractor)
+                    .map(Optional::ofNullable)
+                    .switchIfEmpty(Mono.just(Optional.empty()))
+                    .onErrorResume(e -> {
+                        LOGGER.warn("Failure extracting text message for some attachments", e);
+                        return Mono.just(Optional.empty());
+                    })
+                    .map(text -> new MimePart(headerCollection, text.flatMap(ParsedContent::getTextualContent),
+                        mediaType, subType, fileName, fileExtension, contentDisposition, attachments)));
+        }
+
+        private Mono<ParsedContent> extractText(TextExtractor textExtractor) {
+            if (bodyContent.isEmpty()) {
+                return Mono.empty();
             }
-            return new ParsedContent(
-                Optional.ofNullable(IOUtils.toString(bodyContent, charset.orElse(StandardCharsets.UTF_8))),
-                ImmutableMap.of());
+            if (shouldPerformTextExtraction()) {
+                return textExtractor.extractContentReactive(
+                    new ByteArrayInputStream(bodyContent.get()),
+                    contentType.orElse(null));
+            }
+            return Mono.fromCallable(() -> new ParsedContent(
+                Optional.ofNullable(IOUtils.toString(new ByteArrayInputStream(bodyContent.get()), charset.orElse(StandardCharsets.UTF_8))),
+                ImmutableMap.of()));
         }
 
         private boolean shouldPerformTextExtraction() {
@@ -176,20 +222,10 @@ public class MimePart {
             return isTextBody() && subType.map(SubType.of("html")::equals).orElse(false);
         }
 
-        private Optional<ContentType> computeContentType() {
-            if (mediaType.isPresent() && subType.isPresent()) {
-                return Optional.of(ContentType.of(
-                    ContentType.MimeType.of(mediaType.get(), subType.get()),
-                    charset));
-            } else {
-                return Optional.empty();
-            }
-        }
-
     }
-    
-    public static Builder builder() {
-        return new Builder();
+
+    public static Builder builder(Predicate<ContentType> shouldCaryOverContent) {
+        return new Builder(shouldCaryOverContent);
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MimePart.class);
@@ -204,8 +240,8 @@ public class MimePart {
     private final List<MimePart> attachments;
 
     private MimePart(HeaderCollection headerCollection, Optional<String> bodyTextContent, Optional<MediaType> mediaType,
-                    Optional<SubType> subType, Optional<String> fileName, Optional<String> fileExtension,
-                    Optional<String> contentDisposition, List<MimePart> attachments) {
+                     Optional<SubType> subType, Optional<String> fileName, Optional<String> fileExtension,
+                     Optional<String> contentDisposition, List<MimePart> attachments) {
         this.headerCollection = headerCollection;
         this.mediaType = mediaType;
         this.subType = subType;
@@ -259,13 +295,13 @@ public class MimePart {
     @JsonIgnore
     public Optional<String> locateFirstTextBody() {
         return firstBody(textAttachments()
-                .filter(this::isPlainSubType));
+            .filter(this::isPlainSubType));
     }
 
     @JsonIgnore
     public Optional<String> locateFirstHtmlBody() {
         return firstBody(textAttachments()
-                .filter(this::isHtmlSubType));
+            .filter(this::isHtmlSubType));
     }
 
     private Optional<String> firstBody(Stream<MimePart> mimeParts) {
@@ -277,34 +313,34 @@ public class MimePart {
 
     private Stream<MimePart> textAttachments() {
         return Stream.concat(
-                    Stream.of(this),
-                    attachments.stream())
-                .filter(this::isTextMediaType);
+                Stream.of(this),
+                attachments.stream())
+            .filter(this::isTextMediaType);
     }
 
     private boolean isTextMediaType(MimePart mimePart) {
         return mimePart.getMediaType()
-                .filter("text"::equals)
-                .isPresent();
+            .filter("text"::equals)
+            .isPresent();
     }
 
     private boolean isPlainSubType(MimePart mimePart) {
         return mimePart.getSubType()
-                .filter("plain"::equals)
-                .isPresent();
+            .filter("plain"::equals)
+            .isPresent();
     }
 
     private boolean isHtmlSubType(MimePart mimePart) {
         return mimePart.getSubType()
-                .filter("html"::equals)
-                .isPresent();
+            .filter("html"::equals)
+            .isPresent();
     }
 
     @JsonIgnore
     public Stream<MimePart> getAttachmentsStream() {
         return attachments.stream()
-                .flatMap(mimePart -> Stream.concat(Stream.of(mimePart), mimePart.getAttachmentsStream()))
-                .filter(mimePart -> mimePart.contentDisposition.isPresent());
+            .flatMap(mimePart -> Stream.concat(Stream.of(mimePart), mimePart.getAttachmentsStream()))
+            .filter(mimePart -> mimePart.contentDisposition.isPresent());
     }
 
 }
