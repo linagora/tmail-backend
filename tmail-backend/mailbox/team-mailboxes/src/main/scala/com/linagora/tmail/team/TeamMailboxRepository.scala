@@ -12,6 +12,7 @@ import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession}
+import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
@@ -184,7 +185,8 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
     SMono.fromPublisher(exists(teamMailbox))
       .filter(b => b)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
-      .map(_ => mailboxManager.listRights(teamMailbox.mailboxPath, session))
+      .flatMap(_ => SMono.fromCallable(() => mailboxManager.listRights(teamMailbox.mailboxPath, session))
+        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
       .flatMapIterable(mailboxACL => mailboxACL.getEntries.asScala)
       .map(entryKeyAndRights => entryKeyAndRights._1)
       .filter(entryKey => NameType.user.equals(entryKey.getNameType))
