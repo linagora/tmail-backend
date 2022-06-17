@@ -18,7 +18,7 @@ pipeline {
         }
         stage('Compile') {
             steps {
-                sh 'mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C'
+                sh 'mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C -Dtarget.jdk=17'
             }
         }
         stage('Test') {
