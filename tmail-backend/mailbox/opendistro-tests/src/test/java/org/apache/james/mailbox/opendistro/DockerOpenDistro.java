@@ -8,6 +8,7 @@ import java.net.URL;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -119,7 +120,8 @@ public interface DockerOpenDistro {
             return new GenericContainer<>(imageName)
                 .withTmpFs(ImmutableMap.of("/usr/share/elasticsearch/data", "rw,size=200m"))
                 .withExposedPorts(ES_HTTP_PORT)
-                .withEnv("discovery.type", "single-node");
+                .withEnv("discovery.type", "single-node")
+                .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-opendistro-testing" + UUID.randomUUID()));
         }
 
         static DockerContainer noAuthContainer(String imageName) {

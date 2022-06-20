@@ -1,5 +1,7 @@
 package com.linagora.tmail.deployment;
 
+import java.util.UUID;
+
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.apache.james.util.Port;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -17,6 +19,7 @@ public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallba
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
         .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME))
+        .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-memory-testing" + UUID.randomUUID()))
         .withExposedPorts(25, 143, 80);
 
     @Override

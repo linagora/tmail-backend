@@ -6,6 +6,8 @@ import static com.linagora.tmail.deployment.ThirdPartyContainers.createElasticse
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createRabbitMQ;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createS3;
 
+import java.util.UUID;
+
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.apache.james.util.Port;
 import org.apache.james.util.Runnables;
@@ -49,7 +51,8 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withNetwork(network)
             .withEnv("SLAPD_DOMAIN", "james.org")
             .withEnv("SLAPD_PASSWORD", "mysecretpassword")
-            .withEnv("SLAPD_CONFIG_PASSWORD", "mysecretpassword");
+            .withEnv("SLAPD_CONFIG_PASSWORD", "mysecretpassword")
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-openldap-testing" + UUID.randomUUID()));
     }
 
     @SuppressWarnings("resource")
@@ -63,6 +66,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .waitingFor(Wait.forLogMessage(".*JAMES server started.*\\n", ONE_TIME))
+            .withCreateContainerCmdModifier(cmder -> cmder.withName("tmail-distributed-ldap-testing" + UUID.randomUUID()))
             .withExposedPorts(25, 143, 80);
     }
 
