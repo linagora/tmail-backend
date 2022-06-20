@@ -9,7 +9,7 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createCassandra(Network network) {
-        return new GenericContainer<>("cassandra:3.11.3")
+        return new GenericContainer<>("cassandra:3.11.10")
             .withNetworkAliases("cassandra")
             .withNetwork(network)
             .withExposedPorts(9042);
@@ -26,7 +26,7 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createRabbitMQ(Network network) {
-        return new GenericContainer<>("rabbitmq:3.8.3-management")
+        return new GenericContainer<>("rabbitmq:3.9.18-management")
             .withNetworkAliases("rabbitmq")
             .withNetwork(network)
             .withExposedPorts(5672, 15672);
