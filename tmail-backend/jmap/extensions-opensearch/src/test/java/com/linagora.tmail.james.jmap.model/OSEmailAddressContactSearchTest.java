@@ -4,7 +4,6 @@ import static com.linagora.tmail.james.jmap.OpenSearchContactConfiguration.DEFAU
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
-import java.io.IOException;
 import java.util.Optional;
 
 import org.apache.james.backends.opensearch.DockerOpenSearchExtension;
@@ -16,11 +15,10 @@ import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.opensearch.action.search.SearchRequest;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.index.query.QueryBuilder;
-import org.opensearch.index.query.QueryBuilders;
-import org.opensearch.search.builder.SearchSourceBuilder;
+import org.opensearch.client.opensearch._types.FieldValue;
+import org.opensearch.client.opensearch._types.query_dsl.Query;
+import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
+import org.opensearch.client.opensearch.core.SearchRequest;
 
 import com.linagora.tmail.james.jmap.ContactMappingFactory;
 import com.linagora.tmail.james.jmap.OSEmailAddressContactSearchEngine;
@@ -42,7 +40,7 @@ public class OSEmailAddressContactSearchTest implements EmailAddressContactSearc
     OSEmailAddressContactSearchEngine searchEngine;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         ContactMappingFactory contactMappingFactory = new ContactMappingFactory(OpenSearchConfiguration.DEFAULT_CONFIGURATION, DEFAULT_CONFIGURATION);
         client = openSearch.getDockerOpenSearch().clientProvider().get();
 
@@ -61,22 +59,27 @@ public class OSEmailAddressContactSearchTest implements EmailAddressContactSearc
     public void awaitDocumentsIndexed(QueryType queryType, long documentCount) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
-                    new SearchRequest(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
-                        .source(new SearchSourceBuilder().query(extractOpenSearchQuery(queryType))),
-                    RequestOptions.DEFAULT)
+                    new SearchRequest.Builder()
+                        .index(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
+                        .query(extractOpenSearchQuery(queryType))
+                        .build())
                 .block()
-                .getHits().getTotalHits().value).isEqualTo(documentCount));
+                .hits().total().value()).isEqualTo(documentCount));
     }
 
-    private QueryBuilder extractOpenSearchQuery(QueryType queryType) {
+    private Query extractOpenSearchQuery(QueryType queryType) {
         if (queryType instanceof MatchQuery) {
-            return QueryBuilders.matchQuery(((MatchQuery) queryType).field(), ((MatchQuery) queryType).value());
+            return QueryBuilders.match()
+                .field((((MatchQuery) queryType).field()))
+                .query(new FieldValue.Builder().stringValue(((MatchQuery) queryType).value()).build())
+                .build()
+                ._toQuery();
         } else {
-            return QueryBuilders.matchAllQuery();
+            return QueryBuilders.matchAll().build()._toQuery();
         }
     }
 
-    private ReactorOpenSearchClient createUserContactIndex(ReactorOpenSearchClient client, ContactMappingFactory contactMappingFactory) throws IOException {
+    private ReactorOpenSearchClient createUserContactIndex(ReactorOpenSearchClient client, ContactMappingFactory contactMappingFactory) {
         return new IndexCreationFactory(OpenSearchConfiguration.DEFAULT_CONFIGURATION)
             .useIndex(DEFAULT_CONFIGURATION.getUserContactIndexName())
             .addAlias(DEFAULT_CONFIGURATION.getUserContactReadAliasName())
@@ -84,7 +87,7 @@ public class OSEmailAddressContactSearchTest implements EmailAddressContactSearc
             .createIndexAndAliases(client, Optional.of(contactMappingFactory.generalContactIndicesSetting()), Optional.of(contactMappingFactory.userContactMappingContent()));
     }
 
-    private ReactorOpenSearchClient createDomainContactIndex(ReactorOpenSearchClient client, ContactMappingFactory contactMappingFactory) throws IOException {
+    private ReactorOpenSearchClient createDomainContactIndex(ReactorOpenSearchClient client, ContactMappingFactory contactMappingFactory) {
         return new IndexCreationFactory(OpenSearchConfiguration.DEFAULT_CONFIGURATION)
             .useIndex(DEFAULT_CONFIGURATION.getDomainContactIndexName())
             .addAlias(DEFAULT_CONFIGURATION.getDomainContactReadAliasName())

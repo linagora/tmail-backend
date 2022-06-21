@@ -8,7 +8,6 @@ import static com.linagora.tmail.james.jmap.ContactMappingFactory.FIRSTNAME;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.SURNAME;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import javax.inject.Inject;
@@ -23,17 +22,17 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
-import org.opensearch.action.get.GetRequest;
-import org.opensearch.action.get.GetResponse;
-import org.opensearch.action.search.SearchRequest;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.common.unit.TimeValue;
-import org.opensearch.index.query.QueryBuilders;
-import org.opensearch.search.SearchHit;
-import org.opensearch.search.builder.SearchSourceBuilder;
+import org.opensearch.client.opensearch._types.FieldValue;
+import org.opensearch.client.opensearch._types.Time;
+import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
+import org.opensearch.client.opensearch.core.GetRequest;
+import org.opensearch.client.opensearch.core.GetResponse;
+import org.opensearch.client.opensearch.core.SearchRequest;
+import org.opensearch.client.opensearch.core.search.Hit;
 import org.reactivestreams.Publisher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.github.fge.lambdas.Throwing;
@@ -49,7 +48,7 @@ import reactor.core.publisher.Mono;
 
 public class OSEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final String DELIMITER = ":";
-    private static final TimeValue TIMEOUT = TimeValue.timeValueMinutes(1);
+    private static final Time TIMEOUT = new Time.Builder().time("1m").build();
 
     private final OpenSearchIndexer userContactIndexer;
     private final OpenSearchIndexer domainContactIndexer;
@@ -112,30 +111,36 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     @Override
     public Publisher<EmailAddressContact> autoComplete(AccountId accountId, String part, int limit) {
-        SearchRequest request = new SearchRequest(configuration.getUserContactReadAliasName().getValue(), configuration.getDomainContactReadAliasName().getValue())
-            .source(new SearchSourceBuilder()
-                .size(limit)
-                .query(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.multiMatchQuery(part, EMAIL, FIRSTNAME, SURNAME))
-                    .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))
-                    .should(QueryBuilders.termQuery(DOMAIN, Username.of(accountId.getIdentifier()).getDomainPart()
-                        .map(Domain::asString)
-                        .orElse("")))
-                    .minimumShouldMatch(1)));
+        SearchRequest request = new SearchRequest.Builder()
+            .index(configuration.getUserContactReadAliasName().getValue(), configuration.getDomainContactReadAliasName().getValue())
+            .size(limit)
+            .query(QueryBuilders.bool()
+                .must(QueryBuilders.multiMatch().fields(EMAIL, FIRSTNAME, SURNAME).query(part).build()._toQuery())
+                .should(QueryBuilders.term().field(ACCOUNT_ID).value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build()).build()._toQuery())
+                .should(QueryBuilders.term().field(DOMAIN).value(new FieldValue.Builder().stringValue(Username.of(accountId.getIdentifier()).getDomainPart()
+                    .map(Domain::asString)
+                    .orElse("")).build()).build()._toQuery())
+                .minimumShouldMatch("1")
+                .build()._toQuery())
+            .build();
 
-        return client.search(request, RequestOptions.DEFAULT)
-            .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
+        return Throwing.supplier(() -> client.search(request)).sneakyThrow()
+            .get()
+            .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.hits().hits()))
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
     }
 
     @Override
     public Publisher<EmailAddressContact> list(AccountId accountId) {
-        SearchRequest request = new SearchRequest(configuration.getUserContactReadAliasName().getValue())
+        SearchRequest request = new SearchRequest.Builder()
+            .index(configuration.getUserContactReadAliasName().getValue())
             .scroll(TIMEOUT)
-            .source(new SearchSourceBuilder()
-                .query(QueryBuilders.boolQuery()
-                    .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))
-                    .minimumShouldMatch(1)));
+            .query(QueryBuilders.bool()
+                .should(QueryBuilders.term().field(ACCOUNT_ID).value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build()).build()._toQuery())
+                .minimumShouldMatch("1")
+                .build()
+                ._toQuery())
+            .build();
 
         return new ScrolledSearch(client, request)
             .searchHits()
@@ -144,12 +149,15 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     @Override
     public Publisher<EmailAddressContact> list(Domain domain) {
-        SearchRequest request = new SearchRequest(configuration.getDomainContactReadAliasName().getValue())
+        SearchRequest request = new SearchRequest.Builder()
+            .index(configuration.getDomainContactReadAliasName().getValue())
             .scroll(TIMEOUT)
-            .source(new SearchSourceBuilder()
-                .query(QueryBuilders.boolQuery()
-                    .should(QueryBuilders.termQuery(DOMAIN, domain.asString()))
-                    .minimumShouldMatch(1)));
+            .query(QueryBuilders.bool()
+                .should(QueryBuilders.term().field(DOMAIN).value(new FieldValue.Builder().stringValue(domain.asString()).build()).build()._toQuery())
+                .minimumShouldMatch("1")
+                .build()
+                ._toQuery())
+            .build();
 
         return new ScrolledSearch(client, request)
             .searchHits()
@@ -158,9 +166,11 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     @Override
     public Publisher<EmailAddressContact> listDomainsContacts() {
-        SearchRequest request = new SearchRequest(configuration.getDomainContactReadAliasName().getValue())
+        SearchRequest request = new SearchRequest.Builder()
+            .index(configuration.getDomainContactReadAliasName().getValue())
             .scroll(TIMEOUT)
-            .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery()));
+            .query(QueryBuilders.matchAll().build()._toQuery())
+            .build();
 
         return new ScrolledSearch(client, request)
             .searchHits()
@@ -169,35 +179,39 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     @Override
     public Publisher<EmailAddressContact> get(AccountId accountId, MailAddress mailAddress) {
-        return client.get(new GetRequest(configuration.getUserContactReadAliasName().getValue())
-                    .id(computeUserContactDocumentId(accountId, mailAddress).asString())
-                    .routing(mailAddress.asString()),
-                RequestOptions.DEFAULT)
-            .filter(GetResponse::isExists)
-            .map(GetResponse::getSourceAsMap)
+        return Throwing.supplier(() -> client.get(new GetRequest.Builder()
+                .index(configuration.getUserContactReadAliasName().getValue())
+                .id(computeUserContactDocumentId(accountId, mailAddress).asString())
+                .routing(mailAddress.asString())
+                .build()))
+            .get()
+            .filter(GetResponse::found)
+            .mapNotNull(GetResponse::source)
             .map(Throwing.function(this::extractContactFromSource).sneakyThrow())
             .switchIfEmpty(Mono.error(new ContactNotFoundException(mailAddress)));
     }
 
     @Override
     public Publisher<EmailAddressContact> get(Domain domain, MailAddress mailAddress) {
-        return client.get(new GetRequest(configuration.getDomainContactReadAliasName().getValue())
-                    .id(computeDomainContactDocumentId(domain, mailAddress).asString())
-                    .routing(mailAddress.asString()),
-                RequestOptions.DEFAULT)
-            .filter(GetResponse::isExists)
-            .map(GetResponse::getSourceAsMap)
+        return Throwing.supplier(() -> client.get(new GetRequest.Builder()
+                .index(configuration.getDomainContactReadAliasName().getValue())
+                .id(computeDomainContactDocumentId(domain, mailAddress).asString())
+                .routing(mailAddress.asString())
+                .build()))
+            .get()
+            .filter(GetResponse::found)
+            .mapNotNull(GetResponse::source)
             .map(Throwing.function(this::extractContactFromSource).sneakyThrow())
             .switchIfEmpty(Mono.error(new ContactNotFoundException(mailAddress)));
     }
 
-    private EmailAddressContact extractContactFromSource(Map<String, Object> source) throws AddressException {
+    private EmailAddressContact extractContactFromSource(ObjectNode source) throws AddressException {
         return new EmailAddressContact(
-            UUID.fromString((String) source.get(CONTACT_ID)),
+            UUID.fromString(source.get(CONTACT_ID).asText()),
             new ContactFields(
-                new MailAddress((String) source.get(EMAIL)),
-                (String) source.get(FIRSTNAME),
-                (String) source.get(SURNAME)
+                new MailAddress(source.get(EMAIL).asText()),
+                source.get(FIRSTNAME).asText(),
+                source.get(SURNAME).asText()
             ));
     }
 
@@ -209,11 +223,11 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         return DocumentId.fromString(String.join(DELIMITER, domain.asString(), mailAddress.asString()));
     }
 
-    private EmailAddressContact extractContentFromHit(SearchHit hit) throws AddressException {
-        Map<String, Object> source = hit.getSourceAsMap();
-        return new EmailAddressContact(UUID.fromString((String) source.get(CONTACT_ID)),
-            new ContactFields(new MailAddress(((String) source.get(EMAIL))),
-                (String) source.get(FIRSTNAME),
-                (String) source.get(SURNAME)));
+    private EmailAddressContact extractContentFromHit(Hit<ObjectNode> hit) throws AddressException {
+        ObjectNode source = hit.source();
+        return new EmailAddressContact(UUID.fromString(source.get(CONTACT_ID).asText()),
+            new ContactFields(new MailAddress((source.get(EMAIL).asText())),
+                source.get(FIRSTNAME).asText(),
+                source.get(SURNAME).asText()));
     }
 }
