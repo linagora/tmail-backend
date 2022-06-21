@@ -89,7 +89,7 @@
         </dependency>
         <dependency>
             <groupId>org.opensearch.client</groupId>
-            <artifactId>opensearch-rest-high-level-client</artifactId>
+            <artifactId>opensearch-java</artifactId>
             <version>2.1.0</version>
             <scope>test</scope>
         </dependency>
