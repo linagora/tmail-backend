@@ -7,7 +7,7 @@ networks:
 services:
   james:
     depends_on:
-      - elasticsearch
+      - opensearch
       - cassandra
       - tika
       - rabbitmq
@@ -33,8 +33,8 @@ services:
       # openssl genrsa -out jwt_privatekey 4096
       # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+  opensearch:
+    image: opensearchproject/opensearch:2.1.0
     environment:
       - discovery.type=single-node
     networks:
