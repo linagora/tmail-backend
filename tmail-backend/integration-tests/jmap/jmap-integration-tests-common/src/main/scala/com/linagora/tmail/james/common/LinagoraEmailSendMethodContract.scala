@@ -1,5 +1,9 @@
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.time.Duration
+import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract.{BOB_INBOX_PATH, HTML_BODY}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -29,9 +33,6 @@ import org.awaitility.core.ConditionFactory
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsString, JsValue, Json}
 
-import java.nio.charset.StandardCharsets
-import java.time.Duration
-import java.util.concurrent.TimeUnit
 import scala.jdk.CollectionConverters._
 
 object LinagoraEmailSendMethodContract {
@@ -297,12 +298,12 @@ trait LinagoraEmailSendMethodContract {
           .isEqualTo(
             s"""{
                |    "2": {
-               |        "value": "$HTML_BODY",
+               |        "value": "I have the most brilliant plan. Let me tell you all about it. What we do is, we",
                |        "isEncodingProblem": false,
                |        "isTruncated": false
                |    },
                |    "3": {
-               |        "value": "I have the most brilliant plan. Let me tell you all about it. What we do is, we",
+               |        "value": "$HTML_BODY",
                |        "isEncodingProblem": false,
                |        "isTruncated": false
                |    }
