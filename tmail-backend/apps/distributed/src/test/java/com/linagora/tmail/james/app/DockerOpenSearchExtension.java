@@ -45,6 +45,7 @@ public class DockerOpenSearchExtension implements GuiceModuleTestExtension {
 
     @Override
     public void afterEach(ExtensionContext extensionContext) {
+        dockerOpenSearch.cleanUpData();
     }
 
     @Override
