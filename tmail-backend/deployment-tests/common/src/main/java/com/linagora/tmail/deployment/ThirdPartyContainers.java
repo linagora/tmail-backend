@@ -7,7 +7,7 @@ import org.testcontainers.containers.Network;
 
 public class ThirdPartyContainers {
     public static String ES6_IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:6.3.2";
-    public static String ES7_IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:7.10.2";
+    public static String OS_IMAGE_NAME = "opensearchproject/opensearch:2.1.0";
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createCassandra(Network network) {
@@ -25,6 +25,8 @@ public class ThirdPartyContainers {
             .withNetwork(network)
             .withExposedPorts(9200)
             .withEnv("discovery.type", "single-node")
+            .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
+            .withEnv("DISABLE_SECURITY_PLUGIN", "true")
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-elasticsearch-testing" + UUID.randomUUID()));
     }
 

@@ -1,6 +1,6 @@
 package com.linagora.tmail.deployment;
 
-import static com.linagora.tmail.deployment.ThirdPartyContainers.ES7_IMAGE_NAME;
+import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_IMAGE_NAME;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createCassandra;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createElasticsearch;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createRabbitMQ;
@@ -29,7 +29,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
     public TmailDistributedExtension() {
         network = Network.newNetwork();
         cassandra = createCassandra(network);
-        elasticsearch = createElasticsearch(network, ES7_IMAGE_NAME);
+        elasticsearch = createElasticsearch(network, OS_IMAGE_NAME);
         rabbitmq = createRabbitMQ(network);
         s3 = createS3(network);
         james = createTmailDistributed();
