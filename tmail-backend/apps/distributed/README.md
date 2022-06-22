@@ -44,13 +44,13 @@ You can then start in that newly created network all the other softwares the dis
 ```
 docker run -d --network emaily --name=cassandra cassandra:3.11.10
 
-docker run -d --network emaily --name=rabbitmq rabbitmq:3.8.17-management
+docker run -d --network emaily --name=rabbitmq rabbitmq:3.9.18-management
 
 docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test zenko/cloudserver:8.2.6
 
 docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single-node' docker.elastic.co/elasticsearch/elasticsearch:7.10.2
 
-docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
+docker run -d --network emaily --name=tika apache/tika:1.28.2 #Optional
 ```
 
 Then you can finally start the James distributed server. If you included the JWT keys in the build:

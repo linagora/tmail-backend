@@ -26,6 +26,7 @@ import java.net.URL;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -219,7 +220,8 @@ public interface DockerElasticSearch {
                         .withFileFromClasspath("conf/nginx-conf/", "auth-es/nginx-conf/")
                         .withFileFromClasspath("conf/default.crt", "auth-es/default.crt")
                         .withFileFromClasspath("conf/default.key", "auth-es/default.key")
-                        .withFileFromClasspath("Dockerfile", "auth-es/NginxDockerfile")))
+                        .withFileFromClasspath("Dockerfile", "auth-es/NginxDockerfile"))
+                        .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-nginx-testing" + UUID.randomUUID())))
                 .withExposedPorts(ES_HTTP_PORT)
                 .withLogConsumer(frame -> LOGGER.debug("[NGINX] " + frame.getUtf8String()))
                 .withNetwork(network);

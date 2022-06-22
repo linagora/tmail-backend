@@ -48,12 +48,12 @@ services:
       - emaily
 
   tika:
-    image: apache/tika:1.24
+    image: apache/tika:1.28.2
     networks:
       - emaily
 
   rabbitmq:
-    image: rabbitmq:3.8.17-management
+    image: rabbitmq:3.9.18-management
     ports:
       - "5672:5672"
       - "15672:15672"

@@ -1,5 +1,7 @@
 package com.linagora.tmail.deployment;
 
+import java.util.UUID;
+
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 
@@ -9,10 +11,11 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createCassandra(Network network) {
-        return new GenericContainer<>("cassandra:3.11.3")
+        return new GenericContainer<>("cassandra:3.11.10")
             .withNetworkAliases("cassandra")
             .withNetwork(network)
-            .withExposedPorts(9042);
+            .withExposedPorts(9042)
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-cassandra-testing" + UUID.randomUUID()));
     }
 
     @SuppressWarnings("resource")
@@ -21,15 +24,17 @@ public class ThirdPartyContainers {
             .withNetworkAliases("elasticsearch")
             .withNetwork(network)
             .withExposedPorts(9200)
-            .withEnv("discovery.type", "single-node");
+            .withEnv("discovery.type", "single-node")
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-elasticsearch-testing" + UUID.randomUUID()));
     }
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createRabbitMQ(Network network) {
-        return new GenericContainer<>("rabbitmq:3.8.3-management")
+        return new GenericContainer<>("rabbitmq:3.9.18-management")
             .withNetworkAliases("rabbitmq")
             .withNetwork(network)
-            .withExposedPorts(5672, 15672);
+            .withExposedPorts(5672, 15672)
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-rabbitmq-testing" + UUID.randomUUID()));
     }
 
     @SuppressWarnings("resource")
@@ -40,6 +45,7 @@ public class ThirdPartyContainers {
             .withEnv("SCALITY_ACCESS_KEY_ID", "accessKey1")
             .withEnv("SCALITY_SECRET_ACCESS_KEY", "secretKey1")
             .withEnv("S3BACKEND", "mem")
-            .withEnv("REMOTE_MANAGEMENT_DISABLE", "1");
+            .withEnv("REMOTE_MANAGEMENT_DISABLE", "1")
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-s3-testing" + UUID.randomUUID()));
     }
 }
