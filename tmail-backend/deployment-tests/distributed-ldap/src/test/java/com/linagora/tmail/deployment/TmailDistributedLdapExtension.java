@@ -74,7 +74,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws IOException {
-        String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "distributed").toString(),
+        String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "distributed-ldap").toString(),
             Paths.get("tmail-backend", "apps", "distributed", "target", "jib-image.tar").toString());
         james.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
 
