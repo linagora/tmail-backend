@@ -1,14 +1,17 @@
 package com.linagora.tmail.james.jmap;
 
 import java.net.URI;
+import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 
+import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
-public class RabbitMQEmailAddressContactConfiguration {
+public record RabbitMQEmailAddressContactConfiguration(String queueName, URI amqpUri,
+                                                       RabbitMQConfiguration.ManagementCredentials managementCredentials) {
     static final String DEAD_LETTER_EXCHANGE_PREFIX = "TmailQueue-dead-letter-exchange-";
     static final String DEAD_LETTER_QUEUE_PREFIX = "TmailQueue-dead-letter-queue-";
     static final String AQMP_URI_PROPERTY = "address.contact.uri";
@@ -22,6 +25,9 @@ public class RabbitMQEmailAddressContactConfiguration {
         Preconditions.checkState(!Strings.isNullOrEmpty(aqmpURIAsString),
             String.format("You need to specify the URI of RabbitMQ by '%s' property", AQMP_URI_PROPERTY));
         URI aqmpUri = URI.create(aqmpURIAsString);
+
+        Preconditions.checkState(CharMatcher.is('/').countIn(aqmpUri.getPath()) <= 1,
+            String.format("RabbitMQ URI Specification invalid '%s'", aqmpUri.toASCIIString()));
 
         String managementUser = configuration.getString(AQMP_MANAGEMENT_USER);
         Preconditions.checkState(!Strings.isNullOrEmpty(managementUser),
@@ -37,39 +43,24 @@ public class RabbitMQEmailAddressContactConfiguration {
         return new RabbitMQEmailAddressContactConfiguration(queueName, aqmpUri, managementCredential);
     }
 
-    private final String queueName;
-    private final URI amqpUri;
-    private final RabbitMQConfiguration.ManagementCredentials managementCredentials;
-
-    public RabbitMQEmailAddressContactConfiguration(String queueName,
-                                                    URI amqpUri,
-                                                    RabbitMQConfiguration.ManagementCredentials managementCredentials) {
-        this.queueName = queueName;
-        this.amqpUri = amqpUri;
-        this.managementCredentials = managementCredentials;
-    }
-
     public String getExchangeName() {
         return AQMP_EXCHANGE_PREFIX + queueName;
     }
 
-    public String getQueueName() {
-        return queueName;
-    }
-
     public String getDeadLetterExchange() {
-        return DEAD_LETTER_EXCHANGE_PREFIX + getQueueName();
+        return DEAD_LETTER_EXCHANGE_PREFIX + queueName;
     }
 
     public String getDeadLetterQueue() {
-        return DEAD_LETTER_QUEUE_PREFIX + getQueueName();
+        return DEAD_LETTER_QUEUE_PREFIX + queueName;
     }
 
-    public URI getAmqpUri() {
-        return amqpUri;
-    }
-
-    public RabbitMQConfiguration.ManagementCredentials getManagementCredentials() {
-        return managementCredentials;
+    public Optional<String> vhost() {
+        String vhostPath = amqpUri.getPath();
+        if (vhostPath.startsWith("/")) {
+            return Optional.of(vhostPath.substring(1))
+                .filter(value -> !value.isEmpty());
+        }
+        return Optional.empty();
     }
 }

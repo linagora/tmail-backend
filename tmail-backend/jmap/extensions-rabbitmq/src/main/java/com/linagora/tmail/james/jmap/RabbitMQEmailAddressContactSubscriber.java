@@ -62,7 +62,7 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
                 sender.declareExchange(ExchangeSpecification.exchange(rabbitMQConfiguration.getDeadLetterExchange())
                     .durable(DURABLE)),
                 sender.declareQueue(QueueSpecification
-                    .queue(rabbitMQConfiguration.getQueueName())
+                    .queue(rabbitMQConfiguration.queueName())
                     .durable(DURABLE)
                     .arguments(ImmutableMap.<String, Object>builder()
                         .put("x-dead-letter-exchange", rabbitMQConfiguration.getDeadLetterExchange())
@@ -73,7 +73,7 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
                     .durable(DURABLE)),
                 sender.bind(BindingSpecification.binding()
                     .exchange(rabbitMQConfiguration.getExchangeName())
-                    .queue(rabbitMQConfiguration.getQueueName())
+                    .queue(rabbitMQConfiguration.queueName())
                     .routingKey(EMPTY_ROUTING_KEY)),
                 sender.bind(BindingSpecification.binding()
                     .exchange(rabbitMQConfiguration.getDeadLetterExchange())
@@ -87,7 +87,7 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
 
     public Flux<AcknowledgableDelivery> delivery() {
         return Flux.using(receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(rabbitMQConfiguration.getQueueName()),
+            receiver -> receiver.consumeManualAck(rabbitMQConfiguration.queueName()),
             Receiver::close);
     }
 
