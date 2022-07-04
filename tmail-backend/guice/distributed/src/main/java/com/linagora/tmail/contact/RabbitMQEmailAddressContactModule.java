@@ -42,9 +42,10 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
     @Singleton
     public RabbitMQConfiguration getMailQueueConfiguration(RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration) {
         return RabbitMQConfiguration.builder()
-            .amqpUri(rabbitMQEmailAddressContactConfiguration.getAmqpUri())
-            .managementUri(rabbitMQEmailAddressContactConfiguration.getAmqpUri())
-            .managementCredentials(rabbitMQEmailAddressContactConfiguration.getManagementCredentials())
+            .amqpUri(rabbitMQEmailAddressContactConfiguration.amqpUri())
+            .managementUri(rabbitMQEmailAddressContactConfiguration.amqpUri())
+            .managementCredentials(rabbitMQEmailAddressContactConfiguration.managementCredentials())
+            .vhost(rabbitMQEmailAddressContactConfiguration.vhost())
             .build();
     }
 
