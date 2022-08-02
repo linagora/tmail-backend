@@ -3,9 +3,9 @@ package com.linagora.tmail.james.jmap.module;
 import java.io.IOException;
 import java.util.Optional;
 
-import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
-import org.apache.james.backends.es.v7.IndexCreationFactory;
-import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
+import org.apache.james.backends.opensearch.ElasticSearchConfiguration;
+import org.apache.james.backends.opensearch.IndexCreationFactory;
+import org.apache.james.backends.opensearch.ReactorElasticSearchClient;
 
 import com.linagora.tmail.james.jmap.ContactMappingFactory;
 import com.linagora.tmail.james.jmap.ElasticSearchContactConfiguration;

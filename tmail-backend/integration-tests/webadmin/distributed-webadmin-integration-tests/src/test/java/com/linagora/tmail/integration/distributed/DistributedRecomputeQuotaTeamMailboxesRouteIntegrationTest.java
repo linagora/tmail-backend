@@ -3,8 +3,6 @@ package com.linagora.tmail.integration.distributed;
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
-import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -12,6 +10,7 @@ import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.integration.RecomputeQuotaTeamMailboxesRouteIntegrationContract;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.DockerElasticSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -28,7 +27,7 @@ public class DistributedRecomputeQuotaTeamMailboxesRouteIntegrationTest extends 
                 .noCryptoConfig()
                 .disableSingleSave())
             .build())
-        .extension(new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE))
+        .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())

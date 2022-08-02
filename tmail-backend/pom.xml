@@ -39,7 +39,6 @@
         <module>mailbox/elasticsearch-v6</module>
         <module>mailbox/encrypted</module>
         <module>mailbox/encrypted/pgp-utils</module>
-        <module>mailbox/opendistro-tests</module>
         <module>mailbox/plugin/quota-search-elasticsearch-v6</module>
         <module>mailbox/team-mailboxes</module>
 
@@ -48,7 +47,7 @@
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
         <module>jmap/extensions-es-v6</module>
-        <module>jmap/extensions-es-v7</module>
+        <module>jmap/extensions-opensearch</module>
         <module>jmap/extensions-rabbitmq</module>
 
         <module>rate-limiter/rate-limiter-api</module>
@@ -84,12 +83,12 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>backends-es-v7</artifactId>
+                <artifactId>backends-opensearch</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>backends-es-v7</artifactId>
+                <artifactId>backends-opensearch</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>
@@ -137,7 +136,7 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>jmap-extensions-es-v7</artifactId>
+                <artifactId>jmap-extensions-opensearch</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -254,12 +253,6 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>mailbox-encrypted-cassandra</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>mailbox-opendistro-tests</artifactId>
-                <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

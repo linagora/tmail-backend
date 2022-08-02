@@ -7,24 +7,27 @@ import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 import java.io.IOException;
 import java.util.Optional;
 
-import org.apache.james.backends.es.v7.DockerElasticSearchExtension;
-import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
-import org.apache.james.backends.es.v7.IndexCreationFactory;
-import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
+import org.apache.james.backends.opensearch.DockerElasticSearchExtension;
+import org.apache.james.backends.opensearch.ElasticSearchConfiguration;
+import org.apache.james.backends.opensearch.IndexCreationFactory;
+import org.apache.james.backends.opensearch.ReactorElasticSearchClient;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.opensearch.action.search.SearchRequest;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.index.query.QueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.builder.SearchSourceBuilder;
 
 import com.linagora.tmail.james.jmap.ContactMappingFactory;
 import com.linagora.tmail.james.jmap.ESEmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract;
+import com.linagora.tmail.james.jmap.contact.MatchQuery;
+import com.linagora.tmail.james.jmap.contact.QueryType;
 
 public class ESEmailAddressContactSearchTest implements EmailAddressContactSearchEngineContract {
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
@@ -55,14 +58,22 @@ public class ESEmailAddressContactSearchTest implements EmailAddressContactSearc
     }
 
     @Override
-    public void awaitDocumentsIndexed(QueryBuilder query, long documentCount) {
+    public void awaitDocumentsIndexed(QueryType queryType, long documentCount) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
                     new SearchRequest(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
-                        .source(new SearchSourceBuilder().query(query)),
+                        .source(new SearchSourceBuilder().query(extractOpenSearchQuery(queryType))),
                     RequestOptions.DEFAULT)
                 .block()
                 .getHits().getTotalHits().value).isEqualTo(documentCount));
+    }
+
+    private QueryBuilder extractOpenSearchQuery(QueryType queryType) {
+        if (queryType instanceof MatchQuery) {
+            return QueryBuilders.matchQuery(((MatchQuery) queryType).field(), ((MatchQuery) queryType).value());
+        } else {
+            return QueryBuilders.matchAllQuery();
+        }
     }
 
     private ReactorElasticSearchClient createUserContactIndex(ReactorElasticSearchClient client, ContactMappingFactory contactMappingFactory) throws IOException {
