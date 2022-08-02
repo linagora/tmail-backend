@@ -17,6 +17,7 @@ import org.awaitility.core.ConditionFactory;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -25,6 +26,8 @@ import com.linagora.tmail.james.jmap.ContactMappingFactory;
 import com.linagora.tmail.james.jmap.ES6EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract;
+import com.linagora.tmail.james.jmap.contact.MatchQuery;
+import com.linagora.tmail.james.jmap.contact.QueryType;
 
 public class ES6EmailAddressContactAutoCompleteTest implements EmailAddressContactSearchEngineContract {
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
@@ -55,14 +58,22 @@ public class ES6EmailAddressContactAutoCompleteTest implements EmailAddressConta
     }
 
     @Override
-    public void awaitDocumentsIndexed(QueryBuilder query, long documentCount) {
+    public void awaitDocumentsIndexed(QueryType queryType, long documentCount) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
                     new SearchRequest(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
-                        .source(new SearchSourceBuilder().query(query)),
+                        .source(new SearchSourceBuilder().query(extractElasticSearch6Query(queryType))),
                     RequestOptions.DEFAULT)
                 .block()
                 .getHits().getTotalHits()).isEqualTo(documentCount));
+    }
+
+    private QueryBuilder extractElasticSearch6Query(QueryType queryType) {
+        if (queryType instanceof MatchQuery) {
+            return QueryBuilders.matchQuery(((MatchQuery) queryType).field(), ((MatchQuery) queryType).value());
+        } else {
+            return QueryBuilders.matchAllQuery();
+        }
     }
 
     private ReactorElasticSearchClient createUserContactIndex(ReactorElasticSearchClient client, ContactMappingFactory contactMappingFactory) throws IOException {

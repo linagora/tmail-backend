@@ -12,26 +12,25 @@ import java.io.IOException;
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.backends.es.v7.ReactorElasticSearchClient;
+import org.apache.james.backends.opensearch.ReactorElasticSearchClient;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.rfc8621.contract.Fixture;
-import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
-import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.opensearch.action.search.SearchRequest;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.builder.SearchSourceBuilder;
 
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.DockerElasticSearchExtension;
 import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceContactAutocompleteModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -47,7 +46,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
     private static final com.linagora.tmail.james.app.RabbitMQExtension rabbitMQExtensionModule = new com.linagora.tmail.james.app.RabbitMQExtension();
 
     @RegisterExtension
-    DockerOpenDistroExtension openDistroExtension = new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE);
+    DockerElasticSearchExtension opensearchExtension = new DockerElasticSearchExtension();
 
     @RegisterExtension
     RabbitMQExtension rabbitMQExtension = RabbitMQExtension.dockerRabbitMQ(rabbitMQExtensionModule.dockerRabbitMQ())
@@ -65,7 +64,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
                 .noCryptoConfig()
                 .disableSingleSave())
             .build())
-        .extension(new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE))
+        .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(rabbitMQExtensionModule)
         .extension(new AwsS3BlobStoreExtension())
@@ -74,7 +73,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
             .overrideWith(new JmapGuiceContactAutocompleteModule()))
         .build();
 
-    private final ReactorElasticSearchClient client = openDistroExtension.getDockerOpenDistro().clientProvider().get();
+    private final ReactorElasticSearchClient client = opensearchExtension.getDockerES().clientProvider().get();
 
     @AfterEach
     void tearDown() throws IOException {

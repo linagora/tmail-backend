@@ -40,7 +40,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>jmap-extensions-es-v7</artifactId>
+            <artifactId>jmap-extensions-opensearch</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -92,7 +92,7 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-backends-es-v7</artifactId>
+            <artifactId>apache-james-backends-opensearch</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>

@@ -5,7 +5,6 @@ import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
-import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -44,14 +43,14 @@ object EmailAddressContactSearchEngineContract {
 trait EmailAddressContactSearchEngineContract {
   def testee(): EmailAddressContactSearchEngine
 
-  def awaitDocumentsIndexed(query: QueryBuilder, documentCount: Long): Unit
+  def awaitDocumentsIndexed(query: QueryType, documentCount: Long): Unit
 
   @Test
   def indexShouldReturnMatched(): Unit = {
     SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
     SMono(testee().index(accountId, contactEmptyNameFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactEmptyNameFieldsA, contactEmptyNameFieldsB)
@@ -62,7 +61,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
     SMono(testee().index(accountId, contactEmptyNameFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -78,7 +77,7 @@ trait EmailAddressContactSearchEngineContract {
   def indexWithDifferentAccount(): Unit = {
     SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountIdB, "bit")).asJava().collectList().block())
       .isEmpty()
@@ -89,7 +88,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
@@ -100,7 +99,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -112,7 +111,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactEmptyNameFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
+    awaitDocumentsIndexed(MatchAllQuery(), 3)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactEmptyNameFields)
@@ -123,7 +122,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsB)
@@ -134,7 +133,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Carpent")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
@@ -145,7 +144,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -156,7 +155,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsB)
@@ -167,7 +166,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Carpent")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
@@ -178,7 +177,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dora")).asJava().collectList().block())
       .isEmpty()
@@ -190,7 +189,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
+    awaitDocumentsIndexed(MatchAllQuery(), 3)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "John")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, otherContactFields)
@@ -202,7 +201,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
+    awaitDocumentsIndexed(MatchAllQuery(), 3)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
@@ -214,7 +213,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
+    awaitDocumentsIndexed(MatchAllQuery(), 3)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
@@ -226,7 +225,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
+    awaitDocumentsIndexed(MatchAllQuery(), 3)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "CAR")).asJava().map(_.fields).collectList().block())
@@ -242,7 +241,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, otherContactFields)).block()
     SMono(testee().index(accountId, otherContactFieldsWithUppercaseEmail)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
+    awaitDocumentsIndexed(MatchAllQuery(), 3)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "nobita@linagora.com")).asJava().map(_.fields).collectList().block())
@@ -266,11 +265,11 @@ trait EmailAddressContactSearchEngineContract {
   def deleteShouldDeletePersonalContact(): Unit = {
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     SMono(testee().delete(accountId, otherMailAddress)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 0)
+    awaitDocumentsIndexed(MatchAllQuery(), 0)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .isEmpty()
@@ -280,11 +279,11 @@ trait EmailAddressContactSearchEngineContract {
   def deleteShouldDeleteDomainContact(): Unit = {
     SMono(testee().index(domain, contactFieldsA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     SMono(testee().delete(domain, mailAddressA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 0)
+    awaitDocumentsIndexed(MatchAllQuery(), 0)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .isEmpty()
@@ -295,11 +294,11 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     SMono(testee().delete(accountId, otherMailAddress)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA)
@@ -310,11 +309,11 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     SMono(testee().delete(domain, mailAddressA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsB)
@@ -338,11 +337,11 @@ trait EmailAddressContactSearchEngineContract {
 
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     SMono(testee().update(accountId, updatedContact)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchQuery("surname", "Carpenter"), 1)
+    awaitDocumentsIndexed(MatchQuery("surname", "Carpenter"), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(updatedContact)
@@ -354,11 +353,11 @@ trait EmailAddressContactSearchEngineContract {
 
     SMono(testee().index(domain, contactFieldsA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     SMono(testee().update(domain, updatedContact)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchQuery("firstname", "Marie"), 1)
+    awaitDocumentsIndexed(MatchQuery("firstname", "Marie"), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(updatedContact)
@@ -368,7 +367,7 @@ trait EmailAddressContactSearchEngineContract {
   def updatePersonalContactShouldCreateContactIfNotExist(): Unit = {
     SMono(testee().update(accountId, contactFieldsA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Car")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA)
@@ -378,7 +377,7 @@ trait EmailAddressContactSearchEngineContract {
   def updateDomainContactShouldCreateContactIfNotExist(): Unit = {
     SMono(testee().update(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "Mari")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsB)
@@ -391,11 +390,11 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     SMono(testee().update(accountId, updatedContact)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchQuery("firstname", "Marie"), 1)
+    awaitDocumentsIndexed(MatchQuery("firstname", "Marie"), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "John")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA)
@@ -408,11 +407,11 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     SMono(testee().update(domain, updatedContact)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchQuery("firstname", "Marie"), 1)
+    awaitDocumentsIndexed(MatchQuery("firstname", "Marie"), 1)
 
     assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "John")).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA)
@@ -429,7 +428,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
@@ -440,7 +439,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().map(_.fields).collectList().block())
       .isEmpty()
@@ -451,7 +450,7 @@ trait EmailAddressContactSearchEngineContract {
     IntStream.range(0, bigContactsNumber)
       .forEach((i: Int) => SMono(testee().index(accountId, ContactFields(new MailAddress(s"test$i@linagora.com")))).block())
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, bigContactsNumber)
+    awaitDocumentsIndexed(MatchAllQuery(), bigContactsNumber)
 
     assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().collectList().block().size())
       .isEqualTo(bigContactsNumber)
@@ -468,7 +467,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB)
@@ -479,7 +478,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().map(_.fields).collectList().block())
       .isEmpty()
@@ -490,7 +489,7 @@ trait EmailAddressContactSearchEngineContract {
     IntStream.range(0, bigContactsNumber)
       .forEach((i: Int) => SMono(testee().index(domain, ContactFields(new MailAddress(s"test$i@linagora.com")))).block())
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, bigContactsNumber)
+    awaitDocumentsIndexed(MatchAllQuery(), bigContactsNumber)
 
     assertThat(SFlux.fromPublisher(testee().list(domain)).asJava().collectList().block().size())
       .isEqualTo(bigContactsNumber)
@@ -506,7 +505,7 @@ trait EmailAddressContactSearchEngineContract {
   def listDomainsContactsShouldReturnDomainContact(): Unit = {
     SMono(testee().index(domain, contactFieldsA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA)
@@ -518,7 +517,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsB)).block()
     SMono(testee().index(Domain.of("other.com"), otherContactFields)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 3)
+    awaitDocumentsIndexed(MatchAllQuery(), 3)
 
     assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().map(_.fields).collectList().block())
       .containsExactlyInAnyOrder(contactFieldsA, contactFieldsB, otherContactFields)
@@ -529,7 +528,7 @@ trait EmailAddressContactSearchEngineContract {
     IntStream.range(0, bigContactsNumber)
       .forEach((i: Int) => SMono(testee().index(domain, ContactFields(new MailAddress(s"test$i@linagora.com")))).block())
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, bigContactsNumber)
+    awaitDocumentsIndexed(MatchAllQuery(), bigContactsNumber)
 
     assertThat(SFlux.fromPublisher(testee().listDomainsContacts()).asJava().collectList().block().size())
       .isEqualTo(bigContactsNumber)
@@ -539,7 +538,7 @@ trait EmailAddressContactSearchEngineContract {
   def getAccountContactShouldReturnContact(): Unit = {
     SMono(testee().index(accountId, contactFieldsA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     assertThat(SMono.fromPublisher(testee().get(accountId, mailAddressA)).asJava().map(_.fields).block())
       .isEqualTo(contactFieldsA)
@@ -556,7 +555,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(accountId, contactFieldsA)).block()
     SMono(testee().index(accountId, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SMono.fromPublisher(testee().get(accountId, mailAddressA)).asJava().map(_.fields).block())
       .isEqualTo(contactFieldsA)
@@ -566,7 +565,7 @@ trait EmailAddressContactSearchEngineContract {
   def getDomainContactShouldReturnContact(): Unit = {
     SMono(testee().index(domain, contactFieldsA)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 1)
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
 
     assertThat(SMono.fromPublisher(testee().get(domain, mailAddressA)).asJava().map(_.fields).block())
       .isEqualTo(contactFieldsA)
@@ -583,7 +582,7 @@ trait EmailAddressContactSearchEngineContract {
     SMono(testee().index(domain, contactFieldsA)).block()
     SMono(testee().index(domain, contactFieldsB)).block()
 
-    awaitDocumentsIndexed(QueryBuilders.matchAllQuery, 2)
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
 
     assertThat(SMono.fromPublisher(testee().get(domain, mailAddressA)).asJava().map(_.fields).block())
       .isEqualTo(contactFieldsA)

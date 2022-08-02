@@ -22,11 +22,6 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>mailbox-opendistro-tests</artifactId>
-            <type>test-jar</type>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>smtp-extensions</artifactId>
         </dependency>
         <dependency>
@@ -47,7 +42,7 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-backends-es-v7</artifactId>
+            <artifactId>apache-james-backends-opensearch</artifactId>
             <scope>test</scope>
             <type>test-jar</type>
         </dependency>

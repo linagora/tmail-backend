@@ -3,8 +3,6 @@ package com.linagora.tmail.james;
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.mailbox.opendistro.DockerOpenDistroExtension;
-import org.apache.james.mailbox.opendistro.DockerOpenDistroSingleton;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -15,6 +13,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.DockerElasticSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraLongLivedTokenSetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
@@ -36,7 +35,7 @@ public class DistributedLinagoraLongLivedTokenSetMethodTest implements LinagoraL
                 .disableSingleSave())
             .mailbox(new MailboxConfiguration(true))
             .build())
-        .extension(new DockerOpenDistroExtension(DockerOpenDistroSingleton.INSTANCE))
+        .extension(new DockerElasticSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())

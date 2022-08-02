@@ -1,17 +1,17 @@
 package com.linagora.tmail.james.jmap;
 
-import static org.apache.james.backends.es.v7.IndexCreationFactory.ANALYZER;
-import static org.apache.james.backends.es.v7.IndexCreationFactory.KEYWORD;
-import static org.apache.james.backends.es.v7.IndexCreationFactory.PROPERTIES;
-import static org.apache.james.backends.es.v7.IndexCreationFactory.SEARCH_ANALYZER;
-import static org.apache.james.backends.es.v7.IndexCreationFactory.TOKENIZER;
-import static org.apache.james.backends.es.v7.IndexCreationFactory.TYPE;
-import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
+import static org.apache.james.backends.opensearch.IndexCreationFactory.ANALYZER;
+import static org.apache.james.backends.opensearch.IndexCreationFactory.KEYWORD;
+import static org.apache.james.backends.opensearch.IndexCreationFactory.PROPERTIES;
+import static org.apache.james.backends.opensearch.IndexCreationFactory.SEARCH_ANALYZER;
+import static org.apache.james.backends.opensearch.IndexCreationFactory.TOKENIZER;
+import static org.apache.james.backends.opensearch.IndexCreationFactory.TYPE;
+import static org.opensearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
 
-import org.apache.james.backends.es.v7.ElasticSearchConfiguration;
-import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.apache.james.backends.opensearch.ElasticSearchConfiguration;
+import org.opensearch.common.xcontent.XContentBuilder;
 
 public class ContactMappingFactory {
 
