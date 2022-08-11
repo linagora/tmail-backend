@@ -27,11 +27,6 @@ pipeline {
                     sh 'mvn -B surefire:test'
                 }
             }
-            post {
-                always {
-                    deleteDir() /* clean up our workspace */
-                }
-            }
         }
         stage('Deliver Docker images') {
           when {
@@ -83,6 +78,9 @@ Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANC
         }
     }
     post {
+        always {
+            deleteDir() /* clean up our workspace */
+        }
         success {
             script {
                 if (env.BRANCH_NAME == "master") {
