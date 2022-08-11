@@ -27,6 +27,11 @@ pipeline {
                     sh 'mvn -B surefire:test'
                 }
             }
+            post {
+                always {
+                    deleteDir() /* clean up our workspace */
+                }
+            }
         }
         stage('Deliver Docker images') {
           when {
@@ -43,11 +48,6 @@ pipeline {
               }
 
               echo "Docker tag: ${env.DOCKER_TAG}"
-
-              // Load docker from tar file
-              sh "docker load -i apps/distributed/target/jib-image.tar"
-              sh "docker load -i apps/distributed-es6-backport/target/jib-image.tar"
-              sh "docker load -i apps/memory/target/jib-image.tar"
 
               // Temporary retag image names
               sh "docker tag linagora/tmail-backend-memory linagora/tmail-backend:memory-${env.DOCKER_TAG}"
@@ -66,7 +66,6 @@ pipeline {
           }
           post {
               always {
-                  deleteDir() /* clean up our workspace */
                   script {
                       if (env.BRANCH_NAME == "master") {
                           emailext(
