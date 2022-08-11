@@ -6,10 +6,6 @@ import static com.linagora.tmail.deployment.ThirdPartyContainers.createElasticse
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createRabbitMQ;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createS3;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.UUID;
 
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
@@ -73,11 +69,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
     }
 
     @Override
-    public void beforeEach(ExtensionContext extensionContext) throws IOException {
-        String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "distributed-ldap").toString(),
-            Paths.get("tmail-backend", "apps", "distributed", "target", "jib-image.tar").toString());
-        james.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
-
+    public void beforeEach(ExtensionContext extensionContext) {
         Runnables.runParallel(
             cassandra::start,
             elasticsearch::start,

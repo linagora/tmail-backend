@@ -217,7 +217,7 @@
                     <execution>
                         <phase>package</phase>
                         <goals>
-                            <goal>buildTar</goal>
+                            <goal>dockerBuild</goal>
                         </goals>
                     </execution>
                 </executions>
