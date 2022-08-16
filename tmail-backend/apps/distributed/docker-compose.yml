@@ -7,7 +7,7 @@ networks:
 services:
   james:
     depends_on:
-      - opensearch
+      - elasticsearch
       - cassandra
       - tika
       - rabbitmq
@@ -33,10 +33,12 @@ services:
       # openssl genrsa -out jwt_privatekey 4096
       # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
 
-  opensearch:
+  elasticsearch:
     image: opensearchproject/opensearch:2.1.0
     environment:
       - discovery.type=single-node
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
     networks:
       - emaily
 
