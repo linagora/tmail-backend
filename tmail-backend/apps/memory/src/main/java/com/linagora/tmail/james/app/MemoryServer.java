@@ -28,7 +28,6 @@ import org.apache.james.modules.queue.memory.MemoryMailQueueModule;
 import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.TaskManagerModule;
-import org.apache.james.modules.spamassassin.SpamAssassinListenerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultModule;
 import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 
@@ -122,8 +121,7 @@ public class MemoryServer {
           WEBADMIN,
           new TeamMailboxModule(),
           new TeamMailboxRoutesModule(),
-          new DKIMMailetModule(),
-          new SpamAssassinListenerModule())
+          new DKIMMailetModule())
         .with(new TeamMailboxModule(),
             new TMailScanningQuotaSearcherModule(),
             new MemoryRateLimiterModule(),
