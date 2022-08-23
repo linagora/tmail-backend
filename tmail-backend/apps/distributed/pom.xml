@@ -122,12 +122,6 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-spamassassin</artifactId>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>${james.groupId}</groupId>
             <artifactId>apache-mailet-icalendar</artifactId>
         </dependency>
         <dependency>
@@ -222,10 +216,6 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-mailbox</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${james.groupId}</groupId>
-            <artifactId>james-server-guice-mailbox-plugin-spamassassin</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
