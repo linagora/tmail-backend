@@ -51,6 +51,12 @@
             <mailet match="RecipientIsLocal" class="com.linagora.tmail.mailets.TmailLocalDelivery" />
         </processor>
 
+        <processor state="bounces" enableJmx="false">
+            <mailet match="All" class="DSNBounce">
+                <passThrough>false</passThrough>
+            </mailet>
+        </processor>
+
         <processor state="error" enableJmx="false">
             <mailet match="All" class="org.apache.james.transport.mailets.ToRepository">
                 <repositoryPath>cassandra://var/mail/error</repositoryPath>
