@@ -15,8 +15,8 @@ import javax.inject.Inject;
 import javax.mail.internet.AddressException;
 
 import org.apache.james.backends.opensearch.DocumentId;
-import org.apache.james.backends.opensearch.ElasticSearchIndexer;
-import org.apache.james.backends.opensearch.ReactorElasticSearchClient;
+import org.apache.james.backends.opensearch.OpenSearchIndexer;
+import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
 import org.apache.james.backends.opensearch.RoutingKey;
 import org.apache.james.backends.opensearch.search.ScrolledSearch;
 import org.apache.james.core.Domain;
@@ -47,21 +47,21 @@ import com.linagora.tmail.james.jmap.dto.UserContactDocument;
 
 import reactor.core.publisher.Mono;
 
-public class ESEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
+public class OSEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final String DELIMITER = ":";
     private static final TimeValue TIMEOUT = TimeValue.timeValueMinutes(1);
 
-    private final ElasticSearchIndexer userContactIndexer;
-    private final ElasticSearchIndexer domainContactIndexer;
-    private final ReactorElasticSearchClient client;
-    private final ElasticSearchContactConfiguration configuration;
+    private final OpenSearchIndexer userContactIndexer;
+    private final OpenSearchIndexer domainContactIndexer;
+    private final ReactorOpenSearchClient client;
+    private final OpenSearchContactConfiguration configuration;
     private final ObjectMapper mapper;
 
     @Inject
-    public ESEmailAddressContactSearchEngine(ReactorElasticSearchClient client, ElasticSearchContactConfiguration contactConfiguration) {
+    public OSEmailAddressContactSearchEngine(ReactorOpenSearchClient client, OpenSearchContactConfiguration contactConfiguration) {
         this.client = client;
-        this.userContactIndexer = new ElasticSearchIndexer(client, contactConfiguration.getUserContactWriteAliasName());
-        this.domainContactIndexer = new ElasticSearchIndexer(client, contactConfiguration.getDomainContactWriteAliasName());
+        this.userContactIndexer = new OpenSearchIndexer(client, contactConfiguration.getUserContactWriteAliasName());
+        this.domainContactIndexer = new OpenSearchIndexer(client, contactConfiguration.getDomainContactWriteAliasName());
         this.configuration = contactConfiguration;
         this.mapper = new ObjectMapper().registerModule(new GuavaModule()).registerModule(new Jdk8Module());
     }

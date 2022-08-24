@@ -1,7 +1,7 @@
 package com.linagora.tmail.james;
 
 import static com.linagora.tmail.james.app.TestRabbitMQModule.ADDRESS_CONTACT_EXCHANGE;
-import static com.linagora.tmail.james.jmap.ElasticSearchContactConfiguration.DEFAULT_CONFIGURATION;
+import static com.linagora.tmail.james.jmap.OpenSearchContactConfiguration.DEFAULT_CONFIGURATION;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -12,7 +12,7 @@ import java.io.IOException;
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.backends.opensearch.ReactorElasticSearchClient;
+import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.rfc8621.contract.Fixture;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
@@ -30,7 +30,7 @@ import org.opensearch.search.builder.SearchSourceBuilder;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
-import com.linagora.tmail.james.app.DockerElasticSearchExtension;
+import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceContactAutocompleteModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -46,7 +46,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
     private static final com.linagora.tmail.james.app.RabbitMQExtension rabbitMQExtensionModule = new com.linagora.tmail.james.app.RabbitMQExtension();
 
     @RegisterExtension
-    DockerElasticSearchExtension opensearchExtension = new DockerElasticSearchExtension();
+    DockerOpenSearchExtension opensearchExtension = new DockerOpenSearchExtension();
 
     @RegisterExtension
     RabbitMQExtension rabbitMQExtension = RabbitMQExtension.dockerRabbitMQ(rabbitMQExtensionModule.dockerRabbitMQ())
@@ -64,7 +64,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
                 .noCryptoConfig()
                 .disableSingleSave())
             .build())
-        .extension(new DockerElasticSearchExtension())
+        .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(rabbitMQExtensionModule)
         .extension(new AwsS3BlobStoreExtension())
@@ -73,7 +73,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
             .overrideWith(new JmapGuiceContactAutocompleteModule()))
         .build();
 
-    private final ReactorElasticSearchClient client = opensearchExtension.getDockerES().clientProvider().get();
+    private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();
 
     @AfterEach
     void tearDown() throws IOException {

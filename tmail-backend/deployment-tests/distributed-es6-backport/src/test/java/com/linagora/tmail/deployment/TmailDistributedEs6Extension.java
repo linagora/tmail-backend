@@ -1,8 +1,9 @@
 package com.linagora.tmail.deployment;
 
 import static com.linagora.tmail.deployment.ThirdPartyContainers.ES6_IMAGE_NAME;
+import static com.linagora.tmail.deployment.ThirdPartyContainers.ES6_NETWORK_ALIAS;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createCassandra;
-import static com.linagora.tmail.deployment.ThirdPartyContainers.createElasticsearch;
+import static com.linagora.tmail.deployment.ThirdPartyContainers.createSearchContainer;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createRabbitMQ;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createS3;
 
@@ -34,7 +35,7 @@ public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEa
     public TmailDistributedEs6Extension() {
         network = Network.newNetwork();
         cassandra = createCassandra(network);
-        elasticsearch = createElasticsearch(network, ES6_IMAGE_NAME);
+        elasticsearch = createSearchContainer(network, ES6_IMAGE_NAME, ES6_NETWORK_ALIAS);
         rabbitmq = createRabbitMQ(network);
         s3 = createS3(network);
         james = createTmailDistributed();

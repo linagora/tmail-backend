@@ -16,7 +16,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
-import com.linagora.tmail.james.app.DockerElasticSearchExtension;
+import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraShortLivedTokenRoutesContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
@@ -38,7 +38,7 @@ public class DistributedShortLivedTokenRoutesTest implements LinagoraShortLivedT
                 .disableSingleSave())
             .mailbox(new MailboxConfiguration(true))
             .build())
-        .extension(new DockerElasticSearchExtension())
+        .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())

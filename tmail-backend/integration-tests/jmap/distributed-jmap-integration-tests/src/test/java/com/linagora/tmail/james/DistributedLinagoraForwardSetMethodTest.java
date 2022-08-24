@@ -10,7 +10,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
-import com.linagora.tmail.james.app.DockerElasticSearchExtension;
+import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraForwardSetMethodContract;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -26,9 +26,9 @@ public class DistributedLinagoraForwardSetMethodTest implements LinagoraForwardS
                 .deduplication()
                 .noCryptoConfig()
                 .disableSingleSave())
-            .searchConfiguration(SearchConfiguration.elasticSearch())
+            .searchConfiguration(SearchConfiguration.openSearch())
             .build())
-        .extension(new DockerElasticSearchExtension())
+        .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
