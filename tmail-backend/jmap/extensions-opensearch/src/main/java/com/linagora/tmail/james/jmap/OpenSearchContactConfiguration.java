@@ -8,7 +8,7 @@ import org.apache.james.backends.opensearch.IndexName;
 import org.apache.james.backends.opensearch.ReadAliasName;
 import org.apache.james.backends.opensearch.WriteAliasName;
 
-public class ElasticSearchContactConfiguration {
+public class OpenSearchContactConfiguration {
 
     public static class Builder {
         private Optional<IndexName> userContactIndexName;
@@ -71,8 +71,8 @@ public class ElasticSearchContactConfiguration {
             return this;
         }
 
-        public ElasticSearchContactConfiguration build() {
-            return new ElasticSearchContactConfiguration(
+        public OpenSearchContactConfiguration build() {
+            return new OpenSearchContactConfiguration(
                 userContactIndexName.orElse(DEFAULT_INDEX_USER_CONTACT_NAME),
                 domainContactIndexName.orElse(DEFAULT_INDEX_DOMAIN_CONTACT_NAME),
                 userContactReadAliasName.orElse(DEFAULT_ALIAS_READ_USER_CONTACT_NAME),
@@ -88,14 +88,14 @@ public class ElasticSearchContactConfiguration {
         return new Builder();
     }
 
-    private static final String ELASTICSEARCH_INDEX_USER_CONTACT_NAME = "elasticsearch.index.contact.user.name";
-    private static final String ELASTICSEARCH_INDEX_DOMAIN_CONTACT_NAME = "elasticsearch.index.contact.domain.name";
-    private static final String ELASTICSEARCH_ALIAS_READ_USER_CONTACT_NAME = "elasticsearch.alias.read.contact.user.name";
-    private static final String ELASTICSEARCH_ALIAS_WRITE_USER_CONTACT_NAME = "elasticsearch.alias.write.contact.user.name";
-    private static final String ELASTICSEARCH_ALIAS_READ_DOMAIN_CONTACT_NAME = "elasticsearch.alias.read.contact.domain.name";
-    private static final String ELASTICSEARCH_ALIAS_WRITE_DOMAIN_CONTACT_NAME = "elasticsearch.alias.write.contact.domain.name";
-    private static final String ELASTICSEARCH_INDEX_CONTACT_MAX_NGRAM_DIFF = "elasticsearch.index.contact.max.ngram.diff";
-    private static final String ELASTICSEARCH_INDEX_CONTACT_MIN_NGRAM = "elasticsearch.index.contact.min.ngram";
+    private static final String OPENSEARCH_INDEX_USER_CONTACT_NAME = "opensearch.index.contact.user.name";
+    private static final String OPENSEARCH_INDEX_DOMAIN_CONTACT_NAME = "opensearch.index.contact.domain.name";
+    private static final String OPENSEARCH_ALIAS_READ_USER_CONTACT_NAME = "opensearch.alias.read.contact.user.name";
+    private static final String OPENSEARCH_ALIAS_WRITE_USER_CONTACT_NAME = "opensearch.alias.write.contact.user.name";
+    private static final String OPENSEARCH_ALIAS_READ_DOMAIN_CONTACT_NAME = "opensearch.alias.read.contact.domain.name";
+    private static final String OPENSEARCH_ALIAS_WRITE_DOMAIN_CONTACT_NAME = "opensearch.alias.write.contact.domain.name";
+    private static final String OPENSEARCH_INDEX_CONTACT_MAX_NGRAM_DIFF = "opensearch.index.contact.max.ngram.diff";
+    private static final String OPENSEARCH_INDEX_CONTACT_MIN_NGRAM = "opensearch.index.contact.min.ngram";
 
     public static final IndexName DEFAULT_INDEX_USER_CONTACT_NAME = new IndexName("user_contact");
     public static final IndexName DEFAULT_INDEX_DOMAIN_CONTACT_NAME = new IndexName("domain_contact");
@@ -106,9 +106,9 @@ public class ElasticSearchContactConfiguration {
     public static final Integer DEFAULT_MAX_NGRAM_DIFF = 27;
     public static final Integer DEFAULT_MIN_NGRAM = 3;
 
-    public static final ElasticSearchContactConfiguration DEFAULT_CONFIGURATION = builder().build();
+    public static final OpenSearchContactConfiguration DEFAULT_CONFIGURATION = builder().build();
 
-    public static ElasticSearchContactConfiguration fromProperties(Configuration configuration) {
+    public static OpenSearchContactConfiguration fromProperties(Configuration configuration) {
         return builder()
             .userContactIndexName(computeUserContactIndexName(configuration))
             .domainContactIndexName(computeDomainContactIndexName(configuration))
@@ -122,41 +122,41 @@ public class ElasticSearchContactConfiguration {
     }
 
     static Optional<IndexName> computeUserContactIndexName(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_INDEX_USER_CONTACT_NAME))
+        return Optional.ofNullable(configuration.getString(OPENSEARCH_INDEX_USER_CONTACT_NAME))
                 .map(IndexName::new);
     }
 
     static Optional<IndexName> computeDomainContactIndexName(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_INDEX_DOMAIN_CONTACT_NAME))
+        return Optional.ofNullable(configuration.getString(OPENSEARCH_INDEX_DOMAIN_CONTACT_NAME))
             .map(IndexName::new);
     }
 
     static Optional<WriteAliasName> computeUserContactWriteAlias(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_WRITE_USER_CONTACT_NAME))
+        return Optional.ofNullable(configuration.getString(OPENSEARCH_ALIAS_WRITE_USER_CONTACT_NAME))
                 .map(WriteAliasName::new);
     }
 
     static Optional<ReadAliasName> computeUserContactReadAlias(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_READ_USER_CONTACT_NAME))
+        return Optional.ofNullable(configuration.getString(OPENSEARCH_ALIAS_READ_USER_CONTACT_NAME))
                 .map(ReadAliasName::new);
     }
 
     static Optional<WriteAliasName> computeDomainContactWriteAlias(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_WRITE_DOMAIN_CONTACT_NAME))
+        return Optional.ofNullable(configuration.getString(OPENSEARCH_ALIAS_WRITE_DOMAIN_CONTACT_NAME))
             .map(WriteAliasName::new);
     }
 
     static Optional<ReadAliasName> computeDomainContactReadAlias(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ELASTICSEARCH_ALIAS_READ_DOMAIN_CONTACT_NAME))
+        return Optional.ofNullable(configuration.getString(OPENSEARCH_ALIAS_READ_DOMAIN_CONTACT_NAME))
             .map(ReadAliasName::new);
     }
 
     static Optional<Integer> computeMaxNgramDiff(Configuration configuration) {
-        return Optional.ofNullable(configuration.getInteger(ELASTICSEARCH_INDEX_CONTACT_MAX_NGRAM_DIFF, null));
+        return Optional.ofNullable(configuration.getInteger(OPENSEARCH_INDEX_CONTACT_MAX_NGRAM_DIFF, null));
     }
 
     static Optional<Integer> computeMinNgram(Configuration configuration) {
-        return Optional.ofNullable(configuration.getInteger(ELASTICSEARCH_INDEX_CONTACT_MIN_NGRAM, null));
+        return Optional.ofNullable(configuration.getInteger(OPENSEARCH_INDEX_CONTACT_MIN_NGRAM, null));
     }
 
     private final IndexName userContactIndexName;
@@ -168,9 +168,9 @@ public class ElasticSearchContactConfiguration {
     private final int maxNgramDiff;
     private final int minNgram;
 
-    private ElasticSearchContactConfiguration(IndexName userContactIndexName, IndexName domainContactIndexName, ReadAliasName userContactReadAliasName,
-                                              WriteAliasName userContactWriteAliasName, ReadAliasName domainContactReadAliasName, WriteAliasName domainContactWriteAliasName,
-                                              int maxNgramDiff, int minNgram) {
+    private OpenSearchContactConfiguration(IndexName userContactIndexName, IndexName domainContactIndexName, ReadAliasName userContactReadAliasName,
+                                           WriteAliasName userContactWriteAliasName, ReadAliasName domainContactReadAliasName, WriteAliasName domainContactWriteAliasName,
+                                           int maxNgramDiff, int minNgram) {
         this.userContactIndexName = userContactIndexName;
         this.domainContactIndexName = domainContactIndexName;
         this.userContactReadAliasName = userContactReadAliasName;
@@ -215,7 +215,7 @@ public class ElasticSearchContactConfiguration {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof ElasticSearchContactConfiguration that) {
+        if (o instanceof OpenSearchContactConfiguration that) {
             return Objects.equals(this.userContactIndexName, that.userContactIndexName)
                 && Objects.equals(this.domainContactIndexName, that.domainContactIndexName)
                 && Objects.equals(this.userContactReadAliasName, that.userContactReadAliasName)

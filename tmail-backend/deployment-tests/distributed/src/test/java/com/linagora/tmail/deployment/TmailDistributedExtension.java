@@ -1,8 +1,9 @@
 package com.linagora.tmail.deployment;
 
 import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_IMAGE_NAME;
+import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_NETWORK_ALIAS;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createCassandra;
-import static com.linagora.tmail.deployment.ThirdPartyContainers.createElasticsearch;
+import static com.linagora.tmail.deployment.ThirdPartyContainers.createSearchContainer;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createRabbitMQ;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createS3;
 
@@ -25,7 +26,7 @@ import org.testcontainers.utility.MountableFile;
 public class TmailDistributedExtension implements BeforeEachCallback, AfterEachCallback {
     private final Network network;
     private final GenericContainer<?> cassandra;
-    private final GenericContainer<?> elasticsearch;
+    private final GenericContainer<?> opensearch;
     private final GenericContainer<?> rabbitmq;
     private final GenericContainer<?> s3;
     private final GenericContainer<?> james;
@@ -33,7 +34,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
     public TmailDistributedExtension() {
         network = Network.newNetwork();
         cassandra = createCassandra(network);
-        elasticsearch = createElasticsearch(network, OS_IMAGE_NAME);
+        opensearch = createSearchContainer(network, OS_IMAGE_NAME, OS_NETWORK_ALIAS);
         rabbitmq = createRabbitMQ(network);
         s3 = createS3(network);
         james = createTmailDistributed();
@@ -44,7 +45,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
         return new GenericContainer<>("linagora/tmail-backend-distributed:latest")
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
-            .dependsOn(cassandra, elasticsearch, s3, rabbitmq)
+            .dependsOn(cassandra, opensearch, s3, rabbitmq)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
@@ -61,7 +62,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
 
         Runnables.runParallel(
             cassandra::start,
-            elasticsearch::start,
+            opensearch::start,
             rabbitmq::start,
             s3::start);
         james.start();
@@ -72,7 +73,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
         james.stop();
         Runnables.runParallel(
             cassandra::stop,
-            elasticsearch::stop,
+            opensearch::stop,
             rabbitmq::stop,
             s3::stop);
     }

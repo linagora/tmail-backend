@@ -10,7 +10,7 @@ import static org.opensearch.common.xcontent.XContentFactory.jsonBuilder;
 
 import java.io.IOException;
 
-import org.apache.james.backends.opensearch.ElasticSearchConfiguration;
+import org.apache.james.backends.opensearch.OpenSearchConfiguration;
 import org.opensearch.common.xcontent.XContentBuilder;
 
 public class ContactMappingFactory {
@@ -33,11 +33,11 @@ public class ContactMappingFactory {
     public static final String MIN_GRAM = "min_gram";
     public static final String MAX_NGRAM = "max_gram";
 
-    private final ElasticSearchConfiguration elasticSearchConfiguration;
-    private final ElasticSearchContactConfiguration contactConfiguration;
+    private final OpenSearchConfiguration openSearchConfiguration;
+    private final OpenSearchContactConfiguration contactConfiguration;
 
-    public ContactMappingFactory(ElasticSearchConfiguration configuration, ElasticSearchContactConfiguration contactConfiguration) {
-        this.elasticSearchConfiguration = configuration;
+    public ContactMappingFactory(OpenSearchConfiguration configuration, OpenSearchContactConfiguration contactConfiguration) {
+        this.openSearchConfiguration = configuration;
         this.contactConfiguration = contactConfiguration;
     }
 
@@ -45,9 +45,9 @@ public class ContactMappingFactory {
         return jsonBuilder()
             .startObject()
                 .startObject("settings")
-                    .field("number_of_shards", elasticSearchConfiguration.getNbShards())
-                    .field("number_of_replicas", elasticSearchConfiguration.getNbReplica())
-                    .field("index.write.wait_for_active_shards", elasticSearchConfiguration.getWaitForActiveShards())
+                    .field("number_of_shards", openSearchConfiguration.getNbShards())
+                    .field("number_of_replicas", openSearchConfiguration.getNbReplica())
+                    .field("index.write.wait_for_active_shards", openSearchConfiguration.getWaitForActiveShards())
                     .startObject("index")
                         .field("max_ngram_diff", contactConfiguration.getMaxNgramDiff())
                     .endObject()

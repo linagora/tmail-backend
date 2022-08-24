@@ -8,6 +8,8 @@ import org.testcontainers.containers.Network;
 public class ThirdPartyContainers {
     public static String ES6_IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:6.3.2";
     public static String OS_IMAGE_NAME = "opensearchproject/opensearch:2.1.0";
+    public static String ES6_NETWORK_ALIAS = "elasticsearch";
+    public static String OS_NETWORK_ALIAS = "opensearch";
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createCassandra(Network network) {
@@ -19,15 +21,15 @@ public class ThirdPartyContainers {
     }
 
     @SuppressWarnings("resource")
-    public static GenericContainer<?> createElasticsearch(Network network, String imageName) {
+    public static GenericContainer<?> createSearchContainer(Network network, String imageName, String networkAlias) {
         return new GenericContainer<>(imageName)
-            .withNetworkAliases("elasticsearch")
+            .withNetworkAliases(networkAlias)
             .withNetwork(network)
             .withExposedPorts(9200)
             .withEnv("discovery.type", "single-node")
             .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
             .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-elasticsearch-testing" + UUID.randomUUID()));
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-search-testing" + UUID.randomUUID()));
     }
 
     @SuppressWarnings("resource")
