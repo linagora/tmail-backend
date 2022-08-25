@@ -151,6 +151,12 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-guice-distributed</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-rate-limiter-cassandra</artifactId>
                 <version>${project.version}</version>
             </dependency>
