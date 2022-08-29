@@ -6,6 +6,7 @@ import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
 import java.util.List;
 
+import org.apache.james.ExtraProperties;
 import org.apache.james.FakeSearchMailboxModule;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
@@ -143,6 +144,8 @@ public class MemoryServer {
     }
 
     public static GuiceJamesServer createServer(MemoryConfiguration configuration) {
+        ExtraProperties.initialize();
+
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())

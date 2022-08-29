@@ -5,6 +5,7 @@ import static org.apache.james.JamesServerMain.LOGGER;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
@@ -240,6 +241,8 @@ public class DistributedServer {
     }
 
     public static GuiceJamesServer createServer(DistributedJamesConfiguration configuration) {
+        ExtraProperties.initialize();
+
         BlobStoreConfiguration blobStoreConfiguration = configuration.blobStoreConfiguration();
         SearchConfiguration searchConfiguration = configuration.searchConfiguration();
 
