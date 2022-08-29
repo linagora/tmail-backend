@@ -13,8 +13,6 @@ import org.apache.james.task.TaskType;
 
 import com.linagora.tmail.webadmin.quota.recompute.RecomputeQuotaTeamMailboxesService.Context;
 
-import reactor.core.scheduler.Schedulers;
-
 public class RecomputeQuotaTeamMailboxesTask implements Task {
     static final TaskType TASK_TYPE = TaskType.of("recompute-quota-team-mailboxes");
 
@@ -65,7 +63,6 @@ public class RecomputeQuotaTeamMailboxesTask implements Task {
     @Override
     public Result run() {
         return service.recompute(teamMailboxDomain, context)
-            .subscribeOn(Schedulers.elastic())
             .block();
     }
 

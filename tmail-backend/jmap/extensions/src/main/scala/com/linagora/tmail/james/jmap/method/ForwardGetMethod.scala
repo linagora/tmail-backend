@@ -7,6 +7,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWAR
 import com.linagora.tmail.james.jmap.model.Forwards.UNPARSED_SINGLETON
 import com.linagora.tmail.james.jmap.model.{ForwardGetRequest, ForwardGetResponse, ForwardNotFound, Forwards, UnparsedForwardId}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodCallId, MethodName}
@@ -19,11 +20,10 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.rrt.api.RecipientRewriteTable
 import org.apache.james.rrt.lib.{Mapping, MappingSource}
+import org.apache.james.util.ReactorUtils
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
-import reactor.core.scheduler.Schedulers
 
-import javax.inject.Inject
 import scala.jdk.StreamConverters._
 
 case object ForwardCapabilityProperties extends CapabilityProperties {
@@ -131,7 +131,7 @@ class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
         .map(mapping => mapping.asMailAddress()
           .orElseThrow(() => new IllegalStateException(s"Can not compute address for mapping ${mapping.asString}")))
         .toScala(List))
-      .subscribeOn(Schedulers.elastic)
+      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
       .map(mappings => Forwards.asRfc8621(mappings, userMailAddress))
   }
 }

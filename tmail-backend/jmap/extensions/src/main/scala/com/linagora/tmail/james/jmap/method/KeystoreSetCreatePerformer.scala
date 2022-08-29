@@ -1,9 +1,12 @@
 package com.linagora.tmail.james.jmap.method
 
+import java.nio.charset.StandardCharsets
+
 import com.linagora.tmail.encrypted.KeystoreManager
 import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.KeystoreSetCreatePerformer.{KeystoreCreationFailure, KeystoreCreationResult, KeystoreCreationResults, KeystoreCreationSuccess}
 import com.linagora.tmail.james.jmap.model.{KeystoreCreationId, KeystoreCreationRequest, KeystoreCreationResponse, KeystoreSetRequest}
+import javax.inject.Inject
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.routes.SessionSupplier
@@ -11,10 +14,6 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, Json, JsonValidationError}
 import reactor.core.scala.publisher.{SFlux, SMono}
-import reactor.core.scheduler.Schedulers
-
-import java.nio.charset.StandardCharsets
-import javax.inject.Inject
 
 object KeystoreSetCreatePerformer {
   sealed trait KeystoreCreationResult {
@@ -82,6 +81,5 @@ class KeystoreSetCreatePerformer @Inject()(serializer: KeystoreSerializer,
                         keystoreCreationRequest: KeystoreCreationRequest): SMono[KeystoreCreationResult] =
       SMono.fromPublisher(keystore.save(mailboxSession.getUser, keystoreCreationRequest.key.value.getBytes(StandardCharsets.UTF_8)))
         .map(keyId => KeystoreCreationSuccess(clientId, KeystoreCreationResponse(keyId)))
-        .subscribeOn(Schedulers.elastic())
         .onErrorResume(e => SMono.just[KeystoreCreationResult](KeystoreCreationFailure(clientId, e)))
 }

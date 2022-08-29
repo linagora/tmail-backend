@@ -94,7 +94,7 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
     private Disposable messagesConsume() {
         return delivery()
             .flatMap(delivery -> messageConsume(delivery, new String(delivery.getBody(), StandardCharsets.UTF_8)), DEFAULT_CONCURRENCY)
-            .subscribeOn(Schedulers.elastic())
+            .subscribeOn(Schedulers.boundedElastic())
             .subscribe();
     }
 
