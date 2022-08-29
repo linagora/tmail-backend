@@ -6,6 +6,7 @@ import com.linagora.tmail.james.jmap.json.ForwardSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWARD
 import com.linagora.tmail.james.jmap.model.{ForwardId, ForwardSetError, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateFailure, ForwardSetUpdateResult, ForwardSetUpdateResults, ForwardSetUpdateSuccess, ForwardUpdateRequest}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -19,12 +20,11 @@ import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.rrt.api.RecipientRewriteTable
 import org.apache.james.rrt.lib.Mapping.Type
 import org.apache.james.rrt.lib.MappingSource
+import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
-import reactor.core.scheduler.Schedulers
 
-import javax.inject.Inject
 import scala.jdk.StreamConverters.StreamHasToScala
 
 class ForwardSetMethodModule extends AbstractModule {
@@ -107,7 +107,7 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
       .map[MailAddress](mapping => mapping.asMailAddress()
         .orElseThrow(() => new IllegalStateException(s"Can not compute address for mapping ${mapping.asString}")))
       .toScala(Seq))
-      .subscribeOn(Schedulers.elastic)
+      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
 
   private def deleteMappings(source: MappingSource, forwards: Seq[MailAddress]): SFlux[MailAddress] =
     SFlux.fromIterable(forwards)

@@ -26,7 +26,6 @@ import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
 import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.Json
 import reactor.core.scala.publisher.SMono
-import reactor.core.scheduler.Schedulers
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
 import scala.jdk.CollectionConverters._
@@ -81,7 +80,6 @@ class ShortLivedTokenRoutes @Inject()(@Named(LongLivedTokenInjectKeys.JMAP) val 
         .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
         .sendString(SMono.just(token))))
       .onErrorResume(error => handleException(error, response))
-      .subscribeOn(Schedulers.elastic())
       .`then`()
 
   private def validRequest(username: Username, request: HttpServerRequest): SMono[Unit] =

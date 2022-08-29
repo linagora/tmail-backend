@@ -23,11 +23,11 @@ import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.routes.ForbiddenException
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
+import org.apache.james.util.ReactorUtils
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
-import reactor.core.scheduler.Schedulers
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
 case class TicketRoutesModule() extends AbstractModule {
@@ -104,7 +104,6 @@ class TicketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: 
         .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
         .sendString(SMono.just(ticket))
         .`then`()))
-      .subscribeOn(Schedulers.elastic())
       .onErrorResume(e => handleException(e, response))
       .asJava()
       .`then`()
@@ -116,7 +115,7 @@ class TicketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: 
         value.fold(e => SMono.error(e), ticketValue => ticketManager.revoke(ticketValue, session.getUser))
       })
       .`then`(SMono(response.status(NO_CONTENT).send()))
-      .subscribeOn(Schedulers.elastic())
+      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
       .onErrorResume(e => handleException(e, response))
       .asJava()
       .`then`()

@@ -175,8 +175,7 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
         return Mono.fromCallable(() -> connectToCluster(configuration))
             .doOnError(e -> LOGGER.warn("Error establishing ElasticSearch connection. Next retry scheduled in {}",
                 DurationFormatUtils.formatDurationWords(waitDelay.toMillis(), suppressLeadingZeroElements, suppressTrailingZeroElements), e))
-            .retryWhen(Retry.backoff(configuration.maxRetries(), waitDelay).scheduler(Schedulers.elastic()))
-            .publishOn(Schedulers.elastic())
+            .retryWhen(Retry.backoff(configuration.maxRetries(), waitDelay).scheduler(Schedulers.boundedElastic()))
             .block();
     }
 

@@ -7,6 +7,7 @@ import com.linagora.tmail.james.jmap.longlivedtoken.{AuthenticationToken, LongLi
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LONG_LIVED_TOKEN
 import com.linagora.tmail.james.jmap.model.{LongLivedTokenCreationId, LongLivedTokenCreationRequest, LongLivedTokenCreationRequestInvalidException, LongLivedTokenCreationResults, LongLivedTokenDestroyFailure, LongLivedTokenDestroyResult, LongLivedTokenDestroyResults, LongLivedTokenDestroySuccess, LongLivedTokenSetRequest, LongLivedTokenSetResponse, TokenCreationResult}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, UrlPrefixes}
@@ -18,8 +19,6 @@ import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
-import reactor.core.scheduler.Schedulers
-import javax.inject.Inject
 
 case object LongLivedTokenCapabilityProperties extends CapabilityProperties {
   override def jsonify(): JsObject = Json.obj()
@@ -100,7 +99,6 @@ class LongLivedTokenSetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore
         }
       }
       .flatMap(any => any)
-      .subscribeOn(Schedulers.elastic())
 
   private def createEach(session: MailboxSession,
                          creationId: LongLivedTokenCreationId,
@@ -148,6 +146,5 @@ class LongLivedTokenSetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore
     LongLivedTokenId.parse(id.value)
       .fold(e => SMono.error(e),
         id => SMono.fromPublisher(longLivedTokenStore.revoke(mailboxSession.getUser, id))
-          .subscribeOn(Schedulers.elastic())
           .`then`(SMono.just[LongLivedTokenDestroyResult](LongLivedTokenDestroySuccess(id))))
 }

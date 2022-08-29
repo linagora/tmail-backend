@@ -36,6 +36,7 @@ import org.apache.james.queue.api.MailQueueFactory.SPOOL
 import org.apache.james.queue.api.{MailQueue, MailQueueFactory}
 import org.apache.james.rrt.api.CanSendFrom
 import org.apache.james.server.core.{MailImpl, MimeMessageSource, MimeMessageWrapper}
+import org.apache.james.util.ReactorUtils
 import org.apache.james.util.html.HtmlTextExtractor
 import org.apache.james.utils.{InitializationOperation, InitilizationOperationBuilder}
 import org.apache.mailet.{Attribute, AttributeValue}
@@ -139,7 +140,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
         }
       }
       .flatMap(any => any)
-      .subscribeOn(Schedulers.elastic())
+      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
 
   private def createEach(clientId: EmailSendCreationId,
                          jsObject: JsObject,
@@ -184,7 +185,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
         .flatMap(either => either.fold(error => SMono.just(EmailSetCreationFailure(clientId, error)),
           message => append(clientId, request, message, mailboxSession, mailboxIds)))
         .onErrorResume(e => SMono.just[EmailSetCreationResult](EmailSetCreationFailure(clientId, e)))
-        .subscribeOn(Schedulers.elastic())
+        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
     }
   }
 
@@ -210,7 +211,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
       })
       _ <- SMono(queue.enqueueReactive(mail))
         .`then`(SMono.fromCallable(() => LifecycleUtil.dispose(mail))
-          .subscribeOn(Schedulers.elastic()))
+          .subscribeOn(Schedulers.boundedElastic()))
         .`then`(SMono.just(submissionId))
     } yield {
       EmailSendCreationResponse(

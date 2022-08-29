@@ -15,7 +15,6 @@ import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-import reactor.core.scheduler.Schedulers
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
@@ -74,7 +73,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
     val username = Username.fromMailAddress(teamMailbox.asMailAddress)
 
     SMono.fromCallable(() => teamMailboxEntityValidator.canCreate(username, ImmutableSet.of(TEAM_MAILBOX)))
-     .subscribeOn(Schedulers.elastic())
+     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
      .flatMap[Unit](maybeValidationFailure => maybeValidationFailure.toScala match {
         case Some(validationFailure) => SMono.error(TeamMailboxNameConflictException(validationFailure.errorMessage))
         case None => createMailboxReliably(teamMailbox.mailboxPath, session)
