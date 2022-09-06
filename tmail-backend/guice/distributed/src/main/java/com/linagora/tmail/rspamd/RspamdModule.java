@@ -7,11 +7,9 @@ import java.time.Clock;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.james.events.EventListener;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
-import org.apache.james.rspamd.RspamdListener;
 import org.apache.james.rspamd.client.RspamdClientConfiguration;
 import org.apache.james.rspamd.client.RspamdHttpClient;
 import org.apache.james.rspamd.route.FeedMessageRoute;
@@ -44,10 +42,6 @@ public class RspamdModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
-            .addBinding()
-            .to(RspamdListener.class);
-
         Multibinder.newSetBinder(binder(), Routes.class)
             .addBinding()
             .to(FeedMessageRoute.class);

@@ -6,4 +6,8 @@
     <class>org.apache.james.jmap.event.PopulateEmailQueryViewListener</class>
     <async>true</async>
   </listener>
+  <listener>
+    <class>org.apache.james.rspamd.RspamdListener</class>
+    <async>true</async>
+  </listener>
 </listeners>
