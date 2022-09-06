@@ -64,4 +64,10 @@
             </mailet>
         </processor>
     </processors>
+
+    <processor state="virus" enableJmx="false">
+        <mailet match="All" class="ToRepository">
+            <repositoryPath>cassandra://var/mail/virus/</repositoryPath>
+        </mailet>
+    </processor>
 </mailetcontainer>
