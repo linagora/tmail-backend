@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
-import javax.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
@@ -16,9 +15,9 @@ import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
-import scala.util.Try
 
 trait TeamMailboxRepository {
 
@@ -73,8 +72,8 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
     val username = Username.fromMailAddress(teamMailbox.asMailAddress)
 
     SMono.fromCallable(() => teamMailboxEntityValidator.canCreate(username, ImmutableSet.of(TEAM_MAILBOX)))
-     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-     .flatMap[Unit](maybeValidationFailure => maybeValidationFailure.toScala match {
+      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+      .flatMap[Unit](maybeValidationFailure => maybeValidationFailure.toScala match {
         case Some(validationFailure) => SMono.error(TeamMailboxNameConflictException(validationFailure.errorMessage))
         case None => createMailboxReliably(teamMailbox.mailboxPath, session)
           .`then`(createMailboxReliably(teamMailbox.inboxPath, session))
@@ -128,45 +127,42 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
     val session = createSession(teamMailbox)
     SMono.fromPublisher(exists(teamMailbox))
       .filter(teamMailboxExist => teamMailboxExist)
-      .doOnNext(_ => {
-        addRightForMember(teamMailbox.mailboxPath, user, session)
-        addRightForMember(teamMailbox.inboxPath, user, session)
-        addRightForMember(teamMailbox.sentPath, user, session)
-      })
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
+      .flatMap(_ => SFlux.zip3(addRightForMember(teamMailbox.mailboxPath, user, session),
+        addRightForMember(teamMailbox.inboxPath, user, session),
+        addRightForMember(teamMailbox.sentPath, user, session))
+        .`then`()
+        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
       .`then`()
   }
 
-  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession): Unit =
-    Try(mailboxManager.applyRightsCommand(
-      path,
+  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession): SMono[Unit] =
+    SMono.fromCallable(() => mailboxManager.applyRightsCommand(path,
       MailboxACL.command
         .forUser(user)
         .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
         .asAddition(),
       session))
-      .fold(_ => (), u => u)
 
-  private def removeRightForMember(path: MailboxPath, user: Username, session: MailboxSession): Unit =
-    Try(mailboxManager.applyRightsCommand(
+  private def removeRightForMember(path: MailboxPath, user: Username, session: MailboxSession): SMono[Unit] =
+    SMono.fromCallable(() => mailboxManager.applyRightsCommand(
       path,
       MailboxACL.command
         .forUser(user)
         .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
         .asRemoval(),
       session))
-      .fold(_ => (), u => u)
 
   override def removeMember(teamMailbox: TeamMailbox, user: Username): Publisher[Void] = {
     val session = createSession(teamMailbox)
     SMono.fromPublisher(isUserInTeamMailbox(teamMailbox, user))
       .filter(teamMailboxExist => teamMailboxExist)
-      .doOnNext(_ => {
-        removeRightForMember(teamMailbox.mailboxPath, user, session)
-        removeRightForMember(teamMailbox.inboxPath, user, session)
-        removeRightForMember(teamMailbox.sentPath, user, session)
-      })
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
+      .flatMap(_ => SFlux.zip3(removeRightForMember(teamMailbox.mailboxPath, user, session),
+        removeRightForMember(teamMailbox.inboxPath, user, session),
+        removeRightForMember(teamMailbox.sentPath, user, session))
+        .`then`()
+        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
       .`then`()
   }
 
