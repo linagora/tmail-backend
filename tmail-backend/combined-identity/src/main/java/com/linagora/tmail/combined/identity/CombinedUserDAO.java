@@ -75,6 +75,11 @@ public class CombinedUserDAO implements UsersDAO {
         return cassandraUsersDAO.list();
     }
 
+    @Override
+    public Publisher<Username> listReactive() {
+        return cassandraUsersDAO.listReactive();
+    }
+
     public boolean test(Username name, String password) throws UsersRepositoryException {
         return readOnlyLDAPUsersDAO.getUserByName(name)
             .map(user -> user.verifyPassword(password))
