@@ -102,7 +102,7 @@ trait RateLimitingPlanUserRepositoryContract {
     SMono.fromPublisher(testee.applyPlan(BOB, PLAN_ID_1)).block()
     SMono.fromPublisher(testee.applyPlan(ALICE, PLAN_ID_1)).block()
 
-    assertThat(SFlux.fromPublisher(testee.listUsers(PLAN_ID_1)).collectSeq().block().asJava).containsExactly(BOB, ALICE)
+    assertThat(SFlux.fromPublisher(testee.listUsers(PLAN_ID_1)).collectSeq().block().asJava).containsExactlyInAnyOrder(BOB, ALICE)
   }
 
   @Test
