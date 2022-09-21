@@ -409,7 +409,21 @@
                             <port>8000</port> <!-- WEBADMIN -->
                         </ports>
                         <appRoot>/root</appRoot>
+                        <jvmFlags>
+                            <jvmFlag>-Dlogback.configurationFile=/root/conf/logback.xml</jvmFlag>
+                            <jvmFlag>-Dworking.directory=/root/</jvmFlag>
+                            <!-- Prevents Logjam (CVE-2015-4000) -->
+                            <jvmFlag>-Djdk.tls.ephemeralDHKeySize=2048</jvmFlag>
+                            <jvmFlag>-Dextra.props=/root/conf/jvm.properties</jvmFlag>
+                        </jvmFlags>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                        <volumes>
+                            <volume>/logs</volume>
+                            <volume>/root/conf</volume>
+                            <volume>/root/extensions-jars</volume>
+                            <volume>/root/glowroot/plugins</volume>
+                            <volume>/root/glowroot/data</volume>
+                        </volumes>
                     </container>
                     <extraDirectories>
                         <paths>
