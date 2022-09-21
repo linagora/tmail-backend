@@ -23,7 +23,7 @@
 <smtpservers>
     <smtpserver enabled="true">
         <jmxName>smtpserver-global</jmxName>
-        <bind>0.0.0.0:25</bind>
+        <bind>0.0.0.0:3025</bind>
         <connectionBacklog>200</connectionBacklog>
         <tls socketTLS="false" startTLS="false">
             <keystore>file://conf/keystore</keystore>
@@ -47,7 +47,7 @@
     </smtpserver>
     <smtpserver enabled="true">
         <jmxName>smtpserver-TLS</jmxName>
-        <bind>0.0.0.0:465</bind>
+        <bind>0.0.0.0:30465</bind>
         <connectionBacklog>200</connectionBacklog>
         <tls socketTLS="true" startTLS="false">
             <keystore>file://conf/keystore</keystore>
@@ -75,7 +75,7 @@
     </smtpserver>
     <smtpserver enabled="true">
         <jmxName>smtpserver-authenticated</jmxName>
-        <bind>0.0.0.0:587</bind>
+        <bind>0.0.0.0:30587</bind>
         <connectionBacklog>200</connectionBacklog>
         <tls socketTLS="false" startTLS="true">
             <keystore>file://conf/keystore</keystore>

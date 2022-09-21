@@ -234,24 +234,43 @@
                     <container>
                         <mainClass>com.linagora.tmail.james.app.MemoryServer</mainClass>
                         <ports>
-                            <port>80</port> <!-- JMAP -->
-                            <port>143</port> <!-- IMAP -->
-                            <port>993</port> <!-- IMAPS -->
-                            <port>25</port> <!-- SMTP -->
-                            <port>465</port> <!-- SMTP + STARTTLS -->
-                            <port>587</port> <!-- SMTPS -->
+                            <port>8080</port> <!-- JMAP -->
+                            <port>30143</port> <!-- IMAP -->
+                            <port>30993</port> <!-- IMAPS -->
+                            <port>3025</port> <!-- SMTP -->
+                            <port>30465</port> <!-- SMTP + STARTTLS -->
+                            <port>30587</port> <!-- SMTPS -->
                             <port>4000</port> <!-- GLOWROOT, if activated -->
                             <port>4190</port> <!-- ManageSieve, if activated -->
                             <port>8000</port> <!-- WEBADMIN -->
                         </ports>
-                        <appRoot>/root</appRoot>
+                        <appRoot>/home/nobody</appRoot>
+                        <jvmFlags>
+                            <jvmFlag>-Dlogback.configurationFile=/home/nobody/conf/logback.xml</jvmFlag>
+                            <jvmFlag>-Dworking.directory=/home/nobody/</jvmFlag>
+                            <!-- Prevents Logjam (CVE-2015-4000) -->
+                            <jvmFlag>-Djdk.tls.ephemeralDHKeySize=2048</jvmFlag>
+                        </jvmFlags>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                        <volumes>
+                            <volume>/home/nobody/logs</volume>
+                            <volume>/home/nobody/conf</volume>
+                            <volume>/home/nobody/sieve</volume>
+                            <volume>/home/nobody/glowroot/plugins</volume>
+                            <volume>/home/nobody/glowroot/data</volume>
+                            <volume>/home/nobody/extensions-jars</volume>
+                        </volumes>
+                        <user>nobody</user>
                     </container>
                     <extraDirectories>
                         <paths>
                             <path>
                                 <from>src/main/conf</from>
-                                <into>/root/conf</into>
+                                <into>/home/nobody/conf</into>
+                            </path>
+                            <path>
+                                <from>src/main/logs</from>
+                                <into>/home/nobody/logs</into>
                             </path>
                             <path>
                                 <from>src/main/scripts</from>
@@ -259,19 +278,19 @@
                             </path>
                             <path>
                                 <from>target/glowroot</from>
-                                <into>/root/glowroot</into>
+                                <into>/home/nobody/glowroot</into>
                             </path>
                             <path>
                                 <from>target/async-profiler-2.7-linux-x64</from>
-                                <into>/root/async-profiler</into>
+                                <into>/home/nobody/async-profiler</into>
                             </path>
                             <path>
                                 <from>src/main/extensions-jars</from>
-                                <into>/root/extensions-jars</into>
+                                <into>/home/nobody/extensions-jars</into>
                             </path>
                             <path>
                                 <from>src/main/provisioning</from>
-                                <into>/root/provisioning</into>
+                                <into>/home/nobody/provisioning</into>
                             </path>
                         </paths>
                         <permissions>
@@ -280,19 +299,23 @@
                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                             </permission>
                             <permission>
-                                <file>/root/async-profiler/profiler.sh</file>
+                                <file>/home/nobody/logs/james.log</file>
+                                <mode>777</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                            </permission>
+                            <permission>
+                                <file>/home/nobody/async-profiler/profiler.sh</file>
                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                             </permission>
                             <permission>
-                                <file>/root/async-profiler/build/libasyncProfiler.so</file>
+                                <file>/home/nobody/async-profiler/build/libasyncProfiler.so</file>
                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                             </permission>
                             <permission>
-                                <file>/root/async-profiler/build/jattach</file>
+                                <file>/home/nobody/async-profiler/build/jattach</file>
                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                             </permission>
                             <permission>
-                                <file>/root/provisioning/provisioning.sh</file>
+                                <file>/home/nobody/provisioning/provisioning.sh</file>
                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                             </permission>
                         </permissions>
