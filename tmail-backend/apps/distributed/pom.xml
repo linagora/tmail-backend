@@ -415,6 +415,12 @@
                             <!-- Prevents Logjam (CVE-2015-4000) -->
                             <jvmFlag>-Djdk.tls.ephemeralDHKeySize=2048</jvmFlag>
                             <jvmFlag>-Dextra.props=/root/conf/jvm.properties</jvmFlag>
+                            <jvmFlag>--add-opens=java.base/java.lang=ALL-UNNAMED</jvmFlag>
+                            <jvmFlag>--add-opens=java.base/java.math=ALL-UNNAMED</jvmFlag>
+                            <jvmFlag>--add-opens=java.base/java.util=ALL-UNNAMED</jvmFlag>
+                            <jvmFlag>--add-opens=java.base/java.util.concurrent=ALL-UNNAMED</jvmFlag>
+                            <jvmFlag>--add-opens=java.base/java.net=ALL-UNNAMED</jvmFlag>
+                            <jvmFlag>--add-opens=java.base/java.text=ALL-UNNAMED</jvmFlag>
                         </jvmFlags>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
                         <volumes>
