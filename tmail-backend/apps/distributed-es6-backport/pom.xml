@@ -393,7 +393,7 @@
                 </executions>
                 <configuration>
                     <from>
-                        <image>eclipse-temurin:18-jre-focal</image>
+                        <image>eclipse-temurin:19-jre-focal</image>
                     </from>
                     <to>
                         <image>linagora/tmail-backend-distributed-esv6</image>
