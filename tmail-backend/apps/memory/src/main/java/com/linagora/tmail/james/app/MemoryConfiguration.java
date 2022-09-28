@@ -16,7 +16,9 @@ import org.apache.james.utils.PropertiesProvider;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 
-public class MemoryConfiguration implements Configuration {
+public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
+                                  MailboxConfiguration mailboxConfiguration,
+                                  UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<String> rootDirectory;
@@ -42,7 +44,7 @@ public class MemoryConfiguration implements Configuration {
 
         public Builder useWorkingDirectoryEnvProperty() {
             rootDirectory = Optional.ofNullable(System.getProperty(WORKING_DIRECTORY));
-            if (!rootDirectory.isPresent()) {
+            if (rootDirectory.isEmpty()) {
                 throw new MissingArgumentException("Server needs a working.directory env entry");
             }
             return this;
@@ -99,33 +101,4 @@ public class MemoryConfiguration implements Configuration {
         return new Builder();
     }
 
-    private final ConfigurationPath configurationPath;
-    private final JamesDirectoriesProvider directories;
-    private final MailboxConfiguration mailboxConfiguration;
-    private final UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation;
-
-    public MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, MailboxConfiguration mailboxConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) {
-        this.configurationPath = configurationPath;
-        this.directories = directories;
-        this.mailboxConfiguration = mailboxConfiguration;
-        this.usersRepositoryImplementation = usersRepositoryImplementation;
-    }
-
-    @Override
-    public ConfigurationPath configurationPath() {
-        return configurationPath;
-    }
-
-    @Override
-    public JamesDirectoriesProvider directories() {
-        return directories;
-    }
-
-    public MailboxConfiguration mailboxConfiguration() {
-        return mailboxConfiguration;
-    }
-
-    public UsersRepositoryModuleChooser.Implementation getUsersRepositoryImplementation() {
-        return usersRepositoryImplementation;
-    }
 }

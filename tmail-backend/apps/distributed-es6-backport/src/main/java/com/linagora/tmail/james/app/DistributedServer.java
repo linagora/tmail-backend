@@ -245,11 +245,11 @@ public class DistributedServer {
 
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
-            .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.getMailQueueViewChoice()))
+            .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.mailQueueViewChoice()))
             .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
-            .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.getUsersRepositoryImplementation()))
+            .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.usersRepositoryImplementation()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 

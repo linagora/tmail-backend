@@ -19,7 +19,12 @@ import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 
-public class DistributedJamesConfiguration implements Configuration {
+public record DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
+                                            MailboxConfiguration mailboxConfiguration,
+                                            BlobStoreConfiguration blobStoreConfiguration,
+                                            SearchConfiguration searchConfiguration,
+                                            UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
+                                            MailQueueViewChoice mailQueueViewChoice) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -52,7 +57,7 @@ public class DistributedJamesConfiguration implements Configuration {
 
         public Builder useWorkingDirectoryEnvProperty() {
             rootDirectory = Optional.ofNullable(System.getProperty(WORKING_DIRECTORY));
-            if (!rootDirectory.isPresent()) {
+            if (rootDirectory.isEmpty()) {
                 throw new MissingArgumentException("Server needs a working.directory env entry");
             }
             return this;
@@ -137,53 +142,4 @@ public class DistributedJamesConfiguration implements Configuration {
         return new Builder();
     }
 
-    private final ConfigurationPath configurationPath;
-    private final JamesDirectoriesProvider directories;
-    private final MailboxConfiguration mailboxConfiguration;
-    private final BlobStoreConfiguration blobStoreConfiguration;
-    private final SearchConfiguration searchConfiguration;
-    private final UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation;
-    private final MailQueueViewChoice mailQueueViewChoice;
-
-    public DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, MailboxConfiguration mailboxConfiguration,
-                                         BlobStoreConfiguration blobStoreConfiguration, SearchConfiguration searchConfiguration, UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
-                                         MailQueueViewChoice mailQueueViewChoice) {
-        this.configurationPath = configurationPath;
-        this.directories = directories;
-        this.mailboxConfiguration = mailboxConfiguration;
-        this.blobStoreConfiguration = blobStoreConfiguration;
-        this.searchConfiguration = searchConfiguration;
-        this.usersRepositoryImplementation = usersRepositoryImplementation;
-        this.mailQueueViewChoice = mailQueueViewChoice;
-    }
-
-    @Override
-    public ConfigurationPath configurationPath() {
-        return configurationPath;
-    }
-
-    @Override
-    public JamesDirectoriesProvider directories() {
-        return directories;
-    }
-
-    public MailQueueViewChoice getMailQueueViewChoice() {
-        return mailQueueViewChoice;
-    }
-
-    public BlobStoreConfiguration blobStoreConfiguration() {
-        return blobStoreConfiguration;
-    }
-
-    public SearchConfiguration searchConfiguration() {
-        return searchConfiguration;
-    }
-
-    public MailboxConfiguration mailboxConfiguration() {
-        return mailboxConfiguration;
-    }
-
-    public UsersRepositoryModuleChooser.Implementation getUsersRepositoryImplementation() {
-        return usersRepositoryImplementation;
-    }
 }

@@ -149,7 +149,7 @@ public class MemoryServer {
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
-                .chooseModules(configuration.getUsersRepositoryImplementation()))
+                .chooseModules(configuration.usersRepositoryImplementation()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 
