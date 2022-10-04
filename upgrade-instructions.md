@@ -15,3 +15,69 @@ Note: this section is in progress. It will be updated during all the development
 Change list:
 
 (No changes yet.)
+
+## 0.6.3 version
+
+Change list:
+
+- [Improve indexing of email address domains](#improve-indexing-of-email-address-domains)
+
+### Improve indexing of email address domains
+
+Date 04/10/2022
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-3827
+
+Concerned product: Distributed TMail, Distributed ES6 TMail
+
+#### Distributed TMail
+If you did not finish reindexing data as part of [OpenSearch Migration](https://github.com/apache/james-project/blob/0600e060b9406f58cf8b483d03f1109c7686a82d/upgrade-instructions.md#migration-to-opensearch), 
+you can skip this instruction and just reindex data. 
+
+Otherwise, please add these fields to the mailbox mapping manually:
+
+```
+curl -X PUT \
+  http://OSip:OSport/{$mailboxIndexName}/_mapping \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "properties": {
+    "from": {
+      "properties": {
+        "domain": {
+          "type": "text",
+          "analyzer": "simple",
+          "search_analyzer": "keyword"
+        }
+      }
+    },
+    "to": {
+      "properties": {
+        "domain": {
+          "type": "text",
+          "analyzer": "simple",
+          "search_analyzer": "keyword"
+        }
+      }
+    },
+    "cc": {
+      "properties": {
+        "domain": {
+          "type": "text",
+          "analyzer": "simple",
+          "search_analyzer": "keyword"
+        }
+      }
+    },
+    "bcc": {
+      "properties": {
+        "domain": {
+          "type": "text",
+          "analyzer": "simple",
+          "search_analyzer": "keyword"
+        }
+      }
+    }
+  }
+}'
+```
