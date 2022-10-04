@@ -1,0 +1,99 @@
+{
+  "messageId":"184",
+  "threadId": "184",
+  "uid":25,
+  "mailboxId": "18",
+  "modSeq": 42,
+  "size": 25,
+  "date": "2015-06-07T00:00:00+02:00",
+  "mediaType": "plain",
+  "subtype": "text",
+  "userFlags": [
+    "security",
+    "debian"
+  ],
+  "mimeMessageID": "<5577F927.2040409@linagora.com>",
+  "headers": [{
+    "name": "return-path",
+    "value": "<mbaechler@linagora.com>"
+  }, {
+    "name": "received",
+    "value": "from alderaan.linagora.com (smtp.linagora.dc1 [172.16.18.53])\t by imap (Cyrus v2.2.13-Debian-2.2.13-19+squeeze3) with LMTPA;\t Wed, 10 Jun 2015 10:45:29 +0200"
+  }, {
+    "name": "x-sieve",
+    "value": "CMU Sieve 2.2"
+  }, {
+    "name": "received",
+    "value": "from [10.69.2.28] (mne69-10-88-173-78-196.fbx.proxad.net [88.173.78.196])\t(using TLSv1 with cipher DHE-RSA-AES128-SHA (128/128 bits))\t(No client certificate requested)\tby alderaan.linagora.com (Postfix) with ESMTPSA id 7F33E728\tfor <btellier@linagora.com>; Wed, 10 Jun 2015 10:45:28 +0200 (CEST)"
+  }, {
+    "name": "message-id",
+    "value": "<5577F927.2040409@linagora.com>"
+  }, {
+    "name": "date",
+    "value": "Wed, 10 Jun 2015 10:45:27 +0200"
+  }, {
+    "name": "from",
+    "value": "Matthieu Baechler <mbaechler@linagora.com>"
+  }, {
+    "name": "user-agent",
+    "value": "Mozilla/5.0 (X11; Linux x86_64; rv:31.0) Gecko/20100101 Icedove/31.7.0"
+  }, {
+    "name": "mime-version",
+    "value": "1.0"
+  }, {
+    "name": "to",
+    "value": "btellier@linagora.com"
+  }, {
+    "name": "subject",
+    "value": "Fwd: Courbe Sprint"
+  }, {
+    "name": "references",
+    "value": "<556EA5E0.8010008@linagora.com>"
+  }, {
+    "name": "in-reply-to",
+    "value": "<556EA5E0.8010008@linagora.com>"
+  }, {
+    "name": "x-forwarded-message-id",
+    "value": "<556EA5E0.8010008@linagora.com>"
+  }, {
+    "name": "content-type",
+    "value": "multipart/mixed; boundary=\"------------080603090509090707040003\""
+  }],
+  "from": [
+    {
+      "name": "Matthieu Baechler",
+      "address": "mbaechler@linagora.com"
+    }
+  ],
+  "to": [
+    {
+      "name": null,
+      "address": "btellier@linagora.com"
+    }
+  ],
+  "cc": [],
+  "bcc": [],
+  "subject": [
+    "Fwd: Courbe Sprint"
+  ],
+  "sentDate": "2015-06-10T10:45:27+02:00",
+  "attachments": [
+    {
+      "textContent": null,
+      "mediaType": "application",
+      "subtype": "vnd.oasis.opendocument.spreadsheet",
+      "fileName": "Sprint-2015-05-18.ods",
+      "fileExtension": "ods",
+      "contentDisposition": "attachment"
+    }
+  ],
+  "textBody": "Forward as attachment !\n\n\n",
+  "htmlBody": null,
+  "isDraft": false,
+  "isFlagged": true,
+  "isRecent": false,
+  "isAnswered": false,
+  "isDeleted": true,
+  "hasAttachment": true,
+  "isUnread": false
+}
