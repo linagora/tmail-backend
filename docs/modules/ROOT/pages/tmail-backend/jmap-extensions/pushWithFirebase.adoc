@@ -1,0 +1,210 @@
+= Push with Firebase
+:navtitle: Push with Firebase
+
+Allows devices to register PUSH though link:https://firebase.google.com/[FireBase Cloud Messaging], and manage its
+registrations. The server will then push `StateChanges` through FireBase to the client.
+
+== Additions to the capability object
+
+Servers supporting the Push with firebase extension need
+to advertize it through the session capabilities:
+
+....
+com:linagora:params:jmap:firebase:push
+....
+
+The associated object is empty.
+
+== Encoding of state change into firebase payload
+
+Once registered, the JMAP server will send StateChange objects to firebase using the token of the Firebase registration.
+
+See https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages#Message.FIELDS.data for Firebase message format.
+
+StateChange is encoded into the *data* part of the payload.
+
+Each property is composed of the *accountId* followed by a delimiter `:` and then the `Type`. Associated to this property
+is the `state` of that type for the given account. Implementors need to be careful to split on the last delimitor as
+accountId might contain the delimiter.
+
+=== Example
+
+The following state change:
+
+....
+{
+  "@type": "StateChange",
+  "changed": {
+    "a3123": {
+      "Email": "d35ecb040aab",
+      "EmailDelivery": "428d565f2440",
+      "CalendarEvent": "87accfac587a"
+    },
+    "a43461d": {
+      "Mailbox": "0af7a512ce70",
+      "CalendarEvent": "7a4297cecd76"
+    }
+  }
+}
+....
+
+will be encoded as:
+
+....
+{
+  "data": {
+    "a3123:Email": "d35ecb040aab",
+    "a3123:EmailDelivery": "428d565f2440",
+    "a3123:CalendarEvent": "87accfac587a"
+    "a43461d:Mailbox": "0af7a512ce70",
+    "a43461d:CalendarEvent": "7a4297cecd76"
+  },
+  "token": "fcm-client-token"
+}
+....
+
+== The FirebaseRegistration object
+
+A FirebaseRegistration object has the following fields:
+
+- **id**: `Id`, server set, immutable, the JMAP identifier of the object.
+- **token**: (immutable) Set by the client, it allows firebase to route notifications to him.
+- **deviceClientId**: `String` (immutable)
+An id that uniquely identifies the client + device it is running on. The purpose of this is to allow clients to identify which PushSubscription objects they created even if they lose their local state, so they can revoke or update them. This string MUST be different on different devices and be different from apps from other vendors. It SHOULD be easy to regenerate and not depend on persisted state. It is RECOMMENDED to use a secure hash of a string that contains:
+
+1. A unique identifier associated with the device where the JMAP client is
+running, normally supplied by the device's operating system.
+2. A custom vendor/app id, including a domain controlled by the vendor of
+the JMAP client.
+
+    To protect the privacy of the user, the deviceClientId id MUST NOT contain
+    an unobfuscated device id.
+
+- **expires**: `UTCDate|null`
+  The time this push subscription expires. If specified, the JMAP server MUST NOT make further requests to this resource after this time. It MAY automatically destroy the push subscription at or after this time.
+
+    The server MAY choose to set an expiry if none is given by the client or modify the expiry time given by the client to a shorter duration.
+
+- **types**: `String[]|null`
+A list of types the client is interested in (using the same names as the keys in the *TypeState* object defined in the previous section). A StateChange notification will only be sent if the data for one of these types changes. Other types are omitted from the TypeState object. If `null`, changes will be pushed for all types.
+
+=== FirebaseRegistration/get
+
+Standard */get* method as described in Section 5.1, except it does **not** take or return an *accountId* argument,
+as push subscriptions are not tied to specific accounts. It also does **not** return a *state* argument. The *ids*
+argument may be `null` to fetch all at once.
+
+It does **not** return a *state* argument.
+
+As the *token* properties may contain data that is private to a particular device, the values for these properties MUST NOT be returned.
+
+=== FirebaseRegistration/set
+
+Standard */set* method  as described in Section 5.3, except it does **not** take or return an *accountId* argument,
+as push subscriptions are not tied to specific accounts. It also does **not** take an *ifInState* argument or return
+*oldState* or *newState* arguments.
+
+The client may update the *expires* property to extend (or, less commonly, shorten) the lifetime of a push subscription.
+The server MAY modify the proposed new expiry time to enforce server-defined limits.
+
+Clients SHOULD NOT update or destroy a push subscription that they did not create (i.e., has a *deviceClientId* that
+they do not recognise).
+
+=== Example
+
+At `2018-07-06T02:14:29Z`, a client with deviceClientId `a889-ffea-910` fetches the set of FirebaseRegistration
+currently on the server, making an API request with:
+
+....
+    [[ "FirebaseRegistration/get", {
+      "ids": null
+    }, "0" ]]
+....
+
+Which returns:
+
+....
+    [[ "FirebaseRegistration/get", {
+      "list": [{
+          "id": "e50b2c1d-9553-41a3-b0a7-a7d26b599ee1",
+          "deviceClientId": "b37ff8001ca0",
+          "expires": "2018-07-31T00:13:21Z",
+          "types": [ "Todo" ]
+      }, {
+          "id": "f2d0aab5-e976-4e8b-ad4b-b380a5b987e4",
+          "deviceClientId": "X8980fc",
+          "expires": "2018-07-12T05:55:00Z",
+          "types": [ "Mailbox", "Email", "EmailDelivery" ]
+      }],
+      "notFound": []
+    }, "0" ]]
+....
+
+Since neither of the returned FirebaseRegistration objects have the client's deviceClientId, it knows it does not have a
+current FirebaseRegistration active on the server. So it creates one, sending this request:
+
+....
+    [[ "FirebaseRegistration/set", {
+      "create": {
+        "4f29": {
+          "deviceClientId": "a889-ffea-910",
+          "token": "firebase-token",
+          "types": null
+        }
+      }
+    }, "0" ]]
+....
+
+The server creates the FirebaseRegistration but limits the expiry time to 7 days in the future, returning this response:
+
+....
+    [[ "FirebaseRegistration/set", {
+      "created": {
+        "4f29": {
+          "id": "P43dcfa4-1dd4-41ef-9156-2c89b3b19c60",
+          "expires": "2018-07-13T02:14:29Z"
+        }
+      }
+    }, "0" ]]
+....
+
+Two days later, the client updates the subscription to extend its lifetime, sending this request:
+
+....
+    [[ "FirebaseRegistration/set", {
+      "update": {
+        "P43dcfa4-1dd4-41ef-9156-2c89b3b19c60": {
+          "expires": "2018-08-13T00:00:00Z"
+        }
+      }
+    }, "0" ]]
+...
+
+The server extends the expiry time, but only again to its maximum limit of 7 days in the future, returning this response:
+
+....
+    [[ "PushSubscription/set", {
+      "updated": {
+        "P43dcfa4-1dd4-41ef-9156-2c89b3b19c60": {
+          "expires": "2018-07-15T02:22:50Z"
+        }
+      }
+    }, "0" ]]
+....
+
+The client then destroy the FirebaseRegistration:
+
+....
+    [[ "FirebaseRegistration/set", {
+      "destroy": ["P43dcfa4-1dd4-41ef-9156-2c89b3b19c60"]
+      }
+    }, "0" ]]
+...
+
+The server confirms the FirebaseRegistration to be destroyed:
+
+....
+    [[ "PushSubscription/set", {
+      "destroyed":["P43dcfa4-1dd4-41ef-9156-2c89b3b19c60"]
+    }, "0" ]]
+....

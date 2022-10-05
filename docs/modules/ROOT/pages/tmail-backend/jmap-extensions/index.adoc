@@ -29,8 +29,10 @@ We introduce custom extensions to the main JMAP protocol in order to achieve our
 
 These extensions include:
 
- - link:jmapGpgExtension.adoc[com:linagora:params:jmap:pgp] which adds the capability to read messages of TMail encrypted
- mailbox.
+- link:pushWithFirebase.adoc[com:linagora:params:jmap:firebase:push] which adds the capability to manage push
+notifications through Firebase Cloud Messaging.
+- link:jmapGpgExtension.adoc[com:linagora:params:jmap:pgp] which adds the capability to read messages of TMail encrypted
+mailbox.
  - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allows to generate one time usage tickets in order
 to authenticate webSocket connections using URI query parameters, as most browsers do not support setting `Authorization`
 headers during the webSocket handshake.
