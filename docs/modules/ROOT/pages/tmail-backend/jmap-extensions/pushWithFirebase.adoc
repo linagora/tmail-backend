@@ -24,7 +24,7 @@ See https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages#Mes
 StateChange is encoded into the *data* part of the payload.
 
 Each property is composed of the *accountId* followed by a delimiter `:` and then the `Type`. Associated to this property
-is the `state` of that type for the given account. Implementors need to be careful to split on the last delimitor as
+is the `state` of that type for the given account. Implementors need to be careful to split on the last delimiter as
 accountId might contain the delimiter.
 
 === Example
