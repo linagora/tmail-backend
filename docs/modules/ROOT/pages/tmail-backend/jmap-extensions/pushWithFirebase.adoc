@@ -7,7 +7,7 @@ registrations. The server will then push `StateChanges` through FireBase to the 
 == Additions to the capability object
 
 Servers supporting the Push with firebase extension need
-to advertize it through the session capabilities:
+to advertise it through the session capabilities:
 
 ....
 com:linagora:params:jmap:firebase:push
