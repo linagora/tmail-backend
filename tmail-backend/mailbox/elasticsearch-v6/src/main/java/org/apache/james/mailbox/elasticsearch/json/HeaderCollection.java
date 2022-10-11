@@ -142,7 +142,7 @@ public class HeaderCollection {
                 .parseAddressList(rawHeaderValue)
                 .stream()
                 .flatMap(this::convertAddressToMailboxStream)
-                .map((mailbox) -> new EMailer(Optional.ofNullable(mailbox.getName()), mailbox.getAddress()))
+                .map((mailbox) -> new EMailer(Optional.ofNullable(mailbox.getName()), mailbox.getAddress(), mailbox.getDomain()))
                 .forEach(addressSet::add);
         }
 

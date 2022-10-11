@@ -15,7 +15,8 @@
   "date":"2015-06-07T00:00:00+0200",
   "from":[{
     "name":"Benoit Tellier",
-    "address":"btellier@linagora.com"
+    "address":"btellier@linagora.com",
+    "domain":"linagora"
   }],
   "hasAttachment":false,
   "headers": [{
@@ -66,7 +67,8 @@
   "subtype":"text",
   "to":[{
     "name":null,
-    "address":"btellier@linagora.com"
+    "address":"btellier@linagora.com",
+    "domain":"linagora"
   }],
   "uid":25,
   "userFlags":[],

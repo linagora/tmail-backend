@@ -56,7 +56,7 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getToAddressSet())
-            .containsOnly(new EMailer(Optional.empty(), "ben.tellier@linagora.com"));
+            .containsOnly(new EMailer(Optional.empty(), "ben.tellier@linagora.com", "linagora.com"));
     }
 
     @Test
@@ -67,8 +67,8 @@ class HeaderCollectionTest {
 
         assertThat(headerCollection.getToAddressSet())
             .containsOnly(
-                new EMailer(Optional.empty(), "ben.tellier@linagora.com"),
-                new EMailer(Optional.empty(), "btellier@minet.net"));
+                new EMailer(Optional.empty(), "ben.tellier@linagora.com", "linagora.com"),
+                new EMailer(Optional.empty(), "btellier@minet.net", "minet.net"));
     }
 
     @Test
@@ -80,8 +80,8 @@ class HeaderCollectionTest {
 
         assertThat(headerCollection.getToAddressSet())
             .containsOnly(
-                new EMailer(Optional.empty(), "ben.tellier@linagora.com"),
-                new EMailer(Optional.empty(), "btellier@minet.net"));
+                new EMailer(Optional.empty(), "ben.tellier@linagora.com", "linagora.com"),
+                new EMailer(Optional.empty(), "btellier@minet.net", "minet.net"));
     }
 
     @Test
@@ -91,7 +91,7 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getToAddressSet())
-            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com"));
+            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com", "linagora.com"));
     }
 
     @ParameterizedTest
@@ -134,8 +134,8 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getFromAddressSet())
-            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com"),
-                new EMailer(Optional.of("Graham CROSMARIE"), "grah.crosmarie@linagora.com"));
+            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com", "linagora.com"),
+                new EMailer(Optional.of("Graham CROSMARIE"), "grah.crosmarie@linagora.com", "linagora.com"));
     }
 
     @Test
@@ -146,8 +146,8 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getFromAddressSet())
-            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com"),
-                new EMailer(Optional.of("Graham CROSMARIE"), "grah.crosmarie@linagora.com"));
+            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com", "linagora.com"),
+                new EMailer(Optional.of("Graham CROSMARIE"), "grah.crosmarie@linagora.com", "linagora.com"));
     }
 
     @Test
@@ -170,8 +170,8 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getToAddressSet())
-            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com"),
-                new EMailer(Optional.empty(), "grah.crosmarie@linagora.com"));
+            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com", "linagora.com"),
+                new EMailer(Optional.empty(), "grah.crosmarie@linagora.com", "linagora.com"));
     }
 
     @Test
@@ -181,7 +181,7 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getCcAddressSet())
-            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com"));
+            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com", "linagora.com"));
     }
 
     @Test
@@ -191,7 +191,7 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getReplyToAddressSet())
-            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com"));
+            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com", "linagora.com"));
     }
 
     @Test
@@ -201,7 +201,7 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getBccAddressSet())
-            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com"));
+            .containsOnly(new EMailer(Optional.of("Christophe Hamerling"), "chri.hamerling@linagora.com", "linagora.com"));
     }
 
     @Test
@@ -211,7 +211,7 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getBccAddressSet())
-            .containsOnly(new EMailer(Optional.of("Mickey"), "tricky@mouse.com"));
+            .containsOnly(new EMailer(Optional.of("Mickey"), "tricky@mouse.com", "mouse.com"));
     }
 
     @Test
@@ -221,8 +221,8 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getBccAddressSet())
-            .containsOnly(new EMailer(Optional.of("Mickey"), "tricky@mouse.com"),
-                new EMailer(Optional.of("Miny"), "hello@polo.com"));
+            .containsOnly(new EMailer(Optional.of("Mickey"), "tricky@mouse.com", "mouse.com"),
+                new EMailer(Optional.of("Miny"), "hello@polo.com", "polo.com"));
     }
 
     @Test
@@ -232,8 +232,8 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getBccAddressSet())
-            .containsOnly(new EMailer(Optional.of("Mickey"), "tricky@mouse.com"),
-                new EMailer(Optional.of("Miny"), "hello@polo.com"));
+            .containsOnly(new EMailer(Optional.of("Mickey"), "tricky@mouse.com", "mouse.com"),
+                new EMailer(Optional.of("Miny"), "hello@polo.com", "polo.com"));
     }
 
     @Test
@@ -278,12 +278,12 @@ class HeaderCollectionTest {
 
     @Test
     void subjectsShouldBeWellRetrieved() {
-        String subject = "A fantastic ElasticSearch module will be available soon for JAMES";
+        String subject = "A fantastic OpenSearch module will be available soon for JAMES";
         HeaderCollection headerCollection = HeaderCollection.builder()
             .add(new FieldImpl("Subject", subject))
             .build();
 
-        assertThat(headerCollection.getSubjectSet()).containsOnly("A fantastic ElasticSearch module will be available soon for JAMES");
+        assertThat(headerCollection.getSubjectSet()).containsOnly("A fantastic OpenSearch module will be available soon for JAMES");
     }
 
     @Test
