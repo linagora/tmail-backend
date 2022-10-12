@@ -107,6 +107,10 @@
             <artifactId>webadmin-rate-limit</artifactId>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-healthcheck</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-backends-cassandra</artifactId>
             <type>test-jar</type>

@@ -89,6 +89,7 @@ import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStor
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
+import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
@@ -225,7 +226,8 @@ public class DistributedServer {
                 new ES6ContactAutoCompleteModule(),
                 new DistributedEmailAddressContactEventModule(),
                 new RabbitMQEmailAddressContactModule(),
-                new RspamdModule());
+                new RspamdModule(),
+                new TasksHeathCheckModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
