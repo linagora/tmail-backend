@@ -1,0 +1,21 @@
+<listeners>
+  <listener>
+    <class>org.apache.james.mailbox.cassandra.MailboxOperationLoggingListener</class>
+  </listener>
+  <listener>
+    <class>org.apache.james.jmap.event.PopulateEmailQueryViewListener</class>
+    <async>true</async>
+  </listener>
+  <listener>
+    <class>org.apache.james.mailbox.quota.mailing.listeners.QuotaThresholdCrossingListener</class>
+    <group>QuotaThresholdCrossingListener</group>
+    <configuration>
+      <thresholds>
+        <threshold>
+          <value>0.9</value>
+        </threshold>
+      </thresholds>
+      <name>first</name>
+    </configuration>
+  </listener>
+</listeners>
