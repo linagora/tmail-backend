@@ -111,6 +111,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
+import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
@@ -223,7 +224,8 @@ public class DistributedServer {
                 new CassandraRateLimitingModule(),
                 new ES6ContactAutoCompleteModule(),
                 new DistributedEmailAddressContactEventModule(),
-                new RabbitMQEmailAddressContactModule());
+                new RabbitMQEmailAddressContactModule(),
+                new RspamdModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
