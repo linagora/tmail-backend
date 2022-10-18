@@ -8,6 +8,7 @@ import org.apache.james.mailbox.model.{Mailbox, MailboxPath, QuotaRoot}
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory
 import org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver
 import org.apache.james.mailbox.{MailboxSession, SessionProvider}
+import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -33,6 +34,12 @@ class TMailQuotaRootResolver @Inject()(sessionProvider: SessionProvider,
     Flux.from(Try(DefaultUserQuotaRootResolver.QUOTA_ROOT_DESERIALIZER.toParts(quotaRoot.getValue))
       .fold(SFlux.error[Mailbox](_),
         parts => associatedMailboxes(namespace = parts.get(0), user = parts.get(1), session = session)))
+
+
+  override def listAllAccessibleQuotaRoots(username: Username): Publisher[QuotaRoot] =
+    SFlux(teamMailboxRepository.listTeamMailboxes(username))
+      .map(teamMailbox => forUser(teamMailbox.owner))
+      .concatWith(super.listAllAccessibleQuotaRoots(username))
 
   private def associatedMailboxes(namespace: String, user: String, session: MailboxSession): SFlux[Mailbox] = namespace match {
       case TEAM_MAILBOX_NAMESPACE => TeamMailbox.asTeamMailbox(new MailAddress(user))
