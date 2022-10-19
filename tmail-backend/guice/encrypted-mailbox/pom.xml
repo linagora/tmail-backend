@@ -13,7 +13,7 @@
     <artifactId>encrypted-mailbox-guice</artifactId>
     <packaging>jar</packaging>
 
-    <name>Tmail :: Guice :: EncryptedMailbox</name>
+    <name>Team-mail :: Guice :: EncryptedMailbox</name>
     <description>Guice injections for the EncryptedMailbox</description>
 
     <dependencies>

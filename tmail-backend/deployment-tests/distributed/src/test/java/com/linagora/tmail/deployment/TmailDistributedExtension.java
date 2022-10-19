@@ -42,14 +42,14 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
 
     @SuppressWarnings("resource")
     private GenericContainer<?> createTmailDistributed() {
-        return new GenericContainer<>("linagora/tmail-backend-distributed:latest")
+        return new GenericContainer<>("linagora/team-mail-backend-distributed:latest")
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
             .dependsOn(cassandra, opensearch, s3, rabbitmq)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-distributed-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-distributed-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80);
     }

@@ -1,6 +1,6 @@
-# TMail Healthcheck
+# Team-mail Healthcheck
 
-This module gathers the custom healthcheck for TMail.
+This module gathers the custom healthcheck for Team-mail.
 
 ## Tasks healthcheck
 

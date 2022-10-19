@@ -14,7 +14,7 @@
     <artifactId>team-mailboxes-guice</artifactId>
     <packaging>jar</packaging>
 
-    <name>Tmail :: Guice :: Team Mailboxes</name>
+    <name>Team-mail :: Guice :: Team Mailboxes</name>
 
     <dependencies>
         <dependency>

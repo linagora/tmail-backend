@@ -1,4 +1,4 @@
-# TMail documentation website how to
+# Team-mail documentation website how to
 
 ## Build
 

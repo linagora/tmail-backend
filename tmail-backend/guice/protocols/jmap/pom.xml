@@ -13,7 +13,7 @@
     <artifactId>tmail-guice-jmap</artifactId>
     <packaging>jar</packaging>
 
-    <description>JMAP modules for Guice implementation of TMail server</description>
+    <description>JMAP modules for Guice implementation of Team-mail server</description>
 
     <dependencies>
         <dependency>

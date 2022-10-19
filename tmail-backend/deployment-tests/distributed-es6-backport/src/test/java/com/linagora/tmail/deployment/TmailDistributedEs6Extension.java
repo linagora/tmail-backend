@@ -43,14 +43,14 @@ public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEa
 
     @SuppressWarnings("resource")
     private GenericContainer<?> createTmailDistributed() {
-        return new GenericContainer<>("linagora/tmail-backend-distributed-esv6:latest")
+        return new GenericContainer<>("linagora/team-mail-backend-distributed-esv6:latest")
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
             .dependsOn(cassandra, elasticsearch, s3, rabbitmq)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-distributed-esv6-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-distributed-esv6-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80);
     }

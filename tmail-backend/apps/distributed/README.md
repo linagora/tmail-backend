@@ -1,4 +1,4 @@
-# Tmail backend Distributed server
+# Team-mail backend Distributed server
 
 This server is the distributed version of James relying on:
 
@@ -10,7 +10,7 @@ This server is the distributed version of James relying on:
 
 ## Build
 
-To be able to run Tmail backend server, you need to generate a JWT key pair first.
+To be able to run Team-mail backend server, you need to generate a JWT key pair first.
 A really easy way to generate a basic JWT key pair is like this:
 
 ```
@@ -56,24 +56,24 @@ docker run -d --network emaily --name=tika apache/tika:1.28.2 #Optional
 Then you can finally start the James distributed server. If you included the JWT keys in the build:
 
 ```
-docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend-distributed
+docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/team-mail-backend-distributed
 ```
 
-If not, you need to bind them to the container for TMail to start:
+If not, you need to bind them to the container for Team-mail to start:
 
 ```
 docker run --network emaily --hostname HOSTNAME \
 --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
 --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
 -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
---name james -t linagora/tmail-backend-distributed
+--name james -t linagora/team-mail-backend-distributed
 ```
 
 Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags)
 to pass extra JVM flags. For instance:
 
 ```
-docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend-distributed
+docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/team-mail-backend-distributed
 ```
 
 ### With docker-compose 
@@ -105,7 +105,7 @@ Disabled by default, its java agent can easily be enabled.
 If you run the distributed server manually, you can do like this:
 
 ```
-docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend-distributed
+docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/team-mail-backend-distributed
 ```
 
 If you use the docker-compose file, you can add an environment variable to the distributed server container:

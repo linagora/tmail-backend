@@ -221,7 +221,7 @@ public interface DockerElasticSearch {
                         .withFileFromClasspath("conf/default.crt", "auth-es/default.crt")
                         .withFileFromClasspath("conf/default.key", "auth-es/default.key")
                         .withFileFromClasspath("Dockerfile", "auth-es/NginxDockerfile"))
-                        .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-nginx-testing" + UUID.randomUUID())))
+                        .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-nginx-testing" + UUID.randomUUID())))
                 .withExposedPorts(ES_HTTP_PORT)
                 .withLogConsumer(frame -> LOGGER.debug("[NGINX] " + frame.getUtf8String()))
                 .withNetwork(network);

@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>webadmin-email-address-contact</artifactId>
-    <name>Tmail :: Webadmin :: Email Address Contacts</name>
+    <name>Team-mail :: Webadmin :: Email Address Contacts</name>
 
     <dependencies>
         <dependency>

@@ -32,7 +32,7 @@
     <artifactId>james-server-guice-elasticsearch-v6</artifactId>
     <packaging>jar</packaging>
 
-    <name>Tmail :: Guice :: Server ElasticSearch v6</name>
+    <name>Team-mail :: Guice :: Server ElasticSearch v6</name>
     <description>Guice injections for the ElasticSearch search engine - v6 backport</description>
 
     <properties>

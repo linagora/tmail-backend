@@ -16,7 +16,7 @@ import org.testcontainers.utility.MountableFile;
 
 public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallback {
 
-    private final GenericContainer<?> container = new GenericContainer<>("linagora/tmail-backend-memory:latest")
+    private final GenericContainer<?> container = new GenericContainer<>("linagora/team-mail-backend-memory:latest")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")

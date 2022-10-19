@@ -12,7 +12,7 @@ services:
       - tika
       - rabbitmq
       - s3
-    image: linagora/tmail-backend-distributed
+    image: linagora/team-mail-backend-distributed
     container_name: james
     hostname: james.local
     ports:

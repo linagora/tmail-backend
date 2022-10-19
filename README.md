@@ -1,4 +1,4 @@
-# TMail backend server
+# Team-mail backend server
 
 [![Join the chat at https://gitter.im/linagora/team-mail](https://badges.gitter.im/linagora/team-mail.svg)](https://gitter.im/linagora/team-mail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
