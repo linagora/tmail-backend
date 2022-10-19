@@ -12,7 +12,7 @@
 
     <artifactId>tmail-rate-limiter-api</artifactId>
     <packaging>jar</packaging>
-    <name>TMail :: Rate Limiter :: Api</name>
+    <name>Team-mail :: Rate Limiter :: Api</name>
 
     <dependencies>
         <dependency>

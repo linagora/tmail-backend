@@ -1,4 +1,4 @@
-# Tmail backend Distributed server with backport for ElasticSearch 6
+# Team-mail backend Distributed server with backport for ElasticSearch 6
 
 This server is the distributed version of James relying on:
 
@@ -10,7 +10,7 @@ This server is the distributed version of James relying on:
 
 ## Build
 
-To be able to run Tmail backend server, you need to generate a JWT key pair first.
+To be able to run Team-mail backend server, you need to generate a JWT key pair first.
 A really easy way to generate a basic JWT key pair is like this:
 
 ```
@@ -21,7 +21,7 @@ openssl rsa -in jwt_privatekey -pubout > jwt_publickey
 ```
 
 You can copy those two keys into the `src/main/conf` folder of this distributed-es6 app module if you want to build
-TMail server with them in the conf, or you can decide to mount them later when running the server. 
+Team-mail server with them in the conf, or you can decide to mount them later when running the server. 
 
 To build the distributed server:
 
@@ -60,7 +60,7 @@ Then you can finally start the James distributed server. If you included the JWT
 docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend-distributed-esv6
 ```
 
-If not, you need to bind them to the container for TMail to start:
+If not, you need to bind them to the container for Team-mail to start:
 
 ```
 docker run --network emaily --hostname HOSTNAME \

@@ -55,7 +55,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withEnv("SLAPD_DOMAIN", "james.org")
             .withEnv("SLAPD_PASSWORD", "mysecretpassword")
             .withEnv("SLAPD_CONFIG_PASSWORD", "mysecretpassword")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-openldap-testing" + UUID.randomUUID()));
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-openldap-testing" + UUID.randomUUID()));
     }
 
     @SuppressWarnings("resource")
@@ -68,7 +68,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
-            .withCreateContainerCmdModifier(cmder -> cmder.withName("tmail-distributed-ldap-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(cmder -> cmder.withName("team-mail-distributed-ldap-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80);
     }

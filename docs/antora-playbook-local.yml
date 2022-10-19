@@ -1,7 +1,7 @@
 # Use this configuration for local testing / docs develop.
 site:
-  title: TMail Documentation
-  start_page: tmail-site::index.adoc
+  title: Team-mail Documentation
+  start_page: team-mail-site::index.adoc
 content:
   sources:
     - url: ./../
