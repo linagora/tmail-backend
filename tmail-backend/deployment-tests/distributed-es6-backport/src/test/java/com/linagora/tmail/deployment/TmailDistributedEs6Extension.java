@@ -43,7 +43,7 @@ public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEa
 
     @SuppressWarnings("resource")
     private GenericContainer<?> createTmailDistributed() {
-        return new GenericContainer<>("linagora/team-mail-backend-distributed-esv6:latest")
+        return new GenericContainer<>("linagora/tmail-backend-distributed-esv6:latest")
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
             .dependsOn(cassandra, elasticsearch, s3, rabbitmq)

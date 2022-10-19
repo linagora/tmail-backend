@@ -60,7 +60,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
 
     @SuppressWarnings("resource")
     private GenericContainer<?> createTmailDistributedLdap() {
-        return new GenericContainer<>("linagora/team-mail-backend-distributed:latest")
+        return new GenericContainer<>("linagora/tmail-backend-distributed:latest")
             .withNetworkAliases("james-distributed-ldap")
             .withNetwork(network)
             .dependsOn(cassandra, opensearch, s3, rabbitmq, ldap)

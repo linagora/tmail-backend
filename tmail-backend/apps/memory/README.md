@@ -26,7 +26,7 @@ mvn compile com.google.cloud.tools:jib-maven-plugin:2.7.0:dockerBuild
 Then you can finally start the James distributed server. If you included the JWT keys in the build:
 
 ```
-docker run linagora/team-mail-backend-memory
+docker run linagora/tmail-backend-memory
 ```
 
 If not, you need to bind them to the container for Team-mail to start:
@@ -34,21 +34,21 @@ If not, you need to bind them to the container for Team-mail to start:
 ```
 docker run --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
 --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
-linagora/team-mail-backend-memory
+linagora/tmail-backend-memory
 ```
 
 Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags) 
 to pass extra JVM flags. For instance:
 
 ```
-docker run -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" linagora/team-mail-backend-memory
+docker run -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" linagora/tmail-backend-memory
 ```
 
 [Glowroot APM]() is packaged as part of the docker distribution to easily enable valuable performances insights.
 Disabled by default, its java agent can easily be enabled:
 
 ```
-docker run -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" linagora/team-mail-backend-memory
+docker run -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" linagora/tmail-backend-memory
 ```
 The [CLI](https://james.apache.org/server/manage-cli.html) can easily be used:
 

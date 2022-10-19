@@ -42,7 +42,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
 
     @SuppressWarnings("resource")
     private GenericContainer<?> createTmailDistributed() {
-        return new GenericContainer<>("linagora/team-mail-backend-distributed:latest")
+        return new GenericContainer<>("linagora/tmail-backend-distributed:latest")
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
             .dependsOn(cassandra, opensearch, s3, rabbitmq)

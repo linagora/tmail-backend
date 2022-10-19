@@ -50,13 +50,13 @@ pipeline {
               sh "docker load -i tmail-backend/apps/memory/target/jib-image.tar"
 
               // Temporary retag image names
-              sh "docker tag linagora/team-mail-backend-memory linagora/team-mail-backend:memory-${env.DOCKER_TAG}"
-              sh "docker tag linagora/team-mail-backend-distributed linagora/team-mail-backend:distributed-${env.DOCKER_TAG}"
-              sh "docker tag linagora/team-mail-backend-distributed-esv6 linagora/team-mail-backend:distributed-esv6-${env.DOCKER_TAG}"
+              sh "docker tag linagora/tmail-backend-memory linagora/tmail-backend:memory-${env.DOCKER_TAG}"
+              sh "docker tag linagora/tmail-backend-distributed linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
+              sh "docker tag linagora/tmail-backend-distributed-esv6 linagora/tmail-backend:distributed-esv6-${env.DOCKER_TAG}"
 
-              def memoryImage = docker.image "linagora/team-mail-backend:memory-${env.DOCKER_TAG}"
-              def distributedImage = docker.image "linagora/team-mail-backend:distributed-${env.DOCKER_TAG}"
-              def distributedEs6Image = docker.image "linagora/team-mail-backend:distributed-esv6-${env.DOCKER_TAG}"
+              def memoryImage = docker.image "linagora/tmail-backend:memory-${env.DOCKER_TAG}"
+              def distributedImage = docker.image "linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
+              def distributedEs6Image = docker.image "linagora/tmail-backend:distributed-esv6-${env.DOCKER_TAG}"
               docker.withRegistry('', 'dockerHub') {
                 memoryImage.push()
                 distributedImage.push()

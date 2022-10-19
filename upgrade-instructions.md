@@ -14,18 +14,7 @@ Note: this section is in progress. It will be updated during all the development
 
 Change list:
 
-- [Team-mail Docker image name changes](#team-mail-docker-image-name-changes)
-
-### Team-mail Docker image name changes
-
-Date 19/10/2022
-
-Concerned product: Distributed Team-mail, Distributed ES6 Team-mail, Memory Team-mail
-
-Change docker images name as part of rebranding "TMail" to "Team-mail" in the project documentation:
-- `linagora/team-mail-backend-distributed` -> `linagora/team-mail-backend-distributed`
-- `linagora/tmail-backend-distributed-esv6` -> `linagora/team-mail-backend-distributed-esv6`
-- `linagora/tmail-backend-memory` -> `linagora/team-mail-backend-memory`
+(No changes yet.)
 
 ## 0.6.3 version
 
