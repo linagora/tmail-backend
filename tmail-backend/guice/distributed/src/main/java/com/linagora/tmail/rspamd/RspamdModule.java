@@ -70,8 +70,9 @@ public class RspamdModule extends AbstractModule {
                                                                                           MessageIdManager messageIdManager,
                                                                                           MailboxSessionMapperFactory mapperFactory,
                                                                                           RspamdHttpClient rspamdHttpClient,
-                                                                                          Clock clock) {
-        return FeedSpamToRspamdTaskDTO.module(mailboxManager, usersRepository, messageIdManager, mapperFactory, rspamdHttpClient, clock);
+                                                                                          Clock clock,
+                                                                                          RspamdClientConfiguration rspamdConfiguration) {
+        return FeedSpamToRspamdTaskDTO.module(mailboxManager, usersRepository, messageIdManager, mapperFactory, rspamdHttpClient, clock, rspamdConfiguration);
     }
 
     @ProvidesIntoSet
@@ -80,8 +81,9 @@ public class RspamdModule extends AbstractModule {
                                                                                          MessageIdManager messageIdManager,
                                                                                          MailboxSessionMapperFactory mapperFactory,
                                                                                          RspamdHttpClient rspamdHttpClient,
-                                                                                         Clock clock) {
-        return FeedHamToRspamdTaskDTO.module(mailboxManager, usersRepository, messageIdManager, mapperFactory, rspamdHttpClient, clock);
+                                                                                         Clock clock,
+                                                                                         RspamdClientConfiguration rspamdConfiguration) {
+        return FeedHamToRspamdTaskDTO.module(mailboxManager, usersRepository, messageIdManager, mapperFactory, rspamdHttpClient, clock, rspamdConfiguration);
     }
 
     @ProvidesIntoSet
