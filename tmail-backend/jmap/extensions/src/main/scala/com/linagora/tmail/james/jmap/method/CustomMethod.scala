@@ -20,6 +20,7 @@ object CapabilityIdentifier {
   val LINAGORA_LONG_LIVED_TOKEN: CapabilityIdentifier = "com:linagora:params:long:lived:token"
   val LINAGORA_CONTACT: CapabilityIdentifier = "com:linagora:params:jmap:contact:autocomplete"
   val LINAGORA_FORWARD: CapabilityIdentifier = "com:linagora:params:jmap:forward"
+  val LINAGORA_FIREBASE: CapabilityIdentifier = "com:linagora:params:jmap:firebase:push"
 }
 
 case object CustomCapabilityProperties extends CapabilityProperties {
