@@ -10,6 +10,7 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.utils.DataProbeImpl
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 trait LinagoraEchoMethodContract {
@@ -222,5 +223,21 @@ trait LinagoraEchoMethodContract {
          |    },
          |    "c1"]]
          |}""".stripMargin)
+  }
+
+  @Test
+  def shouldReturnFirebaseCapabilityWhenFirebaseEnabled(): Unit = {
+   val response: String = `given`()
+      .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThat(response).contains("\"com:linagora:params:jmap:firebase:push\":{}")
   }
 }

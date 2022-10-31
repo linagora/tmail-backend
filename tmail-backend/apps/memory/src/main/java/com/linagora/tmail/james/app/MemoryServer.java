@@ -47,6 +47,7 @@ import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooser;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreInMemoryModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
@@ -150,6 +151,7 @@ public class MemoryServer {
             .combineWith(MODULES)
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
                 .chooseModules(configuration.usersRepositoryImplementation()))
+            .combineWith(FirebaseModuleChooser.chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 
