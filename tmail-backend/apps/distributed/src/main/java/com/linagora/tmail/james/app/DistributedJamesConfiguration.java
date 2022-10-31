@@ -18,13 +18,15 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 
 public record DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                             MailboxConfiguration mailboxConfiguration,
                                             BlobStoreConfiguration blobStoreConfiguration,
                                             SearchConfiguration searchConfiguration,
                                             UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
-                                            MailQueueViewChoice mailQueueViewChoice) implements Configuration {
+                                            MailQueueViewChoice mailQueueViewChoice,
+                                            FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -33,6 +35,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<ConfigurationPath> configurationPath;
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
         private Optional<MailQueueViewChoice> mailQueueViewChoice;
+        private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
 
 
         private Builder() {
@@ -43,6 +46,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             blobStoreConfiguration = Optional.empty();
             usersRepositoryImplementation = Optional.empty();
             mailQueueViewChoice = Optional.empty();
+            firebaseModuleChooserConfiguration = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -98,6 +102,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration) {
+            this.firebaseModuleChooserConfiguration = Optional.of(firebaseModuleChooserConfiguration);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -127,6 +136,9 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 () -> MailQueueViewChoice.parse(
                     new PropertiesProvider(fileSystem, configurationPath))));
 
+            FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration = this.firebaseModuleChooserConfiguration.orElseGet(Throwing.supplier(
+                () -> FirebaseModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -134,7 +146,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 blobStoreConfiguration,
                 searchConfiguration,
                 usersRepositoryChoice,
-                mailQueueViewChoice);
+                mailQueueViewChoice,
+                firebaseModuleChooserConfiguration);
         }
     }
 

@@ -15,21 +15,25 @@ import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 
 public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                   MailboxConfiguration mailboxConfiguration,
-                                  UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation) implements Configuration {
+                                  UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
+                                  FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<String> rootDirectory;
         private Optional<ConfigurationPath> configurationPath;
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
+        private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
 
         private Builder() {
             mailboxConfiguration = Optional.empty();
             rootDirectory = Optional.empty();
             configurationPath = Optional.empty();
             usersRepositoryImplementation = Optional.empty();
+            firebaseModuleChooserConfiguration = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -70,6 +74,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return this;
         }
 
+        public Builder firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration) {
+            this.firebaseModuleChooserConfiguration = Optional.of(firebaseModuleChooserConfiguration);
+            return this;
+        }
+
         public MemoryConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -89,11 +98,15 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             UsersRepositoryModuleChooser.Implementation usersRepositoryChoice = usersRepositoryImplementation.orElseGet(
                 () -> UsersRepositoryModuleChooser.Implementation.parse(configurationProvider));
 
+            FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration = this.firebaseModuleChooserConfiguration.orElseGet(Throwing.supplier(
+                () -> FirebaseModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+
             return new MemoryConfiguration(
                 configurationPath,
                 directories,
                 mailboxConfiguration,
-                usersRepositoryChoice);
+                usersRepositoryChoice,
+                firebaseModuleChooserConfiguration);
         }
     }
 
