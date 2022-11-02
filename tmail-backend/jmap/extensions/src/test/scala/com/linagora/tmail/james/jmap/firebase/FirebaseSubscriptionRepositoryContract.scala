@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.firebase
 import java.time.{Clock, Instant, ZoneId, ZonedDateTime}
 
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepositoryContract.{ALICE, INVALID_EXPIRE, MAX_EXPIRE, SAMPLE_DEVICE_TOKEN_1, SAMPLE_DEVICE_TOKEN_2, VALID_EXPIRE}
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, DeviceClientIdInvalidException, DeviceTokenInvalidException, ExpireTimeInvalidException, FirebaseDeviceToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionNotFoundException}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, DeviceClientIdInvalidException, TokenInvalidException, ExpireTimeInvalidException, FirebaseDeviceToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionNotFoundException}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.{State, TypeName}
 import org.apache.james.utils.UpdatableTickingClock
@@ -42,6 +42,7 @@ case class CustomState(value: String) extends State {
 }
 
 object FirebaseSubscriptionRepositoryContract {
+  val TYPE_NAME_SET: Set[TypeName] = Set(CustomTypeName1, CustomTypeName2)
   val NOW: Instant = Instant.parse("2022-11-01T07:05:39.160Z")
   val CLOCK: Clock = Clock.fixed(NOW, ZoneId.of("UTC"))
   val INVALID_EXPIRE: ZonedDateTime = ZonedDateTime.now(CLOCK).minusDays(10)
@@ -124,7 +125,7 @@ trait FirebaseSubscriptionRepositoryContract {
       types = Seq(CustomTypeName1))
 
     assertThatThrownBy(() => SMono.fromPublisher(testee.save(ALICE, secondRequestWithDuplicatedDeviceToken)).block())
-      .isInstanceOf(classOf[DeviceTokenInvalidException])
+      .isInstanceOf(classOf[TokenInvalidException])
   }
 
   @Test

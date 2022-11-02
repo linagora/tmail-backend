@@ -19,13 +19,13 @@ import org.reactivestreams.Publisher;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.linagora.tmail.james.jmap.model.DeviceClientIdInvalidException;
-import com.linagora.tmail.james.jmap.model.DeviceTokenInvalidException;
 import com.linagora.tmail.james.jmap.model.ExpireTimeInvalidException;
 import com.linagora.tmail.james.jmap.model.FirebaseSubscription;
 import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionCreationRequest;
 import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionExpiredTime;
 import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionId;
 import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionNotFoundException;
+import com.linagora.tmail.james.jmap.model.TokenInvalidException;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -53,7 +53,7 @@ public class MemoryFirebaseSubscriptionRepository implements FirebaseSubscriptio
                     sink.error(new DeviceClientIdInvalidException(req.deviceClientId(), "deviceClientId must be unique"));
                 }
                 if (!isUniqueDeviceToken(username, req.token())) {
-                    sink.error(new DeviceTokenInvalidException("deviceToken must be unique"));
+                    sink.error(new TokenInvalidException("deviceToken must be unique"));
                 }
             })
             .thenReturn(FirebaseSubscription.from(request,
