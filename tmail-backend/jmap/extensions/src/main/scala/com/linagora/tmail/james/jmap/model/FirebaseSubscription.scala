@@ -57,4 +57,4 @@ case class ExpireTimeInvalidException(expires: ZonedDateTime, message: String) e
 
 case class DeviceClientIdInvalidException(deviceClientId: DeviceClientId, message: String) extends IllegalArgumentException(s"`${deviceClientId.value}` $message")
 
-case class DeviceTokenInvalidException(message: String) extends IllegalArgumentException(message)
+case class TokenInvalidException(message: String) extends IllegalArgumentException(message)
