@@ -4,9 +4,12 @@ import java.time.{Clock, ZonedDateTime}
 import java.util
 import java.util.Optional
 
+import com.google.inject.multibindings.Multibinder
+import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.{evaluateExpiresTime, isInThePast, isNotOutdatedSubscription}
 import com.linagora.tmail.james.jmap.model.{DeviceClientIdInvalidException, ExpireTimeInvalidException, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionNotFoundException, TokenInvalidException}
 import javax.inject.Inject
+import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.TypeName
 import org.reactivestreams.Publisher
@@ -14,6 +17,18 @@ import reactor.core.publisher.SynchronousSink
 import reactor.core.scala.publisher.SMono
 
 import scala.jdk.javaapi.{CollectionConverters, OptionConverters}
+
+case class CassandraFirebaseSubscriptionRepositoryModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[CassandraFirebaseSubscriptionRepository]).in(Scopes.SINGLETON)
+    bind(classOf[FirebaseSubscriptionRepository]).to(classOf[CassandraFirebaseSubscriptionRepository])
+
+    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+      .addBinding().toInstance(CassandraFirebaseSubscriptionTable.MODULE)
+
+    bind(classOf[CassandraFirebaseSubscriptionDAO]).in(Scopes.SINGLETON)
+  }
+}
 
 class CassandraFirebaseSubscriptionRepository @Inject()(dao: CassandraFirebaseSubscriptionDAO, clock: Clock) extends FirebaseSubscriptionRepository {
 
