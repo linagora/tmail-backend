@@ -18,6 +18,8 @@ import org.reactivestreams.Publisher;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
+import com.google.inject.AbstractModule;
+import com.google.inject.Scopes;
 import com.linagora.tmail.james.jmap.model.DeviceClientIdInvalidException;
 import com.linagora.tmail.james.jmap.model.ExpireTimeInvalidException;
 import com.linagora.tmail.james.jmap.model.FirebaseSubscription;
@@ -33,6 +35,15 @@ import scala.jdk.javaapi.CollectionConverters;
 import scala.jdk.javaapi.OptionConverters;
 
 public class MemoryFirebaseSubscriptionRepository implements FirebaseSubscriptionRepository {
+
+    public static class Module extends AbstractModule {
+        @Override
+        protected void configure() {
+            bind(MemoryFirebaseSubscriptionRepository.class).in(Scopes.SINGLETON);
+            bind(FirebaseSubscriptionRepository.class).to(MemoryFirebaseSubscriptionRepository.class);
+        }
+    }
+
     private final Table<Username, FirebaseSubscriptionId, FirebaseSubscription> table;
     private final Clock clock;
 
