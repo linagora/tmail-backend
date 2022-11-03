@@ -22,24 +22,29 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
 
-class FirebaseSubscriptionGetMethodModule extends AbstractModule {
+class FirebaseSubscriptionMethodModule extends AbstractModule {
   override def configure(): Unit = {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[FirebaseSubscriptionGetMethod])
+
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[FirebaseSubscriptionSetMethod])
   }
 }
 
-class FirebaseSubscriptionGetMethod @Inject()(val repository: FirebaseSubscriptionRepository,
-                                              val metricFactory: MetricFactory,
-                                              val sessionSupplier: SessionSupplier) extends MethodWithoutAccountId[FirebaseSubscriptionGetRequest] {
+class FirebaseSubscriptionGetMethod @Inject()()(val serializer: FirebaseSubscriptionSerializer,
+                                                val repository: FirebaseSubscriptionRepository,
+                                                val metricFactory: MetricFactory,
+                                                val sessionSupplier: SessionSupplier) extends MethodWithoutAccountId[FirebaseSubscriptionGetRequest] {
 
   override val methodName: Invocation.MethodName = MethodName("FirebaseRegistration/get")
 
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_FIREBASE)
 
   override def getRequest(invocation: Invocation): Either[Exception, FirebaseSubscriptionGetRequest] =
-    FirebaseSubscriptionSerializer.deserializeFirebaseSubscriptionGetRequest(invocation.arguments.value).asEither
+    serializer.deserializeFirebaseSubscriptionGetRequest(invocation.arguments.value).asEither
       .left.map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
 
   override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionGetRequest): Publisher[InvocationWithContext] =
@@ -50,7 +55,7 @@ class FirebaseSubscriptionGetMethod @Inject()(val repository: FirebaseSubscripti
           .map(firebaseSubscriptions => FirebaseSubscriptionGetResponse.from(firebaseSubscriptions, request.ids))
           .map(response => Invocation(
             methodName = methodName,
-            arguments = Arguments(FirebaseSubscriptionSerializer.serialize(response, properties).as[JsObject]),
+            arguments = Arguments(serializer.serialize(response, properties).as[JsObject]),
             methodCallId = invocation.invocation.methodCallId))
           .map(invocationResult => InvocationWithContext(invocationResult, invocation.processingContext)))
 

@@ -1,11 +1,18 @@
 package com.linagora.tmail.james.jmap.model
 
 import eu.timepit.refined.auto._
+import eu.timepit.refined.collection.NonEmpty
+import eu.timepit.refined.refineV
+import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.james.jmap.api.model.ExpireTimeInvalidException.TIME_FORMATTER
 import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.{Id, Properties}
+import org.apache.james.jmap.core.Id.Id
+import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.{Id, Properties, SetError}
 import org.apache.james.jmap.method.WithoutAccountId
+import play.api.libs.json.{JsObject, JsPath, JsValue, JsonValidationError}
 
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -24,7 +31,7 @@ object FirebaseSubscriptionId {
 case class FirebaseSubscriptionId(value: UUID) {
   def serialize: String = value.toString
 
-  def asUnparsedFirebaseSubscriptionId : UnparsedFirebaseSubscriptionId =
+  def asUnparsedFirebaseSubscriptionId: UnparsedFirebaseSubscriptionId =
     UnparsedFirebaseSubscriptionId(Id.validate(serialize).toOption.get)
 }
 
@@ -41,7 +48,18 @@ case class FirebaseSubscriptionExpiredTime(value: ZonedDateTime) {
 case class FirebaseSubscriptionCreationRequest(deviceClientId: DeviceClientId,
                                                token: FirebaseDeviceToken,
                                                expires: Option[FirebaseSubscriptionExpiredTime] = None,
-                                               types: Seq[TypeName])
+                                               types: Seq[TypeName]) {
+
+  def validate: Either[IllegalArgumentException, FirebaseSubscriptionCreationRequest] =
+    validateTypes
+
+  private def validateTypes: Either[IllegalArgumentException, FirebaseSubscriptionCreationRequest] =
+    if (types.isEmpty) {
+      scala.Left(new IllegalArgumentException("types must not be empty"))
+    } else {
+      Right(this)
+    }
+}
 
 object FirebaseSubscription {
   val EXPIRES_TIME_MAX_DAY: Int = 7
@@ -106,3 +124,56 @@ object FirebaseSubscriptionGetResponse {
 
 case class FirebaseSubscriptionGetResponse(list: Seq[FirebaseSubscription],
                                            notFound: Set[UnparsedFirebaseSubscriptionId] = Set())
+
+case class FirebaseSubscriptionCreationId(id: Id) {
+  def serialise: String = id.value
+}
+
+case class FirebaseSubscriptionPatchObject(value: Map[String, JsValue])
+
+case class FirebaseSubscriptionSetRequest(create: Option[Map[FirebaseSubscriptionCreationId, JsObject]],
+                                          update: Option[Map[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject]],
+                                          destroy: Option[Seq[UnparsedFirebaseSubscriptionId]]) extends WithoutAccountId
+
+case class FirebaseSubscriptionCreationResponse(id: FirebaseSubscriptionId,
+                                                expires: Option[FirebaseSubscriptionExpiredTime])
+
+case class FirebaseSubscriptionSetResponse(created: Option[Map[FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationResponse]],
+                                           notCreated: Option[Map[FirebaseSubscriptionCreationId, SetError]])
+
+object FirebaseSubscriptionCreationParseException {
+  def from(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): FirebaseSubscriptionCreationParseException =
+    FirebaseSubscriptionCreationParseException(errors.head match {
+      case (path, Seq()) => SetError.invalidArguments(SetErrorDescription(s"'$path' property in FirebaseSubscription object is not valid"))
+      case (path, Seq(JsonValidationError(Seq("error.path.missing")))) => SetError.invalidArguments(SetErrorDescription(s"Missing '$path' property in FirebaseSubscription object"))
+      case (path, Seq(JsonValidationError(Seq(message)))) => SetError.invalidArguments(SetErrorDescription(s"'$path' property in FirebaseSubscription object is not valid: $message"))
+      case (path, _) => SetError.invalidArguments(SetErrorDescription(s"Unknown error on property '$path'"))
+    })
+}
+
+case class FirebaseSubscriptionCreationParseException(setError: SetError) extends Exception
+
+object FirebaseSubscriptionCreation {
+  private val serverSetProperty: Set[String] = Set("id")
+  private val assignableProperties: Set[String] = Set("deviceClientId", "token", "expires", "types")
+  private val knownProperties: Set[String] = assignableProperties ++ serverSetProperty
+
+  def validateProperties(jsObject: JsObject): Either[FirebaseSubscriptionCreationParseException, JsObject] =
+    (jsObject.keys.intersect(serverSetProperty), jsObject.keys.diff(knownProperties)) match {
+      case (_, unknownProperties) if unknownProperties.nonEmpty =>
+        Left(FirebaseSubscriptionCreationParseException(SetError.invalidArguments(
+          SetErrorDescription("Some unknown properties were specified"),
+          Some(toProperties(unknownProperties.toSet)))))
+      case (specifiedServerSetProperties, _) if specifiedServerSetProperties.nonEmpty =>
+        Left(FirebaseSubscriptionCreationParseException(SetError.invalidArguments(
+          SetErrorDescription("Some server-set properties were specified"),
+          Some(toProperties(specifiedServerSetProperties.toSet)))))
+      case _ => scala.Right(jsObject)
+    }
+
+  private def toProperties(strings: Set[String]): Properties = Properties(strings
+    .flatMap(string => {
+      val refinedValue: Either[String, NonEmptyString] = refineV[NonEmpty](string)
+      refinedValue.fold(_ => None, Some(_))
+    }))
+}
