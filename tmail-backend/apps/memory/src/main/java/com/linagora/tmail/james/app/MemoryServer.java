@@ -47,7 +47,9 @@ import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
-import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooser;
+import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreInMemoryModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
@@ -151,7 +153,7 @@ public class MemoryServer {
             .combineWith(MODULES)
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
                 .chooseModules(configuration.usersRepositoryImplementation()))
-            .combineWith(FirebaseModuleChooser.chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
+            .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 
@@ -170,5 +172,12 @@ public class MemoryServer {
             return ImmutableList.of(new EncryptedMailboxModule());
         }
         return ImmutableList.of();
+    }
+
+    private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
+        if (moduleChooserConfiguration.enable()) {
+            return List.of(new MemoryFirebaseSubscriptionRepository.Module(), new FirebaseCommonModule());
+        }
+        return List.of();
     }
 }
