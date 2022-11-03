@@ -91,7 +91,9 @@ import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
-import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooser;
+import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
@@ -255,7 +257,7 @@ public class DistributedServer {
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
             .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.usersRepositoryImplementation()))
-            .combineWith(FirebaseModuleChooser.chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
+            .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 
@@ -274,5 +276,12 @@ public class DistributedServer {
             return ImmutableList.of(new EncryptedMailboxModule());
         }
         return ImmutableList.of();
+    }
+
+    private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
+        if (moduleChooserConfiguration.enable()) {
+            return List.of(new CassandraFirebaseSubscriptionRepositoryModule(), new FirebaseCommonModule());
+        }
+        return List.of();
     }
 }
