@@ -17,6 +17,7 @@ import org.apache.james.jmap.core.UTCDate
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.utils.DataProbeImpl
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 import java.time.ZonedDateTime
@@ -1576,5 +1577,216 @@ trait FirebaseSubscriptionSetMethodContract {
          |        ]
          |    ]
          |}""".stripMargin)
+  }
+
+  @Test
+  def destroyShouldSucceed(server: GuiceJamesServer): Unit = {
+    val probe = server.getProbe(classOf[FirebaseSubscriptionProbe])
+    val firebaseSubscription = probe
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val request: String =
+      s"""{
+         |    "using": ["urn:ietf:params:jmap:core",
+         |              "com:linagora:params:jmap:firebase:push"],
+         |    "methodCalls": [
+         |      [
+         |        "FirebaseRegistration/set",
+         |        {
+         |            "destroy": ["${firebaseSubscription.id.value.toString}"]
+         |        },
+         |        "c1"
+         |      ]
+         |    ]
+         |  }""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "${SESSION_STATE.value}",
+           |    "methodResponses": [
+           |        [
+           |            "FirebaseRegistration/set",
+           |            {
+           |                "destroyed": ["${firebaseSubscription.id.value.toString}"]
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+
+    assertThat(probe.retrieveSubscription(BOB, firebaseSubscription.id)).isNull()
+  }
+
+  @Test
+  def destroyShouldFailWhenInvalidId(): Unit = {
+    val request: String =
+      s"""{
+         |    "using": ["urn:ietf:params:jmap:core",
+         |              "com:linagora:params:jmap:firebase:push"],
+         |    "methodCalls": [
+         |      [
+         |        "FirebaseRegistration/set",
+         |        {
+         |            "destroy": ["invalid"]
+         |        },
+         |        "c1"
+         |      ]
+         |    ]
+         |  }""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "${SESSION_STATE.value}",
+           |    "methodResponses": [
+           |        [
+           |            "FirebaseRegistration/set",
+           |            {
+           |              "notDestroyed": [[
+           |                "invalid",
+           |                {
+           |                    "type": "invalidArguments",
+           |                    "description": "invalid is not a FirebaseSubscriptionId: Invalid UUID string: invalid"
+           |                }
+           |              ]]
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def destroyShouldNotFailWhenUnknownId(): Unit = {
+    val id = UUID.randomUUID().toString
+
+    val request: String =
+      s"""{
+         |    "using": ["urn:ietf:params:jmap:core",
+         |              "com:linagora:params:jmap:firebase:push"],
+         |    "methodCalls": [
+         |      [
+         |        "FirebaseRegistration/set",
+         |        {
+         |            "destroy": ["$id"]
+         |        },
+         |        "c1"
+         |      ]
+         |    ]
+         |  }""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "${SESSION_STATE.value}",
+           |    "methodResponses": [
+           |        [
+           |            "FirebaseRegistration/set",
+           |            {
+           |                "destroyed":["$id"]
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def destroyShouldHandleMixedCases(server: GuiceJamesServer): Unit = {
+    val probe = server.getProbe(classOf[FirebaseSubscriptionProbe])
+    val createRequest2: FirebaseSubscriptionCreationRequest = FIREBASE_SUBSCRIPTION_CREATE_REQUEST.copy(
+      deviceClientId = DeviceClientId("ipad gen 10"),
+      token = FirebaseDeviceToken("fire-base-token-3"))
+
+    val firebaseSubscription1 = probe
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+    val firebaseSubscription2 = probe
+      .createSubscription(BOB, createRequest2)
+
+    val request: String =
+      s"""{
+         |    "using": ["urn:ietf:params:jmap:core",
+         |              "com:linagora:params:jmap:firebase:push"],
+         |    "methodCalls": [
+         |      [
+         |        "FirebaseRegistration/set",
+         |        {
+         |            "destroy": ["${firebaseSubscription1.id.value.toString}", "${firebaseSubscription2.id.value.toString}", "invalid"]
+         |        },
+         |        "c1"
+         |      ]
+         |    ]
+         |  }""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .when(net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER)
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "${SESSION_STATE.value}",
+           |    "methodResponses": [
+           |        [
+           |            "FirebaseRegistration/set",
+           |            {
+           |                "destroyed": [
+           |                    "${firebaseSubscription1.id.value.toString}",
+           |                    "${firebaseSubscription2.id.value.toString}"
+           |                ],
+           |                "notDestroyed": [[
+           |                    "invalid",
+           |                    {
+           |                        "type": "invalidArguments",
+           |                        "description": "invalid is not a FirebaseSubscriptionId: Invalid UUID string: invalid"
+           |                    }
+           |                ]]
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
   }
 }

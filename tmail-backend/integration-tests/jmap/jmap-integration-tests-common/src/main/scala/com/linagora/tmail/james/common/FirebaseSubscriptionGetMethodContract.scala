@@ -1,10 +1,11 @@
 package com.linagora.tmail.james.common
 
+import com.google.common.collect.ImmutableSet
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseDeviceToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseDeviceToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -31,6 +32,9 @@ class FirebaseSubscriptionProbe @Inject()(firebaseSubscriptionRepository: Fireba
   def createSubscription(username: Username, request: FirebaseSubscriptionCreationRequest): FirebaseSubscription =
     SMono(firebaseSubscriptionRepository.save(username, request))
       .block()
+
+  def retrieveSubscription(username: Username, id: FirebaseSubscriptionId): FirebaseSubscription =
+    SMono(firebaseSubscriptionRepository.get(username, ImmutableSet.of(id))).block()
 }
 
 class FirebaseSubscriptionProbeModule extends AbstractModule {
