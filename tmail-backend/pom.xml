@@ -65,7 +65,7 @@
         <james.groupId>org.apache.james</james.groupId>
         <james.version>3.8.0-SNAPSHOT</james.version>
         <apache-mime4j.version>0.8.6-SNAPSHOT</apache-mime4j.version>
-
+        <firebase-admin-sdk.version>9.1.0</firebase-admin-sdk.version>
         <scala.base>2.13</scala.base>
     </properties>
 
@@ -348,6 +348,11 @@
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcpg-jdk15on</artifactId>
                 <version>1.70</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.firebase</groupId>
+                <artifactId>firebase-admin</artifactId>
+                <version>${firebase-admin-sdk.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

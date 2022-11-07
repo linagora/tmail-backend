@@ -98,6 +98,8 @@ case class DeviceClientIdInvalidException(deviceClientId: DeviceClientId, messag
 
 case class TokenInvalidException(message: String) extends IllegalArgumentException(message)
 
+case class MissingOrInvalidFirebaseCredentialException(message: String) extends IllegalArgumentException(message)
+
 case class UnparsedFirebaseSubscriptionId(id: Id)
 
 case class FirebaseSubscriptionIds(list: List[UnparsedFirebaseSubscriptionId])
