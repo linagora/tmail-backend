@@ -1,13 +1,17 @@
 package com.linagora.tmail.james.common
 
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseDeviceToken, FirebaseSubscriptionCreationRequest}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import io.restassured.path.json.JsonPath
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
+import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.jmap.change.ThreadTypeName
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UTCDate
 import org.apache.james.jmap.http.UserCredential
@@ -16,6 +20,7 @@ import org.apache.james.utils.DataProbeImpl
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 import java.time.ZonedDateTime
+import java.util.UUID
 
 
 trait FirebaseSubscriptionSetMethodContract {
@@ -969,6 +974,603 @@ trait FirebaseSubscriptionSetMethodContract {
          |                        ]
          |                    }
          |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateTypesShouldReturnUpdatedResponseWhenValidUpdateRequest(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription.id.serialize}": {
+           |                  "types": ["Mailbox", "Email"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "updated": {
+         |                   "${firebaseSubscription.id.serialize}": {}
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateTypesShouldFailWhenTypesPropertyIsEmpty(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription.id.serialize}": {
+           |                  "types": []
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notUpdated": [
+         |                    [
+         |                        "${firebaseSubscription.id.serialize}",
+         |                        {
+         |                            "type": "invalidArguments",
+         |                            "description": "Must not empty",
+         |                            "properties": [
+         |                                "types"
+         |                            ]
+         |                        }
+         |                    ]
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateTypeRequestShouldChangeSubscriptionData(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription.id.serialize}": {
+           |                  "types": ["Mailbox", "Email"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+
+    val response = `given`
+      .body(
+        s"""{
+           |    "using": [
+           |        "urn:ietf:params:jmap:core",
+           |        "com:linagora:params:jmap:firebase:push"
+           |    ],
+           |    "methodCalls": [
+           |        [
+           |            "FirebaseRegistration/get",
+           |            {
+           |                "accountId": "$ACCOUNT_ID",
+           |                "ids": null
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         | [
+         |            "FirebaseRegistration/get",
+         |            {
+         |                "notFound": [
+         |
+         |                ],
+         |                "list": [
+         |                    {
+         |                        "id": "${firebaseSubscription.id.serialize}",
+         |                        "deviceClientId": "ipad gen 9",
+         |                        "expires": "$${json-unit.ignore}",
+         |                        "types": [
+         |                            "Mailbox",
+         |                            "Email"
+         |                        ]
+         |                    }
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenInvalidTypes(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription.id.serialize}": {
+           |                  "types": ["InvalidType1", "Email"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notUpdated": [
+         |                    [
+         |                        "${firebaseSubscription.id.serialize}",
+         |                        {
+         |                            "type": "invalidArguments",
+         |                            "description": "Unknown typeName InvalidType1",
+         |                            "properties": [
+         |                                "types"
+         |                            ]
+         |                        }
+         |                    ]
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenInvalidProperty(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription.id.serialize}": {
+           |                  "property1": "propertyValue"
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notUpdated": [
+         |                    [
+         |                        "${firebaseSubscription.id.serialize}",
+         |                        {
+         |                            "type": "invalidArguments",
+         |                            "description": "Some unknown properties were specified",
+         |                            "properties": [
+         |                                "property1"
+         |                            ]
+         |                        }
+         |                    ]
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenNotFoundId(): Unit = {
+    val notFoundId = UUID.randomUUID().toString
+
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "$notFoundId": {
+           |                  "types": ["Email"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notUpdated": [
+         |                    [
+         |                        "$notFoundId",
+         |                        {
+         |                            "type": "notFound",
+         |                            "description": null
+         |                        }
+         |                    ]
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenCanNotParseId(): Unit = {
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "123": {
+           |                  "types": ["Email"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notUpdated": [
+         |                    [
+         |                        "123",
+         |                        {
+         |                            "type": "invalidArguments",
+         |                            "description": "FirebaseSubscriptionId is invalid"
+         |                        }
+         |                    ]
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def setShouldSuccessWhenUpdateSeveralSubscriptions(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val firebaseSubscription2 = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FirebaseSubscriptionCreationRequest(deviceClientId = DeviceClientId("device2"),
+        token = FirebaseDeviceToken("token2"),
+        types = Seq(ThreadTypeName)))
+
+    val updateResponse = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription1.id.serialize}": {
+           |                  "types": ["Email"]
+           |                },
+           |                "${firebaseSubscription2.id.serialize}": {
+           |                  "types": ["Mailbox"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(updateResponse).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "updated": {
+         |                    "${firebaseSubscription1.id.serialize}": {
+         |                    },
+         |                    "${firebaseSubscription2.id.serialize}": {
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+
+
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |    "FirebaseRegistration/get",
+           |    {
+           |      "accountId": "$ACCOUNT_ID",
+           |      "ids": null
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/get",
+         |            {
+         |                "notFound": [
+         |                ],
+         |                "list": [
+         |                    {
+         |                        "id": "${firebaseSubscription1.id.serialize}",
+         |                        "deviceClientId": "ipad gen 9",
+         |                        "expires": "$${json-unit.ignore}",
+         |                        "types": [
+         |                            "Email"
+         |                        ]
+         |                    },
+         |                    {
+         |                        "id": "${firebaseSubscription2.id.serialize}",
+         |                        "deviceClientId": "device2",
+         |                        "expires": "$${json-unit.ignore}",
+         |                        "types": [
+         |                            "Mailbox"
+         |                        ]
+         |                    }
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateRequestShouldReturnCorrectResponseWhenMixCases(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val updateResponse = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription1.id.serialize}": {
+           |                  "types": ["Email"]
+           |                },
+           |                "notFound": {
+           |                  "types": ["Mailbox"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(updateResponse).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "updated": {
+         |                    "${firebaseSubscription1.id.serialize}": {
+         |                    }
+         |                },
+         |                "notUpdated": [
+         |                    [
+         |                        "notFound",
+         |                        {
+         |                            "type": "invalidArguments",
+         |                            "description": "FirebaseSubscriptionId is invalid"
+         |                        }
+         |                    ]
+         |                ]
          |            },
          |            "c1"
          |        ]
