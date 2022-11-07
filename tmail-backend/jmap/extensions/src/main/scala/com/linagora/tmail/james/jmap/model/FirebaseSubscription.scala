@@ -12,7 +12,7 @@ import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Id, Properties, SetError}
 import org.apache.james.jmap.method.WithoutAccountId
-import play.api.libs.json.{JsObject, JsPath, JsValue, JsonValidationError}
+import play.api.libs.json.{JsObject, JsPath, JsonValidationError}
 
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -129,11 +129,7 @@ case class FirebaseSubscriptionCreationId(id: Id) {
   def serialise: String = id.value
 }
 
-case class FirebaseSubscriptionPatchObject(value: Map[String, JsValue])
-
-case class FirebaseSubscriptionSetRequest(create: Option[Map[FirebaseSubscriptionCreationId, JsObject]],
-                                          update: Option[Map[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject]],
-                                          destroy: Option[Seq[UnparsedFirebaseSubscriptionId]]) extends WithoutAccountId
+case class FirebaseSubscriptionSetRequest(create: Option[Map[FirebaseSubscriptionCreationId, JsObject]]) extends WithoutAccountId
 
 case class FirebaseSubscriptionCreationResponse(id: FirebaseSubscriptionId,
                                                 expires: Option[FirebaseSubscriptionExpiredTime])

@@ -35,7 +35,7 @@ trait FirebaseSubscriptionSetMethodContract {
   }
 
   @Test
-  def setShouldReturnCreatedWhenInvalidCreationRequest(): Unit = {
+  def setShouldReturnCreatedWhenValidCreationRequest(): Unit = {
     val response = `given`
       .body(
         s"""{
@@ -459,8 +459,61 @@ trait FirebaseSubscriptionSetMethodContract {
          |            {
          |                "created": {
          |                    "4f29": {
+         |                        "id": "$${json-unit.ignore}"
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def creationResponseShouldReturnExpiresPropertyWhenExpiresGreaterThanThreshold(): Unit = {
+    val expires: String = UTCDate(ZonedDateTime.now().plusDays(100)).asUTC.format(TIME_FORMATTER)
+
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "create": {
+           |                "4f29": {
+           |                  "deviceClientId": "a889-ffea-910",
+           |                  "token": "token1",
+           |                  "expires": "${expires}",
+           |                  "types": ["Mailbox"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "created": {
+         |                    "4f29": {
          |                        "id": "$${json-unit.ignore}",
-         |                        "expires":  "${expires}"
+         |                        "expires" : "$${json-unit.ignore}"
          |                    }
          |                }
          |            },

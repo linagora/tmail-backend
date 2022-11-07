@@ -66,9 +66,7 @@ class FirebaseSubscriptionSetCreatePerformer @Inject()(val repository: FirebaseS
       .left.map(errors => FirebaseSubscriptionCreationParseException.from(errors))
     validatedRequest <- parsedRequest.validate
       .left.map(e => FirebaseSubscriptionCreationParseException(SetError.invalidArguments(SetErrorDescription(e.getMessage))))
-  } yield {
-    validatedRequest
-  }
+  } yield validatedRequest
 
   private def create(clientId: FirebaseSubscriptionCreationId, request: FirebaseSubscriptionCreationRequest, username: Username): SMono[CreationResult] =
     SMono.fromPublisher(repository.save(username, request))
@@ -76,7 +74,7 @@ class FirebaseSubscriptionSetCreatePerformer @Inject()(val repository: FirebaseS
       .onErrorResume(e => SMono.just[CreationResult](CreationFailure(clientId, e)))
 
   private def showExpires(expires: FirebaseSubscriptionExpiredTime, request: FirebaseSubscriptionCreationRequest): Option[FirebaseSubscriptionExpiredTime] = request.expires match {
-    case Some(requestExpires) if expires.eq(requestExpires) => None
+    case Some(requestExpires) if expires.value.eq(requestExpires.value) => None
     case _ => Some(expires)
   }
 }
