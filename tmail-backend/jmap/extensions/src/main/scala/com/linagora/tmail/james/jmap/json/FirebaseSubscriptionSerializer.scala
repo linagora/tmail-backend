@@ -10,7 +10,6 @@ import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json._
 
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
@@ -25,8 +24,8 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
 
   private implicit val deviceClientIdFormat: Format[DeviceClientId] = Json.valueFormat[DeviceClientId]
   private implicit val firebaseDeviceTokenFormat: Format[FirebaseDeviceToken] = Json.valueFormat[FirebaseDeviceToken]
-  private implicit val expiresOnWrites: Writes[ZonedDateTime] = date => JsString(UTCDate(date).asUTC.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
-  private implicit val firebaseSubscriptionExpiredTimeWrites: Writes[FirebaseSubscriptionExpiredTime] = Json.valueWrites[FirebaseSubscriptionExpiredTime]
+  private implicit val firebaseSubscriptionExpiredTimeWrites: Writes[FirebaseSubscriptionExpiredTime] = expiredTime => JsString(UTCDate(expiredTime.value)
+    .asUTC.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
   private implicit val typeNameWrites: Writes[TypeName] = typeName => JsString(typeName.asString())
 
   private implicit val firebaseSubscriptionIdWrites: Writes[FirebaseSubscriptionId] = value => JsString(value.serialize)

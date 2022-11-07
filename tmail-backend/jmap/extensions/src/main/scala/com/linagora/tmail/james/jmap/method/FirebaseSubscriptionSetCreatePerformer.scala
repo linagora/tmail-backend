@@ -8,6 +8,7 @@ import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError}
+import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -15,6 +16,8 @@ import javax.inject.Inject
 
 
 object FirebaseSubscriptionSetCreatePerformer {
+  private val LOGGER: Logger = LoggerFactory.getLogger(classOf[FirebaseSubscriptionSetCreatePerformer])
+
   trait CreationResult
 
   case class CreationSuccess(clientId: FirebaseSubscriptionCreationId, response: FirebaseSubscriptionCreationResponse) extends CreationResult
@@ -23,9 +26,12 @@ object FirebaseSubscriptionSetCreatePerformer {
     def asMessageSetError: SetError = e match {
       case e: FirebaseSubscriptionCreationParseException => e.setError
       case e: ExpireTimeInvalidException => SetError.invalidArguments(SetErrorDescription(e.getMessage), Some(Properties("expires")))
-      case e: DeviceClientIdInvalidException => SetError.invalidArguments(SetErrorDescription(e.getMessage))
+      case e: DeviceClientIdInvalidException => SetError.invalidArguments(SetErrorDescription(e.getMessage), Some(Properties("deviceClientId")))
       case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage))
-      case _ => SetError.serverFail(SetErrorDescription(e.getMessage))
+      case _ => {
+        LOGGER.warn("Could not create firebase subscription request", e)
+        SetError.serverFail(SetErrorDescription(e.getMessage))
+      }
     }
   }
 

@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.method
 
-import com.google.inject.multibindings.Multibinder
-import com.google.inject.{AbstractModule, Inject}
+import com.google.inject.Inject
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
 import com.linagora.tmail.james.jmap.json.FirebaseSubscriptionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FIREBASE
@@ -12,7 +11,7 @@ import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JM
 import org.apache.james.jmap.core.Invocation
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.json.ResponseSerializer
-import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodWithoutAccountId}
+import org.apache.james.jmap.method.{InvocationWithContext, MethodWithoutAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
@@ -21,18 +20,6 @@ import play.api.libs.json.{JsError, JsObject}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
-
-class FirebaseSubscriptionMethodModule extends AbstractModule {
-  override def configure(): Unit = {
-    Multibinder.newSetBinder(binder(), classOf[Method])
-      .addBinding()
-      .to(classOf[FirebaseSubscriptionGetMethod])
-
-    Multibinder.newSetBinder(binder(), classOf[Method])
-      .addBinding()
-      .to(classOf[FirebaseSubscriptionSetMethod])
-  }
-}
 
 class FirebaseSubscriptionGetMethod @Inject()()(val serializer: FirebaseSubscriptionSerializer,
                                                 val repository: FirebaseSubscriptionRepository,
