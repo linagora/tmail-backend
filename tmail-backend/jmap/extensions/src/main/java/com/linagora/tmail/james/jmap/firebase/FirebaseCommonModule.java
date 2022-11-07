@@ -9,6 +9,5 @@ public class FirebaseCommonModule extends AbstractModule {
     protected void configure() {
         install(new FirebaseCapabilitiesModule());
         install(new FirebaseSubscriptionGetMethodModule());
-        install(new MemoryFirebaseSubscriptionModule());
     }
 }
