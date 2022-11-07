@@ -5,7 +5,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseDeviceToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -49,7 +49,7 @@ object FirebaseSubscriptionGetMethodContract {
   val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
   val FIREBASE_SUBSCRIPTION_CREATE_REQUEST: FirebaseSubscriptionCreationRequest = FirebaseSubscriptionCreationRequest(
     deviceClientId = DeviceClientId("ipad gen 9"),
-    token = FirebaseDeviceToken("fire-base-token-2"),
+    token = FirebaseToken("fire-base-token-2"),
     expires = Some(FirebaseSubscriptionExpiredTime(UTCDate(ZonedDateTime.now().plusDays(1)).asUTC)),
     types = Seq(MailboxTypeName))
 }
@@ -164,7 +164,7 @@ trait FirebaseSubscriptionGetMethodContract {
   def getShouldReturnEntriesWhenHaveSeveralSubscription(server: GuiceJamesServer): Unit = {
     val createRequest2: FirebaseSubscriptionCreationRequest = FIREBASE_SUBSCRIPTION_CREATE_REQUEST.copy(
       deviceClientId = DeviceClientId("ipad gen 10"),
-      token = FirebaseDeviceToken("fire-base-token-3"))
+      token = FirebaseToken("fire-base-token-3"))
 
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
       .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)

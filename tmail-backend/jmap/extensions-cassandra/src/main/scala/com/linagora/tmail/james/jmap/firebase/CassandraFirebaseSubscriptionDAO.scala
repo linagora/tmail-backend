@@ -8,7 +8,7 @@ import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
 import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
 import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseDeviceToken, FirebaseSubscription, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscription, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId}
 import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
@@ -96,7 +96,7 @@ class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateF
   private def toFirebaseSubscription(row: Row) =
     FirebaseSubscription(id = FirebaseSubscriptionId.apply(row.get(ID, TypeCodecs.UUID)),
       deviceClientId = DeviceClientId(row.get(DEVICE_CLIENT_ID, TypeCodecs.TEXT)),
-      token = FirebaseDeviceToken(row.get(TOKEN, TypeCodecs.TEXT)),
+      token = FirebaseToken(row.get(TOKEN, TypeCodecs.TEXT)),
       toExpires(row),
       toTypes(row))
 

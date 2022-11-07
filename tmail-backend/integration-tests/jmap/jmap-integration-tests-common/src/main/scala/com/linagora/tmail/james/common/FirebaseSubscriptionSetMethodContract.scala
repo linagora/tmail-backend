@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.common
 
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseDeviceToken, FirebaseSubscriptionCreationRequest}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscriptionCreationRequest}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -1405,7 +1405,7 @@ trait FirebaseSubscriptionSetMethodContract {
 
     val firebaseSubscription2 = server.getProbe(classOf[FirebaseSubscriptionProbe])
       .createSubscription(BOB, FirebaseSubscriptionCreationRequest(deviceClientId = DeviceClientId("device2"),
-        token = FirebaseDeviceToken("token2"),
+        token = FirebaseToken("token2"),
         types = Seq(ThreadTypeName)))
 
     val updateResponse = `given`
@@ -1730,7 +1730,7 @@ trait FirebaseSubscriptionSetMethodContract {
     val probe = server.getProbe(classOf[FirebaseSubscriptionProbe])
     val createRequest2: FirebaseSubscriptionCreationRequest = FIREBASE_SUBSCRIPTION_CREATE_REQUEST.copy(
       deviceClientId = DeviceClientId("ipad gen 10"),
-      token = FirebaseDeviceToken("fire-base-token-3"))
+      token = FirebaseToken("fire-base-token-3"))
 
     val firebaseSubscription1 = probe
       .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
