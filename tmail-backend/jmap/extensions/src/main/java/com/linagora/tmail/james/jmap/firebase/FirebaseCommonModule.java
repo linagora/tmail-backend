@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.events.EventListener;
 import org.apache.james.jmap.method.Method;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
@@ -36,6 +37,9 @@ public class FirebaseCommonModule extends AbstractModule {
             .to(FirebaseSubscriptionSetMethod.class);
 
         bind(FirebasePushClient.class).in(Scopes.SINGLETON);
+
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
+            .addBinding().to(FirebasePushListener.class);
     }
 
     @Provides
