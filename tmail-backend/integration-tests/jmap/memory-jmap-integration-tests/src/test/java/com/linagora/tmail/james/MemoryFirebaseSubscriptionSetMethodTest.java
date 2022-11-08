@@ -11,6 +11,7 @@ import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.FirebaseSubscriptionProbeModule;
 import com.linagora.tmail.james.common.FirebaseSubscriptionSetMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryFirebaseSubscriptionSetMethodTest implements FirebaseSubscriptionSetMethodContract {
@@ -26,6 +27,7 @@ public class MemoryFirebaseSubscriptionSetMethodTest implements FirebaseSubscrip
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new FirebaseSubscriptionProbeModule()))
+            .overrideWith(new FirebaseSubscriptionProbeModule())
+            .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(FirebaseSubscriptionSetMethodContract.firebasePushClient())))
         .build();
 }
