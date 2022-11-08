@@ -19,10 +19,15 @@ import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
-
 import java.time.ZonedDateTime
 import java.util.UUID
 
+import com.linagora.tmail.james.jmap.firebase.FirebasePushClient
+import org.mockito.Mockito.mock
+
+object FirebaseSubscriptionSetMethodContract {
+  val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
+}
 
 trait FirebaseSubscriptionSetMethodContract {
 

@@ -4,7 +4,7 @@ import com.google.common.collect.ImmutableSet
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
-import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
+import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebaseSubscriptionRepository}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -22,6 +22,7 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
 import org.junit.jupiter.api.{BeforeEach, Test}
+import org.mockito.Mockito.mock
 import reactor.core.scala.publisher.SMono
 
 import java.time.ZonedDateTime
@@ -52,6 +53,7 @@ object FirebaseSubscriptionGetMethodContract {
     token = FirebaseToken("fire-base-token-2"),
     expires = Some(FirebaseSubscriptionExpiredTime(UTCDate(ZonedDateTime.now().plusDays(1)).asUTC)),
     types = Seq(MailboxTypeName))
+  val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
 }
 
 trait FirebaseSubscriptionGetMethodContract {

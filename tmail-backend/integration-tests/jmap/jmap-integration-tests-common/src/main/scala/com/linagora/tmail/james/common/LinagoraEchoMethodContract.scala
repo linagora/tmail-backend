@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.common
 
+import com.linagora.tmail.james.jmap.firebase.FirebasePushClient
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -12,6 +13,11 @@ import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HE
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
+import org.mockito.Mockito.mock
+
+object LinagoraEchoMethodContract {
+  val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
+}
 
 trait LinagoraEchoMethodContract {
 
