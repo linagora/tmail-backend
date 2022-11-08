@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.TIME_FORMATTER
+import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -916,6 +916,63 @@ trait FirebaseSubscriptionSetMethodContract {
          |      "description":"Missing capability(ies): urn:ietf:params:jmap:core, com:linagora:params:jmap:firebase:push"
          |    },
          |    "c1"]]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def creationShouldFailWhenTokenIsNotUnique(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val response = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "create": {
+           |                "4f29": {
+           |                  "deviceClientId": "a889-ffea-910",
+           |                  "token": "${FIREBASE_SUBSCRIPTION_CREATE_REQUEST.token.value}",
+           |                  "types": ["Mailbox"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notCreated": {
+         |                    "4f29": {
+         |                        "type": "invalidArguments",
+         |                        "description": "deviceToken must be unique",
+         |                        "properties": [
+         |                            "token"
+         |                        ]
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
          |}""".stripMargin)
   }
 }

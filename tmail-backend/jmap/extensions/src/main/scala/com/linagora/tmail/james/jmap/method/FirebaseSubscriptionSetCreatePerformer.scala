@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.method
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
 import com.linagora.tmail.james.jmap.json.FirebaseSubscriptionSerializer
 import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetCreatePerformer.{CreationFailure, CreationResult, CreationResults, CreationSuccess}
-import com.linagora.tmail.james.jmap.model.{DeviceClientIdInvalidException, ExpireTimeInvalidException, FirebaseSubscriptionCreation, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationParseException, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionSetRequest}
+import com.linagora.tmail.james.jmap.model.{DeviceClientIdInvalidException, ExpireTimeInvalidException, FirebaseSubscriptionCreation, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationParseException, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionSetRequest, TokenInvalidException}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -27,6 +27,7 @@ object FirebaseSubscriptionSetCreatePerformer {
       case e: FirebaseSubscriptionCreationParseException => e.setError
       case e: ExpireTimeInvalidException => SetError.invalidArguments(SetErrorDescription(e.getMessage), Some(Properties("expires")))
       case e: DeviceClientIdInvalidException => SetError.invalidArguments(SetErrorDescription(e.getMessage), Some(Properties("deviceClientId")))
+      case e: TokenInvalidException => SetError.invalidArguments(SetErrorDescription(e.getMessage), Some(Properties("token")))
       case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage))
       case _ => {
         LOGGER.warn("Could not create firebase subscription request", e)
