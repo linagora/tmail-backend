@@ -1,6 +1,8 @@
 package com.linagora.tmail.james.jmap.firebase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.linagora.tmail.james.jmap.firebase.FirebasePushUrgency.HIGH;
+import static com.linagora.tmail.james.jmap.firebase.FirebasePushUrgency.NORMAL;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.util.Map;
@@ -23,8 +25,9 @@ class FirebaseClientTest {
         .orElse("src/test/resources/valid-firebase-private-key.json");
     public static final String INVALID_KEY_URL = "src/test/resources/invalid-firebase-private-key.json";
     public static final String NOT_FOUND_KEY_URL = "src/test/resources/notFound.json";
-    public static final FirebasePushRequest VALID_PUSH_REQUEST = new FirebasePushRequest(Map.of("a3123:Email", "state1"), VALID_TOKEN);
-    public static final FirebasePushRequest INVALID_PUSH_REQUEST = new FirebasePushRequest(Map.of("a3123:Email", "state1"), INVALID_TOKEN);
+    public static final FirebasePushRequest VALID_PUSH_REQUEST_NORMAL_PRIORITY = new FirebasePushRequest(Map.of("a3123:Email", "state1"), VALID_TOKEN, NORMAL);
+    public static final FirebasePushRequest VALID_PUSH_REQUEST_HIGH_PRIORITY = new FirebasePushRequest(Map.of("a3123:Email", "state1"), VALID_TOKEN, HIGH);
+    public static final FirebasePushRequest INVALID_PUSH_REQUEST = new FirebasePushRequest(Map.of("a3123:Email", "state1"), INVALID_TOKEN, NORMAL);
 
     private static FirebasePushClient firebasePushClient;
 
@@ -34,10 +37,17 @@ class FirebaseClientTest {
     }
 
     @Test
-    void pushWithValidTokenShouldPushData() {
-        assertThatCode(() -> firebasePushClient.push(VALID_PUSH_REQUEST).block())
+    void pushWithValidTokenAndNormalPriorityShouldPushData() {
+        assertThatCode(() -> firebasePushClient.push(VALID_PUSH_REQUEST_NORMAL_PRIORITY).block())
             .doesNotThrowAnyException();
         // Notification popup should show up
+    }
+
+    @Test
+    void pushWithValidTokenAndHighPriorityShouldPushData() {
+        assertThatCode(() -> firebasePushClient.push(VALID_PUSH_REQUEST_HIGH_PRIORITY).block())
+            .doesNotThrowAnyException();
+        // FCM should not reject push request and notification popup should show up
     }
 
     @Test
