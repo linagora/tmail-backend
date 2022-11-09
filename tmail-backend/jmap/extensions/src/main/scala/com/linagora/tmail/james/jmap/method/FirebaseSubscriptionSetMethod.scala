@@ -21,6 +21,7 @@ import javax.inject.Inject
 
 class FirebaseSubscriptionSetMethod @Inject()(val serializer: FirebaseSubscriptionSerializer,
                                               val createPerformer: FirebaseSubscriptionSetCreatePerformer,
+                                              val updatePerformer: FirebaseSubscriptionSetUpdatePerformer,
                                               val metricFactory: MetricFactory,
                                               val sessionSupplier: SessionSupplier) extends MethodWithoutAccountId[FirebaseSubscriptionSetRequest] with Startable {
 
@@ -31,25 +32,26 @@ class FirebaseSubscriptionSetMethod @Inject()(val serializer: FirebaseSubscripti
     serializer.deserializeFirebaseSubscriptionSetRequest(invocation.arguments.value).asEither
       .left.map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
 
-  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionSetRequest): Publisher[InvocationWithContext] = {
+  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionSetRequest): Publisher[InvocationWithContext] =
     for {
       created <- createPerformer.create(request, mailboxSession.getUser)
+      updated <- updatePerformer.update(request, mailboxSession.getUser)
     } yield InvocationWithContext(
       invocation = Invocation(
         methodName = methodName,
         arguments = Arguments(serializer.serialize(FirebaseSubscriptionSetResponse(
           created = created.created.filter(_.nonEmpty),
-          notCreated = created.notCreated.filter(_.nonEmpty)))),
+          notCreated = created.notCreated.filter(_.nonEmpty),
+          updated = Some(updated.updated).filter(_.nonEmpty),
+          notUpdated = Some(updated.notUpdated).filter(_.nonEmpty)))),
         methodCallId = invocation.invocation.methodCallId),
       processingContext = recordCreationIdInProcessingContext(created, invocation.processingContext))
-  }
-  private def recordCreationIdInProcessingContext(results: CreationResults, processingContext: ProcessingContext):ProcessingContext = {
 
+  private def recordCreationIdInProcessingContext(results: CreationResults, processingContext: ProcessingContext):ProcessingContext =
     results.created.getOrElse(Map())
       .foldLeft(processingContext)({
         case (processingContext, (creationId, result)) =>
           processingContext.recordCreatedId(ClientId(creationId.id), ServerId(result.id.asUnparsedFirebaseSubscriptionId.id))
       })
-  }
 
 }

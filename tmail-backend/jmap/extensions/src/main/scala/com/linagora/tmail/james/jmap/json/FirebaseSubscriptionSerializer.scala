@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseDeviceToken, FirebaseSubscription, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, UnparsedFirebaseSubscriptionId}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseDeviceToken, FirebaseSubscription, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, FirebaseSubscriptionUpdateResponse, UnparsedFirebaseSubscriptionId}
 import eu.timepit.refined
 import eu.timepit.refined.refineV
 import org.apache.james.jmap.api.change.TypeStateFactory
@@ -44,6 +44,19 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
         .fold(e => JsError(s"firebase subscription id needs to match id constraints: $e"),
           id => JsSuccess(FirebaseSubscriptionCreationId(id)))
     }
+
+
+  private implicit val patchObject: Reads[FirebaseSubscriptionPatchObject] = Json.valueReads[FirebaseSubscriptionPatchObject]
+
+  private implicit val mapUpdateRequestBySubscriptionCreationId: Reads[Map[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject]] =
+    Reads.mapReads[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject] { string =>
+      refineV[IdConstraint](string)
+        .fold(e => JsError(s"FirebaseSubscription Id needs to match id constraints: $e"),
+          id => JsSuccess(UnparsedFirebaseSubscriptionId(id)))
+    }
+
+  private implicit val subscriptionMapUpdateResponseWrites: Writes[Map[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse]] =
+    mapWrites[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse](_.serialize, _ => JsObject.empty)
 
   private implicit val idFormat: Format[UnparsedFirebaseSubscriptionId] = Json.valueFormat[UnparsedFirebaseSubscriptionId]
   private implicit val firebaseSubscriptionIdsReads: Reads[FirebaseSubscriptionIds] = Json.valueReads[FirebaseSubscriptionIds]
