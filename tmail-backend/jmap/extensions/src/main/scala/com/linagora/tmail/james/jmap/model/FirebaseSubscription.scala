@@ -17,6 +17,7 @@ import play.api.libs.json.{JsArray, JsObject, JsPath, JsString, JsValue, JsonVal
 
 import java.time.ZonedDateTime
 import java.util.UUID
+import scala.collection.Seq
 import scala.util.Try
 
 object FirebaseSubscriptionId {
@@ -141,7 +142,9 @@ case class FirebaseSubscriptionCreationResponse(id: FirebaseSubscriptionId,
 case class FirebaseSubscriptionSetResponse(created: Option[Map[FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationResponse]],
                                            notCreated: Option[Map[FirebaseSubscriptionCreationId, SetError]],
                                            updated: Option[Map[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse]],
-                                           notUpdated: Option[Map[UnparsedFirebaseSubscriptionId, SetError]])
+                                           notUpdated: Option[Map[UnparsedFirebaseSubscriptionId, SetError]],
+                                           destroyed: Option[Seq[FirebaseSubscriptionId]],
+                                           notDestroyed: Option[Map[UnparsedFirebaseSubscriptionId, SetError]])
 
 object FirebaseSubscriptionCreationParseException {
   def from(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): FirebaseSubscriptionCreationParseException =
@@ -262,6 +265,7 @@ object ValidatedFirebaseSubscriptionPatchObject {
 case class ValidatedFirebaseSubscriptionPatchObject(typeUpdate: Option[Set[TypeName]] = None)
 
 case class FirebaseSubscriptionSetRequest(create: Option[Map[FirebaseSubscriptionCreationId, JsObject]],
-                                          update: Option[Map[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject]]) extends WithoutAccountId
+                                          update: Option[Map[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject]],
+                                          destroy: Option[Seq[UnparsedFirebaseSubscriptionId]]) extends WithoutAccountId
 
 case class FirebaseSubscriptionUpdateResponse()

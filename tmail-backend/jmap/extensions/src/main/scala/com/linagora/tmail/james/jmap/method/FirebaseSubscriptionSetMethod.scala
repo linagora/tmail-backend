@@ -22,6 +22,7 @@ import javax.inject.Inject
 class FirebaseSubscriptionSetMethod @Inject()(val serializer: FirebaseSubscriptionSerializer,
                                               val createPerformer: FirebaseSubscriptionSetCreatePerformer,
                                               val updatePerformer: FirebaseSubscriptionSetUpdatePerformer,
+                                              val deletePerformer: FirebaseSubscriptionSetDeletePerformer,
                                               val metricFactory: MetricFactory,
                                               val sessionSupplier: SessionSupplier) extends MethodWithoutAccountId[FirebaseSubscriptionSetRequest] with Startable {
 
@@ -30,12 +31,14 @@ class FirebaseSubscriptionSetMethod @Inject()(val serializer: FirebaseSubscripti
 
   override def getRequest(invocation: Invocation): Either[Exception, FirebaseSubscriptionSetRequest] =
     serializer.deserializeFirebaseSubscriptionSetRequest(invocation.arguments.value).asEither
-      .left.map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
+      .left
+      .map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
 
   override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionSetRequest): Publisher[InvocationWithContext] =
     for {
       created <- createPerformer.create(request, mailboxSession.getUser)
       updated <- updatePerformer.update(request, mailboxSession.getUser)
+      destroyed <- deletePerformer.deleteFirebaseSubscriptions(request, mailboxSession)
     } yield InvocationWithContext(
       invocation = Invocation(
         methodName = methodName,
@@ -43,7 +46,9 @@ class FirebaseSubscriptionSetMethod @Inject()(val serializer: FirebaseSubscripti
           created = created.created.filter(_.nonEmpty),
           notCreated = created.notCreated.filter(_.nonEmpty),
           updated = Some(updated.updated).filter(_.nonEmpty),
-          notUpdated = Some(updated.notUpdated).filter(_.nonEmpty)))),
+          notUpdated = Some(updated.notUpdated).filter(_.nonEmpty),
+          destroyed = Some(destroyed.destroyed).filter(_.nonEmpty),
+          notDestroyed = Some(destroyed.retrieveErrors).filter(_.nonEmpty)))),
         methodCallId = invocation.invocation.methodCallId),
       processingContext = recordCreationIdInProcessingContext(created, invocation.processingContext))
 
