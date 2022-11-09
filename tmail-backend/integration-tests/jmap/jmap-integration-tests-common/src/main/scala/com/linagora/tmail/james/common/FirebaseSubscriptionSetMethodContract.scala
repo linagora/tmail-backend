@@ -1,7 +1,9 @@
 package com.linagora.tmail.james.common
 
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscriptionCreationRequest}
+import com.linagora.tmail.james.common.FirebaseSubscriptionSetMethodContract.firebasePushClient
+import com.linagora.tmail.james.jmap.firebase.FirebasePushClient
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscriptionCreationRequest, FirebaseToken}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -19,12 +21,13 @@ import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{mock, when}
+import reactor.core.publisher.Mono
+
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-
-import com.linagora.tmail.james.jmap.firebase.FirebasePushClient
-import org.mockito.Mockito.mock
 
 object FirebaseSubscriptionSetMethodContract {
   val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
@@ -44,6 +47,9 @@ trait FirebaseSubscriptionSetMethodContract {
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
+
+    when(firebasePushClient.validateToken(any()))
+      .thenReturn(Mono.just(true))
   }
 
   @Test
@@ -169,6 +175,115 @@ trait FirebaseSubscriptionSetMethodContract {
          |                        "types": ["Mailbox"]
          |                    }
          |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def invalidFcmTokenShouldNotStoreSubscription(): Unit = {
+    when(firebasePushClient.validateToken(any()))
+      .thenReturn(Mono.just(false))
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "create": {
+           |                "4f29": {
+           |                  "deviceClientId": "a889-ffea-910",
+           |                  "token": "invalidToken1",
+           |                  "types": ["Mailbox"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notCreated": {
+         |                    "4f29": {
+         |                        "type": "invalidArguments",
+         |                        "description": "Token is not valid",
+         |                        "properties": [
+         |                            "token"
+         |                        ]
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def creationRequestShouldCreatedWhenUnExpectedException(): Unit = {
+    when(firebasePushClient.validateToken(any()))
+      .thenReturn(Mono.error(new RuntimeException))
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |          "create": {
+           |            "4f29": {
+           |              "deviceClientId": "a889-ffea-910",
+           |              "token": "token1",
+           |              "types": ["Mailbox"]
+           |            }
+           |          }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "created": {
+         |                    "4f29": {
+         |                        "id": "$${json-unit.ignore}",
+         |                        "expires": "$${json-unit.ignore}"
+         |                    }
+         |                }
          |            },
          |            "c1"
          |        ]

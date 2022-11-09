@@ -17,8 +17,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 public class MemoryFirebaseSubscriptionSetMethodTest implements FirebaseSubscriptionSetMethodContract {
 
     @RegisterExtension
-    static JamesServerExtension
-        jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()

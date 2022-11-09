@@ -1,8 +1,8 @@
 package com.linagora.tmail.james.jmap.method
 
-import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
+import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebaseSubscriptionRepository}
 import com.linagora.tmail.james.jmap.json.FirebaseSubscriptionSerializer
-import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetCreatePerformer.{CreationFailure, CreationResult, CreationResults, CreationSuccess}
+import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetCreatePerformer.{CreationFailure, CreationResult, CreationResults, CreationSuccess, LOGGER}
 import com.linagora.tmail.james.jmap.model.{DeviceClientIdInvalidException, ExpireTimeInvalidException, FirebaseSubscriptionCreation, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationParseException, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionSetRequest, TokenInvalidException}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
@@ -11,7 +11,6 @@ import org.apache.james.jmap.core.{Properties, SetError}
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
-
 import javax.inject.Inject
 
 
@@ -55,7 +54,8 @@ object FirebaseSubscriptionSetCreatePerformer {
 }
 
 class FirebaseSubscriptionSetCreatePerformer @Inject()(val repository: FirebaseSubscriptionRepository,
-                                                       val serializer: FirebaseSubscriptionSerializer) {
+                                                       val serializer: FirebaseSubscriptionSerializer,
+                                                       val firebaseClient: FirebasePushClient) {
 
   def create(request: FirebaseSubscriptionSetRequest, username: Username): SMono[CreationResults] =
     SFlux.fromIterable(request.create.getOrElse(Map()))
@@ -76,9 +76,18 @@ class FirebaseSubscriptionSetCreatePerformer @Inject()(val repository: FirebaseS
   } yield validatedRequest
 
   private def create(clientId: FirebaseSubscriptionCreationId, request: FirebaseSubscriptionCreationRequest, username: Username): SMono[CreationResult] =
-    SMono.fromPublisher(repository.save(username, request))
-      .map(subscription => CreationSuccess(clientId, FirebaseSubscriptionCreationResponse(subscription.id, showExpires(subscription.expires, request))))
-      .onErrorResume(e => SMono.just[CreationResult](CreationFailure(clientId, e)))
+    SMono.fromPublisher(firebaseClient.validateToken(request.token))
+      .onErrorResume(e => {
+        LOGGER.warn("Failure validating FCM token", e)
+        SMono.just(java.lang.Boolean.TRUE)
+      })
+      .flatMap(isValid => if (isValid) {
+        SMono.fromPublisher(repository.save(username, request))
+          .map(subscription => CreationSuccess(clientId, FirebaseSubscriptionCreationResponse(subscription.id, showExpires(subscription.expires, request))))
+          .onErrorResume(e => SMono.just[CreationResult](CreationFailure(clientId, e)))
+      } else {
+        SMono.just[CreationResult](CreationFailure(clientId, TokenInvalidException("Token is not valid")))
+      })
 
   private def showExpires(expires: FirebaseSubscriptionExpiredTime, request: FirebaseSubscriptionCreationRequest): Option[FirebaseSubscriptionExpiredTime] = request.expires match {
     case Some(requestExpires) if expires.value.eq(requestExpires.value) => None
