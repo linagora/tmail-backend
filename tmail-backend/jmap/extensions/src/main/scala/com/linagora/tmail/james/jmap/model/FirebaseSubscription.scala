@@ -98,14 +98,7 @@ case class DeviceClientIdInvalidException(deviceClientId: DeviceClientId, messag
 
 case class TokenInvalidException(message: String) extends IllegalArgumentException(message)
 
-case class UnparsedFirebaseSubscriptionId(id: Id) {
-  def parse: Either[IllegalArgumentException, FirebaseSubscriptionId] = Try(UUID.fromString(id.value))
-    .toEither
-    .left.map({
-      case e: IllegalArgumentException => e
-      case e => new IllegalArgumentException(e)
-    }).map(uuid => FirebaseSubscriptionId(uuid))
-}
+case class UnparsedFirebaseSubscriptionId(id: Id)
 
 case class FirebaseSubscriptionIds(list: List[UnparsedFirebaseSubscriptionId])
 

@@ -1669,7 +1669,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |                "invalid",
            |                {
            |                    "type": "invalidArguments",
-           |                    "description": "invalid is not a FirebaseSubscriptionId: Invalid UUID string: invalid"
+           |                    "description": "invalid is not a FirebaseSubscriptionId: FirebaseSubscriptionId is invalid"
            |                }
            |              ]]
            |            },
@@ -1780,7 +1780,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |                    "invalid",
            |                    {
            |                        "type": "invalidArguments",
-           |                        "description": "invalid is not a FirebaseSubscriptionId: Invalid UUID string: invalid"
+           |                        "description": "invalid is not a FirebaseSubscriptionId: FirebaseSubscriptionId is invalid"
            |                    }
            |                ]]
            |            },
@@ -1788,5 +1788,55 @@ trait FirebaseSubscriptionSetMethodContract {
            |        ]
            |    ]
            |}""".stripMargin)
+  }
+
+  @Test
+  def destroyShouldNotRevokeIdOfOtherAccount(server: GuiceJamesServer): Unit = {
+    val probe = server.getProbe(classOf[FirebaseSubscriptionProbe])
+    val firebaseSubscription = probe
+      .createSubscription(ANDRE, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val request: String =
+      s"""{
+         |    "using": ["urn:ietf:params:jmap:core",
+         |              "com:linagora:params:jmap:firebase:push"],
+         |    "methodCalls": [
+         |      [
+         |        "FirebaseRegistration/set",
+         |        {
+         |            "destroy": ["${firebaseSubscription.id.value.toString}"]
+         |        },
+         |        "c1"
+         |      ]
+         |    ]
+         |  }""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |    "sessionState": "${SESSION_STATE.value}",
+           |    "methodResponses": [
+           |        [
+           |            "FirebaseRegistration/set",
+           |            {
+           |                "destroyed": ["${firebaseSubscription.id.value.toString}"]
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+
+    assertThat(probe.retrieveSubscription(ANDRE, firebaseSubscription.id)).isNotNull()
   }
 }

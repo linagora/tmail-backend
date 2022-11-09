@@ -44,7 +44,7 @@ class FirebaseSubscriptionSetDeletePerformer @Inject()(firebaseSubscriptionRepos
       .map(FirebaseSubscriptionDeletionResults)
 
   private def delete(unparsedId: UnparsedFirebaseSubscriptionId, mailboxSession: MailboxSession): SMono[FirebaseSubscriptionDeletionResult] =
-    unparsedId.parse
+    FirebaseSubscriptionId.liftOrThrow(unparsedId)
       .fold(e => SMono.error(e),
         id => SMono.fromPublisher(firebaseSubscriptionRepository.revoke(mailboxSession.getUser, id))
           .`then`(SMono.just[FirebaseSubscriptionDeletionResult](FirebaseSubscriptionDeletionSuccess(id))))
