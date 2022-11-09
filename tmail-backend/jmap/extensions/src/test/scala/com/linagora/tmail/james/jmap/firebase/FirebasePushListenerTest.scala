@@ -166,5 +166,56 @@ class FirebasePushListenerTest {
     assertThat(SMono.fromPublisher(subscriptionRepository.get(bob, java.util.Set.of(subscriptionId))).block())
       .isNotNull
   }
+
+  @Test
+  def stateChangeEventHasEmailDeliveryAndUserSubscribesToItThenUrgencyShouldBeHigh(): Unit = {
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> UuidState(UUID.randomUUID()), MailboxTypeName -> UuidState(UUID.randomUUID()), EmailDeliveryTypeName -> UuidState(UUID.randomUUID())))))
+      .block()
+
+    val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+    verify(pushClient).push(argumentCaptor.capture())
+
+    assertThat(argumentCaptor.getValue.urgency().toString).isEqualTo(FirebasePushUrgency.HIGH.toString)
+  }
+
+  @Test
+  def stateChangeEventHasEmailDeliveryAndUserDoesNotSubscribeToItThenUrgencyShouldBeNormal(): Unit = {
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token"),
+      types = Seq(EmailTypeName)))).block().id
+
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> UuidState(UUID.randomUUID()), MailboxTypeName -> UuidState(UUID.randomUUID()), EmailDeliveryTypeName -> UuidState(UUID.randomUUID())))))
+      .block()
+
+    val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+    verify(pushClient).push(argumentCaptor.capture())
+
+    assertThat(argumentCaptor.getValue.urgency().toString).isEqualTo(FirebasePushUrgency.NORMAL.toString)
+  }
+
+  @Test
+  def stateChangeEventHasNoEmailDeliveryThenUrgencyShouldBeNormal(): Unit = {
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> UuidState(UUID.randomUUID()), MailboxTypeName -> UuidState(UUID.randomUUID()))))).block()
+
+    val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+    verify(pushClient).push(argumentCaptor.capture())
+
+    assertThat(argumentCaptor.getValue.urgency().toString).isEqualTo(FirebasePushUrgency.NORMAL.toString)
+  }
+
 }
 

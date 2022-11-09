@@ -15,10 +15,14 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.ApnsConfig;
+import com.google.firebase.messaging.Aps;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import com.google.firebase.messaging.WebpushConfig;
 import com.linagora.tmail.james.jmap.model.FirebaseToken;
 import com.linagora.tmail.james.jmap.model.MissingOrInvalidFirebaseCredentialException;
 
@@ -27,6 +31,8 @@ import reactor.core.publisher.Mono;
 public class FirebasePushClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(FirebasePushClient.class);
     private static final Boolean DRY_RUN = true;
+    private static final String APNS_URGENCY_HEADER = "apns-priority";
+    private static final String WEB_PUSH_URGENCY_HEADER = "Urgency";
 
     private final FirebaseMessaging firebaseMessaging;
 
@@ -66,9 +72,35 @@ public class FirebasePushClient {
     }
 
     private Message createFcmMessage(FirebasePushRequest pushRequest) {
+        if (pushRequest.urgency().equals(FirebasePushUrgency.NORMAL)) {
+            return Message.builder()
+                .putAllData(pushRequest.stateChangesMap())
+                .setToken(pushRequest.token().value())
+                .setAndroidConfig(AndroidConfig.builder()
+                    .setPriority(AndroidConfig.Priority.NORMAL)
+                    .build())
+                .setApnsConfig(ApnsConfig.builder()
+                    .putHeader(APNS_URGENCY_HEADER, "5")
+                    .setAps(Aps.builder().build())
+                    .build())
+                .setWebpushConfig(WebpushConfig.builder()
+                    .putHeader(WEB_PUSH_URGENCY_HEADER, "normal")
+                    .build())
+                .build();
+        }
         return Message.builder()
             .putAllData(pushRequest.stateChangesMap())
             .setToken(pushRequest.token().value())
+            .setAndroidConfig(AndroidConfig.builder()
+                .setPriority(AndroidConfig.Priority.HIGH)
+                .build())
+            .setApnsConfig(ApnsConfig.builder()
+                .putHeader(APNS_URGENCY_HEADER, "10")
+                .setAps(Aps.builder().build())
+                .build())
+            .setWebpushConfig(WebpushConfig.builder()
+                .putHeader(WEB_PUSH_URGENCY_HEADER, "high")
+                .build())
             .build();
     }
 

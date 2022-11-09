@@ -7,7 +7,7 @@ import javax.inject.Inject
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}
 import org.apache.james.jmap.api.model.TypeName
-import org.apache.james.jmap.change.StateChangeEvent
+import org.apache.james.jmap.change.{EmailDeliveryTypeName, StateChangeEvent}
 import org.apache.james.jmap.core.{AccountId, StateChange}
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
@@ -56,8 +56,20 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
   private def asPushRequest(stateChange: StateChange, subscription: FirebaseSubscription): FirebasePushRequest =
     new FirebasePushRequest(CollectionConverters.asJava(stateChange.changes
       .flatMap(accountIdToTypeState => accountIdToTypeState._2.changes
-        .map(typeNameToState => evaluateKey(accountIdToTypeState._1, typeNameToState._1) -> typeNameToState._2.serialize))), subscription.token)
+        .map(typeNameToState => evaluateKey(accountIdToTypeState._1, typeNameToState._1) -> typeNameToState._2.serialize))),
+      subscription.token,
+      urgency(stateChange))
 
   private def evaluateKey(accountId: AccountId, typeName: TypeName): String =
     accountId.id.value + ":" + typeName.asString()
+
+  private def urgency(filterStateChange: StateChange): FirebasePushUrgency =
+    if (filterStateChange.changes
+      .values
+      .flatMap(_.changes.keys)
+      .exists(_.equals(EmailDeliveryTypeName))) {
+      FirebasePushUrgency.HIGH
+    } else {
+      FirebasePushUrgency.NORMAL
+    }
 }
