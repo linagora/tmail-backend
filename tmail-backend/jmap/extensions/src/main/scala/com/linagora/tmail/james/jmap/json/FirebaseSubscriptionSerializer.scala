@@ -55,8 +55,10 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
           id => JsSuccess(UnparsedFirebaseSubscriptionId(id)))
     }
 
+  private implicit val firebaseSubscriptionUpdateResponseWrites :Writes[FirebaseSubscriptionUpdateResponse] = Json.writes[FirebaseSubscriptionUpdateResponse]
+
   private implicit val subscriptionMapUpdateResponseWrites: Writes[Map[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse]] =
-    mapWrites[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse](_.serialize, _ => JsObject.empty)
+    mapWrites[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse](_.serialize, firebaseSubscriptionUpdateResponseWrites)
 
   private implicit val idFormat: Format[UnparsedFirebaseSubscriptionId] = Json.valueFormat[UnparsedFirebaseSubscriptionId]
   private implicit val firebaseSubscriptionIdsReads: Reads[FirebaseSubscriptionIds] = Json.valueReads[FirebaseSubscriptionIds]
