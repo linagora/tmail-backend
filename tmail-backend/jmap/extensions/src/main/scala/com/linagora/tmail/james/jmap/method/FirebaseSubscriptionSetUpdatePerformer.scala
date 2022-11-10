@@ -1,9 +1,10 @@
 package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
-import com.linagora.tmail.james.jmap.model.{FirebaseSubscriptionId, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionUpdateFailure, FirebaseSubscriptionUpdateResult, FirebaseSubscriptionUpdateResults, FirebaseSubscriptionUpdateSuccess, UnparsedFirebaseSubscriptionId, ValidatedFirebaseSubscriptionPatchObject}
+import com.linagora.tmail.james.jmap.model.{FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionUpdateFailure, FirebaseSubscriptionUpdateResult, FirebaseSubscriptionUpdateResults, FirebaseSubscriptionUpdateSuccess, UnparsedFirebaseSubscriptionId, ValidatedFirebaseSubscriptionPatchObject}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.TypeStateFactory
+import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.util.ReactorUtils
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -33,8 +34,24 @@ class FirebaseSubscriptionSetUpdatePerformer @Inject()(val repository: FirebaseS
   }
 
   private def updateSubscription(username: Username, id: FirebaseSubscriptionId, validatedPatch: ValidatedFirebaseSubscriptionPatchObject): SMono[FirebaseSubscriptionUpdateResult] =
-    SMono.justOrEmpty(validatedPatch.typeUpdate)
+    SFlux.concat(updateTypes(username, id, validatedPatch.typeUpdate),
+      updateExpires(username, id, validatedPatch.expiresUpdate))
+      .last()
+
+  private def updateTypes(username: Username, id: FirebaseSubscriptionId, typeUpdate: Option[Set[TypeName]]): SMono[FirebaseSubscriptionUpdateResult] =
+    SMono.justOrEmpty(typeUpdate)
       .flatMap(typesUpdate => SMono(repository.updateTypes(username, id, typesUpdate.asJava)))
       .`then`(SMono.just(FirebaseSubscriptionUpdateSuccess(id)))
 
+  private def updateExpires(username: Username, id: FirebaseSubscriptionId, expiresRequest: Option[FirebaseSubscriptionExpiredTime]): SMono[FirebaseSubscriptionUpdateResult] =
+    SMono.justOrEmpty(expiresRequest)
+      .flatMap(expires => SMono(repository.updateExpireTime(username, id, expires.value))
+        .map(expiresResult => FirebaseSubscriptionUpdateSuccess(id = id, evaluateExpiresInResponse(expires, expiresResult))))
+
+  private def evaluateExpiresInResponse(expiresRequest: FirebaseSubscriptionExpiredTime, expiresResult: FirebaseSubscriptionExpiredTime): Option[FirebaseSubscriptionExpiredTime] =
+    if (expiresRequest.equals(expiresResult)) {
+      None
+    } else {
+      Some(expiresResult)
+    }
 }

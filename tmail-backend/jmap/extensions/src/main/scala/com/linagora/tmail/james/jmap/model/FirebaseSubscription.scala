@@ -3,7 +3,9 @@ package com.linagora.tmail.james.jmap.model
 import cats.data.Validated
 import cats.instances.list._
 import cats.syntax.traverse._
+import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetUpdatePerformer
 import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionPatchObject.updateProperties
+import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionUpdateFailure.LOGGER
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.api.change.TypeStateFactory
 import org.apache.james.jmap.api.model.ExpireTimeInvalidException.TIME_FORMATTER
@@ -11,14 +13,15 @@ import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.Properties.toProperties
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{Id, Properties, SetError}
+import org.apache.james.jmap.core.{Id, Properties, SetError, UTCDate}
 import org.apache.james.jmap.method.WithoutAccountId
+import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsArray, JsObject, JsPath, JsString, JsValue, JsonValidationError}
 
 import java.time.ZonedDateTime
 import java.util.UUID
 import scala.collection.Seq
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object FirebaseSubscriptionId {
   def generate(): FirebaseSubscriptionId = FirebaseSubscriptionId(UUID.randomUUID)
@@ -185,22 +188,29 @@ case class FirebasePatchUpdateValidationException(error: String, property: Optio
 
 sealed trait FirebaseSubscriptionUpdateResult
 
+object FirebaseSubscriptionUpdateFailure {
+  private val LOGGER: Logger = LoggerFactory.getLogger(classOf[FirebaseSubscriptionSetUpdatePerformer])
+}
+
 case class FirebaseSubscriptionUpdateFailure(id: UnparsedFirebaseSubscriptionId, exception: Throwable) extends FirebaseSubscriptionUpdateResult {
   def asSetError: SetError = exception match {
     case e: FirebasePatchUpdateValidationException => SetError.invalidArguments(SetErrorDescription(e.error), e.asProperty)
     case e: FirebaseSubscriptionNotFoundException => SetError.notFound(SetErrorDescription(e.getMessage))
+    case e: ExpireTimeInvalidException => SetError.invalidArguments(SetErrorDescription(e.getMessage), Some(Properties.toProperties(Set("expires"))))
     case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage), None)
-    case _ => SetError.serverFail(SetErrorDescription(exception.getMessage))
-
+    case _ => {
+      LOGGER.warn("Could not update firebase subscription request", exception)
+      SetError.serverFail(SetErrorDescription(exception.getMessage))
+    }
   }
 }
 
-case class FirebaseSubscriptionUpdateSuccess(id: FirebaseSubscriptionId) extends FirebaseSubscriptionUpdateResult
+case class FirebaseSubscriptionUpdateSuccess(id: FirebaseSubscriptionId, newExpires: Option[FirebaseSubscriptionExpiredTime] = None) extends FirebaseSubscriptionUpdateResult
 
 case class FirebaseSubscriptionUpdateResults(results: Seq[FirebaseSubscriptionUpdateResult]) {
   def updated: Map[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse] =
     results.flatMap(result => result match {
-      case success: FirebaseSubscriptionUpdateSuccess => Some((success.id, FirebaseSubscriptionUpdateResponse()))
+      case success: FirebaseSubscriptionUpdateSuccess => Some((success.id, FirebaseSubscriptionUpdateResponse(success.newExpires)))
       case _ => None
     }).toMap
 
@@ -220,8 +230,9 @@ case class FirebaseSubscriptionPatchObject(value: Map[String, JsValue]) {
     for {
       validatedProperties <- validateProperties
       types <- validateTypes(typeStateFactory)
+      expires <- validateExpires
     } yield {
-      ValidatedFirebaseSubscriptionPatchObject.from(types)
+      ValidatedFirebaseSubscriptionPatchObject.from(types, expires)
     }
 
   def validateProperties: Either[FirebasePatchUpdateValidationException, FirebaseSubscriptionPatchObject] =
@@ -242,6 +253,20 @@ case class FirebaseSubscriptionPatchObject(value: Map[String, JsValue]) {
       case None => scala.Right(List())
     }
 
+  def validateExpires: Either[FirebasePatchUpdateValidationException, Option[FirebaseSubscriptionExpiredTime]] =
+    value.get("expires") match {
+      case Some(jsValue) => {
+        jsValue match {
+          case JsString(aString) => Try(ZonedDateTime.parse(aString)) match {
+            case Success(value) => scala.Right(Some(FirebaseSubscriptionExpiredTime(UTCDate(value).asUTC)))
+            case Failure(e) => scala.Left(FirebasePatchUpdateValidationException("This string can not be parsed to UTCDate", Some("expires")))
+          }
+          case _ => Left(FirebasePatchUpdateValidationException("Expecting a JSON string as an argument", Some("expires")))
+        }
+      }
+      case None => scala.Right(None)
+    }
+
   def validateEmptyArrayTypes(list: List[TypeName]): Either[FirebasePatchUpdateValidationException, List[TypeName]] =
     if (list.isEmpty) {
       scala.Left(FirebasePatchUpdateValidationException("Must not empty", Some("types")))
@@ -256,18 +281,19 @@ case class FirebaseSubscriptionPatchObject(value: Map[String, JsValue]) {
 }
 
 object ValidatedFirebaseSubscriptionPatchObject {
-  def from(typeNames: List[TypeName]): ValidatedFirebaseSubscriptionPatchObject =
+  def from(typeNames: List[TypeName], expires: Option[FirebaseSubscriptionExpiredTime]): ValidatedFirebaseSubscriptionPatchObject =
     if (typeNames.isEmpty) {
-      ValidatedFirebaseSubscriptionPatchObject()
+      ValidatedFirebaseSubscriptionPatchObject(expiresUpdate = expires)
     } else {
-      ValidatedFirebaseSubscriptionPatchObject(Some(typeNames.toSet))
+      ValidatedFirebaseSubscriptionPatchObject(Some(typeNames.toSet), expiresUpdate = expires)
     }
 }
 
-case class ValidatedFirebaseSubscriptionPatchObject(typeUpdate: Option[Set[TypeName]] = None)
+case class ValidatedFirebaseSubscriptionPatchObject(typeUpdate: Option[Set[TypeName]] = None,
+                                                    expiresUpdate: Option[FirebaseSubscriptionExpiredTime] = None)
 
 case class FirebaseSubscriptionSetRequest(create: Option[Map[FirebaseSubscriptionCreationId, JsObject]],
                                           update: Option[Map[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject]],
                                           destroy: Option[Seq[UnparsedFirebaseSubscriptionId]]) extends WithoutAccountId
 
-case class FirebaseSubscriptionUpdateResponse()
+case class FirebaseSubscriptionUpdateResponse(expires: Option[FirebaseSubscriptionExpiredTime] = None)

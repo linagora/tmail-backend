@@ -21,6 +21,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 
@@ -1408,6 +1409,8 @@ trait FirebaseSubscriptionSetMethodContract {
         token = FirebaseToken("token2"),
         types = Seq(ThreadTypeName)))
 
+    val newExpires = UTCDate(ZonedDateTime.now().plusDays(3)).asUTC.format(TIME_FORMATTER)
+
     val updateResponse = `given`
       .body(
         s"""{
@@ -1419,7 +1422,8 @@ trait FirebaseSubscriptionSetMethodContract {
            |        {
            |            "update": {
            |                "${firebaseSubscription1.id.serialize}": {
-           |                  "types": ["Email"]
+           |                  "types": ["Email"],
+           |                  "expires": "$newExpires"
            |                },
            |                "${firebaseSubscription2.id.serialize}": {
            |                  "types": ["Mailbox"]
@@ -1838,5 +1842,288 @@ trait FirebaseSubscriptionSetMethodContract {
            |}""".stripMargin)
 
     assertThat(probe.retrieveSubscription(ANDRE, firebaseSubscription.id)).isNotNull()
+  }
+
+  @Test
+  def updateExpiresShouldReturnUpdatedWhenValidRequest(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val newExpires = UTCDate(ZonedDateTime.now().plusDays(3)).asUTC.format(TIME_FORMATTER)
+
+    val updateResponse = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription1.id.serialize}": {
+           |                  "expires": "$newExpires"
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(updateResponse).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "updated": {
+         |                    "${firebaseSubscription1.id.serialize}": {}
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateExpiresShouldReturnNotUpdatedWhenInvalidExpires(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val updateResponse = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription1.id.serialize}": {
+           |                  "expires": "invalid"
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(updateResponse).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notUpdated": [
+         |                    [
+         |                        "${firebaseSubscription1.id.serialize}",
+         |                        {
+         |                            "type": "invalidArguments",
+         |                            "description": "This string can not be parsed to UTCDate",
+         |                            "properties": [
+         |                                "expires"
+         |                            ]
+         |                        }
+         |                    ]
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateExpiresShouldReturnNotUpdatedWhenExpiresIsNotCorrectFormat(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val newExpires = UTCDate(ZonedDateTime.now().plusDays(3)).asUTC.format(DateTimeFormatter.ofPattern("yyyy-dd-MM'T'HH:mm"))
+
+    val updateResponse = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription1.id.serialize}": {
+           |                  "expires": "$newExpires"
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(updateResponse).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notUpdated": [
+         |                    [
+         |                        "${firebaseSubscription1.id.serialize}",
+         |                        {
+         |                            "type": "invalidArguments",
+         |                            "description": "This string can not be parsed to UTCDate",
+         |                            "properties": [
+         |                                "expires"
+         |                            ]
+         |                        }
+         |                    ]
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+
+  @Test
+  def updateExpiresShouldReturnNotUpdatedWhenExpiresIsOld(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val newExpires = UTCDate(ZonedDateTime.now().minusDays(3)).asUTC.format(TIME_FORMATTER)
+
+    val updateResponse = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription1.id.serialize}": {
+           |                  "expires": "$newExpires"
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(updateResponse).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "notUpdated": [
+         |                    [
+         |                        "${firebaseSubscription1.id.serialize}",
+         |                        {
+         |                            "type": "invalidArguments",
+         |                            "description": "`$newExpires` expires must be greater than now",
+         |                            "properties": [
+         |                                "expires"
+         |                            ]
+         |                        }
+         |                    ]
+         |                ]
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateExpiresShouldSuccessWhenExpiresIsGreaterThanThreshold(server: GuiceJamesServer): Unit = {
+    val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    val newExpires = UTCDate(ZonedDateTime.now().plusMonths(1)).asUTC.format(TIME_FORMATTER)
+
+    val updateResponse = `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "update": {
+           |                "${firebaseSubscription1.id.serialize}": {
+           |                  "expires": "$newExpires"
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(updateResponse).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/set",
+         |            {
+         |                "updated": {
+         |                    "${firebaseSubscription1.id.serialize}": {
+         |                        "expires": "$${json-unit.ignore}"
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
   }
 }
