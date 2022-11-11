@@ -5,12 +5,16 @@ import static org.apache.james.JamesServerMain.LOGGER;
 import java.util.List;
 import java.util.Set;
 
+import javax.inject.Named;
+
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.SearchModuleChooser;
+import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
+import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
@@ -66,6 +70,8 @@ import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.modules.webadmin.CassandraRoutesModule;
 import org.apache.james.modules.webadmin.InconsistencySolvingRoutesModule;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
+import org.apache.james.utils.InitializationOperation;
+import org.apache.james.utils.InitilizationOperationBuilder;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -74,6 +80,7 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
+import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.blob.blobid.list.BlobStoreCacheModulesChooser;
@@ -94,6 +101,8 @@ import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.firebase.FirebasePushListener;
+import com.linagora.tmail.james.jmap.firebase.FirebasePushListenerRegister;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
@@ -271,6 +280,15 @@ public class DistributedServer {
         }
     }
 
+    private static class FirebaseListenerDistributedModule extends AbstractModule {
+        @ProvidesIntoSet
+        InitializationOperation registerFirebaseListener(@Named(InjectionKeys.JMAP) RabbitMQEventBus instance, FirebasePushListener firebasePushListener) {
+            return InitilizationOperationBuilder
+                .forClass(FirebasePushListenerRegister.class)
+                .init(() -> instance.register(firebasePushListener));
+        }
+    }
+
     private static List<Module> chooseMailbox(MailboxConfiguration mailboxConfiguration) {
         if (mailboxConfiguration.isEncryptionEnabled()) {
             return ImmutableList.of(new EncryptedMailboxModule());
@@ -280,7 +298,7 @@ public class DistributedServer {
 
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enable()) {
-            return List.of(new CassandraFirebaseSubscriptionRepositoryModule(), new FirebaseCommonModule());
+            return List.of(new CassandraFirebaseSubscriptionRepositoryModule(), new FirebaseCommonModule(), new FirebaseListenerDistributedModule());
         }
         return List.of();
     }

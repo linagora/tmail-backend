@@ -9,6 +9,7 @@ import org.apache.james.events.{Event, Group}
 import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.change.{EmailDeliveryTypeName, StateChangeEvent}
 import org.apache.james.jmap.core.{AccountId, StateChange}
+import org.apache.james.lifecycle.api.Startable
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
@@ -73,3 +74,5 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       FirebasePushUrgency.NORMAL
     }
 }
+
+class FirebasePushListenerRegister extends Startable
