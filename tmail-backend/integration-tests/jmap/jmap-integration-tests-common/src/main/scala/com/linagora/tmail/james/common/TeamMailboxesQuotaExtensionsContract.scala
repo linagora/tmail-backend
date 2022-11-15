@@ -193,7 +193,6 @@ class TeamMailboxesQuotaExtensionsContract {
 
     val quotaProbe = server.getProbe(classOf[QuotaProbesImpl])
     quotaProbe.setMaxMessageCount(teamMailbox.quotaRoot, QuotaCountLimit.count(40L))
-    quotaProbe.setGlobalMaxStorage(QuotaSizeLimit.size(123))
     quotaProbe.setMaxMessageCount(server.getProbe(classOf[QuotaProbesImpl]).getQuotaRoot(MailboxPath.inbox(BOB)), QuotaCountLimit.count(11L))
 
     val request =
