@@ -116,4 +116,6 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
   override def getMailboxCountersReactive(mailboxSession: MailboxSession): Publisher[MailboxCounters] = messageManager.getMailboxCountersReactive(mailboxSession)
 
   override def getPermanentFlags(session: MailboxSession): Flags = messageManager.getPermanentFlags(session)
+
+  override def getMetaData(recentMode: MailboxMetaData.RecentMode, mailboxSession: MailboxSession, items: util.EnumSet[MailboxMetaData.Item]): MailboxMetaData = messageManager.getMetaData(recentMode, mailboxSession, items)
 }
