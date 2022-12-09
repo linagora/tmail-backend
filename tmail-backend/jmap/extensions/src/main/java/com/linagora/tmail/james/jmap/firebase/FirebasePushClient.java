@@ -33,6 +33,7 @@ public class FirebasePushClient {
     private static final Boolean DRY_RUN = true;
     private static final String APNS_URGENCY_HEADER = "apns-priority";
     private static final String WEB_PUSH_URGENCY_HEADER = "Urgency";
+    private static final String APNS_REQUIRED_NORMAL_PRIORITY = "5";
 
     private final FirebaseMessaging firebaseMessaging;
 
@@ -80,8 +81,10 @@ public class FirebasePushClient {
                     .setPriority(AndroidConfig.Priority.NORMAL)
                     .build())
                 .setApnsConfig(ApnsConfig.builder()
-                    .putHeader(APNS_URGENCY_HEADER, "5")
-                    .setAps(Aps.builder().build())
+                    .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
+                    .setAps(Aps.builder()
+                        .setContentAvailable(true)
+                        .build())
                     .build())
                 .setWebpushConfig(WebpushConfig.builder()
                     .putHeader(WEB_PUSH_URGENCY_HEADER, "normal")
@@ -95,8 +98,10 @@ public class FirebasePushClient {
                 .setPriority(AndroidConfig.Priority.HIGH)
                 .build())
             .setApnsConfig(ApnsConfig.builder()
-                .putHeader(APNS_URGENCY_HEADER, "10")
-                .setAps(Aps.builder().build())
+                .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
+                .setAps(Aps.builder()
+                    .setContentAvailable(true)
+                    .build())
                 .build())
             .setWebpushConfig(WebpushConfig.builder()
                 .putHeader(WEB_PUSH_URGENCY_HEADER, "high")
