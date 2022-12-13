@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, contactFieldsFrench, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
@@ -37,6 +37,11 @@ object EmailAddressContactSearchEngineContract {
   private val otherMailAddressUpperCase: MailAddress = new MailAddress("JOHNDOE@OTHER.COM")
   private val otherContactFieldsWithUppercaseEmail: ContactFields = ContactFields(otherMailAddressUpperCase, otherFirstname, otherSurname)
 
+  private val mailAddressRene: MailAddress = new MailAddress("dchloe@other.com")
+  private val firstnameFrench: String = "Dené"
+  private val surnameFrench: String = "Chloé"
+  private val contactFieldsFrench: ContactFields = ContactFields(mailAddressRene, firstnameFrench, surnameFrench)
+
   private val bigContactsNumber: Int = 1000
 }
 
@@ -44,6 +49,30 @@ trait EmailAddressContactSearchEngineContract {
   def testee(): EmailAddressContactSearchEngine
 
   def awaitDocumentsIndexed(query: QueryType, documentCount: Long): Unit
+
+  @Test
+  def searchASCIICharactersShouldReturnMatchedFrenchName(): Unit = {
+    SMono(testee().index(accountId, contactFieldsFrench)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dene")).asJava().map(_.fields).collectList().block())
+      .containsExactlyInAnyOrder(contactFieldsFrench)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "chloe")).asJava().map(_.fields).collectList().block())
+      .containsExactlyInAnyOrder(contactFieldsFrench)
+  }
+
+  @Test
+  def searchFrenchCharactersShouldReturnMatchedFrenchName(): Unit = {
+    SMono(testee().index(accountId, contactFieldsFrench)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "dené")).asJava().map(_.fields).collectList().block())
+      .containsExactlyInAnyOrder(contactFieldsFrench)
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "chloé")).asJava().map(_.fields).collectList().block())
+      .containsExactlyInAnyOrder(contactFieldsFrench)
+  }
 
   @Test
   def indexShouldReturnMatched(): Unit = {

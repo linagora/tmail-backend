@@ -26,6 +26,7 @@ public class ContactMappingFactory {
     public static final String REBUILT_KEYWORD_ANALYZER = "rebuilt_keyword";
     public static final String NGRAM_FILTER = "ngram_filter";
     public static final String EDGE_NGRAM_FILTER = "edge_ngram_filter";
+    public static final String PRESERVED_ASCII_FOLDING_FILTER = "preserved_ascii_folding_filter";
     public static final String FILTER = "filter";
     public static final String STANDARD = "standard";
     public static final String TEXT = "text";
@@ -65,6 +66,7 @@ public class ContactMappingFactory {
                                 .startArray(FILTER)
                                     .value(EDGE_NGRAM_FILTER)
                                     .value(LOWERCASE)
+                                    .value(PRESERVED_ASCII_FOLDING_FILTER)
                                 .endArray()
                             .endObject()
                             .startObject(REBUILT_KEYWORD_ANALYZER)
@@ -84,6 +86,10 @@ public class ContactMappingFactory {
                                 .field(TYPE, "edge_ngram")
                                 .field(MIN_GRAM, contactConfiguration.getMinNgram())
                                 .field(MAX_NGRAM, contactConfiguration.getMinNgram() + contactConfiguration.getMaxNgramDiff())
+                            .endObject()
+                            .startObject(PRESERVED_ASCII_FOLDING_FILTER)
+                                .field(TYPE, "asciifolding")
+                                .field("preserve_original", true)
                             .endObject()
                         .endObject()
                     .endObject()
