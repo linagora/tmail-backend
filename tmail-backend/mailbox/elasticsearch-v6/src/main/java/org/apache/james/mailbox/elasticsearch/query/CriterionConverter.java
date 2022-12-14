@@ -281,14 +281,14 @@ public class CriterionConverter {
         case HeaderCollection.FROM:
             return JsonMessageConstants.FROM;
         }
-        throw new RuntimeException("Header not recognized as Addess Header : " + headerName);
+        throw new RuntimeException("Header not recognized as Address Header : " + headerName);
     }
 
     private QueryBuilder convertDateOperator(String field, SearchQuery.DateComparator dateComparator, String lowDateString, String upDateString) {
         return switch (dateComparator) {
-            case BEFORE -> rangeQuery(field).lte(upDateString);
-            case AFTER -> rangeQuery(field).gt(lowDateString);
-            case ON -> rangeQuery(field).lte(upDateString).gte(lowDateString);
+            case BEFORE -> rangeQuery(field).lt(lowDateString); // less than start of the current day
+            case AFTER -> rangeQuery(field).gte(upDateString); // start of next day + greater than that
+            case ON -> rangeQuery(field).lt(upDateString).gte(lowDateString);
         };
     }
 
