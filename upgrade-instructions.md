@@ -14,7 +14,308 @@ Note: this section is in progress. It will be updated during all the development
 
 Change list:
 
-(No changes yet.)
+- [Autocomplete should support normalizing language special characters](#autocomplete-should-support-normalizing-language-special-characters)
+
+### Autocomplete should support normalizing language special characters
+
+Date 14/12/2022
+
+Ticket: https://github.com/linagora/tmail-backend/issues/534
+
+Concerned product: Distributed Team-mail, Distributed ES6 Team-mail
+
+We changed an analyzer setting for `user` and `domain` autocomplete indexes, therefore we need to reindex these two indexes
+to make the new analyzer applies for existing documents.
+
+We need to perform reindexing with aliases for zero downtime as we normally did.
+
+New indexes settings + mapping (pay attention to change some `change-me` values - could get those values by getting the old indexes' settings):
+
+#### Distributed Team-mail (OpenSearch)
+
+- new `user` contact index:
+
+```
+{
+	"settings": {
+		"number_of_shards": change-me,
+		"number_of_replicas": change-me,
+		"index.write.wait_for_active_shards": change-me,
+		"index": {
+			"max_ngram_diff": change-me
+		},
+		"analysis": {
+			"analyzer": {
+				"email_ngram_filter_analyzer": {
+					"tokenizer": "uax_url_email",
+					"filter": ["ngram_filter", "lowercase"]
+				},
+				"name_edge_ngram_filter_analyzer": {
+					"tokenizer": "standard",
+					"filter": ["edge_ngram_filter", "lowercase", "preserved_ascii_folding_filter"]
+				},
+				"rebuilt_keyword": {
+					"tokenizer": "keyword",
+					"filter": ["lowercase"]
+				}
+			},
+			"filter": {
+				"ngram_filter": {
+					"type": "ngram",
+					"min_gram": change-me,
+					"max_gram": change-me
+				},
+				"edge_ngram_filter": {
+					"type": "edge_ngram",
+					"min_gram": change-me,
+					"max_gram": change-me
+				},
+				"preserved_ascii_folding_filter": {
+					"type": "asciifolding",
+					"preserve_original": true
+				}
+			}
+		}
+	},
+	"mappings": {
+		"properties": {
+			"accountId": {
+				"type": "keyword"
+			},
+			"contactId": {
+				"type": "keyword"
+			},
+			"email": {
+				"type": "text",
+				"analyzer": "email_ngram_filter_analyzer",
+				"search_analyzer": "rebuilt_keyword"
+			},
+			"firstname": {
+				"type": "text",
+				"analyzer": "name_edge_ngram_filter_analyzer",
+				"search_analyzer": "standard"
+			},
+			"surname": {
+				"type": "text",
+				"analyzer": "name_edge_ngram_filter_analyzer",
+				"search_analyzer": "standard"
+			}
+		}
+	}
+}
+```
+
+- new `domain` contact index:
+
+```
+{
+	"settings": {
+		"number_of_shards": change-me,
+		"number_of_replicas": change-me,
+		"index.write.wait_for_active_shards": change-me,
+		"index": {
+			"max_ngram_diff": change-me
+		},
+		"analysis": {
+			"analyzer": {
+				"email_ngram_filter_analyzer": {
+					"tokenizer": "uax_url_email",
+					"filter": ["ngram_filter", "lowercase"]
+				},
+				"name_edge_ngram_filter_analyzer": {
+					"tokenizer": "standard",
+					"filter": ["edge_ngram_filter", "lowercase", "preserved_ascii_folding_filter"]
+				},
+				"rebuilt_keyword": {
+					"tokenizer": "keyword",
+					"filter": ["lowercase"]
+				}
+			},
+			"filter": {
+				"ngram_filter": {
+					"type": "ngram",
+					"min_gram": change-me,
+					"max_gram": change-me
+				},
+				"edge_ngram_filter": {
+					"type": "edge_ngram",
+					"min_gram": change-me,
+					"max_gram": change-me
+				},
+				"preserved_ascii_folding_filter": {
+					"type": "asciifolding",
+					"preserve_original": true
+				}
+			}
+		}
+	},
+	"mappings": {
+		"properties": {
+			"domain": {
+				"type": "keyword"
+			},
+			"contactId": {
+				"type": "keyword"
+			},
+			"email": {
+				"type": "text",
+				"analyzer": "email_ngram_filter_analyzer",
+				"search_analyzer": "rebuilt_keyword"
+			},
+			"firstname": {
+				"type": "text",
+				"analyzer": "name_edge_ngram_filter_analyzer",
+				"search_analyzer": "standard"
+			},
+			"surname": {
+				"type": "text",
+				"analyzer": "name_edge_ngram_filter_analyzer",
+				"search_analyzer": "standard"
+			}
+		}
+	}
+}
+```
+
+#### Distributed ES6 Team-mail (Elasticsearch v6)
+
+- new `user` contact index:
+
+```
+{
+  "settings": {
+    "number_of_shards": change-me,
+    "number_of_replicas": change-me,
+    "index.write.wait_for_active_shards": change-me,
+    "analysis": {
+      "analyzer": {
+        "email_ngram_filter_analyzer": {
+          "tokenizer": "uax_url_email",
+          "filter": ["ngram_filter", "lowercase"]
+        },
+        "name_edge_ngram_filter_analyzer": {
+          "tokenizer": "standard",
+          "filter": ["edge_ngram_filter", "lowercase", "preserved_ascii_folding_filter"]
+        },
+        "rebuilt_keyword": {
+          "tokenizer": "keyword",
+          "filter": ["lowercase"]
+        }
+      },
+      "filter": {
+        "ngram_filter": {
+          "type": "ngram",
+          "min_gram": change-me,
+          "max_gram": change-me
+        },
+        "edge_ngram_filter": {
+          "type": "edge_ngram",
+          "min_gram": change-me,
+          "max_gram": change-me
+        },
+        "preserved_ascii_folding_filter": {
+          "type": "asciifolding",
+          "preserve_original": true
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "accountId": {
+        "type": "keyword"
+      },
+      "contactId": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "text",
+        "analyzer": "email_ngram_filter_analyzer",
+        "search_analyzer": "rebuilt_keyword"
+      },
+      "firstname": {
+        "type": "text",
+        "analyzer": "name_edge_ngram_filter_analyzer",
+        "search_analyzer": "standard"
+      },
+      "surname": {
+        "type": "text",
+        "analyzer": "name_edge_ngram_filter_analyzer",
+        "search_analyzer": "standard"
+      }
+    }
+  }
+}
+```
+
+- new `domain` contact index:
+
+```
+{
+  "settings": {
+    "number_of_shards": change-me,
+    "number_of_replicas": change-me,
+    "index.write.wait_for_active_shards": change-me,
+    "analysis": {
+      "analyzer": {
+        "email_ngram_filter_analyzer": {
+          "tokenizer": "uax_url_email",
+          "filter": ["ngram_filter", "lowercase"]
+        },
+        "name_edge_ngram_filter_analyzer": {
+          "tokenizer": "standard",
+          "filter": ["edge_ngram_filter", "lowercase", "preserved_ascii_folding_filter"]
+        },
+        "rebuilt_keyword": {
+          "tokenizer": "keyword",
+          "filter": ["lowercase"]
+        }
+      },
+      "filter": {
+        "ngram_filter": {
+          "type": "ngram",
+          "min_gram": change-me,
+          "max_gram": change-me
+        },
+        "edge_ngram_filter": {
+          "type": "edge_ngram",
+          "min_gram": change-me,
+          "max_gram": change-me
+        },
+        "preserved_ascii_folding_filter": {
+          "type": "asciifolding",
+          "preserve_original": true
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "domain": {
+        "type": "keyword"
+      },
+      "contactId": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "text",
+        "analyzer": "email_ngram_filter_analyzer",
+        "search_analyzer": "rebuilt_keyword"
+      },
+      "firstname": {
+        "type": "text",
+        "analyzer": "name_edge_ngram_filter_analyzer",
+        "search_analyzer": "standard"
+      },
+      "surname": {
+        "type": "text",
+        "analyzer": "name_edge_ngram_filter_analyzer",
+        "search_analyzer": "standard"
+      }
+    }
+  }
+}
+```
 
 ## 0.6.3 version
 
