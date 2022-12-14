@@ -71,7 +71,11 @@ class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends J
       JMAPRoute.builder
         .endpoint(new Endpoint(HttpMethod.GET, s"/$ENDPOINT"))
         .action((req, res) => this.generate(url)(req, res))
-        .corsHeaders))
+        .corsHeaders,
+      JMAPRoute.builder
+        .endpoint(new Endpoint(HttpMethod.OPTIONS, s"/$ENDPOINT"))
+        .action(JMAPRoutes.CORS_CONTROL)
+        .noCorsHeaders))
       .getOrElse(stream.Stream.empty())
 
   private def generate(openIdURL: URL)(request: HttpServerRequest, response: HttpServerResponse): Mono[Void] =
