@@ -286,9 +286,9 @@ public class CriterionConverter {
 
     private QueryBuilder convertDateOperator(String field, SearchQuery.DateComparator dateComparator, String lowDateString, String upDateString) {
         return switch (dateComparator) {
-            case BEFORE -> rangeQuery(field).lte(upDateString);
-            case AFTER -> rangeQuery(field).gt(lowDateString);
-            case ON -> rangeQuery(field).lte(upDateString).gte(lowDateString);
+            case BEFORE -> rangeQuery(field).lt(upDateString);
+            case AFTER -> rangeQuery(field).gte(lowDateString);
+            case ON -> rangeQuery(field).lt(upDateString).gte(lowDateString);
         };
     }
 
