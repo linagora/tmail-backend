@@ -1,5 +1,6 @@
 {
    "isDeleted" : true,
+   "saveDate": null,
    "userFlags" : [
       "security",
       "debian"

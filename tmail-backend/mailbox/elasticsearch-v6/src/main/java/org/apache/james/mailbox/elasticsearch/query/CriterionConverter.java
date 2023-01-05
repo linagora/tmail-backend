@@ -83,6 +83,9 @@ public class CriterionConverter {
         registerCriterionConverter(SearchQuery.InternalDateCriterion.class,
             criterion -> dateRangeFilter(JsonMessageConstants.DATE, criterion.getOperator()));
 
+        registerCriterionConverter(SearchQuery.SaveDateCriterion.class,
+            criterion -> dateRangeFilter(JsonMessageConstants.SAVE_DATE, criterion.getOperator()));
+
         registerCriterionConverter(SearchQuery.AttachmentCriterion.class, this::convertAttachmentCriterion);
         registerCriterionConverter(SearchQuery.MimeMessageIDCriterion.class, this::convertMimeMessageIDCriterion);
         registerCriterionConverter(SearchQuery.ThreadIdCriterion.class, this::convertThreadIdCriterion);
@@ -286,9 +289,9 @@ public class CriterionConverter {
 
     private QueryBuilder convertDateOperator(String field, SearchQuery.DateComparator dateComparator, String lowDateString, String upDateString) {
         return switch (dateComparator) {
-            case BEFORE -> rangeQuery(field).lte(upDateString);
-            case AFTER -> rangeQuery(field).gt(lowDateString);
-            case ON -> rangeQuery(field).lte(upDateString).gte(lowDateString);
+            case BEFORE -> rangeQuery(field).lt(lowDateString);
+            case AFTER -> rangeQuery(field).gte(upDateString);
+            case ON -> rangeQuery(field).lt(upDateString).gte(lowDateString);
         };
     }
 

@@ -7,6 +7,7 @@ import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
+import org.apache.james.events.EventBusName;
 import org.apache.james.events.EventDeadLetters;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitMQEventBus;
@@ -30,7 +31,7 @@ import com.linagora.tmail.james.jmap.contact.TmailJmapEventSerializer;
 import reactor.rabbitmq.Sender;
 
 public class DistributedEmailAddressContactEventModule extends AbstractModule {
-    public static final NamingStrategy EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY = new NamingStrategy("emailAddressContactEvent");
+    public static final NamingStrategy EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY = new NamingStrategy(new EventBusName("emailAddressContactEvent"));
 
     @Override
     protected void configure() {

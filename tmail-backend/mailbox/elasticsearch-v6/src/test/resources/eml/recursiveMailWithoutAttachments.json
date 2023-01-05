@@ -5,6 +5,7 @@
   "mailboxId": "18",
   "modSeq": 42,
   "size": 25,
+  "saveDate": null,
   "date": "2015-06-07T00:00:00+02:00",
   "mediaType": "plain",
   "subtype": "text",

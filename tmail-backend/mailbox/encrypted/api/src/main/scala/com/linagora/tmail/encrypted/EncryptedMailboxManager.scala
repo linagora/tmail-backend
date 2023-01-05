@@ -18,6 +18,9 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
                                         clearEmailContentFactory: ClearEmailContentFactory,
                                         encryptedEmailContentStore: EncryptedEmailContentStore) extends MailboxManager {
 
+
+  override def getMailbox(mailbox: Mailbox, session: MailboxSession): MessageManager = mailboxManager.getMailbox(mailbox, session)
+
   override def getSupportedMailboxCapabilities: util.EnumSet[MailboxCapabilities] = mailboxManager.getSupportedMailboxCapabilities
 
   override def hasCapability(capability: MailboxCapabilities): Boolean = mailboxManager.hasCapability(capability)

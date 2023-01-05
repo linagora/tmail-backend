@@ -137,6 +137,8 @@ public class IndexableMessage {
                     boolean isRecent = message.isRecent();
                     boolean isUnRead = !message.isSeen();
                     String[] userFlags = message.createFlags().getUserFlags();
+                    Optional<String> saveDate = message.getSaveDate()
+                        .map(d -> DATE_TIME_FORMATTER.format(ZonedDateTime.ofInstant(d.toInstant(), zoneId)));
 
                     return new IndexableMessage(
                         attachments,
@@ -166,7 +168,8 @@ public class IndexableMessage {
                         to,
                         uid,
                         userFlags,
-                        mimeMessageID);
+                        mimeMessageID,
+                        saveDate);
                 });
         }
 
@@ -212,6 +215,7 @@ public class IndexableMessage {
     private final long uid;
     private final String[] userFlags;
     private final Optional<String> mimeMessageID;
+    private final Optional<String> saveDate;
 
     private IndexableMessage(List<MimePart> attachments,
                              EMailers bcc,
@@ -239,7 +243,8 @@ public class IndexableMessage {
                              EMailers to,
                              long uid,
                              String[] userFlags,
-                             Optional<String> mimeMessageID) {
+                             Optional<String> mimeMessageID,
+                             Optional<String> saveDate) {
         this.attachments = attachments;
         this.bcc = bcc;
         this.bodyHtml = bodyHtml;
@@ -268,6 +273,7 @@ public class IndexableMessage {
         this.uid = uid;
         this.userFlags = userFlags;
         this.mimeMessageID = mimeMessageID;
+        this.saveDate = saveDate;
     }
 
     @JsonProperty(JsonMessageConstants.ATTACHMENTS)
@@ -298,6 +304,11 @@ public class IndexableMessage {
     @JsonProperty(JsonMessageConstants.DATE)
     public String getDate() {
         return date;
+    }
+
+    @JsonProperty(JsonMessageConstants.SAVE_DATE)
+    public Optional<String> getSaveDate() {
+        return saveDate;
     }
 
     @JsonProperty(JsonMessageConstants.FROM)

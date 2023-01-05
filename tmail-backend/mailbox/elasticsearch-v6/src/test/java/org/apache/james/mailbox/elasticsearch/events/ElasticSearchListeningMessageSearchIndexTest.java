@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.Date;
@@ -167,7 +168,7 @@ class ElasticSearchListeningMessageSearchIndexTest {
 
     @BeforeEach
     void setup() throws Exception {
-        mapperFactory = new InMemoryMailboxSessionMapperFactory();
+        mapperFactory = new InMemoryMailboxSessionMapperFactory(Clock.systemUTC());
 
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
