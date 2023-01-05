@@ -39,6 +39,7 @@ public interface JsonMessageConstants {
     String BCC = "bcc";
     String SUBJECT = "subject";
     String DATE = "date";
+    String SAVE_DATE = "saveDate";
     String SIZE = "size";
     String TEXT_BODY = "textBody";
     String HTML_BODY = "htmlBody";

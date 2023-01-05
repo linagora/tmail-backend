@@ -54,6 +54,7 @@ import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.M
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.MESSAGE_ID;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.MIME_MESSAGE_ID;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.MODSEQ;
+import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.SAVE_DATE;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.SENT_DATE;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.SIZE;
 import static org.apache.james.mailbox.elasticsearch.json.JsonMessageConstants.SUBJECT;
@@ -141,6 +142,11 @@ public class MailboxMappingFactory {
                         .endObject()
 
                         .startObject(DATE)
+                            .field(TYPE, NodeMappingFactory.DATE)
+                            .field(FORMAT, "yyyy-MM-dd'T'HH:mm:ssZ")
+                        .endObject()
+
+                        .startObject(SAVE_DATE)
                             .field(TYPE, NodeMappingFactory.DATE)
                             .field(FORMAT, "yyyy-MM-dd'T'HH:mm:ssZ")
                         .endObject()
