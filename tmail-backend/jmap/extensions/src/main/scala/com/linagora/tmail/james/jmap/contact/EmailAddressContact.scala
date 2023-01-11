@@ -117,6 +117,7 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       SFlux.fromIterable(userContactList.row(accountId).values().asScala))
       .filter(lowerCaseContact(_).fields.contains(part.toLowerCase))
       .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
+      .distinct(_.id)
       .take(limit)
   }
 
