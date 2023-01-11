@@ -69,9 +69,22 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
     @Override
     public Publisher<EmailAddressContact> index(AccountId accountId, ContactFields fields) {
         EmailAddressContact emailAddressContact = EmailAddressContact.of(fields);
-        return Mono.fromCallable(() -> mapper.writeValueAsString(new UserContactDocument(accountId, emailAddressContact)))
-            .flatMap(content -> userContactIndexer.index(computeUserContactDocumentId(accountId, fields.address()), content,
-                RoutingKey.fromString(fields.address().asString())))
+
+        SearchRequest checkDuplicatedContactOnDomainIndexRequest = new SearchRequest(configuration.getDomainContactReadAliasName().getValue())
+            .source(new SearchSourceBuilder()
+                .query(QueryBuilders.boolQuery()
+                    .must(QueryBuilders.multiMatchQuery(fields.address().asString(), EMAIL))
+                    .should(QueryBuilders.termQuery(DOMAIN, Username.of(accountId.getIdentifier()).getDomainPart()
+                        .map(Domain::asString)
+                        .orElse("")))
+                    .minimumShouldMatch(1)));
+
+        return client.search(checkDuplicatedContactOnDomainIndexRequest, RequestOptions.DEFAULT)
+            .map(searchResponse -> searchResponse.getHits().getTotalHits())
+            .filter(hits -> hits == 0)
+            .flatMap(any -> Mono.fromCallable(() -> mapper.writeValueAsString(new UserContactDocument(accountId, emailAddressContact)))
+                .flatMap(content -> userContactIndexer.index(computeUserContactDocumentId(accountId, fields.address()), content,
+                    RoutingKey.fromString(fields.address().asString()))))
             .thenReturn(emailAddressContact);
     }
 

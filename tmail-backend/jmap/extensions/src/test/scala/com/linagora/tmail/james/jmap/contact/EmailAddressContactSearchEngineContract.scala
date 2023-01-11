@@ -66,6 +66,24 @@ trait EmailAddressContactSearchEngineContract {
   }
 
   @Test
+  def givenDomainContactXExistedThenAutoCompleteShouldNotIndexDuplicatedUserContactXAtIndexTime(): Unit = {
+    val mailAddress: MailAddress = new MailAddress("nobita@linagora.com")
+    val contactFields: ContactFields = ContactFields(mailAddress, "John", "Carpenter")
+    val duplicatedContactFields: ContactFields = ContactFields(mailAddress, "John Carpenter", "")
+
+    // GIVEN that contact X is indexed in domain index
+    SMono(testee().index(domain, contactFields)).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    // WHEN user send mail to contact X therefore contact X is trying to be indexed in user index
+    SMono(testee().index(accountId, duplicatedContactFields)).block()
+    Thread.sleep(500) // wait for the duplicated contact to be potentially indexed by ES
+
+    // THEN the contact X should only be indexed once after all.
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+  }
+
+  @Test
   def searchASCIICharactersShouldReturnMatchedFrenchName(): Unit = {
     SMono(testee().index(accountId, contactFieldsFrench)).block()
 

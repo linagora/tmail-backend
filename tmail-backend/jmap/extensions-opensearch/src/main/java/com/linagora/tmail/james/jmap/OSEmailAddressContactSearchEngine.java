@@ -68,9 +68,25 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     @Override
     public Publisher<EmailAddressContact> index(AccountId accountId, ContactFields fields) {
         EmailAddressContact emailAddressContact = EmailAddressContact.of(fields);
-        return Mono.fromCallable(() -> mapper.writeValueAsString(new UserContactDocument(accountId, emailAddressContact)))
-            .flatMap(content -> userContactIndexer.index(computeUserContactDocumentId(accountId, fields.address()), content,
-                RoutingKey.fromString(fields.address().asString())))
+
+        SearchRequest checkDuplicatedContactOnDomainIndexRequest = new SearchRequest.Builder()
+            .index(configuration.getDomainContactReadAliasName().getValue())
+            .query(QueryBuilders.bool()
+                .must(QueryBuilders.multiMatch().fields(EMAIL).query(fields.address().asString()).build()._toQuery())
+                .should(QueryBuilders.term().field(DOMAIN).value(new FieldValue.Builder().stringValue(Username.of(accountId.getIdentifier()).getDomainPart()
+                    .map(Domain::asString)
+                    .orElse("")).build()).build()._toQuery())
+                .minimumShouldMatch("1")
+                .build()._toQuery())
+            .build();
+
+        return Throwing.supplier(() -> client.search(checkDuplicatedContactOnDomainIndexRequest)).sneakyThrow()
+            .get()
+            .map(searchResponse -> searchResponse.hits().total().value())
+            .filter(hits -> hits == 0)
+            .flatMap(any -> Mono.fromCallable(() -> mapper.writeValueAsString(new UserContactDocument(accountId, emailAddressContact)))
+                .flatMap(content -> userContactIndexer.index(computeUserContactDocumentId(accountId, fields.address()), content,
+                    RoutingKey.fromString(fields.address().asString()))))
             .thenReturn(emailAddressContact);
     }
 
