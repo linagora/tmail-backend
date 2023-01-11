@@ -125,7 +125,8 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
 
         return client.search(request, RequestOptions.DEFAULT)
             .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
-            .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
+            .map(Throwing.function(this::extractContentFromHit).sneakyThrow())
+            .distinct(EmailAddressContact::id);
     }
 
     @Override

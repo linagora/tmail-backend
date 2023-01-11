@@ -127,7 +127,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         return Throwing.supplier(() -> client.search(request)).sneakyThrow()
             .get()
             .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.hits().hits()))
-            .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
+            .map(Throwing.function(this::extractContentFromHit).sneakyThrow())
+            .distinct(contact -> contact.fields().address());
     }
 
     @Override

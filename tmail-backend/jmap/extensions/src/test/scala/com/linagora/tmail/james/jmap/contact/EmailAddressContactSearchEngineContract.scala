@@ -2,7 +2,6 @@ package com.linagora.tmail.james.jmap.contact
 
 import java.util.stream.IntStream
 
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, contactFieldsFrench, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
@@ -50,6 +49,21 @@ trait EmailAddressContactSearchEngineContract {
   def testee(): EmailAddressContactSearchEngine
 
   def awaitDocumentsIndexed(query: QueryType, documentCount: Long): Unit
+
+  @Test
+  def shouldNotReturnDuplicatedContactAtReadTime(): Unit = {
+    val mailAddress: MailAddress = new MailAddress("nobita@linagora.com")
+    val contactFields: ContactFields = ContactFields(mailAddress, "John", "Carpenter")
+    val duplicatedContactFields: ContactFields = ContactFields(mailAddress, "John Carpenter", "")
+    SMono(testee().index(accountId, contactFields)).block()
+    SMono(testee().index(domain, duplicatedContactFields)).block()
+
+    // The duplicated domain contact should still be indexed cause others users could not have it yet
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, mailAddress.asString())).asJava().map(_.fields.address).collectList().block())
+      .containsExactlyInAnyOrder(mailAddress)
+  }
 
   @Test
   def searchASCIICharactersShouldReturnMatchedFrenchName(): Unit = {
