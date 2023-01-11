@@ -86,7 +86,11 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     index(accountId, EmailAddressContact.of(fields))
 
   private def index(accountId: AccountId, addressContact: EmailAddressContact) =
-    SMono.fromCallable(() => userContactList.put(accountId, addressContact.fields.address, addressContact))
+    SFlux.fromIterable(domainContactList.values().asScala)
+      .filter(contact => contact.fields.address.equals(addressContact.fields.address))
+      .count()
+      .map(hits => hits == 0)
+      .flatMap(_ => SMono.fromCallable(() => userContactList.put(accountId, addressContact.fields.address, addressContact)))
       .`then`(SMono.just(addressContact))
 
   override def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact] =
