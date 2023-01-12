@@ -7,12 +7,13 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWAR
 import com.linagora.tmail.james.jmap.model.Forwards.UNPARSED_SINGLETON
 import com.linagora.tmail.james.jmap.model.{ForwardGetRequest, ForwardGetResponse, ForwardNotFound, Forwards, UnparsedForwardId}
 import eu.timepit.refined.auto._
+
 import javax.inject.Inject
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodCallId, MethodName}
 import org.apache.james.jmap.core.UuidState.INSTANCE
-import org.apache.james.jmap.core.{AccountId, Capability, CapabilityFactory, CapabilityProperties, ErrorCode, Invocation, MissingCapabilityException, Properties, UrlPrefixes}
+import org.apache.james.jmap.core.{AccountId, Capability, CapabilityFactory, CapabilityProperties, ErrorCode, Invocation, MissingCapabilityException, Properties, SessionTranslator, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -77,6 +78,7 @@ case class ForwardGetResult(forwards: Set[Forwards], notFound: ForwardNotFound) 
 
 class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
                                  val metricFactory: MetricFactory,
+                                 val sessionTranslator: SessionTranslator,
                                  val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[ForwardGetRequest] {
   override val methodName: Invocation.MethodName = MethodName("Forward/get")
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_FORWARD)

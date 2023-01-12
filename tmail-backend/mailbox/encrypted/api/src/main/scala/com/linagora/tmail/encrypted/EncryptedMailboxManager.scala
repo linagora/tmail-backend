@@ -149,4 +149,6 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
   override def hasChildrenReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[lang.Boolean] = mailboxManager.hasChildrenReactive(mailboxPath, session)
 
   override def getMessageIdFactory: MessageId.Factory = mailboxManager.getMessageIdFactory
+
+  override def login(userName: Username): MailboxSession = mailboxManager.login(userName)
 }

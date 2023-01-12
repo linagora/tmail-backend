@@ -10,7 +10,7 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.FilteringManagement
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, UrlPrefixes}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -20,8 +20,8 @@ import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.SMono
-import javax.inject.Inject
 
+import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 case object FilterCapabilityProperties extends CapabilityProperties {
@@ -56,6 +56,7 @@ class FilterGetMethodModule extends AbstractModule {
 class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
                                 val sessionSupplier: SessionSupplier,
                                 val mailboxIdFactory: MailboxId.Factory,
+                                val sessionTranslator: SessionTranslator,
                                 filteringManagement: FilteringManagement) extends MethodRequiringAccountId[FilterGetRequest] {
 
   override val methodName: Invocation.MethodName = MethodName("Filter/get")

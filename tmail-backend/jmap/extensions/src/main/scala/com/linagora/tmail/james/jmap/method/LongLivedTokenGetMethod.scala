@@ -7,10 +7,11 @@ import com.linagora.tmail.james.jmap.longlivedtoken.{LongLivedTokenFootPrint, Lo
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LONG_LIVED_TOKEN
 import com.linagora.tmail.james.jmap.model.{LongLivedTokenGetRequest, LongLivedTokenGetResponse}
 import eu.timepit.refined.auto._
+
 import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Invocation, UuidState}
+import org.apache.james.jmap.core.{Invocation, SessionTranslator, UuidState}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -30,6 +31,7 @@ class LongLivedTokenGetMethodModule extends AbstractModule {
 
 class LongLivedTokenGetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore,
                                         val metricFactory: MetricFactory,
+                                        val sessionTranslator: SessionTranslator,
                                         val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[LongLivedTokenGetRequest] {
 
   override val methodName: Invocation.MethodName = MethodName("LongLivedToken/get")
