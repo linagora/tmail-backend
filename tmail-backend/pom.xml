@@ -67,6 +67,7 @@
         <apache-mime4j.version>0.8.6-SNAPSHOT</apache-mime4j.version>
         <firebase-admin-sdk.version>9.1.0</firebase-admin-sdk.version>
         <scala.base>2.13</scala.base>
+        <opensearch-java.version>2.1.0</opensearch-java.version>
     </properties>
 
     <dependencyManagement>
