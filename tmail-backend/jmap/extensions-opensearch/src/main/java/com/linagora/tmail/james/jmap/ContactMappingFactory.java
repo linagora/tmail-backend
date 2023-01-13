@@ -4,6 +4,7 @@ import static org.apache.james.backends.opensearch.IndexCreationFactory.KEYWORD;
 
 import org.apache.james.backends.opensearch.OpenSearchConfiguration;
 import org.opensearch.client.opensearch._types.analysis.Analyzer;
+import org.opensearch.client.opensearch._types.analysis.AsciiFoldingTokenFilter;
 import org.opensearch.client.opensearch._types.analysis.CustomAnalyzer;
 import org.opensearch.client.opensearch._types.analysis.EdgeNGramTokenFilter;
 import org.opensearch.client.opensearch._types.analysis.NGramTokenFilter;
@@ -32,7 +33,6 @@ public class ContactMappingFactory {
     public static final String NGRAM_FILTER = "ngram_filter";
     public static final String EDGE_NGRAM_FILTER = "edge_ngram_filter";
     public static final String PRESERVED_ASCII_FOLDING_FILTER = "preserved_ascii_folding_filter";
-    public static final String FILTER = "filter";
     public static final String STANDARD = "standard";
     public static final String LOWERCASE = "lowercase";
 
@@ -59,7 +59,7 @@ public class ContactMappingFactory {
                         .build()))
                     .put(NAME_AUTO_COMPLETE_ANALYZER, new Analyzer(new CustomAnalyzer.Builder()
                         .tokenizer(STANDARD)
-                        .filter(EDGE_NGRAM_FILTER, LOWERCASE)
+                        .filter(EDGE_NGRAM_FILTER, LOWERCASE, PRESERVED_ASCII_FOLDING_FILTER)
                         .build()))
                     .put(REBUILT_KEYWORD_ANALYZER, new Analyzer(new CustomAnalyzer.Builder()
                         .tokenizer(KEYWORD)
@@ -77,6 +77,11 @@ public class ContactMappingFactory {
                         .definition(new TokenFilterDefinition(new EdgeNGramTokenFilter.Builder()
                             .minGram(contactConfiguration.getMinNgram())
                             .maxGram(contactConfiguration.getMinNgram() + contactConfiguration.getMaxNgramDiff())
+                            .build()))
+                        .build())
+                    .put(PRESERVED_ASCII_FOLDING_FILTER, new TokenFilter.Builder()
+                        .definition(new TokenFilterDefinition(new AsciiFoldingTokenFilter.Builder()
+                            .preserveOriginal(true)
                             .build()))
                         .build())
                     .build())
