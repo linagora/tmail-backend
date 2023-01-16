@@ -7,10 +7,11 @@ import com.linagora.tmail.james.jmap.json.EncryptedEmailSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{EmailIdHelper, EncryptedEmailFastViewResults, EncryptedEmailGetRequest, EncryptedEmailGetResponse}
 import eu.timepit.refined.auto._
+
 import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Invocation, UuidState}
+import org.apache.james.jmap.core.{Invocation, SessionTranslator, UuidState}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.mail.UnparsedEmailId
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
@@ -39,6 +40,7 @@ class EncryptedEmailFastViewGetMethodModule extends AbstractModule {
 class EncryptedEmailFastViewGetMethod @Inject()(encryptedEmailFastViewReader: EncryptedEmailFastViewReader,
                                                 messageIdFactory: MessageId.Factory,
                                                 val metricFactory: MetricFactory,
+                                                val sessionTranslator: SessionTranslator,
                                                 val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[EncryptedEmailGetRequest] {
 
   override val methodName: Invocation.MethodName = MethodName("EncryptedEmailFastView/get")

@@ -22,10 +22,8 @@ import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.opensearch.action.search.SearchRequest;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.index.query.QueryBuilders;
-import org.opensearch.search.builder.SearchSourceBuilder;
+import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
+import org.opensearch.client.opensearch.core.SearchRequest;
 
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -84,11 +82,12 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
     public void awaitDocumentsIndexed(long documentCount) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
-                    new SearchRequest(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
-                        .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery())),
-                    RequestOptions.DEFAULT)
+                new SearchRequest.Builder()
+                    .index(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
+                    .query(QueryBuilders.matchAll().build()._toQuery())
+                    .build())
                 .block()
-                .getHits().getTotalHits().value).isEqualTo(documentCount));
+                .hits().total().value()).isEqualTo(documentCount));
     }
 
     @Test

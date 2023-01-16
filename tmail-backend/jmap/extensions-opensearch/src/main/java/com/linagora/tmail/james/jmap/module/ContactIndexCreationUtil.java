@@ -1,6 +1,5 @@
 package com.linagora.tmail.james.jmap.module;
 
-import java.io.IOException;
 import java.util.Optional;
 
 import org.apache.james.backends.opensearch.IndexCreationFactory;
@@ -13,7 +12,7 @@ import com.linagora.tmail.james.jmap.OpenSearchContactConfiguration;
 public class ContactIndexCreationUtil {
     public static void createIndices(ReactorOpenSearchClient client,
                                      OpenSearchConfiguration openSearchConfiguration,
-                                     OpenSearchContactConfiguration contactConfiguration) throws IOException {
+                                     OpenSearchContactConfiguration contactConfiguration) {
         ContactMappingFactory contactMappingFactory = new ContactMappingFactory(openSearchConfiguration, contactConfiguration);
         new IndexCreationFactory(openSearchConfiguration)
             .useIndex(contactConfiguration.getUserContactIndexName())

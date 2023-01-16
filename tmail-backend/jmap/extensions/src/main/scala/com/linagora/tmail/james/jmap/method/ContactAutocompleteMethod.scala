@@ -7,11 +7,12 @@ import com.linagora.tmail.james.jmap.json.ContactSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT
 import com.linagora.tmail.james.jmap.model.{Contact, ContactAutocompleteRequest, ContactAutocompleteResponse, ContactFirstname, ContactId, ContactSurname}
 import eu.timepit.refined.auto._
+
 import javax.inject.Inject
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, Limit, UrlPrefixes}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, Limit, SessionTranslator, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -52,6 +53,7 @@ class ContactAutocompleteMethodModule extends AbstractModule {
 
 class ContactAutocompleteMethod @Inject()(serializer: ContactSerializer,
                                           emailAddressContactSearchEngine: EmailAddressContactSearchEngine,
+                                          val sessionTranslator: SessionTranslator,
                                           val metricFactory: MetricFactory,
                                           val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[ContactAutocompleteRequest] {
   override val methodName: Invocation.MethodName = MethodName("TMailContact/autocomplete")

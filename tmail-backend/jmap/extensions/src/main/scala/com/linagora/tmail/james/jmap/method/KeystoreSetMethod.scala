@@ -6,10 +6,11 @@ import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{KeystoreSetRequest, KeystoreSetResponse}
 import eu.timepit.refined.auto._
+
 import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, SetError, UrlPrefixes}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, SessionTranslator, SetError, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -53,6 +54,7 @@ class KeystoreSetMethod @Inject()(serializer: KeystoreSerializer,
                                   createPerformer: KeystoreSetCreatePerformer,
                                   destroyPerformer: KeystoreSetDestroyPerformer,
                                   val metricFactory: MetricFactory,
+                                  val sessionTranslator: SessionTranslator,
                                   val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[KeystoreSetRequest] {
   override val methodName: MethodName = MethodName("Keystore/set")
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_PGP)

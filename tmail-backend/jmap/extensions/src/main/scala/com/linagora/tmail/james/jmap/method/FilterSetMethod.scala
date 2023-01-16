@@ -15,7 +15,7 @@ import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule, Version}
 import org.apache.james.jmap.api.model.{AccountId, TypeName}
 import org.apache.james.jmap.change.{AccountIdRegistrationKey, StateChangeEvent}
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
-import org.apache.james.jmap.core.Invocation
+import org.apache.james.jmap.core.{Invocation, SessionTranslator}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.json.ResponseSerializer
@@ -82,6 +82,7 @@ case class FilterSetUpdateFailure(id: String, exception: Throwable) extends Filt
 class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
                                 val metricFactory: MetricFactory,
                                 val sessionSupplier: SessionSupplier,
+                                val sessionTranslator: SessionTranslator,
                                 val mailboxIdFactory: MailboxId.Factory,
                                 filteringManagement: FilteringManagement) extends MethodRequiringAccountId[FilterSetRequest] {
 

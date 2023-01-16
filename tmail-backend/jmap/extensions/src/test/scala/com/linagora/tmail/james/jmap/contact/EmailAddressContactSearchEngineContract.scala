@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.jmap.contact
 
+import java.util.stream.IntStream
+
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, contactFieldsFrench, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
@@ -7,8 +10,6 @@ import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatTh
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import java.util.stream.IntStream
 
 object EmailAddressContactSearchEngineContract {
   private val domain: Domain = Domain.of("linagora.com")
