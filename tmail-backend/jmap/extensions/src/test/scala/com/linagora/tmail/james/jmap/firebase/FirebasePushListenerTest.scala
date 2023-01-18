@@ -1,20 +1,23 @@
 package com.linagora.tmail.james.jmap.firebase
 
+import com.google.common.collect.ImmutableList
+
 import java.time.Clock
 import java.util.UUID
-
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscriptionCreationRequest, FirebaseToken}
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.jmap.change.{EmailDeliveryTypeName, EmailTypeName, MailboxTypeName, StateChangeEvent}
 import org.apache.james.jmap.core.UuidState
+import org.apache.james.user.api.DelegationStore
+import org.apache.james.user.memory.MemoryDelegationStore
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{mock, verify, verifyNoInteractions, when}
+import org.mockito.Mockito.{mock, times, verify, verifyNoInteractions, when}
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 
@@ -28,12 +31,14 @@ class FirebasePushListenerTest {
   var testee: FirebasePushListener = _
   var subscriptionRepository: FirebaseSubscriptionRepository = _
   var pushClient: FirebasePushClient = _
+  var delegationStore: DelegationStore = _
 
   @BeforeEach
   def setUp(): Unit = {
     subscriptionRepository = new MemoryFirebaseSubscriptionRepository(Clock.systemUTC())
     pushClient = mock(classOf[FirebasePushClient])
-    testee = new FirebasePushListener(subscriptionRepository, pushClient)
+    delegationStore = new MemoryDelegationStore()
+    testee = new FirebasePushListener(subscriptionRepository, delegationStore, pushClient)
 
     when(pushClient.push(any())).thenReturn(Mono.empty)
   }
@@ -215,6 +220,74 @@ class FirebasePushListenerTest {
     verify(pushClient).push(argumentCaptor.capture())
 
     assertThat(argumentCaptor.getValue.urgency().toString).isEqualTo(FirebasePushUrgency.NORMAL.toString)
+  }
+
+  @Test
+  def shouldNotPushAliceChangesToBobWhenBobIsNotDelegatedByAlice(): Unit = {
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), alice, Map(EmailTypeName -> UuidState(UUID.randomUUID()))))).block()
+
+    verify(pushClient, times(0)).push(any())
+  }
+
+  @Test
+  def shouldPushAliceChangesToAliceAndBobWhenBobIsDelegatedByAlice(): Unit = {
+    SMono.fromPublisher(delegationStore.addAuthorizedUser(alice, bob)).block()
+
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token1"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(subscriptionRepository.save(alice, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit2"),
+      token = FirebaseToken("token2"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    val state1 = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), alice, Map(EmailTypeName -> state1)))).block()
+
+    val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+    verify(pushClient, times(2)).push(argumentCaptor.capture())
+
+    assertThat(argumentCaptor.getAllValues
+      .stream()
+      .map(_.token().value)
+      .collect(ImmutableList.toImmutableList[String]))
+      .containsExactlyInAnyOrder("token1", "token2")
+  }
+
+  @Test
+  def bobShouldReceiveHisChangesAndAliceChangesWhenBobIsDelegatedByAlice(): Unit = {
+    SMono.fromPublisher(delegationStore.addAuthorizedUser(alice, bob)).block()
+
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token1"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(subscriptionRepository.save(alice, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit2"),
+      token = FirebaseToken("token2"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    val stateChangeBob = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob, Map(EmailTypeName -> stateChangeBob)))).block()
+    val stateChangeAlice = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), alice, Map(EmailTypeName -> stateChangeAlice)))).block()
+
+    val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+    verify(pushClient, times(3)).push(argumentCaptor.capture())
+
+    assertThat(argumentCaptor.getAllValues
+      .stream()
+      .map(_.token().value)
+      .collect(ImmutableList.toImmutableList[String]))
+      .containsExactlyInAnyOrder("token1", "token1", "token2")
   }
 
 }
