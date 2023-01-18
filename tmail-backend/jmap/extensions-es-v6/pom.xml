@@ -11,6 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>jmap-extensions-es-v6</artifactId>
+    <name>Team-mail :: JMAP :: Extensions :: ES v6</name>
 
     <dependencies>
         <dependency>

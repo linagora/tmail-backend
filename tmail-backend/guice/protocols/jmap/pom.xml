@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>tmail-guice-jmap</artifactId>
+    <name>Team-mail :: Guice :: JMAP</name>
     <packaging>jar</packaging>
 
     <description>JMAP modules for Guice implementation of Team-mail server</description>

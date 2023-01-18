@@ -11,6 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>rate-limiter-integration-tests-common</artifactId>
+    <name>Team-mail :: Integration Tests :: Rate Limiter :: Common</name>
 
     <dependencies>
         <dependency>

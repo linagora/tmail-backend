@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>distributed</artifactId>
+    <name>Team-mail :: Apps :: Distributed</name>
 
     <dependencies>
         <!-- Override MIME4J version -->

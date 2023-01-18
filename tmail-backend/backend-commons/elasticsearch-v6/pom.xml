@@ -27,6 +27,7 @@
     </parent>
 
     <artifactId>backends-es-v6</artifactId>
+    <name>Team-mail :: Backend Commons :: ESv6</name>
 
     <dependencies>
         <dependency>

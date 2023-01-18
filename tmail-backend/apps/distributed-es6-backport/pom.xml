@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>distributed-es6-backport</artifactId>
+    <name>Team-mail :: Apps :: Distributed Es6</name>
 
     <dependencies>
         <!-- Override MIME4J version -->

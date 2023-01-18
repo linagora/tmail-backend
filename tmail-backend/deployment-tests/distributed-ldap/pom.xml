@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>deployment-tests-distributed-ldap</artifactId>
+    <name>Team-mail :: Deployment Tests :: Distributed LDAP</name>
 
     <dependencies>
         <dependency>
