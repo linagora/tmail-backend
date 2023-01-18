@@ -16,6 +16,7 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
@@ -51,6 +52,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       .fluent()
       .addDomain(DOMAIN.asString)
       .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
@@ -595,9 +597,6 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
 
   @Test
   def methodShouldReturnNotFoundWhenAccountDoesNotHavePermission(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[DataProbeImpl])
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
-
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
 
     uploadPublicKey(ANDRE_ACCOUNT_ID,
@@ -656,8 +655,6 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
 
   @Test
   def methodShouldReturnNotFoundWhenAccountDoesNotHaveAnyKeyStore(server: GuiceJamesServer) : Unit = {
-    server.getProbe(classOf[DataProbeImpl])
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
     mailboxProbe.createMailbox(MailboxPath.inbox(ANDRE))
 
@@ -711,6 +708,34 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |        ]
            |    ]
            |}""".stripMargin)
+  }
+
+  @Test
+  def authorizedUserCanDownloadEncryptedAttachmentOfDelegatedUser(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
+
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithTextAttachment.eml")))
+      .getMessageId
+
+    val attachment = `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .basePath("/download")
+    .when()
+      .get(s"$ACCOUNT_ID/encryptedAttachment_${messageId.serialize()}_0")
+    .`then`()
+      .extract()
+      .body()
+      .asString()
+
+    println(attachment)
+
+    assertThat(decrypt(attachment))
+      .isEqualTo("This is a beautiful banana.\n")
   }
 
 }
