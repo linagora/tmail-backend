@@ -3,6 +3,7 @@ package com.linagora.tmail.james.jmap.firebase
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener.{GROUP, LOGGER}
 import com.linagora.tmail.james.jmap.model.FirebaseSubscription
+
 import javax.inject.Inject
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}
@@ -10,6 +11,7 @@ import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.change.{EmailDeliveryTypeName, StateChangeEvent}
 import org.apache.james.jmap.core.{AccountId, StateChange}
 import org.apache.james.lifecycle.api.Startable
+import org.apache.james.user.api.DelegationStore
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
@@ -25,6 +27,7 @@ object FirebasePushListener {
 }
 
 class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptionRepository,
+                                     delegationStore: DelegationStore,
                                      pushClient: FirebasePushClient) extends ReactiveGroupEventListener {
   override def getDefaultGroup: Group = GROUP
 
@@ -33,7 +36,9 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
   override def reactiveEvent(event: Event): Publisher[Void] =
     event match {
       case event: StateChangeEvent =>
-        SFlux(subscriptionRepository.list(event.username))
+        SMono.just(event.username)
+          .concatWith(delegationStore.authorizedUsers(event.username))
+          .flatMap(subscriptionRepository.list)
           .flatMap(sendNotification(_, event), ReactorUtils.DEFAULT_CONCURRENCY)
           .`then`()
       case _ => SMono.empty
