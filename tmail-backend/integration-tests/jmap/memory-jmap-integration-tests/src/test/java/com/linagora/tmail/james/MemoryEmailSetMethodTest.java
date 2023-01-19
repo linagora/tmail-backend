@@ -26,6 +26,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.rfc8621.contract.EmailSetMethodContract;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.mailbox.model.MessageId;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -44,7 +45,8 @@ public class MemoryEmailSetMethodTest implements EmailSetMethodContract {
             .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DelegationProbeModule()))
         .build();
 
     @Override

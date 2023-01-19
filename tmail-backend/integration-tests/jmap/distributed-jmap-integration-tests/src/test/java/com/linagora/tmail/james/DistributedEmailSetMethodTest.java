@@ -24,6 +24,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.rfc8621.contract.EmailSetMethodContract;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
@@ -58,7 +59,8 @@ public class DistributedEmailSetMethodTest implements EmailSetMethodContract {
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DelegationProbeModule()))
         .build();
 
     @Override
