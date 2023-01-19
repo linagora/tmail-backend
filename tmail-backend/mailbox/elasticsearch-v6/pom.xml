@@ -28,7 +28,7 @@
     </parent>
 
     <artifactId>mailbox-elasticsearch-v6</artifactId>
-    <name>Mailbox :: ElasticSearch :: V6</name>
+    <name>Team-mail :: Mailbox :: ElasticSearch :: V6</name>
     <description>Mailbox IMAP search implementation using ElasticSearch - V6 backport</description>
 
     <dependencies>

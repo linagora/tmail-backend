@@ -11,6 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>deployment-tests-common</artifactId>
+    <name>Team-mail :: Deployment Tests :: Common</name>
 
     <dependencies>
         <dependency>

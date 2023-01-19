@@ -12,6 +12,7 @@
     </parent>
 
     <artifactId>pgp-utils</artifactId>
+    <name>Team-mail :: Mailbox :: Encrypted :: pgp-utils</name>
 
     <dependencies>
         <dependency>

@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>mailbox-encrypted-cassandra</artifactId>
-    <name>Mailbox :: Encrypted :: Cassandra</name>
+    <name>Team-mail :: Mailbox :: Encrypted :: Cassandra</name>
     <description>Cassandra implementation of encrypted mailbox using GPG</description>
 
     <dependencies>

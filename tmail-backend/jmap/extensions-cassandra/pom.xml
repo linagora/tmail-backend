@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>jmap-extensions-cassandra</artifactId>
+    <name>Team-mail :: JMAP :: Extensions :: Cassandra</name>
 
     <dependencies>
         <dependency>

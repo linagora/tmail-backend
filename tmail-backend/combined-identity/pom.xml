@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>combined-identity</artifactId>
-    <name>Combined Identity</name>
+    <name>Team-mail :: Combined Identity</name>
     <description>LDAP is used for authentication only while all other mechanisms are resolved against a local database (that needs external synchronization)</description>
 
     <dependencies>

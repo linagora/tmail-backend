@@ -28,7 +28,7 @@
     </parent>
 
     <artifactId>mailbox-quota-search-elasticsearch-v6</artifactId>
-    <name>Mailbox :: Plugin :: Quota Search :: ElasticSearch :: V6</name>
+    <name>Team-mail :: Mailbox :: Plugin :: Quota Search ElasticSearch V6</name>
     <description>Mailbox ElasticSearch implementation for quota search - V6 backport</description>
 
     <dependencies>

@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>jmap-extensions</artifactId>
+    <name>Team-mail :: JMAP :: Extensions</name>
 
     <dependencies>
         <dependency>
