@@ -2,13 +2,12 @@ package com.linagora.tmail.encrypted
 
 import java.util.Optional
 import java.{lang, util}
-
 import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager.{MailboxCapabilities, MailboxRenamedResult, MessageCapabilities, SearchCapabilities}
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{Mailbox, MailboxACL, MailboxAnnotation, MailboxAnnotationKey, MailboxId, MailboxMetaData, MailboxPath, MessageId, MessageRange, MultimailboxesSearchQuery, ThreadId}
-import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager}
+import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, SessionProvider}
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.SMono
@@ -17,7 +16,6 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
                                         keystoreManager: KeystoreManager,
                                         clearEmailContentFactory: ClearEmailContentFactory,
                                         encryptedEmailContentStore: EncryptedEmailContentStore) extends MailboxManager {
-
 
   override def getMailbox(mailbox: Mailbox, session: MailboxSession): MessageManager = mailboxManager.getMailbox(mailbox, session)
 
@@ -120,16 +118,7 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
 
   override def setRights(mailboxId: MailboxId, mailboxACL: MailboxACL, session: MailboxSession): Unit = mailboxManager.setRights(mailboxId, mailboxACL, session)
 
-  override def getDelimiter: Char = mailboxManager.getDelimiter
-
   override def createSystemSession(userName: Username): MailboxSession = mailboxManager.createSystemSession(userName)
-
-  override def login(userid: Username, passwd: String): MailboxSession = mailboxManager.login(userid, passwd)
-
-  override def loginAsOtherUser(adminUserid: Username, passwd: String, otherUserId: Username): MailboxSession =
-    mailboxManager.loginAsOtherUser(adminUserid, passwd, otherUserId)
-
-  override def logout(session: MailboxSession): Unit = mailboxManager.logout(session)
 
   override def getMailboxReactive(mailboxId: MailboxId, session: MailboxSession): Publisher[MessageManager] =
     SMono.fromPublisher(mailboxManager.getMailboxReactive(mailboxId, session))
@@ -144,11 +133,13 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
   override def listRights(mailbox: Mailbox, identifier: MailboxACL.EntryKey, session: MailboxSession): util.List[MailboxACL.Rfc4314Rights] =
     mailboxManager.listRights(mailbox, identifier, session)
 
-  override def loginAsOtherUser(givenUserid: Username, otherUserId: Username): MailboxSession = mailboxManager.loginAsOtherUser(givenUserid, otherUserId)
-
   override def hasChildrenReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[lang.Boolean] = mailboxManager.hasChildrenReactive(mailboxPath, session)
 
   override def getMessageIdFactory: MessageId.Factory = mailboxManager.getMessageIdFactory
 
-  override def login(userName: Username): MailboxSession = mailboxManager.login(userName)
+  override def authenticate(givenUserid: Username, passwd: String): SessionProvider.AuthorizationStep =
+    mailboxManager.authenticate(givenUserid, passwd)
+
+  override def authenticate(givenUserid: Username): SessionProvider.AuthorizationStep =
+    mailboxManager.authenticate(givenUserid)
 }
