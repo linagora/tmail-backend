@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.common
 
 import java.util.UUID
-
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -11,7 +10,8 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.DataProbeImpl
 import org.junit.jupiter.api.{BeforeEach, Test}
 
@@ -22,6 +22,7 @@ trait LongLivedTokenGetContract {
       .fluent()
       .addDomain(DOMAIN.asString())
       .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
@@ -333,5 +334,74 @@ trait LongLivedTokenGetContract {
          |    },"c1"]
          |  ]
          |}""".stripMargin)
+  }
+
+  @Test
+  def getShouldRejectFromDelegatedAccount(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    val bobAccountId = ACCOUNT_ID
+
+    val bobRequestCreateLLT =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:long:lived:token"],
+         |  "methodCalls": [
+         |    ["LongLivedToken/set", {
+         |      "accountId": "$bobAccountId",
+         |      "create": {
+         |        "K38": {
+         |          "deviceId": "My android device"
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(bobRequestCreateLLT)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:long:lived:token"],
+         |  "methodCalls": [
+         |    ["LongLivedToken/get", {
+         |      "accountId": "$bobAccountId"
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response = `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"error",
+           |	{
+           |		"type": "forbidden",
+           |		"description": "Access to other accounts settings is forbidden"
+           |	},
+           |	"c1"
+           |]""".stripMargin)
   }
 }

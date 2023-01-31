@@ -60,6 +60,7 @@ class LongLivedTokenSetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore
                          invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,
                          request: LongLivedTokenSetRequest): Publisher[InvocationWithContext] = {
+    DelegatedAccountPrecondition.acceptOnlyOwnerRequest(mailboxSession, request.accountId)
     for {
       created <- create(mailboxSession, request, invocation.processingContext)
       destroyed <- destroy(mailboxSession, request)

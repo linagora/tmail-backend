@@ -42,6 +42,7 @@ class LongLivedTokenGetMethod @Inject()(longLivedTokenStore: LongLivedTokenStore
                          invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,
                          request: LongLivedTokenGetRequest): Publisher[InvocationWithContext] = {
+    DelegatedAccountPrecondition.acceptOnlyOwnerRequest(mailboxSession, request.accountId)
     SFlux.fromPublisher[LongLivedTokenFootPrint](request.ids match {
       case None => longLivedTokenStore.listTokens(mailboxSession.getUser)
       case Some(ids) => SFlux.fromPublisher[LongLivedTokenFootPrint](longLivedTokenStore.listTokens(mailboxSession.getUser))
