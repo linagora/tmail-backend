@@ -10,7 +10,8 @@ import eu.timepit.refined.auto._
 import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, SessionTranslator, SetError, UrlPrefixes}
+import org.apache.james.jmap.core.{AccountId, Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, SessionTranslator, SetError, UrlPrefixes}
+import org.apache.james.jmap.delegation.ForbiddenAccountManagementException
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -18,6 +19,8 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.SMono
+
+import scala.jdk.OptionConverters._
 
 case object KeystoreCapabilityProperties extends CapabilityProperties {
   override def jsonify(): JsObject = Json.obj()
@@ -50,6 +53,17 @@ class KeystoreSetMethodModule extends AbstractModule {
 
 case class KeystoreCreationParseException(setError: SetError) extends Exception
 
+object DelegatedAccountPrecondition {
+  def acceptOnlyOwnerRequest(mailboxSession: MailboxSession, requestAccountId: AccountId): Unit = {
+    val requestByOwner: Boolean = mailboxSession.getLoggedInUser.toScala
+      .flatMap(AccountId.from(_).toOption)
+      .contains(requestAccountId)
+    if (!requestByOwner) {
+      throw ForbiddenAccountManagementException()
+    }
+  }
+}
+
 class KeystoreSetMethod @Inject()(serializer: KeystoreSerializer,
                                   createPerformer: KeystoreSetCreatePerformer,
                                   destroyPerformer: KeystoreSetDestroyPerformer,
@@ -60,6 +74,7 @@ class KeystoreSetMethod @Inject()(serializer: KeystoreSerializer,
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_PGP)
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: KeystoreSetRequest): SMono[InvocationWithContext] = {
+    DelegatedAccountPrecondition.acceptOnlyOwnerRequest(mailboxSession, request.accountId)
     for {
       created <- createPerformer.createKeys(mailboxSession, request)
       destroyed <- destroyPerformer.destroy(mailboxSession, request)
