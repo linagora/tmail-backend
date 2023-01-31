@@ -4,10 +4,10 @@ import java.util
 import java.util.Optional
 
 import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
-import com.linagora.tmail.mailets.ContactsCollectionTest.{ATTRIBUTE_NAME, MAILET_CONFIG, RECIPIENT, SENDER}
+import com.linagora.tmail.mailets.ContactsCollectionTest.{ATTRIBUTE_NAME, MAILET_CONFIG, RECIPIENT, RECIPIENT2, RECIPIENT3, SENDER}
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
-import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.core.builder.MimeMessageBuilder
+import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.delivery.InVmEventDelivery
 import org.apache.james.events.{Event, EventBus, Group, InVMEventBus, MemoryEventDeadLetters, RetryBackoffConfiguration}
@@ -31,6 +31,8 @@ object ContactsCollectionTest {
 
   val SENDER: String = "sender1@domain.tld"
   val RECIPIENT: String = "recipient1@domain.tld"
+  val RECIPIENT2: String = "recipient2@domain.tld"
+  val RECIPIENT3: String = "recipient3@domain.tld"
 }
 
 class TestEventListener(events: util.ArrayList[Event] = new util.ArrayList[Event]()) extends ReactiveGroupEventListener {
@@ -97,6 +99,179 @@ class ContactsCollectionTest {
     mailet.service(mail)
     assertThat(eventListener.contactReceived())
       .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)))
+  }
+
+  @Test
+  def parsingAddressShouldRelyOnMime4J(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(s"destinataires inconnus: $RECIPIENT;")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient("whateverRecipient@domain.tld")
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)))
+  }
+
+  @Test
+  def shouldNotFailWhenEmptyGroupAddress(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient("destinataires inconnus: ;")
+        .addBccRecipient(RECIPIENT)
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient(RECIPIENT)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)))
+  }
+
+  @Test
+  def shouldSupportGroupAddress(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(s"destinataires inconnus: $RECIPIENT, $RECIPIENT2;")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipients(RECIPIENT, RECIPIENT2)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress(RECIPIENT2)))
+  }
+
+  @Test
+  def mixedCaseGroupAddressInManyFields(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(s"group1: $RECIPIENT;")
+        .addCcRecipient(s"group2: $RECIPIENT2;")
+        .addBccRecipient(s"group3: $RECIPIENT3;")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipients(RECIPIENT, RECIPIENT2, RECIPIENT3)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress(RECIPIENT2)), ContactFields(new MailAddress(RECIPIENT3)))
+  }
+
+  @Test
+  def mixedCaseGroupAddressAndMailboxAddress(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient(s"group1: $RECIPIENT, $RECIPIENT2;", RECIPIENT3)
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipients(RECIPIENT, RECIPIENT2, RECIPIENT3)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress(RECIPIENT2)), ContactFields(new MailAddress(RECIPIENT3)))
+  }
+
+  @Test
+  def shouldMergeContactsWhenDuplicated(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addHeader("To", s"group1: $RECIPIENT, $RECIPIENT2; $RECIPIENT3")
+        .addHeader("Cc", s"$RECIPIENT, $RECIPIENT2, $RECIPIENT3")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipients(RECIPIENT, RECIPIENT2, RECIPIENT3)
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT)), ContactFields(new MailAddress(RECIPIENT2)), ContactFields(new MailAddress(RECIPIENT3)))
+  }
+
+  @Test
+  def shouldParseAddressNameIfPossible(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient("Christophe Hamerling <chri.hamerling@linagora.com>")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient("chri.hamerling@linagora.com")
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress("chri.hamerling@linagora.com"), "Christophe Hamerling"))
+  }
+
+  @Test
+  def shouldParseAddressNamesInGroupIfPossible(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient("group: Christophe Hamerling <chri.hamerling@linagora.com>, Alpine Ubuntu <alpine.ubuntu@linagora.com>;")
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipients("chri.hamerling@linagora.com", "alpine.ubuntu@linagora.com")
+      .build()
+
+    mailet.service(mail)
+
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress("chri.hamerling@linagora.com"), "Christophe Hamerling"),
+        ContactFields(new MailAddress("alpine.ubuntu@linagora.com"), "Alpine Ubuntu"))
   }
 
   @Test
