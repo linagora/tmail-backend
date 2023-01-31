@@ -52,10 +52,12 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,
-                         request: ForwardSetRequest): Publisher[InvocationWithContext] =
+                         request: ForwardSetRequest): Publisher[InvocationWithContext] = {
+    DelegatedAccountPrecondition.acceptOnlyOwnerRequest(mailboxSession, request.accountId)
     updateForward(request, mailboxSession)
       .map(updateResult => createResponse(invocation.invocation, request, updateResult))
       .map(InvocationWithContext(_, invocation.processingContext))
+  }
 
   private def updateForward(request: ForwardSetRequest, mailboxSession: MailboxSession): SMono[ForwardSetUpdateResults] =
     SFlux.fromIterable(request.parseUpdateRequest())

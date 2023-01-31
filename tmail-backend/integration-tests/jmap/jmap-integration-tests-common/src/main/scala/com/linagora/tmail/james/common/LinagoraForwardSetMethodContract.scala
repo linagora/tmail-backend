@@ -5,6 +5,7 @@ import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
@@ -13,7 +14,8 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.draft.MessageIdProbe
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.model.{MailboxPath, MessageResult, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.modules.protocols.SmtpGuiceProbe
@@ -1063,6 +1065,60 @@ trait LinagoraForwardSetMethodContract {
       assertThat(listAllMessageResult(server, ANDRE)).hasSize(1)
       assertThat(listAllMessageResult(server, BOB)).hasSize(1)
     }
+  }
+  @Test
+  def setShouldRejectFromDelegatedAccount(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    val bobAccountId = ACCOUNT_ID
+
+    val request: String =
+      s"""{
+        |    "using": [ "urn:ietf:params:jmap:core",
+        |               "com:linagora:params:jmap:forward" ],
+        |    "methodCalls": [
+        |      ["Forward/set", {
+        |        "accountId": "$bobAccountId",
+        |        "update": {
+        |            "singleton": {
+        |                "localCopy": true,
+        |                "forwards": [
+        |                    "targetA@domain.org",
+        |                    "targetB@domain.org"
+        |                ]
+        |            }
+        |        }
+        |      }, "c1"]
+        |    ]
+        |  }""".stripMargin
+
+    val response = `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .body(request)
+  .when()
+      .post()
+  .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"error",
+           |	{
+           |		"type": "forbidden",
+           |		"description": "Access to other accounts settings is forbidden"
+           |	},
+           |	"c1"
+           |]""".stripMargin)
   }
 
   private def listAllMessageResult(guiceJamesServer: GuiceJamesServer, username: Username): java.util.List[MessageResult] =
