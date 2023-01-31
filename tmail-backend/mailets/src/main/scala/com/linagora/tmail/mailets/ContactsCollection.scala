@@ -1,5 +1,7 @@
 package com.linagora.tmail.mailets
 
+import java.util.stream.Stream
+
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.google.common.collect.{ImmutableList, ImmutableSet}
@@ -7,12 +9,12 @@ import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys
 import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
 import javax.inject.{Inject, Named}
 import javax.mail.Message
-import javax.mail.internet.InternetAddress
 import org.apache.commons.collections.CollectionUtils
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.{EventBus, RegistrationKey}
-import org.apache.james.mime4j.util.MimeUtil
+import org.apache.james.mime4j.dom.address.{Address, Group, Mailbox}
+import org.apache.james.mime4j.field.address.LenientAddressParser
 import org.apache.james.transport.mailets.ContactExtractor.ExtractedContacts
 import org.apache.mailet.base.GenericMailet
 import org.apache.mailet.{Attribute, AttributeName, AttributeValue, Mail, MailetException}
@@ -20,6 +22,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
+import scala.jdk.StreamConverters._
 
 /**
  * <p><b>ContactsCollection</b> allows extracting the recipient's contact of a message
@@ -67,11 +70,24 @@ class ContactsCollection @Inject()(@Named(EmailAddressContactInjectKeys.AUTOCOMP
   private def extractRecipientsContacts(mail: Mail): Seq[ContactFields] =
     Seq(Message.RecipientType.TO, Message.RecipientType.CC, Message.RecipientType.BCC)
       .flatMap(recipientType => Option(mail.getMessage.getHeader(recipientType.toString, ",")))
-      .flatMap(header => InternetAddress.parseHeader(header, false).toSeq)
-      .map(extractContactField)
+      .flatMap(mergedHeaderValue => LenientAddressParser.DEFAULT
+        .parseAddressList(mergedHeaderValue)
+        .stream()
+        .flatMap(address => convertAddressToMailboxStream(address))
+        .map((mime4jAddress: Mailbox) => extractContactField(mime4jAddress))
+        .toScala(Seq)
+        .asInstanceOf[Seq[ContactFields]])
+      .distinctBy(_.address)
 
-  private def extractContactField(internetAddress: InternetAddress): ContactFields =
-    ContactFields(new MailAddress(internetAddress), firstname = Option(internetAddress.getPersonal).getOrElse(""))
+  private def convertAddressToMailboxStream(address: Address): Stream[Mailbox] =
+    address match {
+      case mailbox: Mailbox => Stream.of(mailbox)
+      case group: Group => group.getMailboxes.stream()
+      case _ => Stream.empty
+    }
+
+  private def extractContactField(mime4jAddress: Mailbox) =
+    ContactFields(new MailAddress(mime4jAddress.getAddress), firstname = Option(mime4jAddress.getName).getOrElse(""))
 
   private def dispatchEvents(sender: MailAddress, contacts: Seq[ContactFields]): SMono[Unit] =
     SFlux.fromIterable(contacts)
