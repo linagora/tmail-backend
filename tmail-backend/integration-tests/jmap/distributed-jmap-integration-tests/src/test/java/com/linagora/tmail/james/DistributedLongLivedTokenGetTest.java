@@ -3,6 +3,7 @@ package com.linagora.tmail.james;
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -11,11 +12,11 @@ import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
-import com.linagora.tmail.james.common.LinagoraLongLivedTokenSetMethodContract;
+import com.linagora.tmail.james.common.LongLivedTokenGetContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class DistributedLongLivedTokenGetTest implements LinagoraLongLivedTokenSetMethodContract {
+public class DistributedLongLivedTokenGetTest implements LongLivedTokenGetContract {
     @RegisterExtension
     static JamesServerExtension
         testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -34,6 +35,7 @@ public class DistributedLongLivedTokenGetTest implements LinagoraLongLivedTokenS
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DelegationProbeModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule()))
         .build();
 }

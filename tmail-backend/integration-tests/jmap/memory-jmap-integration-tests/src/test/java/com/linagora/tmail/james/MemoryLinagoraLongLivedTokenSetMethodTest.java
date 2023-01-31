@@ -4,6 +4,7 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -30,6 +31,7 @@ public class MemoryLinagoraLongLivedTokenSetMethodTest implements LinagoraLongLi
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new InMemoryEncryptedEmailContentStoreModule())
+            .overrideWith(new DelegationProbeModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceEncryptedEmailContentStoreProbe.class)))
