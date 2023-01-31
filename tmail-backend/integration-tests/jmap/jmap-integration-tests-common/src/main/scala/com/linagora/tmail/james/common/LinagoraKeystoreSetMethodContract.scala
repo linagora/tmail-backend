@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
-
 import com.linagora.tmail.encrypted.KeyId
 import com.linagora.tmail.james.common.LinagoraKeystoreSetMethodContract.{PGP_KEY, PGP_KEY_ARMORED, PGP_KEY_ID}
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe
@@ -14,7 +13,8 @@ import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ALICE_ACCOUNT_ID, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder, getHeadersWith}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ALICE, ALICE_ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder, getHeadersWith}
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -38,6 +38,7 @@ trait LinagoraKeystoreSetMethodContract {
       .fluent()
       .addDomain(DOMAIN.asString)
       .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
@@ -783,5 +784,54 @@ trait LinagoraKeystoreSetMethodContract {
     assertThatJson(sessionJson)
       .inPath("capabilities.com:linagora:params:jmap:pgp")
       .isEqualTo("{}")
+  }
+
+  @Test
+  def keystoreSetShouldRejectFromDelegatedAccount(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    val bobAccountId = ACCOUNT_ID
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
+         |  "methodCalls": [
+         |    ["Keystore/set", {
+         |      "accountId": "$bobAccountId",
+         |      "create": {
+         |        "K87": {
+         |          "key": "$PGP_KEY_ARMORED"
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response = `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"error",
+           |	{
+           |		"type": "forbidden",
+           |		"description": "Access to other accounts settings is forbidden"
+           |	},
+           |	"c1"
+           |]""".stripMargin)
   }
 }
