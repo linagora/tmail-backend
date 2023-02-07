@@ -228,9 +228,9 @@ class IndexableMessageTest {
         TextExtractor textExtractor = mock(TextExtractor.class);
         when(textExtractor.applicable(any())).thenReturn(true);
         when(textExtractor.extractContentReactive(any(), any()))
-            .thenReturn(Mono.just(new ParsedContent(Optional.of("first attachment content"), ImmutableMap.of())))
+            .thenReturn(Mono.just(ParsedContent.of(Optional.of("first attachment content"), ImmutableMap.of())))
             .thenReturn(Mono.error(new RuntimeException("second cannot be parsed")))
-            .thenReturn(Mono.just(new ParsedContent(Optional.of("third attachment content"), ImmutableMap.of())));
+            .thenReturn(Mono.just(ParsedContent.of(Optional.of("third attachment content"), ImmutableMap.of())));
 
         // When
         IndexableMessage indexableMessage = IndexableMessage.builder()
