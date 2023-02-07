@@ -205,7 +205,7 @@ public class MimePart {
                     new ByteArrayInputStream(bodyContent.get()),
                     contentType.orElse(null));
             }
-            return Mono.fromCallable(() -> new ParsedContent(
+            return Mono.fromCallable(() -> ParsedContent.of(
                 Optional.ofNullable(IOUtils.toString(new ByteArrayInputStream(bodyContent.get()), charset.orElse(StandardCharsets.UTF_8))),
                 ImmutableMap.of()));
         }
