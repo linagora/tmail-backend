@@ -2,6 +2,7 @@ package com.linagora.tmail.encrypted
 
 import java.util.Optional
 import java.{lang, util}
+
 import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager.{MailboxCapabilities, MailboxRenamedResult, MessageCapabilities, SearchCapabilities}
@@ -142,4 +143,7 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
 
   override def authenticate(givenUserid: Username): SessionProvider.AuthorizationStep =
     mailboxManager.authenticate(givenUserid)
+
+  override def createMailbox(mailboxPath: MailboxPath, createOption: MailboxManager.CreateOption, mailboxSession: MailboxSession): Optional[MailboxId] =
+    mailboxManager.createMailbox(mailboxPath, createOption, mailboxSession)
 }
