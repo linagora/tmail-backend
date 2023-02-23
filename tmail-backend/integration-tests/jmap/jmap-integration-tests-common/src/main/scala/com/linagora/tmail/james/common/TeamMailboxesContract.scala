@@ -99,7 +99,9 @@ trait TeamMailboxesContract {
          |				"create": {
          |					"4f29": {
          |						"name": "test",
-         |						"email": "hiring@domain.tld"
+         |						"email": "hiring@domain.tld",
+         |						"textSignature": "Some text signature",
+         |						"htmlSignature": "<p>Some html signature</p>"
          |					}
          |				}
          |			},
