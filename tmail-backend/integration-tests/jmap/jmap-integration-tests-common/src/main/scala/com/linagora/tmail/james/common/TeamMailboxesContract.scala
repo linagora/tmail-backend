@@ -53,6 +53,7 @@ import sttp.ws.WebSocketFrame
 import sttp.ws.WebSocketFrame.Text
 
 trait TeamMailboxesContract {
+  private lazy val BOB_ACCOUNT_ID: String = "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"
   private lazy val UTC_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
   private lazy val slowPacedPollInterval = ONE_HUNDRED_MILLISECONDS
   private lazy val calmlyAwait = Awaitility.`with`
@@ -74,6 +75,134 @@ trait TeamMailboxesContract {
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .build
+  }
+
+  @Test
+  def givenTeamMailboxHasManyMembersThenIdentitySetShouldSucceed(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, CEDRIC)
+      .addMember(teamMailbox, BOB)
+
+    val request =
+      s"""{
+         |	"using": [
+         |		"urn:ietf:params:jmap:core",
+         |		"urn:ietf:params:jmap:submission"
+         |	],
+         |	"methodCalls": [
+         |		[
+         |			"Identity/set",
+         |			{
+         |				"accountId": "$BOB_ACCOUNT_ID",
+         |				"create": {
+         |					"4f29": {
+         |						"name": "test",
+         |						"email": "hiring@domain.tld",
+         |						"textSignature": "Some text signature",
+         |						"htmlSignature": "<p>Some html signature</p>"
+         |					}
+         |				}
+         |			},
+         |			"c0"
+         |		]
+         |	]
+         |}""".stripMargin
+
+    val response =  `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |			"Identity/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"newState": "${SESSION_STATE.value}",
+           |				"created": {
+           |					"4f29": {
+           |						"id": "$${json-unit.ignore}",
+           |						"mayDelete": true
+           |					}
+           |				}
+           |			},
+           |			"c0"
+           |		]
+           |	]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def givenBobIsNotBelongToTeamMailboxThenIdentitySetShouldFail(): Unit = {
+    val request =
+      s"""{
+         |	"using": [
+         |		"urn:ietf:params:jmap:core",
+         |		"urn:ietf:params:jmap:submission"
+         |	],
+         |	"methodCalls": [
+         |		[
+         |			"Identity/set",
+         |			{
+         |				"accountId": "$BOB_ACCOUNT_ID",
+         |				"create": {
+         |					"4f29": {
+         |						"name": "test",
+         |						"email": "hiring@domain.tld"
+         |					}
+         |				}
+         |			},
+         |			"c0"
+         |		]
+         |	]
+         |}""".stripMargin
+
+    val response =  `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |			"Identity/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"newState": "${SESSION_STATE.value}",
+           |				"notCreated": {
+           |					"4f29": {
+           |						"type": "forbiddenFrom",
+           |						"description": "Can not send from hiring@domain.tld"
+           |					}
+           |				}
+           |			},
+           |			"c0"
+           |		]
+           |	]
+           |}""".stripMargin)
   }
 
   @Test

@@ -17,15 +17,15 @@ class TMailCanSendFrom @Inject()(rrt: RecipientRewriteTable, aliasReverseResolve
 
   override def userCanSendFromReactive(connectedUser: Username, fromUser: Username): Publisher[lang.Boolean] =
     SFlux.merge(Seq(
-      SMono.fromCallable(() => super.userCanSendFrom(connectedUser, fromUser)).map(javaPrimitiveBoolean => lang.Boolean.valueOf(javaPrimitiveBoolean)),
+      SMono.fromPublisher(super.userCanSendFromReactive(connectedUser, fromUser)).map(javaPrimitiveBoolean => lang.Boolean.valueOf(javaPrimitiveBoolean)),
       validTeamMailboxReactive(connectedUser, fromUser).map(boolean2Boolean)))
       .reduce((bool1: lang.Boolean, bool2: lang.Boolean) => bool1 || bool2)
 
   private def validTeamMailbox(connectedUser: Username, fromUser: Username): Boolean =
     TeamMailbox.asTeamMailbox(fromUser.asMailAddress()) match {
-      case Some(teamMailbox) => SMono(teamMailboxRepository.listMembers(teamMailbox))
+      case Some(teamMailbox) => SFlux(teamMailboxRepository.listMembers(teamMailbox))
         .filter(connectedUser.equals(_))
-        .hasElement
+        .hasElements
         .onErrorResume {
           case _: TeamMailboxNotFoundException => SMono.just(false)
           case e => SMono.error(e)
@@ -36,9 +36,9 @@ class TMailCanSendFrom @Inject()(rrt: RecipientRewriteTable, aliasReverseResolve
 
   private def validTeamMailboxReactive(connectedUser: Username, fromUser: Username): SMono[Boolean] =
     TeamMailbox.asTeamMailbox(fromUser.asMailAddress()) match {
-      case Some(teamMailbox) => SMono(teamMailboxRepository.listMembers(teamMailbox))
+      case Some(teamMailbox) => SFlux(teamMailboxRepository.listMembers(teamMailbox))
         .filter(connectedUser.equals(_))
-        .hasElement
+        .hasElements
         .onErrorResume {
           case _: TeamMailboxNotFoundException => SMono.just(false)
           case e => SMono.error(e)
