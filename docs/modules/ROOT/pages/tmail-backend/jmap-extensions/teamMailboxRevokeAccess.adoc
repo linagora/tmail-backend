@@ -1,0 +1,60 @@
+= Revoke access to a team mailbox
+:navtitle: Revoke access to a team mailbox
+
+Allows user to revoke his access to a team mailbox which he is part of without having to ask an admin to do such an action.
+
+== Additions to the capability object
+
+Servers supporting the revoking team mailbox access extension need to advertise this through the session capabilities:
+
+....
+com:linagora:params:jmap:team:mailboxes
+....
+
+The associated object is empty.
+
+== TeamMailbox/revokeAccess
+
+This method bases on the destroy part of standard */set* method as described in the RFC-8620 Section 5.3.
+
+The request object requires the following properties:
+
+- `accountId`: accountId of action user
+- `ids`: an array of team-mailbox names which user wants to revoke the access to.
+
+The response object contains the following properties:
+
+- `accountId`: accountId of action user
+- `revoked`: an array of team-mailbox names that have been revoked from user access.
+- `revoked`: an array of team-mailbox names that have not been revoked from user access.
+
+== Example
+
+User A has access to `teammailboxA`. He wants to revoke his access to `teammailboxA` and even `teammailboxB` which he does not have access to:
+
+....
+{
+	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
+	"methodCalls": [
+		["TeamMailbox/revokeAccess", {
+			"accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+			"ids": ["teammailboxA@domain.tld", "teammailboxB@domain.tld"]
+		}, "c0"]
+	]
+}
+....
+
+Which returns:
+
+....
+{
+	"sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+	"methodResponses": [
+		["TeamMailbox/revokeAccess", {
+			"accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+			"revoked": ["teammailboxA@domain.tld"],
+			"notRevoked": ["teammailboxB@domain.tld"]
+		}, "#0"]
+	]
+}
+....
