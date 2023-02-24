@@ -26,7 +26,7 @@ The response object contains the following properties:
 
 - `accountId`: accountId of action user
 - `revoked`: an array of team-mailbox names that have been revoked from user access.
-- `revoked`: an array of team-mailbox names that have not been revoked from user access.
+- `notRevoked`: an array of team-mailbox names that have not been revoked from user access.
 
 == Example
 
