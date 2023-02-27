@@ -29,6 +29,7 @@ We introduce custom extensions to the main JMAP protocol in order to achieve our
 
 These extensions include:
 
+- link:teamMailboxRevokeAccess.adoc[com:linagora:params:jmap:team:mailboxes] which adds the capability for users to revoke access to a team mailbox.
 - link:pushWithFirebase.adoc[com:linagora:params:jmap:firebase:push] which adds the capability to manage push
 notifications through Firebase Cloud Messaging.
 - link:jmapGpgExtension.adoc[com:linagora:params:jmap:pgp] which adds the capability to read messages of TMail encrypted

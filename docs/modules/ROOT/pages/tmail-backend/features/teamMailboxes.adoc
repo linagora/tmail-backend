@@ -35,6 +35,8 @@ An administrator can manage team mailboxes using xref:tmail-backend/webadmin.ado
 Additionally, we provide xref:tmail-backend/webadmin.adoc#_team_mailboxes_quotas[Team mailboxes quota webAdmin routes] to
 allow managing the quotas allocated to team mailboxes.
 
+Besides, a user can revoke his access to a team mailbox by using the `TeamMailbox/revokeAccess` JMAP extension.
+
 == Using team mailboxes via JMAP
 
 Team mailboxes require the use of `urn:apache:james:params:jmap:mail:shares`. This allows contextualizing mailboxes as part of
