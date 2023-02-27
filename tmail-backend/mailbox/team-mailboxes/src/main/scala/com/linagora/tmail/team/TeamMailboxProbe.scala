@@ -1,10 +1,9 @@
 package com.linagora.tmail.team
 
+import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.utils.GuiceProbe
-import reactor.core.scala.publisher.SMono
-
-import javax.inject.Inject
+import reactor.core.scala.publisher.{SFlux, SMono}
 
 class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) extends GuiceProbe {
   def create(teamMailbox: TeamMailbox): TeamMailboxProbe = {
@@ -16,4 +15,9 @@ class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) e
     SMono(teamMailboxRepository.addMember(teamMailbox, member)).block()
     this
   }
+
+  def listMembers(teamMailbox: TeamMailbox): Seq[Username] =
+    SFlux(teamMailboxRepository.listMembers(teamMailbox))
+      .collectSeq()
+      .block()
 }
