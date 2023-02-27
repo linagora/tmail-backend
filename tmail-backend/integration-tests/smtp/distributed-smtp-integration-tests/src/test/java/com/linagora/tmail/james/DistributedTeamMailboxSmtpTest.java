@@ -5,9 +5,11 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.junit.categories.BasicFeature;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -15,6 +17,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.TeamMailboxSmtpContract;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+import com.linagora.tmail.team.TeamMailboxProbe;
 
 @Tag(BasicFeature.TAG)
 public class DistributedTeamMailboxSmtpTest extends TeamMailboxSmtpContract {
@@ -34,6 +37,8 @@ public class DistributedTeamMailboxSmtpTest extends TeamMailboxSmtpContract {
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding().to(TeamMailboxProbe.class)))
         .build();
 }
