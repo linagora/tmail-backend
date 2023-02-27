@@ -246,4 +246,20 @@ trait LinagoraEchoMethodContract {
 
     assertThat(response).contains("\"com:linagora:params:jmap:firebase:push\":{}")
   }
+
+  @Test
+  def shouldReturnTeamMailboxesCapability(): Unit = {
+   val response: String = `given`()
+    .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThat(response).contains("\"com:linagora:params:jmap:team:mailboxes\":{}")
+  }
 }
