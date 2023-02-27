@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
+import javax.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
@@ -15,7 +16,6 @@ import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
@@ -155,14 +155,17 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
 
   override def removeMember(teamMailbox: TeamMailbox, user: Username): Publisher[Void] = {
     val session = createSession(teamMailbox)
-    SMono.fromPublisher(isUserInTeamMailbox(teamMailbox, user))
-      .filter(teamMailboxExist => teamMailboxExist)
+    SMono.fromPublisher(exists(teamMailbox))
+      .filter(mailboxExists => mailboxExists)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
-      .flatMap(_ => SFlux.zip3(removeRightForMember(teamMailbox.mailboxPath, user, session),
-        removeRightForMember(teamMailbox.inboxPath, user, session),
-        removeRightForMember(teamMailbox.sentPath, user, session))
-        .`then`()
-        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
+      .flatMap(_ => SMono.fromPublisher(isUserInTeamMailbox(teamMailbox, user))
+        .filter(userInTeamMailbox => userInTeamMailbox)
+        .flatMap(_ => SFlux.zip3(removeRightForMember(teamMailbox.mailboxPath, user, session),
+          removeRightForMember(teamMailbox.inboxPath, user, session),
+          removeRightForMember(teamMailbox.sentPath, user, session))
+          .`then`()
+          .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
+        .`then`())
       .`then`()
   }
 
