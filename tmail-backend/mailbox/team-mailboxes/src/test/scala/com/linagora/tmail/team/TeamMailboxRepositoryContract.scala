@@ -163,11 +163,13 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def removeMemberShouldThrowWhenMemberNotInTeamMailbox(): Unit = {
+  def removeMemberShouldBeIdempotent(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX, BOB)).block()
 
-    assertThatThrownBy(() => SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX, BOB)).block())
-      .isInstanceOf(classOf[TeamMailboxNotFoundException])
+    SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX, BOB)).block()
+    assertThatCode(() => SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX, BOB)).block())
+      .doesNotThrowAnyException()
   }
 
   @Test
