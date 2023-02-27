@@ -4,7 +4,6 @@ import org.apache.james.UserEntityValidator;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.rrt.api.CanSendFrom;
-import org.apache.james.utils.GuiceProbe;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
@@ -22,10 +21,6 @@ public class TeamMailboxModule extends AbstractModule {
         bind(CanSendFrom.class).to(TMailCanSendFrom.class);
         bind(QuotaRootResolver.class).to(TMailQuotaRootResolver.class);
         bind(UserQuotaRootResolver.class).to(TMailQuotaRootResolver.class);
-
-        Multibinder.newSetBinder(binder(), GuiceProbe.class)
-            .addBinding()
-            .to(TeamMailboxProbe.class);
 
         Multibinder.newSetBinder(binder(), UserEntityValidator.class)
             .addBinding()
