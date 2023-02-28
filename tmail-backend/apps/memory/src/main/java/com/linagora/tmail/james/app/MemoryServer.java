@@ -18,6 +18,7 @@ import org.apache.james.modules.BlobMemoryModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.MemoryDataModule;
+import org.apache.james.modules.data.MemoryDelegationStoreModule;
 import org.apache.james.modules.data.MemoryUsersRepositoryModule;
 import org.apache.james.modules.eventstore.MemoryEventStoreModule;
 import org.apache.james.modules.mailbox.MemoryMailboxModule;
@@ -83,6 +84,7 @@ public class MemoryServer {
         new BlobExportMechanismModule(),
         new MailboxModule(),
         new MemoryDataModule(),
+        new MemoryDelegationStoreModule(),
         new MemoryEventStoreModule(),
         new MemoryMailboxModule(),
         new MemoryMailQueueModule(),
