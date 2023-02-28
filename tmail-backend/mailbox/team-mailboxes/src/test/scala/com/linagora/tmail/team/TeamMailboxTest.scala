@@ -2,7 +2,7 @@ package com.linagora.tmail.team
 
 import java.util.Optional
 
-import com.linagora.tmail.team.TeamMailboxRepositoryContract.{TEAM_MAILBOX_USER, TEAM_MAILBOX_USERNAME}
+import com.linagora.tmail.team.TeamMailboxRepositoryContract.{DOMAIN_1, TEAM_MAILBOX_DOMAIN_1}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, MailAddress}
 import org.apache.james.mailbox.model.{MailboxPath, QuotaRoot}
@@ -15,31 +15,31 @@ class TeamMailboxTest {
 
   @Test
   def fromMailboxPathShouldReturnNoneWhenNamespaceInvalid(): Unit = {
-    assertThat(TeamMailbox.from(new MailboxPath("namespace123", TEAM_MAILBOX_USERNAME, "sales")).toJava)
+    assertThat(TeamMailbox.from(new MailboxPath("namespace123", TEAM_MAILBOX_DOMAIN_1, "sales")).toJava)
       .isEmpty
   }
 
   @Test
   def fromMailboxPathShouldReturnNoneWhenNameInvalid(): Unit = {
-    assertThat(TeamMailbox.from(new MailboxPath("namespace123", TEAM_MAILBOX_USERNAME, "sales.")).toJava)
+    assertThat(TeamMailbox.from(new MailboxPath("namespace123", TEAM_MAILBOX_DOMAIN_1, "sales.")).toJava)
       .isEmpty
   }
 
   @Test
   def fromMailboxPathShouldReturnTeamMailboxWhenValid(): Unit = {
-    assertThat(TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales")).toJava)
-      .contains(TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sales")))
+    assertThat(TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_DOMAIN_1, "sales")).toJava)
+      .contains(TeamMailbox(DOMAIN_1, TeamMailboxName("sales")))
   }
 
   @Test
   def fromMailboxPathShouldReturnTeamMailboxWhenValidSubMailbox(): Unit = {
-    assertThat(TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales.INBOX")).toJava)
-      .contains(TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sales")))
+    assertThat(TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_DOMAIN_1, "sales.INBOX")).toJava)
+      .contains(TeamMailbox(DOMAIN_1, TeamMailboxName("sales")))
   }
 
   @Test
   def quotaRootShouldReturnDesiredValue(): Unit = {
-    assertThat(TeamMailbox(TEAM_MAILBOX_USER, TeamMailboxName("sales")).quotaRoot)
+    assertThat(TeamMailbox(DOMAIN_1, TeamMailboxName("sales")).quotaRoot)
       .isEqualTo(QuotaRoot.quotaRoot("#TeamMailbox&sales@linagora.com", Optional.of(Domain.of("linagora.com"))))
   }
 
@@ -57,7 +57,7 @@ class TeamMailboxTest {
 
   @Test
   def mailboxPathTeamMailboxShouldRespectAsStringMethod(): Unit = {
-    val teamMailbox: TeamMailbox = TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_USERNAME, "sales")).get
+    val teamMailbox: TeamMailbox = TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_DOMAIN_1, "sales")).get
     assertThat(teamMailbox.mailboxPath.asString())
       .isEqualTo("#TeamMailbox:team-mailbox@linagora.com:sales")
     assertThat(teamMailbox.inboxPath.asString())
