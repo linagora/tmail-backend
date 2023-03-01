@@ -57,6 +57,8 @@ public abstract class UsernameChangeIntegrationContract {
         JmapGuiceContactAutocompleteProbe contactProbe = server.getProbe(JmapGuiceContactAutocompleteProbe.class);
         EmailAddressContact contact = contactProbe.index(ALICE_ACCOUNT_ID, contactFields);
 
+        awaitDocumentsIndexed(1L);
+
         String taskId = webAdminApi
             .queryParam("action", "rename")
             .post("/users/" + ALICE.asString() + "/rename/" + BOB.asString())
@@ -64,6 +66,8 @@ public abstract class UsernameChangeIntegrationContract {
             .get("taskId");
 
         webAdminApi.get("/tasks/" + taskId + "/await");
+
+        awaitDocumentsIndexed(1L);
 
         assertThat(contactProbe.list(BOB_ACCOUNT_ID))
             .containsOnly(contact);
