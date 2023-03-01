@@ -22,7 +22,7 @@ import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import io.restassured.RestAssured;
 import io.restassured.specification.RequestSpecification;
 
-public class UsernameChangeIntegrationContract {
+public abstract class UsernameChangeIntegrationContract {
     private static final String DOMAIN = "linagora.com";
     private static final Username ALICE  = Username.fromLocalPartWithDomain("alice", DOMAIN);
     private static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
@@ -31,6 +31,8 @@ public class UsernameChangeIntegrationContract {
     private static final String PASSWORD = "123456";
 
     private RequestSpecification webAdminApi;
+
+    public abstract void awaitDocumentsIndexed(Long documentCount);
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
