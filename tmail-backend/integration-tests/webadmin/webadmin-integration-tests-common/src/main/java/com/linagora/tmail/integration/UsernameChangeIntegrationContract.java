@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
+import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 
@@ -82,5 +83,25 @@ public abstract class UsernameChangeIntegrationContract {
                 assertThat(contactProbe.list(ALICE_ACCOUNT_ID))
                     .isEmpty();
             });
+    }
+
+    @Test
+    void shouldMigratePGPPublicKeys(GuiceJamesServer server) throws Exception {
+        byte[] publicKeyPayload = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        JmapGuiceKeystoreManagerProbe keystoreManagerProbe = server.getProbe(JmapGuiceKeystoreManagerProbe.class);
+        keystoreManagerProbe.save(ALICE, publicKeyPayload);
+
+        String taskId = webAdminApi
+            .queryParam("action", "rename")
+            .post("/users/" + ALICE.asString() + "/rename/" + BOB.asString())
+            .jsonPath()
+            .get("taskId");
+
+        webAdminApi.get("/tasks/" + taskId + "/await");
+
+        assertThat(keystoreManagerProbe.getKeyPayLoads(BOB))
+            .containsOnly(publicKeyPayload);
+        assertThat(keystoreManagerProbe.getKeyPayLoads(ALICE))
+            .isEmpty();
     }
 }

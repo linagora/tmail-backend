@@ -1,16 +1,17 @@
 package com.linagora.tmail.encrypted.cassandra
 
 import java.io.ByteArrayInputStream
+
 import com.google.common.io.BaseEncoding
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.encrypted.cassandra.table.CassandraKeystoreModule
-import com.linagora.tmail.encrypted.{KeyId, KeystoreManager, PublicKey}
+import com.linagora.tmail.encrypted.{KeyId, KeystoreManager, PGPKeysUsernameChangeTaskStep, PublicKey}
 import com.linagora.tmail.pgp.Encrypter
-import org.apache.james.backends.cassandra.components.CassandraModule
-
 import javax.inject.Inject
+import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.core.Username
+import org.apache.james.user.api.UsernameChangeTaskStep
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
 
@@ -26,6 +27,10 @@ case class KeystoreCassandraModule() extends AbstractModule {
     Multibinder.newSetBinder(binder, classOf[CassandraModule])
       .addBinding()
       .toInstance(CassandraKeystoreModule.MODULE)
+
+    Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
+      .addBinding()
+      .to(classOf[PGPKeysUsernameChangeTaskStep])
   }
 }
 
