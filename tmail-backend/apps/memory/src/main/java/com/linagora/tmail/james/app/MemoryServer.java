@@ -53,6 +53,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration
 import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreInMemoryModule;
+import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
@@ -98,6 +99,7 @@ public class MemoryServer {
 
     public static final Module JMAP_LINAGORA = Modules.override(
         JMAP,
+        new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
         new CustomMethodModule(),
         new EncryptedEmailDetailedViewGetMethodModule(),
