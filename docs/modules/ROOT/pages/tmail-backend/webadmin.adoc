@@ -537,7 +537,7 @@ Return codes:
 curl -XPOST http://ip:port/users/oldUser/rename/newUser?action=rename
 ....
 Would migrate account data from `oldUser` to `newUser`.
-link:#_endpoints_returning_a_task[More details about endpoints returning
+link:https://james.apache.org/server/manage-webadmin.html#Endpoints_returning_a_task[More details about endpoints returning
 a task].
 Implemented migration steps from James are:
 
@@ -548,6 +548,7 @@ Implemented migration steps from James are:
 Implemented extra steps for TMail are:
 
 - `ContactUsernameChangeTaskStep`: migrates contacts from old user to new user
+- `PGPKeysUsernameChangeTaskStep`: migrates PGP public keys from old user to new user
 
 Response codes:
 * 201: Success. Corresponding task id is returned.

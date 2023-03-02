@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.common.probe;
 
+import java.util.List;
 import java.util.Optional;
 
 import javax.inject.Inject;
@@ -11,6 +12,7 @@ import com.linagora.tmail.encrypted.KeyId;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.PublicKey;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class JmapGuiceKeystoreManagerProbe implements GuiceProbe {
@@ -27,5 +29,16 @@ public class JmapGuiceKeystoreManagerProbe implements GuiceProbe {
         } catch (IllegalArgumentException e) {
            return Optional.empty();
         }
+    }
+
+    public List<byte[]> getKeyPayLoads(Username username) {
+        return Flux.from(keystore.listPublicKeys(username))
+            .map(PublicKey::key)
+            .collectList()
+            .block();
+    }
+
+    public void save(Username username, byte[] publicKeyPayload) {
+        Mono.from(keystore.save(username, publicKeyPayload)).block();
     }
 }
