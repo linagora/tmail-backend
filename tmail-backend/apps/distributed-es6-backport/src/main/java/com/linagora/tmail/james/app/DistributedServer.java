@@ -105,6 +105,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebasePushListener;
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListenerRegister;
 import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
 import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
+import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
@@ -154,6 +155,7 @@ public class DistributedServer {
         new EmailAddressContactRoutesModule());
 
     public static final Module JMAP = Modules.override(
+        new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
         new CassandraJmapModule(),
         new CustomMethodModule(),
