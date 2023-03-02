@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.common.probe;
 
+import java.util.List;
+
 import javax.inject.Inject;
 
 import org.apache.james.core.Domain;
@@ -10,6 +12,7 @@ import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class JmapGuiceContactAutocompleteProbe implements GuiceProbe {
@@ -26,5 +29,11 @@ public class JmapGuiceContactAutocompleteProbe implements GuiceProbe {
 
     public EmailAddressContact index(Domain domain, ContactFields contactFields) {
         return Mono.from(emailAddressContactSearchEngine.index(domain, contactFields)).block();
+    }
+
+    public List<EmailAddressContact> list(AccountId accountId) {
+        return Flux.from(emailAddressContactSearchEngine.list(accountId))
+            .collectList()
+            .block();
     }
 }

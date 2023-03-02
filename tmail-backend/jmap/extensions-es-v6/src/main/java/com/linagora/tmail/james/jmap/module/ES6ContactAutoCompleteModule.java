@@ -11,6 +11,7 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.es.ElasticSearchConfiguration;
 import org.apache.james.backends.es.ReactorElasticSearchClient;
 import org.apache.james.lifecycle.api.Startable;
+import org.apache.james.user.api.UsernameChangeTaskStep;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
@@ -20,9 +21,11 @@ import org.slf4j.LoggerFactory;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.james.jmap.ES6EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.ElasticSearchContactConfiguration;
+import com.linagora.tmail.james.jmap.contact.ContactUsernameChangeTaskStep;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 
 public class ES6ContactAutoCompleteModule extends AbstractModule {
@@ -55,6 +58,10 @@ public class ES6ContactAutoCompleteModule extends AbstractModule {
         bind(ES6EmailAddressContactSearchEngine.class).in(Scopes.SINGLETON);
 
         bind(EmailAddressContactSearchEngine.class).to(ES6EmailAddressContactSearchEngine.class);
+
+        Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
+            .addBinding()
+            .to(ContactUsernameChangeTaskStep.class);
     }
 
     @Provides

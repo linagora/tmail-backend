@@ -2,13 +2,14 @@ package com.linagora.tmail.james.jmap.contact
 
 import java.nio.charset.StandardCharsets
 import java.util.UUID
-
-import com.google.common.collect.{HashBasedTable, Table}
+import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
+import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.events.Event
 import org.apache.james.events.Event.EventId
 import org.apache.james.jmap.api.model.AccountId
+import org.apache.james.user.api.UsernameChangeTaskStep
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -20,6 +21,10 @@ case class InMemoryEmailAddressContactSearchEngineModule() extends AbstractModul
     bind(classOf[InMemoryEmailAddressContactSearchEngine]).in(Scopes.SINGLETON)
 
     bind(classOf[EmailAddressContactSearchEngine]).to(classOf[InMemoryEmailAddressContactSearchEngine])
+
+    Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
+      .addBinding()
+      .to(classOf[ContactUsernameChangeTaskStep])
   }
 }
 
@@ -79,8 +84,8 @@ case class TmailContactUserAddedEvent(eventId: EventId, username: Username, cont
 }
 
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {
-  private val userContactList: Table[AccountId, MailAddress, EmailAddressContact] = HashBasedTable.create
-  private val domainContactList: Table[Domain, MailAddress, EmailAddressContact] = HashBasedTable.create
+  private val userContactList: Table[AccountId, MailAddress, EmailAddressContact] = Tables.synchronizedTable(HashBasedTable.create())
+  private val domainContactList: Table[Domain, MailAddress, EmailAddressContact] = Tables.synchronizedTable(HashBasedTable.create())
 
   override def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact] =
     index(accountId, EmailAddressContact.of(fields))
@@ -130,22 +135,22 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       firstname = contact.fields.firstname.toLowerCase, surname = contact.fields.surname.toLowerCase))
 
   override def list(accountId: AccountId): Publisher[EmailAddressContact] =
-    SFlux.fromIterable(userContactList.row(accountId).values().asScala)
+    SFlux.fromIterable(ImmutableList.copyOf(userContactList.row(accountId).values()).asScala)
 
   override def list(domain: Domain): Publisher[EmailAddressContact] =
-    SFlux.fromIterable(domainContactList.row(domain).values().asScala)
+    SFlux.fromIterable(ImmutableList.copyOf(domainContactList.row(domain).values()).asScala)
 
   override def listDomainsContacts(): Publisher[EmailAddressContact] =
-    SFlux.fromIterable(domainContactList.values().asScala)
+    SFlux.fromIterable(ImmutableList.copyOf(domainContactList.values()).asScala)
 
   override def get(accountId: AccountId, mailAddress: MailAddress): Publisher[EmailAddressContact] =
-    SFlux.fromIterable(userContactList.row(accountId).values().asScala)
+    SFlux.fromIterable(ImmutableList.copyOf(userContactList.row(accountId).values()).asScala)
       .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
       .singleOrEmpty()
       .switchIfEmpty(SMono.error(ContactNotFoundException(mailAddress)))
 
   override def get(domain: Domain, mailAddress: MailAddress): Publisher[EmailAddressContact] =
-    SFlux.fromIterable(domainContactList.row(domain).values().asScala)
+    SFlux.fromIterable(ImmutableList.copyOf(domainContactList.row(domain).values()).asScala)
       .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
       .singleOrEmpty()
       .switchIfEmpty(SMono.error(ContactNotFoundException(mailAddress)))
