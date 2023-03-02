@@ -2,6 +2,7 @@ package com.linagora.tmail.integration;
 
 import static org.apache.james.jmap.JMAPTestingConstants.jmapRequestSpecBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.MailAddress;
@@ -12,6 +13,9 @@ import org.apache.james.util.Port;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminUtils;
+import org.awaitility.Awaitility;
+import org.awaitility.Durations;
+import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +27,10 @@ import io.restassured.RestAssured;
 import io.restassured.specification.RequestSpecification;
 
 public abstract class UsernameChangeIntegrationContract {
+    private static final ConditionFactory CALMLY_AWAIT = Awaitility
+        .with().pollInterval(ONE_HUNDRED_MILLISECONDS)
+        .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
+        .await();
     private static final String DOMAIN = "linagora.com";
     private static final Username ALICE  = Username.fromLocalPartWithDomain("alice", DOMAIN);
     private static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
@@ -67,11 +75,12 @@ public abstract class UsernameChangeIntegrationContract {
 
         webAdminApi.get("/tasks/" + taskId + "/await");
 
-        awaitDocumentsIndexed(1L);
-
-        assertThat(contactProbe.list(BOB_ACCOUNT_ID))
-            .containsOnly(contact);
-        assertThat(contactProbe.list(ALICE_ACCOUNT_ID))
-            .isEmpty();
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> {
+                assertThat(contactProbe.list(BOB_ACCOUNT_ID))
+                    .containsOnly(contact);
+                assertThat(contactProbe.list(ALICE_ACCOUNT_ID))
+                    .isEmpty();
+            });
     }
 }
