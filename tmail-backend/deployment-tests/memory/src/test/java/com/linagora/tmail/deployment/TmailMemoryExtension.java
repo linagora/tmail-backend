@@ -22,7 +22,7 @@ public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallba
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
         .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("tmail-memory-testing" + UUID.randomUUID()))
         .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
-        .withExposedPorts(25, 143, 80);
+        .withExposedPorts(25, 143, 80, 8000);
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws IOException {

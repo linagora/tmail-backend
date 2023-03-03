@@ -24,6 +24,15 @@ mail: bob@domain.tld
 userPassword: bobpassword
 description: bob
 
+dn: uid=alice, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: alice
+cn: alice
+sn: alice
+mail: alice@domain.tld
+userPassword: alicepassword
+description: alice
+
 dn: uid=imapuser, ou=people, dc=james,dc=org
 objectClass: inetOrgPerson
 uid: imapuser

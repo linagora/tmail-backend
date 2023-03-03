@@ -3,9 +3,9 @@ package com.linagora.tmail.deployment;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_IMAGE_NAME;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_NETWORK_ALIAS;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createCassandra;
-import static com.linagora.tmail.deployment.ThirdPartyContainers.createSearchContainer;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createRabbitMQ;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createS3;
+import static com.linagora.tmail.deployment.ThirdPartyContainers.createSearchContainer;
 
 import java.io.File;
 import java.io.IOException;
@@ -51,7 +51,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-distributed-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
-            .withExposedPorts(25, 143, 80);
+            .withExposedPorts(25, 143, 80, 8000);
     }
 
     @Override
