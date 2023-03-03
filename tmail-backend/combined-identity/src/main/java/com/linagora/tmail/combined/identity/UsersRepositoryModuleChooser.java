@@ -30,7 +30,6 @@ import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.data.LdapUsersRepositoryModule;
-import org.apache.james.modules.data.CassandraDelegationStoreModule;
 import org.apache.james.modules.data.CassandraUsersRepositoryModule;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.slf4j.Logger;
@@ -45,9 +44,9 @@ public class UsersRepositoryModuleChooser {
 
     public static List<Module> chooseModules(Implementation implementation) {
         return switch (implementation) {
-            case LDAP -> ImmutableList.of(new LdapUsersRepositoryModule(), new CassandraDelegationStoreModule());
+            case LDAP -> ImmutableList.of(new LdapUsersRepositoryModule());
             case COMBINED -> ImmutableList.of(new CombinedUsersRepositoryModule());
-            case DEFAULT -> ImmutableList.of(new CassandraUsersRepositoryModule(), new CassandraDelegationStoreModule());
+            case DEFAULT -> ImmutableList.of(new CassandraUsersRepositoryModule());
         };
     }
 

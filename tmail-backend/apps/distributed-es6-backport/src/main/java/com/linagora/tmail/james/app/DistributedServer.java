@@ -26,6 +26,7 @@ import org.apache.james.modules.DistributedTaskSerializationModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
+import org.apache.james.modules.data.CassandraDelegationStoreModule;
 import org.apache.james.modules.data.CassandraDomainListModule;
 import org.apache.james.modules.data.CassandraJmapModule;
 import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
@@ -210,7 +211,8 @@ public class DistributedServer {
         new CassandraSessionModule(),
         new CassandraSieveRepositoryModule(),
         BLOB_MODULE,
-        CASSANDRA_EVENT_STORE_JSON_SERIALIZATION_DEFAULT_MODULE);
+        CASSANDRA_EVENT_STORE_JSON_SERIALIZATION_DEFAULT_MODULE,
+        new CassandraDelegationStoreModule());
 
     public static final Module CASSANDRA_MAILBOX_MODULE = Modules.combine(
         new CassandraConsistencyTaskSerializationModule(),
