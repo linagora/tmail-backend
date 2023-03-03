@@ -15,26 +15,47 @@ The associated object is empty.
 
 == CalendarEvent/parse
 
-This method bases on:
+This method is based on:
 - Parsing a Received MDN method as described in the RFC-9007
-- JMAP CalendarEvent RFC-8620
+- Draft JMAP CalendarEvent (https://datatracker.ietf.org/doc/html/draft-ietf-jmap-calendars)
 - iCalendar message RFC-5545
 
 The request object requires the following properties:
 
-- `accountId`: accountId of action user
-- `blobIds`: an array blobId of calendar which user wants to parse.
+- *accountId*: `Id` The id of the account to use.
+- *blobIds*: `[Id]` An array of calendar blob ids that the user wants to parse.
 
 The response object contains the following properties:
 
-- `accountId`: accountId of action user
-- `parsed`: a map of blobId and the corresponding calendar parse result.
-- `notFound`: an array of blobId is not found.
-- `notParsable`: an array of blobId has been found but is not parsable.
+- *accountId*: `Id` The id of the account to use.
+- *parsed*: a map of blob id and the corresponding calendar parse result.
+- *notFound*: an array of blob id is not found.
+- *notParsable*: an array of blob id has been found but is not parsable.
 
+The `parsed` value contains the following properties (the properties below match with the properties defined in rfc5545):
+
+- `title`: title of the event
+- `description`: description of the event
+- `start`: Start time of the event
+- `end`: End time of the event
+- `duration`: duration of the event
+- `timeZone`: time zone of the start/end time
+- `location`: location of the event
+- `organizer`: the organizer of the event, contains name (CN) and mail (mailto)
+- `participants`: a collection of attendees
+
+Each `participant` contains information:
+
+- `name`: name of the participant
+- `mailto`: mail address of the participant
+- `kind`: to indicate the type of calendar user
+- `role`: for the intended role that the attendee will have in the calendar component
+- `participationStatus`: for the status of the attendee's participation
+- `expectReply`: Boolean. for indicating whether the favor of a reply is requested
+- `extensionFields`: contains custom event headers.
 == Example
 
-The client's request to parse the calendar event which has blobId is `0f9f65ab-dc7b-4146-850f-6e4881093965`
+The client makes a request to parse the calendar event with a BlobId
 
 ....
 {
@@ -92,29 +113,6 @@ The server responds:
     }
 }, "c1" ]]
 ```
-
-The `parsed` value contains the following properties:
-
-- `title`: title of the event ~ SUMMARY (iCalendar)
-- `description`: description of the event ~ DESCRIPTION
-- `start`: Start time of the event ~ DTSTART
-- `end`: End time of the event ~ DTEND
-- `duration`: duration of the event ~ DURATION
-- `timeZone`: time zone of the start/end time ~ TZID
-- `location`: location of the event ~ LOCATION
-- `organizer`: the organizer of the event, contains name (CN) and mail (mailto)
-- `participants`: a collection of attendees (ATTENDEE)
-
-Each `participant` contains information:
-
-- `name`: name of the participant
-- `mailto`: mail address of the participant
-- `kind`: "CUTYPE", to indicate the type of calendar user
-- `role`: "ROLE", for the intended role that the attendee will have in the calendar component
-- `participationStatus`: "PARTSTAT", for the status of the attendee's participation
-- `expectReply`: Boolean. "RSVP", for indicating whether the favor of a reply is requested
-- `extensionFields`: contains custom event headers.
-
 
 In the case that a blob id is not found, the server would respond:
 
