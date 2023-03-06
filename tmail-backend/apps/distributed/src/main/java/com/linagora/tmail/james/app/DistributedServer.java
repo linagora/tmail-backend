@@ -63,6 +63,7 @@ import org.apache.james.modules.server.MailboxesExportRoutesModule;
 import org.apache.james.modules.server.MessagesRoutesModule;
 import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
 import org.apache.james.modules.server.SieveRoutesModule;
+import org.apache.james.modules.server.UserIdentityModule;
 import org.apache.james.modules.server.WebAdminMailOverWebModule;
 import org.apache.james.modules.server.WebAdminReIndexingTaskSerializationModule;
 import org.apache.james.modules.server.WebAdminServerModule;
@@ -152,7 +153,8 @@ public class DistributedServer {
         new WebAdminReIndexingTaskSerializationModule(),
         new MessagesRoutesModule(),
         new WebAdminMailOverWebModule(),
-        new EmailAddressContactRoutesModule());
+        new EmailAddressContactRoutesModule(),
+        new UserIdentityModule());
 
     public static final Module JMAP = Modules.override(
         new CalendarEventMethodModule(),
