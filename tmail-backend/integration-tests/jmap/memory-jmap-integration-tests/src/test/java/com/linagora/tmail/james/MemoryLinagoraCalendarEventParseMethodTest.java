@@ -2,6 +2,8 @@ package com.linagora.tmail.james;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
+import java.util.UUID;
+
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -24,4 +26,9 @@ public class MemoryLinagoraCalendarEventParseMethodTest implements LinagoraCalen
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
+
+    @Override
+    public String randomBlobId() {
+        return UUID.randomUUID().toString();
+    }
 }

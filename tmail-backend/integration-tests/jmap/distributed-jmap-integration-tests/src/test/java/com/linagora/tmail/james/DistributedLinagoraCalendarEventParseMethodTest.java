@@ -6,6 +6,7 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -34,4 +35,9 @@ public class DistributedLinagoraCalendarEventParseMethodTest implements Linagora
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
+
+    @Override
+    public String randomBlobId() {
+        return Uuids.timeBased().toString();
+    }
 }
