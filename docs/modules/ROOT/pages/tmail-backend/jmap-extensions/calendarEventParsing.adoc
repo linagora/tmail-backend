@@ -28,31 +28,32 @@ The request object requires the following properties:
 The response object contains the following properties:
 
 - *accountId*: `Id` The id of the account to use.
-- *parsed*: a map of blob id and the corresponding calendar parse result.
-- *notFound*: an array of blob id is not found.
-- *notParsable*: an array of blob id has been found but is not parsable.
+- *parsed*: `Map[BlobId]` and the corresponding calendar parse result.
+- *notFound*: `[BlobId]` is not found.
+- *notParsable*: `[BlobId]` has been found but is not parsable.
 
 The `parsed` value contains the following properties (the properties below match with the properties defined in rfc5545):
 
-- `title`: title of the event
-- `description`: description of the event
-- `start`: Start time of the event
-- `end`: End time of the event
-- `duration`: duration of the event
-- `timeZone`: time zone of the start/end time
-- `location`: location of the event
+- `title`: title of the event ~ SUMMARY (iCalendar)
+- `description`: description of the event ~ DESCRIPTION
+- `start`: Start time of the event ~ DTSTART
+- `end`: End time of the event ~ DTEND
+- `duration`: duration of the event ~ DURATION
+- `timeZone`: time zone of the start/end time ~ TZID
+- `location`: location of the event ~ LOCATION
 - `organizer`: the organizer of the event, contains name (CN) and mail (mailto)
-- `participants`: a collection of attendees
+- `participants`: a collection of attendees (ATTENDEE)
 
 Each `participant` contains information:
 
 - `name`: name of the participant
 - `mailto`: mail address of the participant
-- `kind`: to indicate the type of calendar user
-- `role`: for the intended role that the attendee will have in the calendar component
-- `participationStatus`: for the status of the attendee's participation
-- `expectReply`: Boolean. for indicating whether the favor of a reply is requested
+- `kind`: "CUTYPE", to indicate the type of calendar user
+- `role`: "ROLE", for the intended role that the attendee will have in the calendar component
+- `participationStatus`: "PARTSTAT", for the status of the attendee's participation
+- `expectReply`: Boolean. "RSVP", for indicating whether the favor of a reply is requested
 - `extensionFields`: contains custom event headers.
+
 == Example
 
 The client makes a request to parse the calendar event with a BlobId
