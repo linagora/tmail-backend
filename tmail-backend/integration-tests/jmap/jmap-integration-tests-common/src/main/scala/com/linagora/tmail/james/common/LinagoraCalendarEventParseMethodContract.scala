@@ -442,10 +442,10 @@ trait LinagoraCalendarEventParseMethodContract {
 
   @Test
   def parseShouldFailWhenNumberOfBlobIdsTooLarge(): Unit = {
-    val blogIds: Array[String] = Range.inclusive(1, 999)
+    val blobIds: Array[String] = Range.inclusive(1, 999)
       .map(_ + "")
       .toArray
-    val blogIdsJson: String = Json.stringify(Json.arr(blogIds)).replace("[[", "[").replace("]]", "]");
+    val blogIdsJson: String = Json.stringify(Json.arr(blobIds)).replace("[[", "[").replace("]]", "]");
     val request: String =
       s"""{
          |  "using": [
