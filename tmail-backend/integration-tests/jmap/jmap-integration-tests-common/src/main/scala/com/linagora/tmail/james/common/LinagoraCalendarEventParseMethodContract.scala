@@ -96,7 +96,14 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "parsed": {
            |            "$blobId": {
            |                "title": "Sprint planning #23",
-           |                "description": "description 123"
+           |                "description": "description 123",
+           |                "start": "2017-01-11T16:00:00",
+           |                "end": "2017-01-11T17:30:00",
+           |                "utcStart":"2017-01-11T09:00:00Z",
+           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "timeZone": "Asia/Ho_Chi_Minh",
+           |                "duration": "PT1H30M",
+           |                "location": "Hangout"
            |            }
            |        }
            |    },
@@ -144,11 +151,24 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "parsed": {
            |            "$blobId1": {
            |                "title": "Sprint planning #23",
-           |                "description": "description 123"
+           |                "description": "description 123",
+           |                "start": "2017-01-11T16:00:00",
+           |                "end": "2017-01-11T17:30:00",
+           |                "utcStart":"2017-01-11T09:00:00Z",
+           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "timeZone": "Asia/Ho_Chi_Minh",
+           |                "duration": "PT1H30M",
+           |                "location": "Hangout"
            |            },
            |            "$blobId2": {
            |                "title": "Sprint planning #24",
-           |                "description": "description 456"
+           |                "description": "description 456",
+           |                "start": "2017-01-11T09:00:00",
+           |                "end": "2017-01-11T10:30:00",
+           |                "utcStart":"2017-01-11T09:00:00Z",
+           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "duration": "PT1H30M",
+           |                "location": "Hangout"
            |            }
            |        }
            |    },
@@ -284,7 +304,14 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "parsed": {
            |            "$blobId": {
            |                "title": "Sprint planning #23",
-           |                "description": "description 123"
+           |                "description": "description 123",
+           |                "start": "2017-01-11T16:00:00",
+           |                "end": "2017-01-11T17:30:00",
+           |                "utcStart":"2017-01-11T09:00:00Z",
+           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "timeZone": "Asia/Ho_Chi_Minh",
+           |                "duration": "PT1H30M",
+           |                "location": "Hangout"
            |            }
            |        }
            |    }, "c1"
@@ -493,7 +520,14 @@ trait LinagoraCalendarEventParseMethodContract {
            |            "parsed": {
            |                "$blobId": {
            |                    "title": "Sprint planning #23",
-           |                    "description": "description 123"
+           |                    "description": "description 123",
+           |                    "start": "2017-01-11T16:00:00",
+           |                    "end": "2017-01-11T17:30:00",
+           |                    "utcStart": "2017-01-11T09:00:00Z",
+           |                    "utcEnd": "2017-01-11T10:30:00Z",
+           |                    "timeZone": "Asia/Ho_Chi_Minh",
+           |                    "duration": "PT1H30M",
+           |                    "location": "Hangout"
            |                }
            |            }
            |    },
@@ -585,7 +619,14 @@ trait LinagoraCalendarEventParseMethodContract {
            |            "parsed": {
            |                "$icsBlobId": {
            |                    "title": "Sprint planning #23",
-           |                    "description": "description 123"
+           |                    "description": "description 123",
+           |                    "start": "2017-01-11T16:00:00",
+           |                    "end": "2017-01-11T17:30:00",
+           |                    "utcStart": "2017-01-11T09:00:00Z",
+           |                    "utcEnd": "2017-01-11T10:30:00Z",
+           |                    "timeZone": "Asia/Ho_Chi_Minh",
+           |                    "duration": "PT1H30M",
+           |                    "location": "Hangout"
            |                }
            |            }
            |    },
@@ -632,6 +673,57 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "type": "requestTooLarge",
            |        "description": "The number of ids requested by the client exceeds the maximum number the server is willing to process in a single method call"
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def parseShouldSuccessWhenIcsMissingSomeOptionalProperty(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting_minimize.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "CalendarEvent/parse",
+           |    {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "parsed": {
+           |            "$blobId": {
+           |                "title": "MOB: integration tests",
+           |                "start": "2023-03-09T14:00:00",
+           |                "end": "2023-03-09T14:00:00",
+           |                "utcStart":"2023-03-09T07:00:00Z",
+           |                "utcEnd":"2023-03-09T07:00:00Z",
+           |                "timeZone": "Asia/Ho_Chi_Minh"
+           |            }
+           |        }
            |    },
            |    "c1"
            |]""".stripMargin)

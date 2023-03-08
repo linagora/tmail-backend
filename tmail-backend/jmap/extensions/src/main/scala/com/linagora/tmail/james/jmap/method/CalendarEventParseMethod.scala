@@ -6,8 +6,6 @@ import com.linagora.tmail.james.jmap.json.CalendarEventSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
 import com.linagora.tmail.james.jmap.model.{CalendarEventParseRequest, CalendarEventParseResponse, CalendarEventParseResults, CalendarEventParsed, InvalidCalendarFileException}
 import eu.timepit.refined.auto._
-import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
-import net.fortuna.ical4j.model.TimeZoneRegistryFactory
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, UrlPrefixes}
@@ -99,18 +97,12 @@ class CalendarEventParseMethod @Inject()(val blobResolvers: BlobResolvers,
 
   private def toParseResults(blobId: BlobId, mailboxSession: MailboxSession): SMono[CalendarEventParseResults] =
     blobResolvers.resolve(blobId, mailboxSession)
-      .flatMap(blob => Using(blob.content) { content =>
-        CalendarEventParsed.from(getCalendarBuilder.build(content))
-      }.fold(_ => SMono.error[CalendarEventParsed](InvalidCalendarFileException(blobId)), result => SMono.just(result)))
+      .flatMap(blob => Using(blob.content)(CalendarEventParsed.from)
+        .fold(_ => SMono.error[CalendarEventParsed](InvalidCalendarFileException(blobId)), result => SMono.just(result)))
       .map(parsed => CalendarEventParseResults.parse(blobId, parsed))
       .onErrorResume {
         case e: BlobNotFoundException => SMono.just(CalendarEventParseResults.notFound(e.blobId))
         case e: BlobUnParsableException => SMono.just(CalendarEventParseResults.notParse(e.blobId))
         case _ => SMono.just(CalendarEventParseResults.notParse(blobId))
       }
-
-  private def getCalendarBuilder: CalendarBuilder =
-    new CalendarBuilder(CalendarParserFactory.getInstance.get,
-      new ContentHandlerContext().withSupressInvalidProperties(true),
-      TimeZoneRegistryFactory.getInstance.createRegistry)
 }
