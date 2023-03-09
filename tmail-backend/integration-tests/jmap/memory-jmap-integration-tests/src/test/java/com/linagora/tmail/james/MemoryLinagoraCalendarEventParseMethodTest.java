@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
@@ -24,7 +25,7 @@ public class MemoryLinagoraCalendarEventParseMethodTest implements LinagoraCalen
             .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule()))
         .build();
 
     @Override

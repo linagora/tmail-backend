@@ -8,6 +8,7 @@ import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -49,7 +50,7 @@ trait LinagoraCalendarEventParseMethodContract {
   }
 
   @Test
-  def parseShouldSuccess(): Unit = {
+  def parseShouldSucceed(): Unit = {
     val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
 
     val request: String =
@@ -232,7 +233,7 @@ trait LinagoraCalendarEventParseMethodContract {
   }
 
   @Test
-  def parseShouldSuccessWhenMixSeveralCases(): Unit = {
+  def parseShouldSucceedWhenMixSeveralCases(): Unit = {
     val notParsableBlobId: String = uploadAndGetBlobId(new ByteArrayInputStream("notIcsFileFormat".getBytes))
     val notFoundBlobId: String = randomBlobId
     val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
@@ -396,7 +397,7 @@ trait LinagoraCalendarEventParseMethodContract {
   }
 
   @Test
-  def parseShouldNotParseBlobEntryWhenDoesNotPermission(server: GuiceJamesServer): Unit = {
+  def parseShouldNotParseBlobEntryWhenDoesNotHavePermission(server: GuiceJamesServer): Unit = {
     val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
 
     val request: String =
@@ -435,6 +436,57 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "accountId": "$ANDRE_ACCOUNT_ID",
            |        "notFound": [ "$blobId" ]
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def parseShouldSucceedWhenDelegated(server: GuiceJamesServer): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "CalendarEvent/parse",
+           |    {
+           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |            "parsed": {
+           |                "$blobId": {
+           |                    "title": "Sprint planning #23",
+           |                    "description": "description 123"
+           |                }
+           |            }
            |    },
            |    "c1"
            |]""".stripMargin)
