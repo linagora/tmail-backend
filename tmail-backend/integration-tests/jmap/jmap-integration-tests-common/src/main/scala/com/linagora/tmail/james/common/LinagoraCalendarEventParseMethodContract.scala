@@ -9,12 +9,20 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.mailbox.MessageManager.AppendCommand
+import org.apache.james.mailbox.model.MailboxACL.Right
+import org.apache.james.mailbox.model.{MailboxACL, MailboxPath, MessageId}
+import org.apache.james.mime4j.dom.Message
+import org.apache.james.mime4j.message.{BodyPartBuilder, MultipartBuilder}
+import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
+import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.Json
 
 import java.io.{ByteArrayInputStream, InputStream}
+import java.nio.charset.StandardCharsets
 
 trait LinagoraCalendarEventParseMethodContract {
 
@@ -446,6 +454,7 @@ trait LinagoraCalendarEventParseMethodContract {
     val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
     server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
 
+    val bobAccountId = ACCOUNT_ID
     val request: String =
       s"""{
          |  "using": [
@@ -454,7 +463,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -480,9 +489,101 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |            "parsed": {
            |                "$blobId": {
+           |                    "title": "Sprint planning #23",
+           |                    "description": "description 123"
+           |                }
+           |            }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def parseShouldSucceedWhenShared(server: GuiceJamesServer): Unit = {
+    // Bob share rights mailbox to Andre
+    val bobMailboxPath: MailboxPath = MailboxPath.inbox(BOB)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobMailboxPath)
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(bobMailboxPath, ANDRE.asString(), new MailboxACL.Rfc4314Rights(Right.Read, Right.Lookup))
+
+    val messageHasIcsAttachment: Message = Message.Builder.of()
+      .setBody(MultipartBuilder.create("mixed")
+        .addBodyPart(BodyPartBuilder.create
+          .setBody(ClassLoaderUtils.getSystemResourceAsByteArray("ics/meeting.ics"),"text/calendar" )
+          .setContentDisposition("attachment"))
+        .addBodyPart(BodyPartBuilder.create()
+          .setBody("text content", "plain", StandardCharsets.UTF_8))
+        .addBodyPart(BodyPartBuilder.create
+          .setBody("<b>html</b> content", "html", StandardCharsets.UTF_8))
+        .build)
+      .build
+
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString, bobMailboxPath, AppendCommand.from(messageHasIcsAttachment))
+      .getMessageId
+
+    val icsBlobId: String = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "urn:ietf:params:jmap:mail"],
+           |  "methodCalls": [[
+           |    "Email/get",
+           |    {
+           |      "accountId": "$ACCOUNT_ID",
+           |      "ids": ["${messageId.serialize}"]
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .jsonPath()
+      .get("methodResponses[0][1].list[0].attachments[0].blobId")
+
+    val responseOfAndreRequest: String = `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:calendar:event"],
+           |  "methodCalls": [[
+           |    "CalendarEvent/parse",
+           |    {
+           |      "accountId": "$ANDRE_ACCOUNT_ID",
+           |      "blobIds": [ "$icsBlobId" ]
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(responseOfAndreRequest)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "CalendarEvent/parse",
+           |    {
+           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |            "parsed": {
+           |                "$icsBlobId": {
            |                    "title": "Sprint planning #23",
            |                    "description": "description 123"
            |                }
