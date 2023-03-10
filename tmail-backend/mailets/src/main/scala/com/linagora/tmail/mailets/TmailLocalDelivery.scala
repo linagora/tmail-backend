@@ -8,8 +8,9 @@ import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.transport.mailets.delivery.{MailDispatcher, SimpleMailStore}
 import org.apache.james.user.api.UsersRepository
 import org.apache.mailet.Mail
-import org.apache.mailet.base.GenericMailet
+import org.apache.mailet.base.{GenericMailet, MailetUtil}
 
+import java.util.Optional
 import javax.inject.{Inject, Named}
 
 object TmailLocalDelivery {
@@ -35,6 +36,7 @@ class TmailLocalDelivery @Inject()(usersRepository: UsersRepository,
         .metric(metricFactory.generate(LOCAL_DELIVERED_MAILS_METRIC_NAME))
         .build)
       .consume(getInitParameter("consume", true))
+      .retries(MailetUtil.getInitParameterAsInteger(getInitParameter("retries"), Optional.of(MailDispatcher.RETRIES)))
       .mailetContext(getMailetContext)
       .build
   }
