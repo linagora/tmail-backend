@@ -107,8 +107,8 @@ The server responds:
                 }
             ],
             "extensionFields": {
-                "X-OPENPAAS-VIDEOCONFERENCE": "https://jitsi.linagora.com/abcd",
-                "X-OPENPAAS-CUSTOM-HEADER1": "whatever"
+                "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"],
+                "X-OPENPAAS-CUSTOM-HEADER1": ["whatever1", "whatever2"]
             }
         }
     }
