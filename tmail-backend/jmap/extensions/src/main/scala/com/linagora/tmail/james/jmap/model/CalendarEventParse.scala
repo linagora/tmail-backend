@@ -6,7 +6,9 @@ import com.linagora.tmail.james.jmap.model.CalendarStartField.getTimeZoneAlterna
 import eu.timepit.refined.api.Refined
 import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.{Calendar, Property, TimeZoneRegistryFactory}
+import net.fortuna.ical4j.model.property.Attendee
+import net.fortuna.ical4j.model.{Calendar, Parameter, Property, TimeZoneRegistryFactory}
+import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.{AccountId, Id, UTCDate}
 import org.apache.james.jmap.mail.MDNParseRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
@@ -14,7 +16,8 @@ import org.apache.james.jmap.method.WithAccountId
 
 import java.io.InputStream
 import java.time.{Duration, ZoneId, ZonedDateTime}
-import java.util.TimeZone
+import java.util.{Locale, TimeZone}
+import scala.jdk.CollectionConverters._
 
 case class CalendarEventParseRequest(accountId: AccountId,
                                      blobIds: BlobIds) extends WithAccountId {
@@ -122,6 +125,111 @@ object CalendarTimeZoneField {
 
 case class CalendarTimeZoneField(value: TimeZone) extends AnyVal
 
+object CalendarOrganizerField {
+  def from(calendarEvent: VEvent): Option[CalendarOrganizerField] =
+    Option(calendarEvent.getOrganizer)
+      .map(organizer =>
+        CalendarOrganizerField(name = Option(organizer.getParameter("CN").asInstanceOf[Parameter])
+          .map(_.getValue),
+          mailto = Option(organizer.getCalAddress)
+            .map(_.getSchemeSpecificPart)
+            .map(new MailAddress(_))))
+}
+case class CalendarOrganizerField(name: Option[String], mailto: Option[MailAddress])
+
+object CalendarAttendeeName {
+  private val ATTENDEE_PARAMETER_PRIMARY: String = "NAME"
+  private val ATTENDEE_PARAMETER_SECONDARY: String = "CN"
+
+  def from(attendee: Attendee): Option[CalendarAttendeeName] =
+    Option(attendee.getParameter(ATTENDEE_PARAMETER_PRIMARY).asInstanceOf[Parameter])
+      .orElse(Option(attendee.getParameter(ATTENDEE_PARAMETER_SECONDARY).asInstanceOf[Parameter]))
+      .map(_.getValue)
+      .map(CalendarAttendeeName(_))
+}
+case class CalendarAttendeeName(value: String) extends AnyVal
+object CalendarAttendeeKind {
+  def from(attendee: Attendee): Option[CalendarAttendeeKind] =
+    Option(attendee.getParameter("CUTYPE").asInstanceOf[Parameter])
+      .map(_.getValue)
+      .map(CalendarAttendeeKind(_))
+}
+case class CalendarAttendeeKind(value: String) extends AnyVal
+object CalendarAttendeeRole {
+  def from(attendee: Attendee): Option[CalendarAttendeeRole] =
+    Option(attendee.getParameter("ROLE").asInstanceOf[Parameter])
+      .map(_.getValue)
+      .map(CalendarAttendeeRole(_))
+}
+case class CalendarAttendeeRole(value: String) extends AnyVal
+object CalendarAttendeeParticipationStatus {
+  def from(attendee: Attendee): Option[CalendarAttendeeParticipationStatus] =
+    Option(attendee.getParameter("PARTSTAT").asInstanceOf[Parameter])
+      .map(_.getValue)
+      .map(CalendarAttendeeParticipationStatus(_))
+}
+case class CalendarAttendeeParticipationStatus(value: String) extends AnyVal
+object CalendarAttendeeExpectReply {
+  def from(attendee: Attendee): Option[CalendarAttendeeExpectReply] =
+    Option(attendee.getParameter("RSVP").asInstanceOf[Parameter])
+      .map(_.getValue)
+      .map(_.toBoolean)
+      .map(CalendarAttendeeExpectReply(_))
+}
+case class CalendarAttendeeExpectReply(value: Boolean) extends AnyVal
+
+object CalendarAttendeeMailTo {
+  def from(attendee: Attendee): Option[CalendarAttendeeMailTo] =
+    Option(attendee.getCalAddress)
+      .map(_.getSchemeSpecificPart)
+      .map(new MailAddress(_))
+      .map(CalendarAttendeeMailTo(_))
+}
+case class CalendarAttendeeMailTo(value: MailAddress) extends AnyVal {
+  def serialize(): String = value.toString
+}
+
+object CalendarAttendeeField {
+  def from(attendee: Attendee): CalendarAttendeeField = {
+    CalendarAttendeeField(name = CalendarAttendeeName.from(attendee),
+      mailto = CalendarAttendeeMailTo.from(attendee),
+      kind = CalendarAttendeeKind.from(attendee),
+      role = CalendarAttendeeRole.from(attendee),
+      participationStatus = CalendarAttendeeParticipationStatus.from(attendee),
+      expectReply = CalendarAttendeeExpectReply.from(attendee))
+  }
+}
+
+case class CalendarAttendeeField(name: Option[CalendarAttendeeName] = None,
+                                 mailto: Option[CalendarAttendeeMailTo] = None,
+                                 kind: Option[CalendarAttendeeKind] = None,
+                                 role: Option[CalendarAttendeeRole] = None,
+                                 participationStatus: Option[CalendarAttendeeParticipationStatus] = None,
+                                 expectReply: Option[CalendarAttendeeExpectReply] = None)
+
+object CalendarParticipantsField {
+  def from(vevent: VEvent): CalendarParticipantsField =
+    CalendarParticipantsField(vevent.getProperties(Property.ATTENDEE)
+      .asScala
+      .map(attendee => CalendarAttendeeField.from(attendee))
+      .toSeq)
+}
+case class CalendarParticipantsField(list: Seq[CalendarAttendeeField] = Seq())
+
+object CalendarExtensionFields {
+  private val EXTENSION_FIELD_PREFIX: String = "X-"
+
+  def from(vevent: VEvent): CalendarExtensionFields =
+    CalendarExtensionFields(vevent.getProperties()
+      .asScala
+      .filter(property => property.getName.toLowerCase(Locale.US).startsWith(EXTENSION_FIELD_PREFIX.toLowerCase(Locale.US)))
+      .map(property => (property.getName, property.getValue))
+      .groupMap(_._1)(_._2)
+      .map(pair => (pair._1, pair._2.toSeq)))
+}
+
+case class CalendarExtensionFields(values: Map[String, Seq[String]] = Map())
+
 case class InvalidCalendarFileException(blobId: BlobId) extends RuntimeException
 
 object CalendarEventParsed {
@@ -146,7 +254,10 @@ object CalendarEventParsed {
         utcEnd = end.map(_.asUtcDate()),
         duration = CalendarDurationField.from(vevent),
         timeZone = CalendarTimeZoneField.from(vevent),
-        location = CalendarLocationField.from(vevent))
+        location = CalendarLocationField.from(vevent),
+        organizer = CalendarOrganizerField.from(vevent),
+        participants = CalendarParticipantsField.from(vevent),
+        extensionFields = CalendarExtensionFields.from(vevent))
     }
 }
 
@@ -158,7 +269,10 @@ case class CalendarEventParsed(title: Option[CalendarTitleField] = None,
                                utcEnd: Option[UTCDate] = None,
                                timeZone: Option[CalendarTimeZoneField] = None,
                                duration: Option[CalendarDurationField] = None,
-                               location: Option[CalendarLocationField] = None)
+                               location: Option[CalendarLocationField] = None,
+                               organizer: Option[CalendarOrganizerField] = None,
+                               participants: CalendarParticipantsField = CalendarParticipantsField(),
+                               extensionFields: CalendarExtensionFields = CalendarExtensionFields())
 
 case class CalendarEventParseResponse(accountId: AccountId,
                                       parsed: Option[Map[BlobId, CalendarEventParsed]],

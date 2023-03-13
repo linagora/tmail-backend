@@ -30,9 +30,9 @@ class CalendarEventParsedTest {
                        |DESCRIPTION:
                        |CLASS:PUBLIC
                        |PRIORITY:5
-                       |ORGANIZER;X-OBM-ID=468;CN=Attendee 1:MAILTO:attendee1@linagora.
+                       |ORGANIZER;X-OBM-ID=468;CN=Attendee 1:MAILTO:attendee1@domain.tld
                        | com
-                       |X-OBM-DOMAIN:linagora.com
+                       |X-OBM-DOMAIN:domain.tld
                        |X-OBM-DOMAIN-UUID:02874f7c-d10e-102f-acda-0015176f7922
                        |LOCATION:hangout
                        |CATEGORIES:
@@ -40,7 +40,7 @@ class CalendarEventParsedTest {
                        |UID:f1514f44bf39311568d64072ac247c17656ceafde3b4b3eba961c8c5184cdc6ee047fe
                        | b2aab16e43439a608f28671ab7c10e754c301b1e32001ad51dd20eac2fc7af20abf4093bbe
                        |ATTENDEE;CUTYPE=INDIVIDUAL;RSVP=TRUE;CN=Attendee 2;PARTSTAT=NEEDS-ACTI
-                       | ON;X-OBM-ID=348:MAILTO:attendee2@linagora.com
+                       | ON;X-OBM-ID=348:MAILTO:attendee2@domain.tld
                        |END:VEVENT
                        |END:VCALENDAR
                        |""".stripMargin
@@ -72,9 +72,9 @@ class CalendarEventParsedTest {
         |DESCRIPTION:
         |CLASS:PUBLIC
         |PRIORITY:5
-        |ORGANIZER;X-OBM-ID=468;CN=Attendee 1:MAILTO:attendee1@linagora.
+        |ORGANIZER;X-OBM-ID=468;CN=Attendee 1:MAILTO:attendee1@domain.tld
         | com
-        |X-OBM-DOMAIN:linagora.com
+        |X-OBM-DOMAIN:domain.tld
         |X-OBM-DOMAIN-UUID:02874f7c-d10e-102f-acda-0015176f7922
         |LOCATION:hangout
         |CATEGORIES:
@@ -82,7 +82,7 @@ class CalendarEventParsedTest {
         |UID:f1514f44bf39311568d64072ac247c17656ceafde3b4b3eba961c8c5184cdc6ee047fe
         | b2aab16e43439a608f28671ab7c10e754c301b1e32001ad51dd20eac2fc7af20abf4093bbe
         |ATTENDEE;CUTYPE=INDIVIDUAL;RSVP=TRUE;CN=Attendee 2;PARTSTAT=NEEDS-ACTI
-        | ON;X-OBM-ID=348:MAILTO:attendee2@linagora.com
+        | ON;X-OBM-ID=348:MAILTO:attendee2@domain.tld
         |END:VEVENT
         |END:VCALENDAR
         |""".stripMargin

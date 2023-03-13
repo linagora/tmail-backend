@@ -4,6 +4,8 @@ import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
+import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
@@ -87,6 +89,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -103,7 +106,31 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "utcEnd":"2017-01-11T10:30:00Z",
            |                "timeZone": "Asia/Ho_Chi_Minh",
            |                "duration": "PT1H30M",
-           |                "location": "Hangout"
+           |                "location": "Hangout",
+           |                "organizer": {
+           |                     "name": "Raphael OUAZANA",
+           |                     "mailto": "ouazana@domain.tld"
+           |                },
+           |                "participants": [
+           |                 {
+           |                     "name": "Matthieu EXT_BAECHLER",
+           |                     "mailto": "baechler@domain.tld",
+           |                     "kind": "INDIVIDUAL",
+           |                     "role": "ADMIN",
+           |                     "participationStatus": "NEEDS-ACTION",
+           |                     "expectReply": true
+           |                 },
+           |                 {
+           |                     "name": "Laura ROYET",
+           |                     "mailto": "royet@domain.tld",
+           |                     "kind": "INDIVIDUAL",
+           |                     "participationStatus": "NEEDS-ACTION",
+           |                     "expectReply": true
+           |                 }
+           |             ],
+           |             "extensionFields": {
+           |                     "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"]
+           |                 }
            |            }
            |        }
            |    },
@@ -142,6 +169,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -154,21 +182,76 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "description": "description 123",
            |                "start": "2017-01-11T16:00:00",
            |                "end": "2017-01-11T17:30:00",
-           |                "utcStart":"2017-01-11T09:00:00Z",
-           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "utcStart": "2017-01-11T09:00:00Z",
+           |                "utcEnd": "2017-01-11T10:30:00Z",
            |                "timeZone": "Asia/Ho_Chi_Minh",
            |                "duration": "PT1H30M",
-           |                "location": "Hangout"
+           |                "location": "Hangout",
+           |                "organizer": {
+           |                    "name": "Raphael OUAZANA",
+           |                    "mailto": "ouazana@domain.tld"
+           |                },
+           |                "participants": [
+           |                    {
+           |                        "name": "Matthieu EXT_BAECHLER",
+           |                        "mailto": "baechler@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "role": "ADMIN",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    },
+           |                    {
+           |                        "name": "Laura ROYET",
+           |                        "mailto": "royet@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    }
+           |                ],
+           |                "extensionFields": {
+           |                    "X-OPENPAAS-VIDEOCONFERENCE": [
+           |                        "https://jitsi.linagora.com/abcd"
+           |                    ]
+           |                }
            |            },
            |            "$blobId2": {
            |                "title": "Sprint planning #24",
            |                "description": "description 456",
            |                "start": "2017-01-11T09:00:00",
            |                "end": "2017-01-11T10:30:00",
-           |                "utcStart":"2017-01-11T09:00:00Z",
-           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "utcStart": "2017-01-11T09:00:00Z",
+           |                "utcEnd": "2017-01-11T10:30:00Z",
            |                "duration": "PT1H30M",
-           |                "location": "Hangout"
+           |                "location": "Hangout",
+           |                "organizer": {
+           |                    "name": "Raphael OUAZANA",
+           |                    "mailto": "ouazana@domain.tld"
+           |                },
+           |                "participants": [
+           |                    {
+           |                        "name": "Matthieu EXT_BAECHLER",
+           |                        "mailto": "baechler@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    },
+           |                    {
+           |                        "name": "Laura ROYET",
+           |                        "mailto": "royet@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    }
+           |                ],
+           |                "extensionFields": {
+           |                    "X-OPENPAAS-TEST": [
+           |                        "test1",
+           |                        "test2"
+           |                    ],
+           |                    "X-OPENPAAS-VIDEOCONFERENCE": [
+           |                        "https://jitsi.linagora.com/abcd"
+           |                    ]
+           |                }
            |            }
            |        }
            |    },
@@ -248,8 +331,6 @@ trait LinagoraCalendarEventParseMethodContract {
 
     assertThatJson(response)
       .inPath("methodResponses[0]")
-    assertThatJson(response)
-      .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
            |    "CalendarEvent/parse",
@@ -291,8 +372,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .inPath("methodResponses[0]")
-    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -307,14 +387,39 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "description": "description 123",
            |                "start": "2017-01-11T16:00:00",
            |                "end": "2017-01-11T17:30:00",
-           |                "utcStart":"2017-01-11T09:00:00Z",
-           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "utcStart": "2017-01-11T09:00:00Z",
+           |                "utcEnd": "2017-01-11T10:30:00Z",
            |                "timeZone": "Asia/Ho_Chi_Minh",
            |                "duration": "PT1H30M",
-           |                "location": "Hangout"
+           |                "location": "Hangout",
+           |                "organizer": {
+           |                    "name": "Raphael OUAZANA",
+           |                    "mailto": "ouazana@domain.tld"
+           |                },
+           |                "participants": [
+           |                    {
+           |                        "name": "Matthieu EXT_BAECHLER",
+           |                        "mailto": "baechler@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "role": "ADMIN",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    },
+           |                    {
+           |                        "name": "Laura ROYET",
+           |                        "mailto": "royet@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    }
+           |                ],
+           |                "extensionFields": {
+           |                    "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"]
+           |                }
            |            }
            |        }
-           |    }, "c1"
+           |    },
+           |    "c1"
            |]""".stripMargin)
   }
 
@@ -511,6 +616,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -527,7 +633,31 @@ trait LinagoraCalendarEventParseMethodContract {
            |                    "utcEnd": "2017-01-11T10:30:00Z",
            |                    "timeZone": "Asia/Ho_Chi_Minh",
            |                    "duration": "PT1H30M",
-           |                    "location": "Hangout"
+           |                    "location": "Hangout",
+           |                    "organizer": {
+           |                        "name": "Raphael OUAZANA",
+           |                        "mailto": "ouazana@domain.tld"
+           |                    },
+           |                    "participants": [
+           |                        {
+           |                            "name": "Matthieu EXT_BAECHLER",
+           |                            "mailto": "baechler@domain.tld",
+           |                            "kind": "INDIVIDUAL",
+           |                            "role": "ADMIN",
+           |                           "participationStatus": "NEEDS-ACTION",
+           |                            "expectReply": true
+           |                        },
+           |                        {
+           |                            "name": "Laura ROYET",
+           |                            "mailto": "royet@domain.tld",
+           |                            "kind": "INDIVIDUAL",
+           |                            "participationStatus": "NEEDS-ACTION",
+           |                            "expectReply": true
+           |                        }
+           |                    ],
+           |                    "extensionFields": {
+           |                        "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"]
+           |                    }
            |                }
            |            }
            |    },
@@ -616,19 +746,43 @@ trait LinagoraCalendarEventParseMethodContract {
            |    "CalendarEvent/parse",
            |    {
            |        "accountId": "$ANDRE_ACCOUNT_ID",
-           |            "parsed": {
-           |                "$icsBlobId": {
-           |                    "title": "Sprint planning #23",
-           |                    "description": "description 123",
-           |                    "start": "2017-01-11T16:00:00",
-           |                    "end": "2017-01-11T17:30:00",
-           |                    "utcStart": "2017-01-11T09:00:00Z",
-           |                    "utcEnd": "2017-01-11T10:30:00Z",
-           |                    "timeZone": "Asia/Ho_Chi_Minh",
-           |                    "duration": "PT1H30M",
-           |                    "location": "Hangout"
+           |        "parsed": {
+           |            "$icsBlobId": {
+           |                "title": "Sprint planning #23",
+           |                "description": "description 123",
+           |                "start": "2017-01-11T16:00:00",
+           |                "end": "2017-01-11T17:30:00",
+           |                "utcStart": "2017-01-11T09:00:00Z",
+           |                "utcEnd": "2017-01-11T10:30:00Z",
+           |                "timeZone": "Asia/Ho_Chi_Minh",
+           |                "duration": "PT1H30M",
+           |                "location": "Hangout",
+           |                "organizer": {
+           |                    "name": "Raphael OUAZANA",
+           |                    "mailto": "ouazana@domain.tld"
+           |                },
+           |                "participants": [
+           |                    {
+           |                        "name": "Matthieu EXT_BAECHLER",
+           |                        "mailto": "baechler@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "role": "ADMIN",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    },
+           |                    {
+           |                        "name": "Laura ROYET",
+           |                        "mailto": "royet@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    }
+           |                ],
+           |                "extensionFields": {
+           |                    "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"]
            |                }
            |            }
+           |        }
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -708,6 +862,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -719,9 +874,26 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "title": "MOB: integration tests",
            |                "start": "2023-03-09T14:00:00",
            |                "end": "2023-03-09T14:00:00",
-           |                "utcStart":"2023-03-09T07:00:00Z",
-           |                "utcEnd":"2023-03-09T07:00:00Z",
-           |                "timeZone": "Asia/Ho_Chi_Minh"
+           |                "utcStart": "2023-03-09T07:00:00Z",
+           |                "utcEnd": "2023-03-09T07:00:00Z",
+           |                "timeZone": "Asia/Ho_Chi_Minh",
+           |                "organizer": {
+           |                    "name": "Benoît TELLIER",
+           |                    "mailto": "btellier@domain.tld"
+           |                },
+           |                "participants": [
+           |                    {
+           |                        "name": "Van Tung TRAN",
+           |                        "mailto": "vttran@domain.tld",
+           |                        "kind": "INDIVIDUAL",
+           |                        "role": "REQ-PARTICIPANT",
+           |                        "participationStatus": "NEEDS-ACTION",
+           |                        "expectReply": true
+           |                    }
+           |                ],
+           |                "extensionFields": {
+           |                    "X-OPENPAAS-VIDEOCONFERENCE": [""]
+           |                }
            |            }
            |        }
            |    },
