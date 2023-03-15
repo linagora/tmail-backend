@@ -18,9 +18,13 @@
  ****************************************************************/
 package com.linagora.tmail.mailets
 
+import java.time.Duration
+
 import com.linagora.tmail.mailets.TMailMailboxAppenderTest.{DOMAIN, EMPTY_FOLDER, FOLDER, TEAM_MAILBOX, USER}
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxRepository, TeamMailboxRepositoryImpl}
 import eu.timepit.refined.auto._
+import javax.mail.MessagingException
+import javax.mail.internet.MimeMessage
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
@@ -30,10 +34,6 @@ import org.apache.james.util.concurrency.ConcurrentTestRunner
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.junit.jupiter.api.{BeforeEach, RepeatedTest, Test}
 import reactor.core.scala.publisher.SMono
-
-import java.time.Duration
-import javax.mail.MessagingException
-import javax.mail.internet.MimeMessage
 
 object TMailMailboxAppenderTest {
   private val TEAM_MAILBOX_NAME: TeamMailboxName = TeamMailboxName("james")
@@ -72,7 +72,7 @@ class TMailMailboxAppenderTest {
   @Test
   def appendShouldAddMessageToDesiredTeamMailbox(): Unit = {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
-    testee.append(mimeMessage, USER, EMPTY_FOLDER).block()
+    testee.append(mimeMessage, USER, FOLDER).block()
     val messages = mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath, tmSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, tmSession)
 
