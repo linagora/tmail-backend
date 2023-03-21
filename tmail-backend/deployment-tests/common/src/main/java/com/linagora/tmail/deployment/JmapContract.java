@@ -77,7 +77,7 @@ public interface JmapContract {
        .then()
            .log().ifValidationFails()
            .statusCode(200)
-           .body(ARGUMENTS + ".list", hasSize(6))
+           .body(ARGUMENTS + ".list", hasSize(expectedMailboxes.size()))
            .body(ARGUMENTS + ".list.name", hasItems(expectedMailboxes.toArray()));
    }
 
