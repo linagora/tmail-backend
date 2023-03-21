@@ -1262,7 +1262,7 @@ trait TeamMailboxesContract {
         .\("created")
         .get.asInstanceOf[JsArray].value.size
 
-      val systemMailboxCount = 6
+      val systemMailboxCount = 7
       assertThat(createdSize).isEqualTo(systemMailboxCount)
     }
 
