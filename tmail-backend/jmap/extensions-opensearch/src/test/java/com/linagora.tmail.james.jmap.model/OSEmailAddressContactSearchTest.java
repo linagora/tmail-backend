@@ -68,10 +68,10 @@ public class OSEmailAddressContactSearchTest implements EmailAddressContactSearc
     }
 
     private Query extractOpenSearchQuery(QueryType queryType) {
-        if (queryType instanceof MatchQuery) {
+        if (queryType instanceof MatchQuery matchQuery) {
             return QueryBuilders.match()
-                .field((((MatchQuery) queryType).field()))
-                .query(new FieldValue.Builder().stringValue(((MatchQuery) queryType).value()).build())
+                .field((matchQuery.field()))
+                .query(new FieldValue.Builder().stringValue(matchQuery.value()).build())
                 .build()
                 ._toQuery();
         } else {

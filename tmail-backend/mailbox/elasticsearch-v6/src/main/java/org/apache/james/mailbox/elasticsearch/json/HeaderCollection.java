@@ -63,9 +63,7 @@ public class HeaderCollection {
 
         @Override
         public final boolean equals(Object o) {
-            if (o instanceof Header) {
-                Header header = (Header) o;
-
+            if (o instanceof Header header) {
                 return Objects.equals(this.headerName, header.headerName)
                     && Objects.equals(this.value, header.value);
             }
@@ -147,10 +145,10 @@ public class HeaderCollection {
         }
 
         private Stream<Mailbox> convertAddressToMailboxStream(Address address) {
-            if (address instanceof Mailbox) {
-                return Stream.of((Mailbox) address);
-            } else if (address instanceof Group) {
-                return ((Group) address).getMailboxes().stream();
+            if (address instanceof Mailbox mb) {
+                return Stream.of(mb);
+            } else if (address instanceof Group g) {
+                return g.getMailboxes().stream();
             }
             return Stream.empty();
         }

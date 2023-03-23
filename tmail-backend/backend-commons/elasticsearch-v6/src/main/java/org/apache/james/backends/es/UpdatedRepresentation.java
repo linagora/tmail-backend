@@ -46,8 +46,7 @@ public class UpdatedRepresentation {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof UpdatedRepresentation) {
-            UpdatedRepresentation other = (UpdatedRepresentation) o;
+        if (o instanceof UpdatedRepresentation other) {
             return Objects.equals(id, other.id)
                 && Objects.equals(updatedDocumentPart, other.updatedDocumentPart);
         }

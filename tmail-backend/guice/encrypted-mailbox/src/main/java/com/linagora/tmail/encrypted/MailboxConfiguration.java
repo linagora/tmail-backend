@@ -42,8 +42,7 @@ public class MailboxConfiguration {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof MailboxConfiguration) {
-            MailboxConfiguration other = (MailboxConfiguration) obj;
+        if (obj instanceof MailboxConfiguration other) {
             return other.enableEncryption == this.enableEncryption;
         }
         return false;

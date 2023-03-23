@@ -34,9 +34,7 @@ public class AliasName {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof AliasName) {
-            AliasName aliasName = (AliasName) o;
-
+        if (o instanceof AliasName aliasName) {
             return Objects.equals(this.value, aliasName.value);
         }
         return false;

@@ -66,8 +66,8 @@ public class Decrypter {
     }
 
     private PGPEncryptedDataList retrievePgpEncryptedData(PGPObjectFactory pgpF, Object o) throws IOException {
-        if (o instanceof PGPEncryptedDataList) {
-            return (PGPEncryptedDataList) o;
+        if (o instanceof PGPEncryptedDataList pgpEncryptedDataList) {
+            return pgpEncryptedDataList;
         }
         return (PGPEncryptedDataList) pgpF.nextObject();
     }
@@ -77,8 +77,7 @@ public class Decrypter {
         PGPObjectFactory plainFact = new PGPObjectFactory(clear, new BcKeyFingerprintCalculator());
         Object message = retrieveMessage(plainFact);
 
-        if (message instanceof PGPLiteralData) {
-            PGPLiteralData literalData = (PGPLiteralData) message;
+        if (message instanceof PGPLiteralData literalData) {
             assertIntegrity(pgpPublicKeyEncryptedData);
             return Stream.of(literalData.getInputStream());
         }
@@ -94,8 +93,7 @@ public class Decrypter {
 
     private Object retrieveMessage(PGPObjectFactory plainFact) throws IOException, PGPException {
         Object message = plainFact.nextObject();
-        if (message instanceof PGPCompressedData) {
-            PGPCompressedData compressedData = (PGPCompressedData) message;
+        if (message instanceof PGPCompressedData compressedData) {
             PGPObjectFactory pgpObjectFactory = new PGPObjectFactory(compressedData.getDataStream(), new BcKeyFingerprintCalculator());
             return byPassOnePassSignatureList(pgpObjectFactory.nextObject(), pgpObjectFactory);
         }

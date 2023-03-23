@@ -31,8 +31,8 @@ public abstract class MailboxReactorUtils {
         try {
             return publisher.block();
         } catch (RuntimeException e) {
-            if (e.getCause() instanceof MailboxException) {
-                throw (MailboxException) e.getCause();
+            if (e.getCause() instanceof MailboxException mailboxException) {
+                throw mailboxException;
             }
 
             throw e;
@@ -47,8 +47,8 @@ public abstract class MailboxReactorUtils {
         try {
             return publisher.blockOptional();
         } catch (RuntimeException e) {
-            if (e.getCause() instanceof MailboxException) {
-                throw (MailboxException) e.getCause();
+            if (e.getCause() instanceof MailboxException mailboxException) {
+                throw mailboxException;
             }
 
             throw e;
