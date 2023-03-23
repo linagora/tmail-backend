@@ -123,7 +123,7 @@ class ElasticSearchConfigurationTest {
             }
 
             @Test
-            void fromPropertiesShouldThrowWhenInvalidStrategy() throws Exception {
+            void fromPropertiesShouldThrowWhenInvalidStrategy() {
                 PropertiesConfiguration configuration = new PropertiesConfiguration();
                 configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
@@ -169,7 +169,7 @@ class ElasticSearchConfigurationTest {
             }
 
             @Test
-            void fromPropertiesShouldThrowWhenInvalidVerifier() throws Exception {
+            void fromPropertiesShouldThrowWhenInvalidVerifier() {
                 PropertiesConfiguration configuration = new PropertiesConfiguration();
                 configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
@@ -220,7 +220,7 @@ class ElasticSearchConfigurationTest {
         class WhenOverride {
 
             @Test
-            void fromPropertiesShouldThrowWhenOnlyTrustStorePathProvided() throws Exception {
+            void fromPropertiesShouldThrowWhenOnlyTrustStorePathProvided() {
                 PropertiesConfiguration configuration = new PropertiesConfiguration();
                 configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
@@ -233,7 +233,7 @@ class ElasticSearchConfigurationTest {
             }
 
             @Test
-            void fromPropertiesShouldThrowWhenOnlyTrustStorePasswordProvided() throws Exception {
+            void fromPropertiesShouldThrowWhenOnlyTrustStorePasswordProvided() {
                 PropertiesConfiguration configuration = new PropertiesConfiguration();
                 configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
@@ -246,7 +246,7 @@ class ElasticSearchConfigurationTest {
             }
 
             @Test
-            void fromPropertiesShouldThrowWhenTrustStoreIsNotProvided() throws Exception {
+            void fromPropertiesShouldThrowWhenTrustStoreIsNotProvided() {
                 PropertiesConfiguration configuration = new PropertiesConfiguration();
                 configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
@@ -258,7 +258,7 @@ class ElasticSearchConfigurationTest {
             }
 
             @Test
-            void fromPropertiesShouldThrowWhenTrustStorePathDoesntExist() throws Exception {
+            void fromPropertiesShouldThrowWhenTrustStorePathDoesntExist() {
                 PropertiesConfiguration configuration = new PropertiesConfiguration();
                 configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
@@ -613,7 +613,7 @@ class ElasticSearchConfigurationTest {
     }
 
     @Test
-    void fromPropertiesShouldThrowWhenOnlyUsername() throws Exception {
+    void fromPropertiesShouldThrowWhenOnlyUsername() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
@@ -625,7 +625,7 @@ class ElasticSearchConfigurationTest {
     }
 
     @Test
-    void fromPropertiesShouldThrowWhenOnlyPassword() throws Exception {
+    void fromPropertiesShouldThrowWhenOnlyPassword() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 
@@ -674,7 +674,7 @@ class ElasticSearchConfigurationTest {
     }
 
     @Test
-    void fromPropertiesShouldThrowWhenInvalidValue() throws Exception {
+    void fromPropertiesShouldThrowWhenInvalidValue() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("elasticsearch.hosts", "127.0.0.1");
 

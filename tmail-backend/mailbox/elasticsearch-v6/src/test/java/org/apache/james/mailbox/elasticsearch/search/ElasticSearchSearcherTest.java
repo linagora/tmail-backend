@@ -128,7 +128,7 @@ class ElasticSearchSearcherTest {
     }
 
     @Test
-    void searchingInALargeNumberOfMailboxesShouldReturnAllMailboxesMessagesUid() throws Exception {
+    void searchingInALargeNumberOfMailboxesShouldReturnAllMailboxesMessagesUid() {
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         int numberOfMailboxes = 700;
         List<MailboxPath> mailboxPaths = IntStream

@@ -90,13 +90,13 @@ class EncryptedMemoryServerTest implements JamesServerContract, JmapJamesServerC
 
     @Disabled("POP3 server is disabled")
     @Test
-    public void connectPOP3ServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) throws Exception {
+    public void connectPOP3ServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) {
         // POP3 server is disabled
     }
 
     @Disabled("LMTP server is disabled")
     @Test
-    public void connectLMTPServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) throws Exception {
+    public void connectLMTPServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) {
         // LMTP server is disabled
     }
 

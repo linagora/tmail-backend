@@ -51,12 +51,12 @@ public class CombinedUserDAO implements UsersDAO {
     }
 
     @Override
-    public Optional<? extends User> getUserByName(Username name) throws UsersRepositoryException {
+    public Optional<? extends User> getUserByName(Username name) {
         return cassandraUsersDAO.getUserByName(name);
     }
 
     @Override
-    public boolean contains(Username name) throws UsersRepositoryException {
+    public boolean contains(Username name) {
         return cassandraUsersDAO.contains(name);
     }
 
@@ -66,12 +66,12 @@ public class CombinedUserDAO implements UsersDAO {
     }
 
     @Override
-    public int countUsers() throws UsersRepositoryException {
+    public int countUsers() {
         return cassandraUsersDAO.countUsers();
     }
 
     @Override
-    public Iterator<Username> list() throws UsersRepositoryException {
+    public Iterator<Username> list() {
         return cassandraUsersDAO.list();
     }
 
