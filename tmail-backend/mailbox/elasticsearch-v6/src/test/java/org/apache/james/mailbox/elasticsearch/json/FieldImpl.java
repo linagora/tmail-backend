@@ -55,8 +55,7 @@ public class FieldImpl implements Field {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof  FieldImpl) {
-            FieldImpl otherField = (FieldImpl) o;
+        if (o instanceof FieldImpl otherField) {
             return Objects.equals(name, otherField.name)
                 && Objects.equals(body, otherField.body);
         }

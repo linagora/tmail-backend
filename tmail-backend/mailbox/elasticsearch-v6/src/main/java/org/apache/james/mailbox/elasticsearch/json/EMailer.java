@@ -70,8 +70,7 @@ public class EMailer implements SerializableMessage {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof EMailer) {
-            EMailer otherEMailer = (EMailer) o;
+        if (o instanceof EMailer otherEMailer) {
             return Objects.equals(name, otherEMailer.name)
                 && Objects.equals(address, otherEMailer.address)
                 && Objects.equals(domain, otherEMailer.domain);

@@ -36,8 +36,7 @@ public class IndexName {
 
     @Override
     public final boolean equals(Object o) {
-        if (o instanceof IndexName) {
-            IndexName indexName = (IndexName) o;
+        if (o instanceof IndexName indexName) {
 
             return Objects.equals(this.value, indexName.value);
         }

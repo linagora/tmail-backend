@@ -103,8 +103,8 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
             .map(EmailAddressContactMessageSerializer::deserializeEmailAddressContactMessageAsJava)
             .flatMap(message -> Mono.from(messageHandler.handler(message)))
             .flatMap(handlerResult -> {
-                if (handlerResult instanceof Failure) {
-                    return Mono.error(((Failure) handlerResult).error());
+                if (handlerResult instanceof Failure failure) {
+                    return Mono.error(failure.error());
                 }
                 ackDelivery.ack();
                 return Mono.just(handlerResult);

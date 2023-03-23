@@ -69,8 +69,8 @@ public class ES6EmailAddressContactAutoCompleteTest implements EmailAddressConta
     }
 
     private QueryBuilder extractElasticSearch6Query(QueryType queryType) {
-        if (queryType instanceof MatchQuery) {
-            return QueryBuilders.matchQuery(((MatchQuery) queryType).field(), ((MatchQuery) queryType).value());
+        if (queryType instanceof MatchQuery matchQuery) {
+            return QueryBuilders.matchQuery(matchQuery.field(), matchQuery.value());
         } else {
             return QueryBuilders.matchAllQuery();
         }
