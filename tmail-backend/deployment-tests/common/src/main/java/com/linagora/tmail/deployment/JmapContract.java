@@ -48,7 +48,7 @@ public interface JmapContract {
         authScheme.setUserName(BOB.asString());
         authScheme.setPassword(BOB_PASSWORD);
         RestAssured.requestSpecification = jmapRequestSpecBuilder
-            .setBaseUri("http://" + jmapContainer().getContainerIpAddress())
+            .setBaseUri("http://" + jmapContainer().getHost())
             .setPort(jmapContainer().getMappedPort(80))
             .setAccept(ContentType.JSON + "; jmapVersion=rfc-8621")
             .setAuth(authScheme)
@@ -87,7 +87,7 @@ public interface JmapContract {
            .setContentType(ContentType.JSON)
            .setAccept(ContentType.JSON)
            .setConfig(newConfig().encoderConfig(encoderConfig().defaultContentCharset(StandardCharsets.UTF_8)))
-           .setBaseUri("http://" + jmapContainer().getContainerIpAddress())
+           .setBaseUri("http://" + jmapContainer().getHost())
            .setPort(jmapContainer().getMappedPort(8000))
            .setAuth(new NoAuthScheme())
            .build();

@@ -149,7 +149,7 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
         }))
       .flatMap[FilterSetUpdateResult](updateResultMono => updateResultMono)
       .map(updateResult => updateResult.asFilterSetUpdateResults)
-      .reduceWith(() => FilterSetUpdateResults.empty(), FilterSetUpdateResults.merge)
+      .foldWith[FilterSetUpdateResults](FilterSetUpdateResults.empty())(FilterSetUpdateResults.merge)
 
   def updateRules(username: Username, validatedRules: List[Rule], ifInState: Option[FilterState]): SMono[FilterSetUpdateResult] = {
       SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava, convertToOptionalVersion(ifInState)))

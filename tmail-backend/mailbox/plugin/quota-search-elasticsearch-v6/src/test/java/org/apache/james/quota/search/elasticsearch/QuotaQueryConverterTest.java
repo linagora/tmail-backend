@@ -47,7 +47,9 @@ class QuotaQueryConverterTest {
 
         QueryBuilder actual = testee.from(query);
 
-        assertThat(actual).isEqualToComparingFieldByField(expected);
+        assertThat(actual)
+                .usingRecursiveComparison()
+                .isEqualTo(expected);
     }
 
     @Test
@@ -57,7 +59,9 @@ class QuotaQueryConverterTest {
 
         QueryBuilder actual = testee.from(query);
 
-        assertThat(actual).isEqualToComparingFieldByField(expected);
+        assertThat(actual)
+                .usingRecursiveComparison()
+                .isEqualTo(expected);
     }
 
     @Test
@@ -67,7 +71,8 @@ class QuotaQueryConverterTest {
 
         QueryBuilder actual = testee.from(query);
 
-        assertThat(actual).isEqualToComparingFieldByField(expected);
+        assertThat(actual).usingRecursiveComparison()
+                .isEqualTo(expected);
     }
 
     @Test
@@ -77,7 +82,8 @@ class QuotaQueryConverterTest {
 
         QueryBuilder actual = testee.from(query);
 
-        assertThat(actual).isEqualToComparingFieldByField(expected);
+        assertThat(actual).usingRecursiveComparison()
+                .isEqualTo(expected);
     }
 
 }

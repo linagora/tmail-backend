@@ -45,7 +45,7 @@ public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallba
         return new ExternalJamesConfiguration() {
             @Override
             public String getAddress() {
-                return container.getContainerIpAddress();
+                return container.getHost();
             }
 
             @Override

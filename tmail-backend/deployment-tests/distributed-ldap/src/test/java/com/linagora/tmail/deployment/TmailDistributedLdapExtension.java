@@ -107,7 +107,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
         return new ExternalJamesConfiguration() {
             @Override
             public String getAddress() {
-                return james.getContainerIpAddress();
+                return james.getHost();
             }
 
             @Override

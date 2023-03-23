@@ -52,7 +52,7 @@ class CacheRateLimitingPlan(repository: RateLimitingPlanRepository, expireDurati
       .hasElement
       .onErrorResume {
         case _: RateLimitingPlanNotFoundException => SMono.just(false)
-        case error => SMono.raiseError(error)
+        case error => SMono.error(error)
       }
       .map(_.booleanValue())
 

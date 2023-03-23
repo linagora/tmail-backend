@@ -86,7 +86,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
         return new ExternalJamesConfiguration() {
             @Override
             public String getAddress() {
-                return james.getContainerIpAddress();
+                return james.getHost();
             }
 
             @Override
