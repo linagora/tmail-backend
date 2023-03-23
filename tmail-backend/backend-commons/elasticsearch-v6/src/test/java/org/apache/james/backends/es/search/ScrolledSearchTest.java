@@ -75,7 +75,7 @@ class ScrolledSearchTest {
 
     @Test
     void scrollIterableShouldWorkWhenEmpty() {
-        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.getValue())
+        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.value())
             .scroll(TIMEOUT)
             .source(new SearchSourceBuilder()
                 .query(QueryBuilders.matchAllQuery())
@@ -88,7 +88,7 @@ class ScrolledSearchTest {
     @Test
     void scrollIterableShouldWorkWhenOneElement() {
         String id = "1";
-        client.index(new IndexRequest(INDEX_NAME.getValue())
+        client.index(new IndexRequest(INDEX_NAME.value())
                 .type(NodeMappingFactory.DEFAULT_MAPPING_NAME)
                 .id(id)
                 .source(MESSAGE, "Sample message"),
@@ -98,7 +98,7 @@ class ScrolledSearchTest {
         elasticSearch.awaitForElasticSearch();
         WAIT_CONDITION.untilAsserted(() -> hasIdsInIndex(client, id));
 
-        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.getValue())
+        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.value())
             .scroll(TIMEOUT)
             .source(new SearchSourceBuilder()
                 .query(QueryBuilders.matchAllQuery())
@@ -112,7 +112,7 @@ class ScrolledSearchTest {
     @Test
     void scrollIterableShouldWorkWhenSizeElement() {
         String id1 = "1";
-        client.index(new IndexRequest(INDEX_NAME.getValue())
+        client.index(new IndexRequest(INDEX_NAME.value())
                 .type(NodeMappingFactory.DEFAULT_MAPPING_NAME)
                 .id(id1)
                 .source(MESSAGE, "Sample message"),
@@ -120,7 +120,7 @@ class ScrolledSearchTest {
             .block();
 
         String id2 = "2";
-        client.index(new IndexRequest(INDEX_NAME.getValue())
+        client.index(new IndexRequest(INDEX_NAME.value())
                 .type(NodeMappingFactory.DEFAULT_MAPPING_NAME)
                 .id(id2)
                 .source(MESSAGE, "Sample message"),
@@ -130,7 +130,7 @@ class ScrolledSearchTest {
         elasticSearch.awaitForElasticSearch();
         WAIT_CONDITION.untilAsserted(() -> hasIdsInIndex(client, id1, id2));
 
-        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.getValue())
+        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.value())
             .scroll(TIMEOUT)
             .source(new SearchSourceBuilder()
                 .query(QueryBuilders.matchAllQuery())
@@ -144,7 +144,7 @@ class ScrolledSearchTest {
     @Test
     void scrollIterableShouldWorkWhenMoreThanSizeElement() {
         String id1 = "1";
-        client.index(new IndexRequest(INDEX_NAME.getValue())
+        client.index(new IndexRequest(INDEX_NAME.value())
                 .type(NodeMappingFactory.DEFAULT_MAPPING_NAME)
                 .id(id1)
                 .source(MESSAGE, "Sample message"),
@@ -152,7 +152,7 @@ class ScrolledSearchTest {
             .block();
 
         String id2 = "2";
-        client.index(new IndexRequest(INDEX_NAME.getValue())
+        client.index(new IndexRequest(INDEX_NAME.value())
                 .type(NodeMappingFactory.DEFAULT_MAPPING_NAME)
                 .id(id2)
                 .source(MESSAGE, "Sample message"),
@@ -160,7 +160,7 @@ class ScrolledSearchTest {
             .block();
 
         String id3 = "3";
-        client.index(new IndexRequest(INDEX_NAME.getValue())
+        client.index(new IndexRequest(INDEX_NAME.value())
                 .type(NodeMappingFactory.DEFAULT_MAPPING_NAME)
                 .id(id3)
                 .source(MESSAGE, "Sample message"),
@@ -170,7 +170,7 @@ class ScrolledSearchTest {
         elasticSearch.awaitForElasticSearch();
         WAIT_CONDITION.untilAsserted(() -> hasIdsInIndex(client, id1, id2, id3));
 
-        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.getValue())
+        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.value())
             .scroll(TIMEOUT)
             .source(new SearchSourceBuilder()
                 .query(QueryBuilders.matchAllQuery())
@@ -182,7 +182,7 @@ class ScrolledSearchTest {
     }
 
     private void hasIdsInIndex(ReactorElasticSearchClient client, String... ids) {
-        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.getValue())
+        SearchRequest searchRequest = new SearchRequest(INDEX_NAME.value())
             .scroll(TIMEOUT)
             .source(new SearchSourceBuilder()
                 .query(QueryBuilders.matchAllQuery()));

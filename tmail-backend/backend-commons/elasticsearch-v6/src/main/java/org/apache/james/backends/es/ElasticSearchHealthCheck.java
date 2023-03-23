@@ -55,7 +55,7 @@ public class ElasticSearchHealthCheck implements HealthCheck {
     @Override
     public Mono<Result> check() {
         String[] indices = indexNames.stream()
-            .map(IndexName::getValue)
+            .map(IndexName::value)
             .toArray(String[]::new);
         ClusterHealthRequest request = Requests.clusterHealthRequest(indices);
 

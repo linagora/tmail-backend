@@ -27,33 +27,18 @@ import spark.Route;
 import spark.Service;
 
 public class TeamMailboxManagementRoutes implements Routes {
-    public static class TeamMailboxResponse {
-        static TeamMailboxResponse from(TeamMailbox teamMailbox) {
-            Preconditions.checkNotNull(teamMailbox);
-            return new TeamMailboxResponse(teamMailbox.mailboxName().asString(), teamMailbox.asMailAddress().asString());
-        }
+    public record TeamMailboxResponse(String name, String emailAddress) {
+            static TeamMailboxResponse from(TeamMailbox teamMailbox) {
+                Preconditions.checkNotNull(teamMailbox);
+                return new TeamMailboxResponse(teamMailbox.mailboxName().asString(), teamMailbox.asMailAddress().asString());
+            }
 
-        static TeamMailboxResponse of(String name, String emailAddress) {
-            Preconditions.checkNotNull(name);
-            Preconditions.checkNotNull(emailAddress);
-            return new TeamMailboxResponse(name, emailAddress);
-        }
+            static TeamMailboxResponse of(String name, String emailAddress) {
+                Preconditions.checkNotNull(name);
+                Preconditions.checkNotNull(emailAddress);
+                return new TeamMailboxResponse(name, emailAddress);
+            }
 
-        private final String name;
-        private final String emailAddress;
-
-        public TeamMailboxResponse(String name, String emailAddress) {
-            this.name = name;
-            this.emailAddress = emailAddress;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getEmailAddress() {
-            return emailAddress;
-        }
     }
 
     static class TeamMailboxMemberResponse {

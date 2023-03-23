@@ -102,7 +102,7 @@ class HeaderCollectionTest {
             .build();
 
         assertThat(headerCollection.getFromAddressSet())
-            .extracting(EMailer::getName)
+            .extracting(EMailer::name)
             .contains(Optional.ofNullable(nameOfFromAddress));
     }
 

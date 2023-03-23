@@ -26,11 +26,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 
-public class EMailer implements SerializableMessage {
-
-    private final Optional<String> name;
-    private final String address;
-    private final String domain;
+public record EMailer(Optional<String> name, String address, String domain) implements SerializableMessage {
 
     public EMailer(Optional<String> name, String address, String domain) {
         this.name = name;
@@ -48,18 +44,21 @@ public class EMailer implements SerializableMessage {
         return s;
     }
 
+    @Override
     @JsonProperty(JsonMessageConstants.EMailer.NAME)
-    public Optional<String> getName() {
+    public Optional<String> name() {
         return name;
     }
 
+    @Override
     @JsonProperty(JsonMessageConstants.EMailer.ADDRESS)
-    public String getAddress() {
+    public String address() {
         return address;
     }
 
+    @Override
     @JsonProperty(JsonMessageConstants.EMailer.DOMAIN)
-    public String getDomain() {
+    public String domain() {
         return domain;
     }
 
@@ -72,23 +71,18 @@ public class EMailer implements SerializableMessage {
     public final boolean equals(Object o) {
         if (o instanceof EMailer otherEMailer) {
             return Objects.equals(name, otherEMailer.name)
-                && Objects.equals(address, otherEMailer.address)
-                && Objects.equals(domain, otherEMailer.domain);
+                    && Objects.equals(address, otherEMailer.address)
+                    && Objects.equals(domain, otherEMailer.domain);
         }
         return false;
     }
 
     @Override
-    public final int hashCode() {
-        return Objects.hash(name, address, domain);
-    }
-
-    @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-            .add("name", name)
-            .add("address", address)
-            .add("domain", domain)
-            .toString();
+                .add("name", name)
+                .add("address", address)
+                .add("domain", domain)
+                .toString();
     }
 }

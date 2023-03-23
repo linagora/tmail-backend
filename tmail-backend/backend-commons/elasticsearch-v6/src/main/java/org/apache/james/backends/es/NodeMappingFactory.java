@@ -64,7 +64,7 @@ public class NodeMappingFactory {
     @SuppressWarnings("deprecation")
     public static boolean mappingAlreadyExist(ReactorElasticSearchClient client, IndexName indexName) throws IOException {
         try {
-            client.getLowLevelClient().performRequest("GET", "/" + indexName.getValue() + "/_mapping/" + NodeMappingFactory.DEFAULT_MAPPING_NAME);
+            client.getLowLevelClient().performRequest("GET", "/" + indexName.value() + "/_mapping/" + NodeMappingFactory.DEFAULT_MAPPING_NAME);
             return true;
         } catch (ResponseException e) {
             if (e.getResponse().getStatusLine().getStatusCode() != HttpStatus.SC_NOT_FOUND) {
@@ -76,7 +76,7 @@ public class NodeMappingFactory {
 
     public static void createMapping(ReactorElasticSearchClient client, IndexName indexName, XContentBuilder mappingsSources) throws IOException {
         client.indices().putMapping(
-            new PutMappingRequest(indexName.getValue())
+            new PutMappingRequest(indexName.value())
                 .type(NodeMappingFactory.DEFAULT_MAPPING_NAME)
                 .source(mappingsSources),
             RequestOptions.DEFAULT);

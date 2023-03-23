@@ -51,7 +51,7 @@ public class TasksHeathCheck implements HealthCheck {
     public Publisher<Result> check() {
         ZonedDateTime now = ZonedDateTime.now(clock);
 
-        if (configuration.getTaskTypeDurationMap().isEmpty()) {
+        if (configuration.taskTypeDurationMap().isEmpty()) {
             return Mono.just(Result.healthy(COMPONENT_NAME));
         } else {
             return Flux.from(taskExecutionDetailsProjection.listReactive())
@@ -77,7 +77,7 @@ public class TasksHeathCheck implements HealthCheck {
     }
 
     private Predicate<TaskExecutionDetails> complyAnyOfTasksHealthCheck(ZonedDateTime now) {
-        return finishedTask -> configuration.getTaskTypeDurationMap().entrySet()
+        return finishedTask -> configuration.taskTypeDurationMap().entrySet()
             .stream()
             .anyMatch(entry -> matchTheTaskTypeAndInTheRequiredExecutionDuration(entry, finishedTask, now));
     }
@@ -99,7 +99,7 @@ public class TasksHeathCheck implements HealthCheck {
     }
 
     private boolean allTasksFinishedWithinTime(Long count) {
-        return count == configuration.getTaskTypeDurationMap().size();
+        return count == configuration.taskTypeDurationMap().size();
     }
 
     private boolean noTaskFinishedWithinTime(Long count) {
