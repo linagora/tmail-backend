@@ -52,7 +52,7 @@ object LimitType {
     limitTypeName match {
       case SIZE => Right(Size(AllowedQuantity.liftOrThrow(allowedQuantity)))
       case COUNT => Right(Count(AllowedQuantity.liftOrThrow(allowedQuantity)))
-      case _ => Left(new IllegalArgumentException(s"`${limitTypeName}` is invalid"))
+      case _ => Left(new IllegalArgumentException(s"`$limitTypeName` is invalid"))
     }
   }
 }
@@ -123,7 +123,7 @@ object OperationLimitations {
       case TRANSIT_LIMITATIONS_NAME => Right(TransitLimitations(rateLimitations))
       case RELAY_LIMITATIONS_NAME => Right(RelayLimitations(rateLimitations))
       case DELIVERY_LIMITATIONS_NAME => Right(DeliveryLimitations(rateLimitations))
-      case _ => Left(new IllegalArgumentException(s"`${operationName}` is invalid"))
+      case _ => Left(new IllegalArgumentException(s"`$operationName` is invalid"))
     }
 }
 

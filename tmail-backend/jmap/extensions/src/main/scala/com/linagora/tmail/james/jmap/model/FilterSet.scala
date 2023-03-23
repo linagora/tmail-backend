@@ -40,9 +40,9 @@ case class FilterSetResponse(accountId: AccountId,
 case class FilterSetUpdateResponse(value: JsObject)
 
 object FilterSetError {
-  def invalidArgument(description: Option[SetErrorDescription]) = FilterSetError(invalidArgumentValue, description)
-  def serverFail(description: Option[SetErrorDescription]) = FilterSetError(serverFailValue, description)
-  def stateMismatch(description: Option[SetErrorDescription]) = FilterSetError(stateMismatchValue, description)
+  def invalidArgument(description: Option[SetErrorDescription]): FilterSetError = FilterSetError(invalidArgumentValue, description)
+  def serverFail(description: Option[SetErrorDescription]): FilterSetError = FilterSetError(serverFailValue, description)
+  def stateMismatch(description: Option[SetErrorDescription]): FilterSetError = FilterSetError(stateMismatchValue, description)
 }
 
 object RuleWithId {

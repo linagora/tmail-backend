@@ -274,7 +274,7 @@ trait LinagoraEmailSendMethodContract {
            |  "methodCalls": [[
            |    "Email/get",
            |    {
-           |      "accountId": "${ANDRE_ACCOUNT_ID}",
+           |      "accountId": "$ANDRE_ACCOUNT_ID",
            |      "ids": ["${listAndreMessageResult.head.getMessageId.serialize()}"],
            |      "fetchAllBodyValues": true
            |    },

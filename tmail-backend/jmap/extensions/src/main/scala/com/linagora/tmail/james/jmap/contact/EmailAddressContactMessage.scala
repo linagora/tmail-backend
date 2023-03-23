@@ -22,7 +22,7 @@ object TmailContactMessageType {
       case ADDITION => Right(Addition)
       case REMOVAL => Right(Removal)
       case UPDATE => Right(Update)
-      case _ => Left(new IllegalArgumentException(s"`${value}` is invalid"))
+      case _ => Left(new IllegalArgumentException(s"`$value` is invalid"))
     }
 }
 
@@ -50,7 +50,7 @@ object TmailContactMessageScope {
     value.toLowerCase(Locale.US) match {
       case USER => Right(User)
       case DOMAIN => Right(Domain)
-      case _ => Left(new IllegalArgumentException(s"`${value}` is invalid"))
+      case _ => Left(new IllegalArgumentException(s"`$value` is invalid"))
     }
 }
 

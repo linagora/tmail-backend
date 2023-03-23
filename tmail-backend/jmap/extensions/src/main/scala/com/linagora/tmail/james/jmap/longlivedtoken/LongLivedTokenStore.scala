@@ -30,7 +30,7 @@ object LongLivedTokenSecret {
 }
 
 object DeviceId {
-  val MAX_LENGTH: Int = 500;
+  val MAX_LENGTH: Int = 500
 }
 
 case class DeviceId(value: String) extends AnyVal {

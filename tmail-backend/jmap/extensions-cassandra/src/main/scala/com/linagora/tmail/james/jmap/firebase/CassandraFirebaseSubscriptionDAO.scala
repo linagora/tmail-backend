@@ -21,12 +21,12 @@ import scala.jdk.javaapi.CollectionConverters
 
 object CassandraFirebaseSubscriptionTable {
   val TABLE_NAME = "firebase_subscription"
-  val USER = CqlIdentifier.fromCql("user")
-  val DEVICE_CLIENT_ID = CqlIdentifier.fromCql("device_client_id")
-  val ID = CqlIdentifier.fromCql("id")
-  val EXPIRES = CqlIdentifier.fromCql("expires")
-  val TYPES = CqlIdentifier.fromCql("types")
-  val TOKEN = CqlIdentifier.fromCql("fcm_token")
+  val USER: CqlIdentifier = CqlIdentifier.fromCql("user")
+  val DEVICE_CLIENT_ID: CqlIdentifier = CqlIdentifier.fromCql("device_client_id")
+  val ID: CqlIdentifier = CqlIdentifier.fromCql("id")
+  val EXPIRES: CqlIdentifier = CqlIdentifier.fromCql("expires")
+  val TYPES: CqlIdentifier = CqlIdentifier.fromCql("types")
+  val TOKEN: CqlIdentifier = CqlIdentifier.fromCql("fcm_token")
 
   val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
     .comment("Hold user firebase push subscriptions data")

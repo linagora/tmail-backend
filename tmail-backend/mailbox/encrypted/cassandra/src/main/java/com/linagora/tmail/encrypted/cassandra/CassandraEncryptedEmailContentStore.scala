@@ -35,7 +35,7 @@ object CassandraEncryptedEmailContentStore {
 
 class CassandraEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
                                                     encryptedEmailDAO: CassandraEncryptedEmailDAO) extends EncryptedEmailContentStore {
-  val bucketName: BucketName = blobStore.getDefaultBucketName;
+  val bucketName: BucketName = blobStore.getDefaultBucketName
 
   override def store(messageId: MessageId, encryptedEmailContent: EncryptedEmailContent): Publisher[Unit] =
     SFlux.fromIterable(encryptedEmailContent.encryptedAttachmentContents)

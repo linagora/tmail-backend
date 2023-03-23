@@ -180,7 +180,7 @@ class TeamMailboxesQuotaExtensionsContract {
       .when()
         .post()
       .`then`
-        .body("methodResponses[1][1].list.subject", hasItem("Warning: Your email usage just exceeded a configured threshold"));
+        .body("methodResponses[1][1].list.subject", hasItem("Warning: Your email usage just exceeded a configured threshold"))
     })
   }
 

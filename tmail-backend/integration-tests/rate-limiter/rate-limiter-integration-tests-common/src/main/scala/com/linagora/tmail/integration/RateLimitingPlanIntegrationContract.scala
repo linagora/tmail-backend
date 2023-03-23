@@ -204,7 +204,7 @@ trait RateLimitingPlanIntegrationContract {
          |    {
          |      "name": "receivedMailsPerHour",
          |      "periodInSeconds": 3600,
-         |      "count": ${countLimitPlanB},
+         |      "count": $countLimitPlanB,
          |      "size": 2000048
          |    }
          |  ]
@@ -236,7 +236,7 @@ trait RateLimitingPlanIntegrationContract {
     IntStream.range(0, countLimitPlanB)
       .forEach(index =>
         messageSender(server).authenticate(SENDER2.asString(), PASSWORD)
-          .sendMessageWithHeaders(SENDER2.asString, RECIPIENT3.asString, s"""subject: test3+${index}\r\rcontent 3\r.\r"""))
+          .sendMessageWithHeaders(SENDER2.asString, RECIPIENT3.asString, s"""subject: test3+$index\r\rcontent 3\r.\r"""))
 
     awaitAtMostOneMinute.until(() => testImapClient(server)
       .login(RECIPIENT3, PASSWORD)
