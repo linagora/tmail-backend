@@ -27,7 +27,7 @@ import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SearchConfiguration {
+public record SearchConfiguration(org.apache.james.SearchConfiguration.Implementation implementation) {
     public static final String SEARCH_CONFIGURATION_NAME = "search";
 
     public enum Implementation {
@@ -70,13 +70,4 @@ public class SearchConfiguration {
     private static final Logger LOGGER = LoggerFactory.getLogger(SearchConfiguration.class);
 
 
-    private final Implementation implementation;
-
-    public SearchConfiguration(Implementation implementation) {
-        this.implementation = implementation;
-    }
-
-    public Implementation getImplementation() {
-        return implementation;
-    }
 }

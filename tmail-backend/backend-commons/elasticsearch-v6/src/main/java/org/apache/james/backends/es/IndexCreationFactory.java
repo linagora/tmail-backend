@@ -110,7 +110,7 @@ public class IndexCreationFactory {
                     .updateAliases(
                         new IndicesAliasesRequest().addAliasAction(
                             new AliasActions(AliasActions.Type.ADD)
-                                .index(indexName.getValue())
+                                .index(indexName.value())
                                 .alias(aliasName.getValue())),
                         RequestOptions.DEFAULT);
             }
@@ -124,13 +124,13 @@ public class IndexCreationFactory {
         private void createIndexIfNeeded(ReactorElasticSearchClient client, IndexName indexName, XContentBuilder settings,
                                          Optional<XContentBuilder> mapping) throws IOException {
             try {
-                CreateIndexRequest request = new CreateIndexRequest(indexName.getValue()).source(settings);
+                CreateIndexRequest request = new CreateIndexRequest(indexName.value()).source(settings);
                 mapping.ifPresent(mappingContent -> request.mapping(DEFAULT_MAPPING_NAME, mappingContent));
                 client.indices()
                     .create(request, RequestOptions.DEFAULT);
             } catch (ElasticsearchStatusException exception) {
                 if (exception.getMessage().contains(INDEX_ALREADY_EXISTS_EXCEPTION_MESSAGE)) {
-                    LOGGER.info("Index [{}] already exists", indexName.getValue());
+                    LOGGER.info("Index [{}] already exists", indexName.value());
                 } else {
                     throw exception;
                 }

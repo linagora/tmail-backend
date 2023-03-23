@@ -131,7 +131,7 @@ public class SearchModuleChooser {
     }
 
     public static List<Module> chooseModules(SearchConfiguration searchConfiguration) {
-        return switch (searchConfiguration.getImplementation()) {
+        return switch (searchConfiguration.implementation()) {
             case ElasticSearch -> ImmutableList.of(
                 new ElasticSearchClientModule(),
                 new ElasticSearchMailboxModule(),

@@ -25,23 +25,10 @@ import org.elasticsearch.common.Strings;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 
-public class UpdatedRepresentation {
-    private final DocumentId id;
-    private final String updatedDocumentPart;
-
-    public UpdatedRepresentation(DocumentId id, String updatedDocumentPart) {
+public record UpdatedRepresentation(DocumentId id, String updatedDocumentPart) {
+    public UpdatedRepresentation {
         Preconditions.checkNotNull(id);
         Preconditions.checkArgument(!Strings.isNullOrEmpty(updatedDocumentPart), "Updated document must be specified");
-        this.id = id;
-        this.updatedDocumentPart = updatedDocumentPart;
-    }
-
-    public DocumentId getId() {
-        return id;
-    }
-
-    public String getUpdatedDocumentPart() {
-        return updatedDocumentPart;
     }
 
     @Override
@@ -51,11 +38,6 @@ public class UpdatedRepresentation {
                 && Objects.equals(updatedDocumentPart, other.updatedDocumentPart);
         }
         return false;
-    }
-
-    @Override
-    public final int hashCode() {
-        return Objects.hash(id, updatedDocumentPart);
     }
 
     @Override

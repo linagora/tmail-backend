@@ -460,7 +460,7 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
     private void awaitForElasticSearch(QueryBuilder query, long totalHits) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
-                new SearchRequest(MailboxElasticSearchConstants.DEFAULT_MAILBOX_INDEX.getValue())
+                new SearchRequest(MailboxElasticSearchConstants.DEFAULT_MAILBOX_INDEX.value())
                     .source(new SearchSourceBuilder().query(query)),
                 RequestOptions.DEFAULT)
                 .block()

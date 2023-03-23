@@ -60,16 +60,10 @@ import reactor.util.retry.Retry;
 
 public class ClientProvider implements Provider<ReactorElasticSearchClient> {
 
-    private static class HttpAsyncClientConfigurer {
+    private record HttpAsyncClientConfigurer(ElasticSearchConfiguration configuration) {
 
         private static final TrustStrategy TRUST_ALL = (x509Certificates, authType) -> true;
         private static final HostnameVerifier ACCEPT_ANY_HOSTNAME = (hostname, sslSession) -> true;
-
-        private final ElasticSearchConfiguration configuration;
-
-        private HttpAsyncClientConfigurer(ElasticSearchConfiguration configuration) {
-            this.configuration = configuration;
-        }
 
         private HttpAsyncClientBuilder configure(HttpAsyncClientBuilder builder) {
             configureAuthentication(builder);
@@ -98,7 +92,8 @@ public class ClientProvider implements Provider<ReactorElasticSearchClient> {
                 builder
                     .setSSLContext(sslContext())
                     .setSSLHostnameVerifier(hostnameVerifier());
-            } catch (NoSuchAlgorithmException | KeyManagementException | KeyStoreException | CertificateException | IOException e) {
+            } catch (NoSuchAlgorithmException | KeyManagementException | KeyStoreException | CertificateException |
+                     IOException e) {
                 throw new RuntimeException("Cannot set SSL options to the builder", e);
             }
         }

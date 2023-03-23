@@ -61,7 +61,7 @@ public class ES6EmailAddressContactAutoCompleteTest implements EmailAddressConta
     public void awaitDocumentsIndexed(QueryType queryType, long documentCount) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
-                    new SearchRequest(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
+                    new SearchRequest(DEFAULT_CONFIGURATION.getUserContactIndexName().value(), DEFAULT_CONFIGURATION.getDomainContactIndexName().value())
                         .source(new SearchSourceBuilder().query(extractElasticSearch6Query(queryType))),
                     RequestOptions.DEFAULT)
                 .block()

@@ -20,13 +20,13 @@ class TasksHealthCheckConfigurationTest {
 
     @Test
     void emptyStringCaseShouldReturnEmptyMap() {
-        assertThat(TasksHealthCheckConfiguration.from("").getTaskTypeDurationMap())
+        assertThat(TasksHealthCheckConfiguration.from("").taskTypeDurationMap())
             .isEmpty();
     }
 
     @Test
     void normalCaseShouldReturnExactMap() {
-        assertThat(TasksHealthCheckConfiguration.from("TaskAName:2day,TaskBName:2month,TaskCName:2week").getTaskTypeDurationMap())
+        assertThat(TasksHealthCheckConfiguration.from("TaskAName:2day,TaskBName:2month,TaskCName:2week").taskTypeDurationMap())
             .containsExactlyInAnyOrderEntriesOf(Map.of(
                 TaskType.of("TaskAName"), ChronoUnit.DAYS.getDuration().multipliedBy(2),
                 TaskType.of("TaskBName"), ChronoUnit.MONTHS.getDuration().multipliedBy(2),
@@ -35,7 +35,7 @@ class TasksHealthCheckConfigurationTest {
 
     @Test
     void useAEmptyStringEntryShouldIgnoreIt() {
-        assertThat(TasksHealthCheckConfiguration.from("TaskAName:2day,,TaskCName:2week").getTaskTypeDurationMap())
+        assertThat(TasksHealthCheckConfiguration.from("TaskAName:2day,,TaskCName:2week").taskTypeDurationMap())
             .containsExactlyInAnyOrderEntriesOf(Map.of(
                 TaskType.of("TaskAName"), ChronoUnit.DAYS.getDuration().multipliedBy(2),
                 TaskType.of("TaskCName"), ChronoUnit.WEEKS.getDuration().multipliedBy(2)));

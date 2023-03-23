@@ -89,8 +89,8 @@ public class ElasticSearchIndexer {
         updatedDocumentParts.forEach(updatedDocumentPart -> request.add(
             new UpdateRequest(aliasName.getValue(),
                 NodeMappingFactory.DEFAULT_MAPPING_NAME,
-                updatedDocumentPart.getId().asString())
-                .doc(updatedDocumentPart.getUpdatedDocumentPart(), XContentType.JSON)
+                updatedDocumentPart.id().asString())
+                .doc(updatedDocumentPart.updatedDocumentPart(), XContentType.JSON)
                 .routing(routingKey.asString())));
 
         return client.bulk(request, RequestOptions.DEFAULT)

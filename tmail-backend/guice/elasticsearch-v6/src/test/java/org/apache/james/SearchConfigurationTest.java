@@ -37,7 +37,7 @@ class SearchConfigurationTest {
 
     @Test
     void searchImplementationShouldReturnElasticSearchByDefault() throws Exception {
-        assertThat(SearchConfiguration.from(new PropertiesConfiguration()).getImplementation())
+        assertThat(SearchConfiguration.from(new PropertiesConfiguration()).implementation())
             .isEqualTo(SearchConfiguration.Implementation.ElasticSearch);
     }
 
@@ -45,7 +45,7 @@ class SearchConfigurationTest {
     void searchImplementationShouldReturnElasticSearchWhenSetToElasticSearch() throws Exception {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("implementation", "ElasticSearch");
-        assertThat(SearchConfiguration.from(configuration).getImplementation())
+        assertThat(SearchConfiguration.from(configuration).implementation())
                 .isEqualTo(SearchConfiguration.Implementation.ElasticSearch);
     }
 
@@ -53,7 +53,7 @@ class SearchConfigurationTest {
     void searchImplementationShouldReturnElasticSearchWhenSetToElasticSearchWithAlternativeCase() throws Exception {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("implementation", "elasticsearch");
-        assertThat(SearchConfiguration.from(configuration).getImplementation())
+        assertThat(SearchConfiguration.from(configuration).implementation())
                 .isEqualTo(SearchConfiguration.Implementation.ElasticSearch);
     }
 
@@ -61,7 +61,7 @@ class SearchConfigurationTest {
     void searchImplementationShouldReturnScanningSearchWhenSetToScanningSearch() throws Exception {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("implementation", "scanning");
-        assertThat(SearchConfiguration.from(configuration).getImplementation())
+        assertThat(SearchConfiguration.from(configuration).implementation())
                 .isEqualTo(SearchConfiguration.Implementation.Scanning);
     }
 }

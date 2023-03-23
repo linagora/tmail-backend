@@ -87,7 +87,7 @@ class ElasticSearchIndexerTest {
         elasticSearch.awaitForElasticSearch();
 
         SearchResponse searchResponse = client.search(
-            new SearchRequest(INDEX_NAME.getValue())
+            new SearchRequest(INDEX_NAME.value())
                 .source(new SearchSourceBuilder().query(QueryBuilders.matchQuery("message", "trying"))),
             RequestOptions.DEFAULT)
             .block();
@@ -112,14 +112,14 @@ class ElasticSearchIndexerTest {
 
 
         SearchResponse searchResponse = client.search(
-            new SearchRequest(INDEX_NAME.getValue())
+            new SearchRequest(INDEX_NAME.value())
                 .source(new SearchSourceBuilder().query(QueryBuilders.matchQuery("message", "mastering"))),
             RequestOptions.DEFAULT)
             .block();
         assertThat(searchResponse.getHits().getTotalHits()).isEqualTo(1);
 
         SearchResponse searchResponse2 = client.search(
-            new SearchRequest(INDEX_NAME.getValue())
+            new SearchRequest(INDEX_NAME.value())
                 .source(new SearchSourceBuilder().query(QueryBuilders.matchQuery("field", "unchanged"))),
             RequestOptions.DEFAULT)
             .block();
@@ -168,7 +168,7 @@ class ElasticSearchIndexerTest {
         
         CALMLY_AWAIT.atMost(Duration.ofSeconds(10))
             .until(() -> client.search(
-                    new SearchRequest(INDEX_NAME.getValue())
+                    new SearchRequest(INDEX_NAME.value())
                         .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery())),
                     RequestOptions.DEFAULT)
                 .block()
@@ -198,7 +198,7 @@ class ElasticSearchIndexerTest {
         
         CALMLY_AWAIT.atMost(Duration.ofSeconds(10))
             .until(() -> client.search(
-                    new SearchRequest(INDEX_NAME.getValue())
+                    new SearchRequest(INDEX_NAME.value())
                         .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery())),
                     RequestOptions.DEFAULT)
                 .block()
@@ -217,7 +217,7 @@ class ElasticSearchIndexerTest {
         elasticSearch.awaitForElasticSearch();
         
         SearchResponse searchResponse = client.search(
-            new SearchRequest(INDEX_NAME.getValue())
+            new SearchRequest(INDEX_NAME.value())
                 .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery())),
             RequestOptions.DEFAULT)
             .block();
@@ -246,7 +246,7 @@ class ElasticSearchIndexerTest {
         elasticSearch.awaitForElasticSearch();
 
         SearchResponse searchResponse = client.search(
-            new SearchRequest(INDEX_NAME.getValue())
+            new SearchRequest(INDEX_NAME.value())
                 .source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery())),
             RequestOptions.DEFAULT)
             .block();

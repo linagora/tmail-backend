@@ -23,16 +23,7 @@ import java.util.Objects;
 
 import com.google.common.base.MoreObjects;
 
-public class IndexName {
-    private final String value;
-
-    public IndexName(String value) {
-        this.value = value;
-    }
-
-    public String getValue() {
-        return value;
-    }
+public record IndexName(String value) {
 
     @Override
     public final boolean equals(Object o) {
@@ -41,11 +32,6 @@ public class IndexName {
             return Objects.equals(this.value, indexName.value);
         }
         return false;
-    }
-
-    @Override
-    public final int hashCode() {
-        return Objects.hash(value);
     }
 
     @Override
