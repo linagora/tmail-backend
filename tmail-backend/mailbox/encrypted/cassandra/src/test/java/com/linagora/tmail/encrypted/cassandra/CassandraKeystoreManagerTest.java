@@ -23,7 +23,7 @@ public class CassandraKeystoreManagerTest implements KeystoreManagerContract {
 
     @BeforeEach
     void setUp(CassandraCluster cassandra) {
-        cassandraKeystoreDAO = new CassandraKeystoreDAO(cassandra.getConf(), cassandra.getTypesProvider());
+        cassandraKeystoreDAO = new CassandraKeystoreDAO(cassandra.getConf());
         keystore = new CassandraKeystoreManager(cassandraKeystoreDAO);
     }
 

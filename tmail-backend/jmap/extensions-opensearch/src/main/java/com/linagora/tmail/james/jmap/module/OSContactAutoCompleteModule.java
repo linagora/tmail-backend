@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.module;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
