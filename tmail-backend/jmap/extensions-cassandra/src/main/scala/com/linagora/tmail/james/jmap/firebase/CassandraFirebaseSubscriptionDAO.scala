@@ -17,7 +17,6 @@ import org.apache.james.jmap.api.change.TypeStateFactory
 import org.apache.james.jmap.api.model.TypeName
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import scala.collection.immutable.Seq
 import scala.jdk.javaapi.CollectionConverters
 
 object CassandraFirebaseSubscriptionTable {
@@ -105,6 +104,6 @@ class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateF
 
   private def toTypes(row: Row): Seq[TypeName] =
     CollectionConverters.asScala(row.get(TYPES, FROZEN_OF_STRINGS_CODEC))
-      .map(string => typeStateFactory.parse(string).right.get)
+      .flatMap(string => typeStateFactory.parse(string).toSeq)
       .toSeq
 }

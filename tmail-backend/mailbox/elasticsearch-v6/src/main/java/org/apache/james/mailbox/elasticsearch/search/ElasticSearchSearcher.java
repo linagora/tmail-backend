@@ -122,7 +122,7 @@ public class ElasticSearchSearcher {
     }
 
     private int computeRequiredSize(Optional<Integer> limit) {
-        return limit.map(value -> Math.min(value.intValue(), size))
+        return limit.map(value -> Math.min(value, size))
             .orElse(size);
     }
 
