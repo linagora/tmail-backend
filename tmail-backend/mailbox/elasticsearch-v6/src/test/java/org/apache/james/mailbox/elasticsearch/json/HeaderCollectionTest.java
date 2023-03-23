@@ -38,7 +38,7 @@ class HeaderCollectionTest {
     static class UTF8FromHeaderTestSource implements ArgumentsProvider {
 
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
             return Stream.of(
                 Arguments.of("=?UTF-8?B?RnLDqWTDqXJpYyBNQVJUSU4=?= <fmartin@linagora.com>, Graham CROSMARIE <gcrosmarie@linagora.com>", "Frédéric MARTIN"),
                 Arguments.of("=?UTF-8?Q?=C3=9Csteli=C4=9Fhan_Ma=C5=9Frapa?= <ustelighanmasrapa@domain.tld>", "Üsteliğhan Maşrapa"),

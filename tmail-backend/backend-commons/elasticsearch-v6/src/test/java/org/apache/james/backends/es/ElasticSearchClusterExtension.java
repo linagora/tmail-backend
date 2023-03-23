@@ -92,17 +92,17 @@ class ElasticSearchClusterExtension implements AfterAllCallback, BeforeAllCallba
     }
 
     @Override
-    public void beforeAll(ExtensionContext extensionContext) throws Exception {
+    public void beforeAll(ExtensionContext extensionContext) {
         esCluster.start();
     }
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) throws Exception {
+    public void afterEach(ExtensionContext extensionContext) {
         esCluster.cleanUp();
     }
 
     @Override
-    public void afterAll(ExtensionContext extensionContext) throws Exception {
+    public void afterAll(ExtensionContext extensionContext) {
         esCluster.stop();
     }
 

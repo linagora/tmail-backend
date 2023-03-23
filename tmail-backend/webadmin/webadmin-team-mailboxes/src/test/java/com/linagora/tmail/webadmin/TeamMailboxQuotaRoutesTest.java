@@ -382,7 +382,7 @@ public class TeamMailboxQuotaRoutesTest {
         }
 
         @Test
-        void putQuotaWithNegativeCountShouldFail() throws Exception {
+        void putQuotaWithNegativeCountShouldFail() {
             Map<String, Object> errors = with()
                 .body("{\"count\":-2,\"size\":42}")
                 .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)
@@ -421,7 +421,7 @@ public class TeamMailboxQuotaRoutesTest {
         }
 
         @Test
-        void putQuotaWithNegativeSizeShouldFail() throws Exception {
+        void putQuotaWithNegativeSizeShouldFail() {
             Map<String, Object> errors = with()
                 .body("{\"count\":52,\"size\":-3}")
                 .put("/" + TEAM_MAILBOX.mailboxName().asString() + "/" + LIMIT_PATH)

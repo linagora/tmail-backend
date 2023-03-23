@@ -357,7 +357,7 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
 
     @Disabled("MAILBOX-403 Relaxed the matching constraints for email addresses in text bodies to reduce ElasticSearch disk space usage")
     @Test
-    public void textShouldNotMatchOtherAddressesOfTheSameDomain() throws Exception {
+    public void textShouldNotMatchOtherAddressesOfTheSameDomain() {
 
     }
 

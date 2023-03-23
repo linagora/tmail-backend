@@ -86,7 +86,7 @@ class ScrolledSearchTest {
     }
 
     @Test
-    void scrollIterableShouldWorkWhenOneElement() throws Exception {
+    void scrollIterableShouldWorkWhenOneElement() {
         String id = "1";
         client.index(new IndexRequest(INDEX_NAME.getValue())
                 .type(NodeMappingFactory.DEFAULT_MAPPING_NAME)

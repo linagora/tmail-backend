@@ -47,7 +47,7 @@ public class OSContactAutoCompleteModule extends AbstractModule {
             this.client = client;
         }
 
-        void createIndex() throws IOException {
+        void createIndex() {
             ContactIndexCreationUtil.createIndices(client, openSearchConfiguration, contactConfiguration);
         }
     }
