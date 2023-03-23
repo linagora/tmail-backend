@@ -55,7 +55,7 @@ class CustomMethodModule extends AbstractModule {
 }
 
 class CustomMethod extends Method {
-  override val methodName = MethodName("Linagora/echo")
+  override val methodName: MethodName = MethodName("Linagora/echo")
 
   override def process(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession): Publisher[InvocationWithContext] = SMono.just(invocation)
 

@@ -48,7 +48,7 @@ class FilterSetMethodModule extends AbstractModule {
 object FilterSetUpdateResults {
   def empty(): FilterSetUpdateResults = FilterSetUpdateResults(Map(), Map())
 
-  def merge(a: FilterSetUpdateResults, b: FilterSetUpdateResults) = FilterSetUpdateResults(a.updateSuccess ++ b.updateSuccess, a.updateFailures ++ b.updateFailures)
+  def merge(a: FilterSetUpdateResults, b: FilterSetUpdateResults): FilterSetUpdateResults = FilterSetUpdateResults(a.updateSuccess ++ b.updateSuccess, a.updateFailures ++ b.updateFailures)
 }
 
 case class FilterSetUpdateResults(updateSuccess: Map[String, FilterSetUpdateResponse],
@@ -57,7 +57,7 @@ sealed trait FilterSetUpdateResult {
   def updated: Map[String, FilterSetUpdateResponse]
   def notUpdated: Map[String, FilterSetError]
 
-  def asFilterSetUpdateResults = FilterSetUpdateResults(updated, notUpdated)
+  def asFilterSetUpdateResults: FilterSetUpdateResults = FilterSetUpdateResults(updated, notUpdated)
 }
 
 case object FilterSetUpdateSuccess extends FilterSetUpdateResult {

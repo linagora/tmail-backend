@@ -906,7 +906,7 @@ trait LinagoraCalendarEventParseMethodContract {
     val blobIds: Array[String] = Range.inclusive(1, 999)
       .map(_ + "")
       .toArray
-    val blobIdsJson: String = Json.stringify(Json.arr(blobIds)).replace("[[", "[").replace("]]", "]")
+    val blogIdsJson: String = Json.stringify(Json.arr(blobIds)).replace("[[", "[").replace("]]", "]")
     val request: String =
       s"""{
          |  "using": [
@@ -916,7 +916,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |    "CalendarEvent/parse",
          |    {
          |      "accountId": "$ACCOUNT_ID",
-         |      "blobIds":  ${blobIdsJson}
+         |      "blobIds":  $blogIdsJson
          |    },
          |    "c1"]]
          |}""".stripMargin

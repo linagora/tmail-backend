@@ -169,8 +169,8 @@ trait FirebaseSubscriptionSetMethodContract {
          |                "notFound": [],
          |                "list": [
          |                    {
-         |                        "expires": "${expiredTime}",
-         |                        "id": "${subscriptionId}",
+         |                        "expires": "$expiredTime",
+         |                        "id": "$subscriptionId",
          |                        "deviceClientId": "a889-ffea-910",
          |                        "types": ["Mailbox"]
          |                    }
@@ -560,7 +560,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
            |                  "token": "token1",
-           |                  "expires": "${expires}",
+           |                  "expires": "$expires",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -613,7 +613,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
            |                  "token": "token1",
-           |                  "expires": "${expires}",
+           |                  "expires": "$expires",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -667,7 +667,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
            |                  "token": "token1",
-           |                  "expires": "${expires}",
+           |                  "expires": "$expires",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -694,7 +694,7 @@ trait FirebaseSubscriptionSetMethodContract {
          |                "notCreated": {
          |                    "4f29": {
          |                        "type": "invalidArguments",
-         |                        "description": "`${expires}` expires must be greater than now",
+         |                        "description": "`$expires` expires must be greater than now",
          |                        "properties": [
          |                            "expires"
          |                        ]
