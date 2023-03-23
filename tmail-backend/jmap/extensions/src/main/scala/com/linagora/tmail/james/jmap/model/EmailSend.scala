@@ -9,29 +9,15 @@ import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.core.Id.{Id, IdConstraint}
 import org.apache.james.jmap.core.Properties.toProperties
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UTCDate, UuidState}
+import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UuidState}
 import org.apache.james.jmap.json.EmailSetSerializer
 import org.apache.james.jmap.mail.{BlobId, DestroyIds, EmailCreationRequest, EmailCreationResponse, EmailSet, EmailSetRequest, EmailSubmissionId, Envelope, ThreadId, UnparsedMessageId}
 import org.apache.james.jmap.method.{SizeExceededException, WithAccountId}
-import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MessageId
-import org.apache.james.mime4j.dom.Message
 import org.apache.james.server.core.MimeMessageSource
 import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, JsonValidationError}
 
 import java.io.{ByteArrayInputStream, InputStream}
-import java.time.ZonedDateTime
-import java.util.Date
-import javax.mail.Flags
-
-object EmailCreationRequest {
-  def asAppendCommand(request: EmailCreationRequest, message: Message): AppendCommand =
-    AppendCommand.builder()
-      .recent()
-      .withFlags(request.keywords.map(_.asFlags).getOrElse(new Flags()))
-      .withInternalDate(Date.from(request.receivedAt.getOrElse(UTCDate(ZonedDateTime.now())).asUTC.toInstant))
-      .build(message)
-}
 
 case class EmailSendCreationId(id: Id)
 

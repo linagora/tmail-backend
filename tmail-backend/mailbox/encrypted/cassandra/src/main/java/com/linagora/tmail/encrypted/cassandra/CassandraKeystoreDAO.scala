@@ -13,7 +13,7 @@ import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.core.Username
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-class CassandraKeystoreDAO @Inject()(session: CqlSession, cassandraTypesProvider: CassandraTypesProvider) {
+class CassandraKeystoreDAO @Inject()(session: CqlSession) {
   private val executor = new CassandraAsyncExecutor(session)
 
   private val insertStatement = session.prepare(insertInto(TABLE_NAME)
