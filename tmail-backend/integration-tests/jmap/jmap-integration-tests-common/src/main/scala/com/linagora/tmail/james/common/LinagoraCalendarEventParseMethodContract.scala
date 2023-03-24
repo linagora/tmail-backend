@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.common
 
+import java.io.{ByteArrayInputStream, InputStream}
+import java.nio.charset.StandardCharsets
+
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -22,9 +25,6 @@ import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.Json
-
-import java.io.{ByteArrayInputStream, InputStream}
-import java.nio.charset.StandardCharsets
 
 trait LinagoraCalendarEventParseMethodContract {
 
@@ -98,6 +98,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "parsed": {
            |            "$blobId": {
+           |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
            |                "start": "2017-01-11T16:00:00",
@@ -107,6 +108,11 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "timeZone": "Asia/Ho_Chi_Minh",
            |                "duration": "PT1H30M",
            |                "location": "Hangout",
+           |                "method": "REQUEST",
+           |                "sequence": 0,
+           |                "priority": 5,
+           |                "freeBusyStatus": "busy",
+           |                "privacy": "public",
            |                "organizer": {
            |                     "name": "Raphael OUAZANA",
            |                     "mailto": "ouazana@domain.tld"
@@ -178,6 +184,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "parsed": {
            |            "$blobId1": {
+           |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
            |                "start": "2017-01-11T16:00:00",
@@ -187,6 +194,11 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "timeZone": "Asia/Ho_Chi_Minh",
            |                "duration": "PT1H30M",
            |                "location": "Hangout",
+           |                "method": "REQUEST",
+           |                "sequence": 0,
+           |                "priority": 5,
+           |                "freeBusyStatus": "busy",
+           |                "privacy": "public",
            |                "organizer": {
            |                    "name": "Raphael OUAZANA",
            |                    "mailto": "ouazana@domain.tld"
@@ -215,6 +227,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                }
            |            },
            |            "$blobId2": {
+           |                "uid": "ea127690-0440-404b-af98-9823c855a284",
            |                "title": "Sprint planning #24",
            |                "description": "description 456",
            |                "start": "2017-01-11T09:00:00",
@@ -223,6 +236,11 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "utcEnd": "2017-01-11T10:30:00Z",
            |                "duration": "PT1H30M",
            |                "location": "Hangout",
+           |                "method": "CANCEL",
+           |                "sequence": 0,
+           |                "priority": 5,
+           |                "freeBusyStatus": "free",
+           |                "privacy": "private",
            |                "organizer": {
            |                    "name": "Raphael OUAZANA",
            |                    "mailto": "ouazana@domain.tld"
@@ -383,6 +401,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "notFound": [ "$notFoundBlobId" ],
            |        "parsed": {
            |            "$blobId": {
+           |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
            |                "start": "2017-01-11T16:00:00",
@@ -392,6 +411,11 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "timeZone": "Asia/Ho_Chi_Minh",
            |                "duration": "PT1H30M",
            |                "location": "Hangout",
+           |                "method": "REQUEST",
+           |                "sequence": 0,
+           |                "priority": 5,
+           |                "freeBusyStatus": "busy",
+           |                "privacy": "public",
            |                "organizer": {
            |                    "name": "Raphael OUAZANA",
            |                    "mailto": "ouazana@domain.tld"
@@ -625,6 +649,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "accountId": "$bobAccountId",
            |            "parsed": {
            |                "$blobId": {
+           |                    "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                    "title": "Sprint planning #23",
            |                    "description": "description 123",
            |                    "start": "2017-01-11T16:00:00",
@@ -634,6 +659,11 @@ trait LinagoraCalendarEventParseMethodContract {
            |                    "timeZone": "Asia/Ho_Chi_Minh",
            |                    "duration": "PT1H30M",
            |                    "location": "Hangout",
+           |                    "method": "REQUEST",
+           |                    "sequence": 0,
+           |                    "priority": 5,
+           |                    "freeBusyStatus": "busy",
+           |                    "privacy": "public",
            |                    "organizer": {
            |                        "name": "Raphael OUAZANA",
            |                        "mailto": "ouazana@domain.tld"
@@ -748,6 +778,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "accountId": "$ANDRE_ACCOUNT_ID",
            |        "parsed": {
            |            "$icsBlobId": {
+           |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
            |                "start": "2017-01-11T16:00:00",
@@ -757,6 +788,11 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "timeZone": "Asia/Ho_Chi_Minh",
            |                "duration": "PT1H30M",
            |                "location": "Hangout",
+           |                "method": "REQUEST",
+           |                "sequence": 0,
+           |                "priority": 5,
+           |                "freeBusyStatus": "busy",
+           |                "privacy": "public",
            |                "organizer": {
            |                    "name": "Raphael OUAZANA",
            |                    "mailto": "ouazana@domain.tld"
@@ -793,7 +829,7 @@ trait LinagoraCalendarEventParseMethodContract {
     val blobIds: Array[String] = Range.inclusive(1, 999)
       .map(_ + "")
       .toArray
-    val blogIdsJson: String = Json.stringify(Json.arr(blobIds)).replace("[[", "[").replace("]]", "]");
+    val blobIdsJson: String = Json.stringify(Json.arr(blobIds)).replace("[[", "[").replace("]]", "]")
     val request: String =
       s"""{
          |  "using": [
@@ -803,7 +839,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |    "CalendarEvent/parse",
          |    {
          |      "accountId": "$ACCOUNT_ID",
-         |      "blobIds":  ${blogIdsJson}
+         |      "blobIds":  ${blobIdsJson}
          |    },
          |    "c1"]]
          |}""".stripMargin
@@ -871,12 +907,17 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "parsed": {
            |            "$blobId": {
+           |                "uid": "037aaad3-17c9-47c8-bd6b-f2cbfe925ef7",
            |                "title": "MOB: integration tests",
            |                "start": "2023-03-09T14:00:00",
            |                "end": "2023-03-09T14:00:00",
            |                "utcStart": "2023-03-09T07:00:00Z",
            |                "utcEnd": "2023-03-09T07:00:00Z",
            |                "timeZone": "Asia/Ho_Chi_Minh",
+           |                "method": "REQUEST",
+           |                "sequence": 0,
+           |                "freeBusyStatus": "busy",
+           |                "privacy": "secret",
            |                "organizer": {
            |                    "name": "Benoît TELLIER",
            |                    "mailto": "btellier@domain.tld"

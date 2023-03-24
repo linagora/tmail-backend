@@ -1,13 +1,13 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{CalendarAttendeeKind, CalendarAttendeeName, CalendarAttendeeParticipationStatus, CalendarAttendeeRole, CalendarOrganizerField, _}
+import java.time.ZonedDateTime
+
+import com.linagora.tmail.james.jmap.model._
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.{SetError, UTCDate}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import play.api.libs.json._
-
-import java.time.ZonedDateTime
 
 object CalendarEventSerializer {
 
@@ -36,6 +36,12 @@ object CalendarEventSerializer {
 
   private implicit val calendarParticipantsFieldWrites: Writes[CalendarParticipantsField] = Json.valueWrites[CalendarParticipantsField]
   private implicit val calendarExtensionFieldsWrites: Writes[CalendarExtensionFields] = Json.valueWrites[CalendarExtensionFields]
+  private implicit val calendarMethodFieldWrites: Writes[CalendarMethodField] = Json.valueWrites[CalendarMethodField]
+  private implicit val calendarSequenceFieldWrites: Writes[CalendarSequenceField] = Json.valueWrites[CalendarSequenceField]
+  private implicit val calendarUidFieldWrites: Writes[CalendarUidField] = Json.valueWrites[CalendarUidField]
+  private implicit val calendarPriorityFieldWrites: Writes[CalendarPriorityField] = Json.valueWrites[CalendarPriorityField]
+  private implicit val calendarFreeBusyStatusFieldWrites: Writes[CalendarFreeBusyStatusField] = Json.valueWrites[CalendarFreeBusyStatusField]
+  private implicit val calendarPrivacyFieldWrites: Writes[CalendarPrivacyField] = Json.valueWrites[CalendarPrivacyField]
 
   private implicit val calendarEventParsedWrites: Writes[CalendarEventParsed] = Json.writes[CalendarEventParsed]
   private implicit val parsedMapWrites: Writes[Map[BlobId, CalendarEventParsed]] = mapWrites[BlobId, CalendarEventParsed](s => s.value.value, calendarEventParsedWrites)

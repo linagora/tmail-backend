@@ -16,6 +16,7 @@ The associated object is empty.
 == CalendarEvent/parse
 
 This method is based on:
+
 - Parsing a Received MDN method as described in the RFC-9007
 - Draft JMAP CalendarEvent (https://datatracker.ietf.org/doc/html/draft-ietf-jmap-calendars)
 - iCalendar message RFC-5545
@@ -32,15 +33,21 @@ The response object contains the following properties:
 - *notFound*: `[BlobId]` is not found.
 - *notParsable*: `[BlobId]` has been found but is not parsable.
 
-The `parsed` value contains the following properties (the properties below match with the properties defined in rfc5545):
+The `parsed` value contains the following properties (the properties below match with the properties defined in RFC-5545 and RFC-5546):
 
-- `title`: title of the event ~ SUMMARY (iCalendar)
+- `uid`: unique identifier of the event ~ UID (iCalendar)
+- `title`: title of the event ~ SUMMARY
 - `description`: description of the event ~ DESCRIPTION
 - `start`: Start time of the event ~ DTSTART
 - `end`: End time of the event ~ DTEND
 - `duration`: duration of the event ~ DURATION
 - `timeZone`: time zone of the start/end time ~ TZID
 - `location`: location of the event ~ LOCATION
+- `method`: method of the event: REQUEST someone to attend an event, CANCEL an event... ~ [METHOD](https://www.rfc-editor.org/rfc/rfc5546.html#section-3.2)
+- `sequence`: modification number of the event ~ SEQUENCE
+- `privacy`: determine if the event is publicly visible ~ [CLASS](https://www.rfc-editor.org/rfc/rfc5545#section-3.8.1.3)
+- `priority`: priority of the event (0 -> 9) ~ PRIORITY
+- `freeBusyStatus`: defines if the event is transparent to busy time searches ~ [TRANSP](https://www.rfc-editor.org/rfc/rfc5545#section-3.8.2.7)
 - `organizer`: the organizer of the event, contains name (CN) and mail (mailto)
 - `participants`: a collection of attendees (ATTENDEE)
 
@@ -78,6 +85,7 @@ The server responds:
     "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
     "parsed": {
         "0f9f65ab-dc7b-4146-850f-6e4881093965": {
+            "uid": "ea127690-0440-404b-af98-9823c855a283",
             "title": "Gatling: break LemonLDAP!",
             "description": "Let's write some basic OIDC benchmarks",
             "start": "2023-02-09T10:00:00",
@@ -85,6 +93,11 @@ The server responds:
             "end": "2023-02-09T12:00:00",
             "timeZone": "Asia/Ho_Chi_Minh",
             "location": "5 Dien Bien Phu, Ha Noi",
+            "method": "REQUEST",
+            "sequence": 0,
+            "priority": 5,
+            "freeBusyStatus": "busy",
+            "privacy": "public",
             "organizer": {
                 "name": "Benoît TELLIER",
                 "mailto": "btellier@linagora.com"
