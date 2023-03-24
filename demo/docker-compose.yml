@@ -1,0 +1,101 @@
+version: "3"
+
+
+services:
+  tmail-frontend:
+    image: linagora/tmail-web:master
+    container_name: tmail-frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./tmail/.env:/usr/share/nginx/html/assets/env.file
+      - ./tmail/app_dashboard.json:/usr/share/nginx/html/assets/configurations/app_dashboard.json
+      - ./tmail/icon/lemonldap-ng-logo.png:/usr/share/nginx/html/assets/configurations/icons/lemonldap-ng-logo.png
+    depends_on:
+      - tmail-backend
+    networks:
+      - tmail
+
+  tmail-backend:
+    image: linagora/tmail-backend:memory-branch-master
+    container_name: tmail-backend
+    volumes:
+      - ./tmail/jwt_publickey:/root/conf/jwt_publickey
+      - ./tmail/jwt_privatekey:/root/conf/jwt_privatekey
+      - ./tmail/jmap.properties:/root/conf/jmap.properties
+    networks:
+      - tmail
+
+  llngdb:
+    image: yadd/lemonldap-ng-pg-database
+    container_name: llngdb
+    environment:
+      - POSTGRES_PASSWORD=zz
+    healthcheck:
+      test: "exit 0"
+    volumes:
+      - "./lemonldap/lmConf-1.json:/llng-conf/conf.json"
+    networks:
+      - tmail
+
+  sso.example.com:
+    image: yadd/lemonldap-ng-full
+    container_name: sso.example.com
+    ports:
+      - "80:80"
+    environment:
+      - SSODOMAIN=example.com
+      - PORTAL=http://sso.example.com
+      - LOGLEVEL=debug
+      - PG_SERVER=llngdb
+      - LOGGER=stderr
+      - USERLOGGER=stderr
+    depends_on:
+      llngdb:
+        condition: service_healthy
+      ldap:
+        condition: service_started
+    networks:
+      - tmail
+
+  ldap:
+    container_name: ldap
+    image: bitnami/openldap
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - "./ldap/populate.ldif:/ldifs/populate.ldif"
+    environment:
+      - LDAP_PORT_NUMBER=389
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=admin
+      - LDAP_ROOT=dc=localhost
+      - BITNAMI_DEBUG=true
+    networks:
+      - tmail
+
+  krakend:
+    depends_on:
+      - sso.example.com
+      - tmail-backend
+    container_name: krakend
+    image: devopsfaith/krakend:latest
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./krakend/krakend.json:/etc/krakend/krakend.json
+    networks:
+      - tmail
+
+  jwt-revoker:
+    build:
+      context: ./jwt-revoker
+    container_name: jwt-revoker
+    depends_on:
+      - krakend
+    networks:
+      - tmail
+
+networks:
+  tmail:

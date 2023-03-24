@@ -1,0 +1,19 @@
+{
+  "apps": [
+    {
+      "appName": "Twake",
+      "icon": "ic_twake_app.svg",
+      "appLink": "http://twake.app/"
+    },
+    {
+      "appName": "TDrive",
+      "icon": "ic_linshare_app.png",
+      "appLink": "https://tdrive.app/"
+    },
+    {
+      "appName": "LemonLDAP",
+      "icon": "lemonldap-ng-logo.png",
+      "appLink": "http://sso.example.com/"
+    }
+  ]
+}

@@ -1,0 +1,282 @@
+{
+  "version": 3,
+  "timeout": "3s",
+  "cache_ttl": "300s",
+  "name": "oidc-james",
+  "port": 8090,
+  "debug_endpoint": true,
+  "extra_config": {
+    "auth/revoker": {
+      "N": 10000000,
+      "P": 0.0000001,
+      "hash_name": "optimal",
+      "TTL": 3600,
+      "port": 1234,
+      "token_keys": ["sid"]
+    },
+    "security/cors": {
+      "allow_origins": ["*"],
+      "allow_methods": ["GET", "HEAD", "POST", "OPTIONS"],
+      "allow_headers": ["Authorization", "Accept", "Content-Type"],
+      "allow_credentials": true,
+      "debug": true
+    }
+  },
+  "endpoints": [
+    {
+      "endpoint": "/.well-known/webfinger",
+      "output_encoding": "json",
+      "input_query_strings": ["resource", "rel"],
+      "input_headers": ["*"],
+      "method": "GET",
+      "headers_to_pass": ["X-User", "Accept", "Content-Type"],
+      "backend": [
+        {
+          "url_pattern": "/.well-known/webfinger",
+          "method": "GET",
+          "host": ["http://tmail-backend"]
+        }
+      ]
+    },
+    {
+      "endpoint": "/.well-known/jmap",
+      "output_encoding": "json",
+      "input_query_strings": ["resource", "rel"],
+      "input_headers": ["*"],
+      "method": "GET",
+      "backend": [
+        {
+          "url_pattern": "/.well-known/jmap",
+          "method": "GET",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": ["X-User", "Accept", "Content-Type"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "disable_jwk_security": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/jmap/session",
+      "output_encoding": "json",
+      "input_query_strings": ["resource", "rel"],
+      "input_headers": ["*"],
+      "method": "GET",
+      "backend": [
+        {
+          "url_pattern": "/jmap/session",
+          "method": "GET",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": ["X-User", "Accept", "Content-Type"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "disable_jwk_security": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/jmap",
+      "output_encoding": "json",
+      "input_headers": ["*"],
+      "method": "POST",
+      "backend": [
+        {
+          "url_pattern": "/jmap",
+          "method": "POST",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": ["X-User", "Accept", "Content-Type"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "disable_jwk_security": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/download/{xxx}",
+      "method": "GET",
+      "backend": [
+        {
+          "url_pattern": "/download/{xxx}",
+          "encoding": "json",
+          "method": "GET",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": [
+        "X-User",
+        "Accept"
+      ],
+      "input_headers": ["Accept", "Content-Type", "Authorization"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/download/{xxx}",
+      "method": "POST",
+      "backend": [
+        {
+          "url_pattern": "/download/{xxx}",
+          "encoding": "json",
+          "method": "POST",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": [
+        "X-User",
+        "Accept"
+      ],
+      "input_headers": ["Accept", "Content-Type", "Authorization"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/download/{xxx}/{yyy}",
+      "method": "GET",
+      "backend": [
+        {
+          "url_pattern": "/download/{xxx}/{yyy}",
+          "encoding": "json",
+          "method": "GET",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": ["X-User", "Accept"],
+      "querystring_params":["access_token"],
+      "input_headers": ["Accept", "Content-Type", "Authorization"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/download/{xxx}/{yyy}",
+      "method": "POST",
+      "backend": [
+        {
+          "url_pattern": "/download/{xxx}/{yyy}",
+          "encoding": "json",
+          "method": "POST",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": [
+        "X-User",
+        "Accept"
+      ],
+      "input_headers": ["Accept", "Content-Type", "Authorization"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/upload",
+      "method": "POST",
+      "backend": [
+        {
+          "url_pattern": "/upload",
+          "encoding": "json",
+          "method": "POST",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": [
+        "X-User",
+        "Accept",
+        "Content-Type",
+        "Content-Length"
+      ],
+      "timeout": "10s",
+      "input_headers": ["Accept", "Content-Type", "Authorization"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/upload/{xxx}",
+      "method": "POST",
+      "backend": [
+        {
+          "url_pattern": "/upload/{xxx}",
+          "encoding": "json",
+          "method": "POST",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": [
+        "X-User",
+        "Accept",
+        "Content-Type",
+        "Content-Length"
+      ],
+      "timeout": "10s",
+      "input_headers": ["Accept", "Content-Type", "Authorization"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "disable_jwk_security": true,
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "operation_debug": true
+        }
+      }
+    }
+  ]
+}

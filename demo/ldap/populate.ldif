@@ -1,0 +1,20 @@
+# localhost
+dn: dc=localhost
+objectClass: dcObject
+objectClass: organization
+dc: localhost
+o: example
+
+# users, localhost
+dn: ou=users,dc=localhost
+objectClass: organizationalUnit
+ou: users
+
+dn: uid=james-user@localhost,ou=users,dc=localhost
+objectClass: inetOrgPerson
+uid: james-user@localhost
+cn: james-user
+sn: james-user
+mail: james-user@localhost
+userPassword: secret
+description: James user
