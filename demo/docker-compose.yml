@@ -8,6 +8,8 @@ services:
       - "8080:80"
     volumes:
       - ./tmail/.env:/usr/share/nginx/html/assets/env.file
+      - ./tmail/app_dashboard.json:/usr/share/nginx/html/assets/configurations/app_dashboard.json
+      - ./tmail/icon/lemonldap-ng-logo.png:/usr/share/nginx/html/assets/configurations/icons/lemonldap-ng-logo.png
     depends_on:
       - tmail-backend
     networks:
