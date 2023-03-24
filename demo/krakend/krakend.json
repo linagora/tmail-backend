@@ -1,0 +1,87 @@
+{
+  "version": 3,
+  "timeout": "3s",
+  "cache_ttl": "300s",
+  "name": "oidc-james",
+  "port": 8090,
+  "debug_endpoint": true,
+  "extra_config": {
+    "auth/revoker": {
+      "N": 10000000,
+      "P": 0.0000001,
+      "hash_name": "optimal",
+      "TTL": 3600,
+      "port": 1234,
+      "token_keys": ["sid"]
+    },
+    "security/cors": {
+      "allow_origins": ["*"],
+      "allow_methods": ["GET", "HEAD", "POST", "OPTIONS"],
+      "allow_headers": ["Authorization", "Accept", "Content-Type"],
+      "allow_credentials": true,
+      "debug": true
+    }
+  },
+  "endpoints": [
+    {
+      "endpoint": "/jmap",
+      "method": "POST",
+      "output_encoding": "json",
+      "backend": [
+        {
+          "url_pattern": "/jmap",
+          "encoding": "json",
+          "method": "POST",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "input_headers": ["Accept", "Content-Type", "Authorization"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "disable_jwk_security": true,
+          "propagate_claims": [["email", "X-User"]],
+          "cache": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/oidc/jmap",
+      "output_encoding": "json",
+      "backend": [
+        {
+          "url_pattern": "/jmap/session",
+          "encoding": "json",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "input_headers": ["Accept", "Content-Type", "X-User", "Authorization"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "disable_jwk_security": true,
+          "propagate_claims": [["email", "X-User"]],
+          "cache": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
+      "endpoint": "/.well-known/{service}",
+      "output_encoding": "json",
+      "input_query_strings": ["resource", "rel"],
+      "input_headers": ["*"],
+      "method": "GET",
+      "backend": [
+        {
+          "url_pattern": "/.well-known/{service}",
+          "method": "GET",
+          "host": ["http://tmail-backend"]
+        }
+      ]
+    }
+  ]
+}
