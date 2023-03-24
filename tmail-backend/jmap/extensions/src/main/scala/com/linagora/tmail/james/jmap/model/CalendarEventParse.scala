@@ -1,12 +1,18 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.io.InputStream
+import java.time.{Duration, ZoneId, ZonedDateTime}
+import java.util.{Locale, TimeZone}
+
 import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
+import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
+import com.linagora.tmail.james.jmap.model.CalendarPrivacyField.CalendarPrivacy
 import com.linagora.tmail.james.jmap.model.CalendarStartField.getTimeZoneAlternative
 import eu.timepit.refined.api.Refined
 import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.property.Attendee
+import net.fortuna.ical4j.model.property.{Attendee, Clazz, Transp}
 import net.fortuna.ical4j.model.{Calendar, Parameter, Property, TimeZoneRegistryFactory}
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.{AccountId, Id, UTCDate}
@@ -14,9 +20,6 @@ import org.apache.james.jmap.mail.MDNParseRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.WithAccountId
 
-import java.io.InputStream
-import java.time.{Duration, ZoneId, ZonedDateTime}
-import java.util.{Locale, TimeZone}
 import scala.jdk.CollectionConverters._
 
 case class CalendarEventParseRequest(accountId: AccountId,
@@ -52,6 +55,68 @@ object CalendarTitleField {
 }
 
 case class CalendarTitleField(value: String) extends AnyVal
+
+object CalendarMethodField {
+  def from(calendar: Calendar): Option[CalendarMethodField] =
+    Option(calendar.getMethod).map(_.getValue).map(CalendarMethodField(_))
+}
+
+case class CalendarMethodField(value: String) extends AnyVal
+
+object CalendarSequenceField {
+  def from(vEvent: VEvent): Option[CalendarSequenceField] =
+    Option(vEvent.getSequence).map(_.getSequenceNo).map(CalendarSequenceField(_))
+}
+
+case class CalendarSequenceField(value: Int) extends AnyVal
+
+object CalendarUidField {
+  def from(VEvent: VEvent): Option[CalendarUidField] =
+    Option(VEvent.getUid).map(_.getValue).map(CalendarUidField(_))
+}
+
+case class CalendarUidField(value: String) extends AnyVal
+
+object CalendarPriorityField {
+  def from(vEvent: VEvent): Option[CalendarPriorityField] =
+    Option(vEvent.getPriority).map(_.getLevel).map(CalendarPriorityField(_))
+}
+
+case class CalendarPriorityField(value: Int) extends AnyVal
+
+object CalendarFreeBusyStatusField extends Enumeration {
+  type FreeBusyStatus = Value
+  private val Free = Value("free")
+  private val Busy = Value("busy")
+
+  def from(vEvent: VEvent): Option[CalendarFreeBusyStatusField] =
+    Option(vEvent.getTransparency)
+      .map(transparency => transparency.getValue match {
+        case Transp.VALUE_OPAQUE => Busy
+        case Transp.VALUE_TRANSPARENT => Free
+      })
+      .map(CalendarFreeBusyStatusField(_))
+}
+
+case class CalendarFreeBusyStatusField(value: FreeBusyStatus) extends AnyVal
+
+object CalendarPrivacyField extends Enumeration {
+  type CalendarPrivacy = Value
+  private val Public = Value("public")
+  private val Private = Value("private")
+  private val Secret = Value("secret")
+
+  def from(vEvent: VEvent): Option[CalendarPrivacyField] =
+    Option(vEvent.getClassification)
+      .map(accessClassification => accessClassification.getValue match {
+        case Clazz.VALUE_PUBLIC => Public
+        case Clazz.VALUE_PRIVATE => Private
+        case Clazz.VALUE_CONFIDENTIAL => Secret
+      })
+      .map(CalendarPrivacyField(_))
+}
+
+case class CalendarPrivacyField(value: CalendarPrivacy) extends AnyVal
 
 object CalendarDescriptionField {
   def from(calendarEvent: VEvent): Option[CalendarDescriptionField] =
@@ -246,7 +311,8 @@ object CalendarEventParsed {
       val start: Option[CalendarStartField] = CalendarStartField.from(vevent)
       val end: Option[CalendarEndField] = CalendarEndField.from(vevent)
 
-      CalendarEventParsed(title = CalendarTitleField.from(vevent),
+      CalendarEventParsed(uid = CalendarUidField.from(vevent),
+        title = CalendarTitleField.from(vevent),
         description = CalendarDescriptionField.from(vevent),
         start = start,
         end = end,
@@ -255,13 +321,19 @@ object CalendarEventParsed {
         duration = CalendarDurationField.from(vevent),
         timeZone = CalendarTimeZoneField.from(vevent),
         location = CalendarLocationField.from(vevent),
+        method = CalendarMethodField.from(calendar),
+        sequence = CalendarSequenceField.from(vevent),
+        priority = CalendarPriorityField.from(vevent),
+        freeBusyStatus = CalendarFreeBusyStatusField.from(vevent),
+        privacy = CalendarPrivacyField.from(vevent),
         organizer = CalendarOrganizerField.from(vevent),
         participants = CalendarParticipantsField.from(vevent),
         extensionFields = CalendarExtensionFields.from(vevent))
     }
 }
 
-case class CalendarEventParsed(title: Option[CalendarTitleField] = None,
+case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
+                               title: Option[CalendarTitleField] = None,
                                description: Option[CalendarDescriptionField] = None,
                                start: Option[CalendarStartField] = None,
                                end: Option[CalendarEndField] = None,
@@ -270,6 +342,11 @@ case class CalendarEventParsed(title: Option[CalendarTitleField] = None,
                                timeZone: Option[CalendarTimeZoneField] = None,
                                duration: Option[CalendarDurationField] = None,
                                location: Option[CalendarLocationField] = None,
+                               method: Option[CalendarMethodField] = None,
+                               sequence: Option[CalendarSequenceField] = None,
+                               priority: Option[CalendarPriorityField] = None,
+                               freeBusyStatus: Option[CalendarFreeBusyStatusField] = None,
+                               privacy: Option[CalendarPrivacyField] = None,
                                organizer: Option[CalendarOrganizerField] = None,
                                participants: CalendarParticipantsField = CalendarParticipantsField(),
                                extensionFields: CalendarExtensionFields = CalendarExtensionFields())
