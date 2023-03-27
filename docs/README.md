@@ -4,10 +4,10 @@
 
 You need [Antora](https://antora.org/) installed locally.
 
-Install [NPM](https://www.npmjs.com/) first, then install Antora:
+Install latest lts [Node](https://www.npmjs.com/) first, then install Antora:
 
 ```
-npm i -g @antora/cli@2.3 @antora/site-generator-default@2.3
+npm i -g @antora/cli@3.1 @antora/site-generator@3.1
 ```
 
 To build the documentation website run in this folder:
