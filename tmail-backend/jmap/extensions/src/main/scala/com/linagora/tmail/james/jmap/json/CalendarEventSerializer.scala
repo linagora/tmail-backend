@@ -55,7 +55,7 @@ object CalendarEventSerializer {
   private implicit val recurrenceRulesFrequencyWrites: Writes[RecurrenceRulesFrequency] = frequency => JsString(frequency.value.name().toLowerCase(Locale.US))
   private implicit val calendarEventByDayWrites: Writes[CalendarEventByDay] = Json.valueWrites[CalendarEventByDay]
   private implicit val calendarEventByMonthWrites: Writes[CalendarEventByMonth] = Json.valueWrites[CalendarEventByMonth]
-  private implicit val recurrenceRulesUtilWrites: Writes[RecurrenceRulesUtil] = utcDate => JsString(utcDate.value.asUTC.format(dateTimeUTCFormatter))
+  private implicit val recurrenceRulesUtilWrites: Writes[RecurrenceRulesUntil] = utcDate => JsString(utcDate.value.asUTC.format(dateTimeUTCFormatter))
   private implicit val calendarRecurrenceRulesWrites: Writes[RecurrenceRules] = Json.writes[RecurrenceRules]
   private implicit val calendarRecurrenceRulesFieldWrites: Writes[RecurrenceRulesField] = Json.valueWrites[RecurrenceRulesField]
 

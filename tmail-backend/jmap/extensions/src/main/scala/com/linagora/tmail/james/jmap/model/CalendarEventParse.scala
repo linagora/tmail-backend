@@ -380,13 +380,13 @@ object RecurrenceRulesInterval {
 }
 case class RecurrenceRulesInterval(value: UnsignedInt)
 
-object RecurrenceRulesUtil {
-  def from(recur: Recur): Option[RecurrenceRulesUtil] =
+object RecurrenceRulesUntil {
+  def from(recur: Recur): Option[RecurrenceRulesUntil] =
     Option(recur.getUntil)
       .map(date => UTCDate.from(date, ZoneId.of("UTC")))
-      .map(RecurrenceRulesUtil(_))
+      .map(RecurrenceRulesUntil(_))
 }
-case class RecurrenceRulesUtil(value: UTCDate)
+case class RecurrenceRulesUntil(value: UTCDate)
 
 object RecurrenceRulesField {
 
@@ -402,7 +402,7 @@ object RecurrenceRulesField {
     val frequency: Frequency = recur.getFrequency
     RecurrenceRules(
       frequency = RecurrenceRulesFrequency(frequency),
-      until = RecurrenceRulesUtil.from(recur),
+      until = RecurrenceRulesUntil.from(recur),
       count = RecurrenceRulesCount.from(recur),
       interval = RecurrenceRulesInterval.from(recur),
       rscale = RecurrenceRulesRScale.from(recur),
@@ -422,7 +422,7 @@ object RecurrenceRulesField {
 
 case class RecurrenceRulesField(value: Seq[RecurrenceRules])
 case class RecurrenceRules(frequency: RecurrenceRulesFrequency,
-                           until: Option[RecurrenceRulesUtil] = None,
+                           until: Option[RecurrenceRulesUntil] = None,
                            count: Option[RecurrenceRulesCount] = None,
                            interval: Option[RecurrenceRulesInterval] = None,
                            rscale: Option[RecurrenceRulesRScale] = None,
