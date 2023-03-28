@@ -16,17 +16,20 @@ import org.apache.james.utils.PropertiesProvider;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 
 public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                   MailboxConfiguration mailboxConfiguration,
                                   UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
-                                  FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration) implements Configuration {
+                                  FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
+                                  LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<String> rootDirectory;
         private Optional<ConfigurationPath> configurationPath;
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
+        private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
 
         private Builder() {
             mailboxConfiguration = Optional.empty();
@@ -34,6 +37,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             configurationPath = Optional.empty();
             usersRepositoryImplementation = Optional.empty();
             firebaseModuleChooserConfiguration = Optional.empty();
+            linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -79,6 +83,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return this;
         }
 
+        public Builder linagoraServiceDiscoveryModuleChooserConfiguration(LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration) {
+            this.linagoraServicesDiscoveryModuleChooserConfiguration = Optional.of(servicesDiscoveryModuleChooserConfiguration);
+            return this;
+        }
+
         public MemoryConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -101,12 +110,16 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration = this.firebaseModuleChooserConfiguration.orElseGet(Throwing.supplier(
                 () -> FirebaseModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
 
+            LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration.orElseGet(Throwing.supplier(
+                () -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+
             return new MemoryConfiguration(
                 configurationPath,
                 directories,
                 mailboxConfiguration,
                 usersRepositoryChoice,
-                firebaseModuleChooserConfiguration);
+                firebaseModuleChooserConfiguration,
+                servicesDiscoveryModuleChooserConfiguration);
         }
     }
 

@@ -19,6 +19,7 @@ import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 
 public record DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                             MailboxConfiguration mailboxConfiguration,
@@ -26,7 +27,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             SearchConfiguration searchConfiguration,
                                             UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
                                             MailQueueViewChoice mailQueueViewChoice,
-                                            FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration) implements Configuration {
+                                            FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
+                                            LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -36,6 +38,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
         private Optional<MailQueueViewChoice> mailQueueViewChoice;
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
+        private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
 
         private Builder() {
             mailboxConfiguration = Optional.empty();
@@ -46,6 +49,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             usersRepositoryImplementation = Optional.empty();
             mailQueueViewChoice = Optional.empty();
             firebaseModuleChooserConfiguration = Optional.empty();
+            linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -106,6 +110,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder linagoraServiceDiscoveryModuleChooserConfiguration(LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration) {
+            this.linagoraServicesDiscoveryModuleChooserConfiguration = Optional.of(servicesDiscoveryModuleChooserConfiguration);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -138,6 +147,9 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration = this.firebaseModuleChooserConfiguration.orElseGet(Throwing.supplier(
                 () -> FirebaseModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
 
+            LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration
+                .orElseGet(Throwing.supplier(() -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -146,7 +158,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 searchConfiguration,
                 usersRepositoryChoice,
                 mailQueueViewChoice,
-                firebaseModuleChooserConfiguration);
+                firebaseModuleChooserConfiguration,
+                servicesDiscoveryModuleChooserConfiguration);
         }
     }
 

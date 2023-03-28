@@ -123,6 +123,8 @@ import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.module.ES6ContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
+import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
@@ -273,6 +275,7 @@ public class DistributedServer {
             .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
             .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
+            .combineWith(chooserLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 
@@ -305,6 +308,13 @@ public class DistributedServer {
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enable()) {
             return List.of(new CassandraFirebaseSubscriptionRepositoryModule(), new FirebaseCommonModule(), new FirebaseListenerDistributedModule());
+        }
+        return List.of();
+    }
+
+    private static List<Module> chooserLinagoraServicesDiscovery(LinagoraServicesDiscoveryModuleChooserConfiguration moduleChooserConfiguration) {
+        if (moduleChooserConfiguration.enable()) {
+            return List.of(new LinagoraServicesDiscoveryModule());
         }
         return List.of();
     }
