@@ -50,6 +50,7 @@ The `parsed` value contains the following properties (the properties below match
 - `freeBusyStatus`: defines if the event is transparent to busy time searches ~ [TRANSP](https://www.rfc-editor.org/rfc/rfc5545#section-3.8.2.7)
 - `organizer`: the organizer of the event, contains name (CN) and mail (mailto)
 - `participants`: a collection of attendees (ATTENDEE)
+- `recurrenceRules`: [RecurrenceRule]: a collection of recurrence [RRULE](https://www.rfc-editor.org/rfc/rfc8984.html#name-recurrence-properties)
 
 Each `participant` contains information:
 
@@ -60,6 +61,34 @@ Each `participant` contains information:
 - `participationStatus`: "PARTSTAT", for the status of the attendee's participation
 - `expectReply`: Boolean. "RSVP", for indicating whether the favor of a reply is requested
 - `extensionFields`: contains custom event headers.
+
+Each `recurrenceRule` contains information:
+
+- `frequency`: the time span covered by each iteration
+- `interval`: the interval of iteration periods at which the recurrence
+repeats
+- `rscale`: the calendar system in which this recurrence rule
+operates
+- `skip`: the behavior to use when the expansion of the recurrence
+produces invalid dates
+- `firstDayOfWeek`: the day on which the week is considered to start,
+represented as a lowercase, abbreviated, and two-letter English
+day of the week
+- `byDay`: days of the week on which to repeat
+- `byMonthDay`: the days of the month on which to repeat
+- `byMonth`: the months in which to repeat
+- `byYearDay`: the days of the year on which to repeat
+- `byWeekNo`: the weeks of the year in which to repeat
+- `byHour`: the hours of the day in which to repeat
+- `byMinute`: the minutes of the hour in which to repeat
+- `bySecond`: the seconds of the minute in which to repeat
+- `bySetPosition`: the occurrences within the recurrence interval to
+include in the final results
+- `count`: the number of occurrences at which to range-bound the
+recurrence
+- `until`: the date-time at which to finish recurring. The last
+occurrence is on or before this date-time
+
 
 == Example
 
@@ -122,7 +151,14 @@ The server responds:
             "extensionFields": {
                 "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"],
                 "X-OPENPAAS-CUSTOM-HEADER1": ["whatever1", "whatever2"]
-            }
+            },
+            "recurrenceRules":
+               [{   "frequency": "yearly",
+                     "byDay": [ "mo" ],
+                     "byMonth": [ "10" ],
+                     "bySetPosition": [ 1, 2 ],
+                     "until":"2024-01-11T09:00:00Z"
+               }]
         }
     }
 }, "c1" ]]
