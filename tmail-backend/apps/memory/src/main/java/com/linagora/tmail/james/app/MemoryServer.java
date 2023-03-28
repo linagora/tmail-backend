@@ -68,6 +68,8 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
 import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
+import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
@@ -158,6 +160,7 @@ public class MemoryServer {
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
                 .chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
+            .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
     }
 
@@ -181,6 +184,13 @@ public class MemoryServer {
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enable()) {
             return List.of(new MemoryFirebaseSubscriptionRepository.Module(), new FirebaseCommonModule());
+        }
+        return List.of();
+    }
+
+    private static List<Module> chooseLinagoraServiceDiscovery(LinagoraServicesDiscoveryModuleChooserConfiguration moduleChooserConfiguration) {
+        if (moduleChooserConfiguration.enable()) {
+            return List.of(new LinagoraServicesDiscoveryModule());
         }
         return List.of();
     }
