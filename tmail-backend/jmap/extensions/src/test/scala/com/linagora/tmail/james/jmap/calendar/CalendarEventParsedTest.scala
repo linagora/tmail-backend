@@ -153,7 +153,6 @@ class CalendarEventParsedTest {
 
       val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .usingRecursiveComparison()
         .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.WEEKLY),
           byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.MO, WeekDay.Day.TU)))))
     }
@@ -168,7 +167,6 @@ class CalendarEventParsedTest {
 
       val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .usingRecursiveComparison()
         .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.YEARLY),
           byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
           byMonth = Some(CalendarEventByMonth(Seq(new Month(4)))),
@@ -185,7 +183,6 @@ class CalendarEventParsedTest {
 
       val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .usingRecursiveComparison()
         .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.YEARLY),
           byMonth = Some(CalendarEventByMonth(Seq(new Month(10)))),
           bySetPosition = Some(List(1, 2)),
@@ -202,9 +199,7 @@ class CalendarEventParsedTest {
 
       val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .usingRecursiveComparison()
         .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.MONTHLY),
-          byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.MO, WeekDay.Day.TU))),
           interval = Some(RecurrenceRulesInterval.from(2)),
           byMonthDay = Some(List(29))))
     }
@@ -219,7 +214,6 @@ class CalendarEventParsedTest {
 
       val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .usingRecursiveComparison()
         .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.MONTHLY),
           byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
           bySetPosition = Some(Seq(-1)),
@@ -236,7 +230,6 @@ class CalendarEventParsedTest {
 
       val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .usingRecursiveComparison()
         .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.MONTHLY),
           byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
           bySetPosition = Some(Seq(4)),
