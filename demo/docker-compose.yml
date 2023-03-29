@@ -19,6 +19,8 @@ services:
   tmail-backend:
     image: linagora/tmail-backend:memory-branch-master
     container_name: tmail-backend
+    ports:
+      - "8000:8000"
     volumes:
       - ./tmail/jwt_publickey:/root/conf/jwt_publickey
       - ./tmail/jwt_privatekey:/root/conf/jwt_privatekey
