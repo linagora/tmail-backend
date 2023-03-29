@@ -21,6 +21,8 @@ services:
     container_name: tmail-backend
     ports:
       - "8000:8000"
+    environment:
+      - DOMAIN=tmail.com
     volumes:
       - ./tmail/jwt_publickey:/root/conf/jwt_publickey
       - ./tmail/jwt_privatekey:/root/conf/jwt_privatekey
@@ -72,7 +74,7 @@ services:
       - LDAP_PORT_NUMBER=389
       - LDAP_ADMIN_USERNAME=admin
       - LDAP_ADMIN_PASSWORD=admin
-      - LDAP_ROOT=dc=localhost
+      - LDAP_ROOT=dc=tmail,dc=com
       - BITNAMI_DEBUG=true
     networks:
       - tmail

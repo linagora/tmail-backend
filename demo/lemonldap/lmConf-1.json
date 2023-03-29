@@ -30,7 +30,7 @@
   "portalDisplayRefreshMyRights": 1,
   "samlRelayStateTimeout": 600,
   "oidcServiceMetaDataTokenURI": "token",
-  "ldapBase": "ou=users,dc=localhost",
+  "ldapBase": "ou=users,dc=tmail,dc=com",
   "oidcServiceMetaDataRegistrationURI": "register",
   "loginHistoryEnabled": 1,
   "certificateResetByMailValidityDelay": 0,
@@ -397,7 +397,7 @@
   "ldapUsePasswordResetAttribute": 1,
   "ldapGroupAttributeName": "member",
   "apacheAuthnLevel": 3,
-  "managerDn": "cn=admin,dc=localhost",
+  "managerDn": "cn=admin,dc=tmail,dc=com",
   "linkedInUserField": "emailAddress",
   "globalStorageOptions": {
     "Directory": "/var/lib/lemonldap-ng/sessions",

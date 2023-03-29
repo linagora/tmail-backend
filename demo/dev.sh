@@ -35,7 +35,7 @@ start_services() {
 
         echo "All service started!"
         echo "LemonLDAP can be reached at http://sso.example.com"
-        echo "Login credentials are 'dwho / dwho' for 'Demo' method and 'james-user@localhost / secret' for 'LDAP' method"
+        echo "Login credentials are 'dwho / dwho' for 'Demo' method and 'james-user@tmail.com / secret' for 'LDAP' method"
         echo
 
         echo "For more information, check the README.md"
