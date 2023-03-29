@@ -50,7 +50,7 @@ The `parsed` value contains the following properties (the properties below match
 - `freeBusyStatus`: defines if the event is transparent to busy time searches ~ [TRANSP](https://www.rfc-editor.org/rfc/rfc5545#section-3.8.2.7)
 - `organizer`: the organizer of the event, contains name (CN) and mail (mailto)
 - `participants`: a collection of attendees (ATTENDEE)
-- `recurrenceRules`: [RecurrenceRule]: a collection of recurrence [RRULE](https://www.rfc-editor.org/rfc/rfc8984.html#name-recurrence-properties)
+- `recurrenceRules` RecurrenceRule[]: a collection of recurrence rules [RRULE](https://www.rfc-editor.org/rfc/rfc8984.html#name-recurrence-properties)
 
 Each `participant` contains information:
 
