@@ -1,6 +1,8 @@
 package com.linagora.tmail.james.jmap.json
 
 import java.time.ZonedDateTime
+import java.util.Locale
+
 import com.linagora.tmail.james.jmap.model._
 import net.fortuna.ical4j.model.Month
 import net.fortuna.ical4j.model.Recur.Skip
@@ -10,8 +12,6 @@ import org.apache.james.jmap.core.{SetError, UTCDate}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import play.api.libs.json._
-
-import java.util.{Date, Locale}
 
 object CalendarEventSerializer {
 
@@ -46,17 +46,17 @@ object CalendarEventSerializer {
   private implicit val calendarPriorityFieldWrites: Writes[CalendarPriorityField] = Json.valueWrites[CalendarPriorityField]
   private implicit val calendarFreeBusyStatusFieldWrites: Writes[CalendarFreeBusyStatusField] = Json.valueWrites[CalendarFreeBusyStatusField]
   private implicit val calendarPrivacyFieldWrites: Writes[CalendarPrivacyField] = Json.valueWrites[CalendarPrivacyField]
-  private implicit val recurrenceRulesRScaleWrites: Writes[RecurrenceRulesRScale] = Json.valueWrites[RecurrenceRulesRScale]
+  private implicit val recurrenceRuleRScaleWrites: Writes[RecurrenceRuleRScale] = Json.valueWrites[RecurrenceRuleRScale]
   private implicit val calendarEventMonthWrites: Writes[Month] = month => JsString(month.toString)
   private implicit val calendarEventDayWrites: Writes[Day] = day => JsString(day.toString.toLowerCase(Locale.US))
   private implicit val calendarEventSkipWrites: Writes[Skip] = skip => JsString(skip.toString.toLowerCase(Locale.US))
-  private implicit val recurrenceRulesIntervalWrites: Writes[RecurrenceRulesInterval] = interval => JsNumber(interval.value.value)
-  private implicit val recurrenceRulesCountWrites: Writes[RecurrenceRulesCount] = count => JsNumber(count.value.value)
-  private implicit val recurrenceRulesFrequencyWrites: Writes[RecurrenceRulesFrequency] = frequency => JsString(frequency.value.name().toLowerCase(Locale.US))
+  private implicit val recurrenceRuleIntervalWrites: Writes[RecurrenceRuleInterval] = interval => JsNumber(interval.value.value)
+  private implicit val recurrenceRuleCountWrites: Writes[RecurrenceRuleCount] = count => JsNumber(count.value.value)
+  private implicit val recurrenceRuleFrequencyWrites: Writes[RecurrenceRuleFrequency] = frequency => JsString(frequency.value.name().toLowerCase(Locale.US))
   private implicit val calendarEventByDayWrites: Writes[CalendarEventByDay] = Json.valueWrites[CalendarEventByDay]
   private implicit val calendarEventByMonthWrites: Writes[CalendarEventByMonth] = Json.valueWrites[CalendarEventByMonth]
-  private implicit val recurrenceRulesUtilWrites: Writes[RecurrenceRulesUntil] = utcDate => JsString(utcDate.value.asUTC.format(dateTimeUTCFormatter))
-  private implicit val calendarRecurrenceRulesWrites: Writes[RecurrenceRules] = Json.writes[RecurrenceRules]
+  private implicit val recurrenceRuleUtilWrites: Writes[RecurrenceRuleUntil] = utcDate => JsString(utcDate.value.asUTC.format(dateTimeUTCFormatter))
+  private implicit val calendarRecurrenceRuleWrites: Writes[RecurrenceRule] = Json.writes[RecurrenceRule]
   private implicit val calendarRecurrenceRulesFieldWrites: Writes[RecurrenceRulesField] = Json.valueWrites[RecurrenceRulesField]
 
   private implicit val calendarEventParsedWrites: Writes[CalendarEventParsed] = Json.writes[CalendarEventParsed]

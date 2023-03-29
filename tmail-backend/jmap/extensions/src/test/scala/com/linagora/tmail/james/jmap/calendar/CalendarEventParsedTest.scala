@@ -2,7 +2,8 @@ package com.linagora.tmail.james.jmap.calendar
 
 import java.io.ByteArrayInputStream
 import java.time.format.DateTimeFormatter
-import com.linagora.tmail.james.jmap.model.{CalendarEventByDay, CalendarEventByMonth, CalendarEventParsed, RecurrenceRules, RecurrenceRulesFrequency, RecurrenceRulesInterval}
+
+import com.linagora.tmail.james.jmap.model.{CalendarEventByDay, CalendarEventByMonth, CalendarEventParsed, RecurrenceRule, RecurrenceRuleFrequency, RecurrenceRuleInterval}
 import net.fortuna.ical4j.model.Recur.Frequency
 import net.fortuna.ical4j.model.{Month, WeekDay}
 import org.assertj.core.api.Assertions.assertThat
@@ -142,7 +143,7 @@ class CalendarEventParsedTest {
   }
 
   @Nested
-  class RecurrenceRule {
+  class RecurrenceRuleTest {
     @Test
     def parseWeeklyShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
@@ -151,9 +152,9 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
 
-      val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
+      val recurrence: RecurrenceRule = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.WEEKLY),
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.WEEKLY),
           byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.MO, WeekDay.Day.TU)))))
     }
 
@@ -165,9 +166,9 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
 
-      val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
+      val recurrence: RecurrenceRule = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.YEARLY),
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.YEARLY),
           byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
           byMonth = Some(CalendarEventByMonth(Seq(new Month(4)))),
           bySetPosition = Some(Seq(3))))
@@ -181,9 +182,9 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
 
-      val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
+      val recurrence: RecurrenceRule = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.YEARLY),
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.YEARLY),
           byMonth = Some(CalendarEventByMonth(Seq(new Month(10)))),
           bySetPosition = Some(List(1, 2)),
           byDay = Some(CalendarEventByDay(List(WeekDay.Day.MO)))))
@@ -197,10 +198,10 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
 
-      val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
+      val recurrence: RecurrenceRule = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.MONTHLY),
-          interval = Some(RecurrenceRulesInterval.from(2)),
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.MONTHLY),
+          interval = Some(RecurrenceRuleInterval.from(2)),
           byMonthDay = Some(List(29))))
     }
 
@@ -212,12 +213,12 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
 
-      val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
+      val recurrence: RecurrenceRule = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.MONTHLY),
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.MONTHLY),
           byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
           bySetPosition = Some(Seq(-1)),
-          interval = Some(RecurrenceRulesInterval.from(3))))
+          interval = Some(RecurrenceRuleInterval.from(3))))
     }
 
     @Test
@@ -228,12 +229,12 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
 
-      val recurrence: RecurrenceRules = calendarEventParsed.recurrenceRules.value.head
+      val recurrence: RecurrenceRule = calendarEventParsed.recurrenceRules.value.head
       assertThat(recurrence)
-        .isEqualTo(RecurrenceRules(frequency = RecurrenceRulesFrequency(Frequency.MONTHLY),
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.MONTHLY),
           byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
           bySetPosition = Some(Seq(4)),
-          interval = Some(RecurrenceRulesInterval.from(3))))
+          interval = Some(RecurrenceRuleInterval.from(3))))
     }
 
     def getIcsPayload(rrule: String): String =

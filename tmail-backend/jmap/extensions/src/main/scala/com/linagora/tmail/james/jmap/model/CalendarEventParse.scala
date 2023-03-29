@@ -1,5 +1,9 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.io.InputStream
+import java.time.{Duration, ZoneId, ZonedDateTime}
+import java.util.{Locale, TimeZone}
+
 import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
@@ -19,9 +23,6 @@ import org.apache.james.jmap.mail.MDNParseRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.WithAccountId
 
-import java.io.InputStream
-import java.time.{Duration, ZoneId, ZonedDateTime}
-import java.util.{Locale, TimeZone}
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
@@ -308,27 +309,27 @@ object NumberListUtils {
       }
   }
 }
-object RecurrenceRulesFrequency {
-  def from(recur: Recur): RecurrenceRulesFrequency = RecurrenceRulesFrequency(recur.getFrequency)
+object RecurrenceRuleFrequency {
+  def from(recur: Recur): RecurrenceRuleFrequency = RecurrenceRuleFrequency(recur.getFrequency)
 }
 
-case class RecurrenceRulesFrequency(value: Frequency) extends AnyVal
+case class RecurrenceRuleFrequency(value: Frequency) extends AnyVal
 
-object RecurrenceRulesRScale {
-  def from(recur: Recur): Option[RecurrenceRulesRScale] = {
+object RecurrenceRuleRScale {
+  def from(recur: Recur): Option[RecurrenceRuleRScale] = {
     val tokens: Iterator[String] = recur.toString.split("[;=]").iterator
-    var rscale: Option[RecurrenceRulesRScale] = None
+    var rscale: Option[RecurrenceRuleRScale] = None
     while (tokens.hasNext) {
       if ("RSCALE".equals(tokens.next())) {
         rscale = Option(tokens.next())
-          .map(RecurrenceRulesRScale(_))
+          .map(RecurrenceRuleRScale(_))
       }
     }
     rscale
   }
 }
 
-case class RecurrenceRulesRScale(value: String) extends AnyVal
+case class RecurrenceRuleRScale(value: String) extends AnyVal
 
 object CalendarEventByMonth {
   def from(recur: Recur): Option[CalendarEventByMonth] =
@@ -358,35 +359,35 @@ object CalendarEventByDay {
 
 case class CalendarEventByDay(value: Seq[Day])
 
-object RecurrenceRulesCount{
-  def from(recur: Recur) : Option[RecurrenceRulesCount] =
+object RecurrenceRuleCount{
+  def from(recur: Recur) : Option[RecurrenceRuleCount] =
     recur.getCount match {
       case c if c > 0 => Some(from(c))
       case _ => None
     }
 
-  def from(value: Int): RecurrenceRulesCount = RecurrenceRulesCount(UnsignedInt.liftOrThrow(value))
+  def from(value: Int): RecurrenceRuleCount = RecurrenceRuleCount(UnsignedInt.liftOrThrow(value))
 }
-case class RecurrenceRulesCount(value: UnsignedInt)
+case class RecurrenceRuleCount(value: UnsignedInt)
 
-object RecurrenceRulesInterval {
-  def from(recur: Recur): Option[RecurrenceRulesInterval] =
+object RecurrenceRuleInterval {
+  def from(recur: Recur): Option[RecurrenceRuleInterval] =
     recur.getInterval match {
       case i if i > 0 => Some(from(i))
       case _ => None
     }
 
-  def from(value: Int): RecurrenceRulesInterval = RecurrenceRulesInterval(UnsignedInt.liftOrThrow(value))
+  def from(value: Int): RecurrenceRuleInterval = RecurrenceRuleInterval(UnsignedInt.liftOrThrow(value))
 }
-case class RecurrenceRulesInterval(value: UnsignedInt)
+case class RecurrenceRuleInterval(value: UnsignedInt)
 
-object RecurrenceRulesUntil {
-  def from(recur: Recur): Option[RecurrenceRulesUntil] =
+object RecurrenceRuleUntil {
+  def from(recur: Recur): Option[RecurrenceRuleUntil] =
     Option(recur.getUntil)
       .map(date => UTCDate.from(date, ZoneId.of("UTC")))
-      .map(RecurrenceRulesUntil(_))
+      .map(RecurrenceRuleUntil(_))
 }
-case class RecurrenceRulesUntil(value: UTCDate)
+case class RecurrenceRuleUntil(value: UTCDate)
 
 object RecurrenceRulesField {
 
@@ -398,14 +399,14 @@ object RecurrenceRulesField {
       .map(rrule => parseRecurrenceRules(rrule.getRecur))
       .toSeq)
 
-  def parseRecurrenceRules(recur: Recur): RecurrenceRules = {
+  def parseRecurrenceRules(recur: Recur): RecurrenceRule = {
     val frequency: Frequency = recur.getFrequency
-    RecurrenceRules(
-      frequency = RecurrenceRulesFrequency(frequency),
-      until = RecurrenceRulesUntil.from(recur),
-      count = RecurrenceRulesCount.from(recur),
-      interval = RecurrenceRulesInterval.from(recur),
-      rscale = RecurrenceRulesRScale.from(recur),
+    RecurrenceRule(
+      frequency = RecurrenceRuleFrequency(frequency),
+      until = RecurrenceRuleUntil.from(recur),
+      count = RecurrenceRuleCount.from(recur),
+      interval = RecurrenceRuleInterval.from(recur),
+      rscale = RecurrenceRuleRScale.from(recur),
       skip = Option(recur.getSkip),
       firstDayOfWeek = Option(recur.getWeekStartDay),
       byDay = CalendarEventByDay.from(recur),
@@ -420,23 +421,23 @@ object RecurrenceRulesField {
   }
 }
 
-case class RecurrenceRulesField(value: Seq[RecurrenceRules])
-case class RecurrenceRules(frequency: RecurrenceRulesFrequency,
-                           until: Option[RecurrenceRulesUntil] = None,
-                           count: Option[RecurrenceRulesCount] = None,
-                           interval: Option[RecurrenceRulesInterval] = None,
-                           rscale: Option[RecurrenceRulesRScale] = None,
-                           skip: Option[Skip] = None,
-                           firstDayOfWeek: Option[Day] = None,
-                           byDay: Option[CalendarEventByDay] = None,
-                           byMonthDay: Option[Seq[Int]] = None,
-                           byMonth: Option[CalendarEventByMonth] = None,
-                           byYearDay: Option[Seq[Int]] = None,
-                           byWeekNo: Option[Seq[Int]] = None,
-                           byHour: Option[Seq[Int]] = None,
-                           byMinute: Option[Seq[Int]] = None,
-                           bySecond: Option[Seq[Int]] = None,
-                           bySetPosition: Option[Seq[Int]] = None)
+case class RecurrenceRulesField(value: Seq[RecurrenceRule])
+case class RecurrenceRule(frequency: RecurrenceRuleFrequency,
+                          until: Option[RecurrenceRuleUntil] = None,
+                          count: Option[RecurrenceRuleCount] = None,
+                          interval: Option[RecurrenceRuleInterval] = None,
+                          rscale: Option[RecurrenceRuleRScale] = None,
+                          skip: Option[Skip] = None,
+                          firstDayOfWeek: Option[Day] = None,
+                          byDay: Option[CalendarEventByDay] = None,
+                          byMonthDay: Option[Seq[Int]] = None,
+                          byMonth: Option[CalendarEventByMonth] = None,
+                          byYearDay: Option[Seq[Int]] = None,
+                          byWeekNo: Option[Seq[Int]] = None,
+                          byHour: Option[Seq[Int]] = None,
+                          byMinute: Option[Seq[Int]] = None,
+                          bySecond: Option[Seq[Int]] = None,
+                          bySetPosition: Option[Seq[Int]] = None)
 
 case class InvalidCalendarFileException(blobId: BlobId) extends RuntimeException
 
