@@ -14,7 +14,8 @@ dn: uid=james-user@localhost,ou=users,dc=localhost
 objectClass: inetOrgPerson
 uid: james-user@localhost
 cn: james-user
-sn: james-user
+givenName: user1Firstname
+sn: user1Surname
 mail: james-user@localhost
 userPassword: secret
 description: James user
