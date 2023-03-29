@@ -6,7 +6,7 @@ This contains Tmail backend and OIDC integration with LemonLDAP, through the Kra
 
 1. Run `./dev.sh start` to start all services and propagate configurations.
 2. Visit `tmail-frontend` at http://test.sso.example.com:8080
-3. Login with SSO, with the credentials `james-user@localhost / secret`
+3. Login with SSO, with the credentials `james-user@tmail.com / secret`
 4. Try logging out, first by visiting `http://sso.example.com`, then click Logout and confirm.
 5. Navigate back to `tmail-frontend` at http://test.sso.example.com:8080. The `/jmap` calls should now be rejected by `krakend` because the token is invalid.
 
@@ -29,6 +29,6 @@ Please add the following lines to your `/etc/hosts`:
 
 TeamMail backed by LemonLDAP is then accecible within your browser: http://test.sso.example.com:8080/
 
-Username: `james-user@localhost`
+Username: `james-user@tmail.com`
 
 Password: `secret`

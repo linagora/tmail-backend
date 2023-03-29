@@ -7,7 +7,7 @@ set -eux
 TOKEN=`curl http://sso.example.com/ 2>/dev/null|grep token|perl -pe 's/.*?value="(\w+)".*$/$1/'|head -n1`
 
 # Get cookie
-COOKIE=`curl -X POST -d user='james-user@localhost' -d password=secret -d lmAuth=LDAP -d token=$TOKEN -H 'Accept: application/json' http://sso.example.com/ 2>/dev/null|perl -pe 's/.*"id":"(.*?)".*$/$1/'`
+COOKIE=`curl -X POST -d user='james-user@tmail.com' -d password=secret -d lmAuth=LDAP -d token=$TOKEN -H 'Accept: application/json' http://sso.example.com/ 2>/dev/null|perl -pe 's/.*"id":"(.*?)".*$/$1/'`
 
 echo "Identified by LLNG"
 

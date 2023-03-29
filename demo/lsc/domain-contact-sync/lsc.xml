@@ -3,8 +3,8 @@
   <connections>
     <ldapConnection>
       <name>openldap</name>
-      <url>ldap://ldap:389/dc=localhost</url>
-      <username>cn=admin,dc=localhost</username>
+      <url>ldap://ldap:389/dc=tmail,dc=com</url>
+      <username>cn=admin,dc=tmail,dc=com</username>
       <password>admin</password>
       <authentication>SIMPLE</authentication>
       <referral>THROW</referral>
@@ -30,7 +30,7 @@
       <ldapSourceService>
         <name>openldap-user</name>
         <connection reference="openldap"/>
-        <baseDn>ou=users,dc=localhost</baseDn>
+        <baseDn>ou=users,dc=tmail,dc=com</baseDn>
         <pivotAttributes>
           <string>mail</string>
         </pivotAttributes>
