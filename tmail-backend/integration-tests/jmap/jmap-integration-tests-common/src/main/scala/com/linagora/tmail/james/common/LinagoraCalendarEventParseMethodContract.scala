@@ -143,6 +143,13 @@ trait LinagoraCalendarEventParseMethodContract {
            |                     "byMonth": [ "10" ],
            |                     "bySetPosition": [ 1, 2 ],
            |                     "until":"2024-01-11T09:00:00Z"
+           |               }],
+           |             "excludedRecurrenceRules":
+           |               [{    "frequency": "yearly",
+           |                     "byDay": [ "mo" ],
+           |                     "byMonth": [ "10" ],
+           |                     "bySetPosition": [ 1 ],
+           |                     "until":"2023-01-11T09:00:00Z"
            |               }]
            |           }
            |        }
@@ -238,6 +245,13 @@ trait LinagoraCalendarEventParseMethodContract {
            |                       "byMonth": [ "10" ],
            |                       "bySetPosition": [ 1, 2 ],
            |                       "until":"2024-01-11T09:00:00Z"
+           |                   }],
+           |                "excludedRecurrenceRules":
+           |                   [{  "frequency": "yearly",
+           |                       "byDay": [ "mo" ],
+           |                       "byMonth": [ "10" ],
+           |                       "bySetPosition": [ 1 ],
+           |                       "until":"2023-01-11T09:00:00Z"
            |                   }]
            |            },
            |            "$blobId2": {
@@ -284,7 +298,8 @@ trait LinagoraCalendarEventParseMethodContract {
            |                        "https://jitsi.linagora.com/abcd"
            |                    ]
            |                },
-           |                "recurrenceRules": []
+           |                "recurrenceRules": [],
+           |                "excludedRecurrenceRules": []
            |            }
            |        }
            |    },
@@ -461,6 +476,13 @@ trait LinagoraCalendarEventParseMethodContract {
            |                       "byMonth": [ "10" ],
            |                       "bySetPosition": [ 1, 2 ],
            |                       "until":"2024-01-11T09:00:00Z"
+           |                }],
+           |                "excludedRecurrenceRules":
+           |                  [{   "frequency": "yearly",
+           |                       "byDay": [ "mo" ],
+           |                       "byMonth": [ "10" ],
+           |                       "bySetPosition": [ 1 ],
+           |                       "until":"2023-01-11T09:00:00Z"
            |                }]
            |            }
            |        }
@@ -716,6 +738,13 @@ trait LinagoraCalendarEventParseMethodContract {
            |                           "byMonth": [ "10" ],
            |                           "bySetPosition": [ 1, 2 ],
            |                           "until":"2024-01-11T09:00:00Z"
+           |                     }],
+           |                    "excludedRecurrenceRules":
+           |                     [{    "frequency": "yearly",
+           |                           "byDay": [ "mo" ],
+           |                           "byMonth": [ "10" ],
+           |                           "bySetPosition": [ 1 ],
+           |                           "until":"2023-01-11T09:00:00Z"
            |                     }]
            |                }
            |            }
@@ -846,13 +875,20 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "extensionFields": {
            |                    "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"]
            |                },
-           |             "recurrenceRules":
-           |                  [{   "frequency": "yearly",
-           |                       "byDay": [ "mo" ],
-           |                       "byMonth": [ "10" ],
-           |                       "bySetPosition": [ 1, 2 ],
-           |                       "until":"2024-01-11T09:00:00Z"
-           |                  }]
+           |                "recurrenceRules":
+           |                [{   "frequency": "yearly",
+           |                     "byDay": [ "mo" ],
+           |                     "byMonth": [ "10" ],
+           |                     "bySetPosition": [ 1, 2 ],
+           |                     "until":"2024-01-11T09:00:00Z"
+           |                }],
+           |                "excludedRecurrenceRules":
+           |                [{   "frequency": "yearly",
+           |                     "byDay": [ "mo" ],
+           |                     "byMonth": [ "10" ],
+           |                     "bySetPosition": [ 1 ],
+           |                     "until":"2023-01-11T09:00:00Z"
+           |                }]
            |            }
            |        }
            |    },
@@ -971,7 +1007,8 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "extensionFields": {
            |                    "X-OPENPAAS-VIDEOCONFERENCE": [""]
            |                },
-           |             "recurrenceRules": []
+           |             "recurrenceRules": [],
+           |             "excludedRecurrenceRules": []
            |            }
            |        }
            |    },

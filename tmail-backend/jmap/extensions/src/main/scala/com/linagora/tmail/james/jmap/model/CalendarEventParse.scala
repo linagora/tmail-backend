@@ -9,12 +9,13 @@ import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
 import com.linagora.tmail.james.jmap.model.CalendarPrivacyField.CalendarPrivacy
 import com.linagora.tmail.james.jmap.model.CalendarStartField.getTimeZoneAlternative
+import com.linagora.tmail.james.jmap.model.RecurrenceRulesField.parseRecurrenceRules
 import eu.timepit.refined.api.Refined
 import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
 import net.fortuna.ical4j.model.Recur.{Frequency, Skip}
 import net.fortuna.ical4j.model.WeekDay.Day
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.property.{Attendee, Clazz, RRule, Transp}
+import net.fortuna.ical4j.model.property.{Attendee, Clazz, ExRule, RRule, Transp}
 import net.fortuna.ical4j.model.{Calendar, Month, NumberList, Parameter, Property, Recur, TimeZoneRegistryFactory}
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
@@ -421,7 +422,16 @@ object RecurrenceRulesField {
   }
 }
 
+object ExcludedRecurrenceRulesField {
+  def from(vevent: VEvent): ExcludedRecurrenceRulesField =
+    ExcludedRecurrenceRulesField(vevent.getProperties[ExRule](Property.EXRULE)
+      .asScala
+      .map(exRule => parseRecurrenceRules(exRule.getRecur))
+      .toSeq)
+}
+
 case class RecurrenceRulesField(value: Seq[RecurrenceRule])
+case class ExcludedRecurrenceRulesField(value: Seq[RecurrenceRule])
 case class RecurrenceRule(frequency: RecurrenceRuleFrequency,
                           until: Option[RecurrenceRuleUntil] = None,
                           count: Option[RecurrenceRuleCount] = None,
@@ -473,7 +483,8 @@ object CalendarEventParsed {
         organizer = CalendarOrganizerField.from(vevent),
         participants = CalendarParticipantsField.from(vevent),
         extensionFields = CalendarExtensionFields.from(vevent),
-        recurrenceRules = RecurrenceRulesField.from(vevent))
+        recurrenceRules = RecurrenceRulesField.from(vevent),
+        excludedRecurrenceRules = ExcludedRecurrenceRulesField.from(vevent))
     }
 }
 
@@ -495,7 +506,8 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                organizer: Option[CalendarOrganizerField] = None,
                                participants: CalendarParticipantsField = CalendarParticipantsField(),
                                extensionFields: CalendarExtensionFields = CalendarExtensionFields(),
-                               recurrenceRules: RecurrenceRulesField = RecurrenceRulesField(Seq()))
+                               recurrenceRules: RecurrenceRulesField = RecurrenceRulesField(Seq()),
+                               excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq()))
 
 case class CalendarEventParseResponse(accountId: AccountId,
                                       parsed: Option[Map[BlobId, CalendarEventParsed]],
