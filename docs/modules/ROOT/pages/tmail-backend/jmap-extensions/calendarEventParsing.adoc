@@ -51,6 +51,7 @@ The `parsed` value contains the following properties (the properties below match
 - `organizer`: the organizer of the event, contains name (CN) and mail (mailto)
 - `participants`: a collection of attendees (ATTENDEE)
 - `recurrenceRules` RecurrenceRule[]: a collection of recurrence rules [RRULE](https://www.rfc-editor.org/rfc/rfc8984.html#name-recurrence-properties)
+- `excludedRecurrenceRules` RecurrenceRule[]: a collection of excluded recurrence rules [EXRULE](https://www.rfc-editor.org/rfc/rfc8984.html#section-4.3.4)
 
 Each `participant` contains information:
 

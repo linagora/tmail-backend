@@ -147,7 +147,7 @@ class CalendarEventParsedTest {
     @Test
     def parseWeeklyShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(getIcsPayload("RRULE:FREQ=WEEKLY;BYDAY=MO,TU").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=WEEKLY;BYDAY=MO,TU").getBytes()))
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -161,7 +161,7 @@ class CalendarEventParsedTest {
     @Test
     def parseThirdSundayOfAprilShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(getIcsPayload("RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=SU;BYSETPOS=3").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=SU;BYSETPOS=3").getBytes()))
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -177,7 +177,7 @@ class CalendarEventParsedTest {
     @Test
     def parseFirstAndSecondMondayOfOctoberShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(getIcsPayload("RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=MO;BYSETPOS=1,2").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=MO;BYSETPOS=1,2").getBytes()))
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -193,7 +193,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEvery29thOfEveryMonthShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(getIcsPayload("RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=29").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=29").getBytes()))
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -208,7 +208,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEveryLastSundayOfEvery3MonthsShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(getIcsPayload("RRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=-1").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=-1").getBytes()))
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -224,7 +224,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEveryFourthSundayOfEvery3MonthsShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(getIcsPayload("RRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=4").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=4").getBytes()))
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -236,59 +236,155 @@ class CalendarEventParsedTest {
           bySetPosition = Some(Seq(4)),
           interval = Some(RecurrenceRuleInterval.from(3))))
     }
-
-    def getIcsPayload(rrule: String): String =
-      s"""BEGIN:VCALENDAR
-         |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
-         |CALSCALE:GREGORIAN
-         |METHOD:REQUEST
-         |BEGIN:VTIMEZONE
-         |TZID:Asia/Ho_Chi_Minh
-         |BEGIN:STANDARD
-         |TZOFFSETFROM:+0700
-         |TZOFFSETTO:+0700
-         |TZNAME:ICT
-         |DTSTART:19700101T000000
-         |END:STANDARD
-         |END:VTIMEZONE
-         |BEGIN:VTIMEZONE
-         |TZID:Asia/Ho_Chi_Minh
-         |BEGIN:STANDARD
-         |TZOFFSETFROM:+0700
-         |TZOFFSETTO:+0700
-         |TZNAME:ICT
-         |DTSTART:19700101T000000
-         |END:STANDARD
-         |END:VTIMEZONE
-         |BEGIN:VTIMEZONE
-         |TZID:Asia/Ho_Chi_Minh
-         |BEGIN:STANDARD
-         |TZOFFSETFROM:+0700
-         |TZOFFSETTO:+0700
-         |TZNAME:ICT
-         |DTSTART:19700101T000000
-         |END:STANDARD
-         |END:VTIMEZONE
-         |BEGIN:VEVENT
-         |UID:014351ba-ca86-4b0e-bf50-77d2f20afcb3
-         |TRANSP:OPAQUE
-         |DTSTART;TZID=Asia/Saigon:20230328T103000
-         |DTEND;TZID=Asia/Saigon:20230328T113000
-         |CLASS:PUBLIC
-         |X-OPENPAAS-VIDEOCONFERENCE:
-         |SUMMARY:Test
-         |$rrule
-         |ORGANIZER;CN=Van Tung TRAN:mailto:vttran@domain.tld
-         |DTSTAMP:20230328T030326Z
-         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=Van T
-         | ung TRAN:mailto:vttran@domain.tld
-         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
-         | DUAL:mailto:tungtv202@domain.tld
-         |SEQUENCE:0
-         |END:VEVENT
-         |END:VCALENDAR
-         |""".stripMargin
   }
+
+  @Nested
+  class ExcludedRecurrenceRuleTest {
+    @Test
+    def parseWeeklyShouldSucceed(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=WEEKLY;BYDAY=MO,TU").getBytes()))
+
+      assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
+        .hasSize(1)
+
+      val excludedRecurrenceRule: RecurrenceRule = calendarEventParsed.excludedRecurrenceRules.value.head
+      assertThat(excludedRecurrenceRule)
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.WEEKLY),
+          byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.MO, WeekDay.Day.TU)))))
+    }
+
+    @Test
+    def parseThirdSundayOfAprilShouldSucceed(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=SU;BYSETPOS=3").getBytes()))
+
+      assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
+        .hasSize(1)
+
+      val excludedRecurrenceRule: RecurrenceRule = calendarEventParsed.excludedRecurrenceRules.value.head
+      assertThat(excludedRecurrenceRule)
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.YEARLY),
+          byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
+          byMonth = Some(CalendarEventByMonth(Seq(new Month(4)))),
+          bySetPosition = Some(Seq(3))))
+    }
+
+    @Test
+    def parseFirstAndSecondMondayOfOctoberShouldSucceed(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=MO;BYSETPOS=1,2").getBytes()))
+
+      assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
+        .hasSize(1)
+
+      val excludedRecurrenceRule: RecurrenceRule = calendarEventParsed.excludedRecurrenceRules.value.head
+      assertThat(excludedRecurrenceRule)
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.YEARLY),
+          byMonth = Some(CalendarEventByMonth(Seq(new Month(10)))),
+          bySetPosition = Some(List(1, 2)),
+          byDay = Some(CalendarEventByDay(List(WeekDay.Day.MO)))))
+    }
+
+    @Test
+    def parseMonthlyEvery29thOfEveryMonthShouldSucceed(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=29").getBytes()))
+
+      assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
+        .hasSize(1)
+
+      val excludedRecurrenceRule: RecurrenceRule = calendarEventParsed.excludedRecurrenceRules.value.head
+      assertThat(excludedRecurrenceRule)
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.MONTHLY),
+          interval = Some(RecurrenceRuleInterval.from(2)),
+          byMonthDay = Some(List(29))))
+    }
+
+    @Test
+    def parseMonthlyEveryLastSundayOfEvery3MonthsShouldSucceed(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=-1").getBytes()))
+
+      assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
+        .hasSize(1)
+
+      val excludedRecurrenceRule: RecurrenceRule = calendarEventParsed.excludedRecurrenceRules.value.head
+      assertThat(excludedRecurrenceRule)
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.MONTHLY),
+          byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
+          bySetPosition = Some(Seq(-1)),
+          interval = Some(RecurrenceRuleInterval.from(3))))
+    }
+
+    @Test
+    def parseMonthlyEveryFourthSundayOfEvery3MonthsShouldSucceed(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=4").getBytes()))
+
+      assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
+        .hasSize(1)
+
+      val excludedRecurrenceRule: RecurrenceRule = calendarEventParsed.excludedRecurrenceRules.value.head
+      assertThat(excludedRecurrenceRule)
+        .isEqualTo(RecurrenceRule(frequency = RecurrenceRuleFrequency(Frequency.MONTHLY),
+          byDay = Some(CalendarEventByDay(Seq(WeekDay.Day.SU))),
+          bySetPosition = Some(Seq(4)),
+          interval = Some(RecurrenceRuleInterval.from(3))))
+    }
+  }
+
+  def icsPayloadWith(rrule: String): String =
+    s"""BEGIN:VCALENDAR
+       |VERSION:2.0
+       |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+       |CALSCALE:GREGORIAN
+       |METHOD:REQUEST
+       |BEGIN:VTIMEZONE
+       |TZID:Asia/Ho_Chi_Minh
+       |BEGIN:STANDARD
+       |TZOFFSETFROM:+0700
+       |TZOFFSETTO:+0700
+       |TZNAME:ICT
+       |DTSTART:19700101T000000
+       |END:STANDARD
+       |END:VTIMEZONE
+       |BEGIN:VTIMEZONE
+       |TZID:Asia/Ho_Chi_Minh
+       |BEGIN:STANDARD
+       |TZOFFSETFROM:+0700
+       |TZOFFSETTO:+0700
+       |TZNAME:ICT
+       |DTSTART:19700101T000000
+       |END:STANDARD
+       |END:VTIMEZONE
+       |BEGIN:VTIMEZONE
+       |TZID:Asia/Ho_Chi_Minh
+       |BEGIN:STANDARD
+       |TZOFFSETFROM:+0700
+       |TZOFFSETTO:+0700
+       |TZNAME:ICT
+       |DTSTART:19700101T000000
+       |END:STANDARD
+       |END:VTIMEZONE
+       |BEGIN:VEVENT
+       |UID:014351ba-ca86-4b0e-bf50-77d2f20afcb3
+       |TRANSP:OPAQUE
+       |DTSTART;TZID=Asia/Saigon:20230328T103000
+       |DTEND;TZID=Asia/Saigon:20230328T113000
+       |CLASS:PUBLIC
+       |X-OPENPAAS-VIDEOCONFERENCE:
+       |SUMMARY:Test
+       |$rrule
+       |ORGANIZER;CN=Van Tung TRAN:mailto:vttran@domain.tld
+       |DTSTAMP:20230328T030326Z
+       |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=Van T
+       | ung TRAN:mailto:vttran@domain.tld
+       |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
+       | DUAL:mailto:tungtv202@domain.tld
+       |SEQUENCE:0
+       |END:VEVENT
+       |END:VCALENDAR
+       |""".stripMargin
 
 }
