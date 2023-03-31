@@ -45,6 +45,7 @@ object CalendarEventSerializer {
   private implicit val calendarUidFieldWrites: Writes[CalendarUidField] = Json.valueWrites[CalendarUidField]
   private implicit val calendarPriorityFieldWrites: Writes[CalendarPriorityField] = Json.valueWrites[CalendarPriorityField]
   private implicit val calendarFreeBusyStatusFieldWrites: Writes[CalendarFreeBusyStatusField] = Json.valueWrites[CalendarFreeBusyStatusField]
+  private implicit val calendarEventStatusFieldWrites: Writes[CalendarEventStatusField] = Json.valueWrites[CalendarEventStatusField]
   private implicit val calendarPrivacyFieldWrites: Writes[CalendarPrivacyField] = Json.valueWrites[CalendarPrivacyField]
   private implicit val recurrenceRuleRScaleWrites: Writes[RecurrenceRuleRScale] = Json.valueWrites[RecurrenceRuleRScale]
   private implicit val calendarEventMonthWrites: Writes[Month] = month => JsString(month.toString)
