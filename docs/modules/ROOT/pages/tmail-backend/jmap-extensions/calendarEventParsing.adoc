@@ -48,6 +48,7 @@ The `parsed` value contains the following properties (the properties below match
 - `privacy`: determine if the event is publicly visible ~ [CLASS](https://www.rfc-editor.org/rfc/rfc5545#section-3.8.1.3)
 - `priority`: priority of the event (0 -> 9) ~ PRIORITY
 - `freeBusyStatus`: defines if the event is transparent to busy time searches ~ [TRANSP](https://www.rfc-editor.org/rfc/rfc5545#section-3.8.2.7)
+- `status`: indicates that a meeting is tentative, confirmed, or cancelled ~ [STATUS](https://www.rfc-editor.org/rfc/rfc5545#section-3.8.1.11)
 - `organizer`: the organizer of the event, contains name (CN) and mail (mailto)
 - `participants`: a collection of attendees (ATTENDEE)
 - `recurrenceRules` RecurrenceRule[]: a collection of recurrence rules [RRULE](https://www.rfc-editor.org/rfc/rfc8984.html#name-recurrence-properties)

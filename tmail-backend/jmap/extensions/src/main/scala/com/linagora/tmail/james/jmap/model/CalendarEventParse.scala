@@ -6,6 +6,7 @@ import java.util.{Locale, TimeZone}
 
 import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
+import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.EventStatus
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
 import com.linagora.tmail.james.jmap.model.CalendarPrivacyField.CalendarPrivacy
 import com.linagora.tmail.james.jmap.model.CalendarStartField.getTimeZoneAlternative
@@ -15,7 +16,7 @@ import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentH
 import net.fortuna.ical4j.model.Recur.{Frequency, Skip}
 import net.fortuna.ical4j.model.WeekDay.Day
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.property.{Attendee, Clazz, ExRule, RRule, Transp}
+import net.fortuna.ical4j.model.property.{Attendee, Clazz, ExRule, RRule, Status, Transp}
 import net.fortuna.ical4j.model.{Calendar, Month, NumberList, Parameter, Property, Recur, TimeZoneRegistryFactory}
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
@@ -104,6 +105,24 @@ object CalendarFreeBusyStatusField extends Enumeration {
 }
 
 case class CalendarFreeBusyStatusField(value: FreeBusyStatus) extends AnyVal
+
+object CalendarEventStatusField extends Enumeration {
+  type EventStatus = Value
+  val Confirmed = Value("confirmed")
+  val Cancelled = Value("cancelled")
+  val Tentative = Value("tentative")
+
+  def from(vEvent: VEvent): Option[CalendarEventStatusField] =
+    Option(vEvent.getStatus)
+      .map(status => status.getValue match {
+        case Status.VALUE_CONFIRMED => Confirmed
+        case Status.VALUE_CANCELLED => Cancelled
+        case Status.VALUE_TENTATIVE => Tentative
+      })
+      .map(CalendarEventStatusField(_))
+}
+
+case class CalendarEventStatusField(value: EventStatus) extends AnyVal
 
 object CalendarPrivacyField extends Enumeration {
   type CalendarPrivacy = Value
@@ -479,6 +498,7 @@ object CalendarEventParsed {
         sequence = CalendarSequenceField.from(vevent),
         priority = CalendarPriorityField.from(vevent),
         freeBusyStatus = CalendarFreeBusyStatusField.from(vevent),
+        status = CalendarEventStatusField.from(vevent),
         privacy = CalendarPrivacyField.from(vevent),
         organizer = CalendarOrganizerField.from(vevent),
         participants = CalendarParticipantsField.from(vevent),
@@ -502,6 +522,7 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                sequence: Option[CalendarSequenceField] = None,
                                priority: Option[CalendarPriorityField] = None,
                                freeBusyStatus: Option[CalendarFreeBusyStatusField] = None,
+                               status: Option[CalendarEventStatusField] = None,
                                privacy: Option[CalendarPrivacyField] = None,
                                organizer: Option[CalendarOrganizerField] = None,
                                participants: CalendarParticipantsField = CalendarParticipantsField(),

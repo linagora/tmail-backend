@@ -112,6 +112,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "sequence": 0,
            |                "priority": 5,
            |                "freeBusyStatus": "busy",
+           |                "status": "confirmed",
            |                "privacy": "public",
            |                "organizer": {
            |                     "name": "Raphael OUAZANA",
@@ -212,6 +213,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "sequence": 0,
            |                "priority": 5,
            |                "freeBusyStatus": "busy",
+           |                "status": "confirmed",
            |                "privacy": "public",
            |                "organizer": {
            |                    "name": "Raphael OUAZANA",
@@ -445,6 +447,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "sequence": 0,
            |                "priority": 5,
            |                "freeBusyStatus": "busy",
+           |                "status": "confirmed",
            |                "privacy": "public",
            |                "organizer": {
            |                    "name": "Raphael OUAZANA",
@@ -707,6 +710,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                    "sequence": 0,
            |                    "priority": 5,
            |                    "freeBusyStatus": "busy",
+           |                    "status": "confirmed",
            |                    "privacy": "public",
            |                    "organizer": {
            |                        "name": "Raphael OUAZANA",
@@ -850,6 +854,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                "sequence": 0,
            |                "priority": 5,
            |                "freeBusyStatus": "busy",
+           |                "status": "confirmed",
            |                "privacy": "public",
            |                "organizer": {
            |                    "name": "Raphael OUAZANA",

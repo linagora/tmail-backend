@@ -3,7 +3,8 @@ package com.linagora.tmail.james.jmap.calendar
 import java.io.ByteArrayInputStream
 import java.time.format.DateTimeFormatter
 
-import com.linagora.tmail.james.jmap.model.{CalendarEventByDay, CalendarEventByMonth, CalendarEventParsed, RecurrenceRule, RecurrenceRuleFrequency, RecurrenceRuleInterval}
+import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.{Cancelled, Confirmed, Tentative}
+import com.linagora.tmail.james.jmap.model.{CalendarEventByDay, CalendarEventByMonth, CalendarEventParsed, CalendarEventStatusField, RecurrenceRule, RecurrenceRuleFrequency, RecurrenceRuleInterval}
 import net.fortuna.ical4j.model.Recur.Frequency
 import net.fortuna.ical4j.model.{Month, WeekDay}
 import org.assertj.core.api.Assertions.assertThat
@@ -334,7 +335,37 @@ class CalendarEventParsedTest {
     }
   }
 
-  def icsPayloadWith(rrule: String): String =
+  @Nested
+  class EventStatusTest {
+    @Test
+    def parseConfirmStatus(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("STATUS:CONFIRMED").getBytes()))
+
+      assertThat(calendarEventParsed.status.head)
+        .isEqualTo(CalendarEventStatusField(Confirmed))
+    }
+
+    @Test
+    def parseCancelStatus(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("STATUS:CANCELLED").getBytes()))
+
+      assertThat(calendarEventParsed.status.head)
+        .isEqualTo(CalendarEventStatusField(Cancelled))
+    }
+
+    @Test
+    def parseTentativeStatus(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("STATUS:TENTATIVE").getBytes()))
+
+      assertThat(calendarEventParsed.status.head)
+        .isEqualTo(CalendarEventStatusField(Tentative))
+    }
+  }
+
+  def icsPayloadWith(additionalField: String): String =
     s"""BEGIN:VCALENDAR
        |VERSION:2.0
        |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
@@ -375,7 +406,7 @@ class CalendarEventParsedTest {
        |CLASS:PUBLIC
        |X-OPENPAAS-VIDEOCONFERENCE:
        |SUMMARY:Test
-       |$rrule
+       |$additionalField
        |ORGANIZER;CN=Van Tung TRAN:mailto:vttran@domain.tld
        |DTSTAMP:20230328T030326Z
        |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=Van T
