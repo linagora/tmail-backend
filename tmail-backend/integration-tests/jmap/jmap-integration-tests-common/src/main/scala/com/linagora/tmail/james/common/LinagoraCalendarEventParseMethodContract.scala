@@ -1021,6 +1021,53 @@ trait LinagoraCalendarEventParseMethodContract {
            |]""".stripMargin)
   }
 
+  @Test
+  def parseInvalidIcsPayloadShouldReturnNotParsable(): Unit = {
+    val blobId1: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/invalid_TRANSP.ics"))
+    val blobId2: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/invalid_STATUS.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId1", "$blobId2" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"CalendarEvent/parse",
+           |	{
+           |		"accountId": "$ACCOUNT_ID",
+           |		"notParsable": [
+           |			"$blobId1",
+           |			"$blobId2"
+           |		]
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
   private def uploadAndGetBlobId(payload: InputStream): String =
     `given`
       .basePath("")
