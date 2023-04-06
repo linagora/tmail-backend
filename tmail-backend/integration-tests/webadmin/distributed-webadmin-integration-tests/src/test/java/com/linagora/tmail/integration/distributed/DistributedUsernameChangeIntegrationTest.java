@@ -23,6 +23,7 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.integration.UsernameChangeIntegrationContract;
+import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
@@ -62,7 +63,10 @@ public class DistributedUsernameChangeIntegrationTest extends UsernameChangeInte
                 .to(JmapGuiceContactAutocompleteProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
-                .to(JmapGuiceKeystoreManagerProbe.class)))
+                .to(JmapGuiceKeystoreManagerProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(RateLimitingProbe.class)))
         .build();
 
     private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();

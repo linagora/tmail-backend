@@ -16,13 +16,16 @@ class RateLimitingPlanUsernameChangeTaskStep @Inject() (val repository: RateLimi
   override def changeUsername(oldUsername: Username, newUsername: Username): Publisher[Void] = {
     SMono(repository.getPlanByUser(newUsername))
       .onErrorResume {
-        case _: RateLimitingPlanNotFoundException => SMono(repository.getPlanByUser(oldUsername))
-          .onErrorResume {
-            case _: RateLimitingPlanNotFoundException => SMono.empty
-          }
-          .flatMap(planId => SMono(repository.applyPlan(newUsername, planId)))
+        case _: RateLimitingPlanNotFoundException => migratePlan(oldUsername, newUsername)
       }
       .`then`(SMono(repository.revokePlan(oldUsername)))
       .`then`()
   }
+
+  private def migratePlan(oldUsername: Username, newUsername: Username) =
+    SMono(repository.getPlanByUser(oldUsername))
+      .onErrorResume {
+        case _: RateLimitingPlanNotFoundException => SMono.empty
+      }
+      .flatMap(planId => SMono(repository.applyPlan(newUsername, planId)))
 }

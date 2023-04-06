@@ -549,6 +549,7 @@ Implemented extra steps for TMail are:
 
 - `ContactUsernameChangeTaskStep`: migrates contacts from old user to new user
 - `PGPKeysUsernameChangeTaskStep`: migrates PGP public keys from old user to new user
+- `RateLimitingPlanUsernameChangeTaskStep`: migrates rate limiting plan from old to new user
 
 Response codes:
 * 201: Success. Corresponding task id is returned.
