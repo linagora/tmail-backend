@@ -4,6 +4,7 @@ import static org.apache.james.jmap.JMAPTestingConstants.jmapRequestSpecBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
+import org.apache.http.HttpStatus;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -16,13 +17,17 @@ import org.apache.james.webadmin.WebAdminUtils;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanId;
+import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract;
 
 import io.restassured.RestAssured;
 import io.restassured.specification.RequestSpecification;
@@ -103,5 +108,27 @@ public abstract class UsernameChangeIntegrationContract {
             .containsOnly(publicKeyPayload);
         assertThat(keystoreManagerProbe.getKeyPayLoads(ALICE))
             .isEmpty();
+    }
+
+    @Test
+    void shouldAdaptRateLimiting(GuiceJamesServer server) {
+        RateLimitingProbe rateLimitingProbe = server.getProbe(RateLimitingProbe.class);
+        RateLimitingPlanId planId = rateLimitingProbe.createPlan(RateLimitingPlanRepositoryContract.CREATION_REQUEST()).id();
+
+        rateLimitingProbe.applyPlan(ALICE, planId);
+
+        String taskId = webAdminApi
+            .queryParam("action", "rename")
+            .post("/users/" + ALICE.asString() + "/rename/" + BOB.asString())
+            .jsonPath()
+            .get("taskId");
+
+        webAdminApi.get("/tasks/" + taskId + "/await")
+        .then()
+            .statusCode(HttpStatus.SC_OK)
+            .body("additionalInformation.status.RateLimitingPlanUsernameChangeTaskStep", Matchers.is("DONE"));
+
+        assertThat(rateLimitingProbe.listUsersOfAPlan(planId))
+            .containsExactly(BOB);
     }
 }
