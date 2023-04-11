@@ -64,6 +64,30 @@
       }
     },
     {
+      "endpoint": "/.well-known/linagora-ecosystem",
+      "output_encoding": "json",
+      "input_headers": ["*"],
+      "method": "GET",
+      "backend": [
+        {
+          "url_pattern": "/.well-known/linagora-ecosystem",
+          "method": "GET",
+          "host": ["http://tmail-backend"]
+        }
+      ],
+      "headers_to_pass": ["X-User", "Accept", "Content-Type"],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS512",
+          "jwk_url": "http://sso.example.com/oauth2/jwks",
+          "propagate_claims": [["sub", "X-User"]],
+          "cache": true,
+          "disable_jwk_security": true,
+          "operation_debug": true
+        }
+      }
+    },
+    {
       "endpoint": "/jmap/session",
       "output_encoding": "json",
       "input_query_strings": ["resource", "rel"],
