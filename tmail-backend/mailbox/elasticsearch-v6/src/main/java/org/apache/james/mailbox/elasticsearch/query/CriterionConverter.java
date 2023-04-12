@@ -68,6 +68,7 @@ public class CriterionConverter {
         registerCriterionConverter(SearchQuery.MessageIdCriterion.class, this::convertMessageId);
         registerCriterionConverter(SearchQuery.ConjunctionCriterion.class, this::convertConjunction);
         registerCriterionConverter(SearchQuery.HeaderCriterion.class, this::convertHeader);
+        registerCriterionConverter(SearchQuery.SubjectCriterion.class, this::convertSubject);
         registerCriterionConverter(SearchQuery.TextCriterion.class, this::convertTextCriterion);
         registerCriterionConverter(SearchQuery.CustomFlagCriterion.class, this::convertCustomFlagCriterion);
         
@@ -295,4 +296,7 @@ public class CriterionConverter {
         };
     }
 
+    private QueryBuilder convertSubject(SearchQuery.SubjectCriterion headerCriterion) {
+        return matchQuery(JsonMessageConstants.SUBJECT, headerCriterion.getSubject());
+    }
 }
