@@ -20,7 +20,7 @@ package com.linagora.tmail.mailets
 
 import java.time.Duration
 
-import com.linagora.tmail.mailets.TMailMailboxAppenderTest.{DOMAIN, EMPTY_FOLDER, FOLDER, TEAM_MAILBOX, USER}
+import com.linagora.tmail.mailets.TMailMailboxAppenderTest.{DOMAIN, EMPTY_FOLDER, FOLDER, STORAGE_DIRECTIVE, TEAM_MAILBOX, USER}
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxRepository, TeamMailboxRepositoryImpl}
 import eu.timepit.refined.auto._
 import javax.mail.MessagingException
@@ -31,6 +31,7 @@ import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.{FetchGroup, MailboxPath, MessageRange}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.apache.james.util.concurrency.ConcurrentTestRunner
+import org.apache.mailet.StorageDirective
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.junit.jupiter.api.{BeforeEach, RepeatedTest, Test}
 import reactor.core.scala.publisher.SMono
@@ -41,6 +42,9 @@ object TMailMailboxAppenderTest {
   private val USER: Username = Username.fromLocalPartWithDomain(TEAM_MAILBOX_NAME.value, DOMAIN)
   private val TEAM_MAILBOX: TeamMailbox = TeamMailbox(USER.getDomainPart.get, TEAM_MAILBOX_NAME)
   private val FOLDER = "folder"
+  private val STORAGE_DIRECTIVE = StorageDirective.builder()
+    .targetFolder(FOLDER)
+    .build()
   private val EMPTY_FOLDER: String = ""
 }
 
@@ -72,7 +76,7 @@ class TMailMailboxAppenderTest {
   @Test
   def appendShouldAddMessageToDesiredTeamMailbox(): Unit = {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
-    testee.append(mimeMessage, USER, FOLDER).block()
+    testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block()
     val messages = mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath, tmSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, tmSession)
 
@@ -82,7 +86,7 @@ class TMailMailboxAppenderTest {
   @Test
   def appendShouldAddMessageToDesiredTeamMailboxOmittingFolderValue(): Unit = {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
-    testee.append(mimeMessage, USER, FOLDER).block()
+    testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block()
     val messages = mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath, tmSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, tmSession)
 
@@ -95,7 +99,7 @@ class TMailMailboxAppenderTest {
     val mailboxPath = MailboxPath.forUser(USER, FOLDER)
     mailboxManager.createMailbox(mailboxPath, userSession)
 
-    testee.append(mimeMessage, USER, FOLDER).block()
+    testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block()
     val messages = mailboxManager.getMailbox(mailboxPath, userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
@@ -107,7 +111,7 @@ class TMailMailboxAppenderTest {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
 
     ConcurrentTestRunner.builder
-      .operation((a: Int, b: Int) => testee.append(mimeMessage, USER, FOLDER).block())
+      .operation((a: Int, b: Int) => testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block())
       .threadCount(100)
       .runSuccessfullyWithin(Duration.ofMinutes(1))
   }
@@ -117,7 +121,7 @@ class TMailMailboxAppenderTest {
    */
   @Test
   def appendShouldAddMessageToDesiredMailbox(): Unit = {
-    testee.append(mimeMessage, USER, FOLDER).block()
+    testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block()
     val messages = mailboxManager.getMailbox(MailboxPath.forUser(USER, FOLDER), userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
@@ -128,7 +132,7 @@ class TMailMailboxAppenderTest {
   def appendShouldAddMessageToDesiredMailboxWhenMailboxExists(): Unit = {
     val mailboxPath = MailboxPath.forUser(USER, FOLDER)
     mailboxManager.createMailbox(mailboxPath, userSession)
-    testee.append(mimeMessage, USER, FOLDER).block()
+    testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block()
 
     val messages = mailboxManager.getMailbox(mailboxPath, userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
@@ -138,13 +142,17 @@ class TMailMailboxAppenderTest {
 
   @Test
   def appendShouldNotAppendToEmptyFolder(): Unit = {
-    assertThatThrownBy(() => testee.append(mimeMessage, USER, EMPTY_FOLDER).block())
+    assertThatThrownBy(() => testee.append(mimeMessage, USER, StorageDirective.builder()
+      .targetFolder(EMPTY_FOLDER)
+      .build()).block())
       .isInstanceOf(classOf[MessagingException])
   }
 
   @Test
   def appendShouldRemovePathSeparatorAsFirstChar(): Unit = {
-    testee.append(mimeMessage, USER, "." + FOLDER).block()
+    testee.append(mimeMessage, USER, StorageDirective.builder()
+      .targetFolder(".folder")
+      .build()).block()
     val messages = mailboxManager.getMailbox(MailboxPath.forUser(USER, FOLDER), userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
@@ -153,7 +161,10 @@ class TMailMailboxAppenderTest {
 
   @Test
   def appendShouldReplaceSlashBySeparator(): Unit = {
-    testee.append(mimeMessage, USER, FOLDER + "/any").block()
+    testee.append(mimeMessage, USER, StorageDirective.builder()
+      .targetFolder(FOLDER + "/any")
+      .build()).block()
+
     val messages = mailboxManager.getMailbox(MailboxPath.forUser(USER, FOLDER + ".any"), userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
@@ -163,7 +174,7 @@ class TMailMailboxAppenderTest {
   @RepeatedTest(20)
   def appendShouldNotFailInConcurrentEnvironment(): Unit = {
     ConcurrentTestRunner.builder
-      .operation((a: Int, b: Int) => testee.append(mimeMessage, USER, FOLDER + "/any").block())
+      .operation((a: Int, b: Int) => testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block())
       .threadCount(100)
       .runSuccessfullyWithin(Duration.ofMinutes(1))
   }
