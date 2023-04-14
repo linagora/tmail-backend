@@ -146,4 +146,13 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
 
   override def createMailbox(mailboxPath: MailboxPath, createOption: MailboxManager.CreateOption, mailboxSession: MailboxSession): Optional[MailboxId] =
     mailboxManager.createMailbox(mailboxPath, createOption, mailboxSession)
+
+  override def hasRightReactive(mailboxPath: MailboxPath, right: MailboxACL.Right, session: MailboxSession): Publisher[lang.Boolean] =
+    mailboxManager.hasRightReactive(mailboxPath, right, session)
+
+  override def myRightsReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MailboxACL.Rfc4314Rights] =
+    mailboxManager.myRightsReactive(mailboxPath, session)
+
+  override def applyRightsCommandReactive(mailboxPath: MailboxPath, mailboxACLCommand: MailboxACL.ACLCommand, session: MailboxSession): Publisher[Void] =
+    mailboxManager.applyRightsCommandReactive(mailboxPath, mailboxACLCommand, session)
 }
