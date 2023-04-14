@@ -165,7 +165,7 @@ class TMailMailboxAppenderTest {
       .targetFolder(FOLDER + "/any")
       .build()).block()
 
-    val messages = mailboxManager.getMailbox(MailboxPath.forUser(USER, STORAGE_DIRECTIVE + ".any"), userSession)
+    val messages = mailboxManager.getMailbox(MailboxPath.forUser(USER, FOLDER + ".any"), userSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, userSession)
 
     assertThat(messages).toIterable.hasSize(1)
