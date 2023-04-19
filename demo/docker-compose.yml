@@ -102,15 +102,10 @@ services:
       - tmail
 
   apisix:
-    command: >
-      bash -c "cat /apisix-config/config.yaml > /usr/local/apisix/conf/config.yaml
-      && ln -s /apisix-config/apisix.yaml /usr/local/apisix/conf/apisix.yaml 
-      && /docker-entrypoint.sh docker-start"
-
     image: apache/apisix:3.2.0-debian
     volumes:
-      - ./apisix/conf/apisix.yaml:/apisix-config/apisix.yaml
-      - ./apisix/conf/config.yaml:/apisix-config/config.yaml
+      - ./apisix/conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml
+      - ./apisix/conf/config.yaml:/usr/local/apisix/conf/config.yaml
     networks:
       - tmail
     ports:

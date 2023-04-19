@@ -1,6 +1,6 @@
 routes:
   -
-    id: httpbin    #For test, TODO remove
+    id: test    #For test, TODO remove
     uri: /ping
     upstream:
       nodes:
