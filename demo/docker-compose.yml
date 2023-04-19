@@ -101,5 +101,20 @@ services:
     networks:
       - tmail
 
+  apisix:
+    command: >
+      bash -c "cat /apisix-config/config.yaml > /usr/local/apisix/conf/config.yaml
+      && ln -s /apisix-config/apisix.yaml /usr/local/apisix/conf/apisix.yaml 
+      && /docker-entrypoint.sh docker-start"
+
+    image: apache/apisix:3.2.0-debian
+    volumes:
+      - ./apisix/conf/apisix.yaml:/apisix-config/apisix.yaml
+      - ./apisix/conf/config.yaml:/apisix-config/config.yaml
+    networks:
+      - tmail
+    ports:
+      - "9080:9080/tcp"
+
 networks:
   tmail:
