@@ -11,6 +11,7 @@ import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
+import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
@@ -1063,6 +1064,300 @@ trait LinagoraCalendarEventParseMethodContract {
            |			"$blobId1",
            |			"$blobId2"
            |		]
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def invalidPropertiesShouldFail(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ],
+         |      "properties": ["invalid"]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [[
+         |            "error",
+         |            {
+         |                "type": "invalidArguments",
+         |                "description": "The following properties [invalid] do not exist."
+         |            },
+         |            "c1"
+         |        ]]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def nonSpecifiedPropertiesShouldReturnDefaultProperties(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "CalendarEvent/parse",
+           |    {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "parsed": {
+           |            "$blobId": {
+           |                "uid": "ea127690-0440-404b-af98-9823c855a283",
+           |                "title": "Sprint planning #23",
+           |                "description": "description 123",
+           |                "start": "2017-01-11T16:00:00",
+           |                "end": "2017-01-11T17:30:00",
+           |                "utcStart":"2017-01-11T09:00:00Z",
+           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "timeZone": "Asia/Ho_Chi_Minh",
+           |                "duration": "PT1H30M",
+           |                "location": "Hangout",
+           |                "method": "REQUEST",
+           |                "sequence": 0,
+           |                "priority": 5,
+           |                "freeBusyStatus": "busy",
+           |                "status": "confirmed",
+           |                "privacy": "public",
+           |                "organizer": {
+           |                     "name": "Raphael OUAZANA",
+           |                     "mailto": "ouazana@domain.tld"
+           |                },
+           |                "participants": [
+           |                 {
+           |                     "name": "Matthieu EXT_BAECHLER",
+           |                     "mailto": "baechler@domain.tld",
+           |                     "kind": "INDIVIDUAL",
+           |                     "role": "ADMIN",
+           |                     "participationStatus": "NEEDS-ACTION",
+           |                     "expectReply": true
+           |                 },
+           |                 {
+           |                     "name": "Laura ROYET",
+           |                     "mailto": "royet@domain.tld",
+           |                     "kind": "INDIVIDUAL",
+           |                     "participationStatus": "NEEDS-ACTION",
+           |                     "expectReply": true
+           |                 }
+           |             ],
+           |             "extensionFields": {
+           |                     "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"]
+           |                 },
+           |             "recurrenceRules":
+           |               [{    "frequency": "yearly",
+           |                     "byDay": [ "mo" ],
+           |                     "byMonth": [ "10" ],
+           |                     "bySetPosition": [ 1, 2 ],
+           |                     "until":"2024-01-11T09:00:00Z"
+           |               }],
+           |             "excludedRecurrenceRules":
+           |               [{    "frequency": "yearly",
+           |                     "byDay": [ "mo" ],
+           |                     "byMonth": [ "10" ],
+           |                     "bySetPosition": [ 1 ],
+           |                     "until":"2023-01-11T09:00:00Z"
+           |               }]
+           |           }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def emptyPropertiesShouldReturnDefaultProperties(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ],
+         |      "properties": []
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "CalendarEvent/parse",
+           |    {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "parsed": {
+           |            "$blobId": {
+           |                "uid": "ea127690-0440-404b-af98-9823c855a283",
+           |                "title": "Sprint planning #23",
+           |                "description": "description 123",
+           |                "start": "2017-01-11T16:00:00",
+           |                "end": "2017-01-11T17:30:00",
+           |                "utcStart":"2017-01-11T09:00:00Z",
+           |                "utcEnd":"2017-01-11T10:30:00Z",
+           |                "timeZone": "Asia/Ho_Chi_Minh",
+           |                "duration": "PT1H30M",
+           |                "location": "Hangout",
+           |                "method": "REQUEST",
+           |                "sequence": 0,
+           |                "priority": 5,
+           |                "freeBusyStatus": "busy",
+           |                "status": "confirmed",
+           |                "privacy": "public",
+           |                "organizer": {
+           |                     "name": "Raphael OUAZANA",
+           |                     "mailto": "ouazana@domain.tld"
+           |                },
+           |                "participants": [
+           |                 {
+           |                     "name": "Matthieu EXT_BAECHLER",
+           |                     "mailto": "baechler@domain.tld",
+           |                     "kind": "INDIVIDUAL",
+           |                     "role": "ADMIN",
+           |                     "participationStatus": "NEEDS-ACTION",
+           |                     "expectReply": true
+           |                 },
+           |                 {
+           |                     "name": "Laura ROYET",
+           |                     "mailto": "royet@domain.tld",
+           |                     "kind": "INDIVIDUAL",
+           |                     "participationStatus": "NEEDS-ACTION",
+           |                     "expectReply": true
+           |                 }
+           |             ],
+           |             "extensionFields": {
+           |                     "X-OPENPAAS-VIDEOCONFERENCE": ["https://jitsi.linagora.com/abcd"]
+           |                 },
+           |             "recurrenceRules":
+           |               [{    "frequency": "yearly",
+           |                     "byDay": [ "mo" ],
+           |                     "byMonth": [ "10" ],
+           |                     "bySetPosition": [ 1, 2 ],
+           |                     "until":"2024-01-11T09:00:00Z"
+           |               }],
+           |             "excludedRecurrenceRules":
+           |               [{    "frequency": "yearly",
+           |                     "byDay": [ "mo" ],
+           |                     "byMonth": [ "10" ],
+           |                     "bySetPosition": [ 1 ],
+           |                     "until":"2023-01-11T09:00:00Z"
+           |               }]
+           |           }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def propertiesShouldBeFiltered(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ],
+         |      "properties": ["uid", "title", "description"]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"CalendarEvent/parse",
+           |	{
+           |		"accountId": "$ACCOUNT_ID",
+           |		"parsed": {
+           |			"$blobId": {
+           |				"uid": "ea127690-0440-404b-af98-9823c855a283",
+           |				"title": "Sprint planning #23",
+           |				"description": "description 123"
+           |			}
+           |		}
            |	},
            |	"c1"
            |]""".stripMargin)
