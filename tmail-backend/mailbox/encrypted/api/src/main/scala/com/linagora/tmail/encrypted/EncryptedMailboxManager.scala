@@ -79,17 +79,32 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
   override def getAllAnnotations(mailboxPath: MailboxPath, session: MailboxSession): util.List[MailboxAnnotation] =
     mailboxManager.getAllAnnotations(mailboxPath, session)
 
+  override def getAllAnnotationsReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MailboxAnnotation] =
+    mailboxManager.getAllAnnotationsReactive(mailboxPath, session)
+
   override def getAnnotationsByKeys(mailboxPath: MailboxPath, session: MailboxSession, keys: util.Set[MailboxAnnotationKey]): util.List[MailboxAnnotation] =
     mailboxManager.getAnnotationsByKeys(mailboxPath, session, keys)
+
+  override def getAnnotationsByKeysReactive(mailboxPath: MailboxPath, session: MailboxSession, keys: util.Set[MailboxAnnotationKey]): Publisher[MailboxAnnotation] =
+    mailboxManager.getAnnotationsByKeysReactive(mailboxPath, session, keys)
 
   override def getAnnotationsByKeysWithOneDepth(mailboxPath: MailboxPath, session: MailboxSession, keys: util.Set[MailboxAnnotationKey]): util.List[MailboxAnnotation] =
     mailboxManager.getAnnotationsByKeysWithOneDepth(mailboxPath, session, keys)
 
+  override def getAnnotationsByKeysWithOneDepthReactive(mailboxPath: MailboxPath, session: MailboxSession, keys: util.Set[MailboxAnnotationKey]): Publisher[MailboxAnnotation] =
+    mailboxManager.getAnnotationsByKeysWithOneDepthReactive(mailboxPath, session, keys)
+
   override def getAnnotationsByKeysWithAllDepth(mailboxPath: MailboxPath, session: MailboxSession, keys: util.Set[MailboxAnnotationKey]): util.List[MailboxAnnotation] =
     mailboxManager.getAnnotationsByKeysWithAllDepth(mailboxPath, session, keys)
 
+  override def getAnnotationsByKeysWithAllDepthReactive(mailboxPath: MailboxPath, session: MailboxSession, keys: util.Set[MailboxAnnotationKey]): Publisher[MailboxAnnotation] =
+    mailboxManager.getAnnotationsByKeysWithAllDepthReactive(mailboxPath, session, keys)
+
   override def updateAnnotations(mailboxPath: MailboxPath, session: MailboxSession, mailboxAnnotations: util.List[MailboxAnnotation]): Unit =
     mailboxManager.updateAnnotations(mailboxPath, session, mailboxAnnotations)
+
+  override def updateAnnotationsReactive(mailboxPath: MailboxPath, session: MailboxSession, mailboxAnnotations: util.List[MailboxAnnotation]): Publisher[Void] =
+    mailboxManager.updateAnnotationsReactive(mailboxPath, session, mailboxAnnotations)
 
   override def hasRight(mailboxPath: MailboxPath, right: MailboxACL.Right, session: MailboxSession): Boolean =
     mailboxManager.hasRight(mailboxPath, right, session)
