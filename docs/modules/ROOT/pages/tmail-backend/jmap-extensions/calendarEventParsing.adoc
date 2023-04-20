@@ -40,6 +40,8 @@ The `parsed` value contains the following properties (the properties below match
 - `description`: description of the event ~ DESCRIPTION
 - `start`: Start time of the event ~ DTSTART
 - `end`: End time of the event ~ DTEND
+- `utcStart`: Start time of the event in UTC time zone
+- `utcEnd`: End time of the event in UTC time zone
 - `duration`: duration of the event ~ DURATION
 - `timeZone`: time zone of the start/end time ~ TZID
 - `location`: location of the event ~ LOCATION
@@ -53,6 +55,7 @@ The `parsed` value contains the following properties (the properties below match
 - `participants`: a collection of attendees (ATTENDEE)
 - `recurrenceRules` RecurrenceRule[]: a collection of recurrence rules [RRULE](https://www.rfc-editor.org/rfc/rfc8984.html#name-recurrence-properties)
 - `excludedRecurrenceRules` RecurrenceRule[]: a collection of excluded recurrence rules [EXRULE](https://www.rfc-editor.org/rfc/rfc8984.html#section-4.3.4)
+- `extensionFields`: contains custom event headers.
 
 Each `participant` contains information:
 
@@ -62,7 +65,6 @@ Each `participant` contains information:
 - `role`: "ROLE", for the intended role that the attendee will have in the calendar component
 - `participationStatus`: "PARTSTAT", for the status of the attendee's participation
 - `expectReply`: Boolean. "RSVP", for indicating whether the favor of a reply is requested
-- `extensionFields`: contains custom event headers.
 
 Each `recurrenceRule` contains information:
 
