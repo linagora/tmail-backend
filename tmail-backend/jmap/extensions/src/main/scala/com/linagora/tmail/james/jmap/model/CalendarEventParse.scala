@@ -12,6 +12,7 @@ import com.linagora.tmail.james.jmap.model.CalendarPrivacyField.CalendarPrivacy
 import com.linagora.tmail.james.jmap.model.CalendarStartField.getTimeZoneAlternative
 import com.linagora.tmail.james.jmap.model.RecurrenceRulesField.parseRecurrenceRules
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
 import net.fortuna.ical4j.model.Recur.{Frequency, Skip}
 import net.fortuna.ical4j.model.WeekDay.Day
@@ -20,7 +21,7 @@ import net.fortuna.ical4j.model.property.{Attendee, Clazz, ExRule, RRule, Status
 import net.fortuna.ical4j.model.{Calendar, Month, NumberList, Parameter, Property, Recur, TimeZoneRegistryFactory}
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
-import org.apache.james.jmap.core.{AccountId, Id, UTCDate, UnsignedInt}
+import org.apache.james.jmap.core.{AccountId, Id, Properties, UTCDate, UnsignedInt}
 import org.apache.james.jmap.mail.MDNParseRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.WithAccountId
@@ -29,7 +30,8 @@ import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
 case class CalendarEventParseRequest(accountId: AccountId,
-                                     blobIds: BlobIds) extends WithAccountId {
+                                     blobIds: BlobIds,
+                                     properties: Option[Properties]) extends WithAccountId {
   def validate: Either[RequestTooLargeException, CalendarEventParseRequest] =
     if (blobIds.value.length > MAXIMUM_NUMBER_OF_BLOB_IDS) {
       Left(RequestTooLargeException("The number of ids requested by the client exceeds the maximum number the server is willing to process in a single method call"))
@@ -40,6 +42,14 @@ case class CalendarEventParseRequest(accountId: AccountId,
 
 object CalendarEventParse {
   type UnparsedBlobId = String Refined Id.IdConstraint
+
+  val defaultProperties: Properties = Properties("uid", "title", "description", "start", "end", "utcStart", "utcEnd", "duration", "timeZone",
+    "location", "method", "sequence", "privacy", "priority", "freeBusyStatus", "status", "organizer", "participants",
+    "recurrenceRules", "excludedRecurrenceRules", "extensionFields")
+
+  val allowedProperties: Properties = Properties("uid", "title", "description", "start", "end", "utcStart", "utcEnd", "duration", "timeZone",
+    "location", "method", "sequence", "privacy", "priority", "freeBusyStatus", "status", "organizer", "participants",
+    "recurrenceRules", "excludedRecurrenceRules", "extensionFields")
 }
 
 case class CalendarEventNotFound(value: Set[UnparsedBlobId]) {

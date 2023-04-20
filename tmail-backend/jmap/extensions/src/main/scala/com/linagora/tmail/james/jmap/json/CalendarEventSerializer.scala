@@ -8,7 +8,7 @@ import net.fortuna.ical4j.model.Month
 import net.fortuna.ical4j.model.Recur.Skip
 import net.fortuna.ical4j.model.WeekDay.Day
 import org.apache.james.core.MailAddress
-import org.apache.james.jmap.core.{SetError, UTCDate}
+import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import play.api.libs.json._
@@ -69,5 +69,23 @@ object CalendarEventSerializer {
   private implicit val calendarEventParseRequestReads: Reads[CalendarEventParseRequest] = Json.reads[CalendarEventParseRequest]
 
   def deserializeCalendarEventParseRequest(input: JsValue): JsResult[CalendarEventParseRequest] = Json.fromJson[CalendarEventParseRequest](input)
-  def serializeCalendarEventResponse(calendarEventResponse: CalendarEventParseResponse): JsValue = Json.toJson(calendarEventResponse)
+  def serializeCalendarEventResponse(calendarEventResponse: CalendarEventParseResponse, properties: Properties): JsValue = {
+    val originalJson = Json.toJson(calendarEventResponse)
+
+    val filteredParsedOptional: JsResult[Map[String, JsValue]] = originalJson.transform((__ \ "parsed").json.pick[JsObject])
+      .map(jsObject => jsObject.value
+        .map(blobIdToCalendarEvent => blobIdToCalendarEvent._1 -> blobIdToCalendarEvent._2.transform {
+          case jsonObject: JsObject => JsSuccess(properties.filter(jsonObject))
+          case js => JsSuccess(js)
+        }.fold(_ => JsObject(Map(blobIdToCalendarEvent)), o => o))
+        .toMap)
+
+    filteredParsedOptional.map(
+      filterParsed => {
+        originalJson.transform((__ \ "parsed").json.prune).get.transform(
+          (__).json.update(__.read[JsObject].map(prunedParsed => prunedParsed ++ JsObject(Map("parsed" -> JsObject(filterParsed))))))
+      })
+      .map(_.get)
+      .getOrElse(originalJson)
+  }
 }

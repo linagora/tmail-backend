@@ -4,13 +4,15 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.CalendarEventSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
-import com.linagora.tmail.james.jmap.model.{CalendarEventParseRequest, CalendarEventParseResponse, CalendarEventParseResults, CalendarEventParsed, InvalidCalendarFileException}
+import com.linagora.tmail.james.jmap.model.{CalendarEventParse, CalendarEventParseRequest, CalendarEventParseResponse, CalendarEventParseResults, CalendarEventParsed, InvalidCalendarFileException}
 import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, UrlPrefixes}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, Properties, SessionTranslator, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
-import org.apache.james.jmap.mail.{BlobId, BlobUnParsableException}
+import org.apache.james.jmap.mail.{BlobId, BlobUnParsableException, SpecificHeaderRequest}
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.{BlobNotFoundException, BlobResolvers, SessionSupplier}
 import org.apache.james.mailbox.MailboxSession
@@ -19,7 +21,6 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import javax.inject.Inject
 import scala.util.Using
 
 case object CalendarCapabilityFactory extends CapabilityFactory {
@@ -69,12 +70,34 @@ class CalendarEventParseMethod @Inject()(val blobResolvers: BlobResolvers,
                          invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,
                          request: CalendarEventParseRequest): Publisher[InvocationWithContext] =
-    computeResponse(request, mailboxSession)
-      .map(response => Invocation(
-        methodName,
-        Arguments(CalendarEventSerializer.serializeCalendarEventResponse(response).as[JsObject]),
-        invocation.invocation.methodCallId))
-      .map(InvocationWithContext(_, invocation.processingContext))
+    validateProperties(request)
+      .fold(error => SMono.error(error),
+        properties => computeResponse(request, mailboxSession)
+          .map(response => Invocation(
+            methodName,
+            Arguments(CalendarEventSerializer.serializeCalendarEventResponse(response, properties).as[JsObject]),
+            invocation.invocation.methodCallId))
+          .map(InvocationWithContext(_, invocation.processingContext)))
+
+  private def validateProperties(request: CalendarEventParseRequest): Either[IllegalArgumentException, Properties] =
+    request.properties match {
+      case None => Right(CalendarEventParse.defaultProperties)
+      case Some(properties) =>
+        val invalidProperties: Set[NonEmptyString] = properties.value
+          .flatMap(property => SpecificHeaderRequest.from(property)
+            .fold(
+              invalidProperty => Some(invalidProperty),
+              _ => None
+            )) -- CalendarEventParse.allowedProperties.value
+
+        if (invalidProperties.nonEmpty) {
+          Left(new IllegalArgumentException(s"The following properties [${invalidProperties.map(p => p.value).mkString(", ")}] do not exist."))
+        } else if (properties.isEmpty()) {
+          Right(CalendarEventParse.defaultProperties)
+        } else {
+          Right(properties)
+        }
+    }
 
   private def computeResponse(request: CalendarEventParseRequest,
                               mailboxSession: MailboxSession): SMono[CalendarEventParseResponse] = {

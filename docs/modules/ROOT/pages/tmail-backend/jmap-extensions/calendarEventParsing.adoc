@@ -25,6 +25,7 @@ The request object requires the following properties:
 
 - *accountId*: `Id` The id of the account to use.
 - *blobIds*: `[Id]` An array of calendar blob ids that the user wants to parse.
+- *properties*: String[] A list of properties to fetch for each CalendarEvent returned. If omitted, this defaults to all the properties.
 
 The response object contains the following properties:
 
