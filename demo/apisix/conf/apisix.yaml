@@ -1,0 +1,18 @@
+routes:
+  -
+    id: test    #For test, TODO remove
+    uri: /ping
+    upstream:
+      nodes:
+      type: roundrobin
+    plugin_config_id: 1
+
+plugin_configs:
+  -
+    id: 1
+    plugins:
+      response-rewrite:
+        status_code: 200
+        body: "APISIX already up!\n"  #For test, TODO remove
+    desc: "response-rewrite"
+#END
