@@ -6,6 +6,96 @@ routes:
       nodes:
       type: roundrobin
     plugin_config_id: 1
+  -
+    id: jmap
+    uri: /oidc/jmap
+    service_id: jmap_service_oidc
+    methods:
+      - POST
+    plugins:
+      proxy-rewrite:
+        uri: /jmap
+  -
+    id: jmap_session
+    uri: /oidc/jmap/session
+    service_id: jmap_service_oidc
+    methods:
+      - GET
+    plugins:
+      proxy-rewrite:
+        uri: /jmap/session
+  -
+    id: download
+    uri: /oidc/download/*
+    service_id: jmap_service_oidc
+    methods:
+      - GET
+    plugins:
+      proxy-rewrite:
+        regex_uri:
+          - "^/oidc/download/(.*)/(.*)"
+          - "/download/$1/$2"
+  -
+    id: upload
+    uri: /oidc/upload/*
+    service_id: jmap_service_oidc
+    methods:
+      - POST
+    plugins:
+      proxy-rewrite:
+        regex_uri:
+          - "^/oidc/upload/(.*)"
+          - "/upload/$1"
+  -
+    id: web_known_finger
+    uri: /oidc/.well-known/webfinger
+    service_id: jmap_no_auth_service
+    methods:
+      - GET
+    plugins:
+      proxy-rewrite:
+        uri: /.well-known/webfinger
+  -
+    id: web_known_linagora_ecosystem
+    uri: /oidc/.well-known/linagora-ecosystem
+    service_id: jmap_service_oidc
+    methods:
+      - GET
+    plugins:
+      proxy-rewrite:
+        uri: /.well-known/linagora-ecosystem
+  -
+    id: web_known_jmap
+    uri: /oidc/.well-known/jmap
+    service_id: jmap_service_oidc
+    methods:
+      - GET
+    plugins:
+      proxy-rewrite:
+        uri: /.well-known/jmap
+services:
+  -
+    id: jmap_service_oidc
+    upstream_id: jmap_upstream
+    plugins:
+      openid-connect:
+        client_id: "james_apisix"
+        client_secret: "james_apisix"
+        discovery: "http://sso.example.com/.well-known/openid-configuration"
+        scope: "openid profile"
+        bearer_only: true
+        introspection_endpoint_auth_method: "client_secret_post"
+        redirect_uri: "http://test.sso.example.com:8080/login-callback.html"
+  -
+    id: jmap_no_auth_service
+    upstream_id: jmap_upstream
+
+upstreams:
+  -
+    id: jmap_upstream
+    nodes:
+      "tmail-backend:80": 1
+    type: roundrobin
 
 plugin_configs:
   -

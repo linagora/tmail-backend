@@ -21,6 +21,7 @@ services:
     container_name: tmail-backend
     ports:
       - "8000:8000"
+      - "8001:80"
     environment:
       - DOMAIN=tmail.com
     volumes:
@@ -102,6 +103,7 @@ services:
       - tmail
 
   apisix:
+    container_name: apisix.example.com
     image: apache/apisix:3.2.0-debian
     volumes:
       - ./apisix/conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml
