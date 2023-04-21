@@ -24,7 +24,7 @@ Here's a recording of the flow:
 Please add the following lines to your `/etc/hosts`:
 
 ```
-127.0.0.1 api.manager.example.com manager.sso.example.com sso.example.com handler.sso.example.com test.sso.example.com
+127.0.0.1 api.manager.example.com manager.sso.example.com sso.example.com handler.sso.example.com test.sso.example.com apisix.example.com
 ```
 
 TeamMail backed by LemonLDAP is then accecible within your browser: http://test.sso.example.com:8080/
