@@ -121,7 +121,7 @@ class CalendarEventParseMethod @Inject()(val blobResolvers: BlobResolvers,
   private def toParseResults(blobId: BlobId, mailboxSession: MailboxSession): SMono[CalendarEventParseResults] =
     blobResolvers.resolve(blobId, mailboxSession)
       .flatMap(blob => Using(blob.content)(CalendarEventParsed.from)
-        .fold(_ => SMono.error[CalendarEventParsed](InvalidCalendarFileException(blobId)), result => SMono.just(result)))
+        .fold(_ => SMono.error[List[CalendarEventParsed]](InvalidCalendarFileException(blobId)), result => SMono.just(result)))
       .map(parsed => CalendarEventParseResults.parse(blobId, parsed))
       .onErrorResume {
         case e: BlobNotFoundException => SMono.just(CalendarEventParseResults.notFound(e.blobId))

@@ -50,10 +50,57 @@ class CalendarEventParsedTest {
                        |END:VCALENDAR
                        |""".stripMargin
 
-    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes()))
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
 
     assertThat(calendarEventParsed.end.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
       .isEqualTo("2017-01-21T10:00:00Z")
+  }
+
+  @Test
+  def multipleVEventCase(): Unit = {
+    val icsPayload =
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//bobbin v0.1//NONSGML iCal Writer//EN
+        |CALSCALE:GREGORIAN
+        |METHOD:PUBLISH
+        |BEGIN:VEVENT
+        |DTSTART:20100701T080000Z
+        |DTEND:20100701T110000Z
+        |DTSTAMP:20091130T213238Z
+        |UID:1285935469767a7c7c1a9b3f0df8003a@yoursever.com
+        |CREATED:20091130T213238Z
+        |DESCRIPTION:Example event 1
+        |LAST-MODIFIED:20091130T213238Z
+        |SEQUENCE:0
+        |STATUS:CONFIRMED
+        |SUMMARY:Example event 1
+        |TRANSP:OPAQUE
+        |END:VEVENT
+        |BEGIN:VEVENT
+        |DTSTART:20100701T120000Z
+        |DTEND:20100701T130000Z
+        |DTSTAMP:20091130T213238Z
+        |UID:1285935469767a7c7c1a9b3f0df8003b@yoursever.com
+        |CREATED:20091130T213238Z
+        |DESCRIPTION:Example event 2
+        |LAST-MODIFIED:20091130T213238Z
+        |SEQUENCE:0
+        |STATUS:CONFIRMED
+        |SUMMARY:Example event 2
+        |TRANSP:OPAQUE
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin
+
+    val calendarEventParsedList: List[CalendarEventParsed] = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes()))
+
+    assertThat(calendarEventParsedList.size)
+      .isEqualTo(2)
+    assertThat(calendarEventParsedList(0).description.get.value)
+      .isEqualTo("Example event 1")
+    assertThat(calendarEventParsedList(1).description.get.value)
+      .isEqualTo("Example event 2")
   }
 
   @Test
@@ -91,7 +138,7 @@ class CalendarEventParsedTest {
         |END:VCALENDAR
         |""".stripMargin
 
-    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes()))
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
 
     assertThat(calendarEventParsed.end.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
       .isEqualTo("2017-01-20T10:30:00Z")
@@ -133,7 +180,7 @@ class CalendarEventParsedTest {
         |END:VCALENDAR
         |""".stripMargin
 
-    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes()))
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
 
     assertThat(calendarEventParsed.method.get.value).isEqualTo("REQUEST")
     assertThat(calendarEventParsed.sequence.get.value).isEqualTo(0)
@@ -148,7 +195,7 @@ class CalendarEventParsedTest {
     @Test
     def parseWeeklyShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=WEEKLY;BYDAY=MO,TU").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=WEEKLY;BYDAY=MO,TU").getBytes())).head
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -162,7 +209,7 @@ class CalendarEventParsedTest {
     @Test
     def parseThirdSundayOfAprilShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=SU;BYSETPOS=3").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=SU;BYSETPOS=3").getBytes())).head
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -178,7 +225,7 @@ class CalendarEventParsedTest {
     @Test
     def parseFirstAndSecondMondayOfOctoberShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=MO;BYSETPOS=1,2").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=MO;BYSETPOS=1,2").getBytes())).head
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -194,7 +241,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEvery29thOfEveryMonthShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=29").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=29").getBytes())).head
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -209,7 +256,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEveryLastSundayOfEvery3MonthsShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=-1").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=-1").getBytes())).head
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -225,7 +272,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEveryFourthSundayOfEvery3MonthsShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=4").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("RRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=4").getBytes())).head
 
       assertThat(calendarEventParsed.recurrenceRules.value.asJava)
         .hasSize(1)
@@ -244,7 +291,7 @@ class CalendarEventParsedTest {
     @Test
     def parseWeeklyShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=WEEKLY;BYDAY=MO,TU").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=WEEKLY;BYDAY=MO,TU").getBytes())).head
 
       assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
         .hasSize(1)
@@ -258,7 +305,7 @@ class CalendarEventParsedTest {
     @Test
     def parseThirdSundayOfAprilShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=SU;BYSETPOS=3").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=SU;BYSETPOS=3").getBytes())).head
 
       assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
         .hasSize(1)
@@ -274,7 +321,7 @@ class CalendarEventParsedTest {
     @Test
     def parseFirstAndSecondMondayOfOctoberShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=MO;BYSETPOS=1,2").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=MO;BYSETPOS=1,2").getBytes())).head
 
       assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
         .hasSize(1)
@@ -290,7 +337,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEvery29thOfEveryMonthShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=29").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=29").getBytes())).head
 
       assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
         .hasSize(1)
@@ -305,7 +352,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEveryLastSundayOfEvery3MonthsShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=-1").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=-1").getBytes())).head
 
       assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
         .hasSize(1)
@@ -321,7 +368,7 @@ class CalendarEventParsedTest {
     @Test
     def parseMonthlyEveryFourthSundayOfEvery3MonthsShouldSucceed(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=4").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("EXRULE:FREQ=MONTHLY;INTERVAL=3;BYDAY=SU;BYSETPOS=4").getBytes())).head
 
       assertThat(calendarEventParsed.excludedRecurrenceRules.value.asJava)
         .hasSize(1)
@@ -340,7 +387,7 @@ class CalendarEventParsedTest {
     @Test
     def parseConfirmStatus(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("STATUS:CONFIRMED").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("STATUS:CONFIRMED").getBytes())).head
 
       assertThat(calendarEventParsed.status.head)
         .isEqualTo(CalendarEventStatusField(Confirmed))
@@ -349,7 +396,7 @@ class CalendarEventParsedTest {
     @Test
     def parseCancelStatus(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("STATUS:CANCELLED").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("STATUS:CANCELLED").getBytes())).head
 
       assertThat(calendarEventParsed.status.head)
         .isEqualTo(CalendarEventStatusField(Cancelled))
@@ -358,7 +405,7 @@ class CalendarEventParsedTest {
     @Test
     def parseTentativeStatus(): Unit = {
       val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
-        new ByteArrayInputStream(icsPayloadWith("STATUS:TENTATIVE").getBytes()))
+        new ByteArrayInputStream(icsPayloadWith("STATUS:TENTATIVE").getBytes())).head
 
       assertThat(calendarEventParsed.status.head)
         .isEqualTo(CalendarEventStatusField(Tentative))

@@ -30,11 +30,14 @@ The request object requires the following properties:
 The response object contains the following properties:
 
 - *accountId*: `Id` The id of the account to use.
-- *parsed*: `Map[BlobId]` and the corresponding calendar parse result.
+- *parsed*: `Id[CalendarEvent[]]`
+
+  A map of a blob id to a list of CalendarEvent objects.
+
 - *notFound*: `[BlobId]` is not found.
 - *notParsable*: `[BlobId]` has been found but is not parsable.
 
-The `parsed` value contains the following properties (the properties below match with the properties defined in RFC-5545 and RFC-5546):
+A `CalendarEvent` object contains the following properties (the properties below match with the properties defined in RFC-5545 and RFC-5546):
 
 - `uid`: unique identifier of the event ~ UID (iCalendar)
 - `title`: title of the event ~ SUMMARY
@@ -118,7 +121,7 @@ The server responds:
 {
     "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
     "parsed": {
-        "0f9f65ab-dc7b-4146-850f-6e4881093965": {
+        "0f9f65ab-dc7b-4146-850f-6e4881093965": [{
             "uid": "ea127690-0440-404b-af98-9823c855a283",
             "title": "Gatling: break LemonLDAP!",
             "description": "Let's write some basic OIDC benchmarks",
@@ -164,7 +167,7 @@ The server responds:
                      "bySetPosition": [ 1, 2 ],
                      "until":"2024-01-11T09:00:00Z"
                }]
-        }
+        }]
     }
 }, "c1" ]]
 ```

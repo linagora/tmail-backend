@@ -62,7 +62,8 @@ object CalendarEventSerializer {
   private implicit val calendarExcludedRecurrenceRulesFieldWrites: Writes[ExcludedRecurrenceRulesField] = Json.valueWrites[ExcludedRecurrenceRulesField]
 
   private implicit val calendarEventParsedWrites: Writes[CalendarEventParsed] = Json.writes[CalendarEventParsed]
-  private implicit val parsedMapWrites: Writes[Map[BlobId, CalendarEventParsed]] = mapWrites[BlobId, CalendarEventParsed](s => s.value.value, calendarEventParsedWrites)
+  private implicit val calendarEventParsedListWrites: Writes[CalendarEventParsedList] = Json.valueWrites[CalendarEventParsedList]
+  private implicit val parsedMapWrites: Writes[Map[BlobId, CalendarEventParsedList]] = mapWrites[BlobId, CalendarEventParsedList](s => s.value.value, calendarEventParsedListWrites)
 
   private implicit val setErrorWrites: Writes[SetError] = Json.writes[SetError]
   private implicit val calendarEventParseResponseWrites: Writes[CalendarEventParseResponse] = Json.writes[CalendarEventParseResponse]
@@ -74,10 +75,13 @@ object CalendarEventSerializer {
 
     val filteredParsedOptional: JsResult[Map[String, JsValue]] = originalJson.transform((__ \ "parsed").json.pick[JsObject])
       .map(jsObject => jsObject.value
-        .map(blobIdToCalendarEvent => blobIdToCalendarEvent._1 -> blobIdToCalendarEvent._2.transform {
-          case jsonObject: JsObject => JsSuccess(properties.filter(jsonObject))
+        .map(blobIdToCalendarEvents => blobIdToCalendarEvents._1 -> blobIdToCalendarEvents._2.transform {
+          case jsArray: JsArray => JsSuccess(JsArray(jsArray.value
+            .map[JsValue] {
+              case calendarEventJsObject: JsObject => properties.filter(calendarEventJsObject)
+            }))
           case js => JsSuccess(js)
-        }.fold(_ => JsObject(Map(blobIdToCalendarEvent)), o => o))
+        }.fold(_ => JsObject(Map(blobIdToCalendarEvents)), o => o))
         .toMap)
 
     filteredParsedOptional.map(

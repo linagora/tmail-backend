@@ -98,7 +98,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "accountId": "$ACCOUNT_ID",
            |        "parsed": {
-           |            "$blobId": {
+           |            "$blobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
@@ -153,10 +153,105 @@ trait LinagoraCalendarEventParseMethodContract {
            |                     "bySetPosition": [ 1 ],
            |                     "until":"2023-01-11T09:00:00Z"
            |               }]
-           |           }
+           |           }]
            |        }
            |    },
            |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def parseAnIcsWithMultipleEventsShouldSucceed(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/multipleEvents.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"CalendarEvent/parse",
+           |	{
+           |		"accountId": "$ACCOUNT_ID",
+           |		"parsed": {
+           |			"$blobId": [{
+           |					"method": "PUBLISH",
+           |					"description": "Example event 1",
+           |					"participants": [
+           |
+           |					],
+           |					"recurrenceRules": [
+           |
+           |					],
+           |					"utcEnd": "2010-07-01T11:00:00Z",
+           |					"utcStart": "2010-07-01T08:00:00Z",
+           |					"sequence": 0,
+           |					"status": "confirmed",
+           |					"freeBusyStatus": "busy",
+           |					"end": "2010-07-01T11:00:00",
+           |					"title": "Example event 1",
+           |					"start": "2010-07-01T08:00:00",
+           |					"excludedRecurrenceRules": [
+           |
+           |					],
+           |					"extensionFields": {
+           |
+           |					},
+           |					"uid": "1285935469767a7c7c1a9b3f0df8003a@yoursever.com"
+           |				},
+           |				{
+           |					"method": "PUBLISH",
+           |					"description": "Example event 2",
+           |					"participants": [
+           |
+           |					],
+           |					"recurrenceRules": [
+           |
+           |					],
+           |					"utcEnd": "2010-07-01T13:00:00Z",
+           |					"utcStart": "2010-07-01T12:00:00Z",
+           |					"sequence": 0,
+           |					"status": "confirmed",
+           |					"freeBusyStatus": "busy",
+           |					"end": "2010-07-01T13:00:00",
+           |					"title": "Example event 2",
+           |					"start": "2010-07-01T12:00:00",
+           |					"excludedRecurrenceRules": [
+           |
+           |					],
+           |					"extensionFields": {
+           |
+           |					},
+           |					"uid": "1285935469767a7c7c1a9b3f0df8003b@yoursever.com"
+           |				}
+           |			]
+           |		}
+           |	},
+           |	"c1"
            |]""".stripMargin)
   }
 
@@ -199,7 +294,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "accountId": "$ACCOUNT_ID",
            |        "parsed": {
-           |            "$blobId1": {
+           |            "$blobId1": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
@@ -256,8 +351,8 @@ trait LinagoraCalendarEventParseMethodContract {
            |                       "bySetPosition": [ 1 ],
            |                       "until":"2023-01-11T09:00:00Z"
            |                   }]
-           |            },
-           |            "$blobId2": {
+           |            }],
+           |            "$blobId2": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a284",
            |                "title": "Sprint planning #24",
            |                "description": "description 456",
@@ -303,7 +398,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                },
            |                "recurrenceRules": [],
            |                "excludedRecurrenceRules": []
-           |            }
+           |            }]
            |        }
            |    },
            |    "c1"
@@ -433,7 +528,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "notParsable": [ "$notParsableBlobId" ],
            |        "notFound": [ "$notFoundBlobId" ],
            |        "parsed": {
-           |            "$blobId": {
+           |            "$blobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
@@ -488,7 +583,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                       "bySetPosition": [ 1 ],
            |                       "until":"2023-01-11T09:00:00Z"
            |                }]
-           |            }
+           |            }]
            |        }
            |    },
            |    "c1"
@@ -696,7 +791,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "accountId": "$bobAccountId",
            |            "parsed": {
-           |                "$blobId": {
+           |                "$blobId": [{
            |                    "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                    "title": "Sprint planning #23",
            |                    "description": "description 123",
@@ -751,7 +846,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                           "bySetPosition": [ 1 ],
            |                           "until":"2023-01-11T09:00:00Z"
            |                     }]
-           |                }
+           |                }]
            |            }
            |    },
            |    "c1"
@@ -840,7 +935,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "accountId": "$ANDRE_ACCOUNT_ID",
            |        "parsed": {
-           |            "$icsBlobId": {
+           |            "$icsBlobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
@@ -895,7 +990,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                     "bySetPosition": [ 1 ],
            |                     "until":"2023-01-11T09:00:00Z"
            |                }]
-           |            }
+           |            }]
            |        }
            |    },
            |    "c1"
@@ -984,7 +1079,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "accountId": "$ACCOUNT_ID",
            |        "parsed": {
-           |            "$blobId": {
+           |            "$blobId": [{
            |                "uid": "037aaad3-17c9-47c8-bd6b-f2cbfe925ef7",
            |                "title": "MOB: integration tests",
            |                "start": "2023-03-09T14:00:00",
@@ -1015,7 +1110,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                },
            |             "recurrenceRules": [],
            |             "excludedRecurrenceRules": []
-           |            }
+           |            }]
            |        }
            |    },
            |    "c1"
@@ -1151,7 +1246,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "accountId": "$ACCOUNT_ID",
            |        "parsed": {
-           |            "$blobId": {
+           |            "$blobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
@@ -1206,7 +1301,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                     "bySetPosition": [ 1 ],
            |                     "until":"2023-01-11T09:00:00Z"
            |               }]
-           |           }
+           |           }]
            |        }
            |    },
            |    "c1"
@@ -1252,7 +1347,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |    {
            |        "accountId": "$ACCOUNT_ID",
            |        "parsed": {
-           |            "$blobId": {
+           |            "$blobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
            |                "title": "Sprint planning #23",
            |                "description": "description 123",
@@ -1307,7 +1402,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                     "bySetPosition": [ 1 ],
            |                     "until":"2023-01-11T09:00:00Z"
            |               }]
-           |           }
+           |           }]
            |        }
            |    },
            |    "c1"
@@ -1352,11 +1447,67 @@ trait LinagoraCalendarEventParseMethodContract {
            |	{
            |		"accountId": "$ACCOUNT_ID",
            |		"parsed": {
-           |			"$blobId": {
+           |			"$blobId": [{
            |				"uid": "ea127690-0440-404b-af98-9823c855a283",
            |				"title": "Sprint planning #23",
            |				"description": "description 123"
-           |			}
+           |			}]
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def propertiesShouldBeFilteredWhenMultipleEventsCase(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/multipleEvents.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ],
+         |      "properties": ["uid", "title", "description"]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"CalendarEvent/parse",
+           |	{
+           |		"accountId": "$ACCOUNT_ID",
+           |		"parsed": {
+           |			"$blobId": [{
+           |					"description": "Example event 1",
+           |					"uid": "1285935469767a7c7c1a9b3f0df8003a@yoursever.com",
+           |					"title": "Example event 1"
+           |				},
+           |				{
+           |					"description": "Example event 2",
+           |					"uid": "1285935469767a7c7c1a9b3f0df8003b@yoursever.com",
+           |					"title": "Example event 2"
+           |				}
+           |			]
            |		}
            |	},
            |	"c1"
