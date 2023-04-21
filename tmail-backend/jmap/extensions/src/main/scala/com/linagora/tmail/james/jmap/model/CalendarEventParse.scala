@@ -52,6 +52,8 @@ object CalendarEventParse {
     "recurrenceRules", "excludedRecurrenceRules", "extensionFields")
 }
 
+case class CalendarEventParsedList(value: List[CalendarEventParsed])
+
 case class CalendarEventNotFound(value: Set[UnparsedBlobId]) {
   def merge(other: CalendarEventNotFound): CalendarEventNotFound = CalendarEventNotFound(this.value ++ other.value)
 }
@@ -481,41 +483,44 @@ case class RecurrenceRule(frequency: RecurrenceRuleFrequency,
 case class InvalidCalendarFileException(blobId: BlobId) extends RuntimeException
 
 object CalendarEventParsed {
-  def from(calendarContent: InputStream): CalendarEventParsed =
+  def from(calendarContent: InputStream): List[CalendarEventParsed] =
     from(new CalendarBuilder(CalendarParserFactory.getInstance.get,
       new ContentHandlerContext().withSupressInvalidProperties(true),
       TimeZoneRegistryFactory.getInstance.createRegistry)
       .build(calendarContent))
 
-  def from(calendar: Calendar): CalendarEventParsed =
-    try {
-      val vevent: VEvent = calendar.getComponent("VEVENT").asInstanceOf[VEvent]
-      Preconditions.checkArgument(vevent != null, "Calendar is not contain VEVENT component".asInstanceOf[Object])
-      val start: Option[CalendarStartField] = CalendarStartField.from(vevent)
-      val end: Option[CalendarEndField] = CalendarEndField.from(vevent)
+  def from(calendar: Calendar): List[CalendarEventParsed] = {
+    val vEventList: List[VEvent] = calendar.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.toList
+    Preconditions.checkArgument(vEventList.nonEmpty, "Calendar does not contain VEVENT component".asInstanceOf[Object])
 
-      CalendarEventParsed(uid = CalendarUidField.from(vevent),
-        title = CalendarTitleField.from(vevent),
-        description = CalendarDescriptionField.from(vevent),
-        start = start,
-        end = end,
-        utcStart = start.map(_.asUtcDate()),
-        utcEnd = end.map(_.asUtcDate()),
-        duration = CalendarDurationField.from(vevent),
-        timeZone = CalendarTimeZoneField.from(vevent),
-        location = CalendarLocationField.from(vevent),
-        method = CalendarMethodField.from(calendar),
-        sequence = CalendarSequenceField.from(vevent),
-        priority = CalendarPriorityField.from(vevent),
-        freeBusyStatus = CalendarFreeBusyStatusField.from(vevent),
-        status = CalendarEventStatusField.from(vevent),
-        privacy = CalendarPrivacyField.from(vevent),
-        organizer = CalendarOrganizerField.from(vevent),
-        participants = CalendarParticipantsField.from(vevent),
-        extensionFields = CalendarExtensionFields.from(vevent),
-        recurrenceRules = RecurrenceRulesField.from(vevent),
-        excludedRecurrenceRules = ExcludedRecurrenceRulesField.from(vevent))
-    }
+    vEventList.map(fromVEvent(_, calendar))
+  }
+
+  private def fromVEvent(vevent: VEvent, calendar: Calendar): CalendarEventParsed = {
+    val start: Option[CalendarStartField] = CalendarStartField.from(vevent)
+    val end: Option[CalendarEndField] = CalendarEndField.from(vevent)
+    CalendarEventParsed(uid = CalendarUidField.from(vevent),
+      title = CalendarTitleField.from(vevent),
+      description = CalendarDescriptionField.from(vevent),
+      start = CalendarStartField.from(vevent),
+      end = end,
+      utcStart = start.map(_.asUtcDate()),
+      utcEnd = end.map(_.asUtcDate()),
+      duration = CalendarDurationField.from(vevent),
+      timeZone = CalendarTimeZoneField.from(vevent),
+      location = CalendarLocationField.from(vevent),
+      method = CalendarMethodField.from(calendar),
+      sequence = CalendarSequenceField.from(vevent),
+      priority = CalendarPriorityField.from(vevent),
+      freeBusyStatus = CalendarFreeBusyStatusField.from(vevent),
+      status = CalendarEventStatusField.from(vevent),
+      privacy = CalendarPrivacyField.from(vevent),
+      organizer = CalendarOrganizerField.from(vevent),
+      participants = CalendarParticipantsField.from(vevent),
+      extensionFields = CalendarExtensionFields.from(vevent),
+      recurrenceRules = RecurrenceRulesField.from(vevent),
+      excludedRecurrenceRules = ExcludedRecurrenceRulesField.from(vevent))
+  }
 }
 
 case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
@@ -541,7 +546,7 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq()))
 
 case class CalendarEventParseResponse(accountId: AccountId,
-                                      parsed: Option[Map[BlobId, CalendarEventParsed]],
+                                      parsed: Option[Map[BlobId, CalendarEventParsedList]],
                                       notFound: Option[CalendarEventNotFound],
                                       notParsable: Option[CalendarEventNotParsable])
 
@@ -552,7 +557,7 @@ object CalendarEventParseResults {
 
   def notParse(blobId: BlobId): CalendarEventParseResults = CalendarEventParseResults(None, None, Some(CalendarEventNotParsable(Set(blobId.value))))
 
-  def parse(blobId: BlobId, calendarEventParsed: CalendarEventParsed): CalendarEventParseResults = CalendarEventParseResults(Some(Map(blobId -> calendarEventParsed)), None, None)
+  def parse(blobId: BlobId, calendarEventParsed: List[CalendarEventParsed]): CalendarEventParseResults = CalendarEventParseResults(Some(Map(blobId -> CalendarEventParsedList(calendarEventParsed))), None, None)
 
   def empty(): CalendarEventParseResults = CalendarEventParseResults(None, None, None)
 
@@ -562,7 +567,7 @@ object CalendarEventParseResults {
     notParsable = (response1.notParsable ++ response2.notParsable).reduceOption((notParsable1, notParsable2) => notParsable1.merge(notParsable2)))
 }
 
-case class CalendarEventParseResults(parsed: Option[Map[BlobId, CalendarEventParsed]],
+case class CalendarEventParseResults(parsed: Option[Map[BlobId, CalendarEventParsedList]],
                                      notFound: Option[CalendarEventNotFound],
                                      notParsable: Option[CalendarEventNotParsable]) {
   def asResponse(accountId: AccountId): CalendarEventParseResponse = CalendarEventParseResponse(accountId, parsed, notFound, notParsable)
