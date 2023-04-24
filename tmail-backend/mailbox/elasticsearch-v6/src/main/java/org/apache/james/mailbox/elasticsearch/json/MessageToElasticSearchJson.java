@@ -26,6 +26,7 @@ import javax.mail.Flags;
 
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.elasticsearch.IndexAttachments;
+import org.apache.james.mailbox.elasticsearch.IndexHeaders;
 import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 
@@ -44,19 +45,21 @@ public class MessageToElasticSearchJson {
     private final TextExtractor textExtractor;
     private final ZoneId zoneId;
     private final IndexAttachments indexAttachments;
+    private final IndexHeaders indexHeaders;
 
-    public MessageToElasticSearchJson(TextExtractor textExtractor, ZoneId zoneId, IndexAttachments indexAttachments) {
+    public MessageToElasticSearchJson(TextExtractor textExtractor, ZoneId zoneId, IndexAttachments indexAttachments, IndexHeaders indexHeaders) {
         this.textExtractor = textExtractor;
         this.zoneId = zoneId;
         this.indexAttachments = indexAttachments;
+        this.indexHeaders = indexHeaders;
         this.mapper = new ObjectMapper();
         this.mapper.registerModule(new GuavaModule());
         this.mapper.registerModule(new Jdk8Module());
     }
 
     @Inject
-    public MessageToElasticSearchJson(TextExtractor textExtractor, IndexAttachments indexAttachments) {
-        this(textExtractor, ZoneId.systemDefault(), indexAttachments);
+    public MessageToElasticSearchJson(TextExtractor textExtractor, IndexAttachments indexAttachments, IndexHeaders indexHeaders) {
+        this(textExtractor, ZoneId.systemDefault(), indexAttachments, indexHeaders);
     }
 
     public Mono<String> convertToJson(MailboxMessage message) {
@@ -67,6 +70,7 @@ public class MessageToElasticSearchJson {
             .extractor(textExtractor)
             .zoneId(zoneId)
             .indexAttachments(indexAttachments)
+            .indexHeaders(indexHeaders)
             .build()
             .map(Throwing.function(mapper::writeValueAsString));
     }
@@ -77,6 +81,7 @@ public class MessageToElasticSearchJson {
             .extractor(textExtractor)
             .zoneId(zoneId)
             .indexAttachments(IndexAttachments.NO)
+            .indexHeaders(indexHeaders)
             .build()
             .map(Throwing.function(mapper::writeValueAsString));
     }

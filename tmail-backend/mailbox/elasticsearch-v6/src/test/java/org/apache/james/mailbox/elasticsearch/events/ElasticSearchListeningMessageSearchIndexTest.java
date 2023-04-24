@@ -44,10 +44,7 @@ import org.apache.james.mailbox.DefaultMailboxes;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
-import org.apache.james.mailbox.elasticsearch.IndexAttachments;
-import org.apache.james.mailbox.elasticsearch.MailboxElasticSearchConstants;
-import org.apache.james.mailbox.elasticsearch.MailboxIdRoutingKeyFactory;
-import org.apache.james.mailbox.elasticsearch.MailboxIndexCreationUtil;
+import org.apache.james.mailbox.elasticsearch.*;
 import org.apache.james.mailbox.elasticsearch.json.MessageToElasticSearchJson;
 import org.apache.james.mailbox.elasticsearch.query.CriterionConverter;
 import org.apache.james.mailbox.elasticsearch.query.QueryConverter;
@@ -173,7 +170,8 @@ class ElasticSearchListeningMessageSearchIndexTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
             ZoneId.of("UTC"),
-            IndexAttachments.YES);
+            IndexAttachments.YES,
+            IndexHeaders.YES);
 
         InMemoryMessageId.Factory messageIdFactory = new InMemoryMessageId.Factory();
 
@@ -276,7 +274,8 @@ class ElasticSearchListeningMessageSearchIndexTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new FailingTextExtractor(),
             ZoneId.of("Europe/Paris"),
-            IndexAttachments.YES);
+            IndexAttachments.YES,
+            IndexHeaders.YES);
 
         testee = new ElasticSearchListeningMessageSearchIndex(mapperFactory, elasticSearchIndexer, elasticSearchSearcher,
             messageToElasticSearchJson, sessionProvider, new MailboxIdRoutingKeyFactory());

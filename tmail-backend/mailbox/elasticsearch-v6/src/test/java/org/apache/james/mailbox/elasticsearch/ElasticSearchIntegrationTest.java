@@ -129,7 +129,7 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
                 new ElasticSearchSearcher(client, new QueryConverter(new CriterionConverter()), SEARCH_SIZE,
                     new InMemoryId.Factory(), new InMemoryMessageId.Factory(),
                     MailboxElasticSearchConstants.DEFAULT_MAILBOX_READ_ALIAS, routingKeyFactory),
-                new MessageToElasticSearchJson(textExtractor, ZoneId.of("Europe/Paris"), IndexAttachments.YES),
+                new MessageToElasticSearchJson(textExtractor, ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES),
                 preInstanciationStage.getSessionProvider(), routingKeyFactory))
             .noPreDeletionHooks()
             .storeQuotaManager()

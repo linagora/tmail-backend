@@ -39,6 +39,7 @@ import org.apache.james.lifecycle.api.StartUpCheck;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.mailbox.elasticsearch.ElasticSearchMailboxConfiguration;
 import org.apache.james.mailbox.elasticsearch.IndexAttachments;
+import org.apache.james.mailbox.elasticsearch.IndexHeaders;
 import org.apache.james.mailbox.elasticsearch.MailboxElasticSearchConstants;
 import org.apache.james.mailbox.elasticsearch.MailboxIdRoutingKeyFactory;
 import org.apache.james.mailbox.elasticsearch.MailboxIndexCreationUtil;
@@ -167,6 +168,12 @@ public class ElasticSearchMailboxModule extends AbstractModule {
     @Singleton
     public IndexAttachments provideIndexAttachments(ElasticSearchMailboxConfiguration configuration) {
         return configuration.getIndexAttachment();
+    }
+
+    @Provides
+    @Singleton
+    public IndexHeaders provideIndexHeaders(ElasticSearchMailboxConfiguration configuration) {
+        return configuration.getIndexHeaders();
     }
 
     @ProvidesIntoSet

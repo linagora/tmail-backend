@@ -34,12 +34,14 @@ public class ElasticSearchMailboxConfiguration {
         private Optional<ReadAliasName> readAliasMailboxName;
         private Optional<WriteAliasName> writeAliasMailboxName;
         private Optional<IndexAttachments> indexAttachment;
+        private Optional<IndexHeaders> indexHeaders;
 
         Builder() {
             indexMailboxName = Optional.empty();
             readAliasMailboxName = Optional.empty();
             writeAliasMailboxName = Optional.empty();
             indexAttachment = Optional.empty();
+            indexHeaders = Optional.empty();
         }
 
         Builder indexMailboxName(Optional<IndexName> indexMailboxName) {
@@ -63,14 +65,18 @@ public class ElasticSearchMailboxConfiguration {
             return this;
         }
 
-
+        Builder indexHeaders(IndexHeaders indexHeaders) {
+            this.indexHeaders = Optional.of(indexHeaders);
+            return this;
+        }
 
         public ElasticSearchMailboxConfiguration build() {
             return new ElasticSearchMailboxConfiguration(
                 indexMailboxName.orElse(MailboxElasticSearchConstants.DEFAULT_MAILBOX_INDEX),
                 readAliasMailboxName.orElse(MailboxElasticSearchConstants.DEFAULT_MAILBOX_READ_ALIAS),
                 writeAliasMailboxName.orElse(MailboxElasticSearchConstants.DEFAULT_MAILBOX_WRITE_ALIAS),
-                indexAttachment.orElse(IndexAttachments.YES));
+                indexAttachment.orElse(IndexAttachments.YES),
+                indexHeaders.orElse(IndexHeaders.YES));
         }
     }
 
@@ -85,7 +91,9 @@ public class ElasticSearchMailboxConfiguration {
     private static final String ELASTICSEARCH_ALIAS_READ_MAILBOX_NAME = "elasticsearch.alias.read.mailbox.name";
     private static final String ELASTICSEARCH_ALIAS_WRITE_MAILBOX_NAME = "elasticsearch.alias.write.mailbox.name";
     private static final String ELASTICSEARCH_INDEX_ATTACHMENTS = "elasticsearch.indexAttachments";
+    private static final String ELASTICSEARCH_INDEX_HEADERS = "elasticsearch.indexHeaders";
     private static final boolean DEFAULT_INDEX_ATTACHMENTS = true;
+    private static final boolean DEFAULT_INDEX_HEADERS = true;
 
     public static final ElasticSearchMailboxConfiguration DEFAULT_CONFIGURATION = builder().build();
 
@@ -95,6 +103,7 @@ public class ElasticSearchMailboxConfiguration {
             .readAliasMailboxName(computeMailboxReadAlias(configuration))
             .writeAliasMailboxName(computeMailboxWriteAlias(configuration))
             .indexAttachment(provideIndexAttachments(configuration))
+            .indexHeaders(provideIndexHeaders(configuration))
             .build();
     }
 
@@ -127,18 +136,27 @@ public class ElasticSearchMailboxConfiguration {
         return IndexAttachments.NO;
     }
 
+    private static IndexHeaders provideIndexHeaders(Configuration configuration) {
+        if (configuration.getBoolean(ELASTICSEARCH_INDEX_HEADERS, DEFAULT_INDEX_HEADERS)) {
+            return IndexHeaders.YES;
+        }
+        return IndexHeaders.NO;
+    }
 
     private final IndexName indexMailboxName;
     private final ReadAliasName readAliasMailboxName;
     private final WriteAliasName writeAliasMailboxName;
     private final IndexAttachments indexAttachment;
+    private final IndexHeaders indexHeaders;
 
     private ElasticSearchMailboxConfiguration(IndexName indexMailboxName, ReadAliasName readAliasMailboxName,
-                                              WriteAliasName writeAliasMailboxName, IndexAttachments indexAttachment) {
+                                              WriteAliasName writeAliasMailboxName, IndexAttachments indexAttachment,
+                                              IndexHeaders indexHeaders) {
         this.indexMailboxName = indexMailboxName;
         this.readAliasMailboxName = readAliasMailboxName;
         this.writeAliasMailboxName = writeAliasMailboxName;
         this.indexAttachment = indexAttachment;
+        this.indexHeaders = indexHeaders;
     }
 
 
@@ -158,10 +176,15 @@ public class ElasticSearchMailboxConfiguration {
         return indexAttachment;
     }
 
+    public IndexHeaders getIndexHeaders() {
+        return indexHeaders;
+    }
+
     @Override
     public final boolean equals(Object o) {
         if (o instanceof ElasticSearchMailboxConfiguration that) {
             return Objects.equals(this.indexAttachment, that.indexAttachment)
+                && Objects.equals(this.indexHeaders, that.indexHeaders)
                 && Objects.equals(this.indexMailboxName, that.indexMailboxName)
                 && Objects.equals(this.readAliasMailboxName, that.readAliasMailboxName)
                 && Objects.equals(this.writeAliasMailboxName, that.writeAliasMailboxName);
@@ -171,6 +194,6 @@ public class ElasticSearchMailboxConfiguration {
 
     @Override
     public final int hashCode() {
-        return Objects.hash(indexMailboxName, readAliasMailboxName, writeAliasMailboxName, indexAttachment, writeAliasMailboxName);
+        return Objects.hash(indexMailboxName, readAliasMailboxName, writeAliasMailboxName, indexAttachment, indexHeaders, writeAliasMailboxName);
     }
 }
