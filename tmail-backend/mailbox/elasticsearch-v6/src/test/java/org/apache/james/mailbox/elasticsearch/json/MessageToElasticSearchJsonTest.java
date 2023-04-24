@@ -22,6 +22,7 @@ package org.apache.james.mailbox.elasticsearch.json;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
 import static net.javacrumbs.jsonunit.core.Option.IGNORING_VALUES;
+import static org.apache.james.mailbox.store.search.ListeningMessageSearchIndexContract.THREAD_ID;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
@@ -37,6 +38,7 @@ import org.apache.james.mailbox.FlagsBuilder;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.elasticsearch.IndexAttachments;
+import org.apache.james.mailbox.elasticsearch.IndexHeaders;
 import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.model.ByteContent;
 import org.apache.james.mailbox.model.MessageId;
@@ -94,7 +96,7 @@ class MessageToElasticSearchJsonTest {
     void spamEmailShouldBeWellConvertedToJson() throws IOException {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
-            ZoneId.of("Europe/Paris"), IndexAttachments.YES);
+            ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES);
         MailboxMessage spamMail = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
@@ -115,7 +117,7 @@ class MessageToElasticSearchJsonTest {
     void invalidCharsetShouldBeWellConvertedToJson() throws IOException {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
-            ZoneId.of("Europe/Paris"), IndexAttachments.YES);
+            ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES);
         MailboxMessage spamMail = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
@@ -138,7 +140,7 @@ class MessageToElasticSearchJsonTest {
     void htmlEmailShouldBeWellConvertedToJson() throws IOException {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
-            ZoneId.of("Europe/Paris"), IndexAttachments.YES);
+            ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES);
         MailboxMessage htmlMail = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
@@ -159,7 +161,7 @@ class MessageToElasticSearchJsonTest {
     void pgpSignedEmailShouldBeWellConvertedToJson() throws IOException {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
-            ZoneId.of("Europe/Paris"), IndexAttachments.YES);
+            ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES);
         MailboxMessage pgpSignedMail = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
@@ -180,7 +182,7 @@ class MessageToElasticSearchJsonTest {
     void simpleEmailShouldBeWellConvertedToJson() throws IOException {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
-            ZoneId.of("Europe/Paris"), IndexAttachments.YES);
+            ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES);
         MailboxMessage mail = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
@@ -201,7 +203,7 @@ class MessageToElasticSearchJsonTest {
     void recursiveEmailShouldBeWellConvertedToJson() throws IOException {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
-            ZoneId.of("Europe/Paris"), IndexAttachments.YES);
+            ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES);
         MailboxMessage recursiveMail = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
@@ -222,7 +224,7 @@ class MessageToElasticSearchJsonTest {
     void emailWithNoInternalDateShouldUseNowDate() throws IOException {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
-            ZoneId.of("Europe/Paris"), IndexAttachments.YES);
+            ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES);
         MailboxMessage mailWithNoInternalDate = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             null,
@@ -259,7 +261,8 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"),
-            IndexAttachments.YES);
+            IndexAttachments.YES,
+            IndexHeaders.YES);
         String convertToJson = messageToElasticSearchJson.convertToJson(mailWithNoInternalDate).block();
 
         // Then
@@ -288,7 +291,8 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"),
-            IndexAttachments.NO);
+            IndexAttachments.NO,
+            IndexHeaders.YES);
         String convertToJson = messageToElasticSearchJson.convertToJson(mailWithNoInternalDate).block();
 
         // Then
@@ -302,7 +306,7 @@ class MessageToElasticSearchJsonTest {
     void emailWithNoMailboxIdShouldThrow() throws Exception {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
-            ZoneId.of("Europe/Paris"), IndexAttachments.YES);
+            ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES);
         MailboxMessage mailWithNoMailboxId = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
@@ -325,7 +329,8 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"),
-            IndexAttachments.YES);
+            IndexAttachments.YES,
+            IndexHeaders.YES);
         assertThatJson(messageToElasticSearchJson.getUpdatedJsonMessagePart(new Flags(), MOD_SEQ))
             .isEqualTo("{\"modSeq\":42,\"isAnswered\":false,\"isDeleted\":false,\"isDraft\":false,\"isFlagged\":false,\"isRecent\":false,\"userFlags\":[],\"isUnread\":true}");
     }
@@ -335,7 +340,8 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"),
-            IndexAttachments.YES);
+            IndexAttachments.YES,
+            IndexHeaders.YES);
         assertThatJson(messageToElasticSearchJson.getUpdatedJsonMessagePart(new FlagsBuilder().add(Flags.Flag.DELETED, Flags.Flag.FLAGGED).add("user").build(), MOD_SEQ))
             .isEqualTo("{\"modSeq\":42,\"isAnswered\":false,\"isDeleted\":true,\"isDraft\":false,\"isFlagged\":true,\"isRecent\":false,\"userFlags\":[\"user\"],\"isUnread\":true}");
     }
@@ -345,7 +351,8 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             new DefaultTextExtractor(),
             ZoneId.of("Europe/Paris"),
-            IndexAttachments.YES);
+            IndexAttachments.YES,
+            IndexHeaders.YES);
 
         assertThatThrownBy(() -> messageToElasticSearchJson.getUpdatedJsonMessagePart(null, MOD_SEQ))
             .isInstanceOf(NullPointerException.class);
@@ -356,7 +363,8 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
             textExtractor,
             ZoneId.of("Europe/Paris"),
-            IndexAttachments.YES);
+            IndexAttachments.YES,
+            IndexHeaders.YES);
         MailboxMessage spamMail = new SimpleMailboxMessage(MESSAGE_ID,
             ThreadId.fromBaseMessageId(MESSAGE_ID),
             date,
@@ -394,7 +402,8 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
                 new DefaultTextExtractor(),
                 ZoneId.of("Europe/Paris"),
-                IndexAttachments.NO);
+                IndexAttachments.NO,
+                IndexHeaders.YES);
         String convertToJsonWithoutAttachment = messageToElasticSearchJson.convertToJsonWithoutAttachment(message).block();
 
         // Then
@@ -423,7 +432,8 @@ class MessageToElasticSearchJsonTest {
         MessageToElasticSearchJson messageToElasticSearchJson = new MessageToElasticSearchJson(
                 new JsoupTextExtractor(),
                 ZoneId.of("Europe/Paris"),
-                IndexAttachments.NO);
+                IndexAttachments.NO,
+                IndexHeaders.YES);
         String convertToJsonWithoutAttachment = messageToElasticSearchJson.convertToJsonWithoutAttachment(message).block();
 
         System.out.println(convertToJsonWithoutAttachment);
@@ -434,5 +444,26 @@ class MessageToElasticSearchJsonTest {
             .inPath("htmlBody")
             .isString()
             .isEqualTo(ClassLoaderUtils.getSystemResourceAsString("eml/htmlContent.txt", StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void spamEmailShouldBeWellConvertedToJsonWhenNoHeaders() throws IOException {
+        MessageToElasticSearchJson messageToOpenSearchJson = new MessageToElasticSearchJson(
+            new DefaultTextExtractor(),
+            ZoneId.of("Europe/Paris"), IndexAttachments.NO, IndexHeaders.NO);
+        MailboxMessage spamMail = new SimpleMailboxMessage(MESSAGE_ID,
+            THREAD_ID,
+            date,
+            SIZE,
+            BODY_START_OCTET,
+            new ByteContent(IOUtils.toByteArray(ClassLoaderUtils.getSystemResourceAsSharedStream("eml/spamMail.eml"))),
+            new Flags(),
+            propertyBuilder.build(),
+            MAILBOX_ID);
+        spamMail.setUid(UID);
+        spamMail.setModSeq(MOD_SEQ);
+        assertThatJson(messageToOpenSearchJson.convertToJson(spamMail).block())
+            .when(IGNORING_ARRAY_ORDER)
+            .isEqualTo(ClassLoaderUtils.getSystemResourceAsString("eml/spamMailNoHeaders.json"));
     }
 }

@@ -33,6 +33,7 @@ import javax.mail.Flags;
 import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.elasticsearch.IndexAttachments;
+import org.apache.james.mailbox.elasticsearch.IndexHeaders;
 import org.apache.james.mailbox.extractor.ParsedContent;
 import org.apache.james.mailbox.extractor.TextExtractor;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
@@ -109,6 +110,7 @@ class IndexableMessageTest {
             .extractor(new DefaultTextExtractor())
             .zoneId(ZoneId.of("Europe/Paris"))
             .indexAttachments(IndexAttachments.YES)
+            .indexHeaders(IndexHeaders.YES)
             .build().block();
 
         // Then
@@ -141,6 +143,7 @@ class IndexableMessageTest {
             .extractor(new DefaultTextExtractor())
             .zoneId(ZoneId.of("Europe/Paris"))
             .indexAttachments(IndexAttachments.NO)
+            .indexHeaders(IndexHeaders.YES)
             .build().block();
 
         // Then
@@ -171,6 +174,7 @@ class IndexableMessageTest {
             .extractor(new DefaultTextExtractor())
             .zoneId(ZoneId.of("Europe/Paris"))
             .indexAttachments(IndexAttachments.NO)
+            .indexHeaders(IndexHeaders.YES)
             .build().block();
 
         // Then
@@ -201,6 +205,7 @@ class IndexableMessageTest {
             .extractor(new DefaultTextExtractor())
             .zoneId(ZoneId.of("Europe/Paris"))
             .indexAttachments(IndexAttachments.YES)
+            .indexHeaders(IndexHeaders.YES)
             .build().block();
 
         // Then
@@ -238,6 +243,7 @@ class IndexableMessageTest {
             .extractor(textExtractor)
             .zoneId(ZoneId.of("Europe/Paris"))
             .indexAttachments(IndexAttachments.YES)
+            .indexHeaders(IndexHeaders.YES)
             .build()
             .block();
 
@@ -275,6 +281,7 @@ class IndexableMessageTest {
             .extractor(textExtractor)
             .zoneId(ZoneId.of("Europe/Paris"))
             .indexAttachments(IndexAttachments.YES)
+            .indexHeaders(IndexHeaders.YES)
             .build().block();
 
         // Then
@@ -305,9 +312,42 @@ class IndexableMessageTest {
             .extractor(textExtractor)
             .zoneId(ZoneId.of("Europe/Paris"))
             .indexAttachments(IndexAttachments.YES)
+            .indexHeaders(IndexHeaders.YES)
             .build().block();
 
         // Then
         assertThat(indexableMessage.getMessageId()).isNull();
+    }
+
+    @Test
+    void headersShouldNotBeenIndexedWhenAsked() throws Exception {
+        //Given
+        MailboxMessage mailboxMessage = mock(MailboxMessage.class);
+        TestId mailboxId = TestId.of(1);
+        when(mailboxMessage.getMailboxId())
+            .thenReturn(mailboxId);
+        when(mailboxMessage.getModSeq())
+            .thenReturn(ModSeq.first());
+        when(mailboxMessage.getMessageId())
+            .thenReturn(InMemoryMessageId.of(42));
+        when(mailboxMessage.getFullContent())
+            .thenReturn(ClassLoader.getSystemResourceAsStream("eml/mailWithHeaders.eml"));
+        when(mailboxMessage.createFlags())
+            .thenReturn(new Flags());
+        when(mailboxMessage.getUid())
+            .thenReturn(MESSAGE_UID);
+
+        // When
+        IndexableMessage indexableMessage = IndexableMessage.builder()
+            .message(mailboxMessage)
+            .extractor(new DefaultTextExtractor())
+            .zoneId(ZoneId.of("Europe/Paris"))
+            .indexAttachments(IndexAttachments.YES)
+            .indexHeaders(IndexHeaders.NO)
+            .build()
+            .block();
+
+        // Then
+        assertThat(indexableMessage.getHeaders()).isEmpty();
     }
 }
