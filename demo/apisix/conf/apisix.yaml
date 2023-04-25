@@ -18,7 +18,9 @@ routes:
         uri: /jmap
   -
     id: jmap_session
-    uri: /oidc/jmap/session
+    uris:
+      - /oidc/jmap/session
+      - /jmap/session
     service_id: jmap_service_oidc
     methods:
       - GET
