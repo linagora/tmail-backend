@@ -12,6 +12,7 @@ routes:
     service_id: jmap_service_oidc
     methods:
       - POST
+      - OPTIONS
     plugins:
       proxy-rewrite:
         uri: /jmap
@@ -21,6 +22,7 @@ routes:
     service_id: jmap_service_oidc
     methods:
       - GET
+      - OPTIONS
     plugins:
       proxy-rewrite:
         uri: /jmap/session
@@ -30,6 +32,7 @@ routes:
     service_id: jmap_service_oidc
     methods:
       - GET
+      - OPTIONS
     plugins:
       proxy-rewrite:
         regex_uri:
@@ -41,6 +44,7 @@ routes:
     service_id: jmap_service_oidc
     methods:
       - POST
+      - OPTIONS
     plugins:
       proxy-rewrite:
         regex_uri:
@@ -52,6 +56,7 @@ routes:
     service_id: jmap_no_auth_service
     methods:
       - GET
+      - OPTIONS
     plugins:
       proxy-rewrite:
         uri: /.well-known/webfinger
@@ -61,6 +66,7 @@ routes:
     service_id: jmap_service_oidc
     methods:
       - GET
+      - OPTIONS
     plugins:
       proxy-rewrite:
         uri: /.well-known/linagora-ecosystem
@@ -70,6 +76,7 @@ routes:
     service_id: jmap_service_oidc
     methods:
       - GET
+      - OPTIONS
     plugins:
       proxy-rewrite:
         uri: /.well-known/jmap
