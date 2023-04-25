@@ -86,6 +86,11 @@ services:
     upstream_id: jmap_upstream
     plugins:
       openid-connect:
+        _meta:
+          filter:
+            - - request_method
+              - "~="
+              - OPTIONS
         client_id: "james_apisix"
         client_secret: "james_apisix"
         discovery: "http://sso.example.com/.well-known/openid-configuration"
