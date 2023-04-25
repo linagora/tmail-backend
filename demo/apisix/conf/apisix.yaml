@@ -13,6 +13,7 @@ routes:
     methods:
       - POST
       - OPTIONS
+    plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
         uri: /jmap
@@ -25,6 +26,7 @@ routes:
     methods:
       - GET
       - OPTIONS
+    plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
         uri: /jmap/session
@@ -35,6 +37,7 @@ routes:
     methods:
       - GET
       - OPTIONS
+    plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
         regex_uri:
@@ -47,6 +50,7 @@ routes:
     methods:
       - POST
       - OPTIONS
+    plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
         regex_uri:
@@ -59,6 +63,7 @@ routes:
     methods:
       - GET
       - OPTIONS
+    plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
         uri: /.well-known/webfinger
@@ -69,6 +74,7 @@ routes:
     methods:
       - GET
       - OPTIONS
+    plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
         uri: /.well-known/linagora-ecosystem
@@ -79,6 +85,7 @@ routes:
     methods:
       - GET
       - OPTIONS
+    plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
         uri: /.well-known/jmap
@@ -119,4 +126,11 @@ plugin_configs:
         status_code: 200
         body: "APISIX already up!\n"  #For test, TODO remove
     desc: "response-rewrite"
+  -
+    id: jmap-plugin
+    plugins:
+      limit-req:
+        rate: 100
+        burst: 50 # number of requests above 100 and below 150 per seconds will be delayed. Above 150 will be rejected
+        key: "server_addr"
 #END
