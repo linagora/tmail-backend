@@ -1,5 +1,7 @@
 package com.linagora.tmail.team
 
+import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
+
 import java.util
 
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{ANDRE, BOB, DOMAIN_1, DOMAIN_2, TEAM_MAILBOX_DOMAIN_1, TEAM_MAILBOX_DOMAIN_2, TEAM_MAILBOX_MARKETING, TEAM_MAILBOX_SALES}
@@ -7,7 +9,7 @@ import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
-import org.apache.james.mailbox.model.MailboxACL
+import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
@@ -34,21 +36,18 @@ trait TeamMailboxRepositoryContract {
   def mailboxManager: MailboxManager
 
   @Test
-  def createTeamMailboxShouldStoreThreeAssignMailboxes(): Unit = {
+  def createTeamMailboxShouldStoreDefaultAssignMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     val session: MailboxSession = mailboxManager.createSystemSession(TEAM_MAILBOX_DOMAIN_1)
 
-    SoftAssertions.assertSoftly(softly => {
-      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_MARKETING.mailboxPath, session))
-        .block())
-        .isTrue
-      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_MARKETING.inboxPath, session))
-        .block())
-        .isTrue
-      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_MARKETING.sentPath, session))
-        .block())
-        .isTrue
-    })
+    assertThat(mailboxManager.list(session))
+      .containsExactlyInAnyOrder(
+        new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.INBOX"),
+        new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.Outbox"),
+        new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.Sent"),
+        new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.Trash"),
+        new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.Drafts"),
+        new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing"))
   }
 
   @Test
