@@ -90,22 +90,17 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
-  def deleteTeamMailboxShouldRemoveAllAssignedMailboxes(): Unit = {
+  def deleteTeamMailboxShouldRemoveAllDefaultMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     val session: MailboxSession = mailboxManager.createSystemSession(TEAM_MAILBOX_DOMAIN_1)
 
-    SoftAssertions.assertSoftly(softly => {
-      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_MARKETING.mailboxPath, session))
-        .block())
-        .isFalse
-      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_MARKETING.inboxPath, session))
-        .block())
-        .isFalse
-      softly.assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_MARKETING.sentPath, session))
-        .block())
-        .isFalse
-    })
+    assertThat(SFlux.fromIterable(TEAM_MAILBOX_MARKETING.defaultMailboxPaths)
+      .flatMap(mailboxPath => mailboxManager.mailboxExists(mailboxPath, session))
+      .filter(exists => exists)
+      .count()
+      .block())
+      .isEqualTo(0)
   }
 
   @Test
