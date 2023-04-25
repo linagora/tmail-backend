@@ -11,7 +11,7 @@ import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFou
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
-import org.apache.james.mailbox.{MailboxManager, MailboxSession}
+import org.apache.james.mailbox.{DefaultMailboxes, MailboxManager, MailboxSession}
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -75,15 +75,23 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
       .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
       .flatMap[Unit](maybeValidationFailure => maybeValidationFailure.toScala match {
         case Some(validationFailure) => SMono.error(TeamMailboxNameConflictException(validationFailure.errorMessage))
-        case None => createMailboxReliably(teamMailbox.mailboxPath, session)
-          .`then`(createMailboxReliably(teamMailbox.inboxPath, session))
-          .`then`(createMailboxReliably(teamMailbox.sentPath, session))
-          .`then`()
+        case None => createDefaultMailboxReliably(teamMailbox, session)
       })
   }
 
+  private def createDefaultMailboxReliably(teamMailbox: TeamMailbox, session: MailboxSession) =
+    SFlux.fromIterable(Seq(
+      teamMailbox.mailboxPath,
+      teamMailbox.inboxPath,
+      teamMailbox.sentPath,
+      teamMailbox.mailboxPath(DefaultMailboxes.TRASH),
+      teamMailbox.mailboxPath(DefaultMailboxes.OUTBOX),
+      teamMailbox.mailboxPath(DefaultMailboxes.DRAFTS)))
+      .flatMap(mailboxPath => createMailboxReliably(mailboxPath, session), ReactorUtils.DEFAULT_CONCURRENCY)
+      .`then`()
+
   private def createMailboxReliably(path: MailboxPath, session: MailboxSession) =
-    SMono.fromCallable(() => mailboxManager.createMailbox(path, session))
+    SMono(mailboxManager.createMailboxReactive(path, session))
       .onErrorResume {
         case _: MailboxExistsException => SMono.empty
         case e => SMono.error(e)
