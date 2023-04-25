@@ -91,13 +91,13 @@ services:
             - - request_method
               - "~="
               - OPTIONS
-        client_id: "james_apisix"
-        client_secret: "james_apisix"
+        client_id: "james"
+        client_secret: "james"
         discovery: "http://sso.example.com/.well-known/openid-configuration"
         scope: "openid profile"
         bearer_only: true
-        introspection_endpoint_auth_method: "client_secret_post"
         redirect_uri: "http://test.sso.example.com:8080/login-callback.html"
+        use_jwks: true
   -
     id: jmap_no_auth_service
     upstream_id: jmap_upstream
