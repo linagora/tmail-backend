@@ -7,6 +7,7 @@ import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, MailAddress, Username}
+import org.apache.james.mailbox.DefaultMailboxes
 import org.apache.james.mailbox.model.MailboxConstants.NAMESPACE_PREFIX_CHAR
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath, QuotaRoot}
 
@@ -134,6 +135,14 @@ case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
   def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.${MailboxConstants.INBOX}")
 
   def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.Sent")
+
+  def defaultMailboxPaths: Seq[MailboxPath] = Seq(
+    mailboxPath,
+    inboxPath,
+    sentPath,
+    mailboxPath(DefaultMailboxes.TRASH),
+    mailboxPath(DefaultMailboxes.OUTBOX),
+    mailboxPath(DefaultMailboxes.DRAFTS))
 
   def quotaRoot: QuotaRoot = QuotaRoot.quotaRoot(s"$TEAM_MAILBOX_NAMESPACE&${mailboxName.value.value}@${domain.asString()}", Some(domain).toJava)
 

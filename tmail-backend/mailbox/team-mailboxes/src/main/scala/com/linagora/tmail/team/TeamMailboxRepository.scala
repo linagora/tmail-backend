@@ -80,13 +80,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
   }
 
   private def createDefaultMailboxReliably(teamMailbox: TeamMailbox, session: MailboxSession) =
-    SFlux.fromIterable(Seq(
-      teamMailbox.mailboxPath,
-      teamMailbox.inboxPath,
-      teamMailbox.sentPath,
-      teamMailbox.mailboxPath(DefaultMailboxes.TRASH),
-      teamMailbox.mailboxPath(DefaultMailboxes.OUTBOX),
-      teamMailbox.mailboxPath(DefaultMailboxes.DRAFTS)))
+    SFlux.fromIterable(teamMailbox.defaultMailboxPaths)
       .flatMap(mailboxPath => createMailboxReliably(mailboxPath, session), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
 
@@ -97,17 +91,16 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager) extend
         case e => SMono.error(e)
       }
 
-  override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] = {
-    val session: MailboxSession = createSession(teamMailbox)
+  override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] =
+    deleteDefaultMailboxReliably(teamMailbox, createSession(teamMailbox))
 
-    deleteReliably(teamMailbox.mailboxPath, session)
-      .`then`(deleteReliably(teamMailbox.inboxPath, session))
-      .`then`(deleteReliably(teamMailbox.sentPath, session))
+  private def deleteDefaultMailboxReliably(teamMailbox: TeamMailbox, session: MailboxSession) =
+    SFlux.fromIterable(teamMailbox.defaultMailboxPaths)
+      .flatMap(mailboxPath => deleteReliably(mailboxPath, session), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
-  }
 
   private def deleteReliably(path: MailboxPath, session: MailboxSession) =
-    SMono.fromCallable(() => mailboxManager.deleteMailbox(path, session))
+    SMono(mailboxManager.deleteMailboxReactive(path, session))
       .onErrorResume {
         case _: MailboxNotFoundException => SMono.empty
         case e => SMono.error(e)
