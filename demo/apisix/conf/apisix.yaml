@@ -133,4 +133,17 @@ plugin_configs:
         rate: 100
         burst: 50 # number of requests above 100 and below 150 per seconds will be delayed. Above 150 will be rejected
         key: "server_addr"
+      api-breaker:
+        break_response_code: 503
+        max_breaker_sec: 300 # should be var: JMAP_CIRCUIT_BREAKER_TIMEOUT
+        unhealthy:
+          http_statuses:
+            - 500
+            - 501
+            - 502
+            - 503
+            - 504
+          failures: 3  # should be var: JMAP_CIRCUIT_BREAKER_MAXERRORS
+        healthy:
+          successes: 1
 #END
