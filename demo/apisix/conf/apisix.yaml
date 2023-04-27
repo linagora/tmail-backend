@@ -18,6 +18,18 @@ routes:
       proxy-rewrite:
         uri: /jmap
   -
+    id: jmap_websocket
+    uri: /oidc/jmap/ws
+    service_id: jmap_service_oidc
+    enable_websocket: true
+    methods:
+      - GET
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+    plugins:
+      proxy-rewrite:
+        uri: /jmap/ws
+  -
     id: jmap_session
     uris:
       - /oidc/jmap/session
