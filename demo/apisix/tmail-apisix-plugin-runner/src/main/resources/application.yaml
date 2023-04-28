@@ -1,0 +1,12 @@
+server:
+  port: ${APISIX_PLUGIN_SERVER_PORT:8081}
+logging:
+  level:
+    RevokedTokenPlugin: debug
+    root: info
+
+cache.config:
+  expired: 3600
+  capacity: 1000
+socket:
+  file: ${APISIX_LISTEN_ADDRESS:unix:/tmp/runner.sock}
