@@ -6,6 +6,7 @@ routes:
       nodes:
       type: roundrobin
     plugin_config_id: 1
+  #  OIDC authentication endpoints
   -
     id: jmap
     uri: /oidc/jmap
@@ -68,8 +69,10 @@ routes:
           - "/upload/$1"
   -
     id: web_known_finger
-    uri: /oidc/.well-known/webfinger
-    service_id: jmap_no_auth_service
+    uris:
+      - /oidc/.well-known/webfinger
+      - /.well-known/webfinger
+    service_id: jmap_service_basic_auth
     methods:
       - GET
       - OPTIONS
@@ -108,6 +111,59 @@ routes:
         headers:
           set:
             Location: "/oidc/jmap/session"
+
+  #  Basic authentication endpoints
+  - id: jmap_session_basic_auth
+    uri: /jmap/session
+    service_id: jmap_service_basic_auth
+    methods:
+      - GET
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+  - id: jmap_basic_auth
+    uri: /jmap
+    service_id: jmap_service_basic_auth
+    methods:
+      - POST
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+  - id: download_basic_auth
+    uri: /download/*
+    service_id: jmap_service_basic_auth
+    methods:
+      - GET
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+  - id: upload_basic_auth
+    uri: /upload/*
+    service_id: jmap_service_basic_auth
+    methods:
+      - POST
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+  - id: web_known_linagora_ecosystem_basic_auth
+    uri: /.well-known/linagora-ecosystem
+    service_id: jmap_service_basic_auth
+    methods:
+      - GET
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+  - id: web_known_jmap_basic_auth
+    uri: /.well-known/jmap
+    service_id: jmap_service_basic_auth
+    methods:
+      - GET
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+  - id: jmap_websocket_basic_auth
+    uri: /jmap/ws
+    service_id: jmap_service_basic_auth
+    enable_websocket: true
+    methods:
+      - GET
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+
 services:
   -
     id: jmap_service_oidc
@@ -127,8 +183,13 @@ services:
         redirect_uri: "http://test.sso.example.com:8080/login-callback.html"
         use_jwks: true
   -
-    id: jmap_no_auth_service
+    id: jmap_service_basic_auth
     upstream_id: jmap_upstream
+    plugins:
+      proxy-rewrite:
+        headers:
+          remove:
+            - X-Userinfo
 
 upstreams:
   -
