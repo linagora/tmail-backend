@@ -28,6 +28,7 @@ services:
       - ./tmail/jwt_publickey:/root/conf/jwt_publickey
       - ./tmail/jwt_privatekey:/root/conf/jwt_privatekey
       - ./tmail/jmap.properties:/root/conf/jmap.properties
+      - ./tmail/usersrepository.xml:/root/conf/usersrepository.xml
     networks:
       - tmail
 
