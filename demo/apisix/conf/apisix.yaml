@@ -30,10 +30,8 @@ routes:
       proxy-rewrite:
         uri: /jmap/ws
   -
-    id: jmap_session
-    uris:
-      - /oidc/jmap/session
-      - /jmap/session
+    id: jmap_session_oidc
+    uri: /oidc/jmap/session
     service_id: jmap_service_oidc
     methods:
       - GET
@@ -101,6 +99,15 @@ routes:
     plugins:
       proxy-rewrite:
         uri: /.well-known/jmap
+      response-rewrite:
+        _meta:
+          filter:
+            - - request_method
+              - "~="
+              - OPTIONS
+        headers:
+          set:
+            Location: "/oidc/jmap/session"
 services:
   -
     id: jmap_service_oidc
