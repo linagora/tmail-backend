@@ -105,14 +105,16 @@ services:
 
   apisix:
     container_name: apisix.example.com
-    image: apache/apisix:3.2.0-debian
+    image: linagora/apisix:3.2.0-debian-javaplugin
     volumes:
       - ./apisix/conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml
       - ./apisix/conf/config.yaml:/usr/local/apisix/conf/config.yaml
+      - ./apisix/tmail-apisix-plugin-runner/target/tmail-apisix-plugin-runner-0.0.1-SNAPSHOT.jar:/usr/local/apisix/token_revoker_plugin.jar
     networks:
       - tmail
     ports:
       - "9080:9080/tcp"
+      - "8081:8081"
 
 networks:
   tmail:

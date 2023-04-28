@@ -43,6 +43,8 @@ fi
 
 curl -s -D - -o /dev/null -b lemonldap=$COOKIE http://sso.example.com/?logout=1 >/dev/null 2>&1
 
+sleep 1
+
 if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization: Bearer $ACCESS_TOKEN" $APISIX_JMAP_ENDPOINT 2>/dev/null | grep uploadUrl >/dev/null; then
 	echo "LOGOUT FAILED"
 else
