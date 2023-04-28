@@ -230,8 +230,8 @@
       "oidcRPMetaDataOptionsBypassConsent": 0,
       "oidcRPMetaDataOptionsPublic": 1,
       "oidcRPMetaDataOptionsLogoutType": "back",
-      "oidcRPMetaDataOptionsLogoutUrl": "http://jwt-revoker:8080/add",
-      "oidcRPMetaDataOptionsPostLogoutRedirectUris": "http://test.sso.example.com:8080",
+      "oidcRPMetaDataOptionsLogoutUrl": "http://apisix.example.com:8081/add-revoked-token",
+      "oidcRPMetaDataOptionsPostLogoutRedirectUris": "http://test.sso.example.com:8080/logout-callback.html",
       "oidcRPMetaDataOptionsDisplayName": "James",
       "oidcRPMetaDataOptionsAllowPasswordGrant": 0,
       "oidcRPMetaDataOptionsRefreshToken": 1,
@@ -255,8 +255,8 @@
       "oidcRPMetaDataOptionsBypassConsent": 0,
       "oidcRPMetaDataOptionsPublic": 0,
       "oidcRPMetaDataOptionsLogoutType": "back",
-      "oidcRPMetaDataOptionsLogoutUrl": "http://jwt-revoker:8080/add",
-      "oidcRPMetaDataOptionsPostLogoutRedirectUris": "http://test.sso.example.com:8080",
+      "oidcRPMetaDataOptionsLogoutUrl": "http://apisix.example.com:8081/add-revoked-token",
+      "oidcRPMetaDataOptionsPostLogoutRedirectUris": "http://test.sso.example.com:8080/logout-callback.html",
       "oidcRPMetaDataOptionsDisplayName": "James Apisix",
       "oidcRPMetaDataOptionsAllowPasswordGrant": 1,
       "oidcRPMetaDataOptionsRefreshToken": 1,
@@ -546,9 +546,9 @@
         "type": "application",
         "order": 13,
         "options": {
-          "uri": "http://test.sso.example.com/",
+          "uri": "http://test.sso.example.com:8080",
           "display": "auto",
-          "name": "Application Test 1",
+          "name": "Team Mail",
           "logo": "demo.png",
           "description": "A simple application displaying authenticated user"
         }

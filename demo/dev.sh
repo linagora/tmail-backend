@@ -14,7 +14,7 @@ docker_check() {
 
 start_services() {
     echo "Pulling latest images..."
-    docker compose pull
+    docker compose pull || echo "Pulling latest images fail"
     echo "Starting services..."
     docker compose up -d
     retvar=$?
