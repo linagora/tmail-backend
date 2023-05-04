@@ -20,3 +20,23 @@ mvn clean package
     - Docker build: `docker build -t linagora/apisix:3.2.0-debian-javaplugin .`
 - Import `tmail-apisix-plugin-runner-{version}.jar` into Apisix container. For detail ([Apache APISIX® Java Plugin Runner](https://apisix.apache.org/docs/java-plugin-runner/how-it-works/))
 
+## Choice revoked token repository
+- Be default the plugin use in-memory for storage. 
+### Redis
+- Provide the properties
+    - `redis.url` (or environment `REDIS_URL`): [String] the redis url. For several url, use `,` character for separate
+    - `redis.cluster.enabled` (or environment `REDIS_CLUSTER_ENABLE`): [Boolean]. `true` for redis master-replicas topology, 
+    `false` for standalone topology
+
+Eg: 
+```yaml
+redis:
+  url: redis://secret1@redis.example.com:6379
+  cluster.enable: false 
+```
+or
+```yaml
+redis:
+  url: redis://secret1@redis-master.example.com:6379,redis://secret1@redis-replica1.example.com:6379
+  cluster.enable: true 
+```

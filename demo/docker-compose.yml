@@ -116,5 +116,15 @@ services:
       - "9080:9080/tcp"
       - "8081:8081"
 
+  redis:
+    container_name: redis.example.com
+    image: bitnami/redis:7.0.4-debian-11-r25
+    environment:
+      - REDIS_PASSWORD=secret1
+    networks:
+      - tmail
+    ports:
+      - "6379:6379"
+
 networks:
   tmail:
