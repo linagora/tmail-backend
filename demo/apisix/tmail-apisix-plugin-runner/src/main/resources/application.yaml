@@ -4,9 +4,15 @@ logging:
   level:
     RevokedTokenPlugin: debug
     root: info
+  pattern:
+    console: "%clr(%-40.40logger{0}){blue} %clr(:){red} %clr(%m){faint}%n"
 
 cache.config:
   expired: 3600
   capacity: 1000
 socket:
   file: ${APISIX_LISTEN_ADDRESS:unix:/tmp/runner.sock}
+
+redis:
+  url: ${REDIS_URL:redis://localhost:6379}
+  cluster.enable: ${REDIS_CLUSTER_ENABLE:false}

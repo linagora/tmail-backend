@@ -39,7 +39,7 @@ public class TokenRevokedFilter implements PluginFilter {
         Optional.ofNullable(request.getHeader("Authorization"))
             .or(() -> Optional.ofNullable(request.getHeader("authorization")))
             .map(String::trim)
-            .map(bearerToken -> bearerToken.substring(7)) // remove `Bearer `
+            .map(bearerToken -> bearerToken.startsWith("Bearer ") ? bearerToken.substring(7) : bearerToken)
             .flatMap(ChannelLogoutController::extractSidFromLogoutToken)
             .ifPresent(sid -> {
                 boolean existSid = tokenRepository.exist(sid);
@@ -53,9 +53,15 @@ public class TokenRevokedFilter implements PluginFilter {
     }
 
     private void makeUnAuthorizedRequest(HttpRequest request, HttpResponse response) {
-        // TODO refactor
         response.setStatusCode(401);
-        response.setBody("Invalid token");
+        response.setHeader("Content-Type","text/html; charset=utf-8");
+        response.setBody("<html>\n" +
+            "<head><title>401 Authorization Required</title></head>\n" +
+            "<body>\n" +
+            "<center><h1>401 Authorization Required</h1></center>\n" +
+            "<hr><center>openresty</center>\n" +
+            "<p><em>Powered by <a href=\"https://apisix.apache.org/\">APISIX</a>.</em></p></body>\n" +
+            "</html>\n");
     }
 
     /**
