@@ -81,28 +81,6 @@ services:
     networks:
       - tmail
 
-  krakend:
-    depends_on:
-      - sso.example.com
-      - tmail-backend
-    container_name: krakend
-    image: devopsfaith/krakend:latest
-    ports:
-      - "8090:8090"
-    volumes:
-      - ./krakend/krakend.json:/etc/krakend/krakend.json
-    networks:
-      - tmail
-
-  jwt-revoker:
-    build:
-      context: ./jwt-revoker
-    container_name: jwt-revoker
-    depends_on:
-      - krakend
-    networks:
-      - tmail
-
   apisix:
     container_name: apisix.example.com
     image: linagora/apisix:3.2.0-debian-javaplugin
