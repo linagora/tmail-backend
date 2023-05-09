@@ -164,6 +164,14 @@ routes:
       - OPTIONS
     plugin_config_id: jmap-plugin
 
+stream_routes:
+  - id: imap_starttls
+    server_port: 143
+    upstream_id: imap_starttls_upstream
+  - id: imap_ssl
+    server_port: 993
+    upstream_id: imap_ssl_upstream
+
 services:
   -
     id: jmap_service_oidc
@@ -198,6 +206,14 @@ upstreams:
     nodes:
       "tmail-backend:80": 1
     type: roundrobin
+  - id: imap_starttls_upstream
+    nodes:
+      "tmail-backend:143": 1
+    scheme: tcp
+  - id: imap_ssl_upstream
+    nodes:
+      "tmail-backend:993": 1
+    scheme: tcp
 
 plugin_configs:
   -

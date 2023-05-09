@@ -22,6 +22,7 @@ services:
     ports:
       - "8000:8000"
       - "8001:80"
+      - "25:25"
     environment:
       - DOMAIN=tmail.com
     volumes:
@@ -29,6 +30,9 @@ services:
       - ./tmail/jwt_privatekey:/root/conf/jwt_privatekey
       - ./tmail/jmap.properties:/root/conf/jmap.properties
       - ./tmail/usersrepository.xml:/root/conf/usersrepository.xml
+      - ./tmail/keystore:/root/conf/keystore
+      - ./tmail/imapserver.xml:/root/conf/imapserver.xml
+      - ./tmail/smtpserver.xml:/root/conf/smtpserver.xml
     networks:
       - tmail
 
@@ -93,6 +97,8 @@ services:
     ports:
       - "9080:9080/tcp"
       - "8081:8081"
+      - "143:143/tcp"
+      - "993:993/tcp"
 
   redis:
     container_name: redis.example.com

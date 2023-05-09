@@ -6,3 +6,11 @@ deployment:
 ext-plugin:
   path_for_test: /tmp/runner.sock
   cmd: ['java', '-jar', '-DREDIS_URL=redis://secret1@redis.example.com:6379', '-Xmx1g', '-Xms1g', '/usr/local/apisix/token_revoker_plugin.jar']
+
+apisix:
+  enable_admin: false
+  stream_proxy: # TCP/UDP proxy
+    only: false # To enable stream proxy
+    tcp:
+      - 143
+      - 993
