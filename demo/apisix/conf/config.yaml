@@ -14,3 +14,9 @@ apisix:
     tcp:
       - 143
       - 993
+
+nginx_config:
+  # Configure NGINX proxy_timeout
+  # Sets the timeout between two successive read or write operations on client or proxied server connections. If no data is transmitted within this time, the connection is closed.
+  stream_configuration_snippet: |
+    proxy_timeout 30m;
