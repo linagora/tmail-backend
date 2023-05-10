@@ -228,6 +228,11 @@ plugin_configs:
         healthy:
           successes: 1
       ext-plugin-pre-req:
+        _meta:
+          filter:
+            - - request_method
+              - "~="
+              - OPTIONS
         conf:
           - name: TokenRevokedFilter
             value: '{"enable":"feature"}'
