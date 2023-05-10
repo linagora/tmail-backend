@@ -36,6 +36,7 @@ under the License.
         </auth>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
+        <proxyRequired>true</proxyRequired>
     </imapserver>
     <imapserver enabled="true">
         <jmxName>imapserver-ssl</jmxName>
@@ -53,5 +54,6 @@ under the License.
         </auth>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
+        <proxyRequired>true</proxyRequired>
     </imapserver>
 </imapservers>
