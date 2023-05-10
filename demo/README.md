@@ -4,10 +4,7 @@ This contains Tmail with OIDC integration with LemonLDAP, through the Apisix api
 
 ## Quickstart
 
-0. Build the plugin for Apisix: `cd apisix/tmail-apisix-plugin-runner && mvn clean package`
-1. Build ` linagora/apisix:3.2.0-debian-javaplugin` image: `docker build -t linagora/apisix:3.2.0-debian-javaplugin apisix`
-2. Run `./dev.sh start` to start all services and propagate configurations.
-3. Follow the local set up instructions below
+Run `./dev.sh start` to start all services and propagate configurations.
 
 You can check the logs by this command: `docker compose logs -f`.
 
