@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.MailsShouldBeWellReceived;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
@@ -20,7 +19,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-class MemoryServerTest implements JamesServerContract, JmapJamesServerContract, MailsShouldBeWellReceived {
+class MemoryServerTest implements JamesServerConcreteContract, JmapJamesServerContract, MailsShouldBeWellReceived {
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
         MemoryConfiguration.builder()
@@ -50,5 +49,16 @@ class MemoryServerTest implements JamesServerContract, JmapJamesServerContract, 
     public void shouldUseMemoryMailboxManager(GuiceJamesServer jamesServer) {
         assertThat(jamesServer.getProbe(MailboxManagerClassProbe.class).getMailboxManagerClass())
             .isEqualTo(InMemoryMailboxManager.class);
+    }
+
+
+    @Override
+    public int imapPort(GuiceJamesServer server) {
+        return JamesServerConcreteContract.super.imapPort(server);
+    }
+
+    @Override
+    public int smtpPort(GuiceJamesServer server) {
+        return JamesServerConcreteContract.super.smtpPort(server);
     }
 }

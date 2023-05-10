@@ -27,7 +27,6 @@ import java.util.List;
 import org.apache.http.HttpStatus;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
@@ -60,7 +59,7 @@ import com.linagora.tmail.team.TeamMailboxProbe;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.restassured.specification.RequestSpecification;
 
-class EncryptedMemoryServerTest implements JamesServerContract, JmapJamesServerContract {
+class EncryptedMemoryServerTest implements JamesServerConcreteContract, JmapJamesServerContract {
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
         MemoryConfiguration.builder()

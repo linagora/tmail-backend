@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerContract;
+import org.apache.james.JamesServerConcreteContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
@@ -22,7 +22,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-class EncryptedDistributedServerTest implements JamesServerContract, JmapJamesServerContract {
+class EncryptedDistributedServerTest implements JamesServerConcreteContract, JmapJamesServerContract {
     @RegisterExtension
     static JamesServerExtension testExtension =  new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
