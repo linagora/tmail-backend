@@ -45,6 +45,9 @@ object LimitTypeUtils {
   def extractQuantity(mail: Mail, limitTypeName: String): Option[Increment] =
     limitTypeName match {
       case COUNT => Some(1)
-      case SIZE => Some(Increment.liftOrThrow(mail.getMessageSize.toInt))
+      case SIZE => Increment.validate(mail.getMessageSize.toInt) match {
+        case Right(size) => Some(size)
+        case Left(e) => throw e
+      }
     }
 }
