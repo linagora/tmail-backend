@@ -5,7 +5,7 @@ import java.util.Optional
 
 import com.linagora.tmail.rate.limiter.api.LimitTypes.LimitTypes
 import com.linagora.tmail.rate.limiter.api.OperationLimitations.{DELIVERY_LIMITATIONS_NAME, RELAY_LIMITATIONS_NAME, TRANSIT_LIMITATIONS_NAME}
-import com.linagora.tmail.rate.limiter.api.{Count, LimitTypes, OperationLimitations, OperationLimitationsType, RateLimitation, RateLimitingPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanResetRequest, Size}
+import com.linagora.tmail.rate.limiter.api.{Count, LimitType, LimitTypes, OperationLimitations, OperationLimitationsType, RateLimitation, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanRepository, RateLimitingPlanResetRequest, Size}
 import com.linagora.tmail.webadmin.model.RateLimitingPlanCreateRequestDTO.{DELIVERY_LIMIT_KEY, RELAY_LIMIT_KEY, TRANSIT_LIMIT_KEY}
 import com.linagora.tmail.webadmin.model.{GetAllRateLimitPlanResponseDTO, OperationLimitationsDTO, RateLimitationDTO, RateLimitingPlanCreateRequestDTO, RateLimitingPlanDTO, RateLimitingPlanIdResponse, RateLimitingPlanResetRequestDTO}
 import javax.inject.Inject
@@ -143,11 +143,7 @@ class RateLimitPlanManagementRoutes @Inject()(planRepository: RateLimitingPlanRe
     RateLimitation(name = dto.name, period = Duration.ofSeconds(dto.periodInSeconds), limits = toLimitTypes(dto.count, dto.size))
   }
 
-  private def toLimitTypes(count: Long, size: Long): LimitTypes = {
-    val countType: Count = Count(AllowedQuantity.liftOrThrow(count))
-    val sizeType: Size = Size(AllowedQuantity.liftOrThrow(size))
-    LimitTypes.liftOrThrow(Set(countType, sizeType))
-  }
+  private def toLimitTypes(count: Long, size: Long): LimitTypes = LimitTypes.from(Map((LimitTypes.COUNT, count), (LimitTypes.SIZE, size)))
 
   private def extractRateLimitingPlanId(request: Request) = RateLimitingPlanId.parse(request.params(PLAN_ID_PARAM))
 

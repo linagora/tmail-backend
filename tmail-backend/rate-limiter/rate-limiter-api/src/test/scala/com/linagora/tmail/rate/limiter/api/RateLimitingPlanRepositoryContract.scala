@@ -15,8 +15,10 @@ import scala.jdk.CollectionConverters._
 case class TestPJ(name: String, limits: LimitTypes)
 
 object RateLimitingPlanRepositoryContract {
-  val COUNT: Count = Count(AllowedQuantity.liftOrThrow(1))
-  val SIZE: Size = Size(AllowedQuantity.liftOrThrow(10000))
+  def getAllowedQuantity(value: Long): AllowedQuantity.AllowedQuantity = AllowedQuantity.validate(value).toOption.get
+
+  val COUNT: Count = Count(getAllowedQuantity(1))
+  val SIZE: Size = Size(getAllowedQuantity(10000))
   val LIMIT_TYPES: LimitTypes = LimitTypes.liftOrThrow(Set(COUNT, SIZE))
   val RATE_LIMITATION: RateLimitation = RateLimitation("name1", Duration.ofMinutes(1), LIMIT_TYPES)
   val TRANSIT_LIMITS: TransitLimitations = TransitLimitations(Seq(RATE_LIMITATION))
@@ -36,17 +38,17 @@ object RateLimitingPlanRepositoryContract {
       TransitLimitations(Seq(
         RateLimitation(name = "limit1",
           period = Duration.ofMinutes(1),
-          limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(1)), Size(AllowedQuantity.liftOrThrow(10000))))),
+          limits = LimitTypes.liftOrThrow(Set(Count(getAllowedQuantity(1)), Size(getAllowedQuantity(10000))))),
         RateLimitation(name = "limit2",
           period = Duration.ofMinutes(2),
-          limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(2)), Size(AllowedQuantity.liftOrThrow(20000))))))),
+          limits = LimitTypes.liftOrThrow(Set(Count(getAllowedQuantity(2)), Size(getAllowedQuantity(20000))))))),
       RelayLimitations(Seq(
         RateLimitation(name = "limit3",
           period = Duration.ofMinutes(3),
-          limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(3)), Size(AllowedQuantity.liftOrThrow(30000))))),
+          limits = LimitTypes.liftOrThrow(Set(Count(getAllowedQuantity(3)), Size(getAllowedQuantity(30000))))),
         RateLimitation(name = "limit4",
           period = Duration.ofMinutes(4),
-          limits = LimitTypes.liftOrThrow(Set(Count(AllowedQuantity.liftOrThrow(4)), Size(AllowedQuantity.liftOrThrow(40000))))))))))
+          limits = LimitTypes.liftOrThrow(Set(Count(getAllowedQuantity(4)), Size(getAllowedQuantity(40000))))))))))
 }
 
 trait RateLimitingPlanRepositoryContract {

@@ -13,8 +13,8 @@ import eu.timepit.refined.auto._
 import java.time.Duration
 
 object RateLimitingPlanUsernameChangeTaskStepTest {
-  val COUNT: Count = Count(AllowedQuantity.liftOrThrow(1))
-  val SIZE: Size = Size(AllowedQuantity.liftOrThrow(10000))
+  val COUNT: Count = Count(AllowedQuantity.validate(1).toOption.get)
+  val SIZE: Size = Size(AllowedQuantity.validate(10000).toOption.get)
   val LIMIT_TYPES: LimitTypes = LimitTypes.liftOrThrow(Set(COUNT, SIZE))
   val RATE_LIMITATION: RateLimitation = RateLimitation("name1", Duration.ofMinutes(1), LIMIT_TYPES)
   val TRANSIT_LIMITS: TransitLimitations = TransitLimitations(Seq(RATE_LIMITATION))

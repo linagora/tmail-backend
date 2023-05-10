@@ -50,8 +50,8 @@ object LimitType {
 
   def from(limitTypeName: String, allowedQuantity: Long): Either[IllegalArgumentException, LimitType] = {
     limitTypeName match {
-      case SIZE => Right(Size(AllowedQuantity.liftOrThrow(allowedQuantity)))
-      case COUNT => Right(Count(AllowedQuantity.liftOrThrow(allowedQuantity)))
+      case SIZE => AllowedQuantity.validate(allowedQuantity).map(Size)
+      case COUNT => AllowedQuantity.validate(allowedQuantity).map(Count)
       case _ => Left(new IllegalArgumentException(s"`$limitTypeName` is invalid"))
     }
   }
