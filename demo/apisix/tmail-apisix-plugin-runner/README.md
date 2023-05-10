@@ -19,6 +19,27 @@ mvn clean package
       - Runner Library `apache-apisix-java-plugin-runner-0.4.0-bin.tar.gz` (original: https://github.com/apache/apisix-java-plugin-runner)
     - Docker build: `docker build -t linagora/apisix:3.2.0-debian-javaplugin .`
 - Import `tmail-apisix-plugin-runner-{version}.jar` into Apisix container. For detail ([Apache APISIX® Java Plugin Runner](https://apisix.apache.org/docs/java-plugin-runner/how-it-works/))
+    - Eg: `-v target/tmail-apisix-plugin-runner-0.0.1-SNAPSHOT.jar:/usr/local/apisix/token_revoker_plugin.jar`
+- Configuration the plugin in `/usr/local/apisix/conf/config.yaml` of apisix container
+    - Append: 
+```yaml
+ext-plugin:
+  path_for_test: /tmp/runner.sock
+  cmd: ['java', '-jar', '-Xmx1g', '-Xms1g', '/usr/local/apisix/token_revoker_plugin.jar']
+```
+- Use `TokenRevokedFilter` Plugin for special route:
+  - Eg: for `/ping` route
+```yaml
+- routes:
+    -
+      id: test    
+      uri: /ping
+      plugins:
+        ext-plugin-pre-req:
+          conf:
+            - name: TokenRevokedFilter
+              value: '{"enable":"feature"}'
+```
 
 ## Choice revoked token repository
 - Be default the plugin use in-memory for storage. 
