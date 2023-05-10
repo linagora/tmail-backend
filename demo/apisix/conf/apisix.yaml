@@ -113,6 +113,12 @@ routes:
       - GET
       - OPTIONS
     plugin_config_id: jmap-plugin
+    plugins:
+      proxy-rewrite:
+        headers:
+          set:
+            X-JMAP-PREFIX: 'http://apisix.example.com:9080'
+            X-JMAP-WEBSOCKET-PREFIX: 'ws://apisix.example.com:9080'
   - id: jmap_basic_auth
     uri: /jmap
     service_id: jmap_service_basic_auth
