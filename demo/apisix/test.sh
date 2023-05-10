@@ -37,7 +37,7 @@ else
 fi
 
 # X-JMAP-WEBSOCKET-PREFIX test
-if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization: Basic amFtZXMtdXNlckB0bWFpbC5jb206c2VjcmV0" http://apisix.example.com:9080/jmap/session 2>/dev/null | grep "\"http://apisix.example.com:9080/jmap\"" >/dev/null; then
+if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization: Basic amFtZXMtdXNlckB0bWFpbC5jb206c2VjcmV0" http://apisix.example.com:9080/jmap/session 2>/dev/null | grep ws://apisix.example.com:9080/jmap/ws >/dev/null; then
 	echo "X-JMAP-WEBSOCKET-PREFIX work"
 else
 	echo "X-JMAP-WEBSOCKET-PREFIX Not work"
