@@ -1,0 +1,185 @@
+= Deleted messages vault
+:navtitle: deleted messages vault
+
+Allows users to recover deleted messages in their vault.
+
+This is done by creating `EmailRecoveryAction` that restores deleted emails in the vault into users `Restored-messages`
+mailboxes.
+
+== Additions to the capability object
+
+Servers supporting the deleted message vaul extension need to advertise it through the session capabilities:
+....
+com:linagora:params:messages:vault
+....
+
+The associated object have the following fields:
+
+ - `maxRestoredEmails`: *Number | null*, defaulting to 5. Maximum number of emails a given `EmailRecoveryAction` would
+allow to recover.
+
+== EmailRecoveryAction
+
+This represents the recovery action for deleted items in the vault.
+
+It has the following properties:
+
+ - `id`: *Id* (server set) the object identifier.
+ - `deletedBefore`: *UTC date | null*. Immutable. If set this EmailRecoveryAction would restore only emails deleted before the aforementioned date.
+ - `deletedAfter`: *UTC date | null*. Immutable. If set this EmailRecoveryAction would restore only emails deleted after the aforementioned date.
+ - `receivedBefore`: *UTC date | null*. Immutable. If set this EmailRecoveryAction would restore only emails received before the aforementioned date.
+ - `receivedAfter`: *UTC date | null*. Immutable. If set this EmailRecoveryAction would restore only emails received after the aforementioned date.
+ - `hasAttachment`: *Boolean | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `hasAttachment` property matches this field.
+ - `subject`: *String | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `subject` property contains this field.
+ - `sender`: *String | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `from` property matches this field. Needs to be a valid email address.
+ - `recipients`: *String[] | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `to`, `cc` or `bcc` properties matches all of the mentionned email addresses.
+ Needs to be a valid email addresses.
+ - `status`: *Status*. The status of the task.
+
+*Status* can have the following values:
+
+ - `waiting`: the task is planned and waits to be executed
+ - `inProgress`: the task is currently being executed
+ - `done`: the task is done. It's execution did succeed.
+ - `failed`: the task execution failed.
+ - `canceled`: the task was canceled.
+
+=== EmailRecoveryAction/get
+
+Standard `/get` methods. the `ids` property cannot be null.
+
+=== EmailRecoveryAction/set
+
+Standard `/set` methods.
+
+Note that `/set create` should fail when `status` property is specified.
+
+`EmailRecoveryAction/set destroy` should fail.
+
+Similarly, `/set update` can only be performed on the `status` property, if and only if the status is `waiting` or
+`inProgress`.
+
+We define the `invalidStatus` method level error should be returned upon status update state violation.
+
+== Example
+
+The client makes a request to recover email in his vault:
+
+....
+{
+	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:messages:vault"],
+	"methodCalls": [
+        ["EmailRecoveryAction/set",
+          {
+            "create": {
+              "clietid0":  {
+                "deletedBefore": "2023-02-09T10:00:00",
+                "deletedAfter": "2023-02-09T09:00:00",
+                "receivedBefore": "2023-02-09T10:00:00",
+                "receivedAfter": "2023-02-09T09:00:00",
+                "hasAttachment": "true",
+                "suject": "Simple topic",
+                "sender": "bob@domain.tld",
+                "recipients": ["alice@domain.tld"]
+              }
+            }
+          },
+          "#0"
+       ]
+	]
+}
+....
+
+The server responds:
+
+....
+[["EmailRecoveryAction/set",
+  {
+    "created" {
+        "idclient0": { "id": "2034-495-05857-57abcd-0876664" }
+      },
+      "notCreated: []
+   },
+   "#0"
+]]
+....
+
+The client can then poll to get status updates:
+
+....
+["EmailRecoveryAction/get",
+  {
+    "ids": ["2034-495-05857-57abcd-0876664"],
+    "properties": ["status"]
+   },
+   "#0"
+]
+....
+
+Would return:
+
+....
+["EmailRecoveryAction/get",
+  {
+    "list": [{
+        "id: "2034-495-05857-57abcd-0876664",
+        "status": "inProgress"
+    }],
+    notFound: []
+   },
+   "#0"
+]
+....
+
+The client can then cancel the `EmailRecoveryAction`:
+
+....
+["EmailRecoveryAction/set",
+  {
+    "update": {
+        "2034-495-05857-57abcd-0876664": {"status":"canceled"}
+      }
+   },
+   "#0"
+]
+....
+
+Would return:
+
+....
+["EmailRecoveryAction/set",
+  {
+    "updated" : {"2034-495-05857-57abcd-0876664": null },
+    "notUpdated": {}
+   },
+   "#0"
+]
+....
+
+Attempting to cancel the task again should be rejected:
+....
+["EmailRecoveryAction/set",
+  {
+    "update": {
+        "2034-495-05857-57abcd-0876664": {"status":"canceled"}
+      }
+   },
+   "#0"
+]
+....
+
+Would return:
+
+....
+["EmailRecoveryAction/set",
+  {
+    "updated" : {},
+    "notUpdated": {
+      "2034-495-05857-57abcd-0876664": {
+        "type":"invalidStatus",
+        "description": "Attempting to cancel an EmailRecoveryAction with an invalid status."
+      }
+   },
+   "#0"
+]
+....

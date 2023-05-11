@@ -44,6 +44,7 @@ message reception like moving them to a folder.
 to search recipients in his list of domain and personal contacts based on his input.
  - link:calendarEventParsing.adoc[com:linagora:params:calendar:event] allows users to parse calendar events for getting event information
 from the blob id of the calendar file (.ics).
+ - link:deletedMessagesVault.adoc[com:linagora:params:messages:vault] allows users to recover deleted messages in their vault.
 
 === Standard JMAP extensions
 
