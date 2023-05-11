@@ -16,8 +16,7 @@ public class RedisRevokedTokenRepository implements IRevokedTokenRepository {
 
     @Override
     public void add(String sid) {
-        String set = redisCommand.set(sid, Boolean.TRUE.toString(), SetArgs.Builder.ex(CACHE_DURATION));
-        System.out.println("Response redis " + set);
+        redisCommand.set(sid, Boolean.TRUE.toString(), SetArgs.Builder.ex(CACHE_DURATION));
     }
 
     @Override
