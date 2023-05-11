@@ -46,7 +46,7 @@ It has the following properties:
 
 === EmailRecoveryAction/get
 
-Standard `/get` methods. the `ids` property cannot be null.
+Standard `/get` methods. The `ids` property cannot be null.
 
 === EmailRecoveryAction/set
 
