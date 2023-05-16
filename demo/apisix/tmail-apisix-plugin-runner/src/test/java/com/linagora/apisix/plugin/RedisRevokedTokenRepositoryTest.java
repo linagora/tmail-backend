@@ -30,7 +30,7 @@ class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract 
 
     @BeforeEach
     void beforeEach() {
-        testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommand(String.format("redis://%s@localhost:%d", REDIS_PASSWORD, REDIS_CONTAINER.getMappedPort(6379)), false));
+        testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommand(String.format("localhost:%d", REDIS_CONTAINER.getMappedPort(6379)), REDIS_PASSWORD, false));
     }
 
     @AfterEach
