@@ -24,6 +24,9 @@ public class AppConfiguration {
     @Value("${redis.url}")
     private String redisUrl;
 
+    @Value("${redis.password}")
+    private String redisPassword;
+
     @Value("${redis.cluster.enable}")
     private Boolean redisClusterEnable;
 
@@ -32,19 +35,17 @@ public class AppConfiguration {
     public IRevokedTokenRepository revokedTokenRepository() {
         if (StringUtils.hasText(redisUrl)) {
             logger.info("The plugin using redis for storage revoked tokens. \nURI = {}\nCluster.enable = {}",
-                Arrays.stream(redisUrl.split(","))
-                    .map(RedisURI::create).map(RedisURI::toString)
-                    .collect(Collectors.joining(";")),
-                redisClusterEnable);
-            return new RedisRevokedTokenRepository(initRedisCommand(redisUrl, redisClusterEnable));
+                redisUrl, redisClusterEnable);
+            return new RedisRevokedTokenRepository(initRedisCommand(redisUrl, redisPassword, redisClusterEnable));
         }
 
         logger.info("The plugin using local memory for storage revoked tokens");
         return new IRevokedTokenRepository.MemoryRevokedTokenRepository();
     }
 
-    public static RedisStringCommands<String, String> initRedisCommand(String redisUrl, boolean redisClusterEnable) {
+    public static RedisStringCommands<String, String> initRedisCommand(String redisUrl, String redisPassword, boolean redisClusterEnable) {
         List<RedisURI> redisURIList = Arrays.stream(redisUrl.split(","))
+            .map(url -> buildRedisUri(url, redisPassword))
             .map(RedisURI::create)
             .collect(Collectors.toList());
         if (redisURIList.size() > 1 && !redisClusterEnable) {
@@ -57,4 +58,10 @@ public class AppConfiguration {
         return RedisClusterClient.create(redisURIList).connect().sync();
     }
 
+    private static String buildRedisUri(String redisUrl, String redisPassword) {
+        if (StringUtils.hasText(redisPassword)) {
+            return String.format("redis://%s@%s", redisPassword, redisUrl);
+        }
+        return String.format("redis://%s", redisUrl);
+    }
 }

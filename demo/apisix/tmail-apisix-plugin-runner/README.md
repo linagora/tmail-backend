@@ -13,13 +13,7 @@ mvn clean package
 ```
 
 ## How to use it
-- Build Apisix docker image that support Java plugin runner
-    - Require: 
-      - Dockerfile (example: ../apisix/Dockerfile)
-      - Runner Library `apache-apisix-java-plugin-runner-0.4.0-bin.tar.gz` (original: https://github.com/apache/apisix-java-plugin-runner)
-    - Docker build: `docker build -t linagora/apisix:3.2.0-debian-javaplugin .`
-- Import `tmail-apisix-plugin-runner-{version}.jar` into Apisix container. For detail ([Apache APISIX® Java Plugin Runner](https://apisix.apache.org/docs/java-plugin-runner/how-it-works/))
-    - Eg: `-v target/tmail-apisix-plugin-runner-0.0.1-SNAPSHOT.jar:/usr/local/apisix/token_revoker_plugin.jar`
+- Build Apisix docker image that support Java plugin runner : `docker build -t linagora/apisix:3.2.0-debian-javaplugin .`
 - Configuration the plugin in `/usr/local/apisix/conf/config.yaml` of apisix container
     - Append: 
 ```yaml
@@ -46,18 +40,21 @@ ext-plugin:
 ### Redis
 - Provide the properties
     - `redis.url` (or environment `REDIS_URL`): [String] the redis url. For several url, use `,` character for separate
+    - `redis.password` (or environment `REDIS_PASSWORD`): [String] the redis password (Optional).
     - `redis.cluster.enabled` (or environment `REDIS_CLUSTER_ENABLE`): [Boolean]. `true` for redis master-replicas topology, 
     `false` for standalone topology
 
 Eg: 
 ```yaml
 redis:
-  url: redis://secret1@redis.example.com:6379
+  url: redis.example.com:6379
+  password: secret1
   cluster.enable: false 
 ```
 or
 ```yaml
 redis:
-  url: redis://secret1@redis-master.example.com:6379,redis://secret1@redis-replica1.example.com:6379
+  url: redis-master.example.com:6379,redis-replica1.example.com:6379
+  password: secret1
   cluster.enable: true 
 ```

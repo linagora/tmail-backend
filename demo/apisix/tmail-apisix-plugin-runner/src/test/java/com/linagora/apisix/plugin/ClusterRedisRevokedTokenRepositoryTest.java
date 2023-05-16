@@ -16,6 +16,7 @@ import org.testcontainers.utility.DockerImageName;
 import io.lettuce.core.api.sync.RedisStringCommands;
 
 public class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
+    private static final String REDIS_PASSWORD = "my_password";
 
     static Network dockernetwork = Network.newNetwork();
 
@@ -24,7 +25,7 @@ public class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepos
         .withCommand()
         .withNetwork(dockernetwork)
         .withEnv("REDIS_REPLICATION_MODE", "master")
-        .withEnv("REDIS_PASSWORD", "my_master_password")
+        .withEnv("REDIS_PASSWORD", REDIS_PASSWORD)
         .withExposedPorts(6379)
         .withClasspathResourceMapping("redis-overrides.conf",
             "/opt/bitnami/redis/mounted-etc/overrides.conf",
@@ -40,8 +41,8 @@ public class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepos
         .withEnv("REDIS_REPLICATION_MODE", "slave")
         .withEnv("REDIS_MASTER_HOST", "redis-master")
         .withEnv("REDIS_MASTER_PORT_NUMBER", "6379")
-        .withEnv("REDIS_MASTER_PASSWORD", "my_master_password")
-        .withEnv("REDIS_PASSWORD", "my_replica_password")
+        .withEnv("REDIS_MASTER_PASSWORD", REDIS_PASSWORD)
+        .withEnv("REDIS_PASSWORD", REDIS_PASSWORD)
         .withExposedPorts(6379)
         .dependsOn(REDIS_MASTER)
         .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("redis-replica-test" + UUID.randomUUID()));
@@ -67,16 +68,16 @@ public class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepos
     @BeforeEach
     void setup() {
         RedisStringCommands<String, String> stringStringRedisStringCommands = AppConfiguration.initRedisCommand(
-            String.format("redis://%s@localhost:%d/0,redis://%s@localhost:%d/0",
-                "my_master_password", REDIS_MASTER.getMappedPort(6379),
-                "my_replica_password", REDIS_REPLICA.getMappedPort(6379)), true);
+            String.format("localhost:%d,localhost:%d",
+                REDIS_MASTER.getMappedPort(6379), REDIS_REPLICA.getMappedPort(6379)),
+            REDIS_PASSWORD, true);
 
         revokedTokenRepository = new RedisRevokedTokenRepository(stringStringRedisStringCommands);
     }
 
     @AfterEach
     void afterEach() throws IOException, InterruptedException {
-        REDIS_MASTER.execInContainer("redis-cli", "-a", "my_master_password", "flushall");
+        REDIS_MASTER.execInContainer("redis-cli", "-a", REDIS_PASSWORD, "flushall");
         TimeUnit.MILLISECONDS.sleep(100);
     }
 

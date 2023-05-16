@@ -14,5 +14,6 @@ socket:
   file: ${APISIX_LISTEN_ADDRESS:unix:/tmp/runner.sock}
 
 redis:
-  url: ${REDIS_URL:redis://localhost:6379}
+  url: ${REDIS_URL:localhost:6379}
+  password: ${REDIS_PASSWORD:}
   cluster.enable: ${REDIS_CLUSTER_ENABLE:false}
