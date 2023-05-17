@@ -190,6 +190,7 @@ services:
         headers:
           remove:
             - X-Userinfo
+            - X-User
 
 upstreams:
   -
@@ -227,5 +228,11 @@ plugin_configs:
               - OPTIONS
         conf:
           - name: TokenRevokedFilter
-            value: '{"enable":"feature"}'
+            value: ''
+          - name: RewriteXUserFilter
+            value: 'pre'
+      ext-plugin-post-req:
+        conf:
+          - name: RewriteXUserFilter
+            value: 'post'
 #END
