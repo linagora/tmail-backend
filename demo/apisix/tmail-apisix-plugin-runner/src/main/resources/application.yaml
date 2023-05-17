@@ -3,6 +3,7 @@ server:
 logging:
   level:
     RevokedTokenPlugin: debug
+    RewriteXUserPlugin: debug
     root: info
   pattern:
     console: "%clr(%-40.40logger{0}){blue} %clr(:){red} %clr(%m){faint}%n"

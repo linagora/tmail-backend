@@ -42,3 +42,10 @@ if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization
 else
 	echo "X-JMAP-WEBSOCKET-PREFIX Not work"
 fi
+
+# X-User header is not acceptable
+if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H 'X-User: victim@james-org' -H "Authorization: Bearer $ACCESS_TOKEN" http://apisix.example.com:9080/oidc/jmap/session 2>/dev/null | grep "401 Authorization Required" >/dev/null; then
+	echo "X-User header is not acceptable - work"
+else
+	echo "X-User header is not acceptable - Not work"
+fi

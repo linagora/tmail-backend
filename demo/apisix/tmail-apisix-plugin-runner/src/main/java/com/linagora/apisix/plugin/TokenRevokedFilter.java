@@ -1,7 +1,5 @@
 package com.linagora.apisix.plugin;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 import org.apache.apisix.plugin.runner.HttpRequest;
@@ -52,7 +50,7 @@ public class TokenRevokedFilter implements PluginFilter {
             });
     }
 
-    private void makeUnAuthorizedRequest(HttpRequest request, HttpResponse response) {
+    public static void makeUnAuthorizedRequest(HttpRequest request, HttpResponse response) {
         response.setStatusCode(401);
         response.setHeader("Content-Type","text/html; charset=utf-8");
         response.setBody("<html>\n" +
@@ -64,21 +62,5 @@ public class TokenRevokedFilter implements PluginFilter {
             "</html>\n");
     }
 
-    /**
-     * If you need to fetch some Nginx variables in the current plugin, you will need to declare them in this function.
-     *
-     * @return a list of Nginx variables that need to be called in this plugin
-     */
-    @Override
-    public List<String> requiredVars() {
-        return new ArrayList<>();
-    }
 
-    /**
-     * If you need to fetch request body in the current plugin, you will need to return true in this function.
-     */
-    @Override
-    public Boolean requiredBody() {
-        return true;
-    }
 }
