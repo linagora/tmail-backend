@@ -13,9 +13,13 @@ import org.apache.apisix.plugin.runner.filter.PluginFilter;
 import org.apache.apisix.plugin.runner.filter.PluginFilterChain;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 
 @Component
 public class RewriteXUserFilter implements PluginFilter {
@@ -24,9 +28,14 @@ public class RewriteXUserFilter implements PluginFilter {
     private static final String POST_FILTER = "post";
     private final Logger logger = LoggerFactory.getLogger("RewriteXUserPlugin");
     private final ObjectMapper json;
+    private final String userInfoField;
 
-    public RewriteXUserFilter() {
+    @Autowired
+    public RewriteXUserFilter(@Value("${app.rewrite_xuser.userinfo_field}") String xUserUserInfoField) {
         this.json = new ObjectMapper();
+        this.userInfoField = xUserUserInfoField;
+        Preconditions.checkArgument(StringUtils.hasText(userInfoField));
+        logger.debug("RewriteXUserPlugin init with userinfo field: {}", userInfoField);
     }
 
     @Override
@@ -63,7 +72,7 @@ public class RewriteXUserFilter implements PluginFilter {
 
     public Optional<String> extractUserFromUserInfo(String userInfo) {
         try {
-            return Optional.of(json.readTree(Base64.getDecoder().decode(userInfo)).get("sub").asText());
+            return Optional.of(json.readTree(Base64.getDecoder().decode(userInfo)).get(userInfoField).asText());
         } catch (IOException e) {
             logger.warn("Can not extract user from userInfo header", e);
             return Optional.empty();
