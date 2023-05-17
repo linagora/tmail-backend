@@ -18,3 +18,6 @@ redis:
   url: ${REDIS_URL:localhost:6379}
   password: ${REDIS_PASSWORD:}
   cluster.enable: ${REDIS_CLUSTER_ENABLE:false}
+
+app:
+  rewrite_xuser.userinfo_field: ${APP_REWRITE_XUSER_USERINFO_FIELD:sub}  # The X-Userinfo value of different OIDC providers is different. This property for extract exactly X-User value
