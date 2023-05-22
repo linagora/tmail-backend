@@ -57,6 +57,7 @@ import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreInMemoryM
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
+import com.linagora.tmail.james.jmap.method.EmailRecoveryActionMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
@@ -122,7 +123,8 @@ public class MemoryServer {
         new ShortLivedTokenRoutesModule(),
         new ShortLivedTokenModule(),
         new TicketRoutesModule(),
-        new WebFingerModule())
+        new WebFingerModule(),
+        new EmailRecoveryActionMethodModule())
         .with(new TeamMailboxJmapModule());
 
     public static final Module MODULES = Modules.override(

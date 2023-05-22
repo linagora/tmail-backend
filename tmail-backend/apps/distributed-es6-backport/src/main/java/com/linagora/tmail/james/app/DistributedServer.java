@@ -110,6 +110,7 @@ import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandra
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
+import com.linagora.tmail.james.jmap.method.EmailRecoveryActionMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
@@ -183,7 +184,8 @@ public class DistributedServer {
         new ShortLivedTokenModule(),
         new ShortLivedTokenRoutesModule(),
         new TicketRoutesModule(),
-        new WebFingerModule())
+        new WebFingerModule(),
+        new EmailRecoveryActionMethodModule())
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
