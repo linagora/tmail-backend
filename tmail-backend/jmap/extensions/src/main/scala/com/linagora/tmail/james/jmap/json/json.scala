@@ -20,12 +20,13 @@
 package com.linagora.tmail.james.jmap
 
 import eu.timepit.refined.api.{RefType, Validate}
+import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, Properties, SetError}
 import play.api.libs.json._
 
 import java.time.format.DateTimeFormatter
-
+import scala.util.Try
 package object json {
   implicit def writeRefined[T, P, F[_, _]](
                                             implicit writesT: Writes[T],
@@ -52,4 +53,9 @@ package object json {
   val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
   val dateTimeUTCFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
 
+  implicit val mailAddressReads: Reads[MailAddress] = {
+    case JsString(value) => Try(JsSuccess(new MailAddress(value)))
+      .fold(e => JsError(s"Invalid mailAddress: ${e.getMessage}"), mailAddress => mailAddress)
+    case _ => JsError("Expecting mailAddress to be represented by a JsString")
+  }
 }

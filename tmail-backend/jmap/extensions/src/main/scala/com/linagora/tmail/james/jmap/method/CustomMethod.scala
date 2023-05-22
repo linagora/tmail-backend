@@ -23,6 +23,7 @@ object CapabilityIdentifier {
   val LINAGORA_FIREBASE: CapabilityIdentifier = "com:linagora:params:jmap:firebase:push"
   val LINAGORA_CALENDAR: CapabilityIdentifier = "com:linagora:params:calendar:event"
   val LINAGORA_TEAM_MAILBOXES: CapabilityIdentifier = "com:linagora:params:jmap:team:mailboxes"
+  val LINAGORA_MESSAGE_VAULT: CapabilityIdentifier = "com:linagora:params:jmap:messages:vault"
 }
 
 case object CustomCapabilityProperties extends CapabilityProperties {
