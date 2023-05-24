@@ -1,15 +1,17 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject}
-import eu.timepit.refined.refineV
-import org.apache.james.jmap.core.Id.IdConstraint
-import org.apache.james.jmap.core.{SetError, UTCDate}
-import org.apache.james.jmap.json.{jsObjectReads, mapMarkerReads, mapWrites}
-import org.apache.james.task.TaskId
-import play.api.libs.json._
-
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+
+import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionIds, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject, ErrorRestoreCount, SuccessfulRestoreCount, UnparsedEmailRecoveryActionId}
+import eu.timepit.refined.refineV
+import org.apache.james.jmap.core.Id.IdConstraint
+import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
+import org.apache.james.jmap.json.{jsObjectReads, mapWrites}
+import org.apache.james.task.TaskId
+import org.apache.james.task.TaskManager.Status
+import play.api.libs.json._
+
 import scala.util.{Failure, Success, Try}
 
 object EmailRecoveryActionSerializer {
@@ -63,10 +65,32 @@ object EmailRecoveryActionSerializer {
 
   private implicit val emailRecoveryActionSetRequestReads: Reads[EmailRecoveryActionSetRequest] = Json.reads[EmailRecoveryActionSetRequest]
 
+  private implicit val idFormat: Format[UnparsedEmailRecoveryActionId] = Json.valueFormat[UnparsedEmailRecoveryActionId]
+  private implicit val emailRecoveryActionIdsReads: Reads[EmailRecoveryActionIds] = Json.valueReads[EmailRecoveryActionIds]
+  private implicit val emailRecoveryActionGetRequestReads: Reads[EmailRecoveryActionGetRequest] = Json.reads[EmailRecoveryActionGetRequest]
+
+  private implicit val successfulRestoreCountWrites: Writes[SuccessfulRestoreCount] = Json.valueWrites[SuccessfulRestoreCount]
+  private implicit val errorRestoreCountWrites: Writes[ErrorRestoreCount] = Json.valueWrites[ErrorRestoreCount]
+  private implicit val statusWrites: Writes[Status] = status => JsString(status.getValue)
+  private implicit val emailRecoveryActionWrites: Writes[EmailRecoveryAction] = Json.writes[EmailRecoveryAction]
+  private implicit val emailRecoveryActionIdsWrites: Writes[EmailRecoveryActionIds] = Json.writes[EmailRecoveryActionIds]
+  private implicit val emailRecoveryActionGetResponseWrites: Writes[EmailRecoveryActionGetResponse] = Json.writes[EmailRecoveryActionGetResponse]
 
   def deserializeSetRequest(input: JsValue): JsResult[EmailRecoveryActionSetRequest] = Json.fromJson[EmailRecoveryActionSetRequest](input)
 
   def deserializeSetCreationRequest(input: JsValue): JsResult[EmailRecoveryActionCreationRequest] = Json.fromJson[EmailRecoveryActionCreationRequest](input)
+
+  def deserializeGetRequest(input: JsValue): JsResult[EmailRecoveryActionGetRequest] = Json.fromJson[EmailRecoveryActionGetRequest](input)
+
+  def serializeGetResponse(response: EmailRecoveryActionGetResponse, properties: Properties): JsValue =
+    Json.toJson(response)
+      .transform((__ \ "list").json.update {
+        case JsArray(underlying) => JsSuccess(JsArray(underlying.map {
+          case jsonObject: JsObject => properties
+            .filter(jsonObject)
+          case jsValue => jsValue
+        }))
+      }).get
 
   def serializeSetResponse(response: EmailRecoveryActionSetResponse): JsObject = Json.toJsObject(response)
 
