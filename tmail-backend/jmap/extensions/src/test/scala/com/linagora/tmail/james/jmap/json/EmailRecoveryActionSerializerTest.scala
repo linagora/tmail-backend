@@ -1,16 +1,19 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject}
+import java.time.ZonedDateTime
+
+import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject, ErrorRestoreCount, SuccessfulRestoreCount, UnparsedEmailRecoveryActionId}
+import eu.timepit.refined.auto._
 import org.apache.james.core.MailAddress
-import org.apache.james.jmap.core.{SetError, UTCDate}
+import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.{Id, Properties, SetError, UTCDate}
+import org.apache.james.task.TaskId
+import org.apache.james.task.TaskManager.Status
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import play.api.libs.json.{JsResult, JsValue, Json}
-import eu.timepit.refined.auto._
-import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.task.TaskId
 
-import java.time.ZonedDateTime
+import scala.collection.Seq
 
 class EmailRecoveryActionSerializerTest {
 
@@ -103,6 +106,66 @@ class EmailRecoveryActionSerializerTest {
           |        }
           |    }
           |}""".stripMargin))
+  }
+
+  @Test
+  def deserializeGetRequestShouldSucceed(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |		"ids": ["2034-495-05857-57abcd-0876664"],
+        |   "properties": ["status"]
+        |	}""".stripMargin)
+
+    val deserializeResult: JsResult[EmailRecoveryActionGetRequest] = EmailRecoveryActionSerializer.deserializeGetRequest(jsInput)
+
+    assertThat(deserializeResult.isSuccess)
+      .isTrue
+    assertThat(deserializeResult.get.ids.list.head)
+      .isEqualTo(UnparsedEmailRecoveryActionId("2034-495-05857-57abcd-0876664"))
+    assertThat(deserializeResult.get.properties.get.contains("status"))
+      .isTrue
+  }
+
+  @Test
+  def serializeGetResponseShouldSucceed(): Unit = {
+    val list: Seq[EmailRecoveryAction] = Seq(EmailRecoveryAction(id = TaskId.fromString("77731634-ea82-4a1a-bd4c-9f8ece4f66c7"),
+      successfulRestoreCount = SuccessfulRestoreCount(99L),
+      errorRestoreCount = ErrorRestoreCount(1L),
+      status = Status.IN_PROGRESS))
+    val notFound: Set[UnparsedEmailRecoveryActionId] = Set(UnparsedEmailRecoveryActionId(Id.validate("whatever").toOption.get))
+    val response: EmailRecoveryActionGetResponse = EmailRecoveryActionGetResponse(list, notFound)
+
+    assertThat(EmailRecoveryActionSerializer.serializeGetResponse(response, EmailRecoveryActionGetRequest.allSupportedProperties))
+      .isEqualTo(Json.parse(
+        """{
+          |    		"list": [{
+          |    			"id": "77731634-ea82-4a1a-bd4c-9f8ece4f66c7",
+          |    			"successfulRestoreCount": 99,
+          |    			"errorRestoreCount": 1,
+          |    			"status": "inProgress"
+          |    		}],
+          |    		"notFound": ["whatever"]
+          |    	}""".stripMargin))
+  }
+
+  @Test
+  def serializeGetResponseShouldFilterByProperties(): Unit = {
+    val list: Seq[EmailRecoveryAction] = Seq(EmailRecoveryAction(id = TaskId.fromString("77731634-ea82-4a1a-bd4c-9f8ece4f66c7"),
+      successfulRestoreCount = SuccessfulRestoreCount(99L),
+      errorRestoreCount = ErrorRestoreCount(1L),
+      status = Status.IN_PROGRESS))
+    val notFound: Set[UnparsedEmailRecoveryActionId] = Set(UnparsedEmailRecoveryActionId(Id.validate("whatever").toOption.get))
+    val response: EmailRecoveryActionGetResponse = EmailRecoveryActionGetResponse(list, notFound)
+
+    assertThat(EmailRecoveryActionSerializer.serializeGetResponse(response, Properties("id", "status")))
+      .isEqualTo(Json.parse(
+        """{
+          |    		"list": [{
+          |    			"id": "77731634-ea82-4a1a-bd4c-9f8ece4f66c7",
+          |    			"status": "inProgress"
+          |    		}],
+          |    		"notFound": ["whatever"]
+          |    	}""".stripMargin))
   }
 
 }
