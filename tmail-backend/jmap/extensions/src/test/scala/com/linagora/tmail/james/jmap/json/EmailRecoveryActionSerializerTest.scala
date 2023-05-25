@@ -13,7 +13,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import play.api.libs.json.{JsResult, JsValue, Json}
 
-import scala.collection.Seq
 
 class EmailRecoveryActionSerializerTest {
 
@@ -166,6 +165,25 @@ class EmailRecoveryActionSerializerTest {
           |    		}],
           |    		"notFound": ["whatever"]
           |    	}""".stripMargin))
+  }
+
+  @Test
+  def deserializeSetUpdateRequestShouldSuccess(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |    "update": {
+        |        "4bf6d081-aa30-11e9-bf6c-2d3b9e84aafd": {
+        |            "status": "canceled"
+        |       }
+        |    }
+        |}""".stripMargin)
+
+    val deserializeResult: JsResult[EmailRecoveryActionSetRequest] = EmailRecoveryActionSerializer.deserializeSetRequest(jsInput)
+
+    assertThat(deserializeResult.isSuccess)
+      .isTrue
+    assertThat(deserializeResult.get.update.get.head._1)
+      .isEqualTo(UnparsedEmailRecoveryActionId("4bf6d081-aa30-11e9-bf6c-2d3b9e84aafd"))
   }
 
 }

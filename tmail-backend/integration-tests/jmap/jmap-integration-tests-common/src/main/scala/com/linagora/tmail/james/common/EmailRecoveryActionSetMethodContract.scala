@@ -19,6 +19,7 @@ import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.MailboxProbeImpl
+import org.apache.james.task.TaskId
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe, WebAdminGuiceProbe}
 import org.apache.james.vault.search.Query
 import org.apache.james.vault.{DeletedMessage, DeletedMessageVault}
@@ -1616,6 +1617,373 @@ trait EmailRecoveryActionSetMethodContract {
 
     assertThat(taskId)
       .isEqualTo(backReferenceValue)
+  }
+
+  @Test
+  def updateShouldReturnUpdatedWhenValidRequest(server: GuiceJamesServer): Unit = {
+    val taskId: String = newCreationSetRequestAndGetTaskId()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"EmailRecoveryAction/set",
+           |	{
+           |		"updated": {
+           |			"$taskId": {}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenInvalidStatus(server: GuiceJamesServer): Unit = {
+    val taskId: String = newCreationSetRequestAndGetTaskId()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "invalid" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"EmailRecoveryAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskId": {
+           |				"type": "invalidArguments",
+           |				"description": "Invalid status 'invalid'"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenTaskIdDoesNotFound(server: GuiceJamesServer): Unit = {
+    val taskId: String = TaskId.generateTaskId().asString()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"EmailRecoveryAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskId": {
+           |				"type": "notFound",
+           |				"description": "Task not found"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenMissingStatus(server: GuiceJamesServer): Unit = {
+    val taskId: String = TaskId.generateTaskId().asString()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": { "$taskId": {  } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"EmailRecoveryAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskId": {
+           |				"type": "invalidArguments",
+           |				"description": "Can not deserialize update request. Missing '/status' property"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenInvalidTaskId(server: GuiceJamesServer): Unit = {
+    val taskId: String = TaskId.generateTaskId().asString()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": { "!123": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"error",
+           |	{
+           |		"type": "invalidArguments",
+           |		"description": "$${json-unit.ignore}"
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenUserIsNotOwnerOfTaskId(server: GuiceJamesServer) : Unit = {
+    val taskIdOfBob: String = newCreationSetRequestAndGetTaskId()
+
+    val responseOfAndreRequest = `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": { "$taskIdOfBob": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(responseOfAndreRequest)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"EmailRecoveryAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskIdOfBob": {
+           |				"type": "notFound",
+           |				"description": "Task not found"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenUnknownProperty(): Unit = {
+    val taskId: String = newCreationSetRequestAndGetTaskId()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": {
+           |					"$taskId": {
+           |						"status": "canceled",
+           |						"redundant": "will get rejected"
+           |					}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"EmailRecoveryAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskId": {
+           |				"type": "invalidArguments",
+           |				"description": "Unknown properties: redundant"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  def newCreationSetRequestAndGetTaskId(): String = {
+    `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"create": {
+           |					"clientId1": {
+           |						"subject": "subject contains"
+           |					}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .extract()
+      .jsonPath()
+      .get("methodResponses[0][1].created.clientId1.id").toString
   }
 
   def templateDeletedMessage(messageId: MessageId = randomMessageId,

@@ -1,12 +1,10 @@
 package com.linagora.tmail.james.jmap.model
 
-import java.time.ZonedDateTime
-import java.util
-import java.util.UUID
-
+import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
 import eu.timepit.refined.auto._
+import eu.timepit.refined.refineV
 import org.apache.james.core.MailAddress
-import org.apache.james.jmap.core.Id.Id
+import org.apache.james.jmap.core.Id.{Id, IdConstraint}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
 import org.apache.james.jmap.core.{Id, Properties, SetError, UTCDate}
@@ -14,12 +12,14 @@ import org.apache.james.jmap.method.WithoutAccountId
 import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
 import org.apache.james.vault.search.{Criterion, CriterionFactory, Query}
-import play.api.libs.json.JsObject
+import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, Json, JsonValidationError}
 
-import scala.collection.Seq
+import java.time.ZonedDateTime
+import java.util
+import java.util.UUID
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 case class EmailRecoveryActionCreationId(id: Id) {
   def serialise: String = id.value
@@ -105,14 +105,87 @@ case class EmailRecoveryActionCreationRequest(deletedBefore: Option[EmailRecover
 
 case class EmailRecoveryActionCreationParseException(setError: SetError) extends Exception
 
-case class EmailRecoveryActionSetRequest(create: Option[Map[EmailRecoveryActionCreationId, JsObject]]) extends WithoutAccountId
+case class EmailRecoveryActionSetRequest(create: Option[Map[EmailRecoveryActionCreationId, JsObject]],
+                                         update: Option[Map[UnparsedEmailRecoveryActionId, EmailRecoveryActionUpdatePatchObject]]) extends WithoutAccountId
 
 case class EmailRecoveryActionCreationResponse(id: TaskId)
 
 case class EmailRecoveryActionSetResponse(created: Option[Map[EmailRecoveryActionCreationId, EmailRecoveryActionCreationResponse]] = None,
-                                          notCreated: Option[Map[EmailRecoveryActionCreationId, SetError]] = None)
+                                          notCreated: Option[Map[EmailRecoveryActionCreationId, SetError]] = None,
+                                          updated: Option[Map[TaskId, EmailRecoveryActionUpdateResponse]] = None,
+                                          notUpdated: Option[Map[UnparsedEmailRecoveryActionId, SetError]] = None) extends WithoutAccountId
 
-case class UnparsedEmailRecoveryActionId(id: Id)
+object UnparsedEmailRecoveryActionId {
+  def from(taskId: TaskId): UnparsedEmailRecoveryActionId =
+    refineV[IdConstraint](taskId.asString()) match {
+      case scala.Right(id) => UnparsedEmailRecoveryActionId(id)
+      case Left(error) => throw new IllegalArgumentException(s"Can not parse taskId '${taskId.asString()}' as a TaskId. " + error)
+    }
+}
+
+case class UnparsedEmailRecoveryActionId(id: Id) {
+  def asTaskId: Either[IllegalArgumentException, TaskId] =
+    Try(TaskId.fromString(id.value)) match {
+      case Success(value) => scala.Right(value)
+      case Failure(e) => scala.Left(new IllegalArgumentException(s"Can not parse taskId '$id' as a TaskId", e));
+    }
+}
+
+object EmailRecoveryActionUpdateStatus {
+  val CANCELED: String = "canceled"
+}
+
+case class EmailRecoveryActionUpdateStatus(value: String) extends AnyVal {
+
+  import EmailRecoveryActionUpdateStatus._
+
+  def validate: Either[IllegalArgumentException, EmailRecoveryActionUpdateStatus] =
+    value match {
+      case CANCELED => scala.Right(this)
+      case _ => scala.Left(new IllegalArgumentException(s"Invalid status '$value'"))
+    }
+}
+
+case class EmailRecoveryActionUpdateRequest(status: EmailRecoveryActionUpdateStatus) {
+  def validate: Either[IllegalArgumentException, EmailRecoveryActionUpdateRequest] = status.validate
+    .map(_ => this)
+}
+
+object EmailRecoveryActionUpdatePatchObject {
+  private val knownProperties: Set[String] = Set("status")
+}
+
+case class EmailRecoveryActionUpdatePatchObject(jsObject: JsObject) {
+  import EmailRecoveryActionUpdatePatchObject._
+  def validateProperties: Either[IllegalArgumentException, JsObject] =
+    (jsObject.keys.toSet -- knownProperties) match {
+      case unknownProperties if unknownProperties.nonEmpty =>
+        Left(new IllegalArgumentException(s"Unknown properties: ${unknownProperties.mkString(", ")}"))
+      case _ => Right(jsObject)
+    }
+
+  def asUpdateRequest: Either[IllegalArgumentException, EmailRecoveryActionUpdateRequest] = {
+    for {
+      validatedJsObject <- validateProperties
+      updateRequest <- EmailRecoveryActionSerializer.deserializeSetUpdateRequest(validatedJsObject) match {
+        case JsSuccess(updateRequest, _) => updateRequest.validate
+        case JsError(error) => Left(new IllegalArgumentException(s"Can not deserialize update request. " + parseError(error)))
+      }
+    } yield updateRequest
+  }
+
+  def parseError(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): String =
+    errors.head match {
+      case (path, Seq()) => s"'$path' property is not valid"
+      case (path, Seq(JsonValidationError(Seq("error.path.missing")))) => s"Missing '$path' property"
+      case (path, Seq(JsonValidationError(Seq(_)))) => s"'$path' property is not valid"
+      case (path, _) => s"Unknown error on property '$path'"
+    }
+}
+
+case class EmailRecoveryActionUpdateException(description: Option[String] = None, setError: Option[SetError] = None) extends Exception
+
+case class EmailRecoveryActionUpdateResponse(json: JsObject = Json.obj())
 
 case class EmailRecoveryActionIds(list: List[UnparsedEmailRecoveryActionId])
 

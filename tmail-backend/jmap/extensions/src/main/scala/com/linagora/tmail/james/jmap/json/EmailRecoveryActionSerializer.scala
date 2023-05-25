@@ -1,9 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-
-import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionIds, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject, ErrorRestoreCount, SuccessfulRestoreCount, UnparsedEmailRecoveryActionId}
+import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionIds, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject, ErrorRestoreCount, SuccessfulRestoreCount, UnparsedEmailRecoveryActionId}
 import eu.timepit.refined.refineV
 import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
@@ -12,6 +9,8 @@ import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
 import play.api.libs.json._
 
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import scala.util.{Failure, Success, Try}
 
 object EmailRecoveryActionSerializer {
@@ -43,6 +42,19 @@ object EmailRecoveryActionSerializer {
     case _ => JsError("Expecting js string to represent UTC Date")
   }
 
+  private implicit val emailRecoveryActionUpdatePatchObjectReads: Reads[EmailRecoveryActionUpdatePatchObject] = {
+    case jsObject: JsObject => JsSuccess(EmailRecoveryActionUpdatePatchObject(jsObject))
+    case _ => JsError("EmailRecoveryActionUpdatePatchObject needs to be represented by a JsObject")
+  }
+
+  private implicit val mapUpdateRequest: Reads[Map[UnparsedEmailRecoveryActionId, EmailRecoveryActionUpdatePatchObject]] =
+    Reads.mapReads[UnparsedEmailRecoveryActionId, EmailRecoveryActionUpdatePatchObject](
+      string => refineV[IdConstraint](string)
+        .fold(e => JsError(s"EmailRecoveryAction Id needs to match id constraints: $e"),
+          id => JsSuccess(UnparsedEmailRecoveryActionId(id)))) {
+      emailRecoveryActionUpdatePatchObjectReads
+    }
+
   private implicit val emailRecoveryDeletedBeforeReads: Reads[EmailRecoveryDeletedBefore] = Json.valueReads[EmailRecoveryDeletedBefore]
   private implicit val emailRecoveryDeletedAfterReads: Reads[EmailRecoveryDeletedAfter] = Json.valueReads[EmailRecoveryDeletedAfter]
   private implicit val emailRecoveryReceivedBeforeReads: Reads[EmailRecoveryReceivedBefore] = Json.valueReads[EmailRecoveryReceivedBefore]
@@ -52,13 +64,23 @@ object EmailRecoveryActionSerializer {
   private implicit val emailRecoverySenderReads: Reads[EmailRecoverySender] = mailAddressReads.map(EmailRecoverySender)
   private implicit val emailRecoveryRecipientReads: Reads[EmailRecoveryRecipient] = Json.valueReads[EmailRecoveryRecipient]
   private implicit val emailRecoveryActionCreationRequestReads: Reads[EmailRecoveryActionCreationRequest] = Json.reads[EmailRecoveryActionCreationRequest]
+
+  private implicit val emailRecoveryActionUpdateStatusReads: Reads[EmailRecoveryActionUpdateStatus] = Json.valueReads[EmailRecoveryActionUpdateStatus]
+  private implicit val emailRecoveryActionUpdateRequestReads: Reads[EmailRecoveryActionUpdateRequest] = Json.reads[EmailRecoveryActionUpdateRequest]
   private implicit val taskIdWrites: Writes[TaskId] = value => JsString(value.asString())
   private implicit val emailRecoveryActionCreationResponseWrites: Writes[EmailRecoveryActionCreationResponse] = Json.writes[EmailRecoveryActionCreationResponse]
-  private implicit val subscriptionMapSetErrorForCreationWrites: Writes[Map[EmailRecoveryActionCreationId, SetError]] =
+  private implicit val mapSetErrorForCreationWrites: Writes[Map[EmailRecoveryActionCreationId, SetError]] =
     mapWrites[EmailRecoveryActionCreationId, SetError](_.serialise, setErrorWrites)
+  private implicit val mapSetErrorForUpdateWrites: Writes[Map[UnparsedEmailRecoveryActionId, SetError]] =
+    mapWrites[UnparsedEmailRecoveryActionId, SetError](_.id.value, setErrorWrites)
 
   private implicit def emailRecoveryActionCreationResponseMapWrites(implicit emailRecoveryActionCreationResponseWrites: Writes[EmailRecoveryActionCreationResponse]): Writes[Map[EmailRecoveryActionCreationId, EmailRecoveryActionCreationResponse]] =
     mapWrites[EmailRecoveryActionCreationId, EmailRecoveryActionCreationResponse](_.id.value, emailRecoveryActionCreationResponseWrites)
+
+  private implicit val emailRecoveryActionUpdateResponseWrites: Writes[EmailRecoveryActionUpdateResponse] = Json.valueWrites[EmailRecoveryActionUpdateResponse]
+
+  private implicit def emailRecoveryActionUpdateResponseMapWrites: Writes[Map[TaskId, EmailRecoveryActionUpdateResponse]] =
+    mapWrites[TaskId, EmailRecoveryActionUpdateResponse](taskId => taskId.asString(), emailRecoveryActionUpdateResponseWrites)
 
   private implicit val emailRecoveryActionSetResponseWrites: OWrites[EmailRecoveryActionSetResponse] = Json.writes[EmailRecoveryActionSetResponse]
 
@@ -79,6 +101,8 @@ object EmailRecoveryActionSerializer {
   def deserializeSetRequest(input: JsValue): JsResult[EmailRecoveryActionSetRequest] = Json.fromJson[EmailRecoveryActionSetRequest](input)
 
   def deserializeSetCreationRequest(input: JsValue): JsResult[EmailRecoveryActionCreationRequest] = Json.fromJson[EmailRecoveryActionCreationRequest](input)
+
+  def deserializeSetUpdateRequest(input: JsValue): JsResult[EmailRecoveryActionUpdateRequest] = Json.fromJson[EmailRecoveryActionUpdateRequest](input)
 
   def deserializeGetRequest(input: JsValue): JsResult[EmailRecoveryActionGetRequest] = Json.fromJson[EmailRecoveryActionGetRequest](input)
 
