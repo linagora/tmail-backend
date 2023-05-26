@@ -1,11 +1,14 @@
 package com.linagora.tmail.james.app;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Optional;
 
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
+import org.apache.james.jmap.draft.JMAPModule;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
@@ -22,7 +25,8 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   MailboxConfiguration mailboxConfiguration,
                                   UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
                                   FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
-                                  LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration) implements Configuration {
+                                  LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
+                                  boolean jmapEnabled) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<String> rootDirectory;
@@ -30,6 +34,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
+        private Optional<Boolean> jmapEnabled;
 
         private Builder() {
             mailboxConfiguration = Optional.empty();
@@ -38,6 +43,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             usersRepositoryImplementation = Optional.empty();
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
+            jmapEnabled = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -88,6 +94,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return this;
         }
 
+        public Builder jmapEnabled(boolean enable) {
+            this.jmapEnabled = Optional.of(enable);
+            return this;
+        }
+
         public MemoryConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -113,13 +124,25 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration.orElseGet(Throwing.supplier(
                 () -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
 
+            boolean jmapEnabled = this.jmapEnabled.orElseGet(() -> {
+                PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
+                try {
+                    return JMAPModule.parseConfiguration(propertiesProvider).isEnabled();
+                } catch (FileNotFoundException e) {
+                    return false;
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             return new MemoryConfiguration(
                 configurationPath,
                 directories,
                 mailboxConfiguration,
                 usersRepositoryChoice,
                 firebaseModuleChooserConfiguration,
-                servicesDiscoveryModuleChooserConfiguration);
+                servicesDiscoveryModuleChooserConfiguration,
+                jmapEnabled);
         }
     }
 

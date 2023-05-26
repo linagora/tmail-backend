@@ -15,6 +15,7 @@ import org.apache.james.SearchModuleChooser;
 import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
+import org.apache.james.jmap.draft.JMAPListenerModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
@@ -279,7 +280,16 @@ public class DistributedServer {
             .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
-            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
+            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
+            .overrideWith(chooseJmapModule(configuration));
+    }
+
+    private static Module chooseJmapModule(DistributedJamesConfiguration configuration) {
+        if (configuration.jmapEnabled()) {
+            return new JMAPListenerModule();
+        }
+        return binder -> {
+        };
     }
 
     private static class EncryptedMailboxModule extends AbstractModule {
