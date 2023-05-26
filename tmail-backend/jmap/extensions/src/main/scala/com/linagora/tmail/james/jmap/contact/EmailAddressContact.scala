@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.contact
 
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+
 import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
@@ -9,7 +10,7 @@ import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.events.Event
 import org.apache.james.events.Event.EventId
 import org.apache.james.jmap.api.model.AccountId
-import org.apache.james.user.api.UsernameChangeTaskStep
+import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -25,6 +26,9 @@ case class InMemoryEmailAddressContactSearchEngineModule() extends AbstractModul
     Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
       .addBinding()
       .to(classOf[ContactUsernameChangeTaskStep])
+    Multibinder.newSetBinder(binder(), classOf[DeleteUserDataTaskStep])
+      .addBinding()
+      .to(classOf[ContactUserDeletionTaskStep])
   }
 }
 
