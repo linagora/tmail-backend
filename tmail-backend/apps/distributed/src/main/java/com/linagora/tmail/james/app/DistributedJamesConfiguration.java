@@ -1,11 +1,14 @@
 package com.linagora.tmail.james.app;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Optional;
 
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
+import org.apache.james.jmap.draft.JMAPModule;
 import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
@@ -28,7 +31,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
                                             MailQueueViewChoice mailQueueViewChoice,
                                             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
-                                            LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration) implements Configuration {
+                                            LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
+                                            boolean jmapEnabled) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -39,6 +43,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<MailQueueViewChoice> mailQueueViewChoice;
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
+        private Optional<Boolean> jmapEnabled;
 
         private Builder() {
             searchConfiguration = Optional.empty();
@@ -50,6 +55,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             mailQueueViewChoice = Optional.empty();
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
+            jmapEnabled = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -115,6 +121,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder jmapEnabled(boolean enable) {
+            this.jmapEnabled = Optional.of(enable);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -150,6 +161,17 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration
                 .orElseGet(Throwing.supplier(() -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
 
+            boolean jmapEnabled = this.jmapEnabled.orElseGet(() -> {
+                PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
+                try {
+                    return JMAPModule.parseConfiguration(propertiesProvider).isEnabled();
+                } catch (FileNotFoundException e) {
+                    return false;
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -159,7 +181,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 usersRepositoryChoice,
                 mailQueueViewChoice,
                 firebaseModuleChooserConfiguration,
-                servicesDiscoveryModuleChooserConfiguration);
+                servicesDiscoveryModuleChooserConfiguration,
+                jmapEnabled);
         }
     }
 

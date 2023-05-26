@@ -11,6 +11,7 @@ import org.apache.james.FakeSearchMailboxModule;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.data.UsersRepositoryModuleChooser;
+import org.apache.james.jmap.draft.JMAPListenerModule;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.modules.BlobExportMechanismModule;
@@ -161,7 +162,16 @@ public class MemoryServer {
                 .chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
-            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()));
+            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
+            .overrideWith(chooseJmapModule(configuration));
+    }
+
+    private static Module chooseJmapModule(MemoryConfiguration configuration) {
+        if (configuration.jmapEnabled()) {
+            return new JMAPListenerModule();
+        }
+        return binder -> {
+        };
     }
 
     private static class EncryptedMailboxModule extends AbstractModule {
