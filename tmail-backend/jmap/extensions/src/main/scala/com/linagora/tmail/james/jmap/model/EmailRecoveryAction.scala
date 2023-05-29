@@ -2,9 +2,8 @@ package com.linagora.tmail.james.jmap.model
 
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
 import eu.timepit.refined.auto._
-import eu.timepit.refined.refineV
 import org.apache.james.core.MailAddress
-import org.apache.james.jmap.core.Id.{Id, IdConstraint}
+import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
 import org.apache.james.jmap.core.{Id, Properties, SetError, UTCDate}
@@ -16,10 +15,9 @@ import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, Json, JsonValid
 
 import java.time.ZonedDateTime
 import java.util
-import java.util.UUID
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 case class EmailRecoveryActionCreationId(id: Id) {
   def serialise: String = id.value
@@ -116,19 +114,11 @@ case class EmailRecoveryActionSetResponse(created: Option[Map[EmailRecoveryActio
                                           notUpdated: Option[Map[UnparsedEmailRecoveryActionId, SetError]] = None) extends WithoutAccountId
 
 object UnparsedEmailRecoveryActionId {
-  def from(taskId: TaskId): UnparsedEmailRecoveryActionId =
-    refineV[IdConstraint](taskId.asString()) match {
-      case scala.Right(id) => UnparsedEmailRecoveryActionId(id)
-      case Left(error) => throw new IllegalArgumentException(s"Can not parse taskId '${taskId.asString()}' as a TaskId. " + error)
-    }
+  def from(taskId: TaskId): UnparsedEmailRecoveryActionId = TaskIdUtil.asUnparsedEmailRecoveryActionId(taskId)
 }
 
 case class UnparsedEmailRecoveryActionId(id: Id) {
-  def asTaskId: Either[IllegalArgumentException, TaskId] =
-    Try(TaskId.fromString(id.value)) match {
-      case Success(value) => scala.Right(value)
-      case Failure(e) => scala.Left(new IllegalArgumentException(s"Can not parse taskId '$id' as a TaskId", e));
-    }
+  def asTaskId: Either[IllegalArgumentException, TaskId] = TaskIdUtil.liftOrThrow(this)
 }
 
 object EmailRecoveryActionUpdateStatus {
@@ -229,8 +219,7 @@ object TaskIdUtil {
     liftOrThrow(unparsedId.id.value)
 
   private def liftOrThrow(value: String): Either[IllegalArgumentException, TaskId] =
-    Try(UUID.fromString(value))
-      .map(TaskId.fromUUID)
+    Try(TaskId.fromString(value))
       .toEither
       .left.map(e => new IllegalArgumentException("TaskId is invalid", e))
 }
