@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.ContactUsernameChangeTaskStepTest.{ALICE, ALICE_ACCOUNT_ID, ANDRE_CONTACT, BOB_ACCOUNT_ID, MARIE_CONTACT}
+import com.linagora.tmail.james.jmap.contact.ContactUsernameChangeTaskStepTest.{ALICE, ALICE_ACCOUNT_ID, ALICE_CONTACT, ANDRE_CONTACT, BOB_ACCOUNT_ID, MARIE_CONTACT}
+import org.apache.james.core.Domain
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -49,6 +50,19 @@ class ContactUserDeletionTaskStepTest {
 
     assertThatCode(() => SMono.fromPublisher(testee.deleteUserData(ALICE)).block())
       .doesNotThrowAnyException()
+  }
+
+  @Test
+  def shouldRemoveTheContactInDomainContact(): Unit = {
+    SMono.fromPublisher(searchEngine.index(Domain.of("linagora.com"), ALICE_CONTACT)).block()
+    SMono.fromPublisher(searchEngine.index(Domain.of("linagora.com"), ANDRE_CONTACT)).block()
+
+    SMono.fromPublisher(testee.deleteUserData(ALICE)).block()
+
+    assertThat(SFlux.fromPublisher(searchEngine.list(Domain.of("linagora.com")))
+      .map(_.fields)
+      .collectSeq().block().asJava)
+      .containsOnly(ANDRE_CONTACT)
   }
 
 }

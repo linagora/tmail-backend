@@ -19,6 +19,8 @@ object ContactUsernameChangeTaskStepTest {
   val ANDRE_CONTACT: ContactFields = ContactFields(ANDRE_MAIL_ADDRESS, "Andre", "Dupont")
   val MARIE_MAIL_ADDRESS: MailAddress = new MailAddress("marie@linagora.com")
   val MARIE_CONTACT: ContactFields = ContactFields(MARIE_MAIL_ADDRESS, "Marie", "Bourdier")
+  val ALICE_MAIL_ADDRESS: MailAddress = new MailAddress("alice@linagora.com")
+  val ALICE_CONTACT: ContactFields = ContactFields(ALICE_MAIL_ADDRESS, "Alice", "Gwen")
 }
 
 class ContactUsernameChangeTaskStepTest {
