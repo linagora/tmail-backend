@@ -19,7 +19,7 @@ import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.MailboxProbeImpl
-import org.apache.james.task.TaskId
+import org.apache.james.task.{Task, TaskId, TaskManager, TaskType, TaskWithId, WorkQueue}
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe, WebAdminGuiceProbe}
 import org.apache.james.vault.search.Query
 import org.apache.james.vault.{DeletedMessage, DeletedMessageVault}
@@ -42,6 +42,7 @@ import java.util
 import java.util.concurrent.TimeUnit
 import java.util.stream.Stream
 import scala.jdk.CollectionConverters._
+import org.apache.james.task.MemoryReferenceTask
 
 class DeletedMessageVaultProbe @Inject()(vault: DeletedMessageVault) extends GuiceProbe {
   def append(deletedMessage: DeletedMessage, mimeMessage: InputStream): Unit =
@@ -55,10 +56,18 @@ class DeletedMessageVaultProbe @Inject()(vault: DeletedMessageVault) extends Gui
 }
 
 class DeletedMessageVaultProbeModule extends AbstractModule {
-  override def configure(): Unit =
+  override def configure(): Unit = {
     Multibinder.newSetBinder(binder(), classOf[GuiceProbe])
       .addBinding()
       .to(classOf[DeletedMessageVaultProbe])
+    Multibinder.newSetBinder(binder(), classOf[GuiceProbe])
+      .addBinding()
+      .to(classOf[TaskManagerProbe])
+  }
+}
+
+class TaskManagerProbe @Inject()(taskManager: TaskManager) extends GuiceProbe {
+  def submitTask(task: Task): Unit = taskManager.submit(task)
 }
 
 object EmailRecoveryActionSetMethodContract {
@@ -1662,6 +1671,67 @@ trait EmailRecoveryActionSetMethodContract {
            |	},
            |	"c1"
            |]""".stripMargin)
+  }
+
+  @Test
+  def updateStatusCanceledShouldCancelTask(server: GuiceJamesServer): Unit = {
+    // It make the `deleted-messages-restore` task will waiting
+    // when the hanging task to be completed
+    val hangingTask : Task = new MemoryReferenceTask(() => {
+      Thread.sleep(2000)
+      Task.Result.COMPLETED
+    })
+
+    server.getProbe(classOf[TaskManagerProbe])
+      .submitTask(hangingTask)
+
+    val taskId: String = newCreationSetRequestAndGetTaskId()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"EmailRecoveryAction/set",
+           |	{
+           |		"updated": {
+           |			"$taskId": {}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+
+    `given`()
+      .spec(webAdminApi)
+      .get(taskId + "/await")
+    .`then`()
+      .body("status", Matchers.is("canceled"))
   }
 
   @Test
