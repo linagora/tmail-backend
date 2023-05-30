@@ -14,12 +14,14 @@ import javax.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.TypeName;
+import org.apache.james.user.api.DeleteUserDataTaskStep;
 import org.reactivestreams.Publisher;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.james.jmap.model.DeviceClientIdInvalidException;
 import com.linagora.tmail.james.jmap.model.ExpireTimeInvalidException;
 import com.linagora.tmail.james.jmap.model.FirebaseSubscription;
@@ -41,6 +43,10 @@ public class MemoryFirebaseSubscriptionRepository implements FirebaseSubscriptio
         protected void configure() {
             bind(MemoryFirebaseSubscriptionRepository.class).in(Scopes.SINGLETON);
             bind(FirebaseSubscriptionRepository.class).to(MemoryFirebaseSubscriptionRepository.class);
+
+            Multibinder.newSetBinder(binder(), DeleteUserDataTaskStep.class)
+                .addBinding()
+                .to(FirebaseSubscriptionUserDeletionTaskStep.class);
         }
     }
 
