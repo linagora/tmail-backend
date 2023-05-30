@@ -12,6 +12,7 @@ import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.TypeName
+import org.apache.james.user.api.DeleteUserDataTaskStep
 import org.reactivestreams.Publisher
 import reactor.core.publisher.SynchronousSink
 import reactor.core.scala.publisher.SMono
@@ -27,6 +28,10 @@ case class CassandraFirebaseSubscriptionRepositoryModule() extends AbstractModul
       .addBinding().toInstance(CassandraFirebaseSubscriptionTable.MODULE)
 
     bind(classOf[CassandraFirebaseSubscriptionDAO]).in(Scopes.SINGLETON)
+
+    Multibinder.newSetBinder(binder, classOf[DeleteUserDataTaskStep])
+      .addBinding()
+      .to(classOf[FirebaseSubscriptionUserDeletionTaskStep])
   }
 }
 
