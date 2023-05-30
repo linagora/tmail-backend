@@ -74,6 +74,10 @@ class CassandraFirebaseSubscriptionRepository @Inject()(dao: CassandraFirebaseSu
       .flatMap(subscription => dao.deleteOne(username, subscription.deviceClientId.value))
       .`then`()
 
+  override def revoke(username: Username): Publisher[Void] =
+    SMono.fromPublisher(dao.deleteAllSubscriptions(username))
+      .`then`()
+
   override def get(username: Username, ids: util.Set[FirebaseSubscriptionId]): Publisher[FirebaseSubscription] =
     dao.selectAll(username)
       .filter(subscription => ids.contains(subscription.id))

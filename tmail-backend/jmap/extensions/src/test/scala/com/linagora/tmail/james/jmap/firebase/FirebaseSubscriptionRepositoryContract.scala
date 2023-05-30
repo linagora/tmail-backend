@@ -2,8 +2,8 @@ package com.linagora.tmail.james.jmap.firebase
 
 import java.time.{Clock, Instant, ZoneId, ZonedDateTime}
 
-import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepositoryContract.{ALICE, INVALID_EXPIRE, MAX_EXPIRE, SAMPLE_DEVICE_TOKEN_1, SAMPLE_DEVICE_TOKEN_2, VALID_EXPIRE}
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, DeviceClientIdInvalidException, TokenInvalidException, ExpireTimeInvalidException, FirebaseToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionNotFoundException}
+import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepositoryContract.{ALICE, BOB, INVALID_EXPIRE, MAX_EXPIRE, SAMPLE_DEVICE_TOKEN_1, SAMPLE_DEVICE_TOKEN_2, VALID_EXPIRE}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, DeviceClientIdInvalidException, ExpireTimeInvalidException, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionNotFoundException, FirebaseToken, TokenInvalidException}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.{State, TypeName}
 import org.apache.james.utils.UpdatableTickingClock
@@ -49,6 +49,7 @@ object FirebaseSubscriptionRepositoryContract {
   val VALID_EXPIRE: ZonedDateTime = ZonedDateTime.now(CLOCK).plusDays(2)
   val MAX_EXPIRE: ZonedDateTime = ZonedDateTime.now(CLOCK).plusDays(7)
   val ALICE: Username = Username.of("alice")
+  val BOB: Username = Username.of("bob")
   val SAMPLE_DEVICE_TOKEN_1 = FirebaseToken("dummy_device_token_1")
   val SAMPLE_DEVICE_TOKEN_2 = FirebaseToken("dummy_device_token_2")
 }
@@ -233,6 +234,44 @@ trait FirebaseSubscriptionRepositoryContract {
     val remainingSubscriptions = SFlux.fromPublisher(testee.get(ALICE, Set(firebaseSubscriptionId).asJava)).collectSeq().block().asJava
 
     assertThat(remainingSubscriptions).isEmpty()
+  }
+
+  @Test
+  def revokeSubscriptionsOfAnUserShouldSucceed(): Unit = {
+    val validRequest1 = FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("1"),
+      token = SAMPLE_DEVICE_TOKEN_1,
+      types = Seq(CustomTypeName1))
+    val validRequest2 = FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("2"),
+      token = SAMPLE_DEVICE_TOKEN_2,
+      types = Seq(CustomTypeName1))
+    SMono.fromPublisher(testee.save(ALICE, validRequest1)).block()
+    SMono.fromPublisher(testee.save(ALICE, validRequest2)).block()
+
+    SMono.fromPublisher(testee.revoke(ALICE)).block()
+
+    val remainingSubscriptions = SFlux.fromPublisher(testee.list(ALICE)).collectSeq().block().asJava
+    assertThat(remainingSubscriptions).isEmpty()
+  }
+
+  @Test
+  def revokeSubscriptionsShouldNotRemoveOtherUserSubscriptions(): Unit = {
+    val validRequest1 = FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("1"),
+      token = SAMPLE_DEVICE_TOKEN_1,
+      types = Seq(CustomTypeName1))
+    val validRequest2 = FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("2"),
+      token = SAMPLE_DEVICE_TOKEN_2,
+      types = Seq(CustomTypeName1))
+    SMono.fromPublisher(testee.save(ALICE, validRequest1)).block()
+    SMono.fromPublisher(testee.save(BOB, validRequest2)).block()
+
+    SMono.fromPublisher(testee.revoke(ALICE)).block()
+
+    val remainingSubscriptions = SFlux.fromPublisher(testee.list(BOB)).collectSeq().block().asJava
+    assertThat(remainingSubscriptions).hasSize(1)
   }
 
   @Test

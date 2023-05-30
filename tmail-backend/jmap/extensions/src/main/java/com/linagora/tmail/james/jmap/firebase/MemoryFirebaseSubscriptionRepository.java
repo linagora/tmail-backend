@@ -108,6 +108,12 @@ public class MemoryFirebaseSubscriptionRepository implements FirebaseSubscriptio
     }
 
     @Override
+    public Publisher<Void> revoke(Username username) {
+        return Mono.fromRunnable(() -> table.row(username).clear())
+            .then();
+    }
+
+    @Override
     public Publisher<FirebaseSubscription> get(Username username, Set<FirebaseSubscriptionId> ids) {
         return Flux.fromIterable(table.row(username).entrySet())
             .filter(entry -> ids.contains(entry.getKey()))
