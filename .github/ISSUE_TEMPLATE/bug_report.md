@@ -2,22 +2,20 @@
 name: Bug report
 about: Create a report to help us improve
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
 
-### Description
-
-### Expected result
-
-### Current behavior
+### Description of the bug
 
 ### Reproduction Steps
 
+### Expected result
+
 ### Context
 
-Devices, OS, environment, ...
+OS, environment, ...
 
 ### Additional information
 
