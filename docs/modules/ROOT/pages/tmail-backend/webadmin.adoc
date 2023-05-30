@@ -601,6 +601,7 @@ Implemented migration steps from James are:
 Implemented extra steps for TMail are:
 
 - `ContactUserDeletionTaskStep`: deletes contacts belonging to the user.
+- `PGPKeysUserDeletionTaskStep`: remove PGP public keys belonging to the user.
 
 Response codes:
 
