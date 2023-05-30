@@ -8,7 +8,7 @@ import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
 import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
 import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscription, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseToken}
 import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
@@ -66,6 +66,10 @@ class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateF
     .whereColumn(DEVICE_CLIENT_ID).isEqualTo(bindMarker(DEVICE_CLIENT_ID))
     .build())
 
+  private val deleteAllSubscriptions: PreparedStatement = session.prepare(deleteFrom(TABLE_NAME)
+    .whereColumn(USER).isEqualTo(bindMarker(USER))
+    .build())
+
   def insert(username: Username, subscription: FirebaseSubscription): SMono[FirebaseSubscription] = {
     val typeNames = CollectionConverters.asJava(subscription.types.map(_.asString()).toSet)
     val utcInstant = subscription.expires.value.withZoneSameInstant(ZoneOffset.UTC).toInstant
@@ -90,6 +94,11 @@ class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateF
     SMono.fromPublisher(executor.executeVoid(deleteOne.bind()
       .set(USER, username.asString, TypeCodecs.TEXT)
       .set(DEVICE_CLIENT_ID, deviceClientId, TypeCodecs.TEXT)))
+      .`then`()
+
+  def deleteAllSubscriptions(username: Username): SMono[Unit] =
+    SMono.fromPublisher(executor.executeVoid(deleteAllSubscriptions.bind()
+      .set(USER, username.asString, TypeCodecs.TEXT)))
       .`then`()
 
   private def toFirebaseSubscription(row: Row) =

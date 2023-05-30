@@ -21,6 +21,8 @@ public interface FirebaseSubscriptionRepository {
 
     Publisher<Void> revoke(Username username, FirebaseSubscriptionId id);
 
+    Publisher<Void> revoke(Username username);
+
     Publisher<FirebaseSubscription> get(Username username, Set<FirebaseSubscriptionId> ids);
 
     Publisher<FirebaseSubscription> list(Username username);
