@@ -40,6 +40,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
+import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 
 import io.restassured.RestAssured;
@@ -97,5 +98,25 @@ public abstract class UserDeletionIntegrationContract {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(server.getProbe(JmapGuiceContactAutocompleteProbe.class).list(ALICE_ACCOUNT_ID))
                 .isEmpty());
+    }
+
+    @Test
+    void shouldDeletePGPPublicKeys(GuiceJamesServer server) throws Exception {
+        byte[] publicKeyPayload = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        JmapGuiceKeystoreManagerProbe keystoreManagerProbe = server.getProbe(JmapGuiceKeystoreManagerProbe.class);
+        keystoreManagerProbe.save(ALICE, publicKeyPayload);
+
+        String taskId = webAdminApi
+            .queryParam("action", "deleteData")
+            .post("/users/" + ALICE.asString())
+            .jsonPath()
+            .get("taskId");
+
+        webAdminApi.get("/tasks/" + taskId + "/await")
+            .then()
+            .body("additionalInformation.status.PGPKeysUserDeletionTaskStep", Matchers.is("DONE"));
+
+        assertThat(keystoreManagerProbe.getKeyPayLoads(ALICE))
+            .isEmpty();
     }
 }

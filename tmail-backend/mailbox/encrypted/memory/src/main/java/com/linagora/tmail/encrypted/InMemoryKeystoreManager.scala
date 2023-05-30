@@ -7,7 +7,7 @@ import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.pgp.Encrypter
 import org.apache.james.core.Username
-import org.apache.james.user.api.UsernameChangeTaskStep
+import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -21,6 +21,10 @@ case class KeystoreMemoryModule() extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
       .addBinding()
       .to(classOf[PGPKeysUsernameChangeTaskStep])
+
+    Multibinder.newSetBinder(binder(), classOf[DeleteUserDataTaskStep])
+      .addBinding()
+      .to(classOf[PGPKeysUserDeletionTaskStep])
   }
 }
 
