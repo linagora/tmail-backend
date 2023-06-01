@@ -15,6 +15,7 @@ import org.junit.jupiter.api.{BeforeEach, Test}
 trait LinagoraFilterSetMethodContract {
 
   def generateMailboxIdForUser(): String
+  def generateMailboxId2ForUser(): String
   def generateAccountIdAsString(): String
 
   @BeforeEach
@@ -31,6 +32,194 @@ trait LinagoraFilterSetMethodContract {
 
   @Test
   def updateRulesWithEmptyIfInStateWhenNonStateIsDefinedShouldSucceed(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/set", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"update": {
+         |				"singleton": [{
+         |					"id": "1",
+         |					"name": "My first rule",
+         |					"condition": {
+         |						"field": "subject",
+         |						"comparator": "contains",
+         |						"value": "question"
+         |					},
+         |					"action": {
+         |						"appendIn": {
+         |							"mailboxIds": ["$generateMailboxIdForUser"]
+         |						}
+         |					}
+         |				}]
+         |			}
+         |		}, "c1"],
+         |		[
+         |			"Filter/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"ids": ["singleton"]
+         |			},
+         |			"c2"
+         |		]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Filter/set",
+         |			{
+         |				"accountId": "$generateAccountIdAsString",
+         |				"oldState": "-1",
+         |				"newState": "0",
+         |				"updated": {
+         |					"singleton": {
+         |
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		],
+         |		[
+         |			"Filter/get", {
+         |				"accountId": "$generateAccountIdAsString",
+         |				"state": "0",
+         |				"list": [{
+         |					"id": "singleton",
+         |					"rules": [{
+         |						"name": "My first rule",
+         |						"condition": {
+         |							"field": "subject",
+         |							"comparator": "contains",
+         |							"value": "question"
+         |						},
+         |						"action": {
+         |							"appendIn": {
+         |								"mailboxIds": ["$generateMailboxIdForUser"]
+         |							},"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
+         |						}
+         |					}]
+         |				}],
+         |				"notFound": []
+         |			}, "c2"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateWithMultipleMailboxesShouldSucceed(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/set", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"update": {
+         |				"singleton": [{
+         |					"id": "1",
+         |					"name": "My first rule",
+         |					"condition": {
+         |						"field": "subject",
+         |						"comparator": "contains",
+         |						"value": "question"
+         |					},
+         |					"action": {
+         |						"appendIn": {
+         |							"mailboxIds": ["$generateMailboxIdForUser", "$generateMailboxId2ForUser"]
+         |						}
+         |					}
+         |				}]
+         |			}
+         |		}, "c1"],
+         |		[
+         |			"Filter/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"ids": ["singleton"]
+         |			},
+         |			"c2"
+         |		]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Filter/set",
+         |			{
+         |				"accountId": "$generateAccountIdAsString",
+         |				"oldState": "-1",
+         |				"newState": "0",
+         |				"updated": {
+         |					"singleton": {
+         |
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		],
+         |		[
+         |			"Filter/get", {
+         |				"accountId": "$generateAccountIdAsString",
+         |				"state": "0",
+         |				"list": [{
+         |					"id": "singleton",
+         |					"rules": [{
+         |						"name": "My first rule",
+         |						"condition": {
+         |							"field": "subject",
+         |							"comparator": "contains",
+         |							"value": "question"
+         |						},
+         |						"action": {
+         |							"appendIn": {
+         |								"mailboxIds": ["$generateMailboxIdForUser", "$generateMailboxId2ForUser"]
+         |							},"markAsImportant":false,"markAsSeen":false,"reject":false,"withKeywords":[]
+         |						}
+         |					}]
+         |				}],
+         |				"notFound": []
+         |			}, "c2"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateRulesShouldSupportExtraFields(): Unit = {
     val request = s"""{
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
@@ -48,7 +237,11 @@ trait LinagoraFilterSetMethodContract {
                      |					"action": {
                      |						"appendIn": {
                      |							"mailboxIds": ["$generateMailboxIdForUser"]
-                     |						}
+                     |						},
+                     |            "markAsSeen": true,
+                     |            "markAsImportant": true,
+                     |            "reject": true,
+                     |            "withKeywords": ["abc", "def"]
                      |					}
                      |				}]
                      |			}
@@ -111,7 +304,11 @@ trait LinagoraFilterSetMethodContract {
          |						"action": {
          |							"appendIn": {
          |								"mailboxIds": ["$generateMailboxIdForUser"]
-         |							}
+         |              },
+         |              "markAsSeen": true,
+         |              "markAsImportant": true,
+         |              "reject": true,
+         |              "withKeywords": ["abc", "def"]
          |						}
          |					}]
          |				}],
@@ -758,69 +955,6 @@ trait LinagoraFilterSetMethodContract {
   }
 
   @Test
-  def updateWithMultipleMailboxesShouldFail(): Unit = {
-    val request = s"""{
-                     |	"using": ["com:linagora:params:jmap:filter"],
-                     |	"methodCalls": [
-                     |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
-                     |			"update": {
-                     |				"singleton": [{
-                     |					"id": "1",
-                     |					"name": "My first rule",
-                     |					"condition": {
-                     |						"field": "subject",
-                     |						"comparator": "contains",
-                     |						"value": "question"
-                     |					},
-                     |					"action": {
-                     |						"appendIn": {
-                     |							"mailboxIds": ["$generateMailboxIdForUser", "$generateMailboxIdForUser"]
-                     |						}
-                     |					}
-                     |				}]
-                     |			}
-                     |		}, "c1"]
-                     |	]
-                     |}""".stripMargin
-
-    val response = `given`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
-    .when()
-      .post()
-    .`then`
-      .log().ifValidationFails()
-      .statusCode(HttpStatus.SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .asString()
-
-    assertThatJson(response).isEqualTo(
-      s"""{
-         |	"sessionState": "${SESSION_STATE.value}",
-         |	"methodResponses": [
-         |		[
-         |			"Filter/set",
-         |			{
-         |				"accountId": "$generateAccountIdAsString",
-         |				"oldState": "-1",
-         |				"newState": "-1",
-         |				"notUpdated": {
-         |					"singleton": {
-         |						"type": "invalidArguments",
-         |						"description": "There are some rules targeting several mailboxes"
-         |					}
-         |				}
-         |			},
-         |			"c1"
-         |		]
-         |	]
-         |}""".stripMargin)
-  }
-
-  @Test
   def givenARuleWithStateIsZeroThenUpdateRulesWithIfInStateIsZeroShouldSucceed(): Unit = {
     val request1 = s"""{
                       |	"using": ["com:linagora:params:jmap:filter"],
@@ -937,7 +1071,7 @@ trait LinagoraFilterSetMethodContract {
          |						"action": {
          |							"appendIn": {
          |								"mailboxIds": ["$generateMailboxIdForUser"]
-         |							}
+         |							},"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
          |						}
          |					}]
          |				}],
@@ -1127,7 +1261,7 @@ trait LinagoraFilterSetMethodContract {
          |						"action": {
          |							"appendIn": {
          |								"mailboxIds": ["$generateMailboxIdForUser"]
-         |							}
+         |							},"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
          |						}
          |					}]
          |				}],

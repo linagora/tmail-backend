@@ -30,6 +30,11 @@ public class MemoryLinagoraFilterSetMethodTest implements LinagoraFilterSetMetho
     }
 
     @Override
+    public String generateMailboxId2ForUser() {
+        return InMemoryId.of(2).toString();
+    }
+
+    @Override
     public String generateAccountIdAsString() {
         return "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6";
     }

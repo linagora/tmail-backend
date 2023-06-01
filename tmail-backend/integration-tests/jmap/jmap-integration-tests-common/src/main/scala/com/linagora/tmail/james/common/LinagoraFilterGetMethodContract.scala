@@ -91,7 +91,7 @@ trait LinagoraFilterGetMethodContract {
          |            "action": {
          |              "appendIn": {
          |                "mailboxIds":["$generateMailboxIdForUser"]
-         |              }
+         |              },"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
          |            }
          |          }
          |        ]
@@ -333,7 +333,7 @@ trait LinagoraFilterGetMethodContract {
          |            "action": {
          |              "appendIn": {
          |                "mailboxIds":["$generateMailboxIdForUser"]
-         |              }
+         |              },"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
          |            }
          |          }
          |        ]
@@ -402,7 +402,7 @@ trait LinagoraFilterGetMethodContract {
          |            "action": {
          |              "appendIn": {
          |                "mailboxIds":["$generateMailboxIdForUser"]
-         |              }
+         |              },"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
          |            }
          |          }
          |        ]
