@@ -65,7 +65,7 @@ public class ScheduledReconnectionHandler implements Startable {
                 Configuration configuration = propertiesProvider.getConfiguration("rabbitmq");
                 return new ScheduledReconnectionHandlerConfiguration(configuration.getBoolean("scheduled.consumer.reconnection.enabled", true));
             } catch (FileNotFoundException e) {
-                return new ScheduledReconnectionHandlerConfiguration(true);
+                return new ScheduledReconnectionHandlerConfiguration(false);
             }
         }
     }
