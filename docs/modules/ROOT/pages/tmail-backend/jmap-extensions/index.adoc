@@ -39,7 +39,6 @@ to authenticate webSocket connections using URI query parameters, as most browse
 headers during the webSocket handshake.
  - link:jmapFilters.adoc[com:linagora:params:jmap:filter] allows user to specify message filters automating actions upon
 message reception like moving them to a folder.
- - link:longLivedTokens.adoc[com:linagora:params:long:lived:token] enables a mechanism to safely authenticate mobile devices.
  - link:contactAutocomplete.adoc[com:linagora:params:jmap:contact:autocomplete] allows users, when composing an email,
 to search recipients in his list of domain and personal contacts based on his input.
  - link:calendarEventParsing.adoc[com:linagora:params:calendar:event] allows users to parse calendar events for getting event information
