@@ -48,7 +48,7 @@ An `Action` object has the following properties:
 
 An `AppendIn` object has the following properties:
 
- - **mailboxIds**: `List[Id]`: The list of mailboxes to put the message in. Must be a single value.
+ - **mailboxIds**: `List[Id]`: The list of mailboxes to put the message in.
 
 === Filter/get
 
