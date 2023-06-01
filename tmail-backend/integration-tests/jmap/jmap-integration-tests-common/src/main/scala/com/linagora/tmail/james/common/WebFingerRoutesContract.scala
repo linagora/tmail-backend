@@ -102,8 +102,6 @@ trait WebFingerRoutesContract {
   @Test
   def shouldReturnOpenIdURL(): Unit = {
     val response: String = `given`()
-      .queryParam("type", "shortLived")
-      .queryParam("deviceId", DEVICE_ID)
     .when()
       .basePath(".well-known/webfinger")
       .queryParam("resource", "https://jmap.linagora.com")
