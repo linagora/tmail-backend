@@ -3,7 +3,6 @@ package com.linagora.tmail.james.common
 import java.net.URL
 
 import com.google.inject.Module
-import com.linagora.tmail.james.common.LinagoraShortLivedTokenRoutesContract.DEVICE_ID
 import com.linagora.tmail.james.jmap.oidc.WebFingerConfiguration
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -32,8 +31,6 @@ trait WebFingerRoutesContract {
   @Test
   def shouldRejectNoRelQueryParameter(): Unit = {
     val response: String = `given`()
-      .queryParam("type", "shortLived")
-      .queryParam("deviceId", DEVICE_ID)
     .when()
       .basePath(".well-known/webfinger")
       .queryParam("resource", "https://jmap.linagora.com")
@@ -57,8 +54,6 @@ trait WebFingerRoutesContract {
   @Test
   def shouldRejectBadRelQueryParameter(): Unit = {
     val response: String = `given`()
-      .queryParam("type", "shortLived")
-      .queryParam("deviceId", DEVICE_ID)
     .when()
       .basePath(".well-known/webfinger")
       .queryParam("resource", "https://jmap.linagora.com")
@@ -83,8 +78,6 @@ trait WebFingerRoutesContract {
   @Test
   def shouldRejectNoResource(): Unit = {
     val response: String = `given`()
-      .queryParam("type", "shortLived")
-      .queryParam("deviceId", DEVICE_ID)
     .when()
       .basePath(".well-known/webfinger")
       .queryParam("rel", "https://bad")
