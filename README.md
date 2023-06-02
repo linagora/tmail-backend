@@ -15,8 +15,17 @@ This project adapts and enhance [Apache James project](https://james.apache.org)
 ## Additional features
 
 Additional features includes:
- - JMAP PUSH over AMQP (WIP)
- - JMAP Filters/get and Filters/set (WIP)
+ - Email filtering
+ - Encrypted mailboxes
+ - Team mailboxes
+ - Rate limiting
+ - Contacts autocomplete
+ - Email forwarding
+ - Push subscription with Firebase Cloud Messaging
+ - Restore deleted emails
+ - Labels
+
+[More detail...](docs/modules/ROOT/pages/tmail-backend/features/index.adoc)
 
 ## Building the project
 
