@@ -40,11 +40,15 @@ The comparator is case-incentive for `from`, `to`, `cc`, `recipient` fields but 
 
 An `Action` object has the following properties:
 
+- **markAsSeen** `Boolean` optional defaults to false. Should the matching email be marked as seen.
+- **markAsImportant** `Boolean` optional defaults to false. Should the matching email be marked as important.
+- **reject** `Boolean` optional defaults to false. Should the matching email be rejected.
+- **withKeywords** `String[]` optional defaults to empty. The keyword to apply to matching emails.
 - **appendIn**: `AppendIn`, specified the "append in mailboxes" action.
 
 An `AppendIn` object has the following properties:
 
- - **mailboxIds**: `List[Id]`: The list of mailboxes to put the message in. Must be a single value.
+ - **mailboxIds**: `List[Id]`: The list of mailboxes to put the message in.
 
 === Filter/get
 

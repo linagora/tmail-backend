@@ -15,9 +15,9 @@ import org.apache.james.jmap.api.filtering.{FilteringManagement, Rule, Version}
 import org.apache.james.jmap.api.model.{AccountId, TypeName}
 import org.apache.james.jmap.change.{AccountIdRegistrationKey, StateChangeEvent}
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
-import org.apache.james.jmap.core.{Invocation, SessionTranslator}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.{Invocation, SessionTranslator}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
@@ -172,8 +172,6 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
   def validateRules(rules: List[RuleWithId]): Either[IllegalArgumentException, Unit] = {
     if (!rules.distinctBy(_.id).length.equals(rules.length)) {
       Left(new DuplicatedRuleException("There are some duplicated rules"))
-    } else if(!rules.count(rule => rule.action.appendIn.mailboxIds.length.equals(1)).equals(rules.length)) {
-      Left(new MultipleMailboxIdException("There are some rules targeting several mailboxes"))
     } else {
       Right()
     }

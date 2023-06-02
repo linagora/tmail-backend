@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.model
 
+import com.google.common.collect.ImmutableList
 import org.apache.james.jmap.api.filtering.Rule
 import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id
@@ -53,8 +54,15 @@ object RuleWithId {
       .condition(Rule.Condition.of(Rule.Condition.Field.of(ruleWithId.condition.field.string),
         Rule.Condition.Comparator.of(ruleWithId.condition.comparator.string),
         ruleWithId.condition.value))
-      .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(AppendIn.convertListMailboxIdToListString(ruleWithId.action.appendIn.mailboxIds).asJava)))
+      .action(asAction(ruleWithId))
       .build())
+
+  private def asAction(ruleWithId: RuleWithId): Rule.Action =
+    Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(AppendIn.convertListMailboxIdToListString(ruleWithId.action.appendIn.mailboxIds).asJava),
+      ruleWithId.action.markAsSeen.map(_.value).getOrElse(false),
+      ruleWithId.action.markAsImportant.map(_.value).getOrElse(false),
+      ruleWithId.action.reject.map(_.value).getOrElse(false),
+      ruleWithId.action.withKeywords.map(keywords => ImmutableList.copyOf(keywords.keywords.map(k => k.flagName).toList.asJavaCollection)).getOrElse(ImmutableList.of()))
 }
 
 case class FilterSetError(`type`: SetErrorType, description: Option[SetErrorDescription])
