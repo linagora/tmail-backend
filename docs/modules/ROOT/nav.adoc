@@ -15,7 +15,6 @@
 *** xref:tmail-backend/jmap-extensions/forwards.adoc[]
 *** xref:tmail-backend/jmap-extensions/jmapFilters.adoc[]
 *** xref:tmail-backend/jmap-extensions/jmapGpgExtension.adoc[]
-*** xref:tmail-backend/jmap-extensions/longLivedTokens.adoc[]
 *** xref:tmail-backend/jmap-extensions/pushWithFirebase.adoc[]
 *** xref:tmail-backend/jmap-extensions/teamMailboxRevokeAccess.adoc[]
 *** xref:tmail-backend/jmap-extensions/ticketAuthentication.adoc[]

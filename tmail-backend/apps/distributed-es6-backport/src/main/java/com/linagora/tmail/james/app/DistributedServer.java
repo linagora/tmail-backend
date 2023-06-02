@@ -100,14 +100,11 @@ import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandr
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
-import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener;
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListenerRegister;
-import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
-import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreCassandraModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
@@ -121,8 +118,6 @@ import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
-import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
-import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.module.ES6ContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
@@ -179,11 +174,6 @@ public class DistributedServer {
         new KeystoreCassandraModule(),
         new KeystoreGetMethodModule(),
         new KeystoreSetMethodModule(),
-        new LongLivedTokenGetMethodModule(),
-        new LongLivedTokenSetMethodModule(),
-        new LongLivedTokenStoreCassandraModule(),
-        new ShortLivedTokenModule(),
-        new ShortLivedTokenRoutesModule(),
         new TicketRoutesModule(),
         new WebFingerModule(),
         new EmailRecoveryActionMethodModule())

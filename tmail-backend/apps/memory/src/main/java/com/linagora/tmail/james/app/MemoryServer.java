@@ -47,13 +47,10 @@ import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
-import com.linagora.tmail.james.jmap.ShortLivedTokenModule;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
-import com.linagora.tmail.james.jmap.jwt.ShortLivedTokenRoutesModule;
-import com.linagora.tmail.james.jmap.longlivedtoken.LongLivedTokenStoreInMemoryModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
@@ -67,8 +64,6 @@ import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
-import com.linagora.tmail.james.jmap.method.LongLivedTokenGetMethodModule;
-import com.linagora.tmail.james.jmap.method.LongLivedTokenSetMethodModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
@@ -117,11 +112,6 @@ public class MemoryServer {
         new ForwardSetMethodModule(),
         new KeystoreSetMethodModule(),
         new KeystoreGetMethodModule(),
-        new LongLivedTokenGetMethodModule(),
-        new LongLivedTokenSetMethodModule(),
-        new LongLivedTokenStoreInMemoryModule(),
-        new ShortLivedTokenRoutesModule(),
-        new ShortLivedTokenModule(),
         new TicketRoutesModule(),
         new WebFingerModule(),
         new EmailRecoveryActionMethodModule())
