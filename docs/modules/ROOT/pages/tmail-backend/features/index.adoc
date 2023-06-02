@@ -73,3 +73,36 @@ to just forward emails in some cases to other people that can treat them.
 Users can also decide to keep a local copy of the forwarded mails.
 
 xref:tmail-backend/jmap-extensions/forwards.adoc[Read more]...
+
+== Email filtering
+
+TMail allows users to specify automate actions, based on specified rules, to be applied when receiving messages
+via JMAP `Filter` methods.
+
+xref:tmail-backend/jmap-extensions/jmapFilters.adoc[Read more]...
+
+== Push subscription with Firebase Cloud Messaging
+
+TMail allows devices to register push subscriptions through link:https://firebase.google.com/[Firebase Cloud Messaging], and manage its registrations. Thanks to that, devices can receive realtime email notifications and updates.
+
+xref:tmail-backend/jmap-extensions/pushWithFirebase.adoc[Read more]...
+
+== Restore deleted emails
+
+TMail offer a feature for users to recover emails that they mistakenly deleted via JMAP `EmailRecoveryAction` methods.
+
+While allowing this recovery, privacy would to be retained, meaning that as an attacker reading deleted content is hard.
+
+Users therefore would need to submit criteria for the emails they want to recover.
+
+xref:tmail-backend/jmap-extensions/deletedMessagesVault.adoc[Read more]...
+
+== Labels
+
+TMails allows users to manage their labels, and categorize emails by labels via JMAP `Label` methods.
+
+This feature would help users easier to manage their emails, which boosts users productivity.
+
+The labels can be composed within email filtering rules for even better automation.
+
+xref:tmail-backend/jmap-extensions/jmapLabels.adoc[Read more]...
