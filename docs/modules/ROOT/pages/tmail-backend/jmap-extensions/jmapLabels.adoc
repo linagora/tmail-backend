@@ -1,0 +1,160 @@
+= JMAP Labels
+:navtitle: JMAP Labels
+
+This extension allows users to manage their labels.
+
+== Additions to the capability object
+
+Servers supporting the JMAP Labels extension need to advertise it through the session capabilities:
+....
+com:linagora:params:jmap:labels
+....
+
+The associated object is empty.
+
+== Label object
+
+We introduce the `Label` object representing the information of a label, which contains these properties:
+
+- **id**: `Id`. Server-set. Identifier of the label object.
+- **displayName**: `String`. The display name of the label, which can be used to display on the UI.
+- **keyword**: `String`. Server-set. The associated keyword that could be used to set on emails.
+- **color**: `Color`|null. Color of the label.
+
+We introduce the `Color` data type which is a `String` in the form of hex color code. It starts with a hashtag `#` and are followed by six letters and/or numbers.
+The first two letters/numbers refer to red, the next two refer to green, and the last two refer to blue.
+The color values are defined in values between 00 and FF (0 to 255 in RGB).
+
+== Label/get
+
+Standard */get* method as described in Section 5.1, RFC8620.
+
+== Label/set
+
+Standard */set* method as described in Section 5.3, RFC8620.
+
+== Label/changes
+
+Standard */changes* method as described in Section 5.2, RFC8620.
+
+== Example
+
+=== Label/get
+
+Request:
+```json
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+  "methodCalls": [
+    [
+      "Label/get",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "ids": ["123456", "notFound"]
+      },
+      "c1"
+    ]
+  ]
+}
+```
+
+Response:
+```json
+{
+  "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+  "methodResponses": [
+    [
+      "Label/get",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "state": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+        "list": [{
+          "id": "123456",
+          "displayName": "Custom Tag 1",
+          "keyword": "custom_tag_1",
+          "color": "#000000"
+        }],
+        "notFound": [ "notFound"]
+      },
+      "c1"
+    ]
+  ]
+}
+```
+
+=== Label/set
+
+Request:
+```json
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+  "methodCalls": [
+    [
+      "Label/set", {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "create": {
+          "4f29": {
+            "displayName": "Important",
+            "color": "#00ccdd"
+          }
+        }
+      }, "0"
+    ]
+  ]
+}
+```
+
+Response:
+```json
+{
+  "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+  "methodResponses": [
+    ["Label/set", {
+      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+      "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+      "created": {
+        "4f29": {
+          "id": "123456",
+          "keyword": "important"
+        }
+      }
+    }, "0"]
+  ]
+}
+```
+
+=== Label/changes
+
+Request:
+```json
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+  "methodCalls": [
+    [
+      "Label/changes",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "sinceState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943"
+      },
+      "c1"
+    ]
+  ]
+}
+```
+
+Response:
+```json
+{
+  "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+  "methodResponses": [
+    ["Label/changes", {
+      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+      "oldState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+      "hasMoreChanges": false,
+      "created": ["123456"],
+      "updated": ["654321"],
+      "destroyed": []
+    }, "c1"]
+  ]
+}
+```
