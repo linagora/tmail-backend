@@ -61,11 +61,6 @@ public class TmailDistributedEs6Extension implements BeforeEachCallback, AfterEa
             Paths.get("tmail-backend", "apps", "distributed-es6-backport", "target", "jib-image.tar").toString());
         james.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
 
-        Runnables.runParallel(
-            cassandra::start,
-            elasticsearch::start,
-            rabbitmq::start,
-            s3::start);
         james.start();
     }
 
