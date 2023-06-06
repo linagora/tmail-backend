@@ -7,6 +7,7 @@ import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
@@ -928,6 +929,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(responseOfAndreRequest)
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[

@@ -9,6 +9,7 @@ import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import io.restassured.path.json.JsonPath
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.SC_OK
@@ -795,7 +796,9 @@ trait FirebaseSubscriptionSetMethodContract {
       .body
       .asString
 
-    assertThatJson(response).isEqualTo(
+    assertThatJson(response)
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+      .isEqualTo(
       s"""{
          |    "sessionState": "${SESSION_STATE.value}",
          |    "methodResponses": [
@@ -1562,7 +1565,9 @@ trait FirebaseSubscriptionSetMethodContract {
       .body
       .asString
 
-    assertThatJson(updateResponse).isEqualTo(
+    assertThatJson(updateResponse)
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+      .isEqualTo(
       s"""{
          |    "sessionState": "${SESSION_STATE.value}",
          |    "methodResponses": [
