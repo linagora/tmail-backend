@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
 import com.google.common.collect.ImmutableMap;
@@ -135,7 +136,10 @@ public interface DockerElasticSearch {
                 .withExposedPorts(ES_HTTP_PORT)
                 .withEnv("discovery.type", "single-node")
                 .withAffinityToContainer()
-                .waitingFor(new HostPortWaitStrategy().withRateLimiter(RateLimiters.TWENTIES_PER_SECOND));
+                .waitingFor(new HostPortWaitStrategy().withRateLimiter(RateLimiters.TWENTIES_PER_SECOND))
+                .waitingFor(Wait.forHttp("/_cluster/health?pretty=true")
+                    .forPort(9200)
+                    .forStatusCode(200));
         }
 
         private final DockerContainer eSContainer;

@@ -78,13 +78,6 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
         String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "distributed-ldap").toString(),
             Paths.get("tmail-backend", "apps", "distributed", "target", "jib-image.tar").toString());
         james.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
-
-        Runnables.runParallel(
-            cassandra::start,
-            opensearch::start,
-            rabbitmq::start,
-            s3::start,
-            ldap::start);
         james.start();
     }
 
