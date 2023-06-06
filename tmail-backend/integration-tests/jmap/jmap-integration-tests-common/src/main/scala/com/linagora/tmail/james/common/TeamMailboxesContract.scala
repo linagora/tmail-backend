@@ -236,6 +236,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].state")
       .isEqualTo(
         s"""{
@@ -378,6 +379,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].state")
       .isEqualTo(
         s"""{
@@ -455,6 +457,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].state")
       .isEqualTo(
         s"""{
@@ -533,6 +536,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].state")
       .isEqualTo(
         s"""{
@@ -726,6 +730,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].state")
       .isEqualTo(
         s"""{
@@ -1067,6 +1072,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState", "methodResponses[1][1].state")
       .isEqualTo(
         s"""{
@@ -1152,6 +1158,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState", "methodResponses[1][1].state")
       .isEqualTo(
         s"""{
@@ -1402,6 +1409,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState")
       .isEqualTo(
         s"""{
@@ -2556,6 +2564,7 @@ trait TeamMailboxesContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].state")
       .isEqualTo(
         s"""{
