@@ -1,3 +1,3 @@
-FROM dinkel/openldap:latest
+FROM osixia/openldap:1.5.0
 
-COPY populate.ldif /etc/ldap/prepopulate/prepop.ldif
+COPY populate.ldif /container/service/slapd/assets/config/bootstrap/ldif/data.ldif

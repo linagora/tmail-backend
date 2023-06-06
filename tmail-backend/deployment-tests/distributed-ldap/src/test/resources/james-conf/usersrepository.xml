@@ -23,7 +23,7 @@
 <usersrepository name="LocalUsers"
     class="org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository"
     ldapHost="ldap://ldap:389"
-    principal="uid=james-user,ou=people,dc=james,dc=org"
+    principal="cn=admin,dc=james,dc=org"
     credentials="secret"
     userBase="ou=people,dc=james,dc=org"
     userIdAttribute="mail"

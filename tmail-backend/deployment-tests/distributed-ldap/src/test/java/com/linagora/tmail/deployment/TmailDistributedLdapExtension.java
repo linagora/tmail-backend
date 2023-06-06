@@ -52,9 +52,9 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
                 .withFileFromClasspath("Dockerfile", "prepopulated-ldap/Dockerfile"))
             .withNetworkAliases("ldap")
             .withNetwork(network)
-            .withEnv("SLAPD_DOMAIN", "james.org")
-            .withEnv("SLAPD_PASSWORD", "mysecretpassword")
-            .withEnv("SLAPD_CONFIG_PASSWORD", "mysecretpassword")
+            .withEnv("LDAP_DOMAIN", "james.org")
+            .withEnv("LDAP_ADMIN_PASSWORD", "secret")
+            .withCommand("--copy-service --loglevel debug")
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-openldap-testing" + UUID.randomUUID()));
     }
 
