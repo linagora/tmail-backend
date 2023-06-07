@@ -11,7 +11,7 @@ trait LabelRepository {
 
   def addLabels(username: Username, labelCreationRequests: util.Collection[LabelCreationRequest]): Publisher[Label]
 
-  def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName], newColor: Option[Color]): Publisher[Void]
+  def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName] = Option.empty, newColor: Option[Color] = Option.empty): Publisher[Void]
 
   def getLabels(username: Username, ids: util.Collection[LabelId]): Publisher[Label]
 
