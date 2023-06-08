@@ -402,6 +402,36 @@ trait EmailRecoveryActionSetMethodContract {
          |}""".stripMargin)
   }
 
+  @Test
+  def setShouldFailWhenInvalidCreationId(): Unit = {
+    `given`
+      .body(
+        s"""{
+           |	"using": [ "urn:ietf:params:jmap:core",
+           |             "com:linagora:params:jmap:messages:vault" ],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"create": {
+           |					"clientId1@@": {
+           |						"deletedBefore": "2016-06-09T01:07:06Z"
+           |					}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].type", Matchers.is("invalidArguments"))
+      .body("methodResponses[0][1].description", Matchers.containsString("contains some invalid characters. Should be [#a-zA-Z0-9-_]"))
+  }
+
   @Nested
   class CreationSetBySubjectQueryContract {
     @Test

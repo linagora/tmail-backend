@@ -1,8 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionIds, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject, ErrorRestoreCount, SuccessfulRestoreCount, UnparsedEmailRecoveryActionId}
-import eu.timepit.refined.refineV
-import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.{Properties, SetError}
 import org.apache.james.jmap.json.{jsObjectReads, mapWrites}
 import org.apache.james.task.TaskId
@@ -11,25 +9,14 @@ import play.api.libs.json._
 
 object EmailRecoveryActionSerializer {
 
-  private implicit val parseCreationIdFunc: String => JsResult[EmailRecoveryActionCreationId] =
-    string => {
-      refineV[IdConstraint](string)
-        .fold(e => JsError(s"email recovery action id needs to match id constraints: $e"),
-          id => JsSuccess(EmailRecoveryActionCreationId(id)))
-    }
+  private implicit val creationIdReads: Reads[EmailRecoveryActionCreationId] = Json.valueReads[EmailRecoveryActionCreationId]
 
-  private implicit val creationIdReads: Reads[EmailRecoveryActionCreationId] =
-    value => value.validate[String].flatMap {
-      parseCreationIdFunc
-    }
   private implicit val creationIdWrite: Writes[EmailRecoveryActionCreationId] = value => JsString(value.id.value)
 
   private implicit val mapCreationRequest: Reads[Map[EmailRecoveryActionCreationId, JsObject]] =
     Reads.mapReads[EmailRecoveryActionCreationId, JsObject] {
-      parseCreationIdFunc
+      string => creationIdReads.reads(JsString(string))
     }
-
-
 
   private implicit val emailRecoveryActionUpdatePatchObjectReads: Reads[EmailRecoveryActionUpdatePatchObject] = {
     case jsObject: JsObject => JsSuccess(EmailRecoveryActionUpdatePatchObject(jsObject))
@@ -38,9 +25,7 @@ object EmailRecoveryActionSerializer {
 
   private implicit val mapUpdateRequest: Reads[Map[UnparsedEmailRecoveryActionId, EmailRecoveryActionUpdatePatchObject]] =
     Reads.mapReads[UnparsedEmailRecoveryActionId, EmailRecoveryActionUpdatePatchObject](
-      string => refineV[IdConstraint](string)
-        .fold(e => JsError(s"EmailRecoveryAction Id needs to match id constraints: $e"),
-          id => JsSuccess(UnparsedEmailRecoveryActionId(id)))) {
+      string => Json.valueReads[UnparsedEmailRecoveryActionId].reads(JsString(string))) {
       emailRecoveryActionUpdatePatchObjectReads
     }
 

@@ -1,9 +1,7 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{Forward, ForwardGetRequest, ForwardGetResponse, ForwardIds, ForwardNotFound, ForwardSetError, ForwardSetPatchObject, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateResponse, ForwardUpdateRequest, Forwards, LocalCopy, UnparsedForwardId}
-import eu.timepit.refined
 import org.apache.james.core.MailAddress
-import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.{Properties, UuidState}
 import play.api.libs.json._
 
@@ -11,13 +9,7 @@ import scala.util.Try
 
 object ForwardSerializer {
   private implicit val unparsedForwardIdWrites: Writes[UnparsedForwardId] = Json.valueWrites[UnparsedForwardId]
-  private implicit val unparsedForwardIdReads: Reads[UnparsedForwardId] = {
-    case JsString(string) => refined.refineV[IdConstraint](string)
-      .fold(
-        e => JsError(s"forward id does not match Id constraints: $e"),
-        id => JsSuccess(UnparsedForwardId(id)))
-    case _ => JsError("forward id needs to be represented by a JsString")
-  }
+  private implicit val unparsedForwardIdReads: Reads[UnparsedForwardId] = Json.valueReads[UnparsedForwardId]
   private implicit val forwardIdsReads: Reads[ForwardIds] = Json.valueReads[ForwardIds]
 
   private implicit val forwardGetRequestReads: Reads[ForwardGetRequest] = Json.reads[ForwardGetRequest]
