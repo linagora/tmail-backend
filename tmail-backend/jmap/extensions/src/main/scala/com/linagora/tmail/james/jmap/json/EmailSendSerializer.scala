@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationRequestRaw, EmailSendCreationResponse, EmailSendId, EmailSendRequest, EmailSendResponse, EmailSubmissionCreationRequest}
-import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.{Id, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{BlobId, EmailSubmissionAddress, EmailSubmissionId, Envelope, ThreadId}
@@ -9,15 +8,7 @@ import org.apache.james.mailbox.model.MessageId
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
 import play.api.libs.json.{Format, JsError, JsObject, JsPath, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
 
-import scala.util.Try
-
 object EmailSendSerializer {
-
-  private implicit val mailAddressReads: Reads[MailAddress] = {
-    case JsString(value) => Try(JsSuccess(new MailAddress(value)))
-      .fold(e => JsError(s"Invalid mailAddress: ${e.getMessage}"), mailAddress => mailAddress)
-    case _ => JsError("Expecting mailAddress to be represented by a JsString")
-  }
 
   private implicit val emailSubmissionAddressReads: Reads[EmailSubmissionAddress] = Json.reads[EmailSubmissionAddress]
   private implicit val envelopeReads: Reads[Envelope] = Json.reads[Envelope]

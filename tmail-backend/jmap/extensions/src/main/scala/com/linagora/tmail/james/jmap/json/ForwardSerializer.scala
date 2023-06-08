@@ -1,11 +1,8 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{Forward, ForwardGetRequest, ForwardGetResponse, ForwardIds, ForwardNotFound, ForwardSetError, ForwardSetPatchObject, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateResponse, ForwardUpdateRequest, Forwards, LocalCopy, UnparsedForwardId}
-import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.{Properties, UuidState}
 import play.api.libs.json._
-
-import scala.util.Try
 
 object ForwardSerializer {
   private implicit val unparsedForwardIdWrites: Writes[UnparsedForwardId] = Json.valueWrites[UnparsedForwardId]
@@ -15,7 +12,6 @@ object ForwardSerializer {
   private implicit val forwardGetRequestReads: Reads[ForwardGetRequest] = Json.reads[ForwardGetRequest]
 
   private implicit val localCopyFormats: Format[LocalCopy] = Json.valueFormat[LocalCopy]
-  private implicit val mailAddressWrites: Writes[MailAddress] = mailAddress => JsString(mailAddress.asString)
   private implicit val forwardWrites: Writes[Forward] = Json.valueWrites[Forward]
   private implicit val forwardsWrites: Writes[Forwards] = Json.writes[Forwards]
 
@@ -26,11 +22,6 @@ object ForwardSerializer {
 
   private implicit val forwardGetResponseWrites: Writes[ForwardGetResponse] = Json.writes[ForwardGetResponse]
 
-  private implicit val mailAddressReads: Reads[MailAddress] = {
-    case JsString(value) => Try(JsSuccess(new MailAddress(value)))
-      .fold(e => JsError(s"Invalid mailAddress: ${e.getMessage}"), mailAddress => mailAddress)
-    case _ => JsError("Expecting mailAddress to be represented by a JsString")
-  }
   private implicit val forwardReads: Reads[Forward] = Json.valueReads[Forward]
   private implicit val forwardSetPatchObjectReads: Reads[ForwardSetPatchObject] = {
     case jsObject: JsObject => JsSuccess(ForwardSetPatchObject(jsObject))

@@ -4,7 +4,6 @@ import com.linagora.tmail.james.jmap.model._
 import net.fortuna.ical4j.model.Month
 import net.fortuna.ical4j.model.Recur.Skip
 import net.fortuna.ical4j.model.WeekDay.Day
-import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.{Properties, SetError}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
@@ -28,7 +27,6 @@ object CalendarEventSerializer {
   private implicit val calendarAttendeeFieldWrites: Writes[CalendarAttendeeField] = Json.writes[CalendarAttendeeField]
   private implicit val calendarDescriptionFieldFormat: Writes[CalendarDescriptionField] = Json.valueWrites[CalendarDescriptionField]
   private implicit val calendarLocationFieldFormat: Writes[CalendarLocationField] = Json.valueWrites[CalendarLocationField]
-  private implicit val mailAddressWrites: Writes[MailAddress] = mail => JsString(mail.toString)
   private implicit val calendarOrganizerFieldWrites: Writes[CalendarOrganizerField] = Json.writes[CalendarOrganizerField]
   private implicit val calendarStartFieldWrites: Writes[CalendarStartField] = Json.valueWrites[CalendarStartField]
   private implicit val calendarEndFieldWrites: Writes[CalendarEndField] = Json.valueWrites[CalendarEndField]
