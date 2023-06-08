@@ -1,17 +1,16 @@
 package com.linagora.tmail.james.jmap.json
 
-import java.time.ZonedDateTime
-import java.util.Locale
-
 import com.linagora.tmail.james.jmap.model._
 import net.fortuna.ical4j.model.Month
 import net.fortuna.ical4j.model.Recur.Skip
 import net.fortuna.ical4j.model.WeekDay.Day
 import org.apache.james.core.MailAddress
-import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
+import org.apache.james.jmap.core.{Properties, SetError}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import play.api.libs.json._
+
+import java.util.Locale
 
 object CalendarEventSerializer {
 
@@ -31,10 +30,8 @@ object CalendarEventSerializer {
   private implicit val calendarLocationFieldFormat: Writes[CalendarLocationField] = Json.valueWrites[CalendarLocationField]
   private implicit val mailAddressWrites: Writes[MailAddress] = mail => JsString(mail.toString)
   private implicit val calendarOrganizerFieldWrites: Writes[CalendarOrganizerField] = Json.writes[CalendarOrganizerField]
-  private implicit val timeStampFieldWrites: Writes[ZonedDateTime] = time => JsString(time.format(dateTimeFormatter))
   private implicit val calendarStartFieldWrites: Writes[CalendarStartField] = Json.valueWrites[CalendarStartField]
   private implicit val calendarEndFieldWrites: Writes[CalendarEndField] = Json.valueWrites[CalendarEndField]
-  private implicit val utcDateWrites : Writes[UTCDate] = utcDate => JsString(utcDate.asUTC.format(dateTimeUTCFormatter))
   private implicit val calendarDurationWrites : Writes[CalendarDurationField] = duration => JsString(duration.value.toString)
   private implicit val calendarTimeZoneFieldWrites: Writes[CalendarTimeZoneField] = timeZone => JsString(timeZone.value.getID)
 
@@ -56,7 +53,7 @@ object CalendarEventSerializer {
   private implicit val recurrenceRuleFrequencyWrites: Writes[RecurrenceRuleFrequency] = frequency => JsString(frequency.value.name().toLowerCase(Locale.US))
   private implicit val calendarEventByDayWrites: Writes[CalendarEventByDay] = Json.valueWrites[CalendarEventByDay]
   private implicit val calendarEventByMonthWrites: Writes[CalendarEventByMonth] = Json.valueWrites[CalendarEventByMonth]
-  private implicit val recurrenceRuleUtilWrites: Writes[RecurrenceRuleUntil] = utcDate => JsString(utcDate.value.asUTC.format(dateTimeUTCFormatter))
+  private implicit val recurrenceRuleUtilWrites: Writes[RecurrenceRuleUntil] = Json.valueWrites[RecurrenceRuleUntil]
   private implicit val calendarRecurrenceRuleWrites: Writes[RecurrenceRule] = Json.writes[RecurrenceRule]
   private implicit val calendarRecurrenceRulesFieldWrites: Writes[RecurrenceRulesField] = Json.valueWrites[RecurrenceRulesField]
   private implicit val calendarExcludedRecurrenceRulesFieldWrites: Writes[ExcludedRecurrenceRulesField] = Json.valueWrites[ExcludedRecurrenceRulesField]
