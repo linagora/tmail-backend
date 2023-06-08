@@ -3,15 +3,11 @@ package com.linagora.tmail.james.jmap.json
 import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionIds, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject, ErrorRestoreCount, SuccessfulRestoreCount, UnparsedEmailRecoveryActionId}
 import eu.timepit.refined.refineV
 import org.apache.james.jmap.core.Id.IdConstraint
-import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
+import org.apache.james.jmap.core.{Properties, SetError}
 import org.apache.james.jmap.json.{jsObjectReads, mapWrites}
 import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
 import play.api.libs.json._
-
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import scala.util.{Failure, Success, Try}
 
 object EmailRecoveryActionSerializer {
 
@@ -33,14 +29,7 @@ object EmailRecoveryActionSerializer {
       parseCreationIdFunc
     }
 
-  private implicit val UTCDateReads: Reads[UTCDate] = {
-    case JsString(value) =>
-      Try(UTCDate(ZonedDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME))) match {
-        case Success(value) => JsSuccess(value)
-        case Failure(e) => JsError(e.getMessage)
-      }
-    case _ => JsError("Expecting js string to represent UTC Date")
-  }
+
 
   private implicit val emailRecoveryActionUpdatePatchObjectReads: Reads[EmailRecoveryActionUpdatePatchObject] = {
     case jsObject: JsObject => JsSuccess(EmailRecoveryActionUpdatePatchObject(jsObject))

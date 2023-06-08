@@ -25,7 +25,7 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
   private implicit val deviceClientIdFormat: Format[DeviceClientId] = Json.valueFormat[DeviceClientId]
   private implicit val firebaseDeviceTokenFormat: Format[FirebaseToken] = Json.valueFormat[FirebaseToken]
   private implicit val firebaseSubscriptionExpiredTimeWrites: Writes[FirebaseSubscriptionExpiredTime] = expiredTime => JsString(UTCDate(expiredTime.value)
-    .asUTC.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+    .asUTC.format(dateTimeUTCFormatter))
   private implicit val typeNameWrites: Writes[TypeName] = typeName => JsString(typeName.asString())
 
   private implicit val firebaseSubscriptionIdWrites: Writes[FirebaseSubscriptionId] = value => JsString(value.serialize)

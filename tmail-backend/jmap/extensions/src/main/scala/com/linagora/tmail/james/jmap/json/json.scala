@@ -22,11 +22,13 @@ package com.linagora.tmail.james.jmap
 import eu.timepit.refined.api.{RefType, Validate}
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{AccountId, Properties, SetError}
+import org.apache.james.jmap.core.{AccountId, Properties, SetError, UTCDate}
 import play.api.libs.json._
 
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
+
 package object json {
   implicit def writeRefined[T, P, F[_, _]](
                                             implicit writesT: Writes[T],
@@ -52,6 +54,19 @@ package object json {
 
   val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
   val dateTimeUTCFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
+
+  implicit val timeStampFieldWrites: Writes[ZonedDateTime] = time => JsString(time.format(dateTimeFormatter))
+
+  implicit val utcDateWrites : Writes[UTCDate] = utcDate => JsString(utcDate.asUTC.format(dateTimeUTCFormatter))
+
+  implicit val UTCDateReads: Reads[UTCDate] = {
+    case JsString(value) =>
+      Try(UTCDate(ZonedDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME))) match {
+        case Success(value) => JsSuccess(value)
+        case Failure(e) => JsError(e.getMessage)
+      }
+    case _ => JsError("Expecting js string to represent UTC Date")
+  }
 
   implicit val mailAddressReads: Reads[MailAddress] = {
     case JsString(value) => Try(JsSuccess(new MailAddress(value)))
