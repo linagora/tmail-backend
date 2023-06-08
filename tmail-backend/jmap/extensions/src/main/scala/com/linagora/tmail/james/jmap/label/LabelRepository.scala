@@ -30,7 +30,7 @@ class MemoryLabelRepository extends LabelRepository {
 
   override def addLabel(username: Username, labelCreationRequest: LabelCreationRequest): Publisher[Label] =
     SMono.fromCallable(() => {
-      val label: Label = labelCreationRequest.toLabel()
+      val label: Label = labelCreationRequest.toLabel
       labelsTable.put(username, label.keyword, label)
       label
     })
@@ -40,8 +40,8 @@ class MemoryLabelRepository extends LabelRepository {
       .concatMap(creationRequest => addLabel(username, creationRequest))
 
   override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName] = Option.empty, newColor: Option[Color] = Option.empty): Publisher[Void] =
-    SMono.justOrEmpty(labelsTable.get(username, labelId.toKeyword()))
-      .doOnNext(oldLabel => labelsTable.put(username, labelId.toKeyword(), oldLabel.update(newDisplayName, newColor)))
+    SMono.justOrEmpty(labelsTable.get(username, labelId.toKeyword))
+      .doOnNext(oldLabel => labelsTable.put(username, labelId.toKeyword, oldLabel.update(newDisplayName, newColor)))
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
       .`then`()
 
@@ -55,6 +55,6 @@ class MemoryLabelRepository extends LabelRepository {
       .map(_.getValue)
 
   override def deleteLabel(username: Username, labelId: LabelId): Publisher[Void] =
-    SMono.fromCallable(() => labelsTable.remove(username, labelId.toKeyword()))
+    SMono.fromCallable(() => labelsTable.remove(username, labelId.toKeyword))
       .`then`()
 }
