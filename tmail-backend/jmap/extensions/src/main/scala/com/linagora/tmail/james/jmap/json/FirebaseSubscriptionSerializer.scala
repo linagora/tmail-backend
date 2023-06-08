@@ -1,26 +1,16 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscription, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, FirebaseSubscriptionUpdateResponse, UnparsedFirebaseSubscriptionId}
-import eu.timepit.refined
-import eu.timepit.refined.refineV
 import org.apache.james.jmap.api.change.TypeStateFactory
 import org.apache.james.jmap.api.model.TypeName
-import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json._
 
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactory) {
-  private implicit val unparsedFirebaseSubscriptionIdReads: Reads[UnparsedFirebaseSubscriptionId] = {
-    case JsString(string) => refined.refineV[IdConstraint](string)
-      .fold(
-        e => JsError(s"FirebaseSubscriptionId does not match Id constraints: $e"),
-        id => JsSuccess(UnparsedFirebaseSubscriptionId(id)))
-    case _ => JsError("FirebaseSubscriptionId needs to be represented by a JsString")
-  }
+  private implicit val unparsedFirebaseSubscriptionIdReads: Reads[UnparsedFirebaseSubscriptionId] = Json.valueReads[UnparsedFirebaseSubscriptionId]
 
   private implicit val deviceClientIdFormat: Format[DeviceClientId] = Json.valueFormat[DeviceClientId]
   private implicit val firebaseDeviceTokenFormat: Format[FirebaseToken] = Json.valueFormat[FirebaseToken]
@@ -40,20 +30,14 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
 
   private implicit val mapCreationRequestBySubscriptionCreationId: Reads[Map[FirebaseSubscriptionCreationId, JsObject]] =
     Reads.mapReads[FirebaseSubscriptionCreationId, JsObject] { string =>
-      refineV[IdConstraint](string)
-        .fold(e => JsError(s"firebase subscription id needs to match id constraints: $e"),
-          id => JsSuccess(FirebaseSubscriptionCreationId(id)))
+      Json.valueReads[FirebaseSubscriptionCreationId].reads(JsString(string))
     }
-
 
   private implicit val patchObject: Reads[FirebaseSubscriptionPatchObject] = Json.valueReads[FirebaseSubscriptionPatchObject]
 
   private implicit val mapUpdateRequestBySubscriptionCreationId: Reads[Map[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject]] =
     Reads.mapReads[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject] { string =>
-      refineV[IdConstraint](string)
-        .fold(e => JsError(s"FirebaseSubscription Id needs to match id constraints: $e"),
-          id => JsSuccess(UnparsedFirebaseSubscriptionId(id)))
-    }
+      unparsedFirebaseSubscriptionIdReads.reads(JsString(string))}
 
   private implicit val firebaseSubscriptionUpdateResponseWrites :Writes[FirebaseSubscriptionUpdateResponse] = Json.writes[FirebaseSubscriptionUpdateResponse]
 
