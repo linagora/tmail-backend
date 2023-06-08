@@ -73,4 +73,7 @@ package object json {
       .fold(e => JsError(s"Invalid mailAddress: ${e.getMessage}"), mailAddress => mailAddress)
     case _ => JsError("Expecting mailAddress to be represented by a JsString")
   }
+
+  implicit val mailAddressWrites: Writes[MailAddress] = mail => JsString(mail.toString)
+
 }

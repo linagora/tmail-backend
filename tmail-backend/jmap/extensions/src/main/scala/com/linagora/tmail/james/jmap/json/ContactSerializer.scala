@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{Contact, ContactAutocompleteRequest, ContactAutocompleteResponse, ContactFilter, ContactFirstname, ContactId, ContactSurname, ContactText}
-import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.LimitUnparsed
 import play.api.libs.json.{JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, OWrites, Reads, Writes}
 
@@ -28,7 +27,6 @@ class ContactSerializer {
   private implicit val contactIdWrites: Writes[ContactId] = Json.valueWrites[ContactId]
   private implicit val contactFirstnameWrites: Writes[ContactFirstname] = Json.valueWrites[ContactFirstname]
   private implicit val contactSurnameWrites: Writes[ContactSurname] = Json.valueWrites[ContactSurname]
-  private implicit val mailAddressWrites: Writes[MailAddress] = mailAddress => JsString(mailAddress.asString)
 
   private implicit val contactWrites: Writes[Contact] = Json.writes[Contact]
 
