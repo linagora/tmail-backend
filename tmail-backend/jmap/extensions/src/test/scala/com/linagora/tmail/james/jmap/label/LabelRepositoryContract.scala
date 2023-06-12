@@ -141,6 +141,36 @@ trait LabelRepositoryContract {
   }
 
   @Test
+  def updateBothEmptyDisplayNameAndColorShouldNotOverrideAnything(): Unit = {
+    val labelId = SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Important"), Some(RED))))
+      .block().id
+
+    SMono.fromPublisher(testee.updateLabel(ALICE, labelId, newDisplayName = None, newColor = None)).block()
+
+    assertThat(SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head.displayName)
+      .isEqualTo(DisplayName("Important"))
+    assertThat(SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head.color)
+      .isEqualTo(Some(RED))
+  }
+
+  @Test
+  def updateShouldBeIdempotent(): Unit = {
+    val labelId = SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Important"), Some(RED))))
+      .block().id
+
+    SMono.fromPublisher(testee.updateLabel(ALICE, labelId,
+      newDisplayName = Some(DisplayName("New Display Name")))).block()
+
+    assertThatCode(() => SMono.fromPublisher(testee.updateLabel(
+      ALICE, labelId, newDisplayName = Some(DisplayName("New Display Name"))))
+      .block())
+      .doesNotThrowAnyException()
+
+    val updatedLabel = SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head
+    assertThat(updatedLabel.displayName).isEqualTo(DisplayName("New Display Name"))
+  }
+
+  @Test
   def getNonExistingLabelsShouldReturnEmpty(): Unit = {
     val randomLabelId = LabelId.generate()
 
