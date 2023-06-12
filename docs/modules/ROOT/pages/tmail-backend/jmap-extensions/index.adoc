@@ -93,7 +93,6 @@ should be retained in memory, authentication is challenged for each request...
  - TMail supports link:https://jwt.io/[JWT tokens] (link:https://tools.ietf.org/html/rfc7519[RFC-7519]]) signed by third party
 software, valid according to the configured JWT public key. If valid, the request is blindly trusted.
 link:https://james.staged.apache.org/james-project/3.7.0/servers/distributed/configure/webadmin.html#_generating_a_jwt_key_pair[Read more]...
- - link:longLivedTokens.adoc[com:linagora:params:long:lived:token] enables a mechanism to safely authenticate mobile devices.
  - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allows to generate one time usage tickets in order
 to authenticate webSocket connections using URI query parameters, as most browsers do not support setting `Authorization`
 headers during the webSocket handshake.
