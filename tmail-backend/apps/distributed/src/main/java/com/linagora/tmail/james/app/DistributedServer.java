@@ -106,6 +106,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener;
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListenerRegister;
+import com.linagora.tmail.james.jmap.label.CassandraLabelRepositoryModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
@@ -119,6 +120,7 @@ import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
+import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
@@ -177,7 +179,8 @@ public class DistributedServer {
         new KeystoreSetMethodModule(),
         new TicketRoutesModule(),
         new WebFingerModule(),
-        new EmailRecoveryActionMethodModule())
+        new EmailRecoveryActionMethodModule(),
+        new LabelMethodModule())
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
@@ -232,20 +235,21 @@ public class DistributedServer {
             new MailetProcessingModule(),
             REQUIRE_TASK_MANAGER_MODULE,
             new DistributedTaskManagerModule()))
-        .with(new RabbitMQModule(),
-            new ScheduledReconnectionHandler.Module(),
-            new JMAPEventBusModule(),
-            new RabbitMailQueueRoutesModule(),
-            new RabbitMQEventBusModule(),
-            new DistributedTaskSerializationModule(),
-            new TeamMailboxModule(),
-            new RedisRateLimiterModule(),
+        .with(new CassandraLabelRepositoryModule(),
             new CassandraRateLimitingModule(),
-            new OSContactAutoCompleteModule(),
             new DistributedEmailAddressContactEventModule(),
+            new DistributedTaskSerializationModule(),
+            new JMAPEventBusModule(),
+            new OSContactAutoCompleteModule(),
             new RabbitMQEmailAddressContactModule(),
+            new RabbitMQEventBusModule(),
+            new RabbitMQModule(),
+            new RabbitMailQueueRoutesModule(),
+            new RedisRateLimiterModule(),
             new RspamdModule(),
-            new TasksHeathCheckModule());
+            new ScheduledReconnectionHandler.Module(),
+            new TasksHeathCheckModule(),
+            new TeamMailboxModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
