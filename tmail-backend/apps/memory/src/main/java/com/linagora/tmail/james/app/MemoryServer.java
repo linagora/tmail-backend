@@ -51,6 +51,7 @@ import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
+import com.linagora.tmail.james.jmap.label.MemoryLabelRepositoryModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
@@ -64,6 +65,7 @@ import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
+import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
@@ -114,7 +116,8 @@ public class MemoryServer {
         new KeystoreGetMethodModule(),
         new TicketRoutesModule(),
         new WebFingerModule(),
-        new EmailRecoveryActionMethodModule())
+        new EmailRecoveryActionMethodModule(),
+        new LabelMethodModule())
         .with(new TeamMailboxJmapModule());
 
     public static final Module MODULES = Modules.override(
@@ -131,7 +134,8 @@ public class MemoryServer {
             new MemoryRateLimitingModule(),
             new RateLimitPlanRoutesModule(),
             new MemoryEmailAddressContactModule(),
-            new EmailAddressContactRoutesModule());
+            new EmailAddressContactRoutesModule(),
+            new MemoryLabelRepositoryModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()

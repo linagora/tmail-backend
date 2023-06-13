@@ -3,6 +3,7 @@ package com.linagora.tmail.james.jmap.label
 import java.util
 
 import com.google.common.collect.{HashBasedTable, Table, Tables}
+import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import org.apache.james.core.Username
 import org.apache.james.jmap.mail.Keyword
@@ -57,4 +58,11 @@ class MemoryLabelRepository extends LabelRepository {
   override def deleteLabel(username: Username, labelId: LabelId): Publisher[Void] =
     SMono.fromCallable(() => labelsTable.remove(username, labelId.toKeyword))
       .`then`()
+}
+
+case class MemoryLabelRepositoryModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[LabelRepository]).to(classOf[MemoryLabelRepository])
+    bind(classOf[MemoryLabelRepository]).in(Scopes.SINGLETON)
+  }
 }
