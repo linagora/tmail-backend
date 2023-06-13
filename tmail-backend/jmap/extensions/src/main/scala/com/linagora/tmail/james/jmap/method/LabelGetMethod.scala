@@ -50,6 +50,10 @@ class LabelMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[LabelGetMethod])
+
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[LabelSetMethod])
   }
 }
 
