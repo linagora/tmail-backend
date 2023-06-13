@@ -2,9 +2,11 @@ package com.linagora.tmail.james.jmap.model
 
 import java.util.UUID
 
-import org.apache.james.jmap.core.Id
+import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.Id.Id
+import org.apache.james.jmap.core.{AccountId, Id, Properties, UuidState}
 import org.apache.james.jmap.mail.Keyword
+import org.apache.james.jmap.method.WithAccountId
 
 object LabelId {
   def fromKeyword(keyword: Keyword): LabelId =
@@ -17,6 +19,9 @@ object LabelId {
 case class LabelId(id: Id) {
   def toKeyword: Keyword =
     Keyword.of(id.value).get
+
+  def asUnparsedLabelId: UnparsedLabelId =
+    UnparsedLabelId(id)
 }
 
 object KeywordUtil {
@@ -39,6 +44,11 @@ case class LabelCreationRequest(displayName: DisplayName, color: Option[Color]) 
   }
 }
 
+object Label {
+  val allProperties: Properties = Properties("id", "displayName", "keyword", "color")
+  val idProperty: Properties = Properties("id")
+}
+
 case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color: Option[Color]) {
   def update(newDisplayName: Option[DisplayName], newColor: Option[Color]): Label =
     copy(displayName = newDisplayName.getOrElse(displayName),
@@ -46,3 +56,39 @@ case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color:
 }
 
 case class LabelNotFoundException(id: LabelId) extends RuntimeException
+
+case class UnparsedLabelId(id: Id)
+
+case class LabelIds(list: List[UnparsedLabelId])
+
+case class LabelGetRequest(accountId: AccountId,
+                           ids: Option[LabelIds],
+                           properties: Option[Properties]) extends WithAccountId {
+  def validateProperties: Either[IllegalArgumentException, Properties] =
+    properties match {
+      case None => Right(Label.allProperties)
+      case Some(value) =>
+        value -- Label.allProperties match {
+          case invalidProperties if invalidProperties.isEmpty() => Right(value ++ Label.idProperty)
+          case invalidProperties: Properties => Left(new IllegalArgumentException(s"The following properties [${invalidProperties.format()}] do not exist."))
+        }
+    }
+}
+
+object LabelGetResponse {
+  def from(accountId: AccountId, state: UuidState, list: Seq[Label], requestIds: Option[LabelIds]): LabelGetResponse =
+    requestIds match {
+      case None => LabelGetResponse(accountId, state, list)
+      case Some(value) =>
+        LabelGetResponse(
+          accountId = accountId,
+          state = state,
+          list = list.filter(label => value.list.contains(label.id.asUnparsedLabelId)),
+          notFound = value.list.diff(list.map(_.id.asUnparsedLabelId)))
+    }
+}
+
+case class LabelGetResponse(accountId: AccountId,
+                            state: UuidState,
+                            list: Seq[Label],
+                            notFound: Seq[UnparsedLabelId] = Seq())
