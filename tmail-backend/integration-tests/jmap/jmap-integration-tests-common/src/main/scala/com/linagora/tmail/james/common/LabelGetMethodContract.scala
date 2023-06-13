@@ -1,0 +1,539 @@
+package com.linagora.tmail.james.common
+
+import com.linagora.tmail.james.common.LabelGetMethodContract.{BLUE, RED}
+import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
+import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId}
+import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
+import io.restassured.RestAssured.{`given`, requestSpecification}
+import io.restassured.http.ContentType.JSON
+import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option
+import net.javacrumbs.jsonunit.core.internal.Options
+import org.apache.http.HttpStatus.SC_OK
+import org.apache.james.GuiceJamesServer
+import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
+import org.apache.james.jmap.core.UuidState.INSTANCE
+import org.apache.james.jmap.http.UserCredential
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.utils.DataProbeImpl
+import org.hamcrest.Matchers.hasKey
+import org.junit.jupiter.api.{BeforeEach, Test}
+
+object LabelGetMethodContract {
+  val RED: Color = Color("#FF0000")
+  val BLUE: Color = Color("#0000FF")
+}
+
+trait LabelGetMethodContract {
+  @BeforeEach
+  def setUp(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[DataProbeImpl])
+      .fluent()
+      .addDomain(DOMAIN.asString)
+      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+
+    requestSpecification = baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build()
+  }
+
+  @Test
+  def shouldReturnLabelCapabilityInSessionRoute(): Unit = {
+    `given`()
+      .when()
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities", hasKey("com:linagora:params:jmap:messages:vault"))
+  }
+
+  @Test
+  def missingLabelCapabilityShouldFail(): Unit = {
+    val response = `given`
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"ids": null
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"error",
+         |			{
+         |				"type": "unknownMethod",
+         |				"description": "Missing capability(ies): com:linagora:params:jmap:labels"
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def getShouldReturnEmptyLabelsByDefault(): Unit = {
+    val response = `given`
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"ids": null
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Label/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"state": "${INSTANCE.value}",
+         |				"list": [],
+         |				"notFound": []
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def fetchNullIdsShouldReturnAllLabels(server: GuiceJamesServer): Unit = {
+    val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+    val label2: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 2"), Some(BLUE)))
+
+    val response = `given`
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"ids": null
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+      .isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Label/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"notFound": [],
+         |				"state": "${INSTANCE.value}",
+         |				"list": [{
+         |						"id": "${label1.id.id.value}",
+         |						"displayName": "Label 1",
+         |						"keyword": "${label1.keyword.flagName}",
+         |						"color": "${RED.value}"
+         |					},
+         |					{
+         |						"id": "${label2.id.id.value}",
+         |						"displayName": "Label 2",
+         |						"keyword": "${label2.keyword.flagName}",
+         |						"color": "${BLUE.value}"
+         |					}
+         |				]
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def notFoundCase(): Unit = {
+    val randomLabelId: String = LabelId.generate().id.value
+
+    val response = `given`
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"ids": ["$randomLabelId", "notFound"]
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+      .isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Label/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"notFound": ["$randomLabelId", "notFound"],
+         |				"state": "${INSTANCE.value}",
+         |				"list": []
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def mixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
+    val createdLabelId: String = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+      .id.id.value
+    val randomLabelId: String = LabelId.generate().id.value
+
+    val response = `given`
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"ids": ["$randomLabelId", "$createdLabelId"]
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Label/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"notFound": ["$randomLabelId"],
+         |				"state": "${INSTANCE.value}",
+         |				"list": [{
+         |						"id": "$${json-unit.ignore}",
+         |						"displayName": "Label 1",
+         |						"keyword": "$${json-unit.ignore}",
+         |						"color": "${RED.value}"
+         |					}]
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
+    val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+
+    val response = `given`
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"ids": null
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Label/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"notFound": [],
+         |				"state": "${INSTANCE.value}",
+         |				"list": [{
+         |						"id": "${label1.id.id.value}",
+         |						"displayName": "Label 1",
+         |						"keyword": "${label1.keyword.flagName}",
+         |						"color": "${RED.value}"
+         |					}]
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def invalidPropertiesShouldFail(): Unit = {
+    val response = `given`
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"ids": null,
+               |				"properties": ["invalid"]
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"error",
+         |			{
+         |				"type": "invalidArguments",
+         |				"description": "The following properties [invalid] do not exist."
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def shouldSupportFilteringByProperties(server: GuiceJamesServer): Unit = {
+    val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+
+    val response = `given`
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"ids": null,
+               |				"properties": ["keyword"]
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Label/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"notFound": [],
+         |				"state": "${INSTANCE.value}",
+         |				"list": [{
+         |						"id": "${label1.id.id.value}",
+         |						"keyword": "${label1.keyword.flagName}"
+         |					}]
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def shouldSupportDelegation(server: GuiceJamesServer): Unit = {
+    val bobAccountId: String = ACCOUNT_ID
+    val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    val response = `given`
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "$bobAccountId",
+               |				"ids": null
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Label/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"notFound": [],
+         |				"state": "${INSTANCE.value}",
+         |				"list": [{
+         |						"id": "${label1.id.id.value}",
+         |						"displayName": "Label 1",
+         |						"keyword": "${label1.keyword.flagName}",
+         |						"color": "${RED.value}"
+         |					}]
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def shouldFailWhenNotDelegated(): Unit = {
+    val bobAccountId: String = ACCOUNT_ID
+
+    val response = `given`
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .body(s"""{
+               |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |	"methodCalls": [
+               |		[
+               |			"Label/get",
+               |			{
+               |				"accountId": "$bobAccountId",
+               |				"ids": null
+               |			},
+               |			"c1"
+               |		]
+               |	]
+               |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1]")
+      .isEqualTo(
+        s"""{
+           |	"type": "accountNotFound"
+           |}""".stripMargin)
+  }
+}
