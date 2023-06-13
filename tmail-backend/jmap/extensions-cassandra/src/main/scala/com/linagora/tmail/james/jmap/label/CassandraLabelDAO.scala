@@ -140,6 +140,6 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       displayName = DisplayName(row.get(DISPLAY_NAME, TypeCodecs.TEXT)),
       keyword = keyword,
       color = Option(row.get(COLOR, TypeCodecs.TEXT))
-        .map(Color))
+        .map(value => Color(value)))
   }
 }

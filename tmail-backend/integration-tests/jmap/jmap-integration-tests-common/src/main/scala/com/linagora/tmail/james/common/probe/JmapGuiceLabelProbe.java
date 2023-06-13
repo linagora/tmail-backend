@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.common.probe;
 
+import java.util.List;
+
 import javax.inject.Inject;
 
 import org.apache.james.core.Username;
@@ -9,6 +11,7 @@ import com.linagora.tmail.james.jmap.label.LabelRepository;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class JmapGuiceLabelProbe implements GuiceProbe {
@@ -21,6 +24,12 @@ public class JmapGuiceLabelProbe implements GuiceProbe {
 
     public Label addLabel(Username username, LabelCreationRequest labelCreationRequest) {
         return Mono.from(labelRepository.addLabel(username, labelCreationRequest))
+            .block();
+    }
+
+    public List<Label> listLabels(Username username) {
+        return Flux.from(labelRepository.listLabels(username))
+            .collectList()
             .block();
     }
 }
