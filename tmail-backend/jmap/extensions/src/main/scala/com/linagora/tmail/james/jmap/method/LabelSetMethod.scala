@@ -19,6 +19,7 @@ import reactor.core.scala.publisher.SMono
 import javax.inject.Inject
 
 class LabelSetMethod @Inject() (createPerformer: LabelSetCreatePerformer,
+                                val deletePerformer: LabelSetDeletePerformer,
                                 val metricFactory: MetricFactory,
                                 val sessionTranslator: SessionTranslator,
                                 val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[LabelSetRequest] {
@@ -29,6 +30,7 @@ class LabelSetMethod @Inject() (createPerformer: LabelSetCreatePerformer,
     for {
       oldState <- retrieveState()
       created <- createPerformer.createLabels(mailboxSession, request)
+      destroyed <- deletePerformer.deleteLabels(request, mailboxSession)
       newState <- retrieveState()
     } yield InvocationWithContext(
       invocation = Invocation(
@@ -38,7 +40,9 @@ class LabelSetMethod @Inject() (createPerformer: LabelSetCreatePerformer,
           oldState = Some(oldState),
           newState = newState,
           created = Some(created.retrieveCreated).filter(_.nonEmpty),
-          notCreated = Some(created.retrieveErrors).filter(_.nonEmpty))).as[JsObject]),
+          notCreated = Some(created.retrieveErrors).filter(_.nonEmpty),
+          destroyed = Some(destroyed.destroyed).filter(_.nonEmpty),
+          notDestroyed = Some(destroyed.retrieveErrors).filter(_.nonEmpty))).as[JsObject]),
         methodCallId = invocation.invocation.methodCallId),
       processingContext = Some(created.retrieveCreated).getOrElse(Map())
         .foldLeft(invocation.processingContext)({
