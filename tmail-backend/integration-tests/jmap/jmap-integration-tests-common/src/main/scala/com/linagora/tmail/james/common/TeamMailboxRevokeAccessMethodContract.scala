@@ -364,7 +364,7 @@ trait TeamMailboxRevokeAccessMethodContract {
          |            "error",
          |            {
          |                "type": "invalidArguments",
-         |                "description": "{\"errors\":[{\"path\":\"obj.ids[0]\",\"messages\":[\"Team mailbox needs to be represented by a JsString\"]}]}"
+         |                "description": "'/ids(0)' property is not valid: Team mailbox needs to be represented by a JsString"
          |            },
          |            "c0"
          |        ]

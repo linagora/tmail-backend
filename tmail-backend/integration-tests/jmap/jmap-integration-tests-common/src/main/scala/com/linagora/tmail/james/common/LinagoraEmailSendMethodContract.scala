@@ -761,7 +761,7 @@ trait LinagoraEmailSendMethodContract {
       .head.asInstanceOf[JsString].value
 
     assertThat(errorDescription)
-      .contains("'/mailboxIds/invalid' property in EmailSend object is not valid")
+      .contains("'/mailboxIds/invalid' property is not valid")
   }
 
   @Test

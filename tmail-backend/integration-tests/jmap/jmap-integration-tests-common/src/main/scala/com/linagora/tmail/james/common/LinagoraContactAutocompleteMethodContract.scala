@@ -525,7 +525,7 @@ trait LinagoraContactAutocompleteMethodContract {
            |            "error",
            |            {
            |                "type": "invalidArguments",
-           |                "description": "{\\"errors\\":[{\\"path\\":\\"obj.filter.text\\",\\"messages\\":[\\"Expecting a JsString to be representing an autocomplete text search\\"]}]}"
+           |                "description": "'/filter/text' property is not valid: Expecting a JsString to be representing an autocomplete text search"
            |            },
            |            "c1"
            |        ]
@@ -570,7 +570,7 @@ trait LinagoraContactAutocompleteMethodContract {
            |            "error",
            |            {
            |                "type": "invalidArguments",
-           |                "description": "{\\"errors\\":[{\\"path\\":\\"obj.filter.text\\",\\"messages\\":[\\"error.path.missing\\"]}]}"
+           |                "description": "Missing '/filter/text' property"
            |            },
            |            "c1"
            |        ]
@@ -614,7 +614,7 @@ trait LinagoraContactAutocompleteMethodContract {
            |            "error",
            |            {
            |                "type": "invalidArguments",
-           |                "description": "{\\"errors\\":[{\\"path\\":\\"obj.filter\\",\\"messages\\":[\\"error.path.missing\\"]}]}"
+           |                "description": "Missing '/filter' property"
            |            },
            |            "c1"
            |        ]
@@ -662,7 +662,7 @@ trait LinagoraContactAutocompleteMethodContract {
            |            "error",
            |            {
            |                "type": "invalidArguments",
-           |                "description": "{\\"errors\\":[{\\"path\\":\\"obj.filter\\",\\"messages\\":[\\"These '[unsupported_option]' was unsupported filter options\\"]}]}"
+           |                "description": "'/filter' property is not valid: These '[unsupported_option]' was unsupported filter options"
            |            },
            |            "c1"
            |        ]

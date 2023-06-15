@@ -10,13 +10,12 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, MethodWithoutAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
-import play.api.libs.json.{JsError, JsObject}
+import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -31,8 +30,7 @@ class FirebaseSubscriptionGetMethod @Inject()()(val serializer: FirebaseSubscrip
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_FIREBASE)
 
   override def getRequest(invocation: Invocation): Either[Exception, FirebaseSubscriptionGetRequest] =
-    serializer.deserializeFirebaseSubscriptionGetRequest(invocation.arguments.value).asEither
-      .left.map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
+    serializer.deserializeFirebaseSubscriptionGetRequest(invocation.arguments.value).asEitherRequest
 
   override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionGetRequest): Publisher[InvocationWithContext] =
     request.validateProperties

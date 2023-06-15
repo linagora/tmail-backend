@@ -94,10 +94,9 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
 
   override def getRequest(mailboxSession: MailboxSession,
                           invocation: Invocation): Either[Exception, EmailSendRequest] =
-    EmailSendSerializer.deserializeEmailSendRequest(invocation.arguments.value) match {
-      case JsSuccess(emailSendRequest, _) => emailSendRequest.validate
-      case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
-    }
+    EmailSendSerializer.deserializeEmailSendRequest(invocation.arguments.value)
+      .asEitherRequest
+      .flatMap(emailSendRequest => emailSendRequest.validate)
 
   override def doProcess(capabilities: Set[CapabilityIdentifier],
                          invocation: InvocationWithContext,

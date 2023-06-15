@@ -411,7 +411,7 @@ trait LinagoraForwardSetMethodContract {
          |      "notUpdated": {
          |        "singleton": {
          |          "type": "invalidArguments",
-         |          "description": "Can not deserialize 'singleton'. Missing '/forwards' property"
+         |          "description": "Missing '/forwards' property"
          |        }
          |      }
          |    }, "c1"]
@@ -459,7 +459,7 @@ trait LinagoraForwardSetMethodContract {
          |      "notUpdated": {
          |        "singleton": {
          |          "type": "invalidArguments",
-         |          "description": "Can not deserialize 'singleton'. Missing '/localCopy' property"
+         |          "description": "Missing '/localCopy' property"
          |        }
          |      }
          |    }, "c1"]
@@ -563,7 +563,7 @@ trait LinagoraForwardSetMethodContract {
          |      "notUpdated": {
          |        "singleton": {
          |          "type": "invalidArguments",
-         |          "description": "Can not deserialize 'singleton'. '/localCopy' property is not valid"
+         |          "description": "'/localCopy' property is not valid: error.expected.jsboolean"
          |        }
          |      }
          |    }, "c1"]
@@ -614,7 +614,7 @@ trait LinagoraForwardSetMethodContract {
          |      "notUpdated": {
          |        "singleton": {
          |          "type": "invalidArguments",
-         |          "description": "Can not deserialize 'singleton'. '/forwards(0)' property is not valid"
+         |          "description": "'/forwards(0)' property is not valid: Invalid mailAddress: Out of data at position 1 in '123$$#%$$#invalid'"
          |        }
          |      }
          |    }, "c1"]

@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap.model
 
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
+import com.linagora.tmail.james.jmap.method.AsEitherRequest
 import eu.timepit.refined.auto._
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.Id.Id
@@ -11,7 +12,7 @@ import org.apache.james.jmap.method.WithoutAccountId
 import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
 import org.apache.james.vault.search.{Criterion, CriterionFactory, Query}
-import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, Json, JsonValidationError}
+import play.api.libs.json.{JsObject, Json}
 
 import java.time.ZonedDateTime
 import java.util
@@ -154,23 +155,13 @@ case class EmailRecoveryActionUpdatePatchObject(jsObject: JsObject) {
       case _ => Right(jsObject)
     }
 
-  def asUpdateRequest: Either[IllegalArgumentException, EmailRecoveryActionUpdateRequest] = {
+  def asUpdateRequest: Either[IllegalArgumentException, EmailRecoveryActionUpdateRequest] =
     for {
       validatedJsObject <- validateProperties
-      updateRequest <- EmailRecoveryActionSerializer.deserializeSetUpdateRequest(validatedJsObject) match {
-        case JsSuccess(updateRequest, _) => updateRequest.validate
-        case JsError(error) => Left(new IllegalArgumentException(s"Can not deserialize update request. " + parseError(error)))
-      }
+      updateRequestSerialize <- EmailRecoveryActionSerializer.deserializeSetUpdateRequest(validatedJsObject)
+        .asEitherRequest
+      updateRequest <- updateRequestSerialize.validate
     } yield updateRequest
-  }
-
-  def parseError(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): String =
-    errors.head match {
-      case (path, Seq()) => s"'$path' property is not valid"
-      case (path, Seq(JsonValidationError(Seq("error.path.missing")))) => s"Missing '$path' property"
-      case (path, Seq(JsonValidationError(Seq(_)))) => s"'$path' property is not valid"
-      case (path, _) => s"Unknown error on property '$path'"
-    }
 }
 
 case class EmailRecoveryActionUpdateException(description: Option[String] = None, setError: Option[SetError] = None) extends Exception

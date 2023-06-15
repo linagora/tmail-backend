@@ -1,10 +1,11 @@
 package com.linagora.tmail.james.jmap.model
 
 import com.linagora.tmail.james.jmap.json.ForwardSerializer
+import com.linagora.tmail.james.jmap.method.AsEitherRequest
 import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType, invalidArgumentValue, serverFailValue}
 import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.apache.james.jmap.method.WithAccountId
-import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, JsonValidationError}
+import play.api.libs.json.JsObject
 
 case class ForwardSetRequest(accountId: AccountId,
                              update: Option[Map[String, ForwardSetPatchObject]],
@@ -20,18 +21,8 @@ case class ForwardSetRequest(accountId: AccountId,
 }
 
 case class ForwardSetPatchObject(jsObject: JsObject) {
-  def asForwardUpdateRequest: Either[IllegalArgumentException, ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(jsObject) match {
-    case JsSuccess(value, _) => scala.Right(value)
-    case JsError(error) => Left(new IllegalArgumentException(s"Can not deserialize '${ForwardId.asString}'. " + parseError(error)))
-  }
-
-  def parseError(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): String =
-    errors.head match {
-      case (path, Seq()) => s"'$path' property is not valid"
-      case (path, Seq(JsonValidationError(Seq("error.path.missing")))) => s"Missing '$path' property"
-      case (path, Seq(JsonValidationError(Seq(_)))) => s"'$path' property is not valid"
-      case (path, _) => s"Unknown error on property '$path'"
-    }
+  def asForwardUpdateRequest: Either[Exception, ForwardUpdateRequest] =
+    ForwardSerializer.deserializeForwardSetUpdateRequest(jsObject).asEitherRequest
 }
 
 case class ForwardSetError(`type`: SetErrorType, description: Option[SetErrorDescription])
