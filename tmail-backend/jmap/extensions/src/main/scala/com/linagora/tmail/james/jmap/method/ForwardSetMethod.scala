@@ -6,14 +6,11 @@ import com.linagora.tmail.james.jmap.json.ForwardSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWARD
 import com.linagora.tmail.james.jmap.model.{ForwardId, ForwardSetError, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateFailure, ForwardSetUpdateResult, ForwardSetUpdateResults, ForwardSetUpdateSuccess, ForwardUpdateRequest}
 import eu.timepit.refined.auto._
-
-import javax.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.{SetErrorDescription, invalidArgumentValue}
 import org.apache.james.jmap.core.{Invocation, SessionTranslator, UuidState}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
@@ -23,9 +20,10 @@ import org.apache.james.rrt.lib.Mapping.Type
 import org.apache.james.rrt.lib.MappingSource
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
-import play.api.libs.json.{JsError, JsObject, JsSuccess}
+import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import javax.inject.Inject
 import scala.jdk.StreamConverters.StreamHasToScala
 
 class ForwardSetMethodModule extends AbstractModule {
@@ -45,10 +43,7 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_FORWARD)
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, ForwardSetRequest] =
-    ForwardSerializer.deserializeForwardSetRequest(invocation.arguments.value) match {
-      case JsSuccess(forwardSetRequest, _) => Right(forwardSetRequest)
-      case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
-    }
+    ForwardSerializer.deserializeForwardSetRequest(invocation.arguments.value).asEitherRequest
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,

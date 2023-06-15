@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.model
 import cats.data.Validated
 import cats.instances.list._
 import cats.syntax.traverse._
-import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetUpdatePerformer
+import com.linagora.tmail.james.jmap.method.{FirebaseSubscriptionSetUpdatePerformer, standardError}
 import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionPatchObject.updateProperties
 import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionUpdateFailure.LOGGER
 import eu.timepit.refined.auto._
@@ -20,7 +20,6 @@ import play.api.libs.json.{JsArray, JsObject, JsPath, JsString, JsValue, JsonVal
 
 import java.time.ZonedDateTime
 import java.util.UUID
-import scala.collection.Seq
 import scala.util.{Failure, Success, Try}
 
 object FirebaseSubscriptionId {
@@ -153,12 +152,7 @@ case class FirebaseSubscriptionSetResponse(created: Option[Map[FirebaseSubscript
 
 object FirebaseSubscriptionCreationParseException {
   def from(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): FirebaseSubscriptionCreationParseException =
-    FirebaseSubscriptionCreationParseException(errors.head match {
-      case (path, Seq()) => SetError.invalidArguments(SetErrorDescription(s"'$path' property in FirebaseSubscription object is not valid"))
-      case (path, Seq(JsonValidationError(Seq("error.path.missing")))) => SetError.invalidArguments(SetErrorDescription(s"Missing '$path' property in FirebaseSubscription object"))
-      case (path, Seq(JsonValidationError(Seq(message)))) => SetError.invalidArguments(SetErrorDescription(s"'$path' property in FirebaseSubscription object is not valid: $message"))
-      case (path, _) => SetError.invalidArguments(SetErrorDescription(s"Unknown error on property '$path'"))
-    })
+    FirebaseSubscriptionCreationParseException(standardError(errors))
 }
 
 case class FirebaseSubscriptionCreationParseException(setError: SetError) extends Exception

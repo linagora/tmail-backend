@@ -7,7 +7,6 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MESSAG
 import com.linagora.tmail.james.jmap.method.EmailRecoveryActionSetCreatePerformer.CreationResults
 import com.linagora.tmail.james.jmap.model.{EmailRecoveryActionCreation, EmailRecoveryActionCreationId, EmailRecoveryActionCreationParseException, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdateException, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, UnparsedEmailRecoveryActionId}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -53,6 +52,7 @@ class EmailRecoveryActionMethodModule extends AbstractModule {
 object EmailRecoveryActionConfiguration {
 
   val DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST: Long = 5
+
   def from(propertiesProvider: PropertiesProvider): EmailRecoveryActionConfiguration = {
     val maxEmailRecoveryPerRequest: Option[Long] = Try(propertiesProvider.getConfiguration("jmap"))
       .map(configuration => configuration.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest"))
@@ -74,8 +74,7 @@ class EmailRecoveryActionSetMethod @Inject()(val createPerformer: EmailRecoveryA
   override val methodName: MethodName = MethodName("EmailRecoveryAction/set")
 
   override def getRequest(invocation: Invocation): Either[Exception, EmailRecoveryActionSetRequest] =
-    EmailRecoveryActionSerializer.deserializeSetRequest(invocation.arguments.value).asEither
-      .left.map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
+    EmailRecoveryActionSerializer.deserializeSetRequest(invocation.arguments.value).asEitherRequest
 
   override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailRecoveryActionSetRequest): Publisher[InvocationWithContext] = {
     for {
@@ -94,7 +93,7 @@ class EmailRecoveryActionSetMethod @Inject()(val createPerformer: EmailRecoveryA
   }
 
   private def recordCreationIdInProcessingContext(results: CreationResults,
-                                                  processingContext: ProcessingContext):ProcessingContext =
+                                                  processingContext: ProcessingContext): ProcessingContext =
     results.created.getOrElse(Map())
       .foldLeft(processingContext)({
         case (processingContext, (creationId, result)) =>
@@ -165,6 +164,7 @@ object EmailRecoveryActionSetUpdatePerformer {
   private val STATUS_WHITE_LIST: Set[TaskManager.Status] = Set(TaskManager.Status.WAITING, TaskManager.Status.IN_PROGRESS)
 
   private val LOGGER: Logger = LoggerFactory.getLogger(classOf[EmailRecoveryActionSetUpdatePerformer])
+
   sealed trait UpdateResult
 
   private case class UpdateSuccess(taskId: TaskId, response: EmailRecoveryActionUpdateResponse) extends UpdateResult

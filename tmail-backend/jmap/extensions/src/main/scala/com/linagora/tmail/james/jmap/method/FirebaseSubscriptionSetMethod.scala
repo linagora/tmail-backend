@@ -8,14 +8,12 @@ import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{ClientId, Invocation, ServerId}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, MethodWithoutAccountId}
 import org.apache.james.jmap.routes.{ProcessingContext, SessionSupplier}
 import org.apache.james.lifecycle.api.Startable
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
-import play.api.libs.json.JsError
 
 import javax.inject.Inject
 
@@ -30,9 +28,7 @@ class FirebaseSubscriptionSetMethod @Inject()(val serializer: FirebaseSubscripti
   override val methodName: MethodName = MethodName("FirebaseRegistration/set")
 
   override def getRequest(invocation: Invocation): Either[Exception, FirebaseSubscriptionSetRequest] =
-    serializer.deserializeFirebaseSubscriptionSetRequest(invocation.arguments.value).asEither
-      .left
-      .map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
+    serializer.deserializeFirebaseSubscriptionSetRequest(invocation.arguments.value).asEitherRequest
 
   override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionSetRequest): Publisher[InvocationWithContext] =
     for {

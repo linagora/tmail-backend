@@ -9,7 +9,6 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, UnsignedInt}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, MethodWithoutAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
@@ -18,7 +17,7 @@ import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNot
 import org.apache.james.util.ReactorUtils
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultRestoreTask
 import org.reactivestreams.Publisher
-import play.api.libs.json.{JsError, JsObject, JsonValidationError}
+import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 class EmailRecoveryActionGetMethod @Inject()()(val taskManager: TaskManager,
@@ -30,14 +29,7 @@ class EmailRecoveryActionGetMethod @Inject()()(val taskManager: TaskManager,
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_MESSAGE_VAULT)
 
   override def getRequest(invocation: Invocation): Either[Exception, EmailRecoveryActionGetRequest] =
-    EmailRecoveryActionSerializer.deserializeGetRequest(invocation.arguments.value).asEither
-      .left.map(errors => errors.head match {
-      case (path, Seq(JsonValidationError(Seq("error.path.missing")))) =>
-        new IllegalArgumentException(s"Missing '$path' property")
-      case (path, Seq(JsonValidationError(Seq("error.expected.jsarray")))) =>
-        new IllegalArgumentException(s"'$path' property need to be an array")
-      case _ => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString)
-    })
+    EmailRecoveryActionSerializer.deserializeGetRequest(invocation.arguments.value).asEitherRequest
 
   override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailRecoveryActionGetRequest): Publisher[InvocationWithContext] =
     request.validateProperties

@@ -270,7 +270,7 @@ trait LinagoraFilterGetMethodContract {
          |    "error",
          |      {
          |        "type": "invalidArguments",
-         |        "description": "{\\"errors\\":[{\\"path\\":\\"obj.accountId\\",\\"messages\\":[\\"error.expected.jsstring\\"]}]}"
+         |        "description": "'/accountId' property is not valid: error.expected.jsstring"
          |      },
          |    "c1"]]
          |}""".stripMargin)

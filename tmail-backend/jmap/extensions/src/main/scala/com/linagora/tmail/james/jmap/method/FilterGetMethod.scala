@@ -11,14 +11,13 @@ import org.apache.james.jmap.api.filtering.FilteringManagement
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, UrlPrefixes}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.MailboxId
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
-import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
+import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.SMono
 
 import javax.inject.Inject
@@ -73,10 +72,8 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
 
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, FilterGetRequest] =
-    FilterSerializer(mailboxIdFactory).deserializeFilterGetRequest(invocation.arguments.value) match {
-      case JsSuccess(filterGetRequest, _) => Right(filterGetRequest)
-      case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
-    }
+    FilterSerializer(mailboxIdFactory).deserializeFilterGetRequest(invocation.arguments.value)
+      .asEitherRequest
 
   private def retrieveFiltersWithVersion(username: Username) : SMono[FilterWithVersion] =
     SMono.fromPublisher(filteringManagement.listRulesForUser(username))

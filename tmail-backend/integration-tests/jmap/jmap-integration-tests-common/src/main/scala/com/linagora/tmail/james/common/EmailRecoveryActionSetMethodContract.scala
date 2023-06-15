@@ -1900,7 +1900,7 @@ trait EmailRecoveryActionSetMethodContract {
            |		"notUpdated": {
            |			"$taskId": {
            |				"type": "invalidArguments",
-           |				"description": "Can not deserialize update request. Missing '/status' property"
+           |				"description": "Missing '/status' property"
            |			}
            |		}
            |	},

@@ -7,20 +7,19 @@ import com.linagora.tmail.james.jmap.json.ContactSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT
 import com.linagora.tmail.james.jmap.model.{Contact, ContactAutocompleteRequest, ContactAutocompleteResponse, ContactFirstname, ContactId, ContactSurname}
 import eu.timepit.refined.auto._
-
-import javax.inject.Inject
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, Limit, SessionTranslator, UrlPrefixes}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
-import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
+import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+import javax.inject.Inject
 
 case object ContactCapabilityProperties extends CapabilityProperties {
   override def jsonify(): JsObject = Json.obj()
@@ -65,10 +64,7 @@ class ContactAutocompleteMethod @Inject()(serializer: ContactSerializer,
       .map(invocationResult => InvocationWithContext(invocationResult, invocation.processingContext))
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, ContactAutocompleteRequest] =
-    serializer.deserialize(invocation.arguments.value) match {
-      case JsSuccess(contactAutocompleteRequest, _) => Right(contactAutocompleteRequest)
-      case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
-    }
+    serializer.deserialize(invocation.arguments.value).asEitherRequest
 
   private def processRequest(mailboxSession: MailboxSession,
                              invocation: Invocation,
