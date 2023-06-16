@@ -39,10 +39,10 @@ import org.apache.james.modules.protocols.SmtpGuiceProbe;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.SMTPMessageSender;
-import org.apache.james.utils.SpoolerProbe;
 import org.apache.james.utils.TestIMAPClient;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -174,55 +174,49 @@ class EncryptedMemoryServerTest implements JamesServerConcreteContract, JmapJame
             .sendMessageWithHeaders(ALICE.asString(), teamMailbox.asMailAddress().asString(), "subject: test\r\n\r\nencrypt-me-123\r\n.\r\n");
         smtpMessageSender.close();
 
-        awaitAtMostOneMinute.until(() -> jamesServer.getProbe(SpoolerProbe.class).processingFinished());
+        awaitAtMostOneMinute.untilAsserted(() -> {
+            List<String> emailIds = given(buildJmapRequestSpecification(BOB, BOB_PASSWORD, jamesServer))
+                .body("{" +
+                    "  \"using\": [" +
+                    "    \"urn:ietf:params:jmap:core\"," +
+                    "    \"urn:ietf:params:jmap:mail\"," +
+                    "    \"urn:apache:james:params:jmap:mail:shares\"]," +
+                    "  \"methodCalls\": [[\"Email/query\", {" +
+                    "      \"accountId\": \"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6\"," +
+                    "      \"filter\": {}" +
+                    "    }, \"c1\"]]" +
+                    "}")
+                .post()
+            .then()
+                .statusCode(SC_OK)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .get("methodResponses[0][1].ids");
 
-        List<String> emailIds = given(buildJmapRequestSpecification(BOB, BOB_PASSWORD, jamesServer))
-            .body("{" +
-                "  \"using\": [" +
-                "    \"urn:ietf:params:jmap:core\"," +
-                "    \"urn:ietf:params:jmap:mail\"," +
-                "    \"urn:apache:james:params:jmap:mail:shares\"]," +
-                "  \"methodCalls\": [[\"Email/query\", {" +
-                "      \"accountId\": \"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6\"," +
-                "      \"filter\": {}" +
-                "    }, \"c1\"]]" +
-                "}")
-            .post()
-        .then()
-            .statusCode(SC_OK)
-            .contentType(JSON)
-            .extract()
-            .body()
-            .jsonPath()
-            .get("methodResponses[0][1].ids");
+            assertThat(emailIds)
+                .hasSize(1);
 
-        assertThat(emailIds)
-            .hasSize(1);
-
-        String emailContent = given(buildJmapRequestSpecification(BOB, BOB_PASSWORD, jamesServer))
-            .body(String.format("{" +
-                "  \"using\": [" +
-                "    \"urn:ietf:params:jmap:core\"," +
-                "    \"urn:ietf:params:jmap:mail\"," +
-                "    \"urn:apache:james:params:jmap:mail:shares\"]," +
-                "  \"methodCalls\": [[\"Email/get\", {" +
-                "      \"accountId\": \"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6\"," +
-                "      \"ids\": [\"%s\"]," +
-                "      \"fetchAllBodyValues\": true" +
-                "    }, \"c1\"]]" +
-                "}", emailIds.get(0)))
-        .when()
-            .post()
-        .then()
-            .statusCode(SC_OK)
-            .contentType(JSON)
-            .extract()
-            .body()
-            .jsonPath()
-            .get("methodResponses[0][1].list[0].bodyValues.(\"1\").value");
-
-        assertThat(emailContent)
-            .contains("encrypt-me-123");
+            given(buildJmapRequestSpecification(BOB, BOB_PASSWORD, jamesServer))
+                .body(String.format("{" +
+                    "  \"using\": [" +
+                    "    \"urn:ietf:params:jmap:core\"," +
+                    "    \"urn:ietf:params:jmap:mail\"," +
+                    "    \"urn:apache:james:params:jmap:mail:shares\"]," +
+                    "  \"methodCalls\": [[\"Email/get\", {" +
+                    "      \"accountId\": \"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6\"," +
+                    "      \"ids\": [\"%s\"]," +
+                    "      \"fetchAllBodyValues\": true" +
+                    "    }, \"c1\"]]" +
+                    "}", emailIds.get(0)))
+            .when()
+                .post()
+            .then()
+                .statusCode(SC_OK)
+                .contentType(JSON)
+                .body("methodResponses[0][1].list[0].bodyValues.(\"1\").value", Matchers.containsString("encrypt-me-123"));
+        });
     }
 
     @Test
@@ -282,53 +276,50 @@ class EncryptedMemoryServerTest implements JamesServerConcreteContract, JmapJame
             .statusCode(SC_OK);
 
         // andre query email from team mailbox
-        List<String> emailIds = given(buildJmapRequestSpecification(ANDRE(), ANDRE_PASSWORD(), jamesServer))
-            .body("{" +
-                "  \"using\": [" +
-                "    \"urn:ietf:params:jmap:core\"," +
-                "    \"urn:ietf:params:jmap:mail\"," +
-                "    \"urn:apache:james:params:jmap:mail:shares\"]," +
-                "  \"methodCalls\": [[\"Email/query\", {" +
-                "      \"accountId\": \"1e8584548eca20f26faf6becc1704a0f352839f12c208a47fbd486d60f491f7c\"," +
-                "      \"filter\": {}" +
-                "    }, \"c1\"]]" +
-                "}")
-            .post()
-        .then()
-            .statusCode(SC_OK)
-            .contentType(JSON)
-            .extract()
-            .body()
-            .jsonPath()
-            .get("methodResponses[0][1].ids");
+        awaitAtMostOneMinute.untilAsserted(() -> {
+            List<String> emailIds = given(buildJmapRequestSpecification(ANDRE(), ANDRE_PASSWORD(), jamesServer))
+                .body("{" +
+                    "  \"using\": [" +
+                    "    \"urn:ietf:params:jmap:core\"," +
+                    "    \"urn:ietf:params:jmap:mail\"," +
+                    "    \"urn:apache:james:params:jmap:mail:shares\"]," +
+                    "  \"methodCalls\": [[\"Email/query\", {" +
+                    "      \"accountId\": \"1e8584548eca20f26faf6becc1704a0f352839f12c208a47fbd486d60f491f7c\"," +
+                    "      \"filter\": {}" +
+                    "    }, \"c1\"]]" +
+                    "}")
+                .post()
+            .then()
+                .statusCode(SC_OK)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .get("methodResponses[0][1].ids");
 
-        assertThat(emailIds)
-            .hasSize(1);
+            assertThat(emailIds)
+                .hasSize(1);
 
-        String emailContent = given(buildJmapRequestSpecification(ANDRE(), ANDRE_PASSWORD(), jamesServer))
-            .body(String.format("{" +
-                "  \"using\": [" +
-                "    \"urn:ietf:params:jmap:core\"," +
-                "    \"urn:ietf:params:jmap:mail\"," +
-                "    \"urn:apache:james:params:jmap:mail:shares\"]," +
-                "  \"methodCalls\": [[\"Email/get\", {" +
-                "      \"accountId\": \"1e8584548eca20f26faf6becc1704a0f352839f12c208a47fbd486d60f491f7c\"," +
-                "      \"ids\": [\"%s\"]," +
-                "      \"fetchAllBodyValues\": true" +
-                "    }, \"c1\"]]" +
-                "}", emailIds.get(0)))
-        .when()
-            .post()
-        .then()
-            .statusCode(SC_OK)
-            .contentType(JSON)
-            .extract()
-            .body()
-            .jsonPath()
-            .get("methodResponses[0][1].list[0].bodyValues.(\"2\").value");
+            given(buildJmapRequestSpecification(ANDRE(), ANDRE_PASSWORD(), jamesServer))
+                .body(String.format("{" +
+                    "  \"using\": [" +
+                    "    \"urn:ietf:params:jmap:core\"," +
+                    "    \"urn:ietf:params:jmap:mail\"," +
+                    "    \"urn:apache:james:params:jmap:mail:shares\"]," +
+                    "  \"methodCalls\": [[\"Email/get\", {" +
+                    "      \"accountId\": \"1e8584548eca20f26faf6becc1704a0f352839f12c208a47fbd486d60f491f7c\"," +
+                    "      \"ids\": [\"%s\"]," +
+                    "      \"fetchAllBodyValues\": true" +
+                    "    }, \"c1\"]]" +
+                    "}", emailIds.get(0)))
+            .when()
+                .post()
+            .then()
+                .statusCode(SC_OK)
+                .contentType(JSON)
+                .body("methodResponses[0][1].list[0].bodyValues.(\"2\").value", Matchers.containsString("Let me tell you all about it. What we do is"));
 
-        assertThat(emailContent)
-            .contains("Let me tell you all about it. What we do is");
+        });
     }
 
     private RequestSpecification buildJmapRequestSpecification(Username username, String password, GuiceJamesServer jamesServer) {
