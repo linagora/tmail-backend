@@ -15,7 +15,7 @@ interface JamesServerConcreteContract extends JamesServerContract {
 
     @Override
     default int imapsPort(GuiceJamesServer server) {
-        return server.getProbe(ImapGuiceProbe.class).getImapStartTLSPort();
+        return server.getProbe(ImapGuiceProbe.class).getImapsPort();
     }
 
     @Override

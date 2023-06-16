@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.UUID;
 
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
@@ -22,8 +21,6 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.startupcheck.MinimumDurationRunningStartupCheckStrategy;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
 
@@ -58,10 +55,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withEnv("LDAP_DOMAIN", "james.org")
             .withEnv("LDAP_ADMIN_PASSWORD", "secret")
             .withCommand("--copy-service --loglevel debug")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-openldap-testing" + UUID.randomUUID()))
-            .waitingFor(new LogMessageWaitStrategy().withRegEx(".*slapd starting\\n").withTimes(1)
-                .withStartupTimeout(Duration.ofMinutes(3)))
-            .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(10)));
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-openldap-testing" + UUID.randomUUID()));
     }
 
     @SuppressWarnings("resource")
