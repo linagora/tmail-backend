@@ -4,6 +4,7 @@ import com.linagora.tmail.james.jmap.json.LabelSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{LabelSetRequest, LabelSetResponse}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{ClientId, Id, Invocation, ServerId, SessionTranslator, UuidState}
@@ -16,9 +17,8 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.SMono
 
-import javax.inject.Inject
-
 class LabelSetMethod @Inject() (createPerformer: LabelSetCreatePerformer,
+                                val updatePerformer: LabelSetUpdatePerformer,
                                 val deletePerformer: LabelSetDeletePerformer,
                                 val metricFactory: MetricFactory,
                                 val sessionTranslator: SessionTranslator,
@@ -30,6 +30,7 @@ class LabelSetMethod @Inject() (createPerformer: LabelSetCreatePerformer,
     for {
       oldState <- retrieveState()
       created <- createPerformer.createLabels(mailboxSession, request)
+      updated <- updatePerformer.update(request, mailboxSession.getUser)
       destroyed <- deletePerformer.deleteLabels(request, mailboxSession)
       newState <- retrieveState()
     } yield InvocationWithContext(
@@ -41,6 +42,8 @@ class LabelSetMethod @Inject() (createPerformer: LabelSetCreatePerformer,
           newState = newState,
           created = Some(created.retrieveCreated).filter(_.nonEmpty),
           notCreated = Some(created.retrieveErrors).filter(_.nonEmpty),
+          updated = Some(updated.updated).filter(_.nonEmpty),
+          notUpdated = Some(updated.notUpdated).filter(_.nonEmpty),
           destroyed = Some(destroyed.destroyed).filter(_.nonEmpty),
           notDestroyed = Some(destroyed.retrieveErrors).filter(_.nonEmpty))).as[JsObject]),
         methodCallId = invocation.invocation.methodCallId),

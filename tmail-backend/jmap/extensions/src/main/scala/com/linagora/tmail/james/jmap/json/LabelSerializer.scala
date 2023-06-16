@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationId, LabelCreationRequest, LabelCreationResponse, LabelGetRequest, LabelGetResponse, LabelId, LabelIds, LabelSetRequest, LabelSetResponse, UnparsedLabelId}
+import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationId, LabelCreationRequest, LabelCreationResponse, LabelGetRequest, LabelGetResponse, LabelId, LabelIds, LabelPatchObject, LabelSetRequest, LabelSetResponse, LabelUpdateResponse, UnparsedLabelId}
 import org.apache.james.jmap.core.{Properties, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.Keyword
@@ -8,7 +8,8 @@ import play.api.libs.json.{Format, JsArray, JsError, JsObject, JsResult, JsStrin
 
 object LabelSerializer {
   private implicit val labelIdFormat: Format[LabelId] = Json.valueFormat[LabelId]
-  private implicit val unparsedLabelIdFormat: Format[UnparsedLabelId] = Json.valueFormat[UnparsedLabelId]
+  private implicit val unparsedLabelIdReads: Reads[UnparsedLabelId] = Json.valueReads[UnparsedLabelId]
+  private implicit val unparsedLabelIdWrites: Writes[UnparsedLabelId] = Json.valueWrites[UnparsedLabelId]
 
   private implicit val labelIdsReads: Reads[LabelIds] = Json.valueReads[LabelIds]
   private implicit val labelGetRequestReads: Reads[LabelGetRequest] = Json.reads[LabelGetRequest]
@@ -40,7 +41,20 @@ object LabelSerializer {
   private implicit val labelMapCreationResponseWrites: Writes[Map[LabelCreationId, LabelCreationResponse]] =
     mapWrites[LabelCreationId, LabelCreationResponse](_.id.value, labelCreationResponseWrites)
 
+  private implicit val labelUpdateResponseWrites: Writes[LabelUpdateResponse] = Json.valueWrites[LabelUpdateResponse]
+
+  private implicit val patchObject: Reads[LabelPatchObject] = Json.valueReads[LabelPatchObject]
+
+  private implicit val labelMapUpdateRequestReads: Reads[Map[UnparsedLabelId, LabelPatchObject]] =
+    Reads.mapReads[UnparsedLabelId, LabelPatchObject] { string => unparsedLabelIdReads.reads(JsString(string)) }
+
   implicit val labelCreationRequest: Reads[LabelCreationRequest] = Json.reads[LabelCreationRequest]
+
+  private implicit val labelMapUpdateResponseWrites: Writes[Map[LabelId, LabelUpdateResponse]] =
+    mapWrites[LabelId, LabelUpdateResponse](_.id.value, labelUpdateResponseWrites)
+
+  private implicit val mapSetErrorForUpdateWrites: Writes[Map[UnparsedLabelId, SetError]] =
+    mapWrites[UnparsedLabelId, SetError](_.id.value, setErrorWrites)
 
   private implicit val labelSetResponseWrites: Writes[LabelSetResponse] = Json.writes[LabelSetResponse]
 

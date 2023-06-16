@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.LabelSetMethodContract.{LABEL_COLOR, LABEL_NAME}
+import com.linagora.tmail.james.common.LabelSetMethodContract.{LABEL_COLOR, LABEL_NAME, LABEL_NEW_COLOR, LABEL_NEW_NAME}
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
 import com.linagora.tmail.james.jmap.model.{Label, LabelId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -23,7 +23,9 @@ import org.junit.jupiter.api.{BeforeEach, Test}
 
 object LabelSetMethodContract {
   private val LABEL_NAME = "Important"
+  private val LABEL_NEW_NAME = "New Important"
   private val LABEL_COLOR = "#00ccdd"
+  private val LABEL_NEW_COLOR = "#00ccff"
 }
 
 trait LabelSetMethodContract {
@@ -645,7 +647,7 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetDestroyShouldSucceed(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = "Label1")
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = "Label1", color = LABEL_COLOR)
 
     val request =
       s"""{
@@ -766,7 +768,7 @@ trait LabelSetMethodContract {
   @Test
   def labelSetDestroyShouldSupportDelegationWhenDelegatedUser(server: GuiceJamesServer): Unit = {
     val bobAccountId = ACCOUNT_ID
-    val bobLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1")
+    val bobLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1", color = LABEL_COLOR)
 
     server.getProbe(classOf[DelegationProbe])
       .addAuthorizedUser(BOB, ANDRE)
@@ -820,7 +822,7 @@ trait LabelSetMethodContract {
   @Test
   def labelSetDestroyShouldNotSupportDelegationWhenNotDelegatedUser(server: GuiceJamesServer): Unit = {
     val bobAccountId = ACCOUNT_ID
-    val bobLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1")
+    val bobLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1", color = LABEL_COLOR)
 
     val request =
       s"""{
@@ -861,22 +863,556 @@ trait LabelSetMethodContract {
       .hasSize(1)
   }
 
-  private def createLabel(accountId: String, displayName: String): String = {
+  @Test
+  def labelSetUpdateShouldFailWhenWrongProperties(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"4f29": {
+         |						"wrongProperties": "Warning"
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"notUpdated": {
+           |					"4f29": {
+           |						"type": "invalidArguments",
+           |						"description": "Some unknown properties were specified",
+           |						"properties": ["wrongProperties"]
+           |					}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetUpdateShouldSucceedWhenValidDisplayName(server: GuiceJamesServer): Unit = {
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR)
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"$createdLabelId": {
+         |						"displayName": "$LABEL_NEW_NAME"
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"updated": {
+           |					"$createdLabelId": {}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+
+    SoftAssertions.assertSoftly(softly => {
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NEW_NAME)
+      softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_COLOR)
+    })
+  }
+
+  @Test
+  def labelSetUpdateShouldFailWhenInvalidDisplayName(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"4c29": {
+         |						"displayName": 100
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"notUpdated": {
+           |					"4c29": {
+           |						"type": "invalidArguments",
+           |						"description": "Expecting a JSON string as an argument",
+           |						"properties": ["displayName"]
+           |					}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetUpdateShouldSucceedWhenValidColor(server: GuiceJamesServer): Unit = {
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR)
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"$createdLabelId": {
+         |						"color": "$LABEL_NEW_COLOR"
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"updated": {
+           |					"$createdLabelId": {}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+
+    SoftAssertions.assertSoftly(softly => {
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
+      softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_NEW_COLOR)
+    })
+  }
+
+  @Test
+  def labelSetUpdateShouldFailWhenColorIsANumber(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"4c29": {
+         |						"color": 100
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"notUpdated": {
+           |					"4c29": {
+           |						"type": "invalidArguments",
+           |						"description": "Expecting a JSON string as an argument",
+           |						"properties": ["color"]
+           |					}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetUpdateShouldFailWhenColorColorWrongPattern(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"4c29": {
+         |						"color": "#not_a_color"
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"notUpdated": {
+           |					"4c29": {
+           |						"type": "invalidArguments",
+           |						"description": "The string should be a valid hexadecimal color value following this pattern #[a-fA-F0-9]{6}",
+           |						"properties": ["color"]
+           |					}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetUpdateShouldSucceedWhenUpdateBothDisplayNameAndColor(server: GuiceJamesServer): Unit = {
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR)
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"$createdLabelId": {
+         |						"displayName": "$LABEL_NEW_NAME",
+         |						"color": "$LABEL_NEW_COLOR"
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"updated": {
+           |					"$createdLabelId": {}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+
+    SoftAssertions.assertSoftly(softly => {
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NEW_NAME)
+      softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_NEW_COLOR)
+    })
+  }
+
+  @Test
+  def labelSetUpdateShouldReturnNotFoundWhenNonExistingLabel(): Unit = {
+    val randomLabelId: String = LabelId.generate().id.value
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"$randomLabelId": {
+         |						"displayName": "$LABEL_NEW_NAME",
+         |						"color": "$LABEL_NEW_COLOR"
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"notUpdated": {
+           |					"$randomLabelId": {
+           |						"type": "notFound",
+           |						"description": null
+           |					}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetUpdateShouldSucceedWhenMixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
+    val randomLabelId: String = LabelId.generate().id.value
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR)
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"$createdLabelId": {
+         |						"displayName": "$LABEL_NEW_NAME",
+         |						"color": "$LABEL_NEW_COLOR"
+         |					},
+         |					"$randomLabelId": {
+         |						"displayName": "$LABEL_NEW_NAME",
+         |						"color": "$LABEL_NEW_COLOR"
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"updated": {
+           |					"$createdLabelId": {}
+           |				},
+           |				"notUpdated": {
+           |					"$randomLabelId": {
+           |						"type": "notFound",
+           |						"description": null
+           |					}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+
+    SoftAssertions.assertSoftly(softly => {
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NEW_NAME)
+      softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_NEW_COLOR)
+    })
+  }
+
+  @Test
+  def labelSetUpdateShouldNoopWhenEmptyPatchObject(server: GuiceJamesServer): Unit = {
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR)
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"$createdLabelId": {}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"updated": {
+           |					"$createdLabelId": {}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+
+    SoftAssertions.assertSoftly(softly => {
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
+      softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_COLOR)
+    })
+  }
+
+  private def createLabel(accountId: String, displayName: String, color: String): String = {
     `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
         s"""{
-           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
-           |  "methodCalls": [
-           |    ["Label/set", {
-           |      "accountId": "$accountId",
-           |      "create": {
-           |        "L13": {
-           |          "displayName": "$displayName"
-           |        }
-           |      }
-           |    }, "c1"]
-           |  ]
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+           |	"methodCalls": [
+           |		["Label/set", {
+           |			"accountId": "$accountId",
+           |			"create": {
+           |				"L13": {
+           |					"displayName": "$displayName",
+           |					"color": "$color"
+           |				}
+           |			}
+           |		}, "c1"]
+           |	]
            |}""".stripMargin)
     .when()
       .post()
