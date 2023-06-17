@@ -332,7 +332,7 @@ trait FirebaseSubscriptionSetMethodContract {
          |                "notCreated": {
          |                    "4f29": {
          |                        "type": "invalidArguments",
-         |                        "description": "Missing '/token' property in FirebaseSubscription object"
+         |                        "description": "Missing '/token' property"
          |                    }
          |                }
          |            },
@@ -382,7 +382,7 @@ trait FirebaseSubscriptionSetMethodContract {
          |                "notCreated": {
          |                    "4f29": {
          |                        "type": "invalidArguments",
-         |                        "description": "Missing '/deviceClientId' property in FirebaseSubscription object"
+         |                        "description": "Missing '/deviceClientId' property"
          |                    }
          |                }
          |            },
@@ -432,7 +432,7 @@ trait FirebaseSubscriptionSetMethodContract {
          |                "notCreated": {
          |                    "4f29": {
          |                        "type": "invalidArguments",
-         |                        "description": "Missing '/types' property in FirebaseSubscription object"
+         |                        "description": "Missing '/types' property"
          |                    }
          |                }
          |            },

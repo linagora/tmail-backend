@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.model
 
 import cats.implicits.toTraverseOps
 import com.linagora.tmail.james.jmap.json.EmailSendSerializer
+import com.linagora.tmail.james.jmap.method.standardError
 import com.linagora.tmail.james.jmap.model.EmailSendCreationRequestRaw.{emailCreateAssignableProperties, emailSubmissionAssignableProperties}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.refineV
@@ -101,15 +102,8 @@ case class EmailSendRequest(accountId: AccountId,
 }
 
 object EmailSendCreationRequestInvalidException {
-  def parse(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): EmailSendCreationRequestInvalidException = {
-    val setError: SetError = errors.head match {
-      case (path, Seq()) => SetError.invalidArguments(SetErrorDescription(s"'$path' property in EmailSend object is not valid"))
-      case (path, Seq(JsonValidationError(Seq("error.path.missing")))) => SetError.invalidArguments(SetErrorDescription(s"Missing '$path' property in EmailSend object"))
-      case (path, Seq(JsonValidationError(Seq(message)))) => SetError.invalidArguments(SetErrorDescription(s"'$path' property in EmailSend object is not valid: $message"))
-      case (path, _) => SetError.invalidArguments(SetErrorDescription(s"Unknown error on property '$path'"))
-    }
-    EmailSendCreationRequestInvalidException(setError)
-  }
+  def parse(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): EmailSendCreationRequestInvalidException =
+    EmailSendCreationRequestInvalidException(standardError(errors))
 }
 
 case class EmailSendCreationRequestInvalidException(error: SetError) extends Exception

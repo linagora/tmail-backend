@@ -6,20 +6,18 @@ import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{KeystoreSetRequest, KeystoreSetResponse}
 import eu.timepit.refined.auto._
-
-import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{AccountId, Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, SessionTranslator, SetError, UrlPrefixes}
 import org.apache.james.jmap.delegation.ForbiddenAccountManagementException
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
-import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
+import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.SMono
 
+import javax.inject.Inject
 import scala.jdk.OptionConverters._
 
 case object KeystoreCapabilityProperties extends CapabilityProperties {
@@ -97,8 +95,5 @@ class KeystoreSetMethod @Inject()(serializer: KeystoreSerializer,
   }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, KeystoreSetRequest] =
-    serializer.deserializeKeystoreSetRequest(invocation.arguments.value) match {
-      case JsSuccess(keystoreSetRequest, _) => Right(keystoreSetRequest)
-      case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
-    }
+    serializer.deserializeKeystoreSetRequest(invocation.arguments.value).asEitherRequest
 }

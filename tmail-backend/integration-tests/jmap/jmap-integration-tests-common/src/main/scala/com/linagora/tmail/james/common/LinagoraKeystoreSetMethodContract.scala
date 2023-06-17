@@ -241,7 +241,7 @@ trait LinagoraKeystoreSetMethodContract {
            |      "notCreated": {
            |        "K87": {
            |          "type": "invalidArguments",
-           |          "description": "Missing '/key' property in Keystore object"
+           |          "description": "Missing '/key' property"
            |        }
            |      }
            |    }, "c1"]

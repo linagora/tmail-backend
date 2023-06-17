@@ -7,14 +7,11 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWAR
 import com.linagora.tmail.james.jmap.model.Forwards.UNPARSED_SINGLETON
 import com.linagora.tmail.james.jmap.model.{ForwardGetRequest, ForwardGetResponse, ForwardNotFound, Forwards, UnparsedForwardId}
 import eu.timepit.refined.auto._
-
-import javax.inject.Inject
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodCallId, MethodName}
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.core.{AccountId, Capability, CapabilityFactory, CapabilityProperties, ErrorCode, Invocation, MissingCapabilityException, Properties, SessionTranslator, UrlPrefixes}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
@@ -22,9 +19,10 @@ import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.rrt.api.RecipientRewriteTable
 import org.apache.james.rrt.lib.{Mapping, MappingSource}
 import org.apache.james.util.ReactorUtils
-import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
+import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import javax.inject.Inject
 import scala.jdk.StreamConverters._
 
 case object ForwardCapabilityProperties extends CapabilityProperties {
@@ -102,10 +100,7 @@ class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
   }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, ForwardGetRequest] =
-    ForwardSerializer.deserializeForwardGetRequest(invocation.arguments.value) match {
-      case JsSuccess(forwardGetRequest, _) => Right(forwardGetRequest)
-      case errors: JsError => Left(new IllegalArgumentException(ResponseSerializer.serialize(errors).toString))
-    }
+    ForwardSerializer.deserializeForwardGetRequest(invocation.arguments.value).asEitherRequest
 
   private def handleRequestValidationErrors(exception: Exception, methodCallId: MethodCallId): SMono[Invocation] = exception match {
     case _: MissingCapabilityException => SMono.just(Invocation.error(ErrorCode.UnknownMethod, methodCallId))

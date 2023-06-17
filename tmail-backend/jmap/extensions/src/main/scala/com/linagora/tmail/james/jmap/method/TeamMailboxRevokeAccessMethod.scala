@@ -6,20 +6,19 @@ import com.linagora.tmail.james.jmap.method.TeamMailboxRevokeAccessMethod.{TeamM
 import com.linagora.tmail.james.jmap.model.{TeamMailboxRevokeAccessRequest, TeamMailboxRevokeAccessResponse, UnparsedTeamMailbox}
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxNotFoundException, TeamMailboxRepository}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Invocation, SessionTranslator, SetError}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.lifecycle.api.Startable
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
-import play.api.libs.json.JsError
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+import javax.inject.Inject
 
 object TeamMailboxRevokeAccessMethod {
   sealed trait TeamMailboxRevokeAccessResult
@@ -56,9 +55,7 @@ class TeamMailboxRevokeAccessMethod @Inject()(val teamMailboxRepository: TeamMai
   override val methodName: MethodName = MethodName("TeamMailbox/revokeAccess")
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, TeamMailboxRevokeAccessRequest] =
-    TeamMailboxRevokeAccessSerializer.deserialize(invocation.arguments.value).asEither
-      .left
-      .map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
+    TeamMailboxRevokeAccessSerializer.deserialize(invocation.arguments.value).asEitherRequest
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: TeamMailboxRevokeAccessRequest): Publisher[InvocationWithContext] = {
     DelegatedAccountPrecondition.acceptOnlyOwnerRequest(mailboxSession, request.accountId)
