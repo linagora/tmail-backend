@@ -2,7 +2,7 @@ package com.linagora.tmail.james.common
 
 import com.linagora.tmail.james.common.LabelSetMethodContract.{LABEL_COLOR, LABEL_NAME}
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
-import com.linagora.tmail.james.jmap.model.Label
+import com.linagora.tmail.james.jmap.model.{Label, LabelId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -16,7 +16,9 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.DataProbeImpl
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions
+import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 object LabelSetMethodContract {
@@ -639,5 +641,251 @@ trait LabelSetMethodContract {
            |    }, "c1"]
            |  ]
            |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetDestroyShouldSucceed(server: GuiceJamesServer): Unit = {
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = "Label1")
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [
+         |		["Label/set", {
+         |			"accountId": "$ACCOUNT_ID",
+         |			"destroy": ["$createdLabelId"]
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |			"Label/set",
+           |			{
+           |				"accountId": "$ACCOUNT_ID",
+           |				"destroyed": ["$createdLabelId"]
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+
+    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB))
+      .isEmpty()
+  }
+
+  @Test
+  def labelSetDestroyShouldFailWhenInvalidId(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [
+         |		["Label/set", {
+         |			"accountId": "$ACCOUNT_ID",
+         |			"destroy": ["@invalidId"]
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].type", Matchers.is("invalidArguments"))
+      .body("methodResponses[0][1].description", Matchers.containsString("contains some invalid characters. Should be [#a-zA-Z0-9-_]"))
+  }
+
+  @Test
+  def labelSetDestroyShouldBeIdempotent(): Unit = {
+    val randomLabelId: String = LabelId.generate().id.value
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [
+         |		["Label/set", {
+         |			"accountId": "$ACCOUNT_ID",
+         |			"destroy": ["$randomLabelId"]
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |			"Label/set",
+           |			{
+           |				"accountId": "$ACCOUNT_ID",
+           |				"destroyed": ["$randomLabelId"]
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetDestroyShouldSupportDelegationWhenDelegatedUser(server: GuiceJamesServer): Unit = {
+    val bobAccountId = ACCOUNT_ID
+    val bobLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1")
+
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [
+         |		["Label/set", {
+         |			"accountId": "$ACCOUNT_ID",
+         |			"destroy": ["$bobLabelId"]
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |			"Label/set",
+           |			{
+           |				"accountId": "$bobAccountId",
+           |				"destroyed": ["$bobLabelId"]
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+
+    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB))
+      .isEmpty()
+  }
+
+  @Test
+  def labelSetDestroyShouldNotSupportDelegationWhenNotDelegatedUser(server: GuiceJamesServer): Unit = {
+    val bobAccountId = ACCOUNT_ID
+    val bobLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1")
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [
+         |		["Label/set", {
+         |			"accountId": "$ACCOUNT_ID",
+         |			"destroy": ["$bobLabelId"]
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [
+         |    ["error", {
+         |      "type": "accountNotFound"
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin)
+
+    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB))
+      .hasSize(1)
+  }
+
+  private def createLabel(accountId: String, displayName: String): String = {
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+           |  "methodCalls": [
+           |    ["Label/set", {
+           |      "accountId": "$accountId",
+           |      "create": {
+           |        "L13": {
+           |          "displayName": "$displayName"
+           |        }
+           |      }
+           |    }, "c1"]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .jsonPath()
+      .get("methodResponses[0][1].created.L13.id")
+      .asInstanceOf[String]
   }
 }
