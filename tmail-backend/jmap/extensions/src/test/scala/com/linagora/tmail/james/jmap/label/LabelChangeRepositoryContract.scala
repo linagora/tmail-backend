@@ -55,11 +55,17 @@ trait LabelChangeRepositoryContract {
 
   @Test
   def getLatestStateShouldReturnLastPersistedState(): Unit = {
-    val labelChange: LabelChange = labelChangeFunc(stateFactory)
+    val labelChange1: LabelChange = labelChangeFunc(stateFactory)
+    SMono(testee.save(labelChange1)).block()
+
+    setClock(DATE.plusHours(1))
+
+    val labelChange2: LabelChange = labelChangeFunc(stateFactory)
+    SMono(testee.save(labelChange2)).block()
+
+    setClock(DATE.plusHours(2))
 
     val labelChangeLatest: LabelChange = labelChangeFunc(stateFactory)
-    SMono(testee.save(labelChange)).block()
-    setClock(DATE.plusHours(1))
     SMono(testee.save(labelChangeLatest)).block()
 
     assertThat(SMono(testee.getLatestState(ACCOUNT_ID)).block())
@@ -94,7 +100,7 @@ trait LabelChangeRepositoryContract {
   }
 
   @Test
-  def getChangesShouldLimitChanges(): Unit = {
+  def getChangesShouldReturnOnlyLimitedChangesAndTheOldestOnes(): Unit = {
     val labelId1: LabelId = LabelId.generate()
     val labelId2: LabelId = LabelId.generate()
     val labelId3: LabelId = LabelId.generate()
@@ -117,9 +123,9 @@ trait LabelChangeRepositoryContract {
     setClock(DATE.plusHours(3))
     SMono(testee.save(labelChange4)).block()
 
-    assertThat(SMono(testee.getSinceState(ACCOUNT_ID, labelChange.state, Some(Limit.of(3)))).block()
+    assertThat(SMono(testee.getSinceState(ACCOUNT_ID, labelChange.state, Some(Limit.of(2)))).block()
       .created.asJava)
-      .containsExactlyInAnyOrder(labelId2, labelId3, labelId4)
+      .containsExactlyInAnyOrder(labelId2, labelId3)
   }
 
   @Test
