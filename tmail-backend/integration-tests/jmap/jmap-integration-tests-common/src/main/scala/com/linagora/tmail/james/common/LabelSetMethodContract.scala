@@ -1122,7 +1122,7 @@ trait LabelSetMethodContract {
   }
 
   @Test
-  def labelSetUpdateShouldFailWhenColorColorWrongPattern(): Unit = {
+  def labelSetUpdateShouldFailWhenColorWrongPattern(): Unit = {
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
