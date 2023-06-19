@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.label
 
+import java.time.ZonedDateTime
+
 import com.linagora.tmail.james.jmap.label.LabelChangeRepositoryContract.{DATE, defaultLimit}
 import com.linagora.tmail.james.jmap.model.LabelId
 import org.apache.james.core.Username
@@ -12,7 +14,6 @@ import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.SMono
 
-import java.time.{Clock, Instant, ZonedDateTime}
 import scala.jdk.CollectionConverters._
 
 object LabelChangeRepositoryContract {
@@ -35,7 +36,7 @@ trait LabelChangeRepositoryContract {
 
   def testee: LabelChangeRepository
 
-  def stateFactory: State.Factory = State.Factory.DEFAULT
+  def stateFactory: State.Factory
 
   def setClock(newTime: ZonedDateTime)
 
@@ -351,6 +352,8 @@ class MemoryLabelChangeRepositoryTest extends LabelChangeRepositoryContract {
   var updatableTickingClock: UpdatableTickingClock = _
 
   override def testee: LabelChangeRepository = repository
+
+  override def stateFactory: State.Factory = State.Factory.DEFAULT
 
   override def setClock(newTime: ZonedDateTime): Unit = updatableTickingClock.setInstant(newTime.toInstant)
 

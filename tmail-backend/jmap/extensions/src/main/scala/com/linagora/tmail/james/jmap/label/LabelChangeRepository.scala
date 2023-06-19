@@ -1,15 +1,15 @@
 package com.linagora.tmail.james.jmap.label
 
+import java.time.{Clock, Instant}
+
 import com.google.common.collect.{HashBasedTable, Table, Tables}
 import com.linagora.tmail.james.jmap.model.LabelId
+import javax.inject.Named
 import org.apache.james.jmap.api.change.{JmapChange, Limit, State}
 import org.apache.james.jmap.api.exception.ChangeNotFoundException
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import java.time.{Clock, Instant}
-import javax.inject.Named
 
 trait LabelChangeRepository {
   def save(labelChange: LabelChange): Publisher[Void]
@@ -17,7 +17,6 @@ trait LabelChangeRepository {
   def getSinceState(accountId: AccountId, state: State, maxIdsToReturn: Option[Limit] = None): Publisher[LabelChanges]
 
   def getLatestState(accountId: AccountId): Publisher[State]
-
 }
 
 case class LabelChange(accountId: AccountId,
@@ -47,8 +46,8 @@ object LabelChanges {
       case true if change1.newState.equals(State.INITIAL) => change2
       case true =>
         val createdTemp: Set[LabelId] = (change1.created ++ change2.created).diff(change2.destroyed)
-        val updatedTemp: Set[LabelId] = (change1.updated ++ (change2.updated.diff(createdTemp))).diff(change2.destroyed)
-        val destroyedTemp: Set[LabelId] = change1.destroyed ++ (change2.destroyed.diff(change1.created))
+        val updatedTemp: Set[LabelId] = (change1.updated ++ change2.updated.diff(createdTemp)).diff(change2.destroyed)
+        val destroyedTemp: Set[LabelId] = change1.destroyed ++ change2.destroyed.diff(change1.created)
         if (createdTemp.size + updatedTemp.size + destroyedTemp.size > limit) {
           change1.copy(hasMoreChanges = true, canAppendMoreItem = false)
         } else {
