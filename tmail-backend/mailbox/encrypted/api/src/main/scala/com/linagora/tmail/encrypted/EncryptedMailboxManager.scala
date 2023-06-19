@@ -170,4 +170,10 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
 
   override def applyRightsCommandReactive(mailboxPath: MailboxPath, mailboxACLCommand: MailboxACL.ACLCommand, session: MailboxSession): Publisher[Void] =
     mailboxManager.applyRightsCommandReactive(mailboxPath, mailboxACLCommand, session)
+
+  override def listRightsReactive(mailboxPath: MailboxPath, session: MailboxSession): Publisher[MailboxACL] =
+    mailboxManager.listRightsReactive(mailboxPath, session)
+
+  override def listRightsReactive(mailboxId: MailboxId, session: MailboxSession): Publisher[MailboxACL] =
+    mailboxManager.listRightsReactive(mailboxId, session)
 }
