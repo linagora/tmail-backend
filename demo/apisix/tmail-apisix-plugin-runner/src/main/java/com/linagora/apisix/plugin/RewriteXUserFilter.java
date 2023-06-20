@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 
@@ -72,7 +73,12 @@ public class RewriteXUserFilter implements PluginFilter {
 
     public Optional<String> extractUserFromUserInfo(String userInfo) {
         try {
-            return Optional.of(json.readTree(Base64.getDecoder().decode(userInfo)).get(userInfoField).asText());
+            JsonNode jsonNode = json.readTree(Base64.getDecoder().decode(userInfo)).get(userInfoField);
+            if (jsonNode.isTextual()) {
+                return Optional.of(jsonNode.asText());
+            }
+            logger.warn("Wrong userinfo field userInfo {}", jsonNode.getClass());
+            return Optional.empty();
         } catch (IOException e) {
             logger.warn("Can not extract user from userInfo header", e);
             return Optional.empty();
