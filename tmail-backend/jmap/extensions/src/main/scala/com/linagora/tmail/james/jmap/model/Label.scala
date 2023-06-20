@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.util.UUID
+
 import com.linagora.tmail.james.jmap.method.LabelCreationParseException
 import eu.timepit.refined
 import eu.timepit.refined.auto._
@@ -13,8 +15,6 @@ import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UuidStat
 import org.apache.james.jmap.mail.Keyword
 import org.apache.james.jmap.method.WithAccountId
 import play.api.libs.json.JsObject
-
-import java.util.UUID
 
 object LabelId {
   def fromKeyword(keyword: Keyword): LabelId =
@@ -30,6 +30,8 @@ case class LabelId(id: Id) {
 
   def asUnparsedLabelId: UnparsedLabelId =
     UnparsedLabelId(id)
+
+  def serialize: String = id.value
 }
 
 object KeywordUtil {
