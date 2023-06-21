@@ -28,6 +28,7 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
+import com.linagora.tmail.james.common.module.JmapGuiceLabelModule;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -60,7 +61,8 @@ public class DistributedUserDeletionIntegrationTest extends UserDeletionIntegrat
             .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
-                .to(JmapGuiceContactAutocompleteProbe.class)))
+                .to(JmapGuiceContactAutocompleteProbe.class))
+            .overrideWith(new JmapGuiceLabelModule()))
         .build();
 
     private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();

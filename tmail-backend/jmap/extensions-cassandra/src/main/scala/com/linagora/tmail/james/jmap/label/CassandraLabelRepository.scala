@@ -7,7 +7,7 @@ import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.core.Username
 import org.apache.james.jmap.mail.Keyword
-import org.apache.james.user.api.UsernameChangeTaskStep
+import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -60,5 +60,9 @@ case class CassandraLabelRepositoryModule() extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
       .addBinding()
       .to(classOf[LabelUsernameChangeTaskStep])
+
+    Multibinder.newSetBinder(binder(), classOf[DeleteUserDataTaskStep])
+      .addBinding()
+      .to(classOf[LabelUserDeletionTaskStep])
   }
 }

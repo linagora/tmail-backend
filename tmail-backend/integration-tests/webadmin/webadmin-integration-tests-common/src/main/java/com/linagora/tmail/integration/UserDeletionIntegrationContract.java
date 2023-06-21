@@ -1,22 +1,3 @@
-/****************************************************************
- * Licensed to the Apache Software Foundation (ASF) under one   *
- * or more contributor license agreements.  See the NOTICE file *
- * distributed with this work for additional information        *
- * regarding copyright ownership.  The ASF licenses this file   *
- * to you under the Apache License, Version 2.0 (the            *
- * "License"); you may not use this file except in compliance   *
- * with the License.  You may obtain a copy of the License at   *
- *                                                              *
- *   http://www.apache.org/licenses/LICENSE-2.0                 *
- *                                                              *
- * Unless required by applicable law or agreed to in writing,   *
- * software distributed under the License is distributed on an  *
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
- * KIND, either express or implied.  See the License for the    *
- * specific language governing permissions and limitations      *
- * under the License.                                           *
- ****************************************************************/
-
 package com.linagora.tmail.integration;
 
 import static org.apache.james.jmap.JMAPTestingConstants.jmapRequestSpecBuilder;
@@ -41,10 +22,14 @@ import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
+import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
+import com.linagora.tmail.james.jmap.model.DisplayName;
+import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 
 import io.restassured.RestAssured;
 import io.restassured.specification.RequestSpecification;
+import scala.Option;
 
 public abstract class UserDeletionIntegrationContract {
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
@@ -117,6 +102,25 @@ public abstract class UserDeletionIntegrationContract {
             .body("additionalInformation.status.PGPKeysUserDeletionTaskStep", Matchers.is("DONE"));
 
         assertThat(keystoreManagerProbe.getKeyPayLoads(ALICE))
+            .isEmpty();
+    }
+
+    @Test
+    void shouldDeleteLabels(GuiceJamesServer server) {
+        JmapGuiceLabelProbe labelProbe = server.getProbe(JmapGuiceLabelProbe.class);
+        labelProbe.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Important"), Option.empty()));
+
+        String taskId = webAdminApi
+            .queryParam("action", "deleteData")
+            .post("/users/" + ALICE.asString())
+            .jsonPath()
+            .get("taskId");
+
+        webAdminApi.get("/tasks/" + taskId + "/await")
+            .then()
+            .body("additionalInformation.status.LabelUserDeletionTaskStep", Matchers.is("DONE"));
+
+        assertThat(labelProbe.listLabels(ALICE))
             .isEmpty();
     }
 }
