@@ -30,6 +30,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
+import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedUsernameChangeIntegrationTest extends UsernameChangeIntegrationContract {
@@ -66,7 +67,10 @@ public class DistributedUsernameChangeIntegrationTest extends UsernameChangeInte
                 .to(JmapGuiceKeystoreManagerProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
-                .to(RateLimitingProbe.class)))
+                .to(RateLimitingProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(JmapGuiceLabelProbe.class)))
         .build();
 
     private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();
