@@ -86,5 +86,8 @@ case class MemoryLabelRepositoryModule() extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[DeleteUserDataTaskStep])
       .addBinding()
       .to(classOf[LabelUserDeletionTaskStep])
+
+    bind(classOf[LabelChangeRepository]).to(classOf[MemoryLabelChangeRepository])
+    bind(classOf[MemoryLabelChangeRepository]).in(Scopes.SINGLETON)
   }
 }

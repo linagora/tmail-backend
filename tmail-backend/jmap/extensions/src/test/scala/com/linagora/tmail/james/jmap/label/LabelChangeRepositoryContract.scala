@@ -1,8 +1,9 @@
 package com.linagora.tmail.james.jmap.label
 
 import java.time.ZonedDateTime
+import java.util.stream.IntStream
 
-import com.linagora.tmail.james.jmap.label.LabelChangeRepositoryContract.{DATE, defaultLimit}
+import com.linagora.tmail.james.jmap.label.LabelChangeRepositoryContract.DATE
 import com.linagora.tmail.james.jmap.model.LabelId
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.{Limit, State}
@@ -26,8 +27,6 @@ object LabelChangeRepositoryContract {
     updated = Set(),
     destroyed = Set(),
     state = stateFactory.generate())
-
-  val defaultLimit: Limit = Limit.of(5)
 }
 
 trait LabelChangeRepositoryContract {
@@ -160,28 +159,21 @@ trait LabelChangeRepositoryContract {
   @Test
   def getChangesShouldLimitChangesWhenMaxChangesOmitted(): Unit = {
     val labelId1: LabelId = LabelId.generate()
-    val labelId2: LabelId = LabelId.generate()
-    val labelId3: LabelId = LabelId.generate()
-    val labelId4: LabelId = LabelId.generate()
-    val labelId5: LabelId = LabelId.generate()
-    val labelId6: LabelId = LabelId.generate()
-    val labelId7: LabelId = LabelId.generate()
-
     val reference: LabelChange = labelChangeFunc(stateFactory)
       .copy(created = Set(labelId1))
-    val labelChange1: LabelChange = labelChangeFunc(stateFactory)
-      .copy(created = Set(labelId2, labelId3, labelId4, labelId5, labelId6))
-    val labelChange2: LabelChange = labelChangeFunc(stateFactory)
-      .copy(created = Set(labelId7))
-    SMono(testee.save(reference)).block()
-    setClock(DATE.plusHours(1))
-    SMono(testee.save(labelChange1)).block()
-    setClock(DATE.plusHours(2))
-    SMono(testee.save(labelChange2)).block()
+      SMono(testee.save(reference)).block()
+
+    IntStream.range(0, 300)
+      .forEach(i => {
+        setClock(DATE.plusHours(i + 1))
+        val labelChange: LabelChange = labelChangeFunc(stateFactory)
+          .copy(created = Set(LabelId.generate()))
+        SMono(testee.save(labelChange)).block()
+      })
 
     assertThat(SMono(testee.getSinceState(ACCOUNT_ID, reference.state, None)).block()
-      .getAllChanges.asJava)
-      .hasSameElementsAs(labelChange1.created.asJava)
+      .getAllChanges.size)
+      .isEqualTo(256)
   }
 
   @Test
@@ -366,6 +358,6 @@ class MemoryLabelChangeRepositoryTest extends LabelChangeRepositoryContract {
   @BeforeEach
   def setup(): Unit = {
     updatableTickingClock = new UpdatableTickingClock(DATE.toInstant)
-    repository = MemoryLabelChangeRepository(defaultLimit, updatableTickingClock)
+    repository = MemoryLabelChangeRepository(updatableTickingClock)
   }
 }

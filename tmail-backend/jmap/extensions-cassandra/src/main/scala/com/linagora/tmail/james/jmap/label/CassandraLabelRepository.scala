@@ -51,6 +51,8 @@ case class CassandraLabelRepositoryModule() extends AbstractModule {
   override def configure(): Unit = {
     Multibinder.newSetBinder(binder, classOf[CassandraModule])
       .addBinding().toInstance(CassandraLabelTable.MODULE)
+    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+      .addBinding().toInstance(CassandraLabelChangeTable.MODULE)
 
     bind(classOf[CassandraLabelDAO]).in(Scopes.SINGLETON)
 
@@ -64,5 +66,8 @@ case class CassandraLabelRepositoryModule() extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[DeleteUserDataTaskStep])
       .addBinding()
       .to(classOf[LabelUserDeletionTaskStep])
+
+    bind(classOf[LabelChangeRepository]).to(classOf[CassandraLabelChangeRepository])
+    bind(classOf[CassandraLabelChangeRepository]).in(Scopes.SINGLETON)
   }
 }
