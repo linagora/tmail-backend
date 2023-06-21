@@ -349,7 +349,7 @@ trait LabelSetMethodContract {
            |      "notCreated": {
            |        "L13": {
            |          "type": "invalidArguments",
-           |          "description": "Missing '/displayName' property in Label object"
+           |          "description": "Missing '/displayName' property"
            |        }
            |      }
            |    }, "c1"]
@@ -637,7 +637,7 @@ trait LabelSetMethodContract {
            |      "notCreated": {
            |        "L13": {
            |          "type": "invalidArguments",
-           |          "description": "'/color' property in Label object is not valid: The string should be a valid hexadecimal color value following this pattern #[a-fA-F0-9]{6}"
+           |          "description": "'/color' property is not valid: The string should be a valid hexadecimal color value following this pattern #[a-fA-F0-9]{6}"
            |        }
            |      }
            |    }, "c1"]
