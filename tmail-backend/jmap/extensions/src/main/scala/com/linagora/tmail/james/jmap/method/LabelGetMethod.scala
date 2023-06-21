@@ -3,11 +3,13 @@ package com.linagora.tmail.james.jmap.method
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.LabelSerializer
-import com.linagora.tmail.james.jmap.label.LabelRepository
+import com.linagora.tmail.james.jmap.label.{LabelRepository, LabelTypeName}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{Label, LabelGetRequest, LabelGetResponse, LabelId, LabelIds}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.core.Username
+import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, UrlPrefixes, UuidState}
@@ -20,7 +22,6 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 case object LabelCapabilityFactory extends CapabilityFactory {
@@ -59,6 +60,10 @@ class LabelMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[LabelChangesMethod])
+
+    Multibinder.newSetBinder(binder(), classOf[TypeName])
+      .addBinding()
+      .toInstance(LabelTypeName)
   }
 }
 

@@ -1,11 +1,16 @@
 package com.linagora.tmail.james.common
 
+import java.util
+
+import com.linagora.tmail.james.common.LabelChangesMethodContract.firebasePushClient
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
-import com.linagora.tmail.james.jmap.label.LabelChange
+import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebasePushRequest}
+import com.linagora.tmail.james.jmap.label.{LabelChange, LabelTypeName}
 import com.linagora.tmail.james.jmap.model.LabelId
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
+import net.javacrumbs.jsonunit.JsonMatchers
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.internal.Options
@@ -19,9 +24,20 @@ import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HE
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.hamcrest.Matchers
 import org.hamcrest.Matchers.{hasItem, hasKey, hasSize}
 import org.junit.jupiter.api.{BeforeEach, Test}
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{mock, reset, times, verify, when}
+import reactor.core.publisher.Mono
+
+import scala.jdk.CollectionConverters._
+
+object LabelChangesMethodContract {
+  val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
+}
 
 trait LabelChangesMethodContract {
   @BeforeEach
@@ -36,6 +52,10 @@ trait LabelChangesMethodContract {
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
+
+    reset(firebasePushClient)
+    when(firebasePushClient.validateToken(any())).thenReturn(Mono.just(true))
+    when(firebasePushClient.push(any(classOf[FirebasePushRequest]))).thenReturn(Mono.empty)
   }
 
   def stateFactory(): State.Factory
@@ -611,6 +631,135 @@ trait LabelChangesMethodContract {
     assertThat(getNewState())
       .isEqualTo(stateAfterCreation)
   }
+
+  @Test
+  def shouldPushToFCMWhenChangeByCreationRequest(): Unit = {
+    registerFCMSubscribe()
+    createANewLabel()
+    val newState: String = getNewState()
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+      verify(firebasePushClient, times(1)).push(argumentCaptor.capture())
+      assertThat(argumentCaptor.getValue.stateChangesMap())
+        .isEqualTo(java.util.Map.of(s"$ACCOUNT_ID:${LabelTypeName.asString}", newState))
+    })
+  }
+
+  @Test
+  def shouldPushToFCMWhenChangeByUpdateRequest(): Unit = {
+    registerFCMSubscribe()
+    val labelId = createANewLabel()
+    updateLabel(labelId, "{ \"color\": \"#00ccff\"}")
+    val updateState: String = getNewState()
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+      verify(firebasePushClient, times(2)).push(argumentCaptor.capture())
+
+      val stateChangesCapture: util.Map[String, String] = argumentCaptor.getAllValues.asScala
+        .flatMap(_.stateChangesMap().asScala).toMap.asJava
+
+      assertSoftly(softLy => {
+        softLy.assertThat(stateChangesCapture).containsKey(s"$ACCOUNT_ID:${LabelTypeName.asString}")
+        softLy.assertThat(stateChangesCapture).containsValue(updateState)
+      })
+    })
+  }
+
+  @Test
+  def shouldPushToFCMWhenChangeByDestroyRequest(): Unit = {
+    registerFCMSubscribe()
+    val labelId = createANewLabel()
+    removeLabel(labelId)
+    val latestState: String = getNewState()
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+      verify(firebasePushClient, times(2)).push(argumentCaptor.capture())
+
+      val stateChangesCapture: util.Map[String, String] = argumentCaptor.getAllValues.asScala
+        .flatMap(_.stateChangesMap().asScala).toMap.asJava
+
+      assertSoftly(softLy => {
+        softLy.assertThat(stateChangesCapture).containsKey(s"$ACCOUNT_ID:${LabelTypeName.asString}")
+        softLy.assertThat(stateChangesCapture).containsValue(latestState)
+      })
+    })
+  }
+
+  @Test
+  def shouldPushToFCMOwnerWhenChangeStateByDelegatedUser(server: GuiceJamesServer) : Unit = {
+    // bob register FCM
+    registerFCMSubscribe()
+
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    val bobAccountId = ACCOUNT_ID
+
+    // andre create bob's label
+    `given`()
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{ "using": [ "urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+           |  "methodCalls": [
+           |    ["Label/set", {
+           |        "accountId": "$bobAccountId",
+           |        "create": {
+           |          "L13": {
+           |            "displayName": "newLabel2",
+           |            "color": "#00ccdd"
+           |          }
+           |        }
+           |      }, "c1"
+           | ]]}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .extract()
+      .body()
+      .path("methodResponses[0][1].created.L13.id")
+
+    val bobNewState: String = getNewState()
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+      verify(firebasePushClient, times(1)).push(argumentCaptor.capture())
+      assertThat(argumentCaptor.getValue.stateChangesMap())
+        .isEqualTo(java.util.Map.of(s"$bobAccountId:${LabelTypeName.asString}", bobNewState))
+    })
+  }
+
+  private def registerFCMSubscribe(): Unit =
+    `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "create": {
+           |                "4f29": {
+           |                  "deviceClientId": "a889-ffea-910",
+           |                  "token": "token1",
+           |                  "types": ["Label"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].created", JsonMatchers.jsonNodePresent("4f29"))
 
   private def createANewLabel(displayName: String = "DisplayName1"): String =
     `given`()

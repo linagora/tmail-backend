@@ -3,8 +3,9 @@ package com.linagora.tmail.james;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LabelChangesMethodContract;
-import com.linagora.tmail.james.common.LabelGetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceLabelModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -21,10 +22,12 @@ public class MemoryLinagoraLabelChangesMethodTest implements LabelChangesMethodC
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceLabelModule())
+            .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LabelChangesMethodContract.firebasePushClient()))
             .overrideWith(new DelegationProbeModule()))
         .build();
 

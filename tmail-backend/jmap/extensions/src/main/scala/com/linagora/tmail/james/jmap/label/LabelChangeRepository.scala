@@ -1,16 +1,19 @@
 package com.linagora.tmail.james.jmap.label
 
+import java.time.{Clock, Instant}
+
 import com.google.common.collect.{HashBasedTable, Table, Tables}
 import com.linagora.tmail.james.jmap.label.LabelChangeRepository.DEFAULT_MAX_IDS_TO_RETURN
 import com.linagora.tmail.james.jmap.model.LabelId
+import javax.inject.Inject
+import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.{JmapChange, Limit, State}
 import org.apache.james.jmap.api.exception.ChangeNotFoundException
-import org.apache.james.jmap.api.model.AccountId
+import org.apache.james.jmap.api.model
+import org.apache.james.jmap.api.model.{AccountId, TypeName}
+import org.apache.james.jmap.core.UuidState
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import java.time.{Clock, Instant}
-import javax.inject.Inject
 
 object LabelChangeRepository {
   val DEFAULT_MAX_IDS_TO_RETURN : Limit = Limit.of(256)
@@ -30,6 +33,17 @@ case class LabelChange(accountId: AccountId,
                        destroyed: Set[LabelId] = Set(),
                        state: State) extends JmapChange {
   override def getAccountId: AccountId = accountId
+}
+
+case object LabelTypeName extends TypeName {
+  override val asString: String = "Label"
+
+  override def parse(string: String): Option[TypeName] = string match {
+    case LabelTypeName.asString => Some(LabelTypeName)
+    case _ => None
+  }
+
+  override def parseState(string: String): Either[IllegalArgumentException, model.State] = UuidState.parse(string)
 }
 
 object LabelChanges {
