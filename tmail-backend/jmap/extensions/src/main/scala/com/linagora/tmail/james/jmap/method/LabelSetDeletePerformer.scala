@@ -7,6 +7,7 @@ import com.linagora.tmail.james.jmap.model.{LabelId, LabelSetRequest, UnparsedLa
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.mailbox.MailboxSession
+import org.apache.james.util.ReactorUtils
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 object LabelSetDeletePerformer {
@@ -34,16 +35,16 @@ object LabelSetDeletePerformer {
   }
 }
 
-class LabelSetDeletePerformer @Inject()(labelRepository: LabelRepository) {
+class LabelSetDeletePerformer @Inject()(val labelRepository: LabelRepository) {
   def deleteLabels(LabelSetRequest: LabelSetRequest, mailboxSession: MailboxSession): SMono[LabelDeletionResults] =
     SFlux.fromIterable(LabelSetRequest.destroy.getOrElse(Seq()))
       .flatMap(unparsedId => delete(unparsedId, mailboxSession)
         .onErrorRecover(e => LabelDeletionFailure(unparsedId, e)),
-        maxConcurrency = 5)
+        maxConcurrency = ReactorUtils.DEFAULT_CONCURRENCY)
       .collectSeq()
       .map(LabelDeletionResults)
 
   private def delete(unparsedId: UnparsedLabelId, mailboxSession: MailboxSession): SMono[LabelDeletionResult] =
-    SMono.fromPublisher(labelRepository.deleteLabel(mailboxSession.getUser, LabelId(unparsedId.id)))
-      .`then`(SMono.just[LabelDeletionResult](LabelDeletionSuccess(LabelId(unparsedId.id))))
+    SMono.fromPublisher(labelRepository.deleteLabel(mailboxSession.getUser, unparsedId.asLabelId))
+        .`then`(SMono.just[LabelDeletionResult](LabelDeletionSuccess(unparsedId.asLabelId)))
 }

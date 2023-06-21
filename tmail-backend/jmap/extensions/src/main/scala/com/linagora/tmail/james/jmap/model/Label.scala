@@ -102,7 +102,9 @@ case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color:
 
 case class LabelNotFoundException(id: LabelId) extends RuntimeException
 
-case class UnparsedLabelId(id: Id)
+case class UnparsedLabelId(id: Id) {
+  def asLabelId: LabelId = LabelId(id)
+}
 
 case class LabelIds(list: List[UnparsedLabelId])
 

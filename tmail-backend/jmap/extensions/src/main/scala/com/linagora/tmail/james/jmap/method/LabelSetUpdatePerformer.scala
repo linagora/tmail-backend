@@ -4,12 +4,11 @@ import com.linagora.tmail.james.jmap.label.LabelRepository
 import com.linagora.tmail.james.jmap.model.{LabelId, LabelNotFoundException, LabelPatchObject, LabelPatchUpdateValidationException, LabelSetRequest, LabelUpdateResponse, UnparsedLabelId, ValidatedLabelPatchObject}
 import javax.inject.Inject
 import org.apache.james.core.Username
+import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.util.ReactorUtils
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import scala.collection.Seq
 
 sealed trait LabelUpdateResult
 
@@ -38,7 +37,8 @@ case class LabelUpdateResults(results: Seq[LabelUpdateResult]) {
     }).toMap
 }
 
-class LabelSetUpdatePerformer @Inject()(val labelRepository: LabelRepository) {
+class LabelSetUpdatePerformer @Inject()(val labelRepository: LabelRepository,
+                                        val stateFactory : State.Factory) {
   def update(request: LabelSetRequest, username: Username): SMono[LabelUpdateResults] =
     SFlux.fromIterable(request.update.getOrElse(Map()))
       .flatMap({
