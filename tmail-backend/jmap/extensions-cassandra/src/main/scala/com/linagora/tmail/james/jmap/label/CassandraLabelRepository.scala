@@ -16,6 +16,10 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRe
   override def addLabel(username: Username, labelCreationRequest: LabelCreationRequest): Publisher[Label] =
     dao.insert(username, labelCreationRequest.toLabel)
 
+  override def addLabel(username: Username, label: Label): Publisher[Void] =
+    dao.insert(username, label)
+      .`then`()
+
   override def addLabels(username: Username, labelCreationRequests: java.util.Collection[LabelCreationRequest]): Publisher[Label] =
     SFlux.fromIterable(labelCreationRequests.asScala)
       .concatMap(addLabel(username, _))
@@ -37,6 +41,9 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRe
 
   override def deleteLabel(username: Username, labelId: LabelId): Publisher[Void] =
     dao.deleteOne(username, labelId.toKeyword)
+
+  override def deleteAllLabels(username: Username): Publisher[Void] =
+    dao.deleteAll(username)
 }
 
 case class CassandraLabelRepositoryModule() extends AbstractModule {
