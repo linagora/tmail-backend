@@ -24,13 +24,18 @@ import org.junit.jupiter.api.Test;
 import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
+import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
+import com.linagora.tmail.james.jmap.model.DisplayName;
+import com.linagora.tmail.james.jmap.model.Label;
+import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanId;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract;
 
 import io.restassured.RestAssured;
 import io.restassured.specification.RequestSpecification;
+import scala.Option;
 
 public abstract class UsernameChangeIntegrationContract {
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
@@ -130,5 +135,26 @@ public abstract class UsernameChangeIntegrationContract {
 
         assertThat(rateLimitingProbe.listUsersOfAPlan(planId))
             .containsExactly(BOB);
+    }
+
+    @Test
+    void shouldMigrateLabels(GuiceJamesServer server) {
+        JmapGuiceLabelProbe labelProbe = server.getProbe(JmapGuiceLabelProbe.class);
+
+        Label label = labelProbe.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Important"), Option.empty()));
+
+        String taskId = webAdminApi
+            .queryParam("action", "rename")
+            .post("/users/" + ALICE.asString() + "/rename/" + BOB.asString())
+            .jsonPath()
+            .get("taskId");
+
+        webAdminApi.get("/tasks/" + taskId + "/await")
+            .then()
+            .statusCode(HttpStatus.SC_OK)
+            .body("additionalInformation.status.LabelUsernameChangeTaskStep", Matchers.is("DONE"));
+
+        assertThat(labelProbe.listLabels(BOB))
+            .containsExactly(label);
     }
 }
