@@ -15,6 +15,8 @@ import scala.jdk.CollectionConverters._
 trait LabelRepository {
   def addLabel(username: Username, labelCreationRequest: LabelCreationRequest): Publisher[Label]
 
+  def addLabel(username: Username, label: Label): Publisher[Void]
+
   def addLabels(username: Username, labelCreationRequests: util.Collection[LabelCreationRequest]): Publisher[Label]
 
   def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName] = None, newColor: Option[Color] = None): Publisher[Void]
@@ -24,6 +26,8 @@ trait LabelRepository {
   def listLabels(username: Username): Publisher[Label]
 
   def deleteLabel(username: Username, labelId: LabelId): Publisher[Void]
+
+  def deleteAllLabels(username: Username): Publisher[Void]
 }
 
 class MemoryLabelRepository extends LabelRepository {
@@ -35,6 +39,10 @@ class MemoryLabelRepository extends LabelRepository {
       labelsTable.put(username, label.keyword, label)
       label
     })
+
+  override def addLabel(username: Username, label: Label): Publisher[Void] =
+    SMono.fromCallable(() => labelsTable.put(username, label.keyword, label))
+      .`then`()
 
   override def addLabels(username: Username, labelCreationRequests: util.Collection[LabelCreationRequest]): Publisher[Label] =
     SFlux.fromIterable(labelCreationRequests.asScala)
@@ -57,6 +65,10 @@ class MemoryLabelRepository extends LabelRepository {
 
   override def deleteLabel(username: Username, labelId: LabelId): Publisher[Void] =
     SMono.fromCallable(() => labelsTable.remove(username, labelId.toKeyword))
+      .`then`()
+
+  override def deleteAllLabels(username: Username): Publisher[Void] =
+    SMono.fromCallable(() => labelsTable.row(username).clear())
       .`then`()
 }
 

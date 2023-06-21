@@ -20,7 +20,7 @@ trait LabelRepositoryContract {
   def testee: LabelRepository
 
   @Test
-  def addLabelShouldSucceed(): Unit = {
+  def addLabelFromCreationRequestShouldSucceed(): Unit = {
     val creationRequest: LabelCreationRequest = LabelCreationRequest(DisplayName("Important"), Some(RED))
     val createdLabel: Label = SMono.fromPublisher(testee.addLabel(ALICE, creationRequest)).block()
 
@@ -29,7 +29,16 @@ trait LabelRepositoryContract {
   }
 
   @Test
-  def addLabelShouldGenerateRandomValuesForLabelIdAndKeyword(): Unit = {
+  def addLabelShouldSucceed(): Unit = {
+    val label: Label = LabelCreationRequest(DisplayName("Important"), Some(RED)).toLabel
+    SMono.fromPublisher(testee.addLabel(ALICE, label)).block()
+
+    assertThat(SMono.fromPublisher(testee.listLabels(ALICE)).block())
+      .isEqualTo(label)
+  }
+
+  @Test
+  def addLabelFromCreationRequestShouldGenerateRandomValuesForLabelIdAndKeyword(): Unit = {
     val creationRequest1: LabelCreationRequest = LabelCreationRequest(DisplayName("Important"), Some(RED))
     val creationRequest2: LabelCreationRequest = LabelCreationRequest(DisplayName("Later"), Some(RED))
 
@@ -41,7 +50,7 @@ trait LabelRepositoryContract {
   }
 
   @Test
-  def addLabelShouldSupportCreatingSameLabelDisplayNameForDifferentUsers(): Unit = {
+  def addLabelFromCreationRequestShouldSupportCreatingSameLabelDisplayNameForDifferentUsers(): Unit = {
     val creationRequest: LabelCreationRequest = LabelCreationRequest(DisplayName("Important"), Some(RED))
     val aliceCreatedLabel: Label = SMono.fromPublisher(testee.addLabel(ALICE, creationRequest)).block()
     val bobCreatedLabel: Label = SMono.fromPublisher(testee.addLabel(BOB, creationRequest)).block()
@@ -51,7 +60,7 @@ trait LabelRepositoryContract {
   }
 
   @Test
-  def addLabelShouldSupportCreatingSameLabelDisplayNameForAUser(): Unit = {
+  def addLabelFromCreationRequestShouldSupportCreatingSameLabelDisplayNameForAUser(): Unit = {
     val creationRequest: LabelCreationRequest = LabelCreationRequest(DisplayName("Important"), Some(RED))
     val existingLabel: Label = SMono.fromPublisher(testee.addLabel(ALICE, creationRequest)).block()
     val newLabel: Label = SMono.fromPublisher(testee.addLabel(ALICE, creationRequest)).block()
@@ -63,7 +72,7 @@ trait LabelRepositoryContract {
   }
 
   @Test
-  def addLabelsShouldSucceed(): Unit = {
+  def addLabelsFromCreationRequestShouldSucceed(): Unit = {
     val creationRequest1: LabelCreationRequest = LabelCreationRequest(DisplayName("Important"), Some(RED))
     val creationRequest2: LabelCreationRequest = LabelCreationRequest(DisplayName("Later"), Some(RED))
     SFlux.fromPublisher(testee.addLabels(ALICE, java.util.List.of(creationRequest1, creationRequest2))).collectSeq().block()
@@ -262,5 +271,31 @@ trait LabelRepositoryContract {
 
     assertThatCode(() => SMono.fromPublisher(testee.deleteLabel(ALICE, randomLabelId)).block())
       .doesNotThrowAnyException()
+  }
+
+  @Test
+  def deleteAllShouldSucceed(): Unit = {
+    SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Important"), Some(RED))))
+      .block()
+    SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Important"), Some(RED))))
+      .block()
+
+    SMono.fromPublisher(testee.deleteAllLabels(ALICE)).block()
+
+    assertThat(SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().asJava)
+      .isEmpty()
+  }
+
+  @Test
+  def deleteAllShouldNotDeleteLabelsOfOtherUsers(): Unit = {
+    SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Important"), Some(RED))))
+      .block()
+    val bobLabel = SMono.fromPublisher(testee.addLabel(BOB, LabelCreationRequest(DisplayName("Important"), Some(RED))))
+      .block()
+
+    SMono.fromPublisher(testee.deleteAllLabels(ALICE)).block()
+
+    assertThat(SFlux.fromPublisher(testee.listLabels(BOB)).collectSeq().block().asJava)
+      .containsOnly(bobLabel)
   }
 }

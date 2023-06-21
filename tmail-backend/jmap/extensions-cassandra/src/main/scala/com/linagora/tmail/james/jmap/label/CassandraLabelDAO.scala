@@ -75,6 +75,10 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
     .whereColumn(KEYWORD).isEqualTo(bindMarker(KEYWORD))
     .build())
 
+  private val deleteAll: PreparedStatement = session.prepare(deleteFrom(TABLE_NAME)
+    .whereColumn(USER).isEqualTo(bindMarker(USER))
+    .build())
+
   def insert(username: Username, label: Label): SMono[Label] = {
     val insertLabel = insert.bind()
       .set(USER, username.asString(), TypeCodecs.TEXT)
@@ -132,6 +136,10 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
     SMono.fromPublisher(executor.executeVoid(deleteOne.bind()
       .set(USER, username.asString, TypeCodecs.TEXT)
       .set(KEYWORD, keyword.flagName, TypeCodecs.TEXT)))
+
+  def deleteAll(username: Username): SMono[Void] =
+    SMono.fromPublisher(executor.executeVoid(deleteAll.bind()
+      .set(USER, username.asString, TypeCodecs.TEXT)))
 
   private def toLabel(row: Row) = {
     val keyword = Keyword.of(row.get(KEYWORD, TypeCodecs.TEXT)).get
