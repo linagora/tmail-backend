@@ -4,14 +4,13 @@ import com.linagora.tmail.james.jmap.json.LabelSerializer
 import com.linagora.tmail.james.jmap.label.LabelRepository
 import com.linagora.tmail.james.jmap.method.LabelSetCreatePerformer.{LabelCreationFailure, LabelCreationResult, LabelCreationResults, LabelCreationSuccess}
 import com.linagora.tmail.james.jmap.model.{LabelCreationId, LabelCreationRequest, LabelCreationResponse, LabelSetRequest}
+import javax.inject.Inject
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
-import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, Json, JsonValidationError}
+import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import javax.inject.Inject
 
 case class LabelCreationParseException(setError: SetError) extends Exception
 
@@ -45,7 +44,7 @@ object LabelSetCreatePerformer {
   }
 }
 
-class LabelSetCreatePerformer @Inject()(labelRepository: LabelRepository,
+class LabelSetCreatePerformer @Inject()(val labelRepository: LabelRepository,
                                         val metricFactory: MetricFactory) {
   def createLabels(mailboxSession: MailboxSession,
                    labelSetRequest: LabelSetRequest): SMono[LabelCreationResults] =
@@ -62,16 +61,8 @@ class LabelSetCreatePerformer @Inject()(labelRepository: LabelRepository,
     LabelCreationRequest.validateProperties(jsObject)
       .flatMap(validJsObject => Json.fromJson(validJsObject)(LabelSerializer.labelCreationRequest) match {
         case JsSuccess(creationRequest, _) => Right(creationRequest)
-        case JsError(errors) => Left(LabelCreationParseException(labelSetError(errors)))
+        case JsError(errors) => Left(LabelCreationParseException(standardError(errors)))
       })
-
-  private def labelSetError(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): SetError =
-    errors.head match {
-      case (path, Seq()) => SetError.invalidArguments(SetErrorDescription(s"'$path' property in Label object is not valid"))
-      case (path, Seq(JsonValidationError(Seq("error.path.missing")))) => SetError.invalidArguments(SetErrorDescription(s"Missing '$path' property in Label object"))
-      case (path, Seq(JsonValidationError(Seq(message)))) => SetError.invalidArguments(SetErrorDescription(s"'$path' property in Label object is not valid: $message"))
-      case (path, _) => SetError.invalidArguments(SetErrorDescription(s"Unknown error on property '$path'"))
-    }
 
   private def createLabel(mailboxSession: MailboxSession,
                           clientId: LabelCreationId,
@@ -79,4 +70,5 @@ class LabelSetCreatePerformer @Inject()(labelRepository: LabelRepository,
     SMono.fromPublisher(labelRepository.addLabel(mailboxSession.getUser, labelCreationRequest))
       .map(label => LabelCreationSuccess(clientId, LabelCreationResponse(label.id, label.keyword)))
       .onErrorResume(e => SMono.just[LabelCreationResult](LabelCreationFailure(clientId, e)))
+
 }
