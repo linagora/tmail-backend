@@ -9,7 +9,9 @@ import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.protocols.smtp.SMTPSession;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.lib.MappingSource;
@@ -36,7 +38,10 @@ class TMailValidRcptHandlerTest {
     @BeforeEach
     void setUp() throws Exception {
         InMemoryIntegrationResources integrationResources = InMemoryIntegrationResources.defaultResources();
-        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager());
+        SubscriptionManager subscriptionManager = new StoreSubscriptionManager(integrationResources.getMailboxManager().getMapperFactory(),
+                integrationResources.getMailboxManager().getMapperFactory(), integrationResources.getMailboxManager().getEventBus());
+
+        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager);
 
         MemoryDomainList domainList = new MemoryDomainList(mock(DNSService.class));
         domainList.configure(DomainListConfiguration.DEFAULT);

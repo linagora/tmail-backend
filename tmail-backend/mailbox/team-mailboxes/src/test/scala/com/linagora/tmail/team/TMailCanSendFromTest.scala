@@ -7,6 +7,7 @@ import org.apache.james.dnsservice.api.DNSService
 import org.apache.james.domainlist.lib.DomainListConfiguration
 import org.apache.james.domainlist.memory.MemoryDomainList
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
+import org.apache.james.mailbox.store.StoreSubscriptionManager
 import org.apache.james.rrt.api.{CanSendFrom, RecipientRewriteTableConfiguration}
 import org.apache.james.rrt.lib.{AliasReverseResolverImpl, CanSendFromContract, Mapping, MappingSource}
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable
@@ -24,7 +25,11 @@ class TMailCanSendFromTest extends CanSendFromContract {
   @BeforeEach
   def setUp(): Unit = {
     val integrationResources = InMemoryIntegrationResources.defaultResources
-    teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager)
+    val subscriptionManager = new StoreSubscriptionManager(integrationResources.getMailboxManager.getMapperFactory,
+      integrationResources.getMailboxManager.getMapperFactory,
+      integrationResources.getMailboxManager.getEventBus)
+
+    teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager, subscriptionManager)
 
     val domainList = new MemoryDomainList(mock(classOf[DNSService]))
     domainList.configure(DomainListConfiguration.DEFAULT)

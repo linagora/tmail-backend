@@ -19,12 +19,14 @@ import org.apache.james.json.DTOConverter;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.SessionProvider;
+import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.CurrentQuotas;
 import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.quota.CurrentQuotaManager;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.task.Hostname;
 import org.apache.james.task.MemoryTaskManager;
@@ -70,7 +72,10 @@ public class RecomputeQuotaTeamMailboxesRoutesTest {
         mailboxManager = resources.getMailboxManager();
         sessionProvider = mailboxManager.getSessionProvider();
         MailboxSessionMapperFactory mailboxSessionMapperFactory = mailboxManager.getMapperFactory();
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager);
+        SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
+                resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
+
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager);
         TMailQuotaRootResolver tMailQuotaRootResolver = new TMailQuotaRootResolver(
             sessionProvider,
             mailboxSessionMapperFactory,

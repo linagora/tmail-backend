@@ -21,6 +21,7 @@ import org.apache.james.core.quota.QuotaSizeUsage;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
@@ -28,6 +29,7 @@ import org.apache.james.mailbox.inmemory.quota.InMemoryCurrentQuotaManager;
 import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.QuotaManager;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.user.memory.MemoryUsersRepository;
@@ -80,7 +82,10 @@ public class TeamMailboxQuotaRoutesTest {
 
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
         InMemoryMailboxManager mailboxManager = resources.getMailboxManager();
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager);
+        SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
+                resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
+
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager);
 
         UserEntityValidator validator = UserEntityValidator.aggregate(
             new DefaultUserEntityValidator(usersRepository),

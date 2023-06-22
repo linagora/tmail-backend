@@ -1,12 +1,12 @@
 package com.linagora.tmail.team
 
 import java.util.Optional
-
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.MailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.{MailboxPath, QuotaRoot}
+import org.apache.james.mailbox.store.StoreSubscriptionManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.SMono
@@ -24,7 +24,8 @@ class TMailQuotaRootResolverTest {
   def setUp(): Unit = {
     val resources = InMemoryIntegrationResources.defaultResources()
     mailboxManager = resources.getMailboxManager
-    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager)
+    val subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager.getMapperFactory, resources.getMailboxManager.getMapperFactory, resources.getMailboxManager.getEventBus)
+    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager)
     testee = new TMailQuotaRootResolver(mailboxManager, resources.getMailboxManager.getMapperFactory, teamMailboxRepository)
   }
 
