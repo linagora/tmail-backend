@@ -45,6 +45,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableSet;
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 
@@ -85,7 +87,7 @@ public class TeamMailboxQuotaRoutesTest {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager);
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, java.util.Set.of(new TeamMailboxAutocompleteCallback(new InMemoryEmailAddressContactSearchEngine())));
 
         UserEntityValidator validator = UserEntityValidator.aggregate(
             new DefaultUserEntityValidator(usersRepository),

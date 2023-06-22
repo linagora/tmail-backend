@@ -18,7 +18,12 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>team-mailboxes</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>team-mailboxes</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-mailbox-api</artifactId>

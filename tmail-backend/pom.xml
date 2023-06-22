@@ -305,6 +305,12 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>team-mailboxes</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>team-mailboxes-guice</artifactId>
                 <version>${project.version}</version>
             </dependency>

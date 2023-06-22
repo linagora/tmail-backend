@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxCallbackNoop;
 import com.linagora.tmail.team.TeamMailboxRepository;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
@@ -93,7 +94,7 @@ public class LinagoraMailetContextTest implements JamesMailetContextContract {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(resources.getMailboxManager(), subscriptionManager);
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(resources.getMailboxManager(), subscriptionManager, java.util.Set.of(new TeamMailboxCallbackNoop()));
 
         LocalResources localResources = new LocalResourcesImpl(usersRepository, domainList, recipientRewriteTable);
         mailAddress = new MailAddress(USERMAIL.asString());

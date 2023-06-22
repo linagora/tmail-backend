@@ -65,7 +65,8 @@ public class TeamMailboxManagementRoutes implements Routes {
 
     @Inject
     public TeamMailboxManagementRoutes(TeamMailboxRepository teamMailboxRepository,
-                                       DomainList domainList, JsonTransformer jsonTransformer) {
+                                       DomainList domainList,
+                                       JsonTransformer jsonTransformer) {
         this.teamMailboxRepository = teamMailboxRepository;
         this.domainList = domainList;
         this.jsonTransformer = jsonTransformer;
@@ -124,8 +125,10 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             Domain domain = extractDomain(request);
             TeamMailboxName teamMailboxName = extractName(request);
+            TeamMailbox teamMailbox = new TeamMailbox(domain, teamMailboxName);
 
-            Mono.from(teamMailboxRepository.deleteTeamMailbox(new TeamMailbox(domain, teamMailboxName))).block();
+            Mono.from(teamMailboxRepository.deleteTeamMailbox(teamMailbox))
+                .block();
             return Responses.returnNoContent(response);
         };
     }
@@ -142,7 +145,9 @@ public class TeamMailboxManagementRoutes implements Routes {
                     .haltError();
             }
 
-            return Mono.from(teamMailboxRepository.createTeamMailbox(new TeamMailbox(domain, teamMailboxName)))
+            TeamMailbox teamMailbox = new TeamMailbox(domain, teamMailboxName);
+
+            return Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox))
                 .then(Mono.just(Responses.returnNoContent(response)))
                 .onErrorResume(TeamMailboxNameConflictException.class, e -> {
                     throw ErrorResponder.builder()

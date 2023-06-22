@@ -40,6 +40,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
 import com.linagora.tmail.team.TMailQuotaRootResolver;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxName;
@@ -75,7 +77,7 @@ public class RecomputeQuotaTeamMailboxesRoutesTest {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager);
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, java.util.Set.of(new TeamMailboxAutocompleteCallback(new InMemoryEmailAddressContactSearchEngine())));
         TMailQuotaRootResolver tMailQuotaRootResolver = new TMailQuotaRootResolver(
             sessionProvider,
             mailboxSessionMapperFactory,

@@ -22,6 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxCallbackNoop;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
 import reactor.core.publisher.Mono;
@@ -41,7 +42,7 @@ class TMailValidRcptHandlerTest {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(integrationResources.getMailboxManager().getMapperFactory(),
                 integrationResources.getMailboxManager().getMapperFactory(), integrationResources.getMailboxManager().getEventBus());
 
-        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager);
+        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager, java.util.Set.of(new TeamMailboxCallbackNoop()));
 
         MemoryDomainList domainList = new MemoryDomainList(mock(DNSService.class));
         domainList.configure(DomainListConfiguration.DEFAULT);

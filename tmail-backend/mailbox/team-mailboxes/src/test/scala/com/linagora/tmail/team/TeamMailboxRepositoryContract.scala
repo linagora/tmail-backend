@@ -1,6 +1,6 @@
 package com.linagora.tmail.team
 
-import java.util
+import java.util.{Map => JavaMap, Set => JavaSet}
 
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{ANDRE, BOB, DOMAIN_1, DOMAIN_2, TEAM_MAILBOX_DOMAIN_1, TEAM_MAILBOX_DOMAIN_2, TEAM_MAILBOX_MARKETING, TEAM_MAILBOX_SALES}
@@ -14,6 +14,7 @@ import org.apache.james.mailbox.{MailboxManager, MailboxSession, SubscriptionMan
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
+import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -142,7 +143,7 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
     val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
-    val entriesRights: util.Map[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, bobSession).getEntries
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, bobSession).getEntries
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(entriesRights)
@@ -339,6 +340,16 @@ trait TeamMailboxRepositoryContract {
   }
 }
 
+object TeamMailboxCallbackNoop {
+  val asSet: JavaSet[TeamMailboxCallback] = JavaSet.of(new TeamMailboxCallbackNoop)
+}
+
+class TeamMailboxCallbackNoop extends TeamMailboxCallback {
+  override def teamMailboxAdded(teamMailbox: TeamMailbox): Publisher[Void] = SMono.empty
+
+  override def teamMailboxRemoved(teamMailbox: TeamMailbox): Publisher[Void] = SMono.empty
+}
+
 class TeamMailboxRepositoryTest extends TeamMailboxRepositoryContract {
   override def testee: TeamMailboxRepository = teamMailboxRepositoryImpl
 
@@ -353,6 +364,6 @@ class TeamMailboxRepositoryTest extends TeamMailboxRepositoryContract {
     val resource: InMemoryIntegrationResources = InMemoryIntegrationResources.defaultResources()
     inMemoryMailboxManager = resource.getMailboxManager
     subscriptionManager = new StoreSubscriptionManager(resource.getMailboxManager.getMapperFactory, resource.getMailboxManager.getMapperFactory, resource.getMailboxManager.getEventBus)
-    teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager, subscriptionManager)
+    teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager, subscriptionManager, TeamMailboxCallbackNoop.asSet)
   }
 }
