@@ -57,7 +57,8 @@ will be encoded as:
     "a3123:EmailDelivery": "428d565f2440",
     "a3123:CalendarEvent": "87accfac587a"
     "a43461d:Mailbox": "0af7a512ce70",
-    "a43461d:CalendarEvent": "7a4297cecd76"
+    "a43461d:CalendarEvent": "7a4297cecd76",
+    "a43461d:Label": "9b4297123476"
   },
   "token": "fcm-client-token"
 }
@@ -87,6 +88,7 @@ the JMAP client.
 
 - **types**: `String[]|null`
 A list of types the client is interested in (using the same names as the keys in the *TypeState* object defined in the previous section). A StateChange notification will only be sent if the data for one of these types changes. Other types are omitted from the TypeState object. If `null`, changes will be pushed for all types.
+Accepted types: `Mailbox`, `Email`, `Thread`, `Identity`, `EmailSubmission`, `EmailDelivery`, `VacationResponse`, `Label`, `Filter`
 
 === FirebaseRegistration/get
 
