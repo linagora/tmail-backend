@@ -7,7 +7,6 @@ import com.linagora.tmail.james.jmap.label.LabelRepository
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{Label, LabelGetRequest, LabelGetResponse, LabelId, LabelIds}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -21,6 +20,7 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 case object LabelCapabilityFactory extends CapabilityFactory {
@@ -44,6 +44,7 @@ class LabelCapabilitiesModule extends AbstractModule {
 }
 
 class LabelMethodModule extends AbstractModule {
+
   override def configure(): Unit = {
     install(new LabelCapabilitiesModule())
 
@@ -54,6 +55,10 @@ class LabelMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[LabelSetMethod])
+
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[LabelChangesMethod])
   }
 }
 

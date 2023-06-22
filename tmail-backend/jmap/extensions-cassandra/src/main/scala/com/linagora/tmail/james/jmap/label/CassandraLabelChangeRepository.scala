@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.label
 
-import javax.inject.{Inject, Named}
+import com.linagora.tmail.james.jmap.label.LabelChangeRepository.DEFAULT_MAX_IDS_TO_RETURN
 import org.apache.james.jmap.api.change.{Limit, State}
 import org.apache.james.jmap.api.exception.ChangeNotFoundException
 import org.apache.james.jmap.api.model.AccountId
@@ -8,13 +8,14 @@ import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.SMono
 
-class CassandraLabelChangeRepository @Inject()(@Named("labelChangeDefaultLimit") val defaultLimit: Limit,
-                                               val dao: CassandraLabelChangeDAO) extends LabelChangeRepository {
+import javax.inject.Inject
+
+class CassandraLabelChangeRepository @Inject()(val dao: CassandraLabelChangeDAO) extends LabelChangeRepository {
   override def save(labelChange: LabelChange): Publisher[Void] =
     dao.insert(labelChange)
 
   override def getSinceState(accountId: AccountId, state: State, maxIdsToReturn: Option[Limit]): Publisher[LabelChanges] = {
-    val maxIds: Int = maxIdsToReturn.getOrElse(defaultLimit).getValue
+    val maxIds: Int = maxIdsToReturn.getOrElse(DEFAULT_MAX_IDS_TO_RETURN).getValue
 
     if (state.equals(State.INITIAL)) {
       getAllChanges(accountId, maxIds)
@@ -34,7 +35,7 @@ class CassandraLabelChangeRepository @Inject()(@Named("labelChangeDefaultLimit")
 
   private def getChangesSince(accountId: AccountId, state: State, maxIds: Int): SMono[LabelChanges] = {
     def throwChangeNotFoundException(state: State): Flux[LabelChange] =
-      Flux.error(new ChangeNotFoundException(state, s"State '$state.getValue' could not be found"))
+      Flux.error(new ChangeNotFoundException(state, s"State '${state.getValue}' could not be found"))
 
     def fallbackToTheCurrentState(accountId: AccountId, state: State): SMono[LabelChange] =
       SMono.just(LabelChange(accountId = accountId, state = state))
