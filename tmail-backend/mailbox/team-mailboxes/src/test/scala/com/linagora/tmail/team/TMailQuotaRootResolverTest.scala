@@ -26,7 +26,7 @@ class TMailQuotaRootResolverTest {
     val resources = InMemoryIntegrationResources.defaultResources()
     mailboxManager = resources.getMailboxManager
     val subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager.getMapperFactory, resources.getMailboxManager.getMapperFactory, resources.getMailboxManager.getEventBus)
-    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager)
+    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, TeamMailboxCallbackNoop.asSet)
     testee = new TMailQuotaRootResolver(mailboxManager, resources.getMailboxManager.getMapperFactory, teamMailboxRepository)
   }
 

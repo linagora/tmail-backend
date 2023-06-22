@@ -21,7 +21,7 @@ package com.linagora.tmail.mailets
 import java.time.Duration
 
 import com.linagora.tmail.mailets.TMailMailboxAppenderTest.{DOMAIN, EMPTY_FOLDER, FOLDER, STORAGE_DIRECTIVE, TEAM_MAILBOX, USER}
-import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxRepository, TeamMailboxRepositoryImpl}
+import com.linagora.tmail.team.{TeamMailbox, TeamMailboxCallbackNoop, TeamMailboxName, TeamMailboxRepository, TeamMailboxRepositoryImpl}
 import eu.timepit.refined.auto._
 import javax.mail.MessagingException
 import javax.mail.internet.MimeMessage
@@ -70,7 +70,7 @@ class TMailMailboxAppenderTest {
     val subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager.getMapperFactory,
       resources.getMailboxManager.getMapperFactory, resources.getMailboxManager.getEventBus)
 
-    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager)
+    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, TeamMailboxCallbackNoop.asSet)
 
     testee = new TMailMailboxAppender(teamMailboxRepository, mailboxManager)
 

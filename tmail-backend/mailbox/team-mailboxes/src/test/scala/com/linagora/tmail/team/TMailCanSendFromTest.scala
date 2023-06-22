@@ -29,7 +29,7 @@ class TMailCanSendFromTest extends CanSendFromContract {
       integrationResources.getMailboxManager.getMapperFactory,
       integrationResources.getMailboxManager.getEventBus)
 
-    teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager, subscriptionManager)
+    teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager, subscriptionManager, TeamMailboxCallbackNoop.asSet)
 
     val domainList = new MemoryDomainList(mock(classOf[DNSService]))
     domainList.configure(DomainListConfiguration.DEFAULT)

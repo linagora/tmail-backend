@@ -7,16 +7,19 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
+import com.linagora.tmail.james.common.TeamMailboxesContract.webAdminApi
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
+import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
+import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
@@ -36,7 +39,8 @@ import org.apache.james.mime4j.dom.Message
 import org.apache.james.mime4j.message.DefaultMessageWriter
 import org.apache.james.mime4j.stream.RawField
 import org.apache.james.modules.{MailboxProbeImpl, QuotaProbesImpl}
-import org.apache.james.utils.DataProbeImpl
+import org.apache.james.utils.{DataProbeImpl, WebAdminGuiceProbe}
+import org.apache.james.webadmin.WebAdminUtils
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
@@ -51,6 +55,10 @@ import sttp.monad.MonadError
 import sttp.monad.syntax.MonadErrorOps
 import sttp.ws.WebSocketFrame
 import sttp.ws.WebSocketFrame.Text
+
+object TeamMailboxesContract {
+  private var webAdminApi: RequestSpecification = _
+}
 
 trait TeamMailboxesContract {
   private lazy val BOB_ACCOUNT_ID: String = "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"
@@ -75,6 +83,9 @@ trait TeamMailboxesContract {
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .build
+
+    webAdminApi = WebAdminUtils.buildRequestSpecification(server.getProbe(classOf[WebAdminGuiceProbe]).getWebAdminPort)
+      .build()
   }
 
   @Test
@@ -2753,6 +2764,117 @@ trait TeamMailboxesContract {
            |            "c1"
            |        ]
            |    ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def teamMailboxShouldBeIndexedAsDomainContactUponCreation(): Unit = {
+    `given`
+      .spec(webAdminApi)
+      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes")
+    .when()
+      .put("/hiring")
+    .`then`()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+
+    val bobRequest =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
+         |  "methodCalls": [[
+         |    "TMailContact/autocomplete",
+         |    {
+         |      "accountId": "$BOB_ACCOUNT_ID",
+         |      "filter": {"text":"hiring"}
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response =  `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(bobRequest)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"TMailContact/autocomplete",
+           |			{
+           |				"accountId": "$BOB_ACCOUNT_ID",
+           |				"list": [{
+           |					"id": "$${json-unit.ignore}",
+           |					"firstname": "hiring",
+           |					"surname": "",
+           |					"emailAddress": "hiring@domain.tld"
+           |				}],
+           |				"limit": 256
+           |			},
+           |			"c1"]]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def teamMailboxDeletionShouldRemoveAssociatedDomainContact(): Unit = {
+    `given`
+      .spec(webAdminApi)
+      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes")
+    .when()
+      .put("/hiring")
+    .`then`()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+
+    `given`
+      .spec(webAdminApi)
+      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes")
+    .when()
+      .delete("/hiring")
+    .`then`()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+
+    val bobRequest =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
+         |  "methodCalls": [[
+         |    "TMailContact/autocomplete",
+         |    {
+         |      "accountId": "$BOB_ACCOUNT_ID",
+         |      "filter": {"text":"hiring"}
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response =  `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(bobRequest)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"TMailContact/autocomplete",
+           |			{
+           |				"accountId": "$BOB_ACCOUNT_ID",
+           |				"list": [],
+           |				"limit": 256
+           |			},
+           |			"c1"]]
            |}""".stripMargin)
   }
 

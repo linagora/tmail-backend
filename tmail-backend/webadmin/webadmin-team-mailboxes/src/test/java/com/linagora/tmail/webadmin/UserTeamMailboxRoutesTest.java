@@ -32,6 +32,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
 import com.linagora.tmail.team.TeamMailboxRepository;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
@@ -53,7 +55,7 @@ public class UserTeamMailboxRoutesTest {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager);
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, java.util.Set.of(new TeamMailboxAutocompleteCallback(new InMemoryEmailAddressContactSearchEngine())));
         usersRepository = mock(UsersRepository.class);
         UserTeamMailboxRoutes userTeamMailboxRoutes = new UserTeamMailboxRoutes(teamMailboxRepository, new JsonTransformer(), usersRepository);
         webAdminServer = WebAdminUtils.createWebAdminServer(userTeamMailboxRoutes).start();

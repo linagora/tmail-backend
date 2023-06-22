@@ -1,5 +1,7 @@
 package com.linagora.tmail.team
 
+import java.util.{Set => JavaSet}
+
 import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
@@ -60,7 +62,9 @@ object TeamMailboxRepositoryImpl {
 }
 
 class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
-                                          subscriptionManager: SubscriptionManager) extends TeamMailboxRepository {
+                                          subscriptionManager: SubscriptionManager,
+                                          teamMailboxCallbackSetJava: JavaSet[TeamMailboxCallback]) extends TeamMailboxRepository {
+  private val teamMailboxCallbackSetScala: Set[TeamMailboxCallback] = teamMailboxCallbackSetJava.asScala.toSet
 
   private var teamMailboxEntityValidator: UserEntityValidator = new TeamMailboxUserEntityValidator(this)
 
@@ -78,6 +82,10 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         case Some(validationFailure) => SMono.error(TeamMailboxNameConflictException(validationFailure.errorMessage))
         case None => createDefaultMailboxReliably(teamMailbox, session)
       })
+      .`then`(SFlux.fromIterable(teamMailboxCallbackSetScala)
+        .flatMap(_.teamMailboxAdded(teamMailbox), ReactorUtils.DEFAULT_CONCURRENCY)
+        .collectSeq()
+        .`then`(SMono.empty))
   }
 
   private def createDefaultMailboxReliably(teamMailbox: TeamMailbox, session: MailboxSession) =
@@ -94,6 +102,10 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
 
   override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] =
     deleteDefaultMailboxReliably(teamMailbox, createSession(teamMailbox))
+      .`then`(SFlux.fromIterable(teamMailboxCallbackSetScala)
+        .flatMap(_.teamMailboxRemoved(teamMailbox), ReactorUtils.DEFAULT_CONCURRENCY)
+        .collectSeq()
+        .`then`(SMono.empty))
 
   private def deleteDefaultMailboxReliably(teamMailbox: TeamMailbox, session: MailboxSession) =
     SFlux.fromIterable(teamMailbox.defaultMailboxPaths)

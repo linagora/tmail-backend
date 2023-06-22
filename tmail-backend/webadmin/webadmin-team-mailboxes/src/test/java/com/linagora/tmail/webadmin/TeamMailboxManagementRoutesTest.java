@@ -53,6 +53,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 
@@ -93,6 +95,7 @@ public class TeamMailboxManagementRoutesTest {
     private TeamMailboxRepositoryImpl teamMailboxRepository;
     private MemoryUsersRepository usersRepository;
     private MemoryRecipientRewriteTable recipientRewriteTable;
+    private InMemoryEmailAddressContactSearchEngine emailAddressContactSearchEngine;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -109,8 +112,9 @@ public class TeamMailboxManagementRoutesTest {
         InMemoryMailboxManager mailboxManager = resources.getMailboxManager();
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
+        emailAddressContactSearchEngine = new InMemoryEmailAddressContactSearchEngine();
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager);
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, java.util.Set.of(new TeamMailboxAutocompleteCallback(emailAddressContactSearchEngine)));
 
         UserEntityValidator validator = UserEntityValidator.aggregate(
             new DefaultUserEntityValidator(usersRepository),
@@ -122,7 +126,8 @@ public class TeamMailboxManagementRoutesTest {
         recipientRewriteTable.setUserEntityValidator(validator);
         teamMailboxRepository.setValidator(validator);
 
-        TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository, domainList, new JsonTransformer());
+        TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository,
+            domainList, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(teamMailboxManagementRoutes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -249,6 +254,18 @@ public class TeamMailboxManagementRoutesTest {
 
             assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(Domain.of("linagora.com"))).collectList().block())
                 .containsExactlyInAnyOrder(TEAM_MAILBOX);
+        }
+
+        @Test
+        void createTeamMailboxShouldIndexDomainContact() {
+            given()
+                .put("/marketing")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Mono.from(emailAddressContactSearchEngine.list(Domain.of("linagora.com"))).block()
+                .fields().address().asString())
+                .isEqualTo("marketing@linagora.com");
         }
 
         @Test
@@ -415,6 +432,24 @@ public class TeamMailboxManagementRoutesTest {
 
             assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(Domain.of("linagora.com"))).collectList().block())
                 .doesNotContain(TEAM_MAILBOX);
+        }
+
+        @Test
+        void deleteTeamMailboxShouldRemoveAssociatedDomainContact() {
+            given()
+                .put("/marketing")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .delete("/marketing")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(Domain.of("linagora.com")))
+                .collectList()
+                .block())
+                .isEmpty();
         }
 
         @Test
