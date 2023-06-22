@@ -20,8 +20,7 @@ public class CassandraLabelChangeRepositoryTest implements LabelChangeRepository
 
     @BeforeEach
     void setUp(CassandraCluster cassandraCluster) {
-        cassandraLabelChangeRepository = new CassandraLabelChangeRepository(LabelChangeRepositoryContract.defaultLimit(),
-            new CassandraLabelChangeDAO(cassandraCluster.getConf()));
+        cassandraLabelChangeRepository = new CassandraLabelChangeRepository(new CassandraLabelChangeDAO(cassandraCluster.getConf()));
     }
 
     @Override

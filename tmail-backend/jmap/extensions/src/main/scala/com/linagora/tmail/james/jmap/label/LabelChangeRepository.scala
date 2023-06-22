@@ -1,20 +1,25 @@
 package com.linagora.tmail.james.jmap.label
 
-import java.time.{Clock, Instant}
-
 import com.google.common.collect.{HashBasedTable, Table, Tables}
+import com.linagora.tmail.james.jmap.label.LabelChangeRepository.DEFAULT_MAX_IDS_TO_RETURN
 import com.linagora.tmail.james.jmap.model.LabelId
-import javax.inject.Named
 import org.apache.james.jmap.api.change.{JmapChange, Limit, State}
 import org.apache.james.jmap.api.exception.ChangeNotFoundException
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.time.{Clock, Instant}
+import javax.inject.Inject
+
+object LabelChangeRepository {
+  val DEFAULT_MAX_IDS_TO_RETURN : Limit = Limit.of(256)
+}
+
 trait LabelChangeRepository {
   def save(labelChange: LabelChange): Publisher[Void]
 
-  def getSinceState(accountId: AccountId, state: State, maxIdsToReturn: Option[Limit] = None): Publisher[LabelChanges]
+  def getSinceState(accountId: AccountId, state: State, maxIdsToReturn: Option[Limit] = Some(DEFAULT_MAX_IDS_TO_RETURN)): Publisher[LabelChanges]
 
   def getLatestState(accountId: AccountId): Publisher[State]
 }
@@ -68,7 +73,7 @@ case class LabelChanges(created: Set[LabelId] = Set(),
   def getAllChanges: Set[LabelId] = created ++ updated ++ destroyed
 }
 
-case class MemoryLabelChangeRepository(@Named("labelChangeDefaultLimit") defaultLimit: Limit, clock: Clock) extends LabelChangeRepository {
+case class MemoryLabelChangeRepository @Inject()(clock: Clock) extends LabelChangeRepository {
 
   import scala.jdk.CollectionConverters._
 
@@ -80,7 +85,7 @@ case class MemoryLabelChangeRepository(@Named("labelChangeDefaultLimit") default
       .`then`()
 
   override def getSinceState(accountId: AccountId, state: State, maxIdsToReturn: Option[Limit]): SMono[LabelChanges] = {
-    val limit: Int = maxIdsToReturn.getOrElse(defaultLimit).getValue
+    val limit: Int = maxIdsToReturn.getOrElse(DEFAULT_MAX_IDS_TO_RETURN).getValue
     getSinceState(accountId, state)
       .sort(orderingNewerFirst)
       .map(_._2)
