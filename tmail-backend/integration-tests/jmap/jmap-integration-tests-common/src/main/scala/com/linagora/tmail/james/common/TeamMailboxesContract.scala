@@ -408,7 +408,7 @@ trait TeamMailboxesContract {
            |            "mayDelete": false,
            |            "maySubmit": false
            |          },
-           |          "isSubscribed": false,
+           |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
            |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
            |        }
@@ -487,7 +487,7 @@ trait TeamMailboxesContract {
            |            "mayDelete": false,
            |            "maySubmit": false
            |          },
-           |          "isSubscribed": false,
+           |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
            |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
            |        }
@@ -566,7 +566,7 @@ trait TeamMailboxesContract {
            |            "mayDelete": false,
            |            "maySubmit": false
            |          },
-           |          "isSubscribed": false,
+           |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
            |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
            |        }
@@ -759,7 +759,7 @@ trait TeamMailboxesContract {
            |            "mayDelete": false,
            |            "maySubmit": false
            |          },
-           |          "isSubscribed": false,
+           |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
            |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
            |        }

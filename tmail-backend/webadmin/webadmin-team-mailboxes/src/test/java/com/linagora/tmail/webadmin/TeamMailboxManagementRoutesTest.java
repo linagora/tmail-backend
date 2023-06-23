@@ -30,8 +30,10 @@ import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.rrt.api.MappingConflictException;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.lib.MappingSource;
@@ -103,8 +105,12 @@ public class TeamMailboxManagementRoutesTest {
         recipientRewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
         usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
 
-        InMemoryMailboxManager mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager);
+        InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
+        InMemoryMailboxManager mailboxManager = resources.getMailboxManager();
+        SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
+                resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
+
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager);
 
         UserEntityValidator validator = UserEntityValidator.aggregate(
             new DefaultUserEntityValidator(usersRepository),

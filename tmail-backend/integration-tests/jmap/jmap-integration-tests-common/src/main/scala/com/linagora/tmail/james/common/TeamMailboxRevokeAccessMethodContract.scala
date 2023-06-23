@@ -192,7 +192,7 @@ trait TeamMailboxRevokeAccessMethodContract {
          |            {
          |                "accountId": "$BOB_ACCOUNT_ID",
          |                "notFound": ["$teamMailboxInboxId"],
-         |                "state": "${SESSION_STATE.value}",
+         |                "state": "$${json-unit.ignore}",
          |                "list": []
          |            },
          |            "c1"

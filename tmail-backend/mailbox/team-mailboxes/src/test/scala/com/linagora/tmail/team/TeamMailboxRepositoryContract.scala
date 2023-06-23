@@ -3,14 +3,14 @@ package com.linagora.tmail.team
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 
 import java.util
-
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{ANDRE, BOB, DOMAIN_1, DOMAIN_2, TEAM_MAILBOX_DOMAIN_1, TEAM_MAILBOX_DOMAIN_2, TEAM_MAILBOX_MARKETING, TEAM_MAILBOX_SALES}
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
-import org.apache.james.mailbox.{MailboxManager, MailboxSession}
+import org.apache.james.mailbox.store.StoreSubscriptionManager
+import org.apache.james.mailbox.{MailboxManager, MailboxSession, SubscriptionManager}
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -34,6 +34,8 @@ trait TeamMailboxRepositoryContract {
   def testee: TeamMailboxRepository
 
   def mailboxManager: MailboxManager
+
+  def subscriptionManager: SubscriptionManager
 
   @Test
   def createTeamMailboxShouldStoreDefaultAssignMailboxes(): Unit = {
@@ -151,6 +153,18 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
+  def addMemberShouldSubscribeTeamMailboxByDefault(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
+
+    assertThat(SFlux(subscriptionManager.subscriptionsReactive(bobSession))
+      .collectSeq()
+      .block().asJava)
+      .contains(TEAM_MAILBOX_MARKETING.mailboxPath, TEAM_MAILBOX_MARKETING.inboxPath, TEAM_MAILBOX_MARKETING.sentPath)
+  }
+
+  @Test
   def removeMemberShouldThrowWhenTeamMailboxDoesNotExists(): Unit = {
     assertThatThrownBy(() => SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block())
       .isInstanceOf(classOf[TeamMailboxNotFoundException])
@@ -174,6 +188,18 @@ trait TeamMailboxRepositoryContract {
 
     assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
       .doesNotContain(BOB)
+  }
+
+  @Test
+  def removeMemberShouldUnSubscribeTeamMailbox(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+
+    assertThat(SFlux(subscriptionManager.subscriptionsReactive(mailboxManager.createSystemSession(BOB)))
+      .collectSeq()
+      .block().asJava)
+      .doesNotContain(TEAM_MAILBOX_MARKETING.mailboxPath, TEAM_MAILBOX_MARKETING.inboxPath, TEAM_MAILBOX_MARKETING.sentPath)
   }
 
   @Test
@@ -320,11 +346,13 @@ class TeamMailboxRepositoryTest extends TeamMailboxRepositoryContract {
 
   var teamMailboxRepositoryImpl: TeamMailboxRepositoryImpl = _
   var inMemoryMailboxManager: InMemoryMailboxManager = _
+  var subscriptionManager: SubscriptionManager = _
 
   @BeforeEach
   def setUp(): Unit = {
     val resource: InMemoryIntegrationResources = InMemoryIntegrationResources.defaultResources()
     inMemoryMailboxManager = resource.getMailboxManager
-    teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager)
+    subscriptionManager = new StoreSubscriptionManager(resource.getMailboxManager.getMapperFactory, resource.getMailboxManager.getMapperFactory, resource.getMailboxManager.getEventBus)
+    teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager, subscriptionManager)
   }
 }

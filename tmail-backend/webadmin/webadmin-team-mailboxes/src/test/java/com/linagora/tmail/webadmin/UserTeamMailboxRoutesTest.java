@@ -17,8 +17,10 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.webadmin.WebAdminServer;
@@ -45,8 +47,13 @@ public class UserTeamMailboxRoutesTest {
 
     @BeforeEach
     void setUp() {
-        InMemoryMailboxManager mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager();
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager);
+        InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
+
+        InMemoryMailboxManager mailboxManager = resources.getMailboxManager();
+        SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
+                resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
+
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager);
         usersRepository = mock(UsersRepository.class);
         UserTeamMailboxRoutes userTeamMailboxRoutes = new UserTeamMailboxRoutes(teamMailboxRepository, new JsonTransformer(), usersRepository);
         webAdminServer = WebAdminUtils.createWebAdminServer(userTeamMailboxRoutes).start();

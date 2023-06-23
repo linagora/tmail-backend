@@ -19,16 +19,17 @@
 package com.linagora.tmail.mailets
 
 import java.time.Duration
-
 import com.linagora.tmail.mailets.TMailMailboxAppenderTest.{DOMAIN, EMPTY_FOLDER, FOLDER, STORAGE_DIRECTIVE, TEAM_MAILBOX, USER}
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxRepository, TeamMailboxRepositoryImpl}
 import eu.timepit.refined.auto._
+
 import javax.mail.MessagingException
 import javax.mail.internet.MimeMessage
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.{FetchGroup, MailboxPath, MessageRange}
+import org.apache.james.mailbox.store.StoreSubscriptionManager
 import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.apache.james.util.concurrency.ConcurrentTestRunner
 import org.apache.mailet.StorageDirective
@@ -64,8 +65,12 @@ class TMailMailboxAppenderTest {
           .data("toto"))
       .build
 
-    mailboxManager = InMemoryIntegrationResources.defaultResources().getMailboxManager
-    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager)
+    val resources = InMemoryIntegrationResources.defaultResources()
+    mailboxManager = resources.getMailboxManager
+    val subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager.getMapperFactory,
+      resources.getMailboxManager.getMapperFactory, resources.getMailboxManager.getEventBus)
+
+    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager)
 
     testee = new TMailMailboxAppender(teamMailboxRepository, mailboxManager)
 

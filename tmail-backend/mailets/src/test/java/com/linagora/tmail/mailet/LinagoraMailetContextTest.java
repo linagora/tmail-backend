@@ -11,7 +11,9 @@ import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.AbstractDomainList;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.mailetcontainer.api.LocalResources;
 import org.apache.james.mailetcontainer.impl.JamesMailetContext;
 import org.apache.james.mailetcontainer.impl.JamesMailetContextContract;
@@ -88,7 +90,10 @@ public class LinagoraMailetContextTest implements JamesMailetContextContract {
         when(mailQueueFactory.createQueue(MailQueueFactory.SPOOL)).thenReturn(spoolMailQueue);
 
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(resources.getMailboxManager());
+        SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
+                resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
+
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(resources.getMailboxManager(), subscriptionManager);
 
         LocalResources localResources = new LocalResourcesImpl(usersRepository, domainList, recipientRewriteTable);
         mailAddress = new MailAddress(USERMAIL.asString());
