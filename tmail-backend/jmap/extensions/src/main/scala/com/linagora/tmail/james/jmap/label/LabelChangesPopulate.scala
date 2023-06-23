@@ -5,12 +5,20 @@ import com.linagora.tmail.james.jmap.method.LabelSetCreatePerformer.LabelCreatio
 import com.linagora.tmail.james.jmap.method.LabelSetDeletePerformer.LabelDeletionResults
 import com.linagora.tmail.james.jmap.method.LabelUpdateResults
 import com.linagora.tmail.james.jmap.model.LabelId
+
+import javax.inject.Named
 import org.apache.james.core.Username
+import org.apache.james.events.Event.EventId
+import org.apache.james.events.EventBus
+import org.apache.james.jmap.InjectionKeys
 import org.apache.james.jmap.api.change.State
+import org.apache.james.jmap.change.{AccountIdRegistrationKey, StateChangeEvent}
+import org.apache.james.jmap.core.UuidState
 import org.apache.james.jmap.api.model.AccountId
 import reactor.core.scala.publisher.SMono
 
-class LabelChangesPopulate @Inject()(val labelChangeRepository: LabelChangeRepository,
+class LabelChangesPopulate @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
+                                     val labelChangeRepository: LabelChangeRepository,
                                      val stateFactory: State.Factory) {
   def populate(username: Username, createdResults: LabelCreationResults, destroyResults: LabelDeletionResults, updatedResults: LabelUpdateResults): SMono[Unit] = {
     val creationIds: Set[LabelId] = createdResults.retrieveCreated.map(creation => creation._2.id).toSet
@@ -19,13 +27,24 @@ class LabelChangesPopulate @Inject()(val labelChangeRepository: LabelChangeRepos
     if (creationIds.isEmpty && updateIds.isEmpty && destroyIds.isEmpty) {
       SMono.empty
     } else {
-      SMono(labelChangeRepository.save(
-        LabelChange(
-          accountId = AccountId.fromUsername(username),
+      saveChangesAndDispatchEvent(username,
+        LabelChange(accountId = AccountId.fromUsername(username),
           state = stateFactory.generate(),
           created = creationIds,
           updated = updateIds,
-          destroyed = destroyIds))).`then`()
+          destroyed = destroyIds))
     }
   }
+
+  private def saveChangesAndDispatchEvent(username: Username, change: LabelChange): SMono[Unit] =
+    SMono(labelChangeRepository.save(change))
+      .`then`(SMono(eventBus.dispatch(toStateChangeEvent(username, change),
+        AccountIdRegistrationKey(change.getAccountId)))).`then`()
+
+  private def toStateChangeEvent(username: Username, change: LabelChange): StateChangeEvent =
+    StateChangeEvent(
+      eventId = EventId.random(),
+      username = username,
+      map = Map(LabelTypeName -> UuidState.fromJava(change.state)))
+
 }

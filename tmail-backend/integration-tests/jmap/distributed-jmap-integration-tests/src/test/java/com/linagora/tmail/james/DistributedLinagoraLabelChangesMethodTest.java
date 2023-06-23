@@ -1,5 +1,7 @@
 package com.linagora.tmail.james;
 
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -31,6 +33,7 @@ public class DistributedLinagoraLabelChangesMethodTest implements LabelChangesMe
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
@@ -39,6 +42,7 @@ public class DistributedLinagoraLabelChangesMethodTest implements LabelChangesMe
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceLabelModule())
+                .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LabelChangesMethodContract.firebasePushClient()))
             .overrideWith(new DelegationProbeModule()))
         .build();
 
