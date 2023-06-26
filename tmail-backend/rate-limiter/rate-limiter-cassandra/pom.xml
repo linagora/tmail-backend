@@ -51,6 +51,13 @@
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>io.github.evis</groupId>
+                <artifactId>scalafix-maven-plugin_2.13</artifactId>
+                <configuration>
+                    <config>${project.parent.parent.basedir}/.scalafix.conf</config>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
