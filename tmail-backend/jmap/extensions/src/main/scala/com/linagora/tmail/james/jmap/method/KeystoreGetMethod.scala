@@ -7,6 +7,7 @@ import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{KeystoreGetRequest, KeystoreGetResponse}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, SessionTranslator, UuidState}
@@ -17,8 +18,6 @@ import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import javax.inject.Inject
 
 class KeystoreGetMethodModule extends AbstractModule {
   override def configure(): Unit = {

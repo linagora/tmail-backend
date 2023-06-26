@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.time.ZonedDateTime
+import java.util.UUID
+
 import cats.data.Validated
 import cats.instances.list._
 import cats.syntax.traverse._
@@ -18,8 +21,6 @@ import org.apache.james.jmap.method.WithoutAccountId
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsArray, JsObject, JsPath, JsString, JsValue, JsonValidationError}
 
-import java.time.ZonedDateTime
-import java.util.UUID
 import scala.util.{Failure, Success, Try}
 
 object FirebaseSubscriptionId {

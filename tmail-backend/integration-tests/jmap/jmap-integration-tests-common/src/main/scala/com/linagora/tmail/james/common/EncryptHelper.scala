@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.common
 
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.nio.charset.StandardCharsets
+
 import com.google.common.io.ByteSource
 import com.linagora.tmail.pgp.{Decrypter, Encrypter}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -7,9 +10,6 @@ import io.restassured.RestAssured.`given`
 import io.restassured.specification.RequestSpecification
 import org.apache.http.HttpStatus
 import org.apache.james.jmap.rfc8621.contract.Fixture.ACCEPT_RFC8621_VERSION_HEADER
-
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-import java.nio.charset.StandardCharsets
 
 object EncryptHelper {
   lazy val PGP_KEY: Array[Byte] = ClassLoader.getSystemClassLoader

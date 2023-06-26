@@ -4,10 +4,10 @@ import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql.PreparedStatement
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.blob.blobid.list.cassandra.BlobIdListTable._
+import javax.inject.Inject
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.blob.api.BlobId
 import reactor.core.scala.publisher.SMono
-import javax.inject.Inject
 
 class CassandraBlobIdListDAO @Inject()(session: CqlSession) {
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)

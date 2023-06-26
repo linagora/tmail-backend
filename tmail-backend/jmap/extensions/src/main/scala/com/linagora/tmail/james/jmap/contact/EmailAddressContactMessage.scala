@@ -1,10 +1,11 @@
 package com.linagora.tmail.james.jmap.contact
 
+import java.util.Locale
+
 import com.linagora.tmail.james.jmap.contact.TmailContactMessageScope.{DOMAIN, USER}
 import com.linagora.tmail.james.jmap.contact.TmailContactMessageType.{ADDITION, REMOVAL, UPDATE}
 import org.apache.james.core.{Domain, MailAddress, Username}
 
-import java.util.Locale
 import scala.util.Try
 
 case class EmailAddressContactMessage(messageType: TmailContactMessageType,

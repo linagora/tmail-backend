@@ -1,13 +1,12 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscription, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, FirebaseSubscriptionUpdateResponse, UnparsedFirebaseSubscriptionId}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, FirebaseSubscriptionUpdateResponse, FirebaseToken, UnparsedFirebaseSubscriptionId}
+import javax.inject.Inject
 import org.apache.james.jmap.api.change.TypeStateFactory
 import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json._
-
-import javax.inject.Inject
 
 class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactory) {
   private implicit val unparsedFirebaseSubscriptionIdReads: Reads[UnparsedFirebaseSubscriptionId] = Json.valueReads[UnparsedFirebaseSubscriptionId]

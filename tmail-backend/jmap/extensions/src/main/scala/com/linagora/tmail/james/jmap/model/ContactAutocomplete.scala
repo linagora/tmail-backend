@@ -1,11 +1,11 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.util.UUID
+
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.Limit.Limit
 import org.apache.james.jmap.core.{AccountId, LimitUnparsed}
 import org.apache.james.jmap.method.WithAccountId
-
-import java.util.UUID
 
 case class ContactAutocompleteRequest(accountId: AccountId,
                                       filter: ContactFilter,

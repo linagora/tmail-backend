@@ -2,13 +2,13 @@ package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
 import com.linagora.tmail.james.jmap.model.{FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionUpdateFailure, FirebaseSubscriptionUpdateResult, FirebaseSubscriptionUpdateResults, FirebaseSubscriptionUpdateSuccess, UnparsedFirebaseSubscriptionId, ValidatedFirebaseSubscriptionPatchObject}
+import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.TypeStateFactory
 import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.util.ReactorUtils
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 

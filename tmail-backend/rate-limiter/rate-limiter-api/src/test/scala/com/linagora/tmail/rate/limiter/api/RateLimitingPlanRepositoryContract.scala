@@ -1,5 +1,7 @@
 package com.linagora.tmail.rate.limiter.api
 
+import java.time.Duration
+
 import com.linagora.tmail.rate.limiter.api.LimitTypes.LimitTypes
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract.{CREATION_REQUEST, CREATION_REQUEST_WITH_MULTI_OPERATIONS, RESET_REQUEST}
 import eu.timepit.refined.auto._
@@ -9,7 +11,6 @@ import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.time.Duration
 import scala.jdk.CollectionConverters._
 
 case class TestPJ(name: String, limits: LimitTypes)

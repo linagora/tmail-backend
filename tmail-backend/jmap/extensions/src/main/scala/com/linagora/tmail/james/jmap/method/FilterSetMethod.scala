@@ -1,11 +1,14 @@
 package com.linagora.tmail.james.jmap.method
 
+import java.util.Optional
+
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.json.FilterSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
 import com.linagora.tmail.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId}
 import eu.timepit.refined.auto._
+import javax.inject.{Inject, Named}
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.EventBus
@@ -27,8 +30,6 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.util.Optional
-import javax.inject.{Inject, Named}
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 

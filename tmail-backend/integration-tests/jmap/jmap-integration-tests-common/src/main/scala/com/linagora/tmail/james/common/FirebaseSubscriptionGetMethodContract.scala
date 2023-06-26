@@ -1,14 +1,18 @@
 package com.linagora.tmail.james.common
 
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
 import com.google.common.collect.ImmutableSet
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
 import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebaseSubscriptionRepository}
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseToken, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseToken}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
+import javax.inject.Inject
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
@@ -24,10 +28,6 @@ import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.Mockito.mock
 import reactor.core.scala.publisher.SMono
-
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import javax.inject.Inject
 
 class FirebaseSubscriptionProbe @Inject()(firebaseSubscriptionRepository: FirebaseSubscriptionRepository) extends GuiceProbe {
   def createSubscription(username: Username, request: FirebaseSubscriptionCreationRequest): FirebaseSubscription =

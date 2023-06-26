@@ -1,7 +1,10 @@
 package com.linagora.tmail.mailets
 
+import java.util.Optional
+
 import com.linagora.tmail.mailets.TmailLocalDelivery.LOCAL_DELIVERED_MAILS_METRIC_NAME
 import com.linagora.tmail.team.TeamMailboxRepository
+import javax.inject.{Inject, Named}
 import org.apache.james.mailbox.MailboxManager
 import org.apache.james.mailbox.model.MailboxConstants
 import org.apache.james.metrics.api.MetricFactory
@@ -9,9 +12,6 @@ import org.apache.james.transport.mailets.delivery.{MailDispatcher, SimpleMailSt
 import org.apache.james.user.api.UsersRepository
 import org.apache.mailet.Mail
 import org.apache.mailet.base.{GenericMailet, MailetUtil}
-
-import java.util.Optional
-import javax.inject.{Inject, Named}
 
 object TmailLocalDelivery {
   private val LOCAL_DELIVERED_MAILS_METRIC_NAME: String = "tmailLocalDeliveredMails"

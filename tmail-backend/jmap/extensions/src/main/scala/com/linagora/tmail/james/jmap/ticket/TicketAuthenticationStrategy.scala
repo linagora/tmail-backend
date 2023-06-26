@@ -2,7 +2,6 @@ package com.linagora.tmail.james.jmap.ticket
 
 import cats.implicits._
 import io.netty.handler.codec.http.QueryStringDecoder
-
 import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.JmapRfc8621Configuration

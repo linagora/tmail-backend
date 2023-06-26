@@ -1,5 +1,13 @@
 package com.linagora.tmail.james.common
 
+import java.io.{ByteArrayInputStream, InputStream}
+import java.nio.charset.StandardCharsets
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util
+import java.util.concurrent.TimeUnit
+import java.util.stream.Stream
+
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Inject}
 import com.linagora.tmail.james.common.EmailRecoveryActionSetMethodContract.{DELETED_MESSAGE_CONTENT, TIME_FORMATTER, taskAwaitBasePath, webAdminApi}
@@ -19,7 +27,7 @@ import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.MailboxProbeImpl
-import org.apache.james.task.{Task, TaskId, TaskManager, TaskType, TaskWithId, WorkQueue}
+import org.apache.james.task.{MemoryReferenceTask, Task, TaskId, TaskManager}
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe, WebAdminGuiceProbe}
 import org.apache.james.vault.search.Query
 import org.apache.james.vault.{DeletedMessage, DeletedMessageVault}
@@ -34,15 +42,7 @@ import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 import play.api.libs.json.{JsString, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.io.{ByteArrayInputStream, InputStream}
-import java.nio.charset.StandardCharsets
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util
-import java.util.concurrent.TimeUnit
-import java.util.stream.Stream
 import scala.jdk.CollectionConverters._
-import org.apache.james.task.MemoryReferenceTask
 
 class DeletedMessageVaultProbe @Inject()(vault: DeletedMessageVault) extends GuiceProbe {
   def append(deletedMessage: DeletedMessage, mimeMessage: InputStream): Unit =

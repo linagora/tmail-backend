@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.time.ZonedDateTime
+import java.util
+
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
 import com.linagora.tmail.james.jmap.method.AsEitherRequest
 import eu.timepit.refined.auto._
@@ -14,8 +17,6 @@ import org.apache.james.task.TaskManager.Status
 import org.apache.james.vault.search.{Criterion, CriterionFactory, Query}
 import play.api.libs.json.{JsObject, Json}
 
-import java.time.ZonedDateTime
-import java.util
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.util.Try

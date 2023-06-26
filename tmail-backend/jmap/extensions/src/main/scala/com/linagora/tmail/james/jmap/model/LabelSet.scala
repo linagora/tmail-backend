@@ -7,8 +7,6 @@ import org.apache.james.jmap.mail.Keyword
 import org.apache.james.jmap.method.WithAccountId
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 
-import scala.collection.Seq
-
 case class LabelSetRequest(accountId: AccountId,
                            create: Option[Map[LabelCreationId, JsObject]],
                            update: Option[Map[UnparsedLabelId, LabelPatchObject]],

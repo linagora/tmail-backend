@@ -1,14 +1,13 @@
 package com.linagora.tmail.james.jmap.label
 
 import com.linagora.tmail.james.jmap.label.LabelChangeRepository.DEFAULT_MAX_IDS_TO_RETURN
+import javax.inject.Inject
 import org.apache.james.jmap.api.change.{Limit, State}
 import org.apache.james.jmap.api.exception.ChangeNotFoundException
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.SMono
-
-import javax.inject.Inject
 
 class CassandraLabelChangeRepository @Inject()(val dao: CassandraLabelChangeDAO) extends LabelChangeRepository {
   override def save(labelChange: LabelChange): Publisher[Void] =

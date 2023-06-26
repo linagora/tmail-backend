@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.common
 
+import java.time.Duration
+import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract.{basePath, bobAccountId, calmlyAwait, contactA, contactB, firstnameA, firstnameB, mailAddressA, mailAddressB, surnameA, surnameB, webAdminApi}
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe
 import com.linagora.tmail.james.jmap.contact.ContactFields
@@ -27,9 +30,6 @@ import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
 import org.eclipse.jetty.http.HttpStatus.{CREATED_201, NO_CONTENT_204, OK_200}
 import org.junit.jupiter.api.{BeforeEach, Test}
-
-import java.time.Duration
-import java.util.concurrent.TimeUnit
 
 object LinagoraContactAutocompleteMethodContract {
   private var webAdminApi: RequestSpecification = _

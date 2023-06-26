@@ -1,10 +1,9 @@
 package com.linagora.tmail.james.jmap.contact
 
+import javax.inject.Inject
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
-
-import javax.inject.Inject
 
 sealed trait ContactMessageHandlerResult
 

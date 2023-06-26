@@ -1,6 +1,5 @@
 package com.linagora.tmail.james.jmap.contact
 
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.{BeforeEach, Disabled, Test}
 
 class MemoryEmailAddressContactSearchEngineTest extends EmailAddressContactSearchEngineContract {

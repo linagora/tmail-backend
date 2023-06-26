@@ -5,6 +5,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FIREBA
 import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetCreatePerformer.CreationResults
 import com.linagora.tmail.james.jmap.model.{FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{ClientId, Invocation, ServerId}
@@ -14,8 +15,6 @@ import org.apache.james.lifecycle.api.Startable
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
-
-import javax.inject.Inject
 
 class FirebaseSubscriptionSetMethod @Inject()(val serializer: FirebaseSubscriptionSerializer,
                                               val createPerformer: FirebaseSubscriptionSetCreatePerformer,

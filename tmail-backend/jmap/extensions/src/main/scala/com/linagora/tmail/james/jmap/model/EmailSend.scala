@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.io.{ByteArrayInputStream, InputStream}
+
 import cats.implicits.toTraverseOps
 import com.linagora.tmail.james.jmap.json.EmailSendSerializer
 import com.linagora.tmail.james.jmap.method.standardError
@@ -17,8 +19,6 @@ import org.apache.james.jmap.method.{SizeExceededException, WithAccountId}
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.server.core.MimeMessageSource
 import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, JsonValidationError}
-
-import java.io.{ByteArrayInputStream, InputStream}
 
 case class EmailSendCreationId(id: Id)
 

@@ -1,14 +1,15 @@
 package com.linagora.tmail.team
 
+import java.util
+import java.util.Optional
+
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
+import javax.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.UserEntityValidator.{EntityType, ValidationFailure}
 import org.apache.james.core.{Domain, Username}
 import reactor.core.scala.publisher.SMono
 
-import java.util
-import java.util.Optional
-import javax.inject.Inject
 import scala.jdk.OptionConverters._
 
 object TeamMailboxUserEntityValidator {

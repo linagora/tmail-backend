@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
-
 import javax.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
@@ -12,7 +11,7 @@ import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFou
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
-import org.apache.james.mailbox.{DefaultMailboxes, MailboxManager, MailboxSession, SubscriptionManager}
+import org.apache.james.mailbox.{MailboxManager, MailboxSession, SubscriptionManager}
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}

@@ -19,14 +19,15 @@
 
 package com.linagora.tmail.james.jmap
 
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
 import eu.timepit.refined.api.{RefType, Validate}
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, Properties, SetError, UTCDate}
 import play.api.libs.json._
 
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 import scala.util.{Failure, Success, Try}
 
 package object json {

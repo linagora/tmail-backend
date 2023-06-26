@@ -6,6 +6,7 @@ import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{KeystoreSetRequest, KeystoreSetResponse}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{AccountId, Capability, CapabilityFactory, CapabilityProperties, ClientId, Id, Invocation, ServerId, SessionTranslator, SetError, UrlPrefixes}
@@ -17,7 +18,6 @@ import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.SMono
 
-import javax.inject.Inject
 import scala.jdk.OptionConverters._
 
 case object KeystoreCapabilityProperties extends CapabilityProperties {
