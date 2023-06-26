@@ -143,13 +143,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
     SMono.fromPublisher(exists(teamMailbox))
       .filter(teamMailboxExist => teamMailboxExist)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
-      .flatMap(_ => SFlux.zip6(addRightForMember(teamMailbox.mailboxPath, user, session),
-        addRightForMember(teamMailbox.inboxPath, user, session),
-        addRightForMember(teamMailbox.sentPath, user, session),
-        subscribeForMember(teamMailbox.mailboxPath, memberSession),
-        subscribeForMember(teamMailbox.inboxPath, memberSession),
-        subscribeForMember(teamMailbox.sentPath, memberSession))
-        .`then`()
+      .flatMap(_ => addRightForMember(teamMailbox.mailboxPath, user, session)
+        .`then`(addRightForMember(teamMailbox.inboxPath, user, session))
+        .`then`(addRightForMember(teamMailbox.sentPath, user, session))
+        .`then`(subscribeForMember(teamMailbox.mailboxPath, memberSession))
+        .`then`(subscribeForMember(teamMailbox.inboxPath, memberSession))
+        .`then`(subscribeForMember(teamMailbox.sentPath, memberSession))
         .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
       .`then`()
   }
@@ -185,13 +184,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .flatMap(_ => SMono.fromPublisher(isUserInTeamMailbox(teamMailbox, user))
         .filter(userInTeamMailbox => userInTeamMailbox)
-        .flatMap(_ => SFlux.zip6(removeRightForMember(teamMailbox.mailboxPath, user, session),
-          removeRightForMember(teamMailbox.inboxPath, user, session),
-          removeRightForMember(teamMailbox.sentPath, user, session),
-          unSubscribeForMember(teamMailbox.mailboxPath, memberSession),
-          unSubscribeForMember(teamMailbox.inboxPath, memberSession),
-          unSubscribeForMember(teamMailbox.sentPath, memberSession))
-          .`then`()
+        .flatMap(_ => removeRightForMember(teamMailbox.mailboxPath, user, session)
+          .`then`(removeRightForMember(teamMailbox.inboxPath, user, session))
+          .`then`(removeRightForMember(teamMailbox.sentPath, user, session))
+          .`then`(unSubscribeForMember(teamMailbox.mailboxPath, memberSession))
+          .`then`(unSubscribeForMember(teamMailbox.inboxPath, memberSession))
+          .`then`(unSubscribeForMember(teamMailbox.sentPath, memberSession))
           .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
         .`then`())
       .`then`()
