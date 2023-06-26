@@ -102,6 +102,31 @@
                     </executions>
                 </plugin>
                 <plugin>
+                    <groupId>io.github.evis</groupId>
+                    <artifactId>scalafix-maven-plugin_2.13</artifactId>
+                    <version>0.1.6_0.9.34</version>
+                    <configuration>
+                        <config>${basedir}/.scalafix.conf</config>
+                        <mode>CHECK</mode>
+                    </configuration>
+                    <dependencies>
+                        <dependency>
+                            <groupId>com.nequissimus</groupId>
+                            <artifactId>sort-imports_2.13</artifactId>
+                            <version>0.6.1</version>
+                        </dependency>
+                    </dependencies>
+                    <executions>
+                        <execution>
+                            <id>scala-check-style</id>
+                            <goals>
+                                <goal>scalafix</goal>
+                            </goals>
+                            <phase>compile</phase>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-assembly-plugin</artifactId>
                     <version>3.1.1</version>
