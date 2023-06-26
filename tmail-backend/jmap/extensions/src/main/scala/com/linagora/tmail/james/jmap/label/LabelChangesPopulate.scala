@@ -5,16 +5,15 @@ import com.linagora.tmail.james.jmap.method.LabelSetCreatePerformer.LabelCreatio
 import com.linagora.tmail.james.jmap.method.LabelSetDeletePerformer.LabelDeletionResults
 import com.linagora.tmail.james.jmap.method.LabelUpdateResults
 import com.linagora.tmail.james.jmap.model.LabelId
-
 import javax.inject.Named
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.EventBus
 import org.apache.james.jmap.InjectionKeys
 import org.apache.james.jmap.api.change.State
+import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.change.{AccountIdRegistrationKey, StateChangeEvent}
 import org.apache.james.jmap.core.UuidState
-import org.apache.james.jmap.api.model.AccountId
 import reactor.core.scala.publisher.SMono
 
 class LabelChangesPopulate @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,

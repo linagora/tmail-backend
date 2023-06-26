@@ -2,7 +2,7 @@ package com.linagora.tmail.rate.limiter.api.cassandra
 
 import com.google.common.base.Preconditions
 import com.linagora.tmail.rate.limiter.api.cassandra.dao.{CassandraRateLimitPlanDAO, RateLimitingPlanEntry}
-import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanResetRequest}
+import com.linagora.tmail.rate.limiter.api.{RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanRepository, RateLimitingPlanResetRequest}
 import javax.inject.Inject
 import org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY
 import org.reactivestreams.Publisher

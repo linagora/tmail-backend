@@ -1,5 +1,8 @@
 package com.linagora.tmail.encrypted
 
+import java.nio.charset.StandardCharsets
+import java.util.stream.IntStream
+
 import com.google.common.io.ByteSource
 import org.apache.james.jmap.api.model.Preview
 import org.apache.james.jmap.draft.utils.JsoupHtmlTextExtractor
@@ -12,8 +15,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.{BeforeEach, Test}
 
-import java.nio.charset.StandardCharsets
-import java.util.stream.IntStream
 import scala.util.Try
 
 object ClearEmailContentTest {

@@ -1,11 +1,10 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, Field, Filter, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, MarkAsImportant, MarkAsSeen, Reject, Rule, RuleWithId, Update, WithKeywords}
+import javax.inject.Inject
 import org.apache.james.jmap.mail.{Keyword, Name}
 import org.apache.james.mailbox.model.MailboxId
 import play.api.libs.json.{Format, JsError, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
-
-import javax.inject.Inject
 
 case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
 

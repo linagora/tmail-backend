@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.json
 
+import java.util.Locale
+
 import com.linagora.tmail.james.jmap.model._
 import net.fortuna.ical4j.model.Month
 import net.fortuna.ical4j.model.Recur.Skip
@@ -8,8 +10,6 @@ import org.apache.james.jmap.core.{Properties, SetError}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import play.api.libs.json._
-
-import java.util.Locale
 
 object CalendarEventSerializer {
 

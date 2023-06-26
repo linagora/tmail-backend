@@ -37,7 +37,7 @@ trait LabelChangeRepositoryContract {
 
   def stateFactory: State.Factory
 
-  def setClock(newTime: ZonedDateTime)
+  def setClock(newTime: ZonedDateTime): Unit
 
   @Test
   def saveChangeShouldSuccess(): Unit = {

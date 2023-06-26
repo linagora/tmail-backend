@@ -1,5 +1,9 @@
 package com.linagora.tmail.rate.limiter.api
 
+import java.lang
+import java.time.Duration
+import java.util.concurrent.Executor
+
 import com.github.benmanes.caffeine.cache.{AsyncCacheLoader, AsyncLoadingCache, Caffeine}
 import org.apache.james.metrics.api.GaugeRegistry
 import org.reactivestreams.Publisher
@@ -7,9 +11,6 @@ import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 import reactor.core.scheduler.Schedulers
 
-import java.lang
-import java.time.Duration
-import java.util.concurrent.Executor
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.jdk.FutureConverters._
 

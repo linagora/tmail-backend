@@ -6,6 +6,7 @@ import com.linagora.tmail.james.jmap.json.FilterSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
 import com.linagora.tmail.james.jmap.model.{Filter, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterState, FilterWithVersion, Rule}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.FilteringManagement
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
@@ -20,7 +21,6 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.SMono
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 case object FilterCapabilityProperties extends CapabilityProperties {

@@ -1,9 +1,9 @@
 package com.linagora.tmail.james.jmap.firebase
 
-import com.google.common.collect.ImmutableList
-
 import java.time.Clock
 import java.util.UUID
+
+import com.google.common.collect.ImmutableList
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscriptionCreationRequest, FirebaseToken}
 import org.apache.james.core.Username

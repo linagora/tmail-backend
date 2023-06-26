@@ -7,6 +7,7 @@ import com.linagora.tmail.james.jmap.json.EncryptedEmailSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{EmailIdHelper, EncryptedEmailFastViewResults, EncryptedEmailGetRequest, EncryptedEmailGetResponse}
 import eu.timepit.refined.auto._
+import javax.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, SessionTranslator, UuidState}
@@ -21,7 +22,6 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import javax.inject.Inject
 import scala.jdk.CollectionConverters._
 
 class EncryptedEmailFastViewGetMethodModule extends AbstractModule {

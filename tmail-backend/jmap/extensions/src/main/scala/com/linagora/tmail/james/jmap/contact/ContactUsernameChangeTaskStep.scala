@@ -1,12 +1,11 @@
 package com.linagora.tmail.james.jmap.contact
 
+import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.user.api.UsernameChangeTaskStep
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import javax.inject.Inject
 
 class ContactUsernameChangeTaskStep @Inject()(contactSearchEngine: EmailAddressContactSearchEngine) extends UsernameChangeTaskStep {
   override def name(): UsernameChangeTaskStep.StepName = new UsernameChangeTaskStep.StepName("ContactUsernameChangeTaskStep")

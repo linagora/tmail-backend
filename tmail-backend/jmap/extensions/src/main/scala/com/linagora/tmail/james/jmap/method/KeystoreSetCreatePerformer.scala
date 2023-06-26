@@ -1,18 +1,18 @@
 package com.linagora.tmail.james.jmap.method
 
+import java.nio.charset.StandardCharsets
+
 import com.linagora.tmail.encrypted.KeystoreManager
 import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.KeystoreSetCreatePerformer.{KeystoreCreationFailure, KeystoreCreationResult, KeystoreCreationResults, KeystoreCreationSuccess}
 import com.linagora.tmail.james.jmap.model.{KeystoreCreationId, KeystoreCreationRequest, KeystoreCreationResponse, KeystoreSetRequest}
+import javax.inject.Inject
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import java.nio.charset.StandardCharsets
-import javax.inject.Inject
 
 object KeystoreSetCreatePerformer {
   sealed trait KeystoreCreationResult {

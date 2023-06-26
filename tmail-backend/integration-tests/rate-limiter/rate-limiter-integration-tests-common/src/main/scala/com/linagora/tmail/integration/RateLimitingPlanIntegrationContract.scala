@@ -1,5 +1,7 @@
 package com.linagora.tmail.integration
 
+import java.util.stream.IntStream
+
 import com.linagora.tmail.integration.RateLimitingPlanIntegrationContract.{DOMAIN, ERROR_REPOSITORY, RECIPIENT1, RECIPIENT2, RECIPIENT3, SENDER1, SENDER2}
 import io.restassured.RestAssured
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -15,8 +17,6 @@ import org.apache.james.utils.{DataProbeImpl, MailRepositoryProbeImpl, SMTPMessa
 import org.apache.james.webadmin.WebAdminUtils
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
-
-import java.util.stream.IntStream
 
 object RateLimitingPlanIntegrationContract {
   val DOMAIN: Domain = Domain.of("domain.tld")

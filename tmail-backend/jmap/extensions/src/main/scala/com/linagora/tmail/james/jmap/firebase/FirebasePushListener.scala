@@ -3,7 +3,6 @@ package com.linagora.tmail.james.jmap.firebase
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener.{GROUP, LOGGER}
 import com.linagora.tmail.james.jmap.model.FirebaseSubscription
-
 import javax.inject.Inject
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}
@@ -15,7 +14,7 @@ import org.apache.james.user.api.DelegationStore
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
-import reactor.core.scala.publisher.{SFlux, SMono}
+import reactor.core.scala.publisher.SMono
 
 import scala.jdk.javaapi.CollectionConverters
 

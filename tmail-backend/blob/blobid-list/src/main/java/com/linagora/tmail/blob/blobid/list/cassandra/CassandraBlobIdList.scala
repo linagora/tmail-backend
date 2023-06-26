@@ -2,10 +2,9 @@ package com.linagora.tmail.blob.blobid.list.cassandra
 
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.blob.blobid.list.BlobIdList
+import javax.inject.Inject
 import org.apache.james.blob.api.BlobId
 import org.reactivestreams.Publisher
-
-import javax.inject.Inject
 
 case class BlobIdListCassandraModule() extends AbstractModule {
   override def configure(): Unit = {

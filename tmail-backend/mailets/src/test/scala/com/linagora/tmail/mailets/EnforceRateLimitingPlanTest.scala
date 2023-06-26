@@ -1,9 +1,13 @@
 package com.linagora.tmail.mailets
 
+import java.time.Duration
+import java.util
+import java.util.stream.IntStream
+
 import com.codahale.metrics.MetricRegistry
 import com.linagora.tmail.mailets.EnforceRateLimitingPlanTest.{USER1, USER2}
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingPlanUserRepository
-import com.linagora.tmail.rate.limiter.api.{DeliveryLimitations, InMemoryRateLimitingPlanRepository, LimitTypes, OperationLimitationsType, RateLimitation, RateLimitingPlanRepository, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanUserRepository, RelayLimitations, TransitLimitations}
+import com.linagora.tmail.rate.limiter.api.{DeliveryLimitations, InMemoryRateLimitingPlanRepository, LimitTypes, OperationLimitationsType, RateLimitation, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanRepository, RateLimitingPlanUserRepository, RelayLimitations, TransitLimitations}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.metrics.api.NoopGaugeRegistry
@@ -18,10 +22,6 @@ import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.{BeforeEach, Nested, Test}
 import reactor.core.scala.publisher.SMono
-
-import java.time.Duration
-import java.util
-import java.util.stream.IntStream
 
 object EnforceRateLimitingPlanTest {
   val USER1: Username = Username.of("user1@domain.tld")

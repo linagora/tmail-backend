@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
+
 import com.linagora.tmail.encrypted.KeyId
 import com.linagora.tmail.james.common.LinagoraKeystoreSetMethodContract.{PGP_KEY, PGP_KEY_ARMORED, PGP_KEY_ID}
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe

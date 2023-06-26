@@ -1,12 +1,12 @@
 package com.linagora.tmail.james.jmap.model
 
 import cats.implicits.toTraverseOps
-import org.apache.james.core.MailAddress
-import org.apache.james.jmap.mail.{EmailSubmissionAddress, Envelope}
-
 import javax.mail.Address
 import javax.mail.Message.RecipientType
 import javax.mail.internet.{InternetAddress, MimeMessage}
+import org.apache.james.core.MailAddress
+import org.apache.james.jmap.mail.{EmailSubmissionAddress, Envelope}
+
 import scala.util.{Failure, Success, Try}
 
 object EmailSubmissionHelper {

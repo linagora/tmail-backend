@@ -1,16 +1,16 @@
 package com.linagora.tmail.rate.limiter.api
 
+import java.time.Duration
+
 import com.linagora.tmail.rate.limiter.api.LimitTypes.LimitTypes
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanUserRepositoryContract.{ALICE, BOB}
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanUsernameChangeTaskStepTest.{CREATION_REQUEST, CREATION_REQUEST_2}
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingPlanUserRepository
+import eu.timepit.refined.auto._
 import org.apache.james.rate.limiter.api.AllowedQuantity
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.junit.jupiter.api.{BeforeEach, Test}
-import reactor.core.scala.publisher.{SFlux, SMono}
-import eu.timepit.refined.auto._
-
-import java.time.Duration
+import reactor.core.scala.publisher.SMono
 
 object RateLimitingPlanUsernameChangeTaskStepTest {
   val COUNT: Count = Count(AllowedQuantity.validate(1).toOption.get)

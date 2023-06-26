@@ -1,5 +1,9 @@
 package com.linagora.tmail.james.common
 
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.UUID
+
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
 import com.linagora.tmail.james.common.FirebaseSubscriptionSetMethodContract.firebasePushClient
 import com.linagora.tmail.james.jmap.firebase.FirebasePushClient
@@ -25,10 +29,6 @@ import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import reactor.core.publisher.Mono
-
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.UUID
 
 object FirebaseSubscriptionSetMethodContract {
   val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])

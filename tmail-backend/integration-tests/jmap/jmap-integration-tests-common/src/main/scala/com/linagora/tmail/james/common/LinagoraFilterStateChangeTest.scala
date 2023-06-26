@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.common
 
+import java.net.URI
+
 import io.restassured.RestAssured.requestSpecification
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.draft.JmapGuiceProbe
@@ -18,7 +20,6 @@ import sttp.monad.syntax.MonadErrorOps
 import sttp.ws.WebSocketFrame
 import sttp.ws.WebSocketFrame.Text
 
-import java.net.URI
 import scala.jdk.CollectionConverters._
 
 trait LinagoraFilterStateChangeTest {

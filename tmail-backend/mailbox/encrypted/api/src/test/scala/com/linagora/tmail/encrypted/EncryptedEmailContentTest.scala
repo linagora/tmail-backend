@@ -18,7 +18,6 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import play.api.libs.json.Json
 
-
 import scala.jdk.OptionConverters._
 
 object EncryptedEmailContentTest {

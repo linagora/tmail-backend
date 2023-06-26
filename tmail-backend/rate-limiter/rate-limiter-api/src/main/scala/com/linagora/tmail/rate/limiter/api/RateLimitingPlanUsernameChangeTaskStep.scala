@@ -1,12 +1,11 @@
 package com.linagora.tmail.rate.limiter.api
 
+import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.user.api.UsernameChangeTaskStep
 import org.apache.james.user.api.UsernameChangeTaskStep.StepName
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
-
-import javax.inject.Inject
 
 class RateLimitingPlanUsernameChangeTaskStep @Inject() (val repository: RateLimitingPlanUserRepository) extends UsernameChangeTaskStep {
   override def name(): StepName = new StepName("RateLimitingPlanUsernameChangeTaskStep")

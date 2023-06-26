@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.common
 
+import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.LinagoraForwardSetMethodContract.{CALMLY_AWAIT, CEDRIC_PASSWORD}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -29,7 +31,6 @@ import org.junit.jupiter.api.{BeforeEach, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
-import java.util.concurrent.TimeUnit
 import scala.jdk.CollectionConverters._
 
 object LinagoraForwardSetMethodContract {

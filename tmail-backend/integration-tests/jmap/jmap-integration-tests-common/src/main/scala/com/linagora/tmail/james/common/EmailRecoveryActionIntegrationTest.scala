@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.common
 
+import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.EmailRecoveryActionIntegrationTest.{andreBaseRequest, andreInboxId, bobBaseRequest, bobInboxId}
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract.HTML_BODY
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -20,8 +22,6 @@ import org.awaitility.core.ConditionFactory
 import org.hamcrest.Matchers
 import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.{BeforeEach, Test}
-
-import java.util.concurrent.TimeUnit
 
 object EmailRecoveryActionIntegrationTest {
   var bobBaseRequest: RequestSpecification = _
