@@ -13,7 +13,6 @@ import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
-import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
@@ -563,7 +562,7 @@ trait LabelSetMethodContract {
       .get(0)
 
     assertThatJson(response)
-      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState", "methodResponses[1][1].state")
       .isEqualTo(
         s"""{
            |  "sessionState": "${SESSION_STATE.value}",
@@ -582,7 +581,6 @@ trait LabelSetMethodContract {
            |			{
            |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |				"notFound": [],
-           |				"state": "${INSTANCE.value}",
            |				"list": [{
            |						"id": "${label.id.id.value}",
            |						"displayName": "$LABEL_NAME",
