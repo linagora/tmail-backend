@@ -36,8 +36,8 @@ class LabelSetMethod @Inject() (val createPerformer: LabelSetCreatePerformer,
       destroyed <- deletePerformer.deleteLabels(request, mailboxSession)
     } yield {
       labelChangesPopulate.populate(mailboxSession.getUser, created, destroyed, updated)
-        .`then`(retrieveState(mailboxSession)
-          .map(newState => InvocationWithContext(
+        .switchIfEmpty(SMono.just(oldState))
+        .map(newState => InvocationWithContext(
             invocation = Invocation(
               methodName = methodName,
               arguments = Arguments(LabelSerializer.serializeLabelSetResponse(LabelSetResponse(
@@ -57,7 +57,7 @@ class LabelSetMethod @Inject() (val createPerformer: LabelSetCreatePerformer,
                   Id.validate(response.id.id)
                     .fold(_ => processingContext,
                       serverId => processingContext.recordCreatedId(ClientId(clientId.id), ServerId(serverId)))
-              }))))
+              })))
     })
       .flatMap(publisher => publisher)
 

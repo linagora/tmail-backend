@@ -19,19 +19,21 @@ import reactor.core.scala.publisher.SMono
 class LabelChangesPopulate @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
                                      val labelChangeRepository: LabelChangeRepository,
                                      val stateFactory: State.Factory) {
-  def populate(username: Username, createdResults: LabelCreationResults, destroyResults: LabelDeletionResults, updatedResults: LabelUpdateResults): SMono[Unit] = {
+  def populate(username: Username, createdResults: LabelCreationResults, destroyResults: LabelDeletionResults, updatedResults: LabelUpdateResults): SMono[UuidState] = {
     val creationIds: Set[LabelId] = createdResults.retrieveCreated.map(creation => creation._2.id).toSet
     val updateIds: Set[LabelId] = updatedResults.updated.keySet
     val destroyIds: Set[LabelId] = destroyResults.destroyed.toSet
     if (creationIds.isEmpty && updateIds.isEmpty && destroyIds.isEmpty) {
       SMono.empty
     } else {
+      val state = stateFactory.generate()
       saveChangesAndDispatchEvent(username,
         LabelChange(accountId = AccountId.fromUsername(username),
-          state = stateFactory.generate(),
+          state = state,
           created = creationIds,
           updated = updateIds,
           destroyed = destroyIds))
+        .`then`(SMono.just(UuidState.fromJava(state)))
     }
   }
 
