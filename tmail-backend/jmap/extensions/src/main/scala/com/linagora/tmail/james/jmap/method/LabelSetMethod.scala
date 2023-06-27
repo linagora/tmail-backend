@@ -6,6 +6,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{LabelSetRequest, LabelSetResponse}
 import eu.timepit.refined.auto._
 import javax.inject.Inject
+import org.apache.james.jmap.api.model.{AccountId => JavaAccountId}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{ClientId, Id, Invocation, ServerId, SessionTranslator, UuidState}
@@ -29,40 +30,41 @@ class LabelSetMethod @Inject() (val createPerformer: LabelSetCreatePerformer,
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: LabelSetRequest): Publisher[InvocationWithContext] =
     (for {
-      oldState <- retrieveState()
+      oldState <- retrieveState(mailboxSession)
       created <- createPerformer.createLabels(mailboxSession, request)
       updated <- updatePerformer.update(request, mailboxSession.getUser)
       destroyed <- deletePerformer.deleteLabels(request, mailboxSession)
-      newState <- retrieveState()
     } yield {
-      val invocationWithContext: InvocationWithContext = InvocationWithContext(
-        invocation = Invocation(
-          methodName = methodName,
-          arguments = Arguments(LabelSerializer.serializeLabelSetResponse(LabelSetResponse(
-            accountId = request.accountId,
-            oldState = Some(oldState),
-            newState = newState,
-            created = Some(created.retrieveCreated).filter(_.nonEmpty),
-            notCreated = Some(created.retrieveErrors).filter(_.nonEmpty),
-            updated = Some(updated.updated).filter(_.nonEmpty),
-            notUpdated = Some(updated.notUpdated).filter(_.nonEmpty),
-            destroyed = Some(destroyed.destroyed).filter(_.nonEmpty),
-            notDestroyed = Some(destroyed.retrieveErrors).filter(_.nonEmpty))).as[JsObject]),
-          methodCallId = invocation.invocation.methodCallId),
-        processingContext = Some(created.retrieveCreated).getOrElse(Map())
-          .foldLeft(invocation.processingContext)({
-            case (processingContext, (clientId, response)) =>
-              Id.validate(response.id.id)
-                .fold(_ => processingContext,
-                  serverId => processingContext.recordCreatedId(ClientId(clientId.id), ServerId(serverId)))
-          }))
       labelChangesPopulate.populate(mailboxSession.getUser, created, destroyed, updated)
-        .`then`(SMono.just(invocationWithContext))
-    }).flatMap(publisher => publisher)
+        .`then`(retrieveState(mailboxSession)
+          .map(newState => InvocationWithContext(
+            invocation = Invocation(
+              methodName = methodName,
+              arguments = Arguments(LabelSerializer.serializeLabelSetResponse(LabelSetResponse(
+                accountId = request.accountId,
+                oldState = Some(oldState),
+                newState = newState,
+                created = Some(created.retrieveCreated).filter(_.nonEmpty),
+                notCreated = Some(created.retrieveErrors).filter(_.nonEmpty),
+                updated = Some(updated.updated).filter(_.nonEmpty),
+                notUpdated = Some(updated.notUpdated).filter(_.nonEmpty),
+                destroyed = Some(destroyed.destroyed).filter(_.nonEmpty),
+                notDestroyed = Some(destroyed.retrieveErrors).filter(_.nonEmpty))).as[JsObject]),
+              methodCallId = invocation.invocation.methodCallId),
+            processingContext = Some(created.retrieveCreated).getOrElse(Map())
+              .foldLeft(invocation.processingContext)({
+                case (processingContext, (clientId, response)) =>
+                  Id.validate(response.id.id)
+                    .fold(_ => processingContext,
+                      serverId => processingContext.recordCreatedId(ClientId(clientId.id), ServerId(serverId)))
+              }))))
+    })
+      .flatMap(publisher => publisher)
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, LabelSetRequest] =
     LabelSerializer.deserializeLabelSetRequest(invocation.arguments.value).asEitherRequest
 
-  private def retrieveState(): SMono[UuidState] =
-    SMono.just(UuidState.INSTANCE) // dummy state for now
+  private def retrieveState(mailboxSession: MailboxSession): SMono[UuidState] =
+    SMono(labelChangesPopulate.labelChangeRepository.getLatestState(JavaAccountId.fromUsername(mailboxSession.getUser)))
+      .map(UuidState.fromJava)
 }

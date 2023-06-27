@@ -7,6 +7,8 @@ import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option
+import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
@@ -1394,6 +1396,66 @@ trait LabelSetMethodContract {
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_COLOR)
     })
+  }
+
+  @Test
+  def newStateShouldBeUpToDate(): Unit = {
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR)
+
+    val request =
+      s"""
+         |{
+         |   "using": [ "urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |   "methodCalls": [
+         |       [
+         |           "Label/set",
+         |           {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "update": {
+         |                    "$createdLabelId": {
+         |                      "displayName": "newName"
+         |                    }
+         |                }
+         |           }, "c1"],
+         |       [ "Label/changes",
+         |       {
+         |         "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |         "#sinceState": {
+         |            "resultOf":"c1",
+         |            "name":"Label/set",
+         |            "path":"newState"
+         |          }
+         |       },
+         |       "c2"]
+         |   ]
+         |}
+         |""".stripMargin
+
+    val response = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+      .whenIgnoringPaths("methodResponses[1][1].oldState", "methodResponses[1][1].newState")
+      .inPath("methodResponses[1][1]")
+      .isEqualTo(
+        s"""{
+           |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |  "hasMoreChanges": false,
+           |  "created": [],
+           |  "updated": [],
+           |  "destroyed": []
+           |}""".stripMargin)
   }
 
   private def createLabel(accountId: String, displayName: String, color: String): String = {
