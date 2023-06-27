@@ -3,13 +3,13 @@ package com.linagora.tmail.james.jmap.method
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.LabelSerializer
-import com.linagora.tmail.james.jmap.label.{LabelRepository, LabelTypeName}
+import com.linagora.tmail.james.jmap.label.{LabelChangeRepository, LabelRepository, LabelTypeName}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{Label, LabelGetRequest, LabelGetResponse, LabelId, LabelIds}
 import eu.timepit.refined.auto._
 import javax.inject.Inject
 import org.apache.james.core.Username
-import org.apache.james.jmap.api.model.TypeName
+import org.apache.james.jmap.api.model.{TypeName, AccountId => JavaAccountId}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, UrlPrefixes, UuidState}
@@ -70,7 +70,8 @@ class LabelMethodModule extends AbstractModule {
 class LabelGetMethod @Inject()(val labelRepository: LabelRepository,
                                val metricFactory: MetricFactory,
                                val sessionTranslator: SessionTranslator,
-                               val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[LabelGetRequest] {
+                               val sessionSupplier: SessionSupplier,
+                               val labelChangeRepository: LabelChangeRepository) extends MethodRequiringAccountId[LabelGetRequest] {
 
   override val methodName: Invocation.MethodName = MethodName("Label/get")
 
@@ -96,11 +97,12 @@ class LabelGetMethod @Inject()(val labelRepository: LabelRepository,
   private def computeResponse(request: LabelGetRequest, mailboxSession: MailboxSession): SMono[LabelGetResponse] =
     retrieveLabels(request.ids, mailboxSession.getUser)
       .collectSeq()
-      .map(labels => LabelGetResponse.from(
-        accountId = request.accountId,
-        state = UuidState.INSTANCE,
-        list = labels,
-        requestIds = request.ids))
+      .flatMap(labels => retrieveState(mailboxSession)
+        .map(state => LabelGetResponse.from(
+          accountId = request.accountId,
+          state = state,
+          list = labels,
+          requestIds = request.ids)))
 
   private def retrieveLabels(ids: Option[LabelIds], username: Username): SFlux[Label] =
     ids match {
@@ -110,4 +112,8 @@ class LabelGetMethod @Inject()(val labelRepository: LabelRepository,
           .map(unparsedLabelId => LabelId(unparsedLabelId.id))
           .toSet.asJava))
     }
+
+  private def retrieveState(mailboxSession: MailboxSession): SMono[UuidState] =
+    SMono(labelChangeRepository.getLatestState(JavaAccountId.fromUsername(mailboxSession.getUser)))
+      .map(UuidState.fromJava)
 }

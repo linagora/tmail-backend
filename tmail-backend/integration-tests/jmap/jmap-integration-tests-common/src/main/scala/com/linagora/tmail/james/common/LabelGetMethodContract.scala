@@ -536,4 +536,85 @@ trait LabelGetMethodContract {
            |	"type": "accountNotFound"
            |}""".stripMargin)
   }
+
+  @Test
+  def labelGetShouldReturnLatestState(): Unit = {
+    createLabel(accountId = ACCOUNT_ID, displayName = "LABEL_NAME", color = RED.value)
+
+    val response = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+           |	"methodCalls": [
+           |		[
+           |			"Label/get",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"ids": null
+           |			},
+           |			"c1"
+           |		],
+           |		[
+           |			"Label/changes",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"#sinceState": {
+           |					"resultOf": "c1",
+           |					"name": "Label/get",
+           |					"path": "state"
+           |				}
+           |			},
+           |			"c2"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+      .whenIgnoringPaths("methodResponses[1][1].oldState", "methodResponses[1][1].newState")
+      .inPath("methodResponses[1][1]")
+      .isEqualTo(
+        s"""{
+           |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |  "hasMoreChanges": false,
+           |  "created": [],
+           |  "updated": [],
+           |  "destroyed": []
+           |}""".stripMargin)
+  }
+
+  private def createLabel(accountId: String, displayName: String, color: String): String = {
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+           |	"methodCalls": [
+           |		["Label/set", {
+           |			"accountId": "$accountId",
+           |			"create": {
+           |				"L13": {
+           |					"displayName": "$displayName",
+           |					"color": "$color"
+           |				}
+           |			}
+           |		}, "c1"]
+           |	]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .jsonPath()
+      .get("methodResponses[0][1].created.L13.id")
+      .asInstanceOf[String]
+  }
 }
