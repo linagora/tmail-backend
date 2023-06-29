@@ -58,7 +58,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .body()
       .asString()
 
-    assertThat(response).contains("\"com:linagora:params:calendar:event\":{}")
+    assertThat(response).contains("\"bad1\":{}")
   }
 
   @Test

@@ -84,7 +84,7 @@ public class UserTeamMailboxRoutesTest {
 
         assertThat(errors)
             .containsEntry("statusCode", NOT_FOUND_404)
-            .containsEntry("type", "notFound")
+            .containsEntry("type", "bad2")
             .containsEntry("message", "User bob@linagora.com does not exist");
     }
 

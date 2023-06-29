@@ -97,7 +97,7 @@ trait LabelChangesMethodContract {
            |		"accountId": "$ACCOUNT_ID",
            |		"oldState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
            |		"newState": "${change.state.getValue.toString}",
-           |		"hasMoreChanges": false,
+           |		"hasMoreChanges": true,
            |		"created": [ "${change.created.head.id.value}" ],
            |		"updated": [],
            |		"destroyed": []
