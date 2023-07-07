@@ -30,7 +30,6 @@ pipeline {
             post {
                 always {
                     junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: false)
-                    junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
                 }
                 failure {
                     archiveArtifacts artifacts: '**/target/test-run.log' , fingerprint: true
