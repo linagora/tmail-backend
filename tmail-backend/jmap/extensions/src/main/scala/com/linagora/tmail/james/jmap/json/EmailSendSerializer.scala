@@ -3,12 +3,22 @@ package com.linagora.tmail.james.jmap.json
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationRequestRaw, EmailSendCreationResponse, EmailSendId, EmailSendRequest, EmailSendResponse, EmailSubmissionCreationRequest}
 import org.apache.james.jmap.core.{Id, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
-import org.apache.james.jmap.mail.{BlobId, EmailSubmissionAddress, EmailSubmissionId, Envelope, ThreadId}
+import org.apache.james.jmap.mail.{BlobId, EmailSubmissionAddress, EmailSubmissionId, Envelope, ParameterName, ParameterValue, ThreadId}
 import org.apache.james.mailbox.model.MessageId
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
-import play.api.libs.json.{Format, JsError, JsObject, JsPath, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
+import play.api.libs.json.{Format, JsError, JsNull, JsObject, JsPath, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
 
 object EmailSendSerializer {
+  private implicit val parameterNameReads: Reads[ParameterName] = Json.valueReads[ParameterName]
+  private implicit val parameterValueReads: Reads[ParameterValue] = Json.valueReads[ParameterValue]
+  private implicit val parameterValueOptionReads: Reads[Option[ParameterValue]] = {
+    case JsString(value) => JsSuccess(Some(ParameterValue(value)))
+    case JsNull => JsSuccess(None)
+    case _ => JsError("JsonPath objects are represented by JsonString")
+  }
+
+  private implicit val parametersReads: Reads[Map[ParameterName, Option[ParameterValue]]] =
+    Reads.mapReads[ParameterName, Option[ParameterValue]](k => JsSuccess(ParameterName(k)))(parameterValueOptionReads)
 
   private implicit val emailSubmissionAddressReads: Reads[EmailSubmissionAddress] = Json.reads[EmailSubmissionAddress]
   private implicit val envelopeReads: Reads[Envelope] = Json.reads[Envelope]

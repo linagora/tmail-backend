@@ -239,10 +239,10 @@ class TeamMailboxesQuotaExtensionsContract {
          |                        "name": "#TeamMailbox&marketing@domain.tld@domain.tld:account:count:Mail",
          |                        "warnLimit": 36,
          |                        "id": "436dd311893fdbde1f3e688c58430097e9ec48791e4e632a8421e6fb7bc05aed",
-         |                        "dataTypes": [
+         |                        "types": [
          |                            "Mail"
          |                        ],
-         |                        "limit": 40,
+         |                        "hardLimit": 40,
          |                        "resourceType": "count",
          |                        "scope": "account"
          |                    },
@@ -251,10 +251,10 @@ class TeamMailboxesQuotaExtensionsContract {
          |                        "name": "#private&bob@domain.tld@domain.tld:account:count:Mail",
          |                        "warnLimit": 9,
          |                        "id": "08417be420b6dd6fa77d48fb2438e0d19108cd29424844bb109b52d356fab528",
-         |                        "dataTypes": [
+         |                        "types": [
          |                            "Mail"
          |                        ],
-         |                        "limit": 11,
+         |                        "hardLimit": 11,
          |                        "resourceType": "count",
          |                        "scope": "account"
          |                    }
@@ -320,10 +320,10 @@ class TeamMailboxesQuotaExtensionsContract {
          |                        "name": "#private&bob@domain.tld@domain.tld:account:count:Mail",
          |                        "warnLimit": 9,
          |                        "id": "08417be420b6dd6fa77d48fb2438e0d19108cd29424844bb109b52d356fab528",
-         |                        "dataTypes": [
+         |                        "types": [
          |                            "Mail"
          |                        ],
-         |                        "limit": 11,
+         |                        "hardLimit": 11,
          |                        "resourceType": "count",
          |                        "scope": "account"
          |                    }
@@ -402,10 +402,10 @@ class TeamMailboxesQuotaExtensionsContract {
            |                        "name": "#TeamMailbox&marketing@domain.tld@domain.tld:account:count:Mail",
            |                        "warnLimit": 36,
            |                        "id": "436dd311893fdbde1f3e688c58430097e9ec48791e4e632a8421e6fb7bc05aed",
-           |                        "dataTypes": [
+           |                        "types": [
            |                            "Mail"
            |                        ],
-           |                        "limit": 40,
+           |                        "hardLimit": 40,
            |                        "resourceType": "count",
            |                        "scope": "account"
            |                    },
@@ -414,10 +414,10 @@ class TeamMailboxesQuotaExtensionsContract {
            |                        "name": "#private&bob@domain.tld@domain.tld:account:count:Mail",
            |                        "warnLimit": 9,
            |                        "id": "08417be420b6dd6fa77d48fb2438e0d19108cd29424844bb109b52d356fab528",
-           |                        "dataTypes": [
+           |                        "types": [
            |                            "Mail"
            |                        ],
-           |                        "limit": 11,
+           |                        "hardLimit": 11,
            |                        "resourceType": "count",
            |                        "scope": "account"
            |                    },
@@ -426,10 +426,10 @@ class TeamMailboxesQuotaExtensionsContract {
            |                        "name": "#private&cedric@domain.tld@domain.tld:account:count:Mail",
            |                        "warnLimit": 79,
            |                        "id": "9f1cb18c1f4095130f2afff345bc064203127f646fdea30299857b5de86e874c",
-           |                        "dataTypes": [
+           |                        "types": [
            |                            "Mail"
            |                        ],
-           |                        "limit": 88,
+           |                        "hardLimit": 88,
            |                        "resourceType": "count",
            |                        "scope": "account"
            |                    }
