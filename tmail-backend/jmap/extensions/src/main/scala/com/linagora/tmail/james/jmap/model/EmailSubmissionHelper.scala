@@ -23,13 +23,13 @@ object EmailSubmissionHelper {
         .map(_.asInstanceOf[InternetAddress].getAddress)
         .map(s => Try(new MailAddress(s)))
         .getOrElse(Failure(new IllegalArgumentException("Implicit envelope detection requires a from field")))
-        .map(EmailSubmissionAddress)
+        .map(EmailSubmissionAddress(_))
       rcptTo <- (to ++ cc ++ bcc)
         .map(_.asInstanceOf[InternetAddress].getAddress)
         .map(s => Try(new MailAddress(s)))
         .sequence
     } yield {
-      Envelope(mailFrom, rcptTo.map(EmailSubmissionAddress))
+      Envelope(mailFrom, rcptTo.map(EmailSubmissionAddress(_)))
     }
   }
 
