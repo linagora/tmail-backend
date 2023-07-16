@@ -57,7 +57,7 @@ class EnforceRateLimitingPlan @Inject()(planRepository: RateLimitingPlanReposito
     planRateLimiterResolver = PlanRateLimiterResolver(
       rateLimiterFactory = rateLimiterFactory,
       keyPrefix = Option(getInitParameter("keyPrefix")).map(KeyPrefix),
-      precision = getMailetConfig.getDuration("duration"))
+      precision = getMailetConfig.getDuration("precision"))
   }
 
   @VisibleForTesting
