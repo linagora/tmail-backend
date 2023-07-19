@@ -28,7 +28,9 @@ case class FilterSetRequest(accountId: AccountId,
 
 case class Update(rules: List[RuleWithId])
 
-case class RuleWithId(id: Id, name: Name, condition: Condition, action: Action)
+case class RuleWithId(id: Id, name: Name, conditionGroup: ConditionGroup, action: Action)
+
+case class SerializedRule(id: Id, name: Name, conditionGroup: Option[ConditionGroup], condition: Option[Condition], action: Action)
 
 case class FilterSetResponse(accountId: AccountId,
                              oldState: Option[FilterState],
@@ -49,13 +51,19 @@ object FilterSetError {
 object RuleWithId {
   def toJava(rules: List[RuleWithId]): List[Rule] =
     rules.map(ruleWithId => Rule.builder()
-      .id(Rule.Id.of(ruleWithId.id.value))
-      .name(ruleWithId.name.value)
-      .condition(Rule.Condition.of(Rule.Condition.Field.of(ruleWithId.condition.field.string),
-        Rule.Condition.Comparator.of(ruleWithId.condition.comparator.string),
-        ruleWithId.condition.value))
-      .action(asAction(ruleWithId))
-      .build())
+        .id(Rule.Id.of(ruleWithId.id.value))
+        .name(ruleWithId.name.value)
+        .conditionGroup(toConditionGroup(ruleWithId))
+        .action(asAction(ruleWithId))
+        .build())
+
+  private def toConditionGroup(ruleWithId: RuleWithId): Rule.ConditionGroup =
+    Rule.ConditionGroup.of(Rule.ConditionCombiner.valueOf(ruleWithId.conditionGroup.conditionCombiner.toString),
+      ruleWithId.conditionGroup.conditions.map(convertScalaConditionToJavaCondition(_)).asJava)
+
+  private def convertScalaConditionToJavaCondition(condition: Condition): Rule.Condition = Rule.Condition.of(Rule.Condition.Field.of(condition.field.string),
+    Rule.Condition.Comparator.of(condition.comparator.string),
+    condition.value)
 
   private def asAction(ruleWithId: RuleWithId): Rule.Action =
     Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(AppendIn.convertListMailboxIdToListString(ruleWithId.action.appendIn.mailboxIds).asJava),

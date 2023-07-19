@@ -41,7 +41,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .condition(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -88,6 +88,16 @@ trait LinagoraFilterGetMethodContract {
          |              "field": "subject",
          |              "comparator": "contains",
          |              "value": "question"
+         |            },
+         |            "conditionGroup": {
+         |              "conditionCombiner": "AND",
+         |              "conditions": [
+         |                {
+         |                  "comparator": "contains",
+         |                  "field": "subject",
+         |                  "value": "question"
+         |                }
+         |              ]
          |            },
          |            "action": {
          |              "appendIn": {
@@ -283,7 +293,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .condition(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -331,6 +341,16 @@ trait LinagoraFilterGetMethodContract {
          |              "comparator": "contains",
          |              "value": "question"
          |            },
+         |            "conditionGroup": {
+         |              "conditionCombiner": "AND",
+         |              "conditions": [
+         |                {
+         |                  "comparator": "contains",
+         |                  "field": "subject",
+         |                  "value": "question"
+         |                }
+         |              ]
+         |            },
          |            "action": {
          |              "appendIn": {
          |                "mailboxIds":["$generateMailboxIdForUser"]
@@ -352,7 +372,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .condition(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -402,6 +422,16 @@ trait LinagoraFilterGetMethodContract {
          |              "comparator": "contains",
          |              "value": "question"
          |            },
+         |            "conditionGroup": {
+         |              "conditionCombiner": "AND",
+         |              "conditions": [
+         |                {
+         |                  "comparator": "contains",
+         |                  "field": "subject",
+         |                  "value": "question"
+         |                }
+         |              ]
+         |            },
          |            "action": {
          |              "appendIn": {
          |                "mailboxIds":["$generateMailboxIdForUser"]
@@ -423,7 +453,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .condition(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -475,7 +505,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .condition(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -514,6 +544,92 @@ trait LinagoraFilterGetMethodContract {
          |      "state": "0",
          |      "list": [],
          |      "notFound": []
+         |  }, "c1"]]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def filterGetShouldReturnRuleOfSomeConditionsWhenUserHaveRuleOfSomeConditions(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(generateUsername(),
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.ConditionGroup.of(Rule.ConditionCombiner.OR, Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"),
+            Rule.Condition.of(Rule.Condition.Field.FROM, Rule.Condition.Comparator.CONTAINS, "user2")))
+          .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
+          .build)
+
+    val request =
+      s"""{
+         |  "using": ["com:linagora:params:jmap:filter" ],
+         |  "methodCalls": [
+         |    [
+         |      "Filter/get",
+         |        {
+         |          "accountId": "$generateAccountIdAsString",
+         |          "ids": ["singleton"]
+         |        },
+         |          "c1"]
+         |    ]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [[
+         |    "Filter/get", {
+         |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
+         |      "list": [
+         |      {
+         |        "id": "singleton",
+         |        "rules": [
+         |          {
+         |            "name": "My first rule",
+         |            "conditionGroup": {
+         |              "conditionCombiner": "OR",
+         |              "conditions": [
+         |                {
+         |                  "comparator": "contains",
+         |                  "field": "subject",
+         |                  "value": "question"
+         |                },
+         |                {
+         |                  "comparator": "contains",
+         |                  "field": "from",
+         |                  "value": "user2"
+         |                }
+         |              ]
+         |            },
+         |            "condition": {
+         |              "field": "subject",
+         |              "comparator": "contains",
+         |              "value": "question"
+         |            },
+         |            "action": {
+         |              "appendIn": {
+         |                "mailboxIds":["$generateMailboxIdForUser"]
+         |              },"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
+         |            }
+         |          }
+         |        ]
+         |      }
+         |    ],
+         |    "notFound": []
          |  }, "c1"]]
          |}""".stripMargin)
   }
