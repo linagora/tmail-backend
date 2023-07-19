@@ -6,7 +6,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.json.FilterSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
-import com.linagora.tmail.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId}
+import com.linagora.tmail.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId, Update}
 import eu.timepit.refined.auto._
 import javax.inject.{Inject, Named}
 import org.apache.james.core.Username
@@ -130,29 +130,18 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
   }
 
   def update(mailboxSession: MailboxSession, filterSetRequest: FilterSetRequest): SMono[FilterSetUpdateResults] =
-    SFlux.fromIterable(
-      filterSetRequest.parseUpdate()
-        .map[SMono[FilterSetUpdateResult]]({
-          case (id, Right(update)) => {
-            validateRules(update.rules)
-              .fold[SMono[FilterSetUpdateResult]](
-                e => SMono.just(FilterSetUpdateFailure(id, e)),
-                _ => SMono.fromCallable(() => RuleWithId.toJava(update.rules))
-                  .flatMap(rule => updateRules(mailboxSession.getUser, rule, filterSetRequest.ifInState)))
-          }
-            .onErrorResume(e => {
-                SMono.just(FilterSetUpdateFailure(id, e))
-            })
-          case (id, Left(e)) => SMono.just(FilterSetUpdateFailure(id, e))
-        }))
-      .flatMap[FilterSetUpdateResult](updateResultMono => updateResultMono)
+    SFlux.fromIterable(filterSetRequest.parseUpdate())
+      .flatMap[FilterSetUpdateResult](tuple =>
+        tuple._2.flatMap(validateRules)
+          .map(update => SMono.fromCallable(() => RuleWithId.toJava(update.rules)))
+          .fold(SMono.error, rules => rules.flatMap(rule => updateRules(mailboxSession.getUser, rule, filterSetRequest.ifInState)))
+          .onErrorResume(e => SMono.just(FilterSetUpdateFailure(tuple._1, e))))
       .map(updateResult => updateResult.asFilterSetUpdateResults)
       .foldWith[FilterSetUpdateResults](FilterSetUpdateResults.empty())(FilterSetUpdateResults.merge)
 
-  def updateRules(username: Username, validatedRules: List[Rule], ifInState: Option[FilterState]): SMono[FilterSetUpdateResult] = {
+  def updateRules(username: Username, validatedRules: List[Rule], ifInState: Option[FilterState]): SMono[FilterSetUpdateResult] =
       SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava, convertToOptionalVersion(ifInState)))
         .`then`(SMono.just(FilterSetUpdateSuccess))
-  }
 
   def validateNoCreate(filterSetRequest: FilterSetRequest): Option[Map[String, FilterSetError]] =
     filterSetRequest.create.map(aMap => aMap
@@ -167,13 +156,12 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
         Some(SetErrorDescription("'destroy' is not supported on singleton objects")))))
         .toMap)
 
-  def validateRules(rules: List[RuleWithId]): Either[IllegalArgumentException, Unit] = {
-    if (!rules.distinctBy(_.id).length.equals(rules.length)) {
+  def validateRules(update: Update): Either[IllegalArgumentException, Update] =
+    if (!update.rules.distinctBy(_.id).length.equals(update.rules.length)) {
       Left(new DuplicatedRuleException("There are some duplicated rules"))
     } else {
-      Right()
+      Right(update)
     }
-  }
 
   def convertToOptionalVersion(ifInState: Option[FilterState]): Optional[Version] =
     ifInState.map(filterState => FilterState.toVersion(filterState)).toJava
@@ -183,5 +171,4 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
       .map(version => FilterState(version.asInteger))
 
   class DuplicatedRuleException(message: String) extends IllegalArgumentException(message)
-  class MultipleMailboxIdException(message: String) extends IllegalArgumentException(message)
 }

@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, Field, Filter, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, MarkAsImportant, MarkAsSeen, Reject, Rule, RuleWithId, Update, WithKeywords}
+import com.linagora.tmail.james.jmap.model.ConditionCombiner.ConditionCombiner
+import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, ConditionCombiner, ConditionGroup, Field, Filter, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, MarkAsImportant, MarkAsSeen, Reject, Rule, RuleWithId, SerializedRule, Update, WithKeywords}
 import javax.inject.Inject
 import org.apache.james.jmap.mail.{Keyword, Name}
 import org.apache.james.mailbox.model.MailboxId
@@ -18,8 +19,11 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val mailboxIdWrites: Writes[MailboxId] = mailboxId => JsString(mailboxId.serialize)
   implicit val appendIn: Writes[AppendIn] = Json.writes[AppendIn]
   implicit val conditionWrites: Writes[Condition] = Json.writes[Condition]
+  implicit val conditionGroupWrites: Writes[ConditionGroup] = Json.writes[ConditionGroup]
 
   implicit val conditionReads: Reads[Condition] = Json.reads[Condition]
+  implicit val conditionCombinerReads: Reads[ConditionCombiner] = Reads.enumNameReads(ConditionCombiner)
+  implicit val conditionGroupReads: Reads[ConditionGroup] = Json.reads[ConditionGroup]
   implicit val mailboxIdReads: Reads[MailboxId] = {
     case JsString(serializedMailboxId) => JsSuccess(mailboxIdFactory.fromString(serializedMailboxId))
     case _ => JsError()
@@ -42,7 +46,15 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val notFoundWrites: Writes[FilterGetNotFound] = Json.valueWrites[FilterGetNotFound]
   implicit val filterStateWrites: Writes[FilterState] = state => JsString(state.serialize)
   implicit val filterGetResponseWrites: Writes[FilterGetResponse] = Json.writes[FilterGetResponse]
-  implicit val ruleWithIdReads: Reads[RuleWithId] = Json.reads[RuleWithId]
+  implicit val serializedRuleReads: Reads[SerializedRule] = Json.reads[SerializedRule]
+  implicit val ruleWithIdReads: Reads[RuleWithId] = jsValue => serializedRuleReads.reads(jsValue)
+    .flatMap {
+      case s if s.condition.isEmpty && s.conditionGroup.isEmpty => JsError("condition or conditionGroup needs to be specified")
+      case s if s.condition.isDefined && s.conditionGroup.isDefined => JsError("condition and conditionGroup cannot be specified at the same time")
+      case s =>
+        val conditionGroup: ConditionGroup = s.conditionGroup.getOrElse(ConditionGroup(ConditionCombiner.AND, s.condition.toList))
+        JsSuccess(RuleWithId(s.id, s.name, conditionGroup, s.action))
+    }
   implicit val updateReads: Reads[Update] = Json.valueReads[Update]
   implicit val filterStateReads: Reads[FilterState] = {
     case JsString(string) => FilterState.parse(string).fold(
