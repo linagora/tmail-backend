@@ -358,10 +358,10 @@
                             <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <url>https://github.com/glowroot/glowroot/releases/download/v0.14.0-beta.2/glowroot-0.14.0-beta.2-dist.zip</url>
+                            <url>https://github.com/glowroot/glowroot/releases/download/v0.14.0/glowroot-0.14.0-dist.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${project.build.directory}</outputDirectory>
-                            <md5>d10779d4f721dbcdd6b6d54be94be1a8</md5>
+                            <md5>16073f10204751cd71d3b4ea93be2649</md5>
                         </configuration>
                     </execution>
                     <execution>
