@@ -414,7 +414,7 @@
                 </executions>
                 <configuration>
                     <from>
-                        <image>eclipse-temurin:20-jre-jammy</image>
+                        <image>eclipse-temurin:20-jre-jammy@sha256:0423a1ea1ac26ffc5cd7f809f4ad8f56f785f1f906dd6a260d14a28d0b59c6d6</image>
                     </from>
                     <to>
                         <image>linagora/tmail-backend-distributed-esv6</image>
