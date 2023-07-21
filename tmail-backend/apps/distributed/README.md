@@ -5,7 +5,7 @@ This server is the distributed version of James relying on:
 * Cassandra version 3.11.10
 * S3 API-like object storage. Using here Zenko Cloudserver version 8.7.25
 * OpenSearch version 2.1.0
-* RabbitMQ version 3.8.17
+* RabbitMQ version 3.12.1
 * Tika version 1.24 (optional)
 
 ## Build
@@ -44,7 +44,7 @@ You can then start in that newly created network all the other softwares the dis
 ```
 docker run -d --network emaily --name=cassandra cassandra:3.11.10
 
-docker run -d --network emaily --name=rabbitmq rabbitmq:3.9.18-management
+docker run -d --network emaily --name=rabbitmq rabbitmq:3.12.1-management
 
 docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test registry.scality.com/cloudserver/cloudserver:8.7.25
 
