@@ -28,8 +28,14 @@ A `Rule` object has the following properties:
 
  - **id**: Server-set, `Id`, immutable, the JMAP identifier.
  - **name**: `String`, the name of the rule, which can be used to hold an explanation regarding the purpose of this rule.
- - **condition**: `Condition`, when should this rule be applied.
+ - **conditionGroup**: `ConditionGroup`, when this rule should be applied.
+ - **condition**: `Condition`, when this rule should be applied. This is the old property replaced by the property conditionGroup. This property is still retained to keep backend compatible with frontend that has not been updated yet. In the future, this property should be removed.
  - **action**: `Action`, what to do when the rule is applied.
+
+A `ConditionGroup` object has the following properties:
+
+- **conditionCombiner**: `String`, the operator to combine conditions of the rule. Must be one of `AND`, `OR`. `AND` operator means that all conditions must be met to apply the rule. `OR` operator means that at least one condition must be met.
+- **conditions**: `Condition[]`, list of `Condition`.
 
 A `Condition` object has the following properties:
 
@@ -59,7 +65,7 @@ This is a standard `/get` call for the Filter object.
 
 === Filter/set
 
-This is a standard `/get` call for the Filter object.
+This is a standard `/set` call for the Filter object.
 
  - `ifInState` property is supported
  - `oldState` and `newState` are accurate.
@@ -69,7 +75,116 @@ This is a standard `/get` call for the Filter object.
 
 A client can register for updates on the `Filter` datatype using either eventsource or websockets.
 
-=== Example
+=== Example (with the property conditionGroup in the request)
+
+....
+{
+	"using": ["com:linagora:params:jmap:filter"],
+	"methodCalls": [
+		["Filter/set", {
+			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+			"update": {
+				"singleton": [{
+					"id": "1",
+					"name": "My first rule",
+					"conditionGroup": {
+						"conditionCombiner": "AND",
+						"conditions": [
+							{
+								"field": "subject",
+								"comparator": "contains",
+								"value": "question"
+							},
+							{
+								"field": "from",
+								"comparator": "contains",
+								"value": "user2"
+							},
+						]
+					}
+					"action": {
+						"appendIn": {
+							"mailboxIds": ["42"]
+						}
+					}
+				}]
+			}
+		}, "c1"],
+		[
+			"Filter/get",
+			{
+				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+				"ids": ["singleton"]
+			},
+			"c2"
+		]
+	]
+}
+....
+
+Will return:
+
+....
+{
+	"sessionState": "abcdefghij",
+	"methodResponses": [
+		[
+			"Filter/set",
+			{
+				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+				"oldState": "-1",
+				"newState": "0",
+				"updated": {
+					"singleton": {
+
+					}
+				}
+			},
+			"c1"
+		],
+		[
+			"Filter/get", {
+				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+				"state": "0",
+				"list": [{
+					"id": "singleton",
+					"rules": [{
+						"name": "My first rule",
+						"conditionGroup": {
+							"conditionCombiner": "AND",
+							"conditions": [
+								{
+									"field": "subject",
+									"comparator": "contains",
+									"value": "question"
+								},
+								{
+									"field": "from",
+									"comparator": "contains",
+									"value": "user2"
+								},
+							]
+						}
+						"condition": {
+							"field": "subject",
+							"comparator": "contains",
+							"value": "question"
+						},
+						"action": {
+							"appendIn": {
+								"mailboxIds": ["42"]
+							}
+						}
+					}]
+				}],
+				"notFound": []
+			}, "c2"
+		]
+	]
+}
+....
+
+=== Example (without the property conditionGroup in the request)
 
 ....
 {
@@ -134,6 +249,16 @@ Will return:
 					"id": "singleton",
 					"rules": [{
 						"name": "My first rule",
+						"conditionGroup": {
+							"conditionCombiner": "AND",
+							"conditions": [
+								{
+									"field": "subject",
+									"comparator": "contains",
+									"value": "question"
+								}
+							]
+						}
 						"condition": {
 							"field": "subject",
 							"comparator": "contains",
