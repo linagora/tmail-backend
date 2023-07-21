@@ -3,7 +3,7 @@
 This server is the distributed version of James relying on:
 
 * Cassandra version 3.11.10
-* S3 API-like object storage. Using here Zenko Cloudserver version 8.2.6
+* S3 API-like object storage. Using here Zenko Cloudserver version 8.7.25
 * ElasticSearch version 6.3.2
 * RabbitMQ version 3.8.17
 * Tika version 1.24 (optional)
@@ -47,7 +47,7 @@ docker run -d --network emaily --name=cassandra cassandra:3.11.10
 
 docker run -d --network emaily --name=rabbitmq rabbitmq:3.9.18-management
 
-docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test zenko/cloudserver:8.2.6
+docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test registry.scality.com/cloudserver/cloudserver:8.7.25
 
 docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single-node' docker.elastic.co/elasticsearch/elasticsearch:6.3.2
 

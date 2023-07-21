@@ -57,7 +57,7 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createS3(Network network) {
-        return new GenericContainer<>("zenko/cloudserver:8.2.6")
+        return new GenericContainer<>("registry.scality.com/cloudserver/cloudserver:8.7.25")
             .withNetworkAliases("s3", "s3.docker.test")
             .withNetwork(network)
             .withEnv("SCALITY_ACCESS_KEY_ID", "accessKey1")
