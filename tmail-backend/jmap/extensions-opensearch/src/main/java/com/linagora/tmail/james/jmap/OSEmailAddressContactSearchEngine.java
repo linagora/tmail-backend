@@ -8,6 +8,7 @@ import static com.linagora.tmail.james.jmap.ContactMappingFactory.FIRSTNAME;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.SURNAME;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.inject.Inject;
@@ -22,8 +23,10 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
+import org.apache.james.util.FunctionalUtils;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.Time;
+import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
 import org.opensearch.client.opensearch.core.GetRequest;
 import org.opensearch.client.opensearch.core.GetResponse;
@@ -49,6 +52,10 @@ import reactor.core.publisher.Mono;
 public class OSEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final String DELIMITER = ":";
     private static final Time TIMEOUT = new Time.Builder().time("1m").build();
+
+    private static final List<String> ALL_SEARCH_FIELDS = List.of(EMAIL, FIRSTNAME, SURNAME);
+    private static final List<String> EMAIL_SEARCH_FIELDS = List.of(EMAIL);
+
 
     private final OpenSearchIndexer userContactIndexer;
     private final OpenSearchIndexer domainContactIndexer;
@@ -130,14 +137,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         SearchRequest request = new SearchRequest.Builder()
             .index(configuration.getUserContactReadAliasName().getValue(), configuration.getDomainContactReadAliasName().getValue())
             .size(limit)
-            .query(QueryBuilders.bool()
-                .must(QueryBuilders.multiMatch().fields(EMAIL, FIRSTNAME, SURNAME).query(part).build()._toQuery())
-                .should(QueryBuilders.term().field(ACCOUNT_ID).value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build()).build()._toQuery())
-                .should(QueryBuilders.term().field(DOMAIN).value(new FieldValue.Builder().stringValue(Username.of(accountId.getIdentifier()).getDomainPart()
-                    .map(Domain::asString)
-                    .orElse("")).build()).build()._toQuery())
-                .minimumShouldMatch("1")
-                .build()._toQuery())
+            .query(buildAutoCompleteQuery(accountId, part))
             .build();
 
         return Throwing.supplier(() -> client.search(request)).sneakyThrow()
@@ -145,6 +145,27 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.hits().hits()))
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow())
             .distinct(contact -> contact.fields().address());
+    }
+
+    private Query buildAutoCompleteQuery(AccountId accountId, String part) {
+        List<String> mustFields = Optional.of(part.contains("@"))
+                .filter(FunctionalUtils.identityPredicate())
+                .map(mailPart -> EMAIL_SEARCH_FIELDS)
+                .orElse(ALL_SEARCH_FIELDS);
+
+        return QueryBuilders.bool()
+                .must(QueryBuilders.multiMatch().fields(mustFields)
+                        .query(part).build()._toQuery())
+                .should(QueryBuilders.term().field(ACCOUNT_ID)
+                        .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())
+                        .build()._toQuery())
+                .should(QueryBuilders.term().field(DOMAIN)
+                        .value(new FieldValue.Builder().stringValue(Username.of(accountId.getIdentifier()).getDomainPart()
+                        .map(Domain::asString)
+                        .orElse("")).build())
+                        .build()._toQuery())
+                .minimumShouldMatch("1")
+                .build()._toQuery();
     }
 
     @Override

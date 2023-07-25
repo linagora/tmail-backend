@@ -10,6 +10,8 @@ import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import scala.jdk.CollectionConverters._
+
 object EmailAddressContactSearchEngineContract {
   private val domain: Domain = Domain.of("linagora.com")
 
@@ -648,5 +650,48 @@ trait EmailAddressContactSearchEngineContract {
 
     assertThat(SMono.fromPublisher(testee().get(domain, mailAddressA)).asJava().map(_.fields).block())
       .isEqualTo(contactFieldsA)
+  }
+
+  @Test
+  def shouldReturnOnlyEmailMatchWhenPartHasAtSign(): Unit = {
+    val mailAddress: MailAddress = new MailAddress("loic.sineau@example.com")
+    val contactFields: ContactFields = ContactFields(mailAddress, "SINEAU", "Loic")
+    SMono(testee().index(accountId, contactFields)).block()
+    SMono(testee().index(domain, contactFields)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+    val partHasAtSign: String = "anyone@loic"
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, partHasAtSign))
+      .map(_.fields.address)
+      .collectSeq()
+      .block().asJava)
+      .doesNotContain(mailAddress)
+  }
+
+  @Test
+  def shouldReturnOnlyPrefixedByUserInput(): Unit = {
+    val mailAddress: MailAddress = new MailAddress("bob@linagora.com")
+    val contactFields: ContactFields = ContactFields(mailAddress, "Bin", "Zet")
+    SMono(testee().index(accountId, contactFields)).block()
+    SMono(testee().index(domain, contactFields)).block()
+
+    val whatEverMailAddress: MailAddress = new MailAddress("whatever@linagora.com")
+    val whatEverContactFields: ContactFields = ContactFields(whatEverMailAddress, "What", "Ever")
+
+    SMono(testee().index(accountId, whatEverContactFields)).block()
+    SMono(testee().index(domain, whatEverContactFields)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 4)
+
+    val prefixedPath: String = "bob@linagora.c"
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, prefixedPath))
+      .map(_.fields.address)
+      .collectSeq()
+      .block().asJava)
+      .containsExactlyInAnyOrder(mailAddress)
+      .doesNotContain(whatEverMailAddress)
   }
 }
