@@ -245,6 +245,12 @@
                             <port>8000</port> <!-- WEBADMIN -->
                         </ports>
                         <appRoot>/root</appRoot>
+                        <jvmFlags>
+                            <jvmFlag>-Dworking.directory=/root/</jvmFlag>
+                            <jvmFlag>-Dlogback.configurationFile=/root/conf/logback.xml</jvmFlag>
+                            <jvmFlag>-Djames.jmap.quota.draft.compatibility=true</jvmFlag>
+                            <jvmFlag>-Dextra.props=/root/conf/jvm.properties</jvmFlag>
+                        </jvmFlags>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
                     </container>
                     <extraDirectories>
