@@ -54,9 +54,6 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     private static final Time TIMEOUT = new Time.Builder().time("1m").build();
 
     private static final List<String> ALL_SEARCH_FIELDS = List.of(EMAIL, FIRSTNAME, SURNAME);
-    private static final List<String> EMAIL_SEARCH_FIELDS = List.of(EMAIL);
-
-
     private final OpenSearchIndexer userContactIndexer;
     private final OpenSearchIndexer domainContactIndexer;
     private final ReactorOpenSearchClient client;
@@ -148,24 +145,27 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     private Query buildAutoCompleteQuery(AccountId accountId, String part) {
-        List<String> mustFields = Optional.of(part.contains("@"))
-                .filter(FunctionalUtils.identityPredicate())
-                .map(mailPart -> EMAIL_SEARCH_FIELDS)
-                .orElse(ALL_SEARCH_FIELDS);
+        Query partQuery = Optional.of(part.contains("@"))
+            .filter(FunctionalUtils.identityPredicate())
+            .map(mailPart -> QueryBuilders.match()
+                .field((EMAIL))
+                .query(new FieldValue.Builder().stringValue(part).build())
+                .build()._toQuery())
+            .orElse(QueryBuilders.multiMatch().fields(ALL_SEARCH_FIELDS)
+                .query(part).build()._toQuery());
 
         return QueryBuilders.bool()
-                .must(QueryBuilders.multiMatch().fields(mustFields)
-                        .query(part).build()._toQuery())
-                .should(QueryBuilders.term().field(ACCOUNT_ID)
-                        .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())
-                        .build()._toQuery())
-                .should(QueryBuilders.term().field(DOMAIN)
-                        .value(new FieldValue.Builder().stringValue(Username.of(accountId.getIdentifier()).getDomainPart()
-                        .map(Domain::asString)
-                        .orElse("")).build())
-                        .build()._toQuery())
-                .minimumShouldMatch("1")
-                .build()._toQuery();
+            .must(partQuery)
+            .should(QueryBuilders.term().field(ACCOUNT_ID)
+                .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())
+                .build()._toQuery())
+            .should(QueryBuilders.term().field(DOMAIN)
+                .value(new FieldValue.Builder().stringValue(Username.of(accountId.getIdentifier()).getDomainPart()
+                    .map(Domain::asString)
+                    .orElse("")).build())
+                .build()._toQuery())
+            .minimumShouldMatch("1")
+            .build()._toQuery();
     }
 
     @Override

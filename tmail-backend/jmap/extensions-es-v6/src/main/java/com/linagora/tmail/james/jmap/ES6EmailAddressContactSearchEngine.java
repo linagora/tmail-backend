@@ -55,7 +55,6 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
     private static final TimeValue TIMEOUT = TimeValue.timeValueMinutes(1);
 
     private static final String[] ALL_SEARCH_FIELDS = new String[]{EMAIL, FIRSTNAME, SURNAME};
-    private static final String[] EMAIL_SEARCH_FIELDS = new String[]{EMAIL};
     private final ElasticSearchIndexer userContactIndexer;
     private final ElasticSearchIndexer domainContactIndexer;
     private final ReactorElasticSearchClient client;
@@ -142,18 +141,18 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
     }
 
     private QueryBuilder buildAutoCompleteQuery(AccountId accountId, String part) {
-        String[] mustFields = Optional.of(part.contains("@"))
-                .filter(FunctionalUtils.identityPredicate())
-                .map(mailPart -> EMAIL_SEARCH_FIELDS)
-                .orElse(ALL_SEARCH_FIELDS);
+        QueryBuilder partQuery = Optional.of(part.contains("@"))
+            .filter(FunctionalUtils.identityPredicate())
+            .map(mailPart -> (QueryBuilder) QueryBuilders.matchQuery(EMAIL, part))
+            .orElse(QueryBuilders.multiMatchQuery(part, ALL_SEARCH_FIELDS));
 
         return QueryBuilders.boolQuery()
-                .must(QueryBuilders.multiMatchQuery(part, mustFields))
-                .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))
-                .should(QueryBuilders.termQuery(DOMAIN, Username.of(accountId.getIdentifier()).getDomainPart()
-                        .map(Domain::asString)
-                        .orElse("")))
-                .minimumShouldMatch(1);
+            .must(partQuery)
+            .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))
+            .should(QueryBuilders.termQuery(DOMAIN, Username.of(accountId.getIdentifier()).getDomainPart()
+                .map(Domain::asString)
+                .orElse("")))
+            .minimumShouldMatch(1);
     }
 
     @Override
