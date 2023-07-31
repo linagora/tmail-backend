@@ -29,7 +29,7 @@ public abstract class TMailHealthCheckIntegrationTests {
                 .jsonPath()
                 .getList("checks.componentName", String.class);
 
-        assertThat(listComponentNames).contains("Tasks execution");
+        assertThat(listComponentNames).contains("Tasks execution", "Rspamd");
     }
 
     @Test
