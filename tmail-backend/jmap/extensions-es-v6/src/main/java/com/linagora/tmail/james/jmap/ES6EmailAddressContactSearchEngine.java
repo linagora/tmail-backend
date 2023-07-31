@@ -9,6 +9,7 @@ import static com.linagora.tmail.james.jmap.ContactMappingFactory.SURNAME;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.inject.Inject;
@@ -23,11 +24,13 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
+import org.apache.james.util.FunctionalUtils;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -51,6 +54,7 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
     private static final String DELIMITER = ":";
     private static final TimeValue TIMEOUT = TimeValue.timeValueMinutes(1);
 
+    private static final String[] ALL_SEARCH_FIELDS = new String[]{EMAIL, FIRSTNAME, SURNAME};
     private final ElasticSearchIndexer userContactIndexer;
     private final ElasticSearchIndexer domainContactIndexer;
     private final ReactorElasticSearchClient client;
@@ -128,18 +132,27 @@ public class ES6EmailAddressContactSearchEngine implements EmailAddressContactSe
         SearchRequest request = new SearchRequest(configuration.getUserContactReadAliasName().getValue(), configuration.getDomainContactReadAliasName().getValue())
             .source(new SearchSourceBuilder()
                 .size(limit)
-                .query(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.multiMatchQuery(part, EMAIL, FIRSTNAME, SURNAME))
-                    .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))
-                    .should(QueryBuilders.termQuery(DOMAIN, Username.of(accountId.getIdentifier()).getDomainPart()
-                        .map(Domain::asString)
-                        .orElse("")))
-                    .minimumShouldMatch(1)));
+                .query(buildAutoCompleteQuery(accountId, part)));
 
         return client.search(request, RequestOptions.DEFAULT)
             .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.getHits().getHits()))
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow())
             .distinct(EmailAddressContact::id);
+    }
+
+    private QueryBuilder buildAutoCompleteQuery(AccountId accountId, String part) {
+        QueryBuilder partQuery = Optional.of(part.contains("@"))
+            .filter(FunctionalUtils.identityPredicate())
+            .map(mailPart -> (QueryBuilder) QueryBuilders.matchQuery(EMAIL, part))
+            .orElse(QueryBuilders.multiMatchQuery(part, ALL_SEARCH_FIELDS));
+
+        return QueryBuilders.boolQuery()
+            .must(partQuery)
+            .should(QueryBuilders.termQuery(ACCOUNT_ID, accountId.getIdentifier()))
+            .should(QueryBuilders.termQuery(DOMAIN, Username.of(accountId.getIdentifier()).getDomainPart()
+                .map(Domain::asString)
+                .orElse("")))
+            .minimumShouldMatch(1);
     }
 
     @Override
