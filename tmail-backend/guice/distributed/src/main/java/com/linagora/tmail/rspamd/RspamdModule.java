@@ -7,11 +7,13 @@ import java.time.Clock;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.rspamd.client.RspamdClientConfiguration;
 import org.apache.james.rspamd.client.RspamdHttpClient;
+import org.apache.james.rspamd.healthcheck.RspamdHealthCheck;
 import org.apache.james.rspamd.route.FeedMessageRoute;
 import org.apache.james.rspamd.task.FeedHamToRspamdTaskAdditionalInformationDTO;
 import org.apache.james.rspamd.task.FeedHamToRspamdTaskDTO;
@@ -45,6 +47,10 @@ public class RspamdModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), Routes.class)
             .addBinding()
             .to(FeedMessageRoute.class);
+
+        Multibinder.newSetBinder(binder(), HealthCheck.class)
+            .addBinding()
+            .to(RspamdHealthCheck.class);
     }
 
     @Provides

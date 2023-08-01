@@ -13,6 +13,7 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+import com.linagora.tmail.rspamd.RspamdExtensionModule;
 
 public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthCheckIntegrationTests {
     @RegisterExtension
@@ -30,6 +31,7 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
+        .extension(new RspamdExtensionModule())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
