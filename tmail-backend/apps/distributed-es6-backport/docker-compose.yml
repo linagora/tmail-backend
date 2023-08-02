@@ -7,11 +7,16 @@ networks:
 services:
   james:
     depends_on:
-      - elasticsearch
-      - cassandra
-      - tika
-      - rabbitmq
-      - s3
+      cassandra:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
+      tika:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      s3:
+        condition: service_started
     image: linagora/tmail-backend-distributed-esv6
     container_name: james
     hostname: james.local
@@ -27,8 +32,8 @@ services:
     networks:
       - emaily
     volumes:
-      - [/PATH/TO/RSA_PUBLICKEY ]:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
-      - [/PATH/TO/RSA_PRIVATEKEY]:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+      - ${RSA_PUBLICKEY_PATH}:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - ${RSA_PRIVATEKEY_PATH}:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
       # Key generation:
       # openssl genrsa -out jwt_privatekey 4096
       # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
@@ -41,14 +46,19 @@ services:
       - emaily
 
   cassandra:
-    image: cassandra:3.11.10
+    image: cassandra:4.1.3
     ports:
       - "9042:9042"
+    healthcheck:
+      test: [ "CMD", "cqlsh", "-e", "describe keyspaces" ]
+      interval: 3s
+      timeout: 20s
+      retries: 5
     networks:
       - emaily
 
   tika:
-    image: apache/tika:1.28.2
+    image: apache/tika:2.8.0.0
     networks:
       - emaily
 

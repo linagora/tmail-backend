@@ -16,13 +16,13 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createCassandra(Network network) {
-        return new GenericContainer<>("cassandra:3.11.10")
+        return new GenericContainer<>("cassandra:4.1.3")
             .withNetworkAliases("cassandra")
             .withNetwork(network)
             .withExposedPorts(9042)
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-cassandra-testing" + UUID.randomUUID()))
             .waitingFor(new LogMessageWaitStrategy().withRegEx(".*Startup complete\\n").withTimes(1)
-                .withStartupTimeout(Duration.ofMinutes(3)));
+                .withStartupTimeout(Duration.ofMinutes(5)));
     }
 
     @SuppressWarnings("resource")
