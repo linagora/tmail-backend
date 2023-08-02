@@ -2,11 +2,11 @@
 
 This server is the distributed version of James relying on:
 
-* Cassandra version 3.11.10
+* Cassandra version 4.1.3
 * S3 API-like object storage. Using here Zenko Cloudserver version 8.7.25
 * OpenSearch version 2.1.0
 * RabbitMQ version 3.12.1
-* Tika version 1.24 (optional)
+* Tika version 2.8 (optional)
 
 ## Build
 
@@ -42,7 +42,7 @@ docker network create --driver bridge emaily
 You can then start in that newly created network all the other softwares the distributed James is relying on:
 
 ```
-docker run -d --network emaily --name=cassandra cassandra:3.11.10
+docker run -d --network emaily --name=cassandra cassandra:4.1.3
 
 docker run -d --network emaily --name=rabbitmq rabbitmq:3.12.1-management
 
@@ -50,7 +50,7 @@ docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALIT
 
 docker run -d --network emaily --name=opensearch --env 'discovery.type=single-node' opensearchproject/opensearch:2.1.0
 
-docker run -d --network emaily --name=tika apache/tika:1.28.2 #Optional
+docker run -d --network emaily --name=tika apache/tika:2.8.0.0 #Optional
 ```
 
 Then you can finally start the James distributed server. If you included the JWT keys in the build:
@@ -87,8 +87,8 @@ services:
   james:
     [...]
     volumes:
-    - [/PATH/TO/RSA_PUBLICKEY]:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
-    - [/PATH/TO/RSA_PRIVATEKEY]:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+    - ${RSA_PUBLICKEY_PATH}:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+    - ${RSA_PRIVATEKEY_PATH}:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
 ```
 
 Then, you can just start it:
