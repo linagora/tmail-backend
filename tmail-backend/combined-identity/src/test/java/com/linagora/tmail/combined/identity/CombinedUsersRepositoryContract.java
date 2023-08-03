@@ -249,7 +249,7 @@ public interface CombinedUsersRepositoryContract {
             testee().addUser(testSystem.userAlreadyInLDAPCaseVariation, password);
 
             assertThat(testee().test(testSystem.userAlreadyInLDAP, password))
-                .isTrue();
+                .isPresent();
         }
 
         @Test
@@ -258,7 +258,7 @@ public interface CombinedUsersRepositoryContract {
             testee().addUser(testSystem.userAlreadyInLDAP, password);
 
             assertThat(testee().test(testSystem.userAlreadyInLDAPCaseVariation, password))
-                .isTrue();
+                .isPresent();
         }
 
         @Test
@@ -313,34 +313,29 @@ public interface CombinedUsersRepositoryContract {
 
         @Test
         default void testShouldReturnTrueWhenAUserHasACorrectPassword(CombinedTestSystem testSystem) throws UsersRepositoryException {
-            boolean actual = testee().test(testSystem.userAlreadyInLDAP, "secret");
-            assertThat(actual).isTrue();
+            Username username = testSystem.userAlreadyInLDAP;
+            assertThat(testee().test(username, "secret")).contains(username);
         }
 
         @Test
         default void testShouldReturnFalseWhenAUserHasAnIncorrectPassword(CombinedTestSystem testSystem) throws UsersRepositoryException {
-            boolean actual = testee().test(testSystem.userAlreadyInLDAP, "password2");
-            assertThat(actual).isFalse();
+            assertThat(testee().test(testSystem.userAlreadyInLDAP, "password2")).isEmpty();
         }
 
         @Test
         default void testShouldReturnFalseWhenAUserHasAnIncorrectCasePassword(CombinedTestSystem testSystem) throws UsersRepositoryException {
-            boolean actual = testee().test(testSystem.userAlreadyInLDAP, "Secret");
-
-            assertThat(actual).isFalse();
+            assertThat(testee().test(testSystem.userAlreadyInLDAP, "Secret")).isEmpty();
         }
 
         @Test
         default void testShouldReturnFalseWhenAUserIsNotInRepository(CombinedTestSystem testSystem) throws UsersRepositoryException {
-            boolean actual = testee().test(testSystem.userNotAlreadyInLDAP, "secret");
-            assertThat(actual).isFalse();
+            assertThat(testee().test(testSystem.userNotAlreadyInLDAP, "secret")).isEmpty();
         }
 
         @Test
         default void testShouldReturnTrueWhenAUserHasAnIncorrectCaseName(CombinedTestSystem testSystem) throws UsersRepositoryException {
-            boolean actual = testee().test(testSystem.userAlreadyInLDAPCaseVariation, "secret");
-
-            assertThat(actual).isTrue();
+            Username username = testSystem.userAlreadyInLDAPCaseVariation;
+            assertThat(testee().test(username, "secret")).contains(username);
         }
 
         @Test
@@ -459,13 +454,13 @@ public interface CombinedUsersRepositoryContract {
         @Test
         default void testShouldReturnTrueWhenLDAPPasswordIsCorrect(CombinedTestSystem testSystem) throws UsersRepositoryException {
             testee().addUser(testSystem.userAlreadyInLDAP, "password123");
-            assertThat(testee().test(testSystem.userAlreadyInLDAP, "secret")).isTrue();
+            assertThat(testee().test(testSystem.userAlreadyInLDAP, "secret")).isPresent();
         }
 
         @Test
         default void testShouldReturnFalseWhenLDAPPasswordIsIncorrect(CombinedTestSystem testSystem) throws UsersRepositoryException {
             testee().addUser(testSystem.userAlreadyInLDAP, "password123");
-            assertThat(testee().test(testSystem.userAlreadyInLDAP, "password123")).isFalse();
+            assertThat(testee().test(testSystem.userAlreadyInLDAP, "password123")).isEmpty();
         }
     }
 
