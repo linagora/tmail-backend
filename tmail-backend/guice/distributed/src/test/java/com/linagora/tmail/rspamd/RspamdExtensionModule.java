@@ -3,7 +3,7 @@ package com.linagora.tmail.rspamd;
 import java.net.URL;
 import java.util.Optional;
 
-import org.apache.james.rspamd.DockerRspamd;
+import org.apache.james.rspamd.RspamdExtension;
 import org.apache.james.rspamd.client.RspamdClientConfiguration;
 
 import com.google.inject.AbstractModule;
@@ -24,7 +24,7 @@ public class RspamdExtensionModule extends RspamdExtension {
         @Provides
         @Singleton
         public RspamdClientConfiguration rspamdClientConfiguration() {
-            return new RspamdClientConfiguration(rspamdUrl, DockerRspamd.PASSWORD, Optional.empty());
+            return new RspamdClientConfiguration(rspamdUrl, RspamdExtension.PASSWORD, Optional.empty());
         }
     }
 
