@@ -80,12 +80,13 @@ public class CombinedUserDAO implements UsersDAO {
         return cassandraUsersDAO.listReactive();
     }
 
-    public boolean test(Username name, String password) throws UsersRepositoryException {
+    public Optional<Username> test(Username name, String password) throws UsersRepositoryException {
         return readOnlyLDAPUsersDAO.getUserByName(name)
-            .map(user -> user.verifyPassword(password))
-            .orElseGet(() -> {
-                LOGGER.info("Could not retrieve user {}. Password is unverified.", name);
-                return false;
-            });
+                .filter(user -> user.verifyPassword(password))
+                .map(User::getUserName)
+                .or(() -> {
+                    LOGGER.info("Could not retrieve user {}. Password is unverified.", name);
+                    return Optional.empty();
+                });
     }
 }

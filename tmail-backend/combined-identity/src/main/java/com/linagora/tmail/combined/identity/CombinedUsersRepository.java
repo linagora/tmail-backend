@@ -1,5 +1,7 @@
 package com.linagora.tmail.combined.identity;
 
+import java.util.Optional;
+
 import javax.inject.Inject;
 
 import org.apache.james.core.Username;
@@ -16,7 +18,7 @@ public class CombinedUsersRepository extends UsersRepositoryImpl<CombinedUserDAO
     }
 
     @Override
-    public boolean test(Username name, String password) throws UsersRepositoryException {
+    public Optional<Username> test(Username name, String password) throws UsersRepositoryException {
         return usersDAO.test(name, password);
     }
 }
