@@ -4,6 +4,7 @@ import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.apache.james.rate.limiter.RedisExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
@@ -32,6 +33,7 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
         .extension(new RabbitMQExtension())
         .extension(new AwsS3BlobStoreExtension())
         .extension(new RspamdExtensionModule())
+        .extension(new RedisExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
