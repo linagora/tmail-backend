@@ -25,6 +25,11 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>healthcheck-integration-tests-common</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-guice-jmap</artifactId>
             <type>test-jar</type>
         </dependency>
@@ -98,9 +103,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.linagora.tmail</groupId>
-            <artifactId>healthcheck-integration-tests-common</artifactId>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-rate-limiter-redis</artifactId>
             <scope>test</scope>
+            <type>test-jar</type>
         </dependency>
     </dependencies>
 
