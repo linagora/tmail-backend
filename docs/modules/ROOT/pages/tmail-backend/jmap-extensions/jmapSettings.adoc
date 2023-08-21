@@ -203,3 +203,7 @@ Will return:
   ]
 }
 ....
+
+== Documented settings keys
+
+There is not yet documented settings key.
