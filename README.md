@@ -24,6 +24,7 @@ Additional features includes:
  - Push subscription with Firebase Cloud Messaging
  - Restore deleted emails
  - Labels
+ - Settings
 
 [More detail...](docs/modules/ROOT/pages/tmail-backend/features/index.adoc)
 
