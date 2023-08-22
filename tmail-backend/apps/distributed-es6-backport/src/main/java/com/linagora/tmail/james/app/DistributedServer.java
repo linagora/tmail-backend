@@ -73,7 +73,6 @@ import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.modules.webadmin.CassandraRoutesModule;
 import org.apache.james.modules.webadmin.InconsistencySolvingRoutesModule;
-import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 
@@ -130,6 +129,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
+import com.linagora.tmail.redis.TMailRedisModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
@@ -244,11 +244,11 @@ public class DistributedServer {
                 new RabbitMQEventBusModule(),
                 new RabbitMQModule(),
                 new RabbitMailQueueRoutesModule(),
-                new RedisRateLimiterModule(),
                 new RspamdModule(),
                 new ScheduledReconnectionHandler.Module(),
                 new TasksHeathCheckModule(),
-                new TeamMailboxModule());
+                new TeamMailboxModule(),
+                new TMailRedisModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
