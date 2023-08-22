@@ -1,0 +1,209 @@
+= JMAP Settings
+:navtitle: JMAP Settings
+
+This extension allows clients to store per-user settings on the backend side.
+
+== Additions to the capability object
+
+Servers supporting the JMAP Settings extension need to advertise it through the session capabilities:
+....
+com:linagora:params:jmap:settings
+....
+
+The associated object is empty.
+
+== Settings object
+
+The `Settings` object represents a list of settings per-user used by clients to store some of their user related
+configuration on the backend server.
+
+It has the following fields:
+
+- *id*: `Id` (immutable; server-set) The id of the object. There is only ever one Settings object,
+and its id is "singleton".
+- *settings*: `String[String]` Map of settings set by the client. Most of the settings are proper to what the client
+needs to store on the backend, but some can be also known for some automation on the backend for a particular user
+regarding TMail applications.
+
+Example:
+
+....
+{
+  "id":"singleton",
+  "settings": {
+    "tdrive.attachment.import.enabled": "true",
+    "firebase.enabled": "true",
+    "timezone": "UTC+7",
+    "trash.cleanup.enabled": "true",
+    "trash.cleanup.period": "weekly",
+    "language": "fr",
+    [...]
+  }
+}
+....
+
+== Methods
+
+=== Settings/get
+
+This is a standard “/get” method for the Settings object:
+
+- There MUST only be exactly one Settings object in an account. It MUST have the id “singleton”.
+
+=== Settings/set
+
+This is a standard `/set` method for the Settings object:
+
+- As this is a singleton object, `create` and `destroy` are not supported.
+
+=== Examples
+
+==== Full Settings update
+
+The request:
+
+....
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+  "methodCalls": [
+    [
+      "Settings/set",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "update": {
+          "singleton": {
+            "settings": {
+              "tdrive.attachment.import.enabled": "true",
+              "firebase.enabled": "true",
+              "timezone": "UTC+7",
+              "appearance.theme": "dark",
+              "language": "fr",
+              "read.receipts.always": "false"
+            }
+          }
+        }
+      },
+      "c1"
+    ],
+    [
+      "Settings/get",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "ids": null
+      },
+      "c2"
+    ]
+  ]
+}
+....
+
+Will return:
+
+....
+{
+  "sessionState": "abcdefghij",
+  "methodResponses": [
+    ["Settings/set",
+    {
+      "accountId": "123",
+      "newState": "1",
+      "updated": {"singleton":{}}
+    },
+    "c1"],
+    ["Settings/get",
+    {
+      "accountId": "123",
+      "notFound": [],
+      "state": "1",
+      "list": [
+        {
+          "id": "singleton",
+          "settings": {
+            "tdrive.attachment.import.enabled": "true",
+            "firebase.enabled": "true",
+            "timezone": "UTC+7",
+            "appearance.theme": "dark",
+            "language": "fr",
+            "read.receipts.always": "false"
+          }
+        }
+      ]
+    },
+    "c2"]
+  ]
+}
+....
+
+==== Partial Settings update
+
+Based on the previous request Settings/set, we want to do some partial updates:
+
+....
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+  "methodCalls": [
+    [
+      "Settings/set",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "update": {
+          "singleton": {
+            "settings/timezone": "UTC+1",
+            "settings/appearance.theme": "light"
+          }
+        }
+      },
+      "c1"
+    ],
+    [
+      "Settings/get",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "ids": null
+      },
+      "c2"
+    ]
+  ]
+}
+....
+
+Will return:
+
+....
+{
+  "sessionState": "abcdefghij",
+  "methodResponses": [
+    ["Settings/set",
+    {
+      "accountId": "123",
+      "newState": "1",
+      "updated": {"singleton":{}}
+    },
+    "c1"],
+    ["Settings/get",
+    {
+      "accountId": "123",
+      "notFound": [],
+      "state": "1",
+      "list": [
+        {
+          "id": "singleton",
+          "settings": {
+            "tdrive.attachment.import.enabled": "true",
+            "firebase.enabled": "true",
+            "timezone": "UTC+1",
+            "appearance.theme": "light",
+            "language": "fr",
+            "read.receipts.always": "false"
+          }
+        }
+      ]
+    },
+    "c2"]
+  ]
+}
+....
+
+== Documented settings keys
+
+There is not yet documented settings key.

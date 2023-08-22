@@ -106,3 +106,12 @@ This feature would help users easier to manage their emails, which boosts users 
 The labels can be composed within email filtering rules for even better automation.
 
 xref:tmail-backend/jmap-extensions/jmapLabels.adoc[Read more]...
+
+== Settings
+
+TMail allows a client to store per-user settings on the backend side.
+
+Settings is a free floating `String[String]` map being set by the client. Our extension might include a registry of
+known usage proper to TeamMail mobile app features.
+
+xref:tmail-backend/jmap-extensions/jmapSettings.adoc[Read more]...
