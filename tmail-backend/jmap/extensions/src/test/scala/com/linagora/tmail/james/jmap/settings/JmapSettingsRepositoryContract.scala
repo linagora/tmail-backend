@@ -40,7 +40,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def getShouldReturnSavedSettings(): Unit = {
-    SMono(testee.save(BOB, SAMPLE_UPSERT_REQUEST)).block()
+    SMono(testee.reset(BOB, SAMPLE_UPSERT_REQUEST)).block()
     val jmapSettings: JmapSettings = SMono(testee.get(BOB)).block()
     assertThat(jmapSettings.settings.asJava)
       .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")))
@@ -48,71 +48,17 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def getShouldNotReturnEntryOfOtherUser(): Unit = {
-    SMono(testee.save(BOB, SAMPLE_UPSERT_REQUEST)).block()
+    SMono(testee.reset(BOB, SAMPLE_UPSERT_REQUEST)).block()
     assertThat(SMono(testee.get(ALICE)).block()).isNull()
   }
 
   @Test
   def getShouldReturnLatestState(): Unit = {
-    val state1 = SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
-    val state2 = SMono(testee.save(BOB, ("key1", "value2").asUpsertRequest)).block()
+    val state1 = SMono(testee.reset(BOB, ("key1", "value1").asUpsertRequest)).block()
+    val state2 = SMono(testee.reset(BOB, ("key1", "value2").asUpsertRequest)).block()
     val jmapSettings: JmapSettings = SMono(testee.get(BOB)).block()
     assertThat(jmapSettings.state).isNotEqualTo(JmapSettingsStateFactory.INITIAL)
     assertThat(jmapSettings.state).isEqualTo(state2.newState)
-  }
-
-  @Test
-  def saveShouldSucceedWhenValidRequest(): Unit = {
-    assertThatCode(() => SMono(testee.save(BOB, SAMPLE_UPSERT_REQUEST)).block())
-      .doesNotThrowAnyException()
-  }
-
-  @Test
-  def saveShouldStoreEntry(): Unit = {
-    SMono(testee.save(BOB, SAMPLE_UPSERT_REQUEST)).block()
-    assertThat(SMono(testee.get(BOB)).block().settings.asJava)
-      .hasSize(1)
-  }
-
-  @Test
-  def saveShouldReturnUpdateState(): Unit = {
-    val state: SettingsStateUpdate = SMono(testee.save(BOB, SAMPLE_UPSERT_REQUEST)).block()
-    assertThat(state.oldState).isEqualTo(JmapSettingsStateFactory.INITIAL)
-    assertThat(state.newState).isNotEqualTo(JmapSettingsStateFactory.INITIAL)
-  }
-
-  @Test
-  def saveShouldUpdateState(): Unit = {
-    val state1 = SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
-    val state2 = SMono(testee.save(BOB, ("key1", "value2").asUpsertRequest)).block()
-    assertThat(state2.oldState).isEqualTo(state1.newState)
-    assertThat(state2.newState).isNotEqualTo(state2.oldState)
-  }
-
-  @Test
-  def saveShouldAppendNewSettings(): Unit = {
-    SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
-    SMono(testee.save(BOB, ("key2", "value2").asUpsertRequest)).block()
-
-    assertThat(SMono(testee.get(BOB)).block().settings.asJava)
-      .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")),
-        entry("key2".asSettingKey, JmapSettingsValue("value2")))
-  }
-
-  @Test
-  def saveShouldOverrideOldSettings(): Unit = {
-    SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
-    SMono(testee.save(BOB, ("key1", "value2").asUpsertRequest)).block()
-    assertThat(SMono(testee.get(BOB)).block().settings.asJava)
-      .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value2")))
-  }
-
-  @Test
-  def saveShouldOverrideSettingEntryOfOtherUser(): Unit = {
-    SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
-    SMono(testee.save(ALICE, ("key1", "value2").asUpsertRequest)).block()
-    assertThat(SMono(testee.get(BOB)).block().settings.asJava)
-      .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")))
   }
 
   @Test
@@ -123,7 +69,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def resetShouldRemoveRedundantSettingEntry(): Unit = {
-    SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
+    SMono(testee.reset(BOB, ("key1", "value1").asUpsertRequest)).block()
     SMono(testee.reset(BOB, ("key2", "value2").asUpsertRequest)).block()
 
     assertThat(SMono(testee.get(BOB)).block().settings.asJava)
@@ -132,7 +78,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def resetShouldOverrideExistSettingEntry(): Unit = {
-    SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
+    SMono(testee.reset(BOB, ("key1", "value1").asUpsertRequest)).block()
     SMono(testee.reset(BOB, ("key1", "value2").asUpsertRequest)).block()
 
     assertThat(SMono(testee.get(BOB)).block().settings.asJava)
@@ -141,7 +87,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def resetShouldUpdateState(): Unit = {
-    val state1 = SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
+    val state1 = SMono(testee.reset(BOB, ("key1", "value1").asUpsertRequest)).block()
     val state2 = SMono(testee.reset(BOB, ("key2", "value2").asUpsertRequest)).block()
     assertThat(state2.oldState).isEqualTo(state1.newState)
     assertThat(state2.newState).isNotEqualTo(state2.oldState)
@@ -149,7 +95,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def resetShouldNotAffectToOtherUser(): Unit = {
-    SMono(testee.save(BOB, ("key1", "value1").asUpsertRequest)).block()
+    SMono(testee.reset(BOB, ("key1", "value1").asUpsertRequest)).block()
     SMono(testee.reset(ALICE, ("key1", "value2").asUpsertRequest)).block()
 
     assertThat(SMono(testee.get(BOB)).block().settings.asJava)
@@ -158,7 +104,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def updatePartialShouldRemoveSettingEntryInPatch(): Unit = {
-    SMono(testee.save(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
+    SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
     SMono(testee.updatePartial(BOB, JmapSettingsPatch(JmapSettingsUpsertRequest(Map()),
       Seq("key1".asSettingKey)))).block()
 
@@ -168,7 +114,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def updatePartialShouldNotThrowWhenRemoveKeyDoesNotExist(): Unit = {
-    SMono(testee.save(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
+    SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
     assertThatCode(() => SMono(testee.updatePartial(BOB, JmapSettingsPatch(JmapSettingsUpsertRequest(Map()),
       Seq("key3".asSettingKey)))).block())
       .doesNotThrowAnyException()
@@ -176,7 +122,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def updatePartialShouldUpdateState(): Unit = {
-    val state1 = SMono(testee.save(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
+    val state1 = SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
     val state2 = SMono(testee.updatePartial(BOB, JmapSettingsPatch(JmapSettingsUpsertRequest(Map()),
       Seq("key1".asSettingKey)))).block()
 
@@ -186,7 +132,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def updatePartialShouldAppendNewSettingEntryInPatch(): Unit = {
-    SMono(testee.save(BOB, Map(("key1", "value1")).asUpsertRequest)).block()
+    SMono(testee.reset(BOB, Map(("key1", "value1")).asUpsertRequest)).block()
     SMono(testee.updatePartial(BOB, JmapSettingsPatch(
       JmapSettingsUpsertRequest(Map("key3".asSettingKey -> JmapSettingsValue("value3"))),
       Seq()))).block()
@@ -198,7 +144,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def updatePartialShouldSucceedWhenMixCases(): Unit = {
-    SMono(testee.save(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
+    SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
     SMono(testee.updatePartial(BOB, JmapSettingsPatch(
       JmapSettingsUpsertRequest(Map("key3".asSettingKey -> JmapSettingsValue("value3"), "key1".asSettingKey -> JmapSettingsValue("value4"))),
       Seq("key2".asSettingKey)))).block()
@@ -210,7 +156,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def updatePartialShouldFailWhenBothUpsertAndRemovePatchContainSameKey(): Unit = {
-    SMono(testee.save(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
+    SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
     assertThatThrownBy(() => SMono(testee.updatePartial(BOB, JmapSettingsPatch(
       JmapSettingsUpsertRequest(Map("key1".asSettingKey -> JmapSettingsValue("value3"))),
       Seq("key1".asSettingKey)))).block())
@@ -219,7 +165,7 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def updatePartialShouldFailWhenBothUpsertAndRemovePatchIsEmpty(): Unit = {
-    SMono(testee.save(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
+    SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
     assertThatThrownBy(() => SMono(testee.updatePartial(BOB, JmapSettingsPatch(
       JmapSettingsUpsertRequest(Map()),
       Seq()))).block())
@@ -228,8 +174,8 @@ trait JmapSettingsRepositoryContract {
 
   @Test
   def updatePartialShouldNotAffectToOtherUser(): Unit = {
-    SMono(testee.save(BOB, Map(("key1", "value1")).asUpsertRequest)).block()
-    SMono(testee.save(ALICE, Map(("key1", "value1")).asUpsertRequest)).block()
+    SMono(testee.reset(BOB, Map(("key1", "value1")).asUpsertRequest)).block()
+    SMono(testee.reset(ALICE, Map(("key1", "value1")).asUpsertRequest)).block()
     SMono(testee.updatePartial(ALICE, JmapSettingsPatch(
       JmapSettingsUpsertRequest(Map()),
       Seq("key1".asSettingKey)))).block()

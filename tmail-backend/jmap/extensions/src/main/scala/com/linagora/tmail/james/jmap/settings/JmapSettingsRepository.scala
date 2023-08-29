@@ -15,8 +15,6 @@ import scala.collection.mutable
 trait JmapSettingsRepository {
   def get(username: Username): Publisher[JmapSettings]
 
-  def save(username: Username, settings: JmapSettingsUpsertRequest): Publisher[SettingsStateUpdate]
-
   def reset(username: Username, settings: JmapSettingsUpsertRequest): Publisher[SettingsStateUpdate]
 
   def updatePartial(username: Username, settingsPatch: JmapSettingsPatch): Publisher[SettingsStateUpdate]
@@ -39,17 +37,14 @@ case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsReposito
         JmapSettings(settings, state)
       })
 
-  override def save(username: Username, settings: JmapSettingsUpsertRequest): SMono[SettingsStateUpdate] =
-    SMono.fromCallable(() => {
-      settings.settings.foreach {
-        case (key: JmapSettingsKey, value: JmapSettingsValue) => Option(this.settingsStore.put(username, key, value))
-      }
-      updateState(username)
-    }).`then`(updateState(username))
-
   override def reset(username: Username, settings: JmapSettingsUpsertRequest): SMono[SettingsStateUpdate] =
     SMono.fromCallable(() => this.settingsStore.row(username).clear())
-      .`then`(save(username, settings))
+      .`then`(SMono.fromCallable(() => {
+        settings.settings.foreach {
+          case (key: JmapSettingsKey, value: JmapSettingsValue) => Option(this.settingsStore.put(username, key, value))
+        }
+        updateState(username)
+      }).`then`(updateState(username)))
 
   override def updatePartial(username: Username, settingsPatch: JmapSettingsPatch): SMono[SettingsStateUpdate] = {
     Preconditions.checkArgument(!settingsPatch.isEmpty, "Cannot update when upsert and remove is empty".asInstanceOf[Object])
