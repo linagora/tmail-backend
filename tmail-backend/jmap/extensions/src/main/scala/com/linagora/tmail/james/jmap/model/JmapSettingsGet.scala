@@ -8,17 +8,7 @@ import org.apache.james.jmap.core.{AccountId, Id, UuidState}
 import org.apache.james.jmap.method.WithAccountId
 
 case class JmapSettingsGet(accountId: AccountId,
-                           ids: Option[Set[JmapSettingsId]] = None) extends WithAccountId {
-  def validate(): Either[IllegalArgumentException, JmapSettingsGet] =
-    ids match {
-      case Some(ids) =>
-        ids.find(_ != JmapSettingsEntry.SETTING_SINGLETON_ID)
-          .map(id => Left(new IllegalArgumentException(s"Invalid id $id")))
-          .getOrElse(Right(this))
-      case None => Right(this)
-    }
-}
-
+                           ids: Option[Set[JmapSettingsId]] = None) extends WithAccountId
 case class JmapSettingsResponse(accountId: AccountId,
                                 state: UuidState,
                                 list: Seq[JmapSettingsEntry],

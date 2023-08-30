@@ -9,13 +9,13 @@ import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import javax.inject.Inject
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
-import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.SMono
@@ -53,8 +53,8 @@ trait JmapSettingsGetMethodContract {
   }
 
   @Test
-  def missingSettingsCapabilityShouldFail(): Unit = {
-    val response = `given`
+  def missingSettingsCapabilityShouldFail(): Unit =
+    `given`
       .body(
         s"""{
            |	"using": ["urn:ietf:params:jmap:core"],
@@ -69,30 +69,26 @@ trait JmapSettingsGetMethodContract {
            |		]
            |	]
            |}""".stripMargin)
-      .when
-      .post.prettyPeek()
-      .`then`
+    .when
+      .post
+    .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
-      .extract
-      .body
-      .asString
+      .body("", jsonEquals(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |			"error",
+           |			{
+           |				"type": "unknownMethod",
+           |				"description": "Missing capability(ies): com:linagora:params:jmap:settings"
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin))
 
-    assertThatJson(response).isEqualTo(
-      s"""{
-         |	"sessionState": "${SESSION_STATE.value}",
-         |	"methodResponses": [
-         |		[
-         |			"error",
-         |			{
-         |				"type": "unknownMethod",
-         |				"description": "Missing capability(ies): com:linagora:params:jmap:settings"
-         |			},
-         |			"c1"
-         |		]
-         |	]
-         |}""".stripMargin)
-  }
 
   @Test
   def getShouldReturnEmptySettingsByDefault(): Unit =
@@ -111,9 +107,9 @@ trait JmapSettingsGetMethodContract {
            |		]
            |	]
            |}""".stripMargin)
-      .when
-      .post.prettyPeek()
-      .`then`
+    .when
+      .post
+    .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("methodResponses[0]", jsonEquals(
@@ -151,9 +147,9 @@ trait JmapSettingsGetMethodContract {
            |		]
            |	]
            |}""".stripMargin)
-      .when
-      .post.prettyPeek()
-      .`then`
+    .when
+      .post
+    .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("methodResponses[0]", jsonEquals(
@@ -190,9 +186,9 @@ trait JmapSettingsGetMethodContract {
            |		]
            |	]
            |}""".stripMargin)
-      .when
-      .post.prettyPeek()
-      .`then`
+    .when
+      .post
+    .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("methodResponses[0]", jsonEquals(
@@ -227,9 +223,9 @@ trait JmapSettingsGetMethodContract {
            |		]
            |	]
            |}""".stripMargin)
-      .when
-      .post.prettyPeek()
-      .`then`
+    .when
+      .post
+    .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("methodResponses[0]", jsonEquals(
@@ -268,9 +264,9 @@ trait JmapSettingsGetMethodContract {
            |		]
            |	]
            |}""".stripMargin)
-      .when
-      .post.prettyPeek()
-      .`then`
+    .when
+      .post
+    .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("methodResponses[0]", jsonEquals(
@@ -288,4 +284,157 @@ trait JmapSettingsGetMethodContract {
            |    "c1"
            |]""".stripMargin))
   }
+
+  @Test
+  def shouldFailWhenWrongAccountId(): Unit =
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/get",
+           |			{
+           |				"accountId": "unknownAccountId",
+           |				"ids": null
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("", jsonEquals(
+        s"""{
+           |  "sessionState": "${SESSION_STATE.value}",
+           |  "methodResponses": [
+           |    ["error", {
+           |      "type": "accountNotFound"
+           |    }, "c1"]
+           |  ]
+           |}""".stripMargin))
+
+  @Test
+  def shouldSupportDelegation(server: GuiceJamesServer): Unit = {
+    val bobAccountId: String = ACCOUNT_ID
+    val settingsStateUpdate = server.getProbe(classOf[JmapSettingsProbe])
+      .reset(BOB, Map(("key1", "value1")))
+
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    `given`
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/get",
+           |			{
+           |				"accountId": "$bobAccountId",
+           |				"ids": null
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/get",
+           |    {
+           |        "accountId": "$bobAccountId",
+           |        "state": "${settingsStateUpdate.newState.serialize}",
+           |        "list": [{
+           |                    "id": "singleton",
+           |                    "settings": {"key1": "value1"}
+           |                }],
+           |        "notFound": []
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+  }
+
+  @Test
+  def shouldFailWhenNotDelegated(server: GuiceJamesServer): Unit = {
+    val bobAccountId: String = ACCOUNT_ID
+    server.getProbe(classOf[JmapSettingsProbe])
+      .reset(BOB, Map(("key1", "value1")))
+
+    `given`
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/get",
+           |			{
+           |				"accountId": "$bobAccountId",
+           |				"ids": null
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "error",
+           |    {
+           |        "type": "accountNotFound"
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+  }
+
+  @Test
+  def missingCoreCapabilityShouldFail(): Unit =
+    `given`
+      .body(
+        s"""{
+           |	"using": ["com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/get",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"ids": null
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("", jsonEquals(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |			"error",
+           |			{
+           |				"type": "unknownMethod",
+           |				"description": "Missing capability(ies): urn:ietf:params:jmap:core"
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin))
+
 }
