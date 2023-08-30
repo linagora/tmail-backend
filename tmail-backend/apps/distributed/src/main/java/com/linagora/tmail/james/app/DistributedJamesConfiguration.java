@@ -32,7 +32,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             MailQueueViewChoice mailQueueViewChoice,
                                             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                             LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
-                                            boolean jmapEnabled) implements Configuration {
+                                            boolean jmapEnabled,
+                                            PropertiesProvider propertiesProvider) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -132,17 +133,15 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 .orElseThrow(() -> new MissingArgumentException("Server needs a working.directory env entry")));
 
             FileSystemImpl fileSystem = new FileSystemImpl(directories);
+            PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
             BlobStoreConfiguration blobStoreConfiguration = this.blobStoreConfiguration.orElseGet(Throwing.supplier(
-                () -> BlobStoreConfiguration.parse(
-                    new PropertiesProvider(fileSystem, configurationPath))));
+                () -> BlobStoreConfiguration.parse(propertiesProvider)));
 
             SearchConfiguration searchConfiguration = this.searchConfiguration.orElseGet(Throwing.supplier(
-                () -> SearchConfiguration.parse(
-                    new PropertiesProvider(fileSystem, configurationPath))));
+                () -> SearchConfiguration.parse(propertiesProvider)));
 
             MailboxConfiguration mailboxConfiguration = this.mailboxConfiguration.orElseGet(Throwing.supplier(
-                () -> MailboxConfiguration.parse(
-                    new PropertiesProvider(fileSystem, configurationPath))));
+                () -> MailboxConfiguration.parse(propertiesProvider)));
 
             FileConfigurationProvider configurationProvider = new FileConfigurationProvider(fileSystem, Basic.builder()
                 .configurationPath(configurationPath)
@@ -152,17 +151,15 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 () -> UsersRepositoryModuleChooser.Implementation.parse(configurationProvider));
 
             MailQueueViewChoice mailQueueViewChoice = this.mailQueueViewChoice.orElseGet(Throwing.supplier(
-                () -> MailQueueViewChoice.parse(
-                    new PropertiesProvider(fileSystem, configurationPath))));
+                () -> MailQueueViewChoice.parse(propertiesProvider)));
 
             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration = this.firebaseModuleChooserConfiguration.orElseGet(Throwing.supplier(
-                () -> FirebaseModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+                () -> FirebaseModuleChooserConfiguration.parse(propertiesProvider)));
 
             LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration
-                .orElseGet(Throwing.supplier(() -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+                .orElseGet(Throwing.supplier(() -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(propertiesProvider)));
 
             boolean jmapEnabled = this.jmapEnabled.orElseGet(() -> {
-                PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
                 try {
                     return JMAPModule.parseConfiguration(propertiesProvider).isEnabled();
                 } catch (FileNotFoundException e) {
@@ -182,7 +179,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 mailQueueViewChoice,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
-                jmapEnabled);
+                jmapEnabled,
+                propertiesProvider);
         }
     }
 
