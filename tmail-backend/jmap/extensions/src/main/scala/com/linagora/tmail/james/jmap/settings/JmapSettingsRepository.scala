@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.settings
 
 import com.google.common.base.Preconditions
 import com.google.common.collect.{HashBasedTable, Table, Tables}
+import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsStateFactory.INITIAL
 import javax.inject.Inject
@@ -65,4 +66,12 @@ case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsReposito
       this.stateStore.put(username, newState)
       SettingsStateUpdate(oldState, newState)
     })
+}
+
+case class MemoryJmapSettingsRepositoryModule() extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[MemoryJmapSettingsRepository]).in(Scopes.SINGLETON)
+    bind(classOf[JmapSettingsRepository]).to(classOf[MemoryJmapSettingsRepository])
+      .in(Scopes.SINGLETON)
+  }
 }

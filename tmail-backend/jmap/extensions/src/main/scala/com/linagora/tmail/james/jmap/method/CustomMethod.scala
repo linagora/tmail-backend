@@ -24,6 +24,7 @@ object CapabilityIdentifier {
   val LINAGORA_TEAM_MAILBOXES: CapabilityIdentifier = "com:linagora:params:jmap:team:mailboxes"
   val LINAGORA_MESSAGE_VAULT: CapabilityIdentifier = "com:linagora:params:jmap:messages:vault"
   val LINAGORA_LABEL: CapabilityIdentifier = "com:linagora:params:jmap:labels"
+  val LINAGORA_SETTINGS: CapabilityIdentifier = "com:linagora:params:jmap:settings"
 }
 
 case object CustomCapabilityProperties extends CapabilityProperties {

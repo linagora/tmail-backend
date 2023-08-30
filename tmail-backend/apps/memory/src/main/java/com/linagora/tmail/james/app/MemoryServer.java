@@ -63,12 +63,14 @@ import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
+import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
@@ -117,7 +119,8 @@ public class MemoryServer {
         new TicketRoutesModule(),
         new WebFingerModule(),
         new EmailRecoveryActionMethodModule(),
-        new LabelMethodModule())
+        new LabelMethodModule(),
+        new JmapSettingsMethodModule())
         .with(new TeamMailboxJmapModule());
 
     public static final Module MODULES = Modules.override(
@@ -135,7 +138,8 @@ public class MemoryServer {
             new RateLimitPlanRoutesModule(),
             new MemoryEmailAddressContactModule(),
             new EmailAddressContactRoutesModule(),
-            new MemoryLabelRepositoryModule());
+            new MemoryLabelRepositoryModule(),
+            new MemoryJmapSettingsRepositoryModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()
