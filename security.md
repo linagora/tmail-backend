@@ -5,6 +5,8 @@ our [security page](docs/modules/ROOT/pages/security.adoc).
 
 We disclose such security issues only once a released version addressing the issue is available.
 
+We use automated tools to review our docker images and dependencies.
+
 # Reporting security vulnerabilities
 
 To ensure safety of our users, security process needs to happen privately.
@@ -14,8 +16,9 @@ Here are the steps:
  - 1. Reporter email the issues privately to `openpaas-james[AT]linagora.com`.
  - 2. We will then evaluate the validity of your report, and write back to you within two weeks. This response time 
  accounts for vacation and will generally be quicker.
- - 3. We will propose a fix that we will review with you. 
+ - 3. We will propose a fix that we will review with you. This can take up to two weeks. 
  - 4. We will propose a draft for the announcement that we will review with you. 
  - 5. We will propose you a schedule for the release and the announcements.
+ - 6. One week after the release we will disclose the vulnerability.
  
 You will be credited in the vulnerability report for your findings.
