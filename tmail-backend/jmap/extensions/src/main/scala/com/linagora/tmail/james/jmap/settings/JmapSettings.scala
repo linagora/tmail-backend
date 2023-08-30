@@ -18,6 +18,7 @@ object JmapSettings {
     .or(CharMatcher.is('_'))
     .or(CharMatcher.is('-'))
     .or(CharMatcher.is('#'))
+
   def validateSettingKey(string: String): Either[IllegalArgumentException, SettingKeyType] =
     refined.refineV[JmapSettingKeyConstraint](string)(
         Validate.fromPredicate(s => s.nonEmpty && s.length < 256 && charMatcher.matchesAllOf(s),
@@ -39,6 +40,8 @@ object JmapSettings {
 
   case class JmapSettingsValue(value: String) extends AnyVal
 }
+
+trait JmapSettingEntry
 
 case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state: UuidState)
 
@@ -66,4 +69,12 @@ object JmapSettingsStateFactory {
     UuidState.fromGenerateUuid()
 
   val INITIAL: UuidState = UuidState.INSTANCE
+}
+
+trait JmapSettingParser[T <: JmapSettingEntry] {
+  def key(): JmapSettingsKey
+
+  def defaultValue(): JmapSettingsValue
+
+  def parse(value: Option[JmapSettingsValue]): T
 }
