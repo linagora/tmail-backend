@@ -2,11 +2,13 @@ package com.linagora.tmail.james.app;
 
 import static org.apache.james.JamesServerMain.LOGGER;
 
+import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Set;
 
 import javax.inject.Named;
 
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
@@ -247,7 +249,6 @@ public class DistributedServer {
             new RabbitMQEventBusModule(),
             new RabbitMQModule(),
             new RabbitMailQueueRoutesModule(),
-            new RedisRateLimiterModule(),
             new RspamdModule(),
             new ScheduledReconnectionHandler.Module(),
             new TasksHeathCheckModule(),
@@ -280,6 +281,7 @@ public class DistributedServer {
             .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
+            .combineWith(chooseRedisRateLimiterModule(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration));
     }
@@ -331,4 +333,16 @@ public class DistributedServer {
         }
         return List.of();
     }
+
+    private static List<Module> chooseRedisRateLimiterModule(DistributedJamesConfiguration configuration) {
+        try {
+            configuration.propertiesProvider().getConfiguration("redis");
+            return List.of(new RedisRateLimiterModule());
+        } catch (FileNotFoundException notFoundException) {
+            return List.of();
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }
