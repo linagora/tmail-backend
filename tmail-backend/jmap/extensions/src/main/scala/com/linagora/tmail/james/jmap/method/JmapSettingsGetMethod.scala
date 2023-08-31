@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.{JmapSettingsSerializer => Serializer}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SETTINGS
-import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsGetResult}
+import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsGetResult, JmapSettingsObject}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository
 import eu.timepit.refined.auto._
 import javax.inject.Inject
@@ -81,7 +81,7 @@ class JmapSettingsGetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRe
       case None => retrieveJmapSettingsSingleton(username).flux()
       case Some(ids) => SFlux.fromIterable(ids)
         .flatMap(id => id match {
-          case JmapSettingsEntry.SETTING_SINGLETON_ID => retrieveJmapSettingsSingleton(username)
+          case JmapSettingsObject.SETTING_SINGLETON_ID => retrieveJmapSettingsSingleton(username)
           case _ => SMono.just(JmapSettingsGetResult.notFound(id))
         })
     }
