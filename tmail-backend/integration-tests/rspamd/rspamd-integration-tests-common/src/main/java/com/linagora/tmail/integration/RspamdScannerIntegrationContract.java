@@ -28,7 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public abstract class RspamdScannerIntegrationContract {
-    protected static final Domain DOMAIN = Domain.of("domain.tld");
+    protected static final Domain DOMAIN = Domain.of("example.com");
     protected static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
     protected static final Username ALICE = Username.fromLocalPartWithDomain("alice", DOMAIN);
     protected static final String BOB_PASSWORD = "pass";
@@ -41,7 +41,7 @@ public abstract class RspamdScannerIntegrationContract {
     void setUp(GuiceJamesServer server) throws Exception {
         Port smtpPort = server.getProbe(SmtpGuiceProbe.class).getSmtpPort();
         int imapPort = server.getProbe(ImapGuiceProbe.class).getImapPort();
-        messageSender = new SMTPMessageSender("domain.tld")
+        messageSender = new SMTPMessageSender(DOMAIN.asString())
             .connect("127.0.0.1", smtpPort);
         imapClient = new TestIMAPClient().connect("127.0.0.1", imapPort);
 
