@@ -19,6 +19,7 @@ public class ThirdPartyContainers {
         return new GenericContainer<>("cassandra:4.1.3")
             .withNetworkAliases("cassandra")
             .withNetwork(network)
+            .withEnv("JVM_OPTS", "-Dcassandra.skip_wait_for_gossip_to_settle=0 -Dcassandra.initial_token=1")
             .withExposedPorts(9042)
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-cassandra-testing" + UUID.randomUUID()))
             .waitingFor(new LogMessageWaitStrategy().withRegEx(".*Startup complete\\n").withTimes(1)
