@@ -1,41 +1,19 @@
 package com.linagora.tmail.james.common
 
-import com.google.inject.AbstractModule
-import com.google.inject.multibindings.Multibinder
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, JmapSettingsStateFactory, JmapSettingsUpsertRequest, SettingsStateUpdate}
+import com.linagora.tmail.james.common.probe.JmapSettingsProbe
+import com.linagora.tmail.james.jmap.settings.JmapSettingsStateFactory
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
-import javax.inject.Inject
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
-import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
-import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
+import org.apache.james.utils.DataProbeImpl
 import org.junit.jupiter.api.{BeforeEach, Test}
-import reactor.core.scala.publisher.SMono
-
-class JmapSettingsProbeModule extends AbstractModule {
-  override def configure(): Unit =
-    Multibinder.newSetBinder(binder(), classOf[GuiceProbe])
-      .addBinding()
-      .to(classOf[JmapSettingsProbe])
-}
-
-class JmapSettingsProbe @Inject()(jmapSettingsRepository: JmapSettingsRepository) extends GuiceProbe {
-  def reset(username: Username, settings: JmapSettingsUpsertRequest): SettingsStateUpdate =
-    SMono(jmapSettingsRepository.reset(username, settings)).block()
-
-  def reset(username: Username, setting: Map[String, String]): SettingsStateUpdate = {
-    val upsertRequest: JmapSettingsUpsertRequest = JmapSettingsUpsertRequest(setting.map(kv => JmapSettingsKey.liftOrThrow(kv._1) -> JmapSettingsValue(kv._2)))
-    reset(username, upsertRequest)
-  }
-}
 
 trait JmapSettingsGetMethodContract {
   @BeforeEach

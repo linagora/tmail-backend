@@ -10,7 +10,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.JmapSettingsGetMethodContract;
-import com.linagora.tmail.james.common.JmapSettingsProbeModule;
+import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryJmapSettingsGetMethodTest implements JmapSettingsGetMethodContract {
