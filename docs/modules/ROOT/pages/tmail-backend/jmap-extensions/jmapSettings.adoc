@@ -206,14 +206,4 @@ Will return:
 
 == Documented settings keys
 
-=== Firebase push enable option
-Some users are OK with their data being flowed through Firebase Cloud Messaging, while others are not OK.
-
-This setting entry allows users to enable/disable TMail pushing their data via Firebase Cloud Messaging.
-
-Setting key: `firebase.enabled`.
-Optional. Boolean as String. Default value to `true`.
-
-Please pay attention that if an account owner disables the Firebase push, his data change would not be transited via FCM to delegatees.
-
-
+There is not yet documented settings key.

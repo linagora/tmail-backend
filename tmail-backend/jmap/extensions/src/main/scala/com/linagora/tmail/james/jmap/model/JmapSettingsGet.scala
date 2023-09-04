@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.model
 
-import com.linagora.tmail.james.jmap.model.JmapSettingsObject.{JmapSettingsId, SETTING_SINGLETON_ID}
+import com.linagora.tmail.james.jmap.model.JmapSettingsEntry.{JmapSettingsId, SETTING_SINGLETON_ID}
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.{JmapSettings, JmapSettingsStateFactory}
 import org.apache.james.jmap.core.Id.Id
@@ -11,25 +11,25 @@ case class JmapSettingsGet(accountId: AccountId,
                            ids: Option[Set[JmapSettingsId]] = None) extends WithAccountId
 case class JmapSettingsResponse(accountId: AccountId,
                                 state: UuidState,
-                                list: Seq[JmapSettingsObject],
+                                list: Seq[JmapSettingsEntry],
                                 notFound: Seq[JmapSettingsId])
 
-object JmapSettingsObject {
+object JmapSettingsEntry {
 
   type JmapSettingsId = Id
 
   val SETTING_SINGLETON_ID: JmapSettingsId = Id.validate("singleton").toOption.get
 
-  def singleton(jmapSettings: JmapSettings): JmapSettingsObject =
-    JmapSettingsObject(SETTING_SINGLETON_ID, jmapSettings.state, jmapSettings.settings)
+  def singleton(jmapSettings: JmapSettings): JmapSettingsEntry =
+    JmapSettingsEntry(SETTING_SINGLETON_ID, jmapSettings.state, jmapSettings.settings)
 
-  def unapplyIgnoreState(settingsEntry: JmapSettingsObject): Some[(JmapSettingsId, Map[JmapSettingsKey, JmapSettingsValue])] =
+  def unapplyIgnoreState(settingsEntry: JmapSettingsEntry): Some[(JmapSettingsId, Map[JmapSettingsKey, JmapSettingsValue])] =
     Some((settingsEntry.id, settingsEntry.settings))
 }
 
-case class JmapSettingsObject(id: JmapSettingsId,
-                              state: UuidState = JmapSettingsStateFactory.INITIAL,
-                              settings: Map[JmapSettingsKey, JmapSettingsValue])
+case class JmapSettingsEntry(id: JmapSettingsId,
+                             state: UuidState = JmapSettingsStateFactory.INITIAL,
+                             settings: Map[JmapSettingsKey, JmapSettingsValue])
 
 object JmapSettingsGetResult {
 
@@ -41,13 +41,13 @@ object JmapSettingsGetResult {
     JmapSettingsGetResult(r1.settingsEntries ++ r2.settingsEntries, r1.notFound ++ r2.notFound)
 
   def emptySingleton(): JmapSettingsGetResult =
-    JmapSettingsGetResult(Set(JmapSettingsObject(SETTING_SINGLETON_ID, JmapSettingsStateFactory.INITIAL, Map())), Set())
+    JmapSettingsGetResult(Set(JmapSettingsEntry(SETTING_SINGLETON_ID, JmapSettingsStateFactory.INITIAL, Map())), Set())
 
   def singleton(jmapSettings: JmapSettings): JmapSettingsGetResult =
-    JmapSettingsGetResult(Set(JmapSettingsObject.singleton(jmapSettings)), Set())
+    JmapSettingsGetResult(Set(JmapSettingsEntry.singleton(jmapSettings)), Set())
 }
 
-case class JmapSettingsGetResult(settingsEntries: Set[JmapSettingsObject],
+case class JmapSettingsGetResult(settingsEntries: Set[JmapSettingsEntry],
                                  notFound: Set[JmapSettingsId] = Set()) {
   def asResponse(accountId: AccountId): JmapSettingsResponse =
     JmapSettingsResponse(
