@@ -31,6 +31,12 @@ object JmapSettings {
         case Left(error) => throw new IllegalArgumentException(error)
         case Right(settingKey) => JmapSettingsKey(settingKey)
       }
+
+    def validate(value: String): Either[IllegalArgumentException, JmapSettingsKey] =
+      validateSettingKey(value) match {
+        case Left(error) => Left(error)
+        case Right(settingKey) => Right(JmapSettingsKey(settingKey))
+      }
   }
 
   case class JmapSettingsKey(value: SettingKeyType) {

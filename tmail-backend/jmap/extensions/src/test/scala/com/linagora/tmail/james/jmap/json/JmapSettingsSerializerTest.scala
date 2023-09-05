@@ -1,14 +1,16 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsResponse}
-import com.linagora.tmail.james.jmap.settings.JmapSettings.JmapSettingsValue
+import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsUpdateResponse}
+import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.SettingsKeyString
+import com.linagora.tmail.james.jmap.settings.JmapSettingsUpsertRequest
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
+import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import play.api.libs.json.{JsResult, JsValue, Json}
+import play.api.libs.json.{JsObject, JsResult, JsValue, Json}
 
 class JmapSettingsSerializerTest {
 
@@ -59,4 +61,93 @@ class JmapSettingsSerializerTest {
           |}""".stripMargin))
   }
 
+  @Test
+  def givenValidSettingsKeyThenDeserializeSetRequestShouldSucceed(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |	"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |	"update": {
+        |		"singleton": {
+        |			"settings": {
+        |				"tdrive.attachment.import.enabled": "true",
+        |				"firebase.enabled": "true"
+        |			}
+        |		}
+        |	}
+        |}""".stripMargin)
+
+    val deserializeSetRequestResult: JsResult[SettingsSetRequest] = JmapSettingsSerializer.deserializeSetRequest(jsInput)
+    val upsertRequest: JmapSettingsUpsertRequest = JmapSettingsUpsertRequest(
+      settings = Map(JmapSettingsKey.liftOrThrow("tdrive.attachment.import.enabled") -> JmapSettingsValue("true"),
+        JmapSettingsKey.liftOrThrow("firebase.enabled") -> JmapSettingsValue("true")))
+
+    assertThat(deserializeSetRequestResult.isSuccess).isTrue
+    assertThat(deserializeSetRequestResult.get)
+      .usingRecursiveComparison()
+      .isEqualTo(SettingsSetRequest(
+        accountId = AccountId.apply("29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"),
+        update = Some(Map("singleton" -> upsertRequest))))
+  }
+
+  @Test
+  def givenInvalidSettingsKeyThenDeserializeSetRequestShouldFail(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |	"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |	"update": {
+        |		"singleton": {
+        |			"settings": {
+        |				"invalid/setting/key": "true"
+        |			}
+        |		}
+        |	}
+        |}""".stripMargin)
+
+    val deserializeSetRequestResult: JsResult[SettingsSetRequest] = JmapSettingsSerializer.deserializeSetRequest(jsInput)
+
+    assertThat(deserializeSetRequestResult.isSuccess).isFalse
+    assertThat(deserializeSetRequestResult.asEitherRequest.left.get.getMessage)
+      .contains("'invalid/setting/key' contains some invalid characters. Should be [#a-zA-Z0-9-_#.] and no longer than 255 chars.")
+  }
+
+  @Test
+  def serializeSetResponseShouldSucceed(): Unit = {
+    val response = SettingsSetResponse(
+      accountId = AccountId.from(Username.of("bob")).toOption.get,
+      oldState = UuidState.fromStringUnchecked("2c9f1b12-b35a-43e6-9af2-0106fb53a943"),
+      newState = UuidState.fromStringUnchecked("2c9f1b12-b35a-43e6-9af2-0106fb53a943"),
+      updated = Some(Map("singleton" -> SettingsUpdateResponse(JsObject.empty))),
+      notUpdated = Some(Map("singleton1" -> SettingsSetError.invalidArgument(Some(SetErrorDescription("not singleton id"))))),
+      notCreated = Some(Map("createId" -> SettingsSetError.invalidArgument(Some(SetErrorDescription("not support create"))))),
+      notDestroyed = Some(Map("destroyId" -> SettingsSetError.invalidArgument(Some(SetErrorDescription("not support destroy"))))))
+
+    assertThat(JmapSettingsSerializer.serializeSetResponse(response))
+      .isEqualTo(Json.parse(
+        """{
+          |	"accountId": "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9",
+          |	"oldState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+          |	"newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+          |	"updated": {
+          |		"singleton": {}
+          |	},
+          |	"notUpdated": {
+          |		"singleton1": {
+          |			"type": "invalidArguments",
+          |			"description": "not singleton id"
+          |		}
+          |	},
+          |	"notCreated": {
+          |		"createId": {
+          |			"type": "invalidArguments",
+          |			"description": "not support create"
+          |		}
+          |	},
+          |	"notDestroyed": {
+          |		"destroyId": {
+          |			"type": "invalidArguments",
+          |			"description": "not support destroy"
+          |		}
+          |	}
+          |}""".stripMargin))
+  }
 }

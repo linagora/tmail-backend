@@ -47,6 +47,10 @@ class JmapSettingsMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[JmapSettingsGetMethod])
+
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[SettingsSetRequestSetMethod])
   }
 }
 
