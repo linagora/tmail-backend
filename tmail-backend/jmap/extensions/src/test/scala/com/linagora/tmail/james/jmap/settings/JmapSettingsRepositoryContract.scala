@@ -5,6 +5,7 @@ import java.util.Map.entry
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.{ALICE, BOB, SAMPLE_UPSERT_REQUEST, SettingsKeyString, SettingsUpsertRequestMap, SettingsUpsertRequestPair}
 import org.apache.james.core.Username
+import org.apache.james.jmap.core.UuidState
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.SMono
@@ -59,6 +60,22 @@ trait JmapSettingsRepositoryContract {
     val jmapSettings: JmapSettings = SMono(testee.get(BOB)).block()
     assertThat(jmapSettings.state).isNotEqualTo(JmapSettingsStateFactory.INITIAL)
     assertThat(jmapSettings.state).isEqualTo(state2.newState)
+  }
+
+  @Test
+  def getLatestStateShouldReturnInitialStateByDefault(): Unit = {
+    assertThat(SMono(testee.getLatestState(BOB)).block())
+      .isEqualTo(JmapSettingsStateFactory.INITIAL)
+  }
+
+  @Test
+  def getLatestStateShouldReturnOnlyLatestState(): Unit = {
+    val state1 = SMono(testee.reset(BOB, ("key1", "value1").asUpsertRequest)).block()
+    val state2 = SMono(testee.reset(BOB, ("key1", "value2").asUpsertRequest)).block()
+
+    val latestState: UuidState = SMono(testee.getLatestState(BOB)).block()
+
+    assertThat(latestState).isEqualTo(state2.newState)
   }
 
   @Test
