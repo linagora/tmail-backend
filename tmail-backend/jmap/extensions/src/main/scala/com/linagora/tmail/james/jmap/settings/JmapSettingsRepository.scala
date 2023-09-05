@@ -16,6 +16,8 @@ import scala.collection.mutable
 trait JmapSettingsRepository {
   def get(username: Username): Publisher[JmapSettings]
 
+  def getLatestState(username: Username): Publisher[UuidState]
+
   def reset(username: Username, settings: JmapSettingsUpsertRequest): Publisher[SettingsStateUpdate]
 
   def updatePartial(username: Username, settingsPatch: JmapSettingsPatch): Publisher[SettingsStateUpdate]
@@ -37,6 +39,10 @@ case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsReposito
         val settings: Map[JmapSettingsKey, JmapSettingsValue] = settingsStore.row(username).asScala.toMap
         JmapSettings(settings, state)
       })
+
+  override def getLatestState(username: Username): Publisher[UuidState] =
+    SMono.justOrEmpty(stateStore.get(username))
+      .defaultIfEmpty(INITIAL)
 
   override def reset(username: Username, settings: JmapSettingsUpsertRequest): SMono[SettingsStateUpdate] =
     SMono.fromCallable(() => this.settingsStore.row(username).clear())
