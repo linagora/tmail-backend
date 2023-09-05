@@ -91,22 +91,27 @@ class SettingsSetRequestSetMethod @Inject()(val jmapSettingsRepository: JmapSett
 
     for {
       updateResults <- update(mailboxSession, request)
-      oldState <- retrieveOldState(mailboxSession, updateResults)
-      newState <- retrieveNewState(mailboxSession, updateResults)
+      currentStateIfAllUpdatesFailed <- retrieveCurrentStateIfAllUpdatesFailed(mailboxSession, updateResults)
+      oldState <- evaluateOldState(updateResults, currentStateIfAllUpdatesFailed)
+      newState <- evaluateNewState(updateResults, currentStateIfAllUpdatesFailed)
       response = createResponse(invocation.invocation, request, updateResults, oldState, newState)
     } yield InvocationWithContext(response, invocation.processingContext)
   }
 
-  private def retrieveNewState(mailboxSession: MailboxSession, updateResults: SettingsSetUpdateResults): SMono[UuidState] =
+  private def retrieveCurrentStateIfAllUpdatesFailed(mailboxSession: MailboxSession, updateResults: SettingsSetUpdateResults): SMono[Option[UuidState]] =
+    SMono.just(updateResults.updateSuccess.isEmpty)
+      .filter(allUpdatesFailed => allUpdatesFailed)
+      .flatMap(_ => SMono(jmapSettingsRepository.getLatestState(mailboxSession.getUser))
+        .map(Some(_)))
+      .defaultIfEmpty(None)
+
+  private def evaluateNewState(updateResults: SettingsSetUpdateResults, currentStateIfAllUpdatesFailed: Option[UuidState]): SMono[UuidState] =
     SMono.justOrEmpty(updateResults.newState)
-      .switchIfEmpty(retrieveState(mailboxSession))
+      .switchIfEmpty(SMono.justOrEmpty(currentStateIfAllUpdatesFailed))
 
-  private def retrieveOldState(mailboxSession: MailboxSession, updateResults: SettingsSetUpdateResults): SMono[UuidState] =
+  private def evaluateOldState(updateResults: SettingsSetUpdateResults, currentStateIfAllUpdatesFailed: Option[UuidState]): SMono[UuidState] =
     SMono.justOrEmpty(updateResults.oldState)
-      .switchIfEmpty(retrieveState(mailboxSession))
-
-  private def retrieveState(mailboxSession: MailboxSession): SMono[UuidState] =
-    SMono(jmapSettingsRepository.getLatestState(mailboxSession.getUser))
+      .switchIfEmpty(SMono.justOrEmpty(currentStateIfAllUpdatesFailed))
 
   private def update(mailboxSession: MailboxSession, settingsSetRequest: SettingsSetRequest): SMono[SettingsSetUpdateResults] =
     SFlux.fromIterable(settingsSetRequest.validateId()
