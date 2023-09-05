@@ -1,8 +1,17 @@
 # Team-mail backend server
 
 [![Join the chat at https://gitter.im/linagora/team-mail](https://badges.gitter.im/linagora/team-mail.svg)](https://gitter.im/linagora/team-mail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Images docker](https://img.shields.io/badge/Images-docker-blue.svg)](https://hub.docker.com/r/linagora/tmail-backend)
+[![Documentation](https://img.shields.io/badge/Documentation-green.svg)](docs)
 
-This project adapts and enhance [Apache James project](https://james.apache.org)
+![LOGO](https://user-images.githubusercontent.com/6462404/202656316-8b77a7b6-0c1f-4f3e-932b-72bd446b6605.png)
+
+This project adapts and enhance [Apache James project](https://james.apache.org) with a goal to provide a complete, enterpriseready collaborative email solution adapted to the rest of 
+the [Linagora](https://linagora.com) eco-system.
+
+Team-mail relies on [TeamMail Flutter](https://github.com/linagora/tmail-flutter) as a frontend.
+
+Team-mail is developed with love by [Linagora](https://linagora.com).
 
 ## Useful links
 
@@ -12,9 +21,11 @@ This project adapts and enhance [Apache James project](https://james.apache.org)
 
  - [Building + Running the distributed server](tmail-backend/apps/distributed/README.md)
 
-## Additional features
+ - [Project documentation](docs)
 
-Additional features includes:
+### Additional features
+
+Apache James extensions includes:
  - Email filtering
  - Encrypted mailboxes
  - Team mailboxes
@@ -30,6 +41,8 @@ Additional features includes:
 
 ## Building the project
 
+<details>
+  <summary>Read more...</summary>
 ### Manual building
 
 This projects uses git submodules to track the latest branch of [the Apache James project](https://james.apache.org)
@@ -82,3 +95,30 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/dockerfil
 
 If you don't want the build to redownload everytime all the maven dependencies (it can be heavy) you can mount
 your local maven repository as a volume by adding `-v $HOME/.m2:/root/.m2` to the above command.
+</details>
+
+## FAQ
+
+### **What would your roadmap look like?**
+
+<details>
+  <summary>Read more...</summary>
+By the end of 2023 we expect to add the following extensions:
+
+ - Provide Archiving and automated actions
+ - Provide a JMAP extension for thumbnails
+ - Download all attachments at once
+</details>
+
+### **Your work is awesome! I would like to help you. What can I do?**
+
+<details>
+  <summary>Read more...</summary>
+Thanks for the enthousiasm!
+
+There are many ways to help us, and amongst them:
+
+   - **Spread the word**: Tell people you like **Team Mail**, on social medias, via blog posts etc... 
+   - **Give us feedbacks**... It's hard to make all good decisions from the first time. It is very likely we can benefit from *your* experience. Did you encountered annoying bugs? Do you think we are missing some features critical to you? Tell us in the [issues](https://github.com/linagora/tmail-backend/issues).
+   - I can code! **I wanna help ;-)**. Wow thanks! Let's discuss your project together in the [issues](https://github.com/linagora/tmail-backend/issues) to get you on track!
+</details>
