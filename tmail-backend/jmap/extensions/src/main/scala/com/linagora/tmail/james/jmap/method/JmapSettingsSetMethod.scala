@@ -19,24 +19,35 @@ import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 object SettingsSetUpdateResults {
-  def empty(): SettingsSetUpdateResults = SettingsSetUpdateResults(Map(), Map())
+  def empty(): SettingsSetUpdateResults = SettingsSetUpdateResults(Map(), Map(), None)
 
-  def merge(a: SettingsSetUpdateResults, b: SettingsSetUpdateResults) = SettingsSetUpdateResults(a.updateSuccess ++ b.updateSuccess, a.updateFailures ++ b.updateFailures)
+  def merge(a: SettingsSetUpdateResults, b: SettingsSetUpdateResults) = SettingsSetUpdateResults(updateSuccess = a.updateSuccess ++ b.updateSuccess,
+    updateFailures = a.updateFailures ++ b.updateFailures,
+    newState = newStateFromOnePossibleSingletonSuccessUpdate(a, b))
+
+  private def newStateFromOnePossibleSingletonSuccessUpdate(a: SettingsSetUpdateResults, b: SettingsSetUpdateResults): Option[UuidState] =
+    a.newState
+      .orElse(b.newState)
 }
 
 case class SettingsSetUpdateResults(updateSuccess: Map[String, SettingsUpdateResponse],
-                                    updateFailures: Map[String, SettingsSetError])
+                                    updateFailures: Map[String, SettingsSetError],
+                                    newState: Option[UuidState])
+
 sealed trait SettingsUpdateResult {
   def updated: Map[String, SettingsUpdateResponse]
   def notUpdated: Map[String, SettingsSetError]
+  def newState: Option[UuidState]
 
-  def asSettingsSetRequestUpdateResults = SettingsSetUpdateResults(updated, notUpdated)
+  def asSettingsSetRequestUpdateResults = SettingsSetUpdateResults(updated, notUpdated, newState)
 }
 
-case object SettingsUpdateSuccess extends SettingsUpdateResult {
+case class SettingsUpdateSuccess(latestState: UuidState) extends SettingsUpdateResult {
   override def updated: Map[String, SettingsUpdateResponse] = Map(OBJECT_ID -> SettingsUpdateResponse(JsObject(Seq())))
 
   override def notUpdated: Map[String, SettingsSetError] = Map()
+
+  override def newState: Option[UuidState] = Some(latestState)
 }
 
 case class SettingsUpdateFailure(id: String, exception: Throwable) extends SettingsUpdateResult {
@@ -48,6 +59,8 @@ case class SettingsUpdateFailure(id: String, exception: Throwable) extends Setti
       case e: IllegalArgumentException => SettingsSetError.invalidArgument(Some(SetErrorDescription(e.getMessage)))
       case e: Throwable => SettingsSetError.serverFail(Some(SetErrorDescription(e.getMessage)))
     }
+
+  override def newState: Option[UuidState] = None
 }
 
 class SettingsSetRequestSetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRepository,
@@ -68,10 +81,14 @@ class SettingsSetRequestSetMethod @Inject()(val jmapSettingsRepository: JmapSett
     for {
       oldState <- retrieveState(mailboxSession)
       updateResults <- update(mailboxSession, request)
-      newState <- retrieveState(mailboxSession)
+      newState <- retrieveNewState(mailboxSession, updateResults)
       response = createResponse(invocation.invocation, request, updateResults, oldState, newState)
     } yield InvocationWithContext(response, invocation.processingContext)
   }
+
+  private def retrieveNewState(mailboxSession: MailboxSession, updateResults: SettingsSetUpdateResults): SMono[UuidState] =
+    SMono.justOrEmpty(updateResults.newState)
+      .switchIfEmpty(retrieveState(mailboxSession))
 
   private def retrieveState(mailboxSession: MailboxSession): SMono[UuidState] =
     SMono(jmapSettingsRepository.getLatestState(mailboxSession.getUser))
@@ -88,7 +105,7 @@ class SettingsSetRequestSetMethod @Inject()(val jmapSettingsRepository: JmapSett
 
   private def updateSingletonSettingsObject(mailboxSession: MailboxSession, upsertRequest: JmapSettingsUpsertRequest): SMono[SettingsUpdateResult] =
     SMono.fromPublisher(jmapSettingsRepository.reset(mailboxSession.getUser, upsertRequest))
-      .`then`(SMono.just(SettingsUpdateSuccess))
+      .map(stateUpdate => SettingsUpdateSuccess(stateUpdate.newState))
 
   private def createResponse(invocation: Invocation,
                              settingsSetRequest: SettingsSetRequest,
