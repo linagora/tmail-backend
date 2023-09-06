@@ -4,10 +4,15 @@ import com.linagora.tmail.james.jmap.json.JmapSettingsSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SETTINGS
 import com.linagora.tmail.james.jmap.model.SettingsSet.OBJECT_ID
 import com.linagora.tmail.james.jmap.model.{SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
-import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, SettingsTypeName}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import javax.inject.{Inject, Named}
 import org.apache.james.core.Username
+import org.apache.james.events.Event.EventId
+import org.apache.james.events.EventBus
+import org.apache.james.jmap.InjectionKeys
+import org.apache.james.jmap.api.model.AccountId
+import org.apache.james.jmap.change.{AccountIdRegistrationKey, StateChangeEvent}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -77,7 +82,8 @@ case class SettingsUpdateFailure(id: String, exception: Throwable) extends Setti
   override def oldState: Option[UuidState] = None
 }
 
-class SettingsSetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRepository,
+class SettingsSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
+                                  val jmapSettingsRepository: JmapSettingsRepository,
                                   val metricFactory: MetricFactory,
                                   val sessionSupplier: SessionSupplier,
                                   val sessionTranslator: SessionTranslator) extends MethodRequiringAccountId[SettingsSetRequest] {
@@ -92,13 +98,31 @@ class SettingsSetMethod @Inject()(val jmapSettingsRepository: JmapSettingsReposi
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: SettingsSetRequest): SMono[InvocationWithContext] = {
     DelegatedAccountPrecondition.acceptOnlyOwnerRequest(mailboxSession, request.accountId)
 
-    for {
+    (for {
       updateResults <- update(mailboxSession, request)
       currentStateIfAllUpdatesFailed <- retrieveCurrentStateIfAllUpdatesFailed(mailboxSession, updateResults)
       oldState <- evaluateOldState(updateResults, currentStateIfAllUpdatesFailed)
       newState <- evaluateNewState(updateResults, currentStateIfAllUpdatesFailed)
       response = createResponse(invocation.invocation, request, updateResults, oldState, newState)
-    } yield InvocationWithContext(response, invocation.processingContext)
+    } yield {
+      dispatchSettingsChangeEvent(mailboxSession.getUser, oldState, newState)
+        .`then`(SMono.just(InvocationWithContext(response, invocation.processingContext)))
+    })
+      .flatMap(publisher => publisher)
+  }
+
+  private def dispatchSettingsChangeEvent(username: Username, oldState: UuidState, newState: UuidState): SMono[Void] = {
+    def noSettingsChange: Boolean = oldState.equals(newState)
+
+    if (noSettingsChange) {
+      SMono.empty
+    } else {
+      val settingsChangedEvent = StateChangeEvent(eventId = EventId.random(),
+        username = username,
+        map = Map(SettingsTypeName -> newState))
+
+      SMono(eventBus.dispatch(settingsChangedEvent, AccountIdRegistrationKey(AccountId.fromUsername(username))))
+    }
   }
 
   private def retrieveCurrentStateIfAllUpdatesFailed(mailboxSession: MailboxSession, updateResults: SettingsSetUpdateResults): SMono[Option[UuidState]] =

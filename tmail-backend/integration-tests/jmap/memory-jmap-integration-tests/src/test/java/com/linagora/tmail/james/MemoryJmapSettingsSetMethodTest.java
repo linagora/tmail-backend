@@ -11,6 +11,8 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.JmapSettingsSetMethodContract;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryJmapSettingsSetMethodTest implements JmapSettingsSetMethodContract {
@@ -20,10 +22,12 @@ public class MemoryJmapSettingsSetMethodTest implements JmapSettingsSetMethodCon
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapSettingsProbeModule())
+            .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(JmapSettingsSetMethodContract.firebasePushClient()))
             .overrideWith(new DelegationProbeModule()))
         .build();
 }
