@@ -4,6 +4,7 @@ import com.google.common.base.CharMatcher
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
+import org.apache.james.jmap.api.model.{State, TypeName}
 import org.apache.james.jmap.core.UuidState
 
 object JmapSettings {
@@ -18,6 +19,7 @@ object JmapSettings {
     .or(CharMatcher.is('_'))
     .or(CharMatcher.is('-'))
     .or(CharMatcher.is('#'))
+
   def validateSettingKey(string: String): Either[IllegalArgumentException, SettingKeyType] =
     refined.refineV[JmapSettingKeyConstraint](string)(
         Validate.fromPredicate(s => s.nonEmpty && s.length < 256 && charMatcher.matchesAllOf(s),
@@ -86,4 +88,15 @@ object JmapSettingsStateFactory {
     UuidState.fromGenerateUuid()
 
   val INITIAL: UuidState = UuidState.INSTANCE
+}
+
+case object SettingsTypeName extends TypeName {
+  override val asString: String = "Settings"
+
+  override def parse(string: String): Option[TypeName] = string match {
+    case SettingsTypeName.asString => Some(SettingsTypeName)
+    case _ => None
+  }
+
+  override def parseState(string: String): Either[IllegalArgumentException, State] = UuidState.parse(string)
 }

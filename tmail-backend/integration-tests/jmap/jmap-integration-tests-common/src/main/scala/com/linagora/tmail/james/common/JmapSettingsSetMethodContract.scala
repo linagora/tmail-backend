@@ -1,11 +1,14 @@
 package com.linagora.tmail.james.common
 
+import com.linagora.tmail.james.common.JmapSettingsSetMethodContract.firebasePushClient
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe
+import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebasePushRequest}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsStateFactory
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import io.restassured.path.json.JsonPath
+import net.javacrumbs.jsonunit.JsonMatchers
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
@@ -16,9 +19,18 @@ import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HE
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{mock, reset, times, verify, when}
+import reactor.core.publisher.Mono
+
+object JmapSettingsSetMethodContract {
+  val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
+}
 
 trait JmapSettingsSetMethodContract {
   @BeforeEach
@@ -33,6 +45,10 @@ trait JmapSettingsSetMethodContract {
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
+
+    reset(firebasePushClient)
+    when(firebasePushClient.validateToken(any())).thenReturn(Mono.just(true))
+    when(firebasePushClient.push(any(classOf[FirebasePushRequest]))).thenReturn(Mono.empty)
   }
 
   @Test
@@ -1012,4 +1028,121 @@ trait JmapSettingsSetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+
+  @Test
+  def shouldPushToFCMWhenSettingsChanged(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[JmapSettingsProbe])
+      .reset(BOB, Map(("toBeOverrideKey", "toBeOverrideValue")))
+
+    registerSettingsChangesViaFCM()
+    val latestState: String = fullResetSettings()
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+      verify(firebasePushClient, times(1)).push(argumentCaptor.capture())
+
+      val stateChangesCapture: java.util.Map[String, String] = argumentCaptor.getValue.stateChangesMap()
+      assertSoftly(softLy => {
+        softLy.assertThat(stateChangesCapture).containsOnlyKeys(s"$ACCOUNT_ID:Settings")
+        softLy.assertThat(stateChangesCapture).containsValue(latestState)
+      })
+    })
+  }
+
+  @Test
+  def shouldNotPushToFCMWhenFailureSettingsSet(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[JmapSettingsProbe])
+      .reset(BOB, Map(("toBeOverrideKey", "toBeOverrideValue")))
+
+    registerSettingsChangesViaFCM()
+    failureFullResetSettings()
+
+    verify(firebasePushClient, times(0)).push(any())
+  }
+
+  private def registerSettingsChangesViaFCM(): Unit =
+    `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "create": {
+           |                "4f29": {
+           |                  "deviceClientId": "a889-ffea-910",
+           |                  "token": "token1",
+           |                  "types": ["Settings"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].created", JsonMatchers.jsonNodePresent("4f29"))
+
+  private def fullResetSettings(): String =
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |						"settings": {
+           |							"key1": "value1",
+           |							"key2": "value2"
+           |						}
+           |					}
+           |				}
+           |			}, "c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .jsonPath()
+      .getString("methodResponses[0][1].newState")
+
+  private def failureFullResetSettings(): Unit =
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton1": {
+           |						"settings": {
+           |							"key1": "value1",
+           |							"key2": "value2"
+           |						}
+           |					}
+           |				}
+           |			}, "c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
 }

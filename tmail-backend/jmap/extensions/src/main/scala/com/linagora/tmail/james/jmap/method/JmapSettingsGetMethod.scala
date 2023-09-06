@@ -5,10 +5,11 @@ import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.{JmapSettingsSerializer => Serializer}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SETTINGS
 import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsGetResult}
-import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, SettingsTypeName}
 import eu.timepit.refined.auto._
 import javax.inject.Inject
 import org.apache.james.core.Username
+import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, UrlPrefixes}
@@ -51,6 +52,10 @@ class JmapSettingsMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[SettingsSetMethod])
+
+    Multibinder.newSetBinder(binder(), classOf[TypeName])
+      .addBinding()
+      .toInstance(SettingsTypeName)
   }
 }
 
