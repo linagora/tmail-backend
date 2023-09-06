@@ -19,12 +19,14 @@ import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 object SettingsSetUpdateResults {
-  def empty(): SettingsSetUpdateResults = SettingsSetUpdateResults(Map(), Map(), None, None)
+  def empty(): SettingsSetUpdateResults =
+    SettingsSetUpdateResults(Map(), Map(), None, None)
 
-  def merge(a: SettingsSetUpdateResults, b: SettingsSetUpdateResults) = SettingsSetUpdateResults(updateSuccess = a.updateSuccess ++ b.updateSuccess,
-    updateFailures = a.updateFailures ++ b.updateFailures,
-    newState = newStateFromOnePossibleSingletonSuccessUpdate(a, b),
-    oldState = oldStateFromOnePossibleSingletonSuccessUpdate(a, b))
+  def merge(a: SettingsSetUpdateResults, b: SettingsSetUpdateResults) =
+    SettingsSetUpdateResults(updateSuccess = a.updateSuccess ++ b.updateSuccess,
+      updateFailures = a.updateFailures ++ b.updateFailures,
+      newState = newStateFromOnePossibleSingletonSuccessUpdate(a, b),
+      oldState = oldStateFromOnePossibleSingletonSuccessUpdate(a, b))
 
   private def newStateFromOnePossibleSingletonSuccessUpdate(a: SettingsSetUpdateResults, b: SettingsSetUpdateResults): Option[UuidState] =
     a.newState
