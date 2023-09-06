@@ -1,9 +1,9 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsUpdateResponse}
+import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.SettingsKeyString
-import com.linagora.tmail.james.jmap.settings.JmapSettingsUpsertRequest
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsPatch, JmapSettingsUpsertRequest}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -11,6 +11,8 @@ import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import play.api.libs.json.{JsObject, JsResult, JsValue, Json}
+
+import scala.jdk.OptionConverters._
 
 class JmapSettingsSerializerTest {
 
@@ -62,7 +64,7 @@ class JmapSettingsSerializerTest {
   }
 
   @Test
-  def givenValidSettingsKeyThenDeserializeSetRequestShouldSucceed(): Unit = {
+  def givenValidResetRequestThenDeserializeSetRequestShouldSucceed(): Unit = {
     val jsInput: JsValue = Json.parse(
       """{
         |	"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
@@ -82,32 +84,100 @@ class JmapSettingsSerializerTest {
         JmapSettingsKey.liftOrThrow("firebase.enabled") -> JmapSettingsValue("true")))
 
     assertThat(deserializeSetRequestResult.isSuccess).isTrue
-    assertThat(deserializeSetRequestResult.get)
+    assertThat(deserializeSetRequestResult.get.accountId)
+      .isEqualTo(AccountId.apply("29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"))
+
+    val setUpdateRequest: SettingsSetUpdateRequest = deserializeSetRequestResult.get.update.get("singleton")
+    assertThat(setUpdateRequest
+      .getResetRequest)
       .usingRecursiveComparison()
-      .isEqualTo(SettingsSetRequest(
-        accountId = AccountId.apply("29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"),
-        update = Some(Map("singleton" -> upsertRequest))))
+      .isEqualTo(Some(upsertRequest))
+
+    assertThat(setUpdateRequest.getUpdatePartialRequest.toJava).isEmpty()
   }
 
   @Test
-  def givenInvalidSettingsKeyThenDeserializeSetRequestShouldFail(): Unit = {
+  def givenValidUpdatePartialRequestWithUpsertPatchThenDeserializeSetRequestShouldSucceed(): Unit = {
     val jsInput: JsValue = Json.parse(
       """{
         |	"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
         |	"update": {
         |		"singleton": {
-        |			"settings": {
-        |				"invalid/setting/key": "true"
-        |			}
+        |			"settings/tdrive.attachment.import.enabled": "true",
+        |			"settings/firebase.enabled": "true"
         |		}
         |	}
         |}""".stripMargin)
 
     val deserializeSetRequestResult: JsResult[SettingsSetRequest] = JmapSettingsSerializer.deserializeSetRequest(jsInput)
 
-    assertThat(deserializeSetRequestResult.isSuccess).isFalse
-    assertThat(deserializeSetRequestResult.asEitherRequest.left.get.getMessage)
-      .contains("'invalid/setting/key' contains some invalid characters. Should be [#a-zA-Z0-9-_#.] and no longer than 255 chars.")
+
+    val setUpdateRequest: SettingsSetUpdateRequest = deserializeSetRequestResult.get.update.get("singleton")
+
+    assertThat(setUpdateRequest
+      .getResetRequest.toJava).isEmpty
+
+    assertThat(setUpdateRequest.getUpdatePartialRequest.get)
+      .usingRecursiveComparison()
+      .isEqualTo(JmapSettingsPatch(
+        toUpsert = JmapSettingsUpsertRequest(
+          settings = Map("tdrive.attachment.import.enabled".asSettingKey -> JmapSettingsValue("true"),
+            "firebase.enabled".asSettingKey -> JmapSettingsValue("true"))),
+        toRemove = Seq()))
+  }
+
+  @Test
+  def givenValidUpdatePartialRequestWithRemovePatchThenDeserializeSetRequestShouldSucceed(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |	"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |	"update": {
+        |		"singleton": {
+        |			"settings/tdrive.attachment.import.enabled": null
+        |		}
+        |	}
+        |}""".stripMargin)
+
+    val deserializeSetRequestResult: JsResult[SettingsSetRequest] = JmapSettingsSerializer.deserializeSetRequest(jsInput)
+
+    val setUpdateRequest: SettingsSetUpdateRequest = deserializeSetRequestResult.get.update.get("singleton")
+
+    assertThat(setUpdateRequest
+      .getResetRequest.toJava).isEmpty
+
+    assertThat(setUpdateRequest.getUpdatePartialRequest.get)
+      .usingRecursiveComparison()
+      .isEqualTo(JmapSettingsPatch(
+        toUpsert = JmapSettingsUpsertRequest(settings = Map()),
+        toRemove = Seq("tdrive.attachment.import.enabled".asSettingKey)))
+  }
+
+  @Test
+  def givenValidUpdatePartialRequestWithBothRemoveAndUpsertPathThenDeserializeSetRequestShouldSucceed(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |	"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |	"update": {
+        |		"singleton": {
+        |     "settings/firebase.enabled": "true",
+        |			"settings/tdrive.attachment.import.enabled": null
+        |		}
+        |	}
+        |}""".stripMargin)
+
+    val deserializeSetRequestResult: JsResult[SettingsSetRequest] = JmapSettingsSerializer.deserializeSetRequest(jsInput)
+
+    val setUpdateRequest: SettingsSetUpdateRequest = deserializeSetRequestResult.get.update.get("singleton")
+
+    assertThat(setUpdateRequest
+      .getResetRequest.toJava).isEmpty
+
+    assertThat(setUpdateRequest.getUpdatePartialRequest.get)
+      .usingRecursiveComparison()
+      .isEqualTo(JmapSettingsPatch(
+        toUpsert = JmapSettingsUpsertRequest(
+          settings = Map("firebase.enabled".asSettingKey -> JmapSettingsValue("true"))),
+        toRemove = Seq("tdrive.attachment.import.enabled".asSettingKey)))
   }
 
   @Test

@@ -3,10 +3,11 @@ package com.linagora.tmail.james.jmap.method
 import com.linagora.tmail.james.jmap.json.JmapSettingsSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SETTINGS
 import com.linagora.tmail.james.jmap.model.SettingsSet.OBJECT_ID
-import com.linagora.tmail.james.jmap.model.{SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsUpdateResponse}
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, JmapSettingsUpsertRequest}
+import com.linagora.tmail.james.jmap.model.{SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository
 import eu.timepit.refined.auto._
 import javax.inject.Inject
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -118,15 +119,32 @@ class SettingsSetRequestSetMethod @Inject()(val jmapSettingsRepository: JmapSett
   private def update(mailboxSession: MailboxSession, settingsSetRequest: SettingsSetRequest): SMono[SettingsSetUpdateResults] =
     SFlux.fromIterable(settingsSetRequest.validateId()
       .map[SMono[SettingsUpdateResult]]({
-        case (_, Right(upsertRequest)) => updateSingletonSettingsObject(mailboxSession, upsertRequest)
+        case (_, Right(updateRequest)) => updateSingletonSettingsObject(mailboxSession, updateRequest)
         case (id, Left(e)) => SMono.just(SettingsUpdateFailure(id, e))
       }))
       .flatMap[SettingsUpdateResult](updateResultMono => updateResultMono)
       .map(updateResult => updateResult.asSettingsSetRequestUpdateResults)
       .reduce[SettingsSetUpdateResults](SettingsSetUpdateResults.empty())(SettingsSetUpdateResults.merge)
 
-  private def updateSingletonSettingsObject(mailboxSession: MailboxSession, upsertRequest: JmapSettingsUpsertRequest): SMono[SettingsUpdateResult] =
-    SMono.fromPublisher(jmapSettingsRepository.reset(mailboxSession.getUser, upsertRequest))
+  private def updateSingletonSettingsObject(mailboxSession: MailboxSession, updateRequest: SettingsSetUpdateRequest): SMono[SettingsUpdateResult] =
+    updateRequest.validate() match {
+      case Left(e) => SMono.just(SettingsUpdateFailure(OBJECT_ID, e))
+      case Right(validateRequest) => (validateRequest match {
+        case validateRequest if validateRequest.isResetRequest => doUpdateFullReset(mailboxSession.getUser, updateRequest)
+        case _ => doUpdatePartial(mailboxSession.getUser, updateRequest)
+      }).onErrorResume(error => SMono.just(SettingsUpdateFailure(OBJECT_ID, error)))
+    }
+
+  private def doUpdateFullReset(username: Username, updateRequest: SettingsSetUpdateRequest): SMono[SettingsUpdateResult] =
+    SMono.fromCallable(() => updateRequest.getResetRequest)
+      .flatMap(SMono.justOrEmpty)
+      .flatMap(resetRequest => SMono.fromPublisher(jmapSettingsRepository.reset(username, resetRequest)))
+      .map(stateUpdate => SettingsUpdateSuccess(stateUpdate.oldState, stateUpdate.newState))
+
+  private def doUpdatePartial(username: Username, updateRequest: SettingsSetUpdateRequest): SMono[SettingsUpdateResult] =
+    SMono.fromCallable(() => updateRequest.getUpdatePartialRequest)
+      .flatMap(SMono.justOrEmpty)
+      .flatMap(updatePartialRequest => SMono.fromPublisher(jmapSettingsRepository.updatePartial(username, updatePartialRequest)))
       .map(stateUpdate => SettingsUpdateSuccess(stateUpdate.oldState, stateUpdate.newState))
 
   private def createResponse(invocation: Invocation,
