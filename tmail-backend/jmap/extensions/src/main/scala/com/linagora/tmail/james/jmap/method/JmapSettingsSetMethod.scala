@@ -77,10 +77,10 @@ case class SettingsUpdateFailure(id: String, exception: Throwable) extends Setti
   override def oldState: Option[UuidState] = None
 }
 
-class SettingsSetRequestSetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRepository,
-                                            val metricFactory: MetricFactory,
-                                            val sessionSupplier: SessionSupplier,
-                                            val sessionTranslator: SessionTranslator) extends MethodRequiringAccountId[SettingsSetRequest] {
+class SettingsSetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRepository,
+                                  val metricFactory: MetricFactory,
+                                  val sessionSupplier: SessionSupplier,
+                                  val sessionTranslator: SessionTranslator) extends MethodRequiringAccountId[SettingsSetRequest] {
 
   override val methodName: MethodName = MethodName("Settings/set")
 
