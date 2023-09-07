@@ -91,24 +91,35 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession,
                          request: FilterSetRequest): Publisher[InvocationWithContext] = {
-    for {
+    (for {
       oldState <- retrieveState(mailboxSession)
       updateResult <- update(mailboxSession, request)
       newState <- retrieveState(mailboxSession)
       response = createResponse(invocation.invocation, request, updateResult, oldState, newState)
     } yield {
-      val event = StateChangeEvent(eventId = EventId.random(),
-        username = mailboxSession.getUser,
-        map = Map(FilterTypeName -> newState))
-      val accountId = AccountId.fromUsername(mailboxSession.getUser)
-      SMono(eventBus.dispatch(event, AccountIdRegistrationKey(accountId))).subscribe()
-      InvocationWithContext(response, invocation.processingContext)
-    }
+      dispatchFilterChangeEvent(mailboxSession.getUser, oldState, newState)
+        .`then`(SMono.just(InvocationWithContext(response, invocation.processingContext)))
+    })
+      .flatMap(publisher => publisher)
   }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, FilterSetRequest] =
     FilterSerializer(mailboxIdFactory).deserializeFilterSetRequest(invocation.arguments.value)
       .asEitherRequest
+
+  private def dispatchFilterChangeEvent(username: Username, oldState: FilterState, newState: FilterState): SMono[Void] = {
+    def noFilterChange: Boolean = oldState.equals(newState)
+
+    if (noFilterChange) {
+      SMono.empty
+    } else {
+      val filterChangedEvent = StateChangeEvent(eventId = EventId.random(),
+        username = username,
+        map = Map(FilterTypeName -> newState))
+
+      SMono(eventBus.dispatch(filterChangedEvent, AccountIdRegistrationKey(AccountId.fromUsername(username))))
+    }
+  }
 
   def createResponse(invocation: Invocation,
                      filterSetRequest: FilterSetRequest,
