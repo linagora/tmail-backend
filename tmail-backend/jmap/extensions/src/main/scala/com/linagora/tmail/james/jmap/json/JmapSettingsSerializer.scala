@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.JmapSettingsEntry.JmapSettingsId
-import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsUpdateResponse}
+import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsUpsertRequest
 import org.apache.james.jmap.core.UuidState
@@ -36,11 +36,14 @@ object JmapSettingsSerializer {
   private implicit val settingsMapUpdateRequestReads: Reads[Map[JmapSettingsKey, JmapSettingsValue]] =
     Reads.mapReads[JmapSettingsKey, JmapSettingsValue] {keyString => jmapSettingsKeyReads.reads(JsString(keyString))}
   private implicit val jmapSettingsUpsertRequestReads: Reads[JmapSettingsUpsertRequest] = Json.reads[JmapSettingsUpsertRequest]
+  private implicit val settingsSetUpdateRequestReads: Reads[SettingsSetUpdateRequest] = Json.valueReads[SettingsSetUpdateRequest]
   private implicit val settingsSetRequestReads: Reads[SettingsSetRequest] = Json.reads[SettingsSetRequest]
 
   private implicit val settingsSetUpdateResponseWrites: Writes[SettingsUpdateResponse] = Json.valueWrites[SettingsUpdateResponse]
   private implicit val settingsSetErrorWrites: Writes[SettingsSetError] = Json.writes[SettingsSetError]
   private implicit val settingsSetResponseWrites: Writes[SettingsSetResponse] = Json.writes[SettingsSetResponse]
+
+  val upsertRequestValueReads: Reads[JmapSettingsUpsertRequest] = Json.valueReads[JmapSettingsUpsertRequest]
 
   def deserializeGetRequest(input: JsValue): JsResult[JmapSettingsGet] = Json.fromJson[JmapSettingsGet](input)
   def deserializeSetRequest(input: JsValue): JsResult[SettingsSetRequest] = Json.fromJson[SettingsSetRequest](input)

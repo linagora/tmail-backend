@@ -50,6 +50,14 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
 
 case class JmapSettingsUpsertRequest(settings: Map[JmapSettingsKey, JmapSettingsValue])
 
+object JmapSettingsPatch {
+  def merge(patch1: JmapSettingsPatch, patch2: JmapSettingsPatch): JmapSettingsPatch = patch1.merge(patch2)
+
+  def toRemove(key: JmapSettingsKey): JmapSettingsPatch = JmapSettingsPatch(JmapSettingsUpsertRequest(Map()), Seq(key))
+
+  def toUpsert(key: JmapSettingsKey, value: JmapSettingsValue): JmapSettingsPatch = JmapSettingsPatch(JmapSettingsUpsertRequest(Map(key -> value)), Seq())
+}
+
 case class JmapSettingsPatch(toUpsert: JmapSettingsUpsertRequest, toRemove: Seq[JmapSettingsKey]) {
   def isEmpty: Boolean = toUpsert.settings.isEmpty && toRemove.isEmpty
 
@@ -57,6 +65,12 @@ case class JmapSettingsPatch(toUpsert: JmapSettingsUpsertRequest, toRemove: Seq[
     val toUpsertKeys: Set[JmapSettingsKey] = toUpsert.settings.keySet
     val toRemoveKeys: Set[JmapSettingsKey] = toRemove.toSet
     toUpsertKeys.intersect(toRemoveKeys).nonEmpty
+  }
+
+  def merge(other: JmapSettingsPatch): JmapSettingsPatch = {
+    val toUpsert: JmapSettingsUpsertRequest = JmapSettingsUpsertRequest(this.toUpsert.settings ++ other.toUpsert.settings)
+    val toRemove: Seq[JmapSettingsKey] = this.toRemove ++ other.toRemove
+    JmapSettingsPatch(toUpsert, toRemove)
   }
 }
 

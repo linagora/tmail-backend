@@ -17,6 +17,8 @@ import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 trait JmapSettingsSetMethodContract {
   @BeforeEach
@@ -459,12 +461,19 @@ trait JmapSettingsSetMethodContract {
       .contentType(JSON)
       .body("methodResponses[0]", jsonEquals(
         s"""[
-           |	"error",
-           |	{
-           |		"type": "invalidArguments",
-           |		"description": "'/update/singleton/settings/invalid/setting/key' property is not valid: Predicate failed: 'invalid/setting/key' contains some invalid characters. Should be [#a-zA-Z0-9-_#.] and no longer than 255 chars."
-           |	},
-           |	"c1"
+           |    "Settings/set",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "$${json-unit.ignore}",
+           |        "newState": "$${json-unit.ignore}",
+           |        "notUpdated": {
+           |            "singleton": {
+           |                "type": "invalidArguments",
+           |                "description": "'/invalid/setting/key' property is not valid: Predicate failed: 'invalid/setting/key' contains some invalid characters. Should be [#a-zA-Z0-9-_#.] and no longer than 255 chars."
+           |            }
+           |        }
+           |    },
+           |    "c1"
            |]""".stripMargin))
 
   @Test
@@ -661,4 +670,346 @@ trait JmapSettingsSetMethodContract {
            |	"c1"
            |]""".stripMargin))
   }
+
+  @Test
+  def updatePartialWithRemovePatchShouldWork(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[JmapSettingsProbe])
+      .reset(BOB, Map(("key1", "value1"), ("key2", "value2")))
+
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |						"settings/key1": null
+           |					}
+           |				}
+           |			}, "c1"
+           |		],
+           |		[
+           |			"Settings/get", {
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"ids": ["singleton"]
+           |			}, "c2"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[1][1].list[0]", jsonEquals(
+        s"""{
+           |    "id": "singleton",
+           |    "settings": {
+           |        "key2": "value2"
+           |    }
+           |}""".stripMargin))
+  }
+
+  @Test
+  def updatePartialWithUpsertPatchShouldWork(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[JmapSettingsProbe])
+      .reset(BOB, Map(("key1", "value1")))
+
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |						"settings/key1": "value1New",
+           |						"settings/key3": "value3"
+           |					}
+           |				}
+           |			}, "c1"
+           |		],
+           |		[
+           |			"Settings/get", {
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"ids": ["singleton"]
+           |			}, "c2"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[1][1].list[0]", jsonEquals(
+        s"""{
+           |    "id": "singleton",
+           |    "settings": {
+           |        "key1": "value1New",
+           |        "key3": "value3"
+           |    }
+           |}""".stripMargin))
+  }
+
+  @Test
+  def updatePartialWithUpsertAndRemovePatchShouldWork(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[JmapSettingsProbe])
+      .reset(BOB, Map(("key1", "value1")))
+
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |						"settings/key1": null,
+           |						"settings/key3": "value3"
+           |					}
+           |				}
+           |			}, "c1"
+           |		],
+           |		[
+           |			"Settings/get", {
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"ids": ["singleton"]
+           |			}, "c2"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[1][1].list[0]", jsonEquals(
+        s"""{
+           |    "id": "singleton",
+           |    "settings": {
+           |        "key3": "value3"
+           |    }
+           |}""".stripMargin))
+  }
+
+  @Test
+  def shouldFailWhenTryToUpdateBothPartialAndFullReset(): Unit =
+    `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |  "methodCalls": [
+           |    [
+           |      "Settings/set",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "update": {
+           |          "singleton": {
+           |            "settings": {
+           |              "key1": "value1New"
+           |            },
+           |            "settings/key1": null,
+           |            "settings/key3": "value3"
+           |          }
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/set",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "${JmapSettingsStateFactory.INITIAL.serialize}",
+           |        "newState": "${JmapSettingsStateFactory.INITIAL.serialize}",
+           |        "notUpdated": {
+           |            "singleton": {
+           |                "type": "invalidArguments",
+           |                "description": "Cannot perform both a reset and a partial update simultaneously"
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+
+  @Test
+  def updatePartialShouldUpdateNewState(server: GuiceJamesServer): Unit = {
+    val response =`given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |						"settings/key1": "value1"
+           |					}
+           |				}
+           |			}, "c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .jsonPath()
+
+    val afterSettingsSetState: UuidState = server.getProbe(classOf[JmapSettingsProbe])
+      .getLatestState(BOB)
+
+    assertThat(response.getString("methodResponses[0][1].oldState")).isEqualTo(JmapSettingsStateFactory.INITIAL.serialize)
+    assertThat(response.getString("methodResponses[0][1].oldState")).isNotEqualTo("methodResponses[0][1].newState")
+    assertThat(response.getString("methodResponses[0][1].newState")).isEqualTo(afterSettingsSetState.serialize)
+  }
+
+  @Test
+  def updateShouldNoopWhenEmptyPatchObject(): Unit =
+      `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {}
+           |				}
+           |			}, "c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/set",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "${JmapSettingsStateFactory.INITIAL.serialize}",
+           |        "newState": "${JmapSettingsStateFactory.INITIAL.serialize}",
+           |        "updated": {
+           |            "singleton": {}
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+
+  @ParameterizedTest
+  @ValueSource(strings = Array(
+    "settingsinvalidKey",
+    "settings/abc/xyz",
+    "settings/abc@"
+  ))
+  def updatePartialShouldFailWhenInvalidKey(settingsKey: String): Unit =
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |            "$settingsKey": "value1"
+           |         }
+           |				}
+           |			}, "c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/set",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "${JmapSettingsStateFactory.INITIAL.serialize}",
+           |        "newState": "${JmapSettingsStateFactory.INITIAL.serialize}",
+           |        "notUpdated": {
+           |            "singleton": {
+           |                "type": "invalidArguments",
+           |                "description": "$${json-unit.ignore}"
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+
+  @Test
+  def updatePartialShouldFailWhenInvalidSettingValue(): Unit =
+    `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |  "methodCalls": [
+           |    [
+           |      "Settings/set",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "update": {
+           |          "singleton": {
+           |            "settings/key1": false
+           |          }
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/set",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "${JmapSettingsStateFactory.INITIAL.serialize}",
+           |        "newState": "${JmapSettingsStateFactory.INITIAL.serialize}",
+           |        "notUpdated": {
+           |            "singleton": {
+           |                "type": "invalidArguments",
+           |                "description": "settings/key1 is not a valid partial update request"
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin))
 }
