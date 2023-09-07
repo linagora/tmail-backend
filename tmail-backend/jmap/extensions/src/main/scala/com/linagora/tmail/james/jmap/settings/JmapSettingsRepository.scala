@@ -21,8 +21,9 @@ trait JmapSettingsRepository {
   def reset(username: Username, settings: JmapSettingsUpsertRequest): Publisher[SettingsStateUpdate]
 
   def updatePartial(username: Username, settingsPatch: JmapSettingsPatch): Publisher[SettingsStateUpdate]
-}
 
+  def delete(username: Username): Publisher[Void]
+}
 
 case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsRepository {
 
@@ -72,6 +73,13 @@ case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsReposito
       this.stateStore.put(username, newState)
       SettingsStateUpdate(oldState, newState)
     })
+
+  override def delete(username: Username): Publisher[Void] =
+    SMono.fromCallable(() => {
+      settingsStore.row(username).clear()
+      stateStore.remove(username)
+    })
+      .`then`()
 }
 
 case class MemoryJmapSettingsRepositoryModule() extends AbstractModule {

@@ -201,4 +201,32 @@ trait JmapSettingsRepositoryContract {
       .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")))
   }
 
+  @Test
+  def deleteShouldRemoveUserSettings(): Unit = {
+    SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
+
+    SMono(testee.delete(BOB)).block()
+
+    assertThat(SMono(testee.get(BOB)).block()).isNull()
+  }
+
+  @Test
+  def deleteShouldBeIdempotent(): Unit = {
+    SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()
+
+    SMono(testee.delete(BOB)).block()
+
+    assertThatCode(() => SMono(testee.delete(BOB)).block())
+      .doesNotThrowAnyException()
+  }
+
+  @Test
+  def deleteShouldNotRemoveOtherUserSettings(): Unit = {
+    SMono(testee.reset(BOB, Map(("key1", "value1")).asUpsertRequest)).block()
+
+    SMono(testee.delete(ALICE)).block()
+
+    assertThat(SMono(testee.get(BOB)).block().settings.asJava)
+      .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")))
+  }
 }
