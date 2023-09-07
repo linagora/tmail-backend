@@ -25,10 +25,14 @@ case class SettingsSetUpdateRequest(json: JsObject) {
     for {
       _ <- validateCanNotDoBothResetAndUpdatePartialPatch()
       _ <- validateUpdateKey()
-      - <- validateNonEmpty()
     } yield this
 
   def isResetRequest: Boolean = json.value.contains(SETTINGS_KEY)
+
+  def isUpdatePartialRequest: Boolean = json.keys.exists(updateSettingKey => updateSettingKey.startsWith(UPDATE_PARTIAL_KEY_PREFIX))
+
+  def isEmpty: Boolean = !isResetRequest && !isUpdatePartialRequest
+
   def getResetRequest: Option[JmapSettingsUpsertRequest] =
     json.value.get(SETTINGS_KEY)
       .map(JmapSettingsSerializer.upsertRequestValueReads.reads)
@@ -56,13 +60,6 @@ case class SettingsSetUpdateRequest(json: JsObject) {
       .filter(updateSettingKey => !(updateSettingKey.equals(SETTINGS_KEY) || updateSettingKey.startsWith(UPDATE_PARTIAL_KEY_PREFIX))) match {
       case invalidUpdateKey if invalidUpdateKey.nonEmpty => Left(SettingsSetParseException(s"update key is not valid: ${invalidUpdateKey.mkString(",")}"))
       case _ => Right(this)
-    }
-
-  private def validateNonEmpty(): Either[SettingsSetParseException, SettingsSetUpdateRequest] =
-    if (json.keys.exists(updateSettingKey => updateSettingKey.equals(SETTINGS_KEY) || updateSettingKey.startsWith(UPDATE_PARTIAL_KEY_PREFIX))) {
-      Right(this)
-    } else {
-      Left(SettingsSetParseException("update request must not be empty"))
     }
 
   private def parseUpdatePartialPatch(key: String, value: JsValue): JmapSettingsPatch = {

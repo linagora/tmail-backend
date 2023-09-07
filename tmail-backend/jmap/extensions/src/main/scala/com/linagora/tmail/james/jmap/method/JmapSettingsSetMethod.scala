@@ -130,10 +130,15 @@ class SettingsSetRequestSetMethod @Inject()(val jmapSettingsRepository: JmapSett
     updateRequest.validate() match {
       case Left(e) => SMono.just(SettingsUpdateFailure(OBJECT_ID, e))
       case Right(validateRequest) => (validateRequest match {
+        case validateRequest if validateRequest.isEmpty => doNoop(mailboxSession.getUser)
         case validateRequest if validateRequest.isResetRequest => doUpdateFullReset(mailboxSession.getUser, updateRequest)
         case _ => doUpdatePartial(mailboxSession.getUser, updateRequest)
       }).onErrorResume(error => SMono.just(SettingsUpdateFailure(OBJECT_ID, error)))
     }
+
+  private def doNoop(username: Username): SMono[SettingsUpdateResult] =
+    SMono(jmapSettingsRepository.getLatestState(username))
+      .map(state => SettingsUpdateSuccess(state, state))
 
   private def doUpdateFullReset(username: Username, updateRequest: SettingsSetUpdateRequest): SMono[SettingsUpdateResult] =
     SMono.fromCallable(() => updateRequest.getResetRequest)
