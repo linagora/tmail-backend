@@ -808,24 +808,25 @@ trait JmapSettingsSetMethodContract {
     `given`
       .body(
         s"""{
-           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
-           |	"methodCalls": [
-           |		[
-           |			"Settings/set",
-           |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |				"update": {
-           |					"singleton": {
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |  "methodCalls": [
+           |    [
+           |      "Settings/set",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "update": {
+           |          "singleton": {
            |            "settings": {
-           |               "key1": "value1New"
+           |              "key1": "value1New"
            |            },
-           |						"settings/key1": null,
-           |						"settings/key3": "value3"
-           |					}
-           |				}
-           |			}, "c1"
-           |		]
-           |	]
+           |            "settings/key1": null,
+           |            "settings/key3": "value3"
+           |          }
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
            |}""".stripMargin)
     .when
       .post
@@ -977,20 +978,21 @@ trait JmapSettingsSetMethodContract {
     `given`
       .body(
         s"""{
-           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
-           |	"methodCalls": [
-           |		[
-           |			"Settings/set",
-           |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |				"update": {
-           |					"singleton": {
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |  "methodCalls": [
+           |    [
+           |      "Settings/set",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "update": {
+           |          "singleton": {
            |            "settings/key1": false
-           |         }
-           |				}
-           |			}, "c1"
-           |		]
-           |	]
+           |          }
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
            |}""".stripMargin)
     .when
       .post
