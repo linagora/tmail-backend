@@ -1,19 +1,33 @@
 package com.linagora.tmail.james.common
 
+import com.linagora.tmail.james.common.LinagoraFilterSetMethodContract.firebasePushClient
+import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebasePushRequest}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
+import net.javacrumbs.jsonunit.JsonMatchers
+import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus
+import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.utils.DataProbeImpl
+import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{mock, reset, times, verify, when}
+import reactor.core.publisher.Mono
+
+object LinagoraFilterSetMethodContract {
+  val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
+}
 
 trait LinagoraFilterSetMethodContract {
 
@@ -31,6 +45,10 @@ trait LinagoraFilterSetMethodContract {
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .build()
+
+    reset(firebasePushClient)
+    when(firebasePushClient.validateToken(any())).thenReturn(Mono.just(true))
+    when(firebasePushClient.push(any(classOf[FirebasePushRequest]))).thenReturn(Mono.empty)
   }
 
   @Test
@@ -1645,5 +1663,142 @@ trait LinagoraFilterSetMethodContract {
            |	]
            |}""".stripMargin)
   }
+
+  @Test
+  def shouldNotPushToFCMWhenFailureFilterSet(): Unit = {
+    registerFilterChangesViaFCM()
+
+    `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |	"using": ["com:linagora:params:jmap:filter"],
+           |	"methodCalls": [
+           |		["Filter/set", {
+           |			"accountId": "$generateAccountIdAsString",
+           |			"create": {
+           |				"singleton": [{
+           |					"id": "1",
+           |					"name": "My first rule",
+           |					"condition": {
+           |						"field": "subject",
+           |						"comparator": "contains",
+           |						"value": "question"
+           |					},
+           |					"action": {
+           |						"appendIn": {
+           |							"mailboxIds": ["$generateMailboxIdForUser"]
+           |						}
+           |					}
+           |				}]
+           |			}
+           |		}, "c1"]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |	"Filter/set",
+           |	{
+           |		"accountId": "$generateAccountIdAsString",
+           |		"oldState": "-1",
+           |		"newState": "-1",
+           |		"notCreated": {
+           |			"singleton": {
+           |				"type": "invalidArguments",
+           |				"description": "'create' is not supported on singleton objects"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin))
+
+    verify(firebasePushClient, times(0)).push(any())
+  }
+
+  @Test
+  def shouldPushToFCMWhenSuccessFilterSet(): Unit = {
+    registerFilterChangesViaFCM()
+
+    val newState: String = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |	"using": ["com:linagora:params:jmap:filter"],
+           |	"methodCalls": [
+           |		["Filter/set", {
+           |			"accountId": "$generateAccountIdAsString",
+           |			"update": {
+           |				"singleton": [{
+           |					"id": "1",
+           |					"name": "My first rule",
+           |					"condition": {
+           |						"field": "subject",
+           |						"comparator": "contains",
+           |						"value": "question"
+           |					},
+           |					"action": {
+           |						"appendIn": {
+           |							"mailboxIds": ["$generateMailboxIdForUser"]
+           |						}
+           |					}
+           |				}]
+           |			}
+           |		}, "c1"]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .jsonPath()
+      .getString("methodResponses[0][1].newState")
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+      verify(firebasePushClient, times(1)).push(argumentCaptor.capture())
+
+      val stateChangesCapture: java.util.Map[String, String] = argumentCaptor.getValue.stateChangesMap()
+      SoftAssertions.assertSoftly(softLy => {
+        softLy.assertThat(stateChangesCapture).containsOnlyKeys(s"$generateAccountIdAsString:Filter")
+        softLy.assertThat(stateChangesCapture).containsValue(newState)
+      })
+    })
+  }
+
+  private def registerFilterChangesViaFCM(): Unit =
+    `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |        "FirebaseRegistration/set",
+           |        {
+           |            "create": {
+           |                "4f29": {
+           |                  "deviceClientId": "a889-ffea-910",
+           |                  "token": "token1",
+           |                  "types": ["Filter"]
+           |                }
+           |              }
+           |        },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].created", JsonMatchers.jsonNodePresent("4f29"))
 
 }
