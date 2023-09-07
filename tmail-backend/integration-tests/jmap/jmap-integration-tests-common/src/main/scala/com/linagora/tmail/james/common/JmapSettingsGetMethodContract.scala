@@ -13,6 +13,7 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.utils.DataProbeImpl
+import org.hamcrest.Matchers.hasKey
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 trait JmapSettingsGetMethodContract {
@@ -29,6 +30,16 @@ trait JmapSettingsGetMethodContract {
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
   }
+
+  @Test
+  def shouldReturnJmapSettingsCapabilityInSessionRoute(): Unit =
+    `given`()
+    .when()
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities", hasKey("com:linagora:params:jmap:settings"))
 
   @Test
   def missingSettingsCapabilityShouldFail(): Unit =
