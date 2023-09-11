@@ -121,6 +121,7 @@ import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
+import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
@@ -128,6 +129,7 @@ import com.linagora.tmail.james.jmap.module.ES6ContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.settings.CassandraJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
@@ -184,7 +186,8 @@ public class DistributedServer {
         new TicketRoutesModule(),
         new WebFingerModule(),
         new EmailRecoveryActionMethodModule(),
-        new LabelMethodModule())
+        new LabelMethodModule(),
+        new JmapSettingsMethodModule())
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
@@ -238,6 +241,7 @@ public class DistributedServer {
             .override(Modules.combine(new MailetProcessingModule(), REQUIRE_TASK_MANAGER_MODULE, new DistributedTaskManagerModule()))
             .with(new CassandraLabelRepositoryModule(),
                 new CassandraRateLimitingModule(),
+                new CassandraJmapSettingsRepositoryModule(),
                 new DistributedEmailAddressContactEventModule(),
                 new DistributedTaskSerializationModule(),
                 new ES6ContactAutoCompleteModule(),
