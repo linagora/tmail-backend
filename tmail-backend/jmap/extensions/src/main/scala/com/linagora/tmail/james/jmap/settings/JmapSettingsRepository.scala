@@ -2,12 +2,14 @@ package com.linagora.tmail.james.jmap.settings
 
 import com.google.common.base.Preconditions
 import com.google.common.collect.{HashBasedTable, Table, Tables}
+import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsStateFactory.INITIAL
 import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UuidState
+import org.apache.james.user.api.UsernameChangeTaskStep
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
 
@@ -87,5 +89,9 @@ case class MemoryJmapSettingsRepositoryModule() extends AbstractModule {
     bind(classOf[MemoryJmapSettingsRepository]).in(Scopes.SINGLETON)
     bind(classOf[JmapSettingsRepository]).to(classOf[MemoryJmapSettingsRepository])
       .in(Scopes.SINGLETON)
+
+    Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
+      .addBinding()
+      .to(classOf[JmapSettingsUsernameChangeTaskStep])
   }
 }
