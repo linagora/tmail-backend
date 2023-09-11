@@ -3,7 +3,9 @@ package com.linagora.tmail.james.jmap.firebase
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener.{GROUP, LOGGER}
 import com.linagora.tmail.james.jmap.model.FirebaseSubscription
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository
 import javax.inject.Inject
+import org.apache.james.core.Username
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}
 import org.apache.james.jmap.api.model.TypeName
@@ -14,7 +16,7 @@ import org.apache.james.user.api.DelegationStore
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
-import reactor.core.scala.publisher.SMono
+import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.javaapi.CollectionConverters
 
@@ -27,6 +29,7 @@ object FirebasePushListener {
 
 class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptionRepository,
                                      delegationStore: DelegationStore,
+                                     jmapSettingsRepository: JmapSettingsRepository,
                                      pushClient: FirebasePushClient) extends ReactiveGroupEventListener {
   override def getDefaultGroup: Group = GROUP
 
@@ -35,13 +38,31 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
   override def reactiveEvent(event: Event): Publisher[Void] =
     event match {
       case event: StateChangeEvent =>
-        SMono.just(event.username)
-          .concatWith(delegationStore.authorizedUsers(event.username))
-          .flatMap(subscriptionRepository.list)
-          .flatMap(sendNotification(_, event), ReactorUtils.DEFAULT_CONCURRENCY)
-          .`then`()
-      case _ => SMono.empty
+        firebasePushEnabled(event.username)
+          .flatMap {
+            case true => pushToAccountOwnerAndDelegatees(event)
+            case _ => noPush
+          }
+      case _ => noPush
     }
+
+  private def firebasePushEnabled(username: Username): SMono[Boolean] =
+    SMono.fromPublisher(jmapSettingsRepository.get(username))
+      .map(_.settings.get(FirebasePushEnableSettingParser.key()))
+      .map(FirebasePushEnableSettingParser.parse)
+      .defaultIfEmpty(FirebasePushEnableSettingParser.ENABLED)
+      .map(_.enabled)
+
+  private def pushToAccountOwnerAndDelegatees(event: StateChangeEvent): SMono[Void] =
+    SFlux.fromPublisher(delegationStore.authorizedUsers(event.username))
+      .filterWhen(firebasePushEnabled(_))
+      .concatWith(SMono.just(event.username))
+      .flatMap(subscriptionRepository.list)
+      .flatMap(sendNotification(_, event), ReactorUtils.DEFAULT_CONCURRENCY)
+      .`then`()
+      .`then`(SMono.empty)
+
+  private def noPush: SMono[Void] = SMono.empty
 
   private def sendNotification(subscription: FirebaseSubscription, stateChangeEvent: StateChangeEvent): Publisher[Unit] =
     stateChangeEvent
