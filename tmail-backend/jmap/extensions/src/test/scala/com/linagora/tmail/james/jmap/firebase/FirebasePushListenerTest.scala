@@ -6,6 +6,8 @@ import java.util.UUID
 import com.google.common.collect.ImmutableList
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscriptionCreationRequest, FirebaseToken}
+import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, JmapSettingsUpsertRequest, MemoryJmapSettingsRepository}
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.jmap.change.{EmailDeliveryTypeName, EmailTypeName, MailboxTypeName, StateChangeEvent}
@@ -32,16 +34,23 @@ class FirebasePushListenerTest {
   var subscriptionRepository: FirebaseSubscriptionRepository = _
   var pushClient: FirebasePushClient = _
   var delegationStore: DelegationStore = _
+  var jmapSettingsRepository: JmapSettingsRepository = _
 
   @BeforeEach
   def setUp(): Unit = {
     subscriptionRepository = new MemoryFirebaseSubscriptionRepository(Clock.systemUTC())
     pushClient = mock(classOf[FirebasePushClient])
     delegationStore = new MemoryDelegationStore()
-    testee = new FirebasePushListener(subscriptionRepository, delegationStore, pushClient)
+    jmapSettingsRepository = MemoryJmapSettingsRepository()
+    testee = new FirebasePushListener(subscriptionRepository, delegationStore, jmapSettingsRepository, pushClient)
 
     when(pushClient.push(any())).thenReturn(Mono.empty)
   }
+
+  private def setFirebasePushEnabled(username: Username, pushSettingValue: String): Unit =
+    SMono(jmapSettingsRepository.reset(username,
+      JmapSettingsUpsertRequest(Map(JmapSettingsKey.liftOrThrow("firebase.enabled") -> JmapSettingsValue(pushSettingValue)))))
+      .block()
 
   @Test
   def shouldNotPushWhenNoSubscriptions(): Unit = {
@@ -290,5 +299,142 @@ class FirebasePushListenerTest {
       .containsExactlyInAnyOrder("token1", "token1", "token2")
   }
 
+  @Test
+  def shouldPushWithDefaultFirebasePushSetting(): Unit = {
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token"),
+      types = Seq(EmailTypeName)))).block().id
+
+    val state1 = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> state1)))).block()
+
+    verify(pushClient, times(1)).push(any())
+  }
+
+  @Test
+  def shouldPushWhenFirebasePushSettingEnabled(): Unit = {
+    setFirebasePushEnabled(bob, "true")
+
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token"),
+      types = Seq(EmailTypeName)))).block().id
+
+    val state1 = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> state1)))).block()
+
+    verify(pushClient, times(1)).push(any())
+  }
+
+  @Test
+  def shouldNotPushToBothAccountOwnerAndDelegateesWhenAccountOwnerDisablesFirebasePushSetting(): Unit = {
+    // Bob delegates Alice to access his account
+    SMono.fromPublisher(delegationStore.addAuthorizedUser(bob, alice)).block()
+
+    // Bob as account owner do not want his data to be transited via FCM
+    setFirebasePushEnabled(bob, "false")
+
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token1"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(subscriptionRepository.save(alice, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit2"),
+      token = FirebaseToken("token2"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    val state1 = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> state1)))).block()
+
+    // Then Bob data should not be pushed via FCM to both Bob and Alice
+    verify(pushClient, times(0)).push(any())
+  }
+
+  @Test
+  def shouldPushToBothAccountOwnerAndDelegateesWhenBothAccountOwnerAndDelegateesEnablesFirebasePush(): Unit = {
+    // Bob delegates Alice to access his account
+    SMono.fromPublisher(delegationStore.addAuthorizedUser(bob, alice)).block()
+
+    setFirebasePushEnabled(bob, "true")
+    setFirebasePushEnabled(alice, "true")
+
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token1"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(subscriptionRepository.save(alice, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit2"),
+      token = FirebaseToken("token2"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    val state1 = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> state1)))).block()
+
+    // Then both Bob and Alice should receive notification from FCM
+    verify(pushClient, times(2)).push(any())
+  }
+
+  @Test
+  def shouldPushToAccountOwnerWhenOnlyDelegateesDisableFirebasePush(): Unit = {
+    // Bob delegates Alice to access his account
+    SMono.fromPublisher(delegationStore.addAuthorizedUser(bob, alice)).block()
+
+    setFirebasePushEnabled(bob, "true")
+    setFirebasePushEnabled(alice, "false")
+
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("bobToken"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(subscriptionRepository.save(alice, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit2"),
+      token = FirebaseToken("aliceToken"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    val state1 = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> state1)))).block()
+
+    // Then Bob should receive notification from FCM
+    val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+    verify(pushClient, times(1)).push(argumentCaptor.capture())
+    assertThat(argumentCaptor.getValue.token().value).isEqualTo("bobToken")
+  }
+
+  @Test
+  def shouldNotPushToDelegateesWhenDelegateesDisableFirebasePush(): Unit = {
+    // Bob delegates Alice to access his account
+    SMono.fromPublisher(delegationStore.addAuthorizedUser(bob, alice)).block()
+
+    setFirebasePushEnabled(bob, "true")
+    setFirebasePushEnabled(alice, "false")
+
+    SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("bobToken"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    SMono(subscriptionRepository.save(alice, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit2"),
+      token = FirebaseToken("aliceToken"),
+      types = Seq(EmailDeliveryTypeName, EmailTypeName)))).block().id
+
+    val state1 = UuidState(UUID.randomUUID())
+    SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> state1)))).block()
+
+    // Then Alice should not receive notification from FCM
+    val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
+    verify(pushClient, times(1)).push(argumentCaptor.capture())
+    assertThat(argumentCaptor.getValue.token().value).isNotEqualTo("aliceToken")
+  }
 }
 

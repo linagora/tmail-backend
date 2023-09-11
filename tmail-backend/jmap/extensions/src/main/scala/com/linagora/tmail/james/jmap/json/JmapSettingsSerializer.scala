@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.JmapSettingsEntry.JmapSettingsId
-import com.linagora.tmail.james.jmap.model.{JmapSettingsEntry, JmapSettingsGet, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
+import com.linagora.tmail.james.jmap.model.JmapSettingsObject.JmapSettingsId
+import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsObject, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsUpsertRequest
 import org.apache.james.jmap.core.UuidState
@@ -17,10 +17,10 @@ object JmapSettingsSerializer {
   private implicit val mapSettings: Writes[Map[JmapSettingsKey, JmapSettingsValue]] =
     mapWrites[JmapSettingsKey, JmapSettingsValue](_.asString(), jmapSettingsValueWrites)
 
-  private implicit val jmapSettingsEntryWrites: Writes[JmapSettingsEntry] =
+  private implicit val jmapSettingsEntryWrites: Writes[JmapSettingsObject] =
     ((JsPath \ "id").write[JmapSettingsId] and
       (JsPath \ "settings").write[Map[JmapSettingsKey, JmapSettingsValue]]
-      )(unlift(JmapSettingsEntry.unapplyIgnoreState))
+      )(unlift(JmapSettingsObject.unapplyIgnoreState))
 
 
   private implicit val jmapSettingsResponseWrites: Writes[JmapSettingsResponse] = Json.writes[JmapSettingsResponse]

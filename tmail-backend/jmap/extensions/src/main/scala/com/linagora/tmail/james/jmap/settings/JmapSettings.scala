@@ -48,6 +48,8 @@ object JmapSettings {
   case class JmapSettingsValue(value: String) extends AnyVal
 }
 
+trait JmapSettingEntry
+
 case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state: UuidState)
 
 case class JmapSettingsUpsertRequest(settings: Map[JmapSettingsKey, JmapSettingsValue])
@@ -88,6 +90,14 @@ object JmapSettingsStateFactory {
     UuidState.fromGenerateUuid()
 
   val INITIAL: UuidState = UuidState.INSTANCE
+}
+
+trait JmapSettingParser[T <: JmapSettingEntry] {
+  def key(): JmapSettingsKey
+
+  def defaultValue(): JmapSettingsValue
+
+  def parse(value: Option[JmapSettingsValue]): T
 }
 
 case object SettingsTypeName extends TypeName {
