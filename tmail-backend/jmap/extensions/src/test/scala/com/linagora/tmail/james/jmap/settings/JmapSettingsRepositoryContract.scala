@@ -1,11 +1,13 @@
 package com.linagora.tmail.james.jmap.settings
 
+import java.time.Duration
 import java.util.Map.entry
 
 import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.{ALICE, BOB, SAMPLE_UPSERT_REQUEST, SettingsKeyString, SettingsUpsertRequestMap, SettingsUpsertRequestPair}
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UuidState
+import org.apache.james.util.concurrency.ConcurrentTestRunner
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.SMono
@@ -155,8 +157,8 @@ trait JmapSettingsRepositoryContract {
       Seq()))).block()
 
     assertThat(SMono(testee.get(BOB)).block().settings.asJava)
-      .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")),
-        entry("key3".asSettingKey, JmapSettingsValue("value3")))
+      .containsExactlyInAnyOrderEntriesOf(java.util.Map.ofEntries(entry("key1".asSettingKey, JmapSettingsValue("value1")),
+        entry("key3".asSettingKey, JmapSettingsValue("value3"))))
   }
 
   @Test
@@ -167,8 +169,8 @@ trait JmapSettingsRepositoryContract {
       Seq("key2".asSettingKey)))).block()
 
     assertThat(SMono(testee.get(BOB)).block().settings.asJava)
-      .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value4")),
-        entry("key3".asSettingKey, JmapSettingsValue("value3")))
+      .containsExactlyInAnyOrderEntriesOf(java.util.Map.ofEntries(entry("key1".asSettingKey, JmapSettingsValue("value4")),
+        entry("key3".asSettingKey, JmapSettingsValue("value3"))))
   }
 
   @Test
@@ -228,5 +230,18 @@ trait JmapSettingsRepositoryContract {
 
     assertThat(SMono(testee.get(BOB)).block().settings.asJava)
       .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")))
+  }
+
+  @Test
+  def concurrentUpdatePartialTest(): Unit = {
+    SMono(testee.reset(BOB, Map(("key1", "value1")).asUpsertRequest)).block()
+    ConcurrentTestRunner.builder()
+      .operation((threadNumber, step) => SMono(testee.updatePartial(BOB,
+        JmapSettingsPatch(JmapSettingsUpsertRequest(Map(s"key$threadNumber-$step".asSettingKey -> JmapSettingsValue(s"value$threadNumber-$step"))), Seq()))).block())
+      .threadCount(10)
+      .operationCount(10)
+      .runSuccessfullyWithin(Duration.ofSeconds(5))
+
+    assertThat(SMono(testee.get(BOB)).flatMap(item => SMono.just(item.settings.keys.size)).block()).isEqualTo(101)
   }
 }
