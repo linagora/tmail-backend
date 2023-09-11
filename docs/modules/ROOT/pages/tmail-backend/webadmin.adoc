@@ -606,6 +606,7 @@ Implemented extra steps for TMail are:
 - `PGPKeysUserDeletionTaskStep`: remove PGP public keys belonging to the user.
 - `FirebaseSubscriptionUserDeletionTaskStep`: deletes firebase subscriptions belonging to the user.
 - `LabelUserDeletionTaskStep`: deletes JMAP labels belonging to the user.
+- `JmapSettingsUserDeletionTaskStep`: deletes JMAP settings belonging to the user.
 
 Response codes:
 
