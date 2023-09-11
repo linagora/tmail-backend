@@ -4,6 +4,8 @@ import static org.apache.james.jmap.JMAPTestingConstants.jmapRequestSpecBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
+import java.util.Map;
+
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe;
+import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
@@ -122,5 +125,24 @@ public abstract class UserDeletionIntegrationContract {
 
         assertThat(labelProbe.listLabels(ALICE))
             .isEmpty();
+    }
+
+    @Test
+    void shouldDeleteJmapSettings(GuiceJamesServer server) {
+        JmapSettingsProbe settingsProbe = server.getProbe(JmapSettingsProbe.class);
+
+        settingsProbe.reset(ALICE, Map.of("key", "value"));
+
+        String taskId = webAdminApi
+            .queryParam("action", "deleteData")
+            .post("/users/" + ALICE.asString())
+            .jsonPath()
+            .get("taskId");
+
+        webAdminApi.get("/tasks/" + taskId + "/await")
+            .then()
+            .body("additionalInformation.status.JmapSettingsUserDeletionTaskStep", Matchers.is("DONE"));
+
+        assertThat(settingsProbe.get(BOB)).isNull();
     }
 }

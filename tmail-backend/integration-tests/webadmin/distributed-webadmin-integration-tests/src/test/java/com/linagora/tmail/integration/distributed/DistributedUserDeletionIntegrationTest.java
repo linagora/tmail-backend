@@ -30,6 +30,7 @@ import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.common.module.JmapGuiceLabelModule;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
+import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedUserDeletionIntegrationTest extends UserDeletionIntegrationContract {
@@ -62,6 +63,9 @@ public class DistributedUserDeletionIntegrationTest extends UserDeletionIntegrat
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceContactAutocompleteProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(JmapSettingsProbe.class))
             .overrideWith(new JmapGuiceLabelModule()))
         .build();
 
