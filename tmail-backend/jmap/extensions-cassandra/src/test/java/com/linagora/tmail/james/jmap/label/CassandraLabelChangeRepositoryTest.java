@@ -63,4 +63,19 @@ public class CassandraLabelChangeRepositoryTest implements LabelChangeRepository
             .untilAsserted(() -> assertThat(Flux.from(cassandraLabelChangeDAO.selectAllChanges(LabelChangeRepositoryContract.ACCOUNT_ID())).collectList().block())
                 .isEmpty());
     }
+
+    @Test
+    void labelChangeRecordsShouldNotBeDeletedWhenTTLIsZero(CassandraCluster cassandra) throws InterruptedException {
+        cassandraLabelChangeDAO = new CassandraLabelChangeDAO(cassandra.getConf(), new CassandraLabelChangesConfiguration(Duration.ofSeconds(0)));
+
+        LabelChange labelChange = LabelChangeRepositoryContract.labelChangeFunc().apply(stateFactory());
+
+        assertThatCode(() -> Mono.from(cassandraLabelChangeDAO.insert(labelChange)).block())
+            .doesNotThrowAnyException();
+
+        Thread.sleep(200L);
+
+        assertThat(Flux.from(cassandraLabelChangeDAO.selectAllChanges(LabelChangeRepositoryContract.ACCOUNT_ID())).collectList().block())
+            .isNotEmpty();
+    }
 }

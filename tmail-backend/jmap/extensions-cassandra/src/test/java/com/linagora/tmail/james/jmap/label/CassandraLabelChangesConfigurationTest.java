@@ -38,12 +38,12 @@ class CassandraLabelChangesConfigurationTest {
     }
 
     @Test
-    void shouldThrowWhenConfiguredZeroTTL() {
+    void shouldAcceptZeroTTL() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("label.change.ttl", "0");
 
-        assertThatThrownBy(() -> CassandraLabelChangesConfiguration.from(configuration))
-            .isInstanceOf(IllegalArgumentException.class);
+        assertThat(CassandraLabelChangesConfiguration.from(configuration).labelChangeTtl())
+            .isEqualTo(Duration.ofSeconds(0));
     }
 
     @Test

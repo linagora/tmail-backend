@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.label
 
+import java.io.FileNotFoundException
+
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Scopes}
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
@@ -73,6 +75,11 @@ case class CassandraLabelRepositoryModule() extends AbstractModule {
   }
 
   @Provides
-  def provideCassandraLabelChangesConfiguration(propertiesProvider: PropertiesProvider): CassandraLabelChangesConfiguration =
-    CassandraLabelChangesConfiguration.from(propertiesProvider.getConfiguration("cassandra"))
+  def provideCassandraLabelChangesConfiguration(propertiesProvider: PropertiesProvider): CassandraLabelChangesConfiguration = {
+    try {
+      CassandraLabelChangesConfiguration.from(propertiesProvider.getConfiguration("cassandra"))
+    } catch {
+      case _: FileNotFoundException => CassandraLabelChangesConfiguration.DEFAULT
+    }
+  }
 }

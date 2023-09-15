@@ -16,7 +16,7 @@ object CassandraLabelChangesConfiguration {
       .map(value => DurationParser.parse(value, ChronoUnit.SECONDS))
       .getOrElse(DEFAULT_TTL)
 
-    Preconditions.checkArgument(labelChangeTtl.getSeconds > 0, "'TTL' needs to be positive".asInstanceOf[Object])
+    Preconditions.checkArgument(labelChangeTtl.getSeconds >= 0, "'TTL' needs to be positive".asInstanceOf[Object])
     Preconditions.checkArgument(labelChangeTtl.getSeconds < Integer.MAX_VALUE, s"'TTL' must not greater than ${Integer.MAX_VALUE} sec".asInstanceOf[Object])
 
     CassandraLabelChangesConfiguration(labelChangeTtl)
