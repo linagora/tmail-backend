@@ -1,13 +1,14 @@
 package com.linagora.tmail.james.jmap.label
 
 import com.google.inject.multibindings.Multibinder
-import com.google.inject.{AbstractModule, Scopes}
+import com.google.inject.{AbstractModule, Provides, Scopes}
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.core.Username
 import org.apache.james.jmap.mail.Keyword
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
+import org.apache.james.utils.PropertiesProvider
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -70,4 +71,8 @@ case class CassandraLabelRepositoryModule() extends AbstractModule {
     bind(classOf[LabelChangeRepository]).to(classOf[CassandraLabelChangeRepository])
     bind(classOf[CassandraLabelChangeRepository]).in(Scopes.SINGLETON)
   }
+
+  @Provides
+  def provideCassandraLabelChangesConfiguration(propertiesProvider: PropertiesProvider): CassandraLabelChangesConfiguration =
+    CassandraLabelChangesConfiguration.from(propertiesProvider.getConfiguration("cassandra"))
 }
