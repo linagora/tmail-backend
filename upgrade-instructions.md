@@ -12,6 +12,27 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+- [Set up TTL on the mailbox_change and email_change tables](#set-up-ttl-on-the-mailboxchange-and-emailchange-tables)
+
+### Set up TTL on the label_change table
+Date: 15/09/2023
+
+JIRA: https://issues.apache.org/jira/browse/JAMES-3940
+
+Concerned products: Distributed James, Distributed James ESv6
+
+From now on, we set a default 60 days (configurable) Cassandra time-to-live on the `label_change` table
+to reduce considered outdated changes' storage usage.
+
+If one want to keep the old behavior which is not using Cassandra time-to-live on those JMAP change tables, please set the
+following configurations in `cassandra.properties`:
+
+```
+label.change.ttl=0 second
+```
+
+## 0.6.5-rc2 version
+
 Change list:
 
 - [Autocomplete should support normalizing language special characters](#autocomplete-should-support-normalizing-language-special-characters)

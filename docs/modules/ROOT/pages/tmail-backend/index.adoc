@@ -14,7 +14,8 @@ Read more about...
 
 * xref:james-distributed-app::objectives.adoc[Objectives and motivation of the Distributed Server]
 * xref:james-distributed-app::architecture/index.adoc[Overview of architecture]
-* xref:james-distributed-app::configure/index.adoc[Configure the Distributed Server]
+* xref:james-distributed-app::configure/index.adoc[Configure the James Distributed Server]
+* xref:tmail-backend/configure/index.adoc[TMail Backend additional configurations]
 * xref:james-distributed-app::operate/index.adoc[Operation of the Distributed Server]
 * xref:james-distributed-app::extending/index.adoc[How to extend the server]
 

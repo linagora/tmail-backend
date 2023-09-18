@@ -43,12 +43,14 @@ object CassandraLabelChangeTable {
     .build
 
   val SET_OF_STRING_CODEC: TypeCodec[java.util.Set[String]] = CodecRegistry.DEFAULT.codecFor(frozenSetOf(TEXT))
+  val TTL_FOR_ROW: CqlIdentifier = CqlIdentifier.fromCql("ttl")
 }
 
-class CassandraLabelChangeDAO @Inject()(session: CqlSession) {
+class CassandraLabelChangeDAO @Inject()(session: CqlSession, labelChangesConfiguration: CassandraLabelChangesConfiguration) {
   import CassandraLabelChangeTable._
 
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
+  private val timeToLive: Int = Math.toIntExact(labelChangesConfiguration.labelChangeTtl.getSeconds)
 
   private val insertStatement: PreparedStatement = session.prepare(insertInto(TABLE_NAME)
     .value(ACCOUNT_ID, bindMarker(ACCOUNT_ID))
@@ -56,6 +58,7 @@ class CassandraLabelChangeDAO @Inject()(session: CqlSession) {
     .value(CREATED, bindMarker(CREATED))
     .value(UPDATED, bindMarker(UPDATED))
     .value(DESTROYED, bindMarker(DESTROYED))
+    .usingTtl(bindMarker(TTL_FOR_ROW))
     .build())
 
   private val selectAllStatement: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
@@ -84,7 +87,8 @@ class CassandraLabelChangeDAO @Inject()(session: CqlSession) {
       .setUuid(STATE, labelChange.state.getValue)
       .set(CREATED, toSetOfString(labelChange.created), SET_OF_STRING_CODEC)
       .set(UPDATED, toSetOfString(labelChange.updated), SET_OF_STRING_CODEC)
-      .set(DESTROYED, toSetOfString(labelChange.destroyed), SET_OF_STRING_CODEC)))
+      .set(DESTROYED, toSetOfString(labelChange.destroyed), SET_OF_STRING_CODEC)
+      .setInt(TTL_FOR_ROW, timeToLive)))
 
   def selectAllChanges(accountId: AccountId): SFlux[LabelChange] =
     SFlux.fromPublisher(executor.executeRows(selectAllStatement.bind()
