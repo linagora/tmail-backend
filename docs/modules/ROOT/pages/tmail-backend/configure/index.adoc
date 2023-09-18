@@ -1,0 +1,16 @@
+= TMail Backend additional configurations
+:navtitle: TMail Backend additional configurations
+
+This section presents additional configurations for TMail backend alongside the traditional
+xref:james-distributed-app::configure/index.adoc[James Distributed Server configuration].
+
+== Additional Cassandra configurations
+Specified to TMail backend, we can configure the following configurations in the *cassandra.properties* file.
+
+.cassandra.properties additional content
+|===
+| Property name | explanation
+| label.change.ttl
+| Optional. Duration, default to 60 days. Cassandra Time-to-live for Label change records.
+Setting time-to-live to zero means refusing to use time-to-live on label changes.
+Example: `label.change.ttl=0 second`.

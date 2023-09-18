@@ -28,7 +28,7 @@ If one want to keep the old behavior which is not using Cassandra time-to-live o
 following configurations in `cassandra.properties`:
 
 ```
-label.change.ttl=0
+label.change.ttl=0 second
 ```
 
 ## 0.6.5-rc2 version
