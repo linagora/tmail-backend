@@ -33,7 +33,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                             LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
                                             PropertiesProvider propertiesProvider,
-                                            boolean jmapEnabled) implements Configuration {
+                                            boolean jmapEnabled,
+                                            boolean quotaCompatibilityMode) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -47,6 +48,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
 
         private Optional<Boolean> jmapEnabled;
 
+        private Optional<Boolean> quotaCompatibilityMode;
+
         private Builder() {
             mailboxConfiguration = Optional.empty();
             searchConfiguration = Optional.empty();
@@ -58,6 +61,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
+            quotaCompatibilityMode = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -128,6 +132,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder quotaCompatibilityMode(boolean enable) {
+            this.quotaCompatibilityMode = Optional.of(enable);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -170,6 +179,14 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 }
             });
 
+            boolean quotaCompatibilityMode = this.quotaCompatibilityMode.orElseGet(() -> {
+                try {
+                    return configurationProvider.getConfiguration("cassandra").getBoolean("quota.compatibility.mode", false);
+                } catch (ConfigurationException e) {
+                    return false;
+                }
+            });
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -181,7 +198,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
                 propertiesProvider,
-                jmapEnabled);
+                jmapEnabled,
+                quotaCompatibilityMode);
         }
     }
 

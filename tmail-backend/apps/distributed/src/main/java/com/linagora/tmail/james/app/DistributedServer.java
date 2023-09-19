@@ -33,6 +33,8 @@ import org.apache.james.modules.data.CassandraDelegationStoreModule;
 import org.apache.james.modules.data.CassandraDomainListModule;
 import org.apache.james.modules.data.CassandraJmapModule;
 import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
+import org.apache.james.modules.data.CassandraSieveQuotaLegacyModule;
+import org.apache.james.modules.data.CassandraSieveQuotaModule;
 import org.apache.james.modules.data.CassandraSieveRepositoryModule;
 import org.apache.james.modules.data.CassandraVacationModule;
 import org.apache.james.modules.event.JMAPEventBusModule;
@@ -41,6 +43,8 @@ import org.apache.james.modules.eventstore.CassandraEventStoreModule;
 import org.apache.james.modules.mailbox.CassandraBlobStoreDependenciesModule;
 import org.apache.james.modules.mailbox.CassandraDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.CassandraMailboxModule;
+import org.apache.james.modules.mailbox.CassandraMailboxQuotaLegacyModule;
+import org.apache.james.modules.mailbox.CassandraMailboxQuotaModule;
 import org.apache.james.modules.mailbox.CassandraQuotaMailingModule;
 import org.apache.james.modules.mailbox.CassandraSessionModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
@@ -286,6 +290,7 @@ public class DistributedServer {
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(chooseRedisRateLimiterModule(configuration))
+            .combineWith(chooseQuotaModule(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration));
     }
@@ -349,4 +354,11 @@ public class DistributedServer {
         }
     }
 
+    private static Module chooseQuotaModule(DistributedJamesConfiguration configuration) {
+        if (configuration.quotaCompatibilityMode()) {
+            return Modules.combine(new CassandraMailboxQuotaLegacyModule(), new CassandraSieveQuotaLegacyModule());
+        } else {
+            return Modules.combine(new CassandraMailboxQuotaModule(), new CassandraSieveQuotaModule());
+        }
+    }
 }
