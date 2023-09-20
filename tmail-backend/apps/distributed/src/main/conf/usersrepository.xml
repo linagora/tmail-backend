@@ -36,5 +36,5 @@
                  userBase="ou=people,dc=james,dc=org"
                  userIdAttribute="mail"
                  userObjectClass="person">
-<supportsVirtualHosting>true</supportsVirtualHosting>
+    <enableVirtualHosting>true</enableVirtualHosting>
 </usersrepository>-->
