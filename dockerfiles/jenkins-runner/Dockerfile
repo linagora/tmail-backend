@@ -1,7 +1,8 @@
 FROM jenkins/jenkinsfile-runner:adoptopenjdk-11-hotspot
 
 # Install git, docker
-RUN apt-get update && \
+RUN set -x && \
+  apt-get update && \
   apt-get install -y wget git unzip apt-transport-https ca-certificates curl gnupg2 software-properties-common && \
   curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg > /tmp/dkey; apt-key add /tmp/dkey && \
   add-apt-repository \
@@ -9,8 +10,11 @@ RUN apt-get update && \
     $(lsb_release -cs) \
     stable" && \
   apt-get update && \
-  apt-get -y install docker-ce \
-  && rm -rf /var/lib/apt/lists/*
+  apt -y dist-upgrade && \
+  apt-get -y install docker-ce && \
+  apt -y autoremove && \
+  apt clean && \
+  rm -rf /var/lib/apt/lists/*
 
 # Install Maven 3.6.3
 ENV MAVEN_VERSION 3.6.3
