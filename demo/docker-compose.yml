@@ -32,33 +32,20 @@ services:
     networks:
       - tmail
 
-  llngdb:
-    image: yadd/lemonldap-ng-pg-database
-    container_name: llngdb
-    environment:
-      - POSTGRES_PASSWORD=zz
-    healthcheck:
-      test: "exit 0"
-    volumes:
-      - "./lemonldap/lmConf-1.json:/llng-conf/conf.json"
-    networks:
-      - tmail
-
   sso.example.com:
     image: yadd/lemonldap-ng-full
     container_name: sso.example.com
     ports:
       - "80:80"
+    volumes:
+      - "./lemonldap/lmConf-1.json:/var/lib/lemonldap-ng/conf/lmConf-1.json"
     environment:
       - SSODOMAIN=example.com
       - PORTAL=http://sso.example.com
       - LOGLEVEL=debug
-      - PG_SERVER=llngdb
       - LOGGER=stderr
       - USERLOGGER=stderr
     depends_on:
-      llngdb:
-        condition: service_healthy
       ldap:
         condition: service_started
     networks:
