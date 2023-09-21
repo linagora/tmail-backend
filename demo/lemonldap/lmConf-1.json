@@ -394,7 +394,7 @@
       "oidcRPMetaDataOptionsPostLogoutRedirectUris": "http://test.sso.example.com:8080/logout-callback.html",
       "oidcRPMetaDataOptionsPublic": 1,
       "oidcRPMetaDataOptionsRedirectUris": "http://test.sso.example.com:8080/login-callback.html",
-      "oidcRPMetaDataOptionsRefreshToken": 1,
+      "oidcRPMetaDataOptionsRefreshToken": 0,
       "oidcRPMetaDataOptionsRequirePKCE": 0,
       "oidcRPMetaDataOptionsUserInfoSignAlg": ""
     },
@@ -420,7 +420,7 @@
       "oidcRPMetaDataOptionsPostLogoutRedirectUris": "http://test.sso.example.com:8080/logout-callback.html",
       "oidcRPMetaDataOptionsPublic": 0,
       "oidcRPMetaDataOptionsRedirectUris": "http://test.sso.example.com:8080/login-callback.html",
-      "oidcRPMetaDataOptionsRefreshToken": 1,
+      "oidcRPMetaDataOptionsRefreshToken": 0,
       "oidcRPMetaDataOptionsRequirePKCE": 0,
       "oidcRPMetaDataOptionsUserInfoSignAlg": ""
     }
