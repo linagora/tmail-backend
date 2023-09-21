@@ -449,6 +449,7 @@
   "oidcServiceMetaDataEndSessionURI": "logout",
   "oidcServiceMetaDataFrontChannelURI": "flogout",
   "oidcServiceMetaDataIntrospectionURI": "introspect",
+  "oidcServiceMetaDataIssuer": "http://sso.example.com",
   "oidcServiceMetaDataJWKSURI": "jwks",
   "oidcServiceMetaDataRegistrationURI": "register",
   "oidcServiceMetaDataTokenURI": "token",
