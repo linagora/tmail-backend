@@ -244,7 +244,7 @@
   "gpgDb": "",
   "grantSessionRules": {},
   "groups": {},
-  "hiddenAttributes": "_password, _2fDevices",
+  "hiddenAttributes": "_password _2fDevices",
   "httpOnly": 1,
   "https": -1,
   "impersonationHiddenAttributes": "_2fDevices, _loginHistory",
@@ -299,7 +299,7 @@
   "localSessionStorage": "Cache::FileCache",
   "localSessionStorageOptions": {
     "cache_depth": 3,
-    "cache_root": "/var/lib/lemonldap-ng/cache",
+    "cache_root": "/var/cache/lemonldap-ng",
     "default_expires_in": 600,
     "directory_umask": "007",
     "namespace": "lemonldap-ng-sessions"
@@ -374,6 +374,7 @@
   "oidcRPMetaDataOptions": {
     "james": {
       "oidcRPMetaDataOptionsAccessTokenClaims": 1,
+      "oidcRPMetaDataOptionsAccessTokenExpiration": 120,
       "oidcRPMetaDataOptionsAccessTokenJWT": 1,
       "oidcRPMetaDataOptionsAccessTokenSignAlg": "RS512",
       "oidcRPMetaDataOptionsAllowClientCredentialsGrant": 0,
@@ -399,6 +400,7 @@
     },
     "james_apisix": {
       "oidcRPMetaDataOptionsAccessTokenClaims": 1,
+      "oidcRPMetaDataOptionsAccessTokenExpiration": 120,
       "oidcRPMetaDataOptionsAccessTokenJWT": 1,
       "oidcRPMetaDataOptionsAccessTokenSignAlg": "RS512",
       "oidcRPMetaDataOptionsAllowClientCredentialsGrant": 1,
@@ -428,7 +430,7 @@
   "oidcServiceAllowAuthorizationCodeFlow": 1,
   "oidcServiceAllowHybridFlow": 0,
   "oidcServiceAllowImplicitFlow": 0,
-  "oidcServiceAllowOnlyDeclaredScopes": 1,
+  "oidcServiceAllowOnlyDeclaredScopes": 0,
   "oidcServiceAuthorizationCodeExpiration": 60,
   "oidcServiceDynamicRegistrationExportedVars": {},
   "oidcServiceDynamicRegistrationExtraClaims": {},
