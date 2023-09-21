@@ -1,6 +1,7 @@
 {
   "ADPwdExpireWarning": 0,
   "ADPwdMaxAge": 0,
+  "LDAPFilter": "(&(objectClass=person)(|(uid=$user)(mail=$user)))",
   "SMTPServer": "",
   "SMTPTLS": "",
   "SMTPTLSOpts": {},
