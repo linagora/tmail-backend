@@ -17,6 +17,18 @@ JQ='$o=JSON::from_json(<STDIN>);foreach(@ARGV){$o= s/^@// ? $o->[$_] : $o->{$_}}
 
 TMPFILE=`mktemp`
 
+# Test if OIDC is enabled
+curl -s -H "Accept: $JSON" $SSO/.well-known/openid-configuration >$TMPFILE
+
+TOKEN_ENDPOINT=`perl -MJSON -000 -e "$JQ" token_endpoint <$TMPFILE`
+AUTHZ_ENDPOINT=`perl -MJSON -000 -e "$JQ" authorization_endpoint <$TMPFILE`
+
+
+if test "$TOKEN_ENDPOINT" = ""; then
+	echo "Unable to read OIDC metadata. Is it an openid server ?" >&2
+	exit 1
+fi
+
 # Get SSO token
 curl -s -H "Accept: $JSON" $SSO > $TMPFILE
 TOKEN=`perl -MJSON -000 -e "$JQ" token <$TMPFILE`
@@ -32,13 +44,18 @@ fi
 
 echo "Connected to SSO"
 
-curl -D - -s -b "lemonldap=$LLNGID" "$SSO/oauth2/authorize?response_type=code&client_id=$CLIENTID&scope=openid+profile+email+offline_access&redirect_uri=$REDIRECTURI" >$TMPFILE
+curl -D - -s -b "lemonldap=$LLNGID" "$AUTHZ_ENDPOINT?response_type=code&client_id=$CLIENTID&scope=openid+profile+email+offline_access&redirect_uri=$REDIRECTURI" >$TMPFILE
 
 CODE=`grep Location $TMPFILE | perl -pe 's/\r//g;s/.*code=//;s/&.*$//;chomp'`
 
+if test "$CODE" = "" ; then
+	echo "No code found, result of OIDC query is stored in $TMPFILE" >&2
+	exit 1
+fi
+
 echo "Get authorization code: $CODE"
 
-curl -s -X POST -d 'grant_type=authorization_code' -d "redirect_uri=$REDIRECTURI" -d "code=$CODE" -u "$CLIENTID:$CLIENTSECRET" $SSO/oauth2/token >$TMPFILE
+curl -s -X POST -d 'grant_type=authorization_code' -d "redirect_uri=$REDIRECTURI" -d "code=$CODE" -u "$CLIENTID:$CLIENTSECRET" $TOKEN_ENDPOINT >$TMPFILE
 
 cat $TMPFILE | jq -S
 
