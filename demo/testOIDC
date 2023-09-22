@@ -1,0 +1,45 @@
+#!/bin/sh
+
+SSOUSER=${SSOUSER:-dwho}
+SSOPASSWORD=${SSOPASSWORD:-dwho}
+CLIENTID=${CLIENTID:-james}
+CLIENTSECRET=${CLIENTSECRET:-james}
+SSO=${SSO:-http://sso.example.com}
+BACKEND=${BACKEND:-Demo}
+REDIRECTURI=${REDIRECTURI:-http://test.sso.example.com:8080/login-callback.html}
+
+set -e
+
+JSON="application/json"
+ACCEPT="Accept: $JSON"
+# Simple JSON parser
+JQ='$o=JSON::from_json(<STDIN>);foreach(@ARGV){$o= s/^@// ? $o->[$_] : $o->{$_}};print $o'
+
+TMPFILE=`mktemp`
+
+# Get SSO token
+curl -s -H "Accept: $JSON" $SSO > $TMPFILE
+TOKEN=`perl -MJSON -000 -e "$JQ" token <$TMPFILE`
+
+# Get Cookie
+curl -X POST -s -d "user=$SSOUSER" -d "lmAuth=$BACKEND" -d "password=$SSOPASSWORD" -d "token=$TOKEN" -H "Accept: $JSON" $SSO > $TMPFILE 2>/dev/null
+LLNGID=`perl -MJSON -000 -e "$JQ" id <$TMPFILE`
+
+if test "$LLNGID" = ""; then
+	echo "Fail to authenticate"
+	exit 1
+fi
+
+echo "Connected to SSO"
+
+curl -D - -s -b "lemonldap=$LLNGID" "$SSO/oauth2/authorize?response_type=code&client_id=$CLIENTID&scope=openid+profile+email+offline_access&redirect_uri=$REDIRECTURI" >$TMPFILE
+
+CODE=`grep Location $TMPFILE | perl -pe 's/\r//g;s/.*code=//;s/&.*$//;chomp'`
+
+echo "Get authorization code: $CODE"
+
+curl -s -X POST -d 'grant_type=authorization_code' -d "redirect_uri=$REDIRECTURI" -d "code=$CODE" -u "$CLIENTID:$CLIENTSECRET" $SSO/oauth2/token >$TMPFILE
+
+cat $TMPFILE | jq -S
+
+rm -f $TMPFILE
