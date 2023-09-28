@@ -59,4 +59,8 @@ curl -s -X POST -d 'grant_type=authorization_code' -d "redirect_uri=$REDIRECTURI
 
 cat $TMPFILE | jq -S
 
+REFRESH_TOKEN=`perl -MJSON -000 -e "$JQ" refresh_token <$TMPFILE`
+
+curl -s -X POST -d 'grant_type=refresh_token' -d "refresh_token=$REFRESH_TOKEN" -u "$CLIENTID:$CLIENTSECRET" $TOKEN_ENDPOINT
+
 rm -f $TMPFILE
