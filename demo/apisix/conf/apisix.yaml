@@ -188,6 +188,14 @@ services:
     id: jmap_service_oidc
     upstream_id: jmap_upstream
     plugins:
+      cors:
+        allow_origins: "https://example.com"
+        allow_methods: "POST,GET,OPTIONS,DELETE,PUT"
+        allow_headers: "Authorization,DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range"
+        expose_headers: "**"
+        max_age: 1728000
+        allow_credential: true
+        allow_origins_by_regex: [".*\\.example.com", ".*\\..*\\.example.com"]
       openid-connect:
         _meta:
           filter:
@@ -206,6 +214,14 @@ services:
     id: jmap_service_basic_auth
     upstream_id: jmap_upstream
     plugins:
+      cors:
+        allow_origins: "https://example.com"
+        allow_methods: "POST,GET,OPTIONS,DELETE,PUT"
+        allow_headers: "Authorization,DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range"
+        expose_headers: "**"
+        max_age: 1728000
+        allow_credential: true
+        allow_origins_by_regex: [".*\\.example.com", ".*\\..*\\.example.com"]
       proxy-rewrite:
         headers:
           remove:
@@ -223,6 +239,14 @@ plugin_configs:
   -
     id: jmap-plugin
     plugins:
+      cors:
+        allow_origins: "https://example.com"
+        allow_methods: "POST,GET,OPTIONS,DELETE,PUT"
+        allow_headers: "Authorization,DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range"
+        expose_headers: "**"
+        max_age: 1728000
+        allow_credential: true
+        allow_origins_by_regex: [".*\\.example.com", ".*\\..*\\.example.com"]
       limit-req:
         rate: 100
         burst: 50 # number of requests above 100 and below 150 per seconds will be delayed. Above 150 will be rejected
