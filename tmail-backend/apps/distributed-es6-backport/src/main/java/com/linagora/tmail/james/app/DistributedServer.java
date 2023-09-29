@@ -57,6 +57,7 @@ import org.apache.james.modules.protocols.ManageSieveServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
+import org.apache.james.modules.queue.rabbitmq.RabbitMQMailQueueModule;
 import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
 import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.DLPRoutesModule;
@@ -253,6 +254,7 @@ public class DistributedServer {
                 new RabbitMQEmailAddressContactModule(),
                 new RabbitMQEventBusModule(),
                 new RabbitMQModule(),
+                new RabbitMQMailQueueModule(),
                 new RabbitMailQueueRoutesModule(),
                 new RspamdModule(),
                 new ScheduledReconnectionHandler.Module(),
