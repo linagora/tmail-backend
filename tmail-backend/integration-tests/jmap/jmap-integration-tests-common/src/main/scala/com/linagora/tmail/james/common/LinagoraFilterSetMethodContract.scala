@@ -17,8 +17,10 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.junit.categories.BasicFeature
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.SoftAssertions
+import org.junit.experimental.categories.Category
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
@@ -263,6 +265,7 @@ trait LinagoraFilterSetMethodContract {
          |}""".stripMargin)
   }
 
+  @Category(Array(classOf[BasicFeature]))
   @Test
   def updateRulesShouldSupportExtraFields(): Unit = {
     val request = s"""{
