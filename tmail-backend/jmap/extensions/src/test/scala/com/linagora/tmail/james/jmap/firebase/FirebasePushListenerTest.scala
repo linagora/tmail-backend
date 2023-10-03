@@ -6,8 +6,7 @@ import java.util.UUID
 import com.google.common.collect.ImmutableList
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscriptionCreationRequest, FirebaseToken}
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, JmapSettingsUpsertRequest, MemoryJmapSettingsRepository}
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsRepository, JmapSettingsUpsertRequest, JmapSettingsValue, MemoryJmapSettingsRepository}
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.jmap.change.{EmailDeliveryTypeName, EmailTypeName, MailboxTypeName, StateChangeEvent}

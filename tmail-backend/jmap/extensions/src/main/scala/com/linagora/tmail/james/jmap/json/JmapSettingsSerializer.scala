@@ -2,8 +2,7 @@ package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.JmapSettingsObject.JmapSettingsId
 import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsObject, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
-import com.linagora.tmail.james.jmap.settings.JmapSettingsUpsertRequest
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsUpsertRequest, JmapSettingsValue}
 import org.apache.james.jmap.core.UuidState
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}

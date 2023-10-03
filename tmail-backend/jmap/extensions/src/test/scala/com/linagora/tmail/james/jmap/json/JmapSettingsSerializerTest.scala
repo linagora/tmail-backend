@@ -1,9 +1,8 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsObject, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.SettingsKeyString
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsPatch, JmapSettingsUpsertRequest}
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsPatch, JmapSettingsUpsertRequest, JmapSettingsValue}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.SetError.SetErrorDescription

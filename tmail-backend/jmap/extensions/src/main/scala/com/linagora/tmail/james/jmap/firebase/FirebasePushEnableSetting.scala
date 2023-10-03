@@ -2,8 +2,7 @@ package com.linagora.tmail.james.jmap.firebase
 
 import java.util.Locale
 
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
-import com.linagora.tmail.james.jmap.settings.{JmapSettingEntry, JmapSettingParser}
+import com.linagora.tmail.james.jmap.settings.{JmapSettingEntry, JmapSettingParser, JmapSettingsKey, JmapSettingsValue}
 
 case class FirebasePushEnableSetting(enabled: Boolean) extends JmapSettingEntry
 

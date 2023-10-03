@@ -1,8 +1,7 @@
 package com.linagora.tmail.james.jmap.model
 
 import com.linagora.tmail.james.jmap.model.JmapSettingsObject.{JmapSettingsId, SETTING_SINGLETON_ID}
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
-import com.linagora.tmail.james.jmap.settings.{JmapSettings, JmapSettingsStateFactory}
+import com.linagora.tmail.james.jmap.settings.{JmapSettings, JmapSettingsKey, JmapSettingsStateFactory, JmapSettingsValue}
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.{AccountId, Id, UuidState}
 import org.apache.james.jmap.method.WithAccountId

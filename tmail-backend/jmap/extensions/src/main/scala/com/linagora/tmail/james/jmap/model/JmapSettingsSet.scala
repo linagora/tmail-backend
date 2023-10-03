@@ -4,8 +4,7 @@ import com.linagora.tmail.james.jmap.json.JmapSettingsSerializer
 import com.linagora.tmail.james.jmap.method.standardErrorMessage
 import com.linagora.tmail.james.jmap.model.SettingsSet.OBJECT_ID
 import com.linagora.tmail.james.jmap.model.SettingsSetUpdateRequest.{SETTINGS_KEY, UPDATE_PARTIAL_KEY_PREFIX}
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsPatch, JmapSettingsUpsertRequest}
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsPatch, JmapSettingsUpsertRequest, JmapSettingsValue}
 import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType, invalidArgumentValue, serverFailValue}
 import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.apache.james.jmap.method.WithAccountId

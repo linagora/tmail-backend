@@ -8,7 +8,6 @@ import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom, update}
 import com.datastax.oss.driver.api.querybuilder.relation.Relation.column
 import com.linagora.tmail.james.jmap.settings.CassandraJmapSettingsDAO.{ADD_SETTINGS, REMOVE_SETTINGS}
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor

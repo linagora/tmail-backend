@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.firebase
 
-import com.linagora.tmail.james.jmap.settings.JmapSettings.JmapSettingsValue
+import com.linagora.tmail.james.jmap.settings.JmapSettingsValue
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
