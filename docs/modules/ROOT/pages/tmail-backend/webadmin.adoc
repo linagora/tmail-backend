@@ -638,3 +638,22 @@ Valid status includes:
 - `IN_PROGRESS`: Currently executed
 - `FAILED`: Error encountered while executing this step. Check the logs.
 - `ABORTED`: Won't be executed because of previous step failures.
+
+== Mailboxes
+
+=== Clean Trash
+
+....
+curl -XGET http://ip:port/mailboxes?usersPerSecond={usersPerSecondValue}
+....
+
+Delete all messages in the trash mailbox that are expired
+
+An admin can specify the concurrency that should be used when running the task:
+
+- usersPerSecond rate at which users should be processed, per second. Default to 1.
+
+Return codes:
+
+ - `201` Success. Corresponding task id is returned.
+ - `400` Error in the request. Details can be found in the reported error.

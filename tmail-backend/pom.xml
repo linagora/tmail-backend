@@ -56,6 +56,7 @@
         <module>smtp-extensions</module>
 
         <module>webadmin/webadmin-email-address-contact</module>
+        <module>webadmin/webadmin-mailbox</module>
         <module>webadmin/webadmin-team-mailboxes</module>
         <module>webadmin/webadmin-rate-limit</module>
         <module>healthcheck</module>
@@ -164,6 +165,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-rate-limiter-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-webadmin-mailbox</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
