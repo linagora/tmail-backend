@@ -1,6 +1,5 @@
 package com.linagora.tmail.james.jmap.settings
 
-import com.linagora.tmail.james.jmap.settings.JmapSettings.JmapSettingsValue
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.{ALICE, BOB, SettingsKeyString, SettingsUpsertRequestMap}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}

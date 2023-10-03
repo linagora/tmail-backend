@@ -3,7 +3,6 @@ package com.linagora.tmail.james.jmap.settings
 import java.time.Duration
 import java.util.Map.entry
 
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.{ALICE, BOB, SAMPLE_UPSERT_REQUEST, SettingsKeyString, SettingsUpsertRequestMap, SettingsUpsertRequestPair}
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UuidState

@@ -2,8 +2,7 @@ package com.linagora.tmail.james.common.probe
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
-import com.linagora.tmail.james.jmap.settings.{JmapSettings, JmapSettingsRepository, JmapSettingsUpsertRequest, SettingsStateUpdate}
+import com.linagora.tmail.james.jmap.settings.{JmapSettings, JmapSettingsKey, JmapSettingsRepository, JmapSettingsUpsertRequest, JmapSettingsValue, SettingsStateUpdate}
 import javax.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UuidState

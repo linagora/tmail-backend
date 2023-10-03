@@ -1,6 +1,5 @@
 package com.linagora.tmail.james.jmap.settings
 
-import com.linagora.tmail.james.jmap.settings.JmapSettings.JmapSettingsKey
 import org.assertj.core.api.Assertions.{assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.Test
 

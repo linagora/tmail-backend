@@ -1,13 +1,13 @@
 package com.linagora.tmail.james.jmap.settings
 
 import com.google.common.base.CharMatcher
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{JmapSettingsKey, JmapSettingsValue}
+import com.linagora.tmail.james.jmap.settings.JmapSettingsKey.SettingKeyType
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
 import org.apache.james.jmap.api.model.{State, TypeName}
 import org.apache.james.jmap.core.UuidState
 
-object JmapSettings {
+object JmapSettingsKey {
   case class JmapSettingKeyConstraint()
 
   type SettingKeyType = String Refined JmapSettingKeyConstraint
@@ -27,26 +27,24 @@ object JmapSettings {
           JmapSettingKeyConstraint()))
       .left.map(new IllegalArgumentException(_))
 
-  object JmapSettingsKey {
-    def liftOrThrow(value: String): JmapSettingsKey =
-      validateSettingKey(value) match {
-        case Left(error) => throw new IllegalArgumentException(error)
-        case Right(settingKey) => JmapSettingsKey(settingKey)
-      }
+  def liftOrThrow(value: String): JmapSettingsKey =
+    validateSettingKey(value) match {
+      case Left(error) => throw new IllegalArgumentException(error)
+      case Right(settingKey) => JmapSettingsKey(settingKey)
+    }
 
-    def validate(value: String): Either[IllegalArgumentException, JmapSettingsKey] =
-      validateSettingKey(value) match {
-        case Left(error) => Left(error)
-        case Right(settingKey) => Right(JmapSettingsKey(settingKey))
-      }
-  }
-
-  case class JmapSettingsKey(value: SettingKeyType) {
-    def asString(): String = value.value
-  }
-
-  case class JmapSettingsValue(value: String) extends AnyVal
+  def validate(value: String): Either[IllegalArgumentException, JmapSettingsKey] =
+    validateSettingKey(value) match {
+      case Left(error) => Left(error)
+      case Right(settingKey) => Right(JmapSettingsKey(settingKey))
+    }
 }
+
+case class JmapSettingsKey(value: SettingKeyType) {
+  def asString(): String = value.value
+}
+
+case class JmapSettingsValue(value: String) extends AnyVal
 
 trait JmapSettingEntry
 
