@@ -79,6 +79,7 @@ import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
+import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
 public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
@@ -120,7 +121,8 @@ public class MemoryServer {
         new WebFingerModule(),
         new EmailRecoveryActionMethodModule(),
         new LabelMethodModule(),
-        new JmapSettingsMethodModule())
+        new JmapSettingsMethodModule(),
+        new MailboxesCleanupModule())
         .with(new TeamMailboxJmapModule());
 
     public static final Module MODULES = Modules.override(
