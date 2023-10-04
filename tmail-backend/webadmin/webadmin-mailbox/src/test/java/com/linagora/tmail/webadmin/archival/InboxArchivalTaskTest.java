@@ -1,6 +1,5 @@
 package com.linagora.tmail.webadmin.archival;
 
-import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -9,7 +8,6 @@ import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import javax.mail.Flags;
 
@@ -30,14 +28,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import com.linagora.tmail.james.jmap.settings.JmapSettingsKey;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
-import com.linagora.tmail.james.jmap.settings.JmapSettingsUpsertRequest;
-import com.linagora.tmail.james.jmap.settings.JmapSettingsValue;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
-
-import reactor.core.publisher.Mono;
-import scala.collection.JavaConverters;
 
 class InboxArchivalTaskTest {
     private static final Domain DOMAIN = Domain.of("domain.tld");
@@ -52,7 +45,7 @@ class InboxArchivalTaskTest {
 
     private InMemoryMailboxManager mailboxManager;
     private UpdatableTickingClock saveDateClock;
-    private JmapSettingsRepository jmapSettingsRepository;
+    private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     private InboxArchivalTask task;
 
     @BeforeEach
@@ -71,7 +64,8 @@ class InboxArchivalTaskTest {
         mailboxManager.createMailbox(MailboxPath.inbox(ANDRE), mailboxManager.createSystemSession(ANDRE));
 
         MailboxSessionMapperFactory mapperFactory = mailboxManager.getMapperFactory();
-        jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        JmapSettingsRepository jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         InboxArchivalService service = new InboxArchivalService(mailboxManager, usersRepository, mapperFactory, jmapSettingsRepository, new UpdatableTickingClock(NOW));
         task = new InboxArchivalTask(service);
     }
@@ -393,15 +387,7 @@ class InboxArchivalTaskTest {
     }
 
     private void setJmapSettings(Username username, Map<String, String> settings) {
-        Map<JmapSettingsKey, JmapSettingsValue> javaSettings = settings
-            .entrySet()
-            .stream()
-            .map(entry -> entry(JmapSettingsKey.liftOrThrow(entry.getKey()), new JmapSettingsValue(entry.getValue())))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-        Mono.from(jmapSettingsRepository.reset(username,
-                new JmapSettingsUpsertRequest(scala.collection.immutable.Map.from(JavaConverters.asScala(javaSettings)))))
-            .block();
+        jmapSettingsRepositoryUtils.reset(username, settings);
     }
 
     private void appendInboxMessage(Username username) throws MailboxException {

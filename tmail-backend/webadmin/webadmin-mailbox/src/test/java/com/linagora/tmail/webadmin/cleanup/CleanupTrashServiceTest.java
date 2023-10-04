@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.Map;
 
 import javax.mail.Flags;
 
@@ -34,23 +35,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
-import com.linagora.tmail.james.jmap.settings.JmapSettingsUpsertRequest;
-import com.linagora.tmail.james.jmap.settings.JmapSettingsValue;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import scala.collection.JavaConverters;
-import scala.collection.immutable.Map;
 
 public class CleanupTrashServiceTest {
     private static final Domain DOMAIN = Domain.of("example.org");
     private static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
     private CleanupTrashService cleanupTrashService;
-    private JmapSettingsRepository jmapSettingsRepository;
+    private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     private SessionProvider sessionProvider;
     private SystemMailboxesProvider systemMailboxesProvider;
     private UpdatableTickingClock clock;
@@ -74,20 +69,16 @@ public class CleanupTrashServiceTest {
                 DefaultMailboxes.TRASH),
             bobMailboxSession);
         bobMessageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
-        jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        JmapSettingsRepository jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         clock = new UpdatableTickingClock(Instant.now());
         cleanupTrashService = new CleanupTrashService(usersRepository, jmapSettingsRepository, sessionProvider, systemMailboxesProvider, clock);
     }
 
     @Test
     void cleanupTrashShouldRemoveMessageWhenMessageIsExpiredAndPeriodSettingIsWeekly() throws Exception {
-        Mono.from(jmapSettingsRepository.reset(BOB,
-            new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
-                new JmapSettingsValue("true"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
-            ))))).block();
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("trash.cleanup.enabled", "true",
+            "trash.cleanup.period", "weekly"));
 
         bobMessageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
                 new Date(),
@@ -106,13 +97,8 @@ public class CleanupTrashServiceTest {
 
     @Test
     void cleanupTrashShouldKeepMessageWhenMessageIsNotExpiredAndPeriodSettingIsWeekly() throws Exception {
-        Mono.from(jmapSettingsRepository.reset(BOB,
-            new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
-                new JmapSettingsValue("true"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
-            ))))).block();
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("trash.cleanup.enabled", "true",
+            "trash.cleanup.period", "weekly"));
 
         MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
@@ -132,13 +118,8 @@ public class CleanupTrashServiceTest {
 
     @Test
     void cleanupTrashShouldRemoveMessageWhenMessageIsExpiredAndPeriodSettingIsMonthly() throws Exception {
-        Mono.from(jmapSettingsRepository.reset(BOB,
-            new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
-                new JmapSettingsValue("true"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.monthlyPeriod()))
-            ))))).block();
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("trash.cleanup.enabled", "true",
+            "trash.cleanup.period", "monthly"));
 
         MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
@@ -158,13 +139,8 @@ public class CleanupTrashServiceTest {
 
     @Test
     void cleanupTrashShouldKeepMessageWhenMessageIsNotExpiredAndPeriodSettingIsMonthly() throws Exception {
-        Mono.from(jmapSettingsRepository.reset(BOB,
-            new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
-                new JmapSettingsValue("true"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.monthlyPeriod()))
-            ))))).block();
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("trash.cleanup.enabled", "true",
+            "trash.cleanup.period", "monthly"));
 
         MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
@@ -184,13 +160,8 @@ public class CleanupTrashServiceTest {
 
     @Test
     void cleanupTrashShouldKeepMessageWhenTrashCleanupEnabledSettingIsFalse() throws Exception {
-        Mono.from(jmapSettingsRepository.reset(BOB,
-            new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
-                new JmapSettingsValue("false"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
-            ))))).block();
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("trash.cleanup.enabled", "false",
+            "trash.cleanup.period", "weekly"));
 
         MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
