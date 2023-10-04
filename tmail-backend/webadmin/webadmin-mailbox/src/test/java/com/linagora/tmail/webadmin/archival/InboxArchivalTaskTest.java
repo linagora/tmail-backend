@@ -6,9 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 
 import java.io.ByteArrayInputStream;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,21 +40,17 @@ import reactor.core.publisher.Mono;
 import scala.collection.JavaConverters;
 
 class InboxArchivalTaskTest {
-    private static final String INBOX_MAILBOX_NAME = "INBOX";
     private static final Domain DOMAIN = Domain.of("domain.tld");
     private static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
     private static final Username ALICE = Username.fromLocalPartWithDomain("alice", DOMAIN);
-    private static final MailboxPath BOB_INBOX_MAILBOX = MailboxPath.forUser(BOB, INBOX_MAILBOX_NAME);
-    private static final MailboxPath ALICE_INBOX_MAILBOX = MailboxPath.forUser(ALICE, INBOX_MAILBOX_NAME);
-    private static final Instant NOW = ZonedDateTime.now().toInstant();
+    private static final Username ANDRE = Username.fromLocalPartWithDomain("andre", DOMAIN);
+    private static final Instant NOW = Instant.parse("2023-10-04T10:15:30.00Z");
     private static final long TWO_YEARS_IN_SECOND = 63113852;
     private static final long HALF_YEARS_IN_SECOND = 15778463;
     private static final long TWO_MONTHS_IN_SECOND = 5259600;
     private static final long HALF_MONTHS_IN_SECOND = 1314900;
 
     private InMemoryMailboxManager mailboxManager;
-    private UsersRepository usersRepository;
-    private Clock clock;
     private UpdatableTickingClock saveDateClock;
     private JmapSettingsRepository jmapSettingsRepository;
     private InboxArchivalTask task;
@@ -68,16 +62,17 @@ class InboxArchivalTaskTest {
         saveDateClock = (UpdatableTickingClock) mailboxManager.getClock();
         DomainList domainList = mock(DomainList.class);
         Mockito.when(domainList.containsDomain(any())).thenReturn(true);
-        usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
+        UsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
         usersRepository.addUser(BOB, "anyPassword");
         usersRepository.addUser(ALICE, "anyPassword");
-        mailboxManager.createMailbox(BOB_INBOX_MAILBOX, mailboxManager.createSystemSession(BOB));
-        mailboxManager.createMailbox(ALICE_INBOX_MAILBOX, mailboxManager.createSystemSession(ALICE));
+        usersRepository.addUser(ANDRE, "anyPassword");
+        mailboxManager.createMailbox(MailboxPath.inbox(BOB), mailboxManager.createSystemSession(BOB));
+        mailboxManager.createMailbox(MailboxPath.inbox(ALICE), mailboxManager.createSystemSession(ALICE));
+        mailboxManager.createMailbox(MailboxPath.inbox(ANDRE), mailboxManager.createSystemSession(ANDRE));
 
-        clock = new UpdatableTickingClock(NOW);
         MailboxSessionMapperFactory mapperFactory = mailboxManager.getMapperFactory();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
-        InboxArchivalService service = new InboxArchivalService(mailboxManager, usersRepository, mapperFactory, jmapSettingsRepository, clock);
+        InboxArchivalService service = new InboxArchivalService(mailboxManager, usersRepository, mapperFactory, jmapSettingsRepository, new UpdatableTickingClock(NOW));
         task = new InboxArchivalTask(service);
     }
 
@@ -140,7 +135,6 @@ class InboxArchivalTaskTest {
         assertMessagesCount(MailboxPath.forUser(BOB, "Archive"), 0L);
     }
 
-    // test for inbox.archival.period
     @Test
     void givenMonthlyPeriodThenShouldArchiveMessagesOlderThanOneMonth() throws MailboxException {
         setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true",
@@ -205,22 +199,198 @@ class InboxArchivalTaskTest {
         assertMessagesCount(MailboxPath.forUser(BOB, "Archive"), 0L);
     }
 
-    // TODO should fallback to default period (monthly) if no period specified
-    // TODO should fallback to default period (monthly) if invalid period specified
+    @Test
+    void givenEmptyArchivalPeriodSettingThenShouldDefaultToMonthly() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true"));
+        mailboxManager.createMailbox(MailboxPath.forUser(BOB, "Archive"), mailboxManager.createSystemSession(BOB));
 
-    // test for inbox.archival.format
-    // TODO should create archive mailbox upon archive mailboxes missing (yearly, monthly, single format cases)
-    // TODO should archive in Archive mailbox upon single case
-    // TODO should archive in e.g. Archive.2023 submailbox upon yearly case
-    // TODO should archive in e.g. Archive.2023.October submailbox upon monthly case
-    // TODO should fallback to default format (single) if no format specified
-    // TODO should fallback to default format (single) if invalid format specified
+        saveDateClock.setInstant(NOW.minusSeconds(TWO_MONTHS_IN_SECOND));
+        appendInboxMessage(BOB);
 
-    // other test cases
-    // TODO should archive multiples messages in a INBOX
-    // TODO should archive all users INBOXes (with perUser period/format)
-    // TODO should not archive user INBOX that disable archival
+        Task.Result result = task.run();
 
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertMessagesCount(MailboxPath.inbox(BOB), 0L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive"), 1L);
+    }
+
+    @Test
+    void givenInvalidArchivalPeriodSettingThenShouldDefaultToMonthly() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true",
+            "inbox.archival.period", "invalid"));
+        mailboxManager.createMailbox(MailboxPath.forUser(BOB, "Archive"), mailboxManager.createSystemSession(BOB));
+
+        saveDateClock.setInstant(NOW.minusSeconds(TWO_MONTHS_IN_SECOND));
+        appendInboxMessage(BOB);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertMessagesCount(MailboxPath.inbox(BOB), 0L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive"), 1L);
+    }
+
+    @Test
+    void givenSingleArchivalFormatSettingThenShouldCreateArchiveMailboxIfNeededAndArchive() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true",
+            "inbox.archival.format", "single"));
+
+        saveDateClock.setInstant(NOW.minusSeconds(TWO_MONTHS_IN_SECOND));
+        appendInboxMessage(BOB);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertMessagesCount(MailboxPath.inbox(BOB), 0L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive"), 1L);
+    }
+
+    @Test
+    void givenYearlyArchivalFormatSettingThenShouldCreateYearlyArchiveMailboxesIfNeededAndArchive() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true",
+            "inbox.archival.format", "yearly"));
+
+        saveDateClock.setInstant(Instant.parse("2013-10-04T10:15:30.00Z"));
+        appendInboxMessage(BOB);
+        saveDateClock.setInstant(Instant.parse("2014-10-04T10:15:30.00Z"));
+        appendInboxMessage(BOB);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertMessagesCount(MailboxPath.inbox(BOB), 0L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive.2013"), 1L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive.2014"), 1L);
+    }
+
+    @Test
+    void givenMonthlyArchivalFormatSettingThenShouldCreateMonthlyArchiveMailboxesIfNeededAndArchive() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true",
+            "inbox.archival.format", "monthly"));
+
+        saveDateClock.setInstant(Instant.parse("2014-01-04T10:15:30.00Z"));
+        appendInboxMessage(BOB);
+        saveDateClock.setInstant(Instant.parse("2014-02-04T10:15:30.00Z"));
+        appendInboxMessage(BOB);
+        saveDateClock.setInstant(Instant.parse("2015-12-04T10:15:30.00Z"));
+        appendInboxMessage(BOB);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertMessagesCount(MailboxPath.inbox(BOB), 0L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive.2014.1"), 1L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive.2014.2"), 1L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive.2015.12"), 1L);
+    }
+
+    @Test
+    void givenEmptyArchivalFormatSettingThenShouldArchiveInSingleArchiveMailboxByDefault() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true"));
+        mailboxManager.createMailbox(MailboxPath.forUser(BOB, "Archive"), mailboxManager.createSystemSession(BOB));
+
+        saveDateClock.setInstant(NOW.minusSeconds(TWO_MONTHS_IN_SECOND));
+        appendInboxMessage(BOB);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertMessagesCount(MailboxPath.inbox(BOB), 0L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive"), 1L);
+    }
+
+    @Test
+    void givenInvalidArchivalFormatSettingThenShouldArchiveInSingleArchiveMailboxByDefault() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true",
+            "inbox.archival.format", "invalid"));
+        mailboxManager.createMailbox(MailboxPath.forUser(BOB, "Archive"), mailboxManager.createSystemSession(BOB));
+
+        saveDateClock.setInstant(NOW.minusSeconds(TWO_MONTHS_IN_SECOND));
+        appendInboxMessage(BOB);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertMessagesCount(MailboxPath.inbox(BOB), 0L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive"), 1L);
+    }
+
+    @Test
+    void shouldArchivePerUserSetting() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true",
+            "inbox.archival.format", "monthly"));
+        setJmapSettings(ALICE, Map.of("inbox.archival.enabled", "true",
+            "inbox.archival.format", "yearly"));
+        setJmapSettings(ANDRE, Map.of("inbox.archival.enabled", "false"));
+
+        saveDateClock.setInstant(Instant.parse("2014-01-04T10:15:30.00Z"));
+        appendInboxMessage(BOB);
+        saveDateClock.setInstant(Instant.parse("2014-02-04T10:15:30.00Z"));
+        appendInboxMessage(ALICE);
+        saveDateClock.setInstant(Instant.parse("2014-02-04T10:15:30.00Z"));
+        appendInboxMessage(ANDRE);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertMessagesCount(MailboxPath.inbox(BOB), 0L);
+        assertMessagesCount(MailboxPath.forUser(BOB, "Archive.2014.1"), 1L);
+        assertMessagesCount(MailboxPath.inbox(ALICE), 0L);
+        assertMessagesCount(MailboxPath.forUser(ALICE, "Archive.2014"), 1L);
+        assertMessagesCount(MailboxPath.inbox(ANDRE), 1L);
+    }
+
+    @Test
+    void additionalInformationShouldReturnEmptyWhenNoArchivableMessages() {
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertThat(task.snapshot())
+            .isEqualTo(InboxArchivalTask.Context.Snapshot.builder()
+                .archivedMessageCount(0)
+                .errorMessageCount(0)
+                .build());
+    }
+
+    @Test
+    void additionalInformationShouldCountArchivedMessages() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true"));
+        setJmapSettings(ALICE, Map.of("inbox.archival.enabled", "true"));
+
+        saveDateClock.setInstant(Instant.parse("2014-01-04T10:15:30.00Z"));
+        appendInboxMessage(BOB);
+        saveDateClock.setInstant(Instant.parse("2014-02-04T10:15:30.00Z"));
+        appendInboxMessage(ALICE);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertThat(task.snapshot())
+            .isEqualTo(InboxArchivalTask.Context.Snapshot.builder()
+                .archivedMessageCount(2)
+                .errorMessageCount(0)
+                .build());
+    }
+
+    @Test
+    void additionalInformationShouldNotCountNotArchivedMessages() throws MailboxException {
+        setJmapSettings(BOB, Map.of("inbox.archival.enabled", "true"));
+        setJmapSettings(ALICE, Map.of("inbox.archival.enabled", "false"));
+
+        saveDateClock.setInstant(Instant.parse("2014-01-04T10:15:30.00Z"));
+        appendInboxMessage(BOB);
+        saveDateClock.setInstant(Instant.parse("2014-02-04T10:15:30.00Z"));
+        appendInboxMessage(ALICE);
+
+        Task.Result result = task.run();
+
+        assertThat(result).isEqualTo(Task.Result.COMPLETED);
+        assertThat(task.snapshot())
+            .isEqualTo(InboxArchivalTask.Context.Snapshot.builder()
+                .archivedMessageCount(1)
+                .errorMessageCount(0)
+                .build());
+    }
 
     private void setJmapSettings(Username username, Map<String, String> settings) {
         Map<JmapSettingsKey, JmapSettingsValue> javaSettings = settings

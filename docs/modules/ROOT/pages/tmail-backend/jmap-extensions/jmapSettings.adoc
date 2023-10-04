@@ -228,6 +228,28 @@ Setting value: One in these values (`weekly`, `monthly`). Optional. Default valu
 
 This setting is used to determine if a message in trash should be keep or deleted. For example, if the value is `weekly`, any messages that exist for more than a week would be deleted.
 
+=== Inbox archival settings
+The following settings are related to the Inbox archival automation task that allows old messages in user's INBOX to be archived.
+
+==== inbox.archival.enabled
+This setting allows TMail backend to automatically archive old messages of Inbox to Archive mailbox(es) for the user.
+
+Optional. Boolean as String. Default value to `false`.
+
+==== inbox.archival.period
+This setting specifies how old that a message should be archived.
+
+Optional. String. One in these values (`monthly`, `yearly`). Default value to `monthly`.
+
+==== inbox.archival.format
+This setting specifies the structure of Archive mailboxes.
+
+Optional. String. One in these values (`single`, `monthly`, `yearly`). Default value to `single`.
+
+- `single`: Mails are archived under the `Archive` mailbox.
+- `yearly`: Mails are archived in sub-mailboxes representing years, eg `Archive.2021`, `Archive.2022`...
+- `monthly`: Mails are archived in nested sub-mailboxes representing months and years, eg `Archive.2021.1`, `Archive.2021.12`...
+
 
 
 

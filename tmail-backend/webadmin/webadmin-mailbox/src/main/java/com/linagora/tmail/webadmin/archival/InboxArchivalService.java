@@ -5,9 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.format.TextStyle;
 import java.util.Date;
-import java.util.Locale;
 import java.util.function.Predicate;
 
 import javax.inject.Inject;
@@ -42,6 +40,8 @@ public class InboxArchivalService {
     private static final Logger LOGGER = LoggerFactory.getLogger(InboxArchivalService.class);
     private static final int LOW_CONCURRENCY = 2;
     private static final int UNLIMITED = -1;
+    private static final String YEARLY_FORMAT = "yearly";
+    private static final String MONTHLY_FORMAT = "monthly";
 
     private final MailboxManager mailboxManager;
     private final UsersRepository usersRepository;
@@ -59,11 +59,11 @@ public class InboxArchivalService {
         this.clock = clock;
     }
 
-    public Mono<Task.Result> archiveInbox() {
+    public Mono<Task.Result> archiveInbox(InboxArchivalTask.Context context) {
         return Flux.from(usersRepository.listReactive())
             .flatMap(username -> Mono.from(jmapSettingsRepository.get(username))
                 .filter(JmapSettings::inboxArchivalEnable)
-                .flatMap(jmapSettings -> inboxArchive(username, jmapSettings))
+                .flatMap(jmapSettings -> inboxArchive(username, jmapSettings, context))
                 .defaultIfEmpty(Task.Result.COMPLETED), LOW_CONCURRENCY)
             .reduce(Task.Result.COMPLETED, Task::combine)
             .onErrorResume(e -> {
@@ -72,7 +72,7 @@ public class InboxArchivalService {
             });
     }
 
-    private Mono<Task.Result> inboxArchive(Username username, JmapSettings jmapSettings) {
+    private Mono<Task.Result> inboxArchive(Username username, JmapSettings jmapSettings, InboxArchivalTask.Context context) {
         Date archiveDate = Date.from(Instant.now(clock).atZone(ZoneOffset.UTC)
             .minus(jmapSettings.inboxArchivalPeriod())
             .toInstant());
@@ -82,7 +82,7 @@ public class InboxArchivalService {
             .map(Throwing.function(MessageManager::getMailboxEntity))
             .flatMapMany(getMailboxMessagesMetadata(mailboxSession))
             .filter(messagesOlderThanArchiveDate(archiveDate))
-            .flatMap(mailboxMessage -> archiveMessage(mailboxMessage, mailboxSession, jmapSettings), ReactorUtils.DEFAULT_CONCURRENCY)
+            .flatMap(mailboxMessage -> archiveMessage(mailboxMessage, mailboxSession, jmapSettings, context), ReactorUtils.DEFAULT_CONCURRENCY)
             .then(Mono.just(Task.Result.COMPLETED))
             .onErrorResume(e -> {
                 LOGGER.error("Error while archiving INBOX for user {}", username.asString(), e);
@@ -101,19 +101,19 @@ public class InboxArchivalService {
             .before(archiveDate);
     }
 
-    private Mono<Void> archiveMessage(MailboxMessage mailboxMessage, MailboxSession mailboxSession, JmapSettings jmapSettings) {
+    private Mono<Void> archiveMessage(MailboxMessage mailboxMessage, MailboxSession mailboxSession, JmapSettings jmapSettings, InboxArchivalTask.Context context) {
         return switch (jmapSettings.inboxArchivalFormat().toString()) {
-            case "yearly" -> yearlyArchive(mailboxMessage, mailboxSession);
-            case "monthly" -> monthlyArchive(mailboxMessage, mailboxSession);
-            default -> singleArchive(mailboxMessage, mailboxSession);
+            case YEARLY_FORMAT -> yearlyArchive(mailboxMessage, mailboxSession, context);
+            case MONTHLY_FORMAT -> monthlyArchive(mailboxMessage, mailboxSession, context);
+            default -> singleArchive(mailboxMessage, mailboxSession, context);
         };
     }
 
-    private Mono<Void> singleArchive(MailboxMessage mailboxMessage, MailboxSession mailboxSession) {
-        return moveMessage(mailboxMessage, mailboxSession, MailboxPath.forUser(mailboxSession.getUser(), DefaultMailboxes.ARCHIVE));
+    private Mono<Void> singleArchive(MailboxMessage mailboxMessage, MailboxSession mailboxSession, InboxArchivalTask.Context context) {
+        return moveMessage(mailboxMessage, mailboxSession, MailboxPath.forUser(mailboxSession.getUser(), DefaultMailboxes.ARCHIVE), context);
     }
 
-    private Mono<Void> yearlyArchive(MailboxMessage mailboxMessage, MailboxSession mailboxSession) {
+    private Mono<Void> yearlyArchive(MailboxMessage mailboxMessage, MailboxSession mailboxSession, InboxArchivalTask.Context context) {
         int savedYear = mailboxMessage.getSaveDate()
             .orElse(mailboxMessage.getInternalDate())
             .toInstant()
@@ -122,25 +122,31 @@ public class InboxArchivalService {
             .getYear();
         MailboxPath yearlyArchiveSubMailbox = MailboxPath.forUser(mailboxSession.getUser(), String.format("Archive.%d", savedYear));
 
-        return moveMessage(mailboxMessage, mailboxSession, yearlyArchiveSubMailbox);
+        return moveMessage(mailboxMessage, mailboxSession, yearlyArchiveSubMailbox, context);
     }
 
-    private Mono<Void> monthlyArchive(MailboxMessage mailboxMessage, MailboxSession mailboxSession) {
+    private Mono<Void> monthlyArchive(MailboxMessage mailboxMessage, MailboxSession mailboxSession, InboxArchivalTask.Context context) {
         LocalDate savedDate = mailboxMessage.getSaveDate()
             .orElse(mailboxMessage.getInternalDate())
             .toInstant()
             .atZone(ZoneId.of("UTC"))
             .toLocalDate();
         MailboxPath monthlyArchiveSubMailbox = MailboxPath.forUser(mailboxSession.getUser(),
-            String.format("Archive.%d.%s", savedDate.getYear(), savedDate.getMonth().getDisplayName(TextStyle.FULL, Locale.US)));
+            String.format("Archive.%d.%d", savedDate.getYear(), savedDate.getMonth().getValue()));
 
-        return moveMessage(mailboxMessage, mailboxSession, monthlyArchiveSubMailbox);
+        return moveMessage(mailboxMessage, mailboxSession, monthlyArchiveSubMailbox, context);
     }
 
-    private Mono<Void> moveMessage(MailboxMessage mailboxMessage, MailboxSession mailboxSession, MailboxPath archiveMailbox) {
-        return Mono.from(mailboxManager.moveMessagesReactive(MessageRange.one(mailboxMessage.getUid()), MailboxPath.inbox(mailboxSession.getUser()), archiveMailbox, mailboxSession))
+    private Mono<Void> moveMessage(MailboxMessage mailboxMessage, MailboxSession mailboxSession, MailboxPath archiveMailbox, InboxArchivalTask.Context context) {
+        MailboxPath inbox = MailboxPath.inbox(mailboxSession.getUser());
+        return Mono.from(mailboxManager.moveMessagesReactive(MessageRange.one(mailboxMessage.getUid()), inbox, archiveMailbox, mailboxSession))
             .onErrorResume(MailboxNotFoundException.class, e -> Mono.from(mailboxManager.createMailboxReactive(archiveMailbox, mailboxSession))
-                .then(Mono.from(mailboxManager.moveMessagesReactive(MessageRange.one(mailboxMessage.getUid()), MailboxPath.inbox(mailboxSession.getUser()), archiveMailbox, mailboxSession))))
+                .then(Mono.from(mailboxManager.moveMessagesReactive(MessageRange.one(mailboxMessage.getUid()), inbox, archiveMailbox, mailboxSession))))
+            .then(Mono.fromRunnable(() -> context.increaseArchivedMessageCount(1)))
+            .doOnError(e -> {
+                LOGGER.error("Error when archiving messageId {} from mailbox {} to mailbox {}", mailboxMessage.getMessageId().serialize(), inbox.asString(), archiveMailbox.asString(), e);
+                context.increaseErrorMessageCount();
+            })
             .then();
     }
 }
