@@ -11,11 +11,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 
 public record CleanupTrashTaskAdditionalInformationDTO(@JsonProperty("type") String type,
-                                                      @JsonProperty("processedUsersCount") long processedUsersCount,
+                                                       @JsonProperty("processedUsersCount") long processedUsersCount,
                                                        @JsonProperty("deletedMessagesCount") long deletedMessagesCount,
-                                                      @JsonProperty("failedUsers") ImmutableList<String> failedUsers,
-                                                      @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions,
-                                                      @JsonProperty("timestamp") Instant timestamp) implements AdditionalInformationDTO {
+                                                       @JsonProperty("failedUsers") ImmutableList<String> failedUsers,
+                                                       @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions, 
+                                                       @JsonProperty("timestamp") Instant timestamp) implements AdditionalInformationDTO {
 
     public static AdditionalInformationDTOModule<CleanupTaskDetails, CleanupTrashTaskAdditionalInformationDTO> module() {
         return DTOModule.forDomainObject(CleanupTaskDetails.class)
