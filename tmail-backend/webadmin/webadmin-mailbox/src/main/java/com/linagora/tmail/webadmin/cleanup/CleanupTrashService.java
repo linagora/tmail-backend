@@ -34,7 +34,7 @@ import reactor.core.publisher.Mono;
 
 public class CleanupTrashService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CleanupTrashService.class);
-    private static final Map<String, Period> mapPeriodSettingToDuration = ImmutableMap.of(JmapSettings.weeklyPeriod(), Period.ofWeeks(1),
+    private static final Map<String, Period> MAP_PERIOD_SETTING_TO_DURATION = ImmutableMap.of(JmapSettings.weeklyPeriod(), Period.ofWeeks(1),
         JmapSettings.monthlyPeriod(), Period.ofMonths(1));
 
     private final UsersRepository usersRepository;
@@ -53,12 +53,12 @@ public class CleanupTrashService {
         this.clock = clock;
     }
 
-    public Mono<Task.Result> cleanupTrash(RunningOptions runningOptions) {
+    public Mono<Task.Result> cleanupTrash(RunningOptions runningOptions, CleanupContext context) {
         return Flux.from(usersRepository.listReactive())
             .transform(ReactorUtils.<Username, Task.Result>throttle()
                 .elements(runningOptions.getUsersPerSecond())
                 .per(Duration.ofSeconds(1))
-                .forOperation(this::cleanupTrashForSingleUser))
+                .forOperation(username -> cleanupTrashForSingleUser(username, context)))
             .reduce(Task.Result.COMPLETED, Task::combine)
             .onErrorResume(e -> {
                 LOGGER.error("Error while accessing users from repository", e);
@@ -66,44 +66,65 @@ public class CleanupTrashService {
             });
     }
 
-    private Mono<Task.Result> cleanupTrashForSingleUser(Username username) {
+    private Mono<Task.Result> cleanupTrashForSingleUser(Username username, CleanupContext context) {
         return Mono.from(jmapSettingsRepository.get(username))
-            .flatMap(jmapSettings -> cleanupTrashForSingleUser(username, jmapSettings))
+            .flatMap(jmapSettings -> cleanupTrashForSingleUser(username, jmapSettings, context))
             .defaultIfEmpty(Task.Result.COMPLETED)
-            .onErrorResume(e -> {
+            .doOnNext(result -> {
+                LOGGER.info("Trash mailbox is cleaned for user {}", username);
+                context.incrementProcessed();
+            }).onErrorResume(e -> {
                 LOGGER.error("Error while cleaning trash for user {}", username, e);
+                context.addToFailedUsers(username.asString());
                 return Mono.just(Task.Result.PARTIAL);
             });
     }
 
-    private Mono<Task.Result> cleanupTrashForSingleUser(Username username, JmapSettings jmapSettings) {
+    private Mono<Task.Result> cleanupTrashForSingleUser(Username username, JmapSettings jmapSettings, CleanupContext context) {
         if (jmapSettings.trashCleanupEnabled()) {
-            return cleanupTrashForSingleUserWithSpecificPeriod(username,
-                mapPeriodSettingToDuration.getOrDefault(jmapSettings.trashCleanupSetting(), Period.ofMonths(1)));
+            return cleanupTrashForSingleUser(username,
+                toPeriod(jmapSettings.trashCleanupPeriod()),
+                context);
         } else {
             return Mono.just(Task.Result.COMPLETED);
         }
     }
 
-    private Mono<Task.Result> cleanupTrashForSingleUserWithSpecificPeriod(Username username, Period period) {
+    private Period toPeriod(String trashCleanupPeriod) {
+        return MAP_PERIOD_SETTING_TO_DURATION.getOrDefault(trashCleanupPeriod, Period.ofMonths(1));
+    }
+
+    private Mono<Task.Result> cleanupTrashForSingleUser(Username username, Period period, CleanupContext context) {
         return getMessageManagerForTrashMailbox(username)
             .flatMap(messageManager ->
-                deleteExpiredMessages(storeMailboxManager.getSessionProvider().createSystemSession(username),
-                    getExpiredDate(period),
-                    messageManager))
+                deleteExpiredMessages(getExpiredDate(period),
+                    context,
+                    messageManager,
+                    getMailboxSession(username)))
             .then(Mono.just(Task.Result.COMPLETED));
+    }
+
+    private MailboxSession getMailboxSession(Username username) {
+        return storeMailboxManager.createSystemSession(username);
     }
 
     private Mono<MessageManager> getMessageManagerForTrashMailbox(Username username) {
         return Mono.from(systemMailboxesProvider.getMailboxByRole(Role.TRASH, username));
     }
 
-    private Mono<Void> deleteExpiredMessages(MailboxSession mailboxSession, Instant expiredDate, MessageManager messageManager) {
+    private Mono<Void> deleteExpiredMessages(Instant expiredDate, CleanupContext context, MessageManager messageManager, MailboxSession mailboxSession) {
         return Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
+            .map(messageResult -> {
+                return messageResult;
+            })
             .filter(messageResult -> messageResult.getSaveDate().orElse(messageResult.getInternalDate()).toInstant().isBefore(expiredDate))
             .map(MessageResult::getUid)
             .collect(ImmutableList.toImmutableList())
-            .flatMap(messageUids -> messageManager.deleteReactive(messageUids, mailboxSession));
+            .flatMap(messageUids -> messageManager.deleteReactive(messageUids, mailboxSession)
+                .doOnSuccess(unused -> {
+                    context.incrementDeletedMessagesCount(messageUids.size());
+                })
+            );
     }
 
     private Instant getExpiredDate(Period period) {

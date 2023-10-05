@@ -61,7 +61,7 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
   def trashCleanupEnabled(): Boolean =
     settings.get(trashCleanupEnabledSetting).exists(trashCleanupEnabled => trashCleanupEnabled.value.toBoolean)
 
-  def trashCleanupSetting(): String =
+  def trashCleanupPeriod(): String =
     settings.get(trashCleanupPeriodSetting)
       .map(trashCleanupPeriod => trashCleanupPeriod.value)
       .getOrElse(monthlyPeriod)

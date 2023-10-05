@@ -644,7 +644,7 @@ Valid status includes:
 === Clean Trash
 
 ....
-curl -XGET http://ip:port/mailboxes?usersPerSecond={usersPerSecondValue}
+curl -POST http://ip:port/mailboxes?task=CleanupTrash&usersPerSecond={usersPerSecondValue}
 ....
 
 Delete all messages in the trash mailbox that are expired
