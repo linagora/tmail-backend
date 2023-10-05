@@ -228,6 +228,21 @@ Setting value: One in these values (`weekly`, `monthly`). Optional. Default valu
 
 This setting is used to determine if a message in trash should be keep or deleted. For example, if the value is `weekly`, any messages that exist for more than a week would be deleted.
 
+=== Spam cleanup enable
+
+Setting key: `spam.cleanup.enabled`
+Optional. Boolean as String. Default value to `false`.
+
+This setting is used to enable/disable the spam cleanup function.
+
+=== Spam cleanup period
+
+Setting key: `spam.cleanup.period`
+Optional. One in these values (`weekly`, `monthly`). Defaults to `monthly`.
+
+This setting is used to determine if a message in spam should be kept or deleted.
+For example, if the value is `weekly`, any messages that exists for more than a week will be deleted when running the spam cleanup task.
+
 === Inbox archival settings
 The following settings are related to the Inbox archival automation task that allows old messages in user's INBOX to be archived.
 

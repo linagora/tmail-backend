@@ -5,7 +5,7 @@ import java.util.Locale
 
 import com.google.common.base.CharMatcher
 import com.linagora.tmail.james.jmap.settings.InboxArchivalFormat.InboxArchivalFormat
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, cleanupDefaultPeriod, mapPeriodSettingToPeriod, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
+import com.linagora.tmail.james.jmap.settings.JmapSettings.{INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, cleanupDefaultPeriod, spamCleanupEnabledSetting, spamCleanupPeriodSetting, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsKey.SettingKeyType
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
@@ -83,14 +83,20 @@ object JmapSettings {
   val trashCleanupEnabledSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.enabled")
   val trashCleanupPeriodSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.period")
 
+  val spamCleanupEnabledSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("spam.cleanup.enabled")
+  val spamCleanupPeriodSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("spam.cleanup.period")
+
   val weeklyPeriod: String = "weekly"
   val monthlyPeriod: String = "monthly"
 
   val cleanupDefaultPeriod: Period = Period.ofMonths(1)
 
-  val mapPeriodSettingToPeriod: Map[String, Period] = Map(
-    JmapSettings.weeklyPeriod -> Period.ofWeeks(1),
-    JmapSettings.monthlyPeriod -> Period.ofMonths(1))
+  def parsePeriod(string: String): Option[Period] =
+    string.toLowerCase(Locale.US) match {
+      case JmapSettings.weeklyPeriod => Some(Period.ofWeeks(1))
+      case JmapSettings.monthlyPeriod => Some(Period.ofMonths(1))
+      case _ => None
+    }
 
   val INBOX_ARCHIVAL_ENABLE_KEY = "inbox.archival.enabled"
   val INBOX_ARCHIVAL_PERIOD_KEY = "inbox.archival.period"
@@ -107,8 +113,15 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
 
   def trashCleanupPeriod(): Period =
     settings.get(trashCleanupPeriodSetting)
-      .map(trashCleanupPeriod => trashCleanupPeriod.value)
-      .map(periodString => mapPeriodSettingToPeriod.getOrElse(periodString, cleanupDefaultPeriod))
+      .flatMap(trashCleanupPeriod => JmapSettings.parsePeriod(trashCleanupPeriod.value))
+      .getOrElse(cleanupDefaultPeriod)
+
+  def spamCleanupEnabled(): Boolean =
+    settings.get(spamCleanupEnabledSetting).exists(spamCleanupEnabled => spamCleanupEnabled.value.toBoolean)
+
+  def spamCleanupPeriod(): Period =
+    settings.get(spamCleanupPeriodSetting)
+      .flatMap(spamCleanupPeriod => JmapSettings.parsePeriod(spamCleanupPeriod.value))
       .getOrElse(cleanupDefaultPeriod)
 
   def inboxArchivalEnable(): Boolean =

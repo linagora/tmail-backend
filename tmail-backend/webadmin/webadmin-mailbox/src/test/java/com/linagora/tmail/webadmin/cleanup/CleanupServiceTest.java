@@ -65,9 +65,8 @@ public class CleanupServiceTest {
         domainList.addDomain(DOMAIN);
         MemoryUsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
         usersRepository.addUser(BOB, "anyPassword");
-        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB,
-                DefaultMailboxes.TRASH),
-            bobMailboxSession);
+        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.TRASH), bobMailboxSession);
+        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.SPAM), bobMailboxSession);
         bobMessageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         JmapSettingsRepository jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
@@ -176,6 +175,111 @@ public class CleanupServiceTest {
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
+            .hasSize(1);
+    }
+
+    @Test
+    void cleanupSpamShouldRemoveMessageWhenMessageIsExpiredAndPeriodSettingIsWeekly() throws Exception {
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("spam.cleanup.enabled", "true",
+            "spam.cleanup.period", "weekly"));
+
+        MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.SPAM, BOB);
+        messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+            new Date(),
+            bobMailboxSession,
+            false,
+            new Flags());
+
+        clock.setInstant(clock.instant().plus(8, ChronoUnit.DAYS));
+
+        assertThat(cleanupService.cleanup(Role.SPAM, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
+            .collect(ImmutableList.toImmutableList())
+            .block())
+            .hasSize(0);
+    }
+
+    @Test
+    void cleanupSpamShouldKeepMessageWhenMessageIsNotExpiredAndPeriodSettingIsWeekly() throws Exception {
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("spam.cleanup.enabled", "true",
+            "spam.cleanup.period", "weekly"));
+
+        MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.SPAM, BOB);
+        messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+            new Date(),
+            bobMailboxSession,
+            false,
+            new Flags());
+
+        clock.setInstant(clock.instant().plus(5, ChronoUnit.DAYS));
+
+        assertThat(cleanupService.cleanup(Role.SPAM, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
+            .collect(ImmutableList.toImmutableList())
+            .block())
+            .hasSize(1);
+    }
+
+    @Test
+    void cleanupSpamShouldRemoveMessageWhenMessageIsExpiredAndPeriodSettingIsMonthly() throws Exception {
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("spam.cleanup.enabled", "true",
+            "spam.cleanup.period", "monthly"));
+
+        MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.SPAM, BOB);
+        messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+            new Date(),
+            bobMailboxSession,
+            false,
+            new Flags());
+
+        clock.setInstant(clock.instant().plus(45, ChronoUnit.DAYS));
+
+        assertThat(cleanupService.cleanup(Role.SPAM, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
+            .collect(ImmutableList.toImmutableList())
+            .block())
+            .hasSize(0);
+    }
+
+    @Test
+    void cleanupSpamShouldKeepMessageWhenMessageIsNotExpiredAndPeriodSettingIsMonthly() throws Exception {
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("spam.cleanup.enabled", "true",
+            "spam.cleanup.period", "monthly"));
+
+        MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.SPAM, BOB);
+        messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+            new Date(),
+            bobMailboxSession,
+            false,
+            new Flags());
+
+        clock.setInstant(clock.instant().plus(15, ChronoUnit.DAYS));
+
+        assertThat(cleanupService.cleanup(Role.SPAM, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
+            .collect(ImmutableList.toImmutableList())
+            .block())
+            .hasSize(1);
+    }
+
+    @Test
+    void cleanupSpamShouldKeepMessageWhenSpamCleanupEnabledSettingIsFalse() throws Exception {
+        jmapSettingsRepositoryUtils.reset(BOB, Map.of("spam.cleanup.enabled", "false",
+            "spam.cleanup.period", "weekly"));
+
+        MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.SPAM, BOB);
+        messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+            new Date(),
+            bobMailboxSession,
+            false,
+            new Flags());
+
+        clock.setInstant(clock.instant().plus(8, ChronoUnit.DAYS));
+
+        assertThat(cleanupService.cleanup(Role.SPAM, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
+            .collect(ImmutableList.toImmutableList())
+            .block())
             .hasSize(1);
     }
 }

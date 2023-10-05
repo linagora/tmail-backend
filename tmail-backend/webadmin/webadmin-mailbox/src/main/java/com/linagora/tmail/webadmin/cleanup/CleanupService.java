@@ -63,8 +63,8 @@ public class CleanupService {
 
     private Mono<Task.Result> cleanupForSingleUser(Role role, Username username, CleanupContext context) {
         return Mono.from(jmapSettingsRepository.get(username))
-            .filter(JmapSettings::trashCleanupEnabled)
-            .flatMap(jmapSettings -> cleanupForSingleUser(role, username, jmapSettings.trashCleanupPeriod(), context))
+            .filter(jmapSettings -> checkCleanupEnabled(role, jmapSettings))
+            .flatMap(jmapSettings -> cleanupForSingleUser(role, username, periodByRole(role, jmapSettings), context))
             .defaultIfEmpty(Task.Result.COMPLETED)
             .doOnNext(result -> {
                 LOGGER.info("Trash mailbox is cleaned for user {}", username);
@@ -76,8 +76,20 @@ public class CleanupService {
             });
     }
 
+    private boolean checkCleanupEnabled(Role role, JmapSettings jmapSettings) {
+        return Role.TRASH.equals(role) && jmapSettings.trashCleanupEnabled()
+            || Role.SPAM.equals(role) && jmapSettings.spamCleanupEnabled();
+    }
+
+    private Period periodByRole(Role role, JmapSettings jmapSettings) {
+        if (Role.TRASH.equals(role)) {
+            return jmapSettings.trashCleanupPeriod();
+        }
+        return jmapSettings.spamCleanupPeriod();
+    }
+
     private Mono<Task.Result> cleanupForSingleUser(Role role, Username username, Period period, CleanupContext context) {
-        return getMessageManagerForTrashMailbox(role, username)
+        return getMessageManagerForMailbox(role, username)
             .flatMap(messageManager ->
                 deleteExpiredMessages(getExpiredDate(period),
                     context,
@@ -90,7 +102,7 @@ public class CleanupService {
         return sessionProvider.createSystemSession(username);
     }
 
-    private Mono<MessageManager> getMessageManagerForTrashMailbox(Role role, Username username) {
+    private Mono<MessageManager> getMessageManagerForMailbox(Role role, Username username) {
         return Mono.from(systemMailboxesProvider.getMailboxByRole(role, username));
     }
 

@@ -50,6 +50,7 @@ public abstract class CleanupIntegrationContract {
 
         MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
         mailboxProbe.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.TRASH));
+        mailboxProbe.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.SPAM));
 
         WebAdminGuiceProbe webAdminGuiceProbe = server.getProbe(WebAdminGuiceProbe.class);
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminGuiceProbe.getWebAdminPort())
@@ -109,6 +110,67 @@ public abstract class CleanupIntegrationContract {
     void cleanupTrashTaskShouldFailWhenQueryParaValueIsInvalid() {
         given()
             .queryParam("task", "CleanupTrash")
+            .queryParam("usersPerSecond", "abc")
+            .post()
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .body("statusCode", is(400))
+            .body("type", is(ErrorResponder.ErrorType.INVALID_ARGUMENT.getType()))
+            .body("message", is("Invalid arguments supplied in the user request"))
+            .body("details", is("Illegal value supplied for query parameter 'usersPerSecond', expecting a strictly positive optional integer"));
+    }
+
+    @Test
+    void cleanupSpamShouldBeExposed() {
+        given()
+            .queryParam("task", "CleanupSpam")
+            .post()
+        .then()
+            .statusCode(201)
+            .body("taskId", notNullValue());
+    }
+
+    @Test
+    void cleanupSpamTaskShouldWork(GuiceJamesServer server, UpdatableTickingClock clock) throws Exception {
+        server.getProbe(JmapSettingsProbe.class)
+            .reset(BOB, Map.of(JmapSettings.spamCleanupEnabledSetting().asString(),
+                "true",
+                JmapSettings.spamCleanupPeriodSetting().asString(),
+                JmapSettings.weeklyPeriod()));
+
+        clock.setInstant(VERY_OLD_INSTANT);
+        appendMessage(BOB, MailboxPath.forUser(BOB, DefaultMailboxes.SPAM), server);
+
+        clock.setInstant(Instant.now());
+
+        String taskId = given()
+            .queryParam("task", "CleanupSpam")
+            .post()
+            .jsonPath()
+            .getString("taskId");
+
+        given()
+            .basePath(TasksRoutes.BASE)
+            .get(taskId + "/await")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("status", is("completed"))
+            .body("taskId", is(taskId))
+            .body("startedDate", is(notNullValue()))
+            .body("completedDate", is(notNullValue()))
+            .body("submitDate", is(notNullValue()))
+            .body("type", is("cleanup-spam"))
+            .body("additionalInformation.timestamp", is(notNullValue()))
+            .body("additionalInformation.type", is("cleanup-spam"))
+            .body("additionalInformation.processedUsersCount", is(1))
+            .body("additionalInformation.deletedMessagesCount", is(1))
+            .body("additionalInformation.failedUsers", is(empty()));
+    }
+
+    @Test
+    void cleanupSpamTaskShouldFailWhenQueryParaValueIsInvalid() {
+        given()
+            .queryParam("task", "CleanupSpam")
             .queryParam("usersPerSecond", "abc")
             .post()
         .then()

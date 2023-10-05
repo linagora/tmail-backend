@@ -23,6 +23,10 @@ public class MailboxesCleanupModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), TaskFromRequestRegistry.TaskRegistration.class, Names.named(ALL_MAILBOXES_TASKS))
             .addBinding()
             .to(CleanupTrashTaskRegistration.class);
+
+        Multibinder.newSetBinder(binder(), TaskFromRequestRegistry.TaskRegistration.class, Names.named(ALL_MAILBOXES_TASKS))
+            .addBinding()
+            .to(CleanupSpamTaskRegistration.class);
     }
 
     @ProvidesIntoSet
@@ -31,13 +35,29 @@ public class MailboxesCleanupModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
+    public TaskDTOModule<? extends Task, ? extends TaskDTO> cleanupSpamTaskDTO(CleanupService cleanupService) {
+        return CleanupSpamTaskDTO.module(cleanupService);
+    }
+
+    @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> cleanupTrashTaskAdditionalInformation() {
-        return CleanupTaskAdditionalInformationDTO.cleanupTrashModule();
+        return CleanupTrashTaskAdditionalInformationDTO.module();
     }
 
     @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> webAdminCleanupTrashTaskAdditionalInformation() {
-        return CleanupTaskAdditionalInformationDTO.cleanupTrashModule();
+        return CleanupTrashTaskAdditionalInformationDTO.module();
+    }
+
+    @ProvidesIntoSet
+    public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> cleanupSpamTaskAdditionalInformation() {
+        return CleanupSpamTaskAdditionalInformationDTO.module();
+    }
+
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
+    @ProvidesIntoSet
+    public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> webAdminCleanupSpamTaskAdditionalInformation() {
+        return CleanupSpamTaskAdditionalInformationDTO.module();
     }
 }
