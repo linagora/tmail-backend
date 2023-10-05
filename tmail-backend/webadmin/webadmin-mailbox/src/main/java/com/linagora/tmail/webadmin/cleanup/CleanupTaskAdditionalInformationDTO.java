@@ -10,24 +10,24 @@ import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 
-public record CleanupTrashTaskAdditionalInformationDTO(@JsonProperty("type") String type,
-                                                       @JsonProperty("processedUsersCount") long processedUsersCount,
-                                                       @JsonProperty("deletedMessagesCount") long deletedMessagesCount,
-                                                       @JsonProperty("failedUsers") ImmutableList<String> failedUsers,
-                                                       @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions, 
-                                                       @JsonProperty("timestamp") Instant timestamp) implements AdditionalInformationDTO {
+public record CleanupTaskAdditionalInformationDTO(@JsonProperty("type") String type,
+                                                  @JsonProperty("processedUsersCount") long processedUsersCount,
+                                                  @JsonProperty("deletedMessagesCount") long deletedMessagesCount,
+                                                  @JsonProperty("failedUsers") ImmutableList<String> failedUsers,
+                                                  @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions,
+                                                  @JsonProperty("timestamp") Instant timestamp) implements AdditionalInformationDTO {
 
-    public static AdditionalInformationDTOModule<CleanupTaskDetails, CleanupTrashTaskAdditionalInformationDTO> module() {
+    public static AdditionalInformationDTOModule<CleanupTaskDetails, CleanupTaskAdditionalInformationDTO> cleanupTrashModule() {
         return DTOModule.forDomainObject(CleanupTaskDetails.class)
-            .convertToDTO(CleanupTrashTaskAdditionalInformationDTO.class)
-            .toDomainObjectConverter(CleanupTrashTaskAdditionalInformationDTO::toDomainObject)
-            .toDTOConverter(CleanupTrashTaskAdditionalInformationDTO::fromDomainObject)
+            .convertToDTO(CleanupTaskAdditionalInformationDTO.class)
+            .toDomainObjectConverter(CleanupTaskAdditionalInformationDTO::toDomainObject)
+            .toDTOConverter(CleanupTaskAdditionalInformationDTO::fromDomainObject)
             .typeName(CleanupTrashTask.TASK_TYPE.asString())
             .withFactory(AdditionalInformationDTOModule::new);
     }
 
-    private static CleanupTrashTaskAdditionalInformationDTO fromDomainObject(CleanupTaskDetails details, String type) {
-        return new CleanupTrashTaskAdditionalInformationDTO(type,
+    private static CleanupTaskAdditionalInformationDTO fromDomainObject(CleanupTaskDetails details, String type) {
+        return new CleanupTaskAdditionalInformationDTO(type,
             details.processedUsersCount(),
             details.deletedMessagesCount(),
             details.failedUsers(),

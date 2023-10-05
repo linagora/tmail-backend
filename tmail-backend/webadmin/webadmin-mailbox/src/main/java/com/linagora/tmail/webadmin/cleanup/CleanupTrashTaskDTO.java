@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record CleanupTrashTaskDTO(@JsonProperty("type") String type, @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions) implements TaskDTO {
 
-    public static TaskDTOModule<CleanupTrashTask, CleanupTrashTaskDTO> module(CleanupTrashService service) {
+    public static TaskDTOModule<CleanupTrashTask, CleanupTrashTaskDTO> module(CleanupService service) {
         return DTOModule.forDomainObject(CleanupTrashTask.class)
             .convertToDTO(CleanupTrashTaskDTO.class)
             .toDomainObjectConverter(dto -> new CleanupTrashTask(service,

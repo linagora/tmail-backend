@@ -35,7 +35,7 @@ import com.linagora.tmail.james.jmap.settings.JmapSettings;
 
 import io.restassured.RestAssured;
 
-public abstract class CleanupTrashIntegrationContract {
+public abstract class CleanupIntegrationContract {
 
     private static final String BASE_PATH = Constants.SEPARATOR + "mailboxes";
     protected static final Domain DOMAIN = Domain.of("domain.tld");
