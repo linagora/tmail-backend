@@ -34,8 +34,8 @@ import reactor.core.publisher.Mono;
 
 public class CleanupTrashService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CleanupTrashService.class);
-    private static final Map<String, Period> MAP_PERIOD_SETTING_TO_DURATION = ImmutableMap.of(JmapSettings.weeklyPeriod(), Period.ofWeeks(1),
-        JmapSettings.monthlyPeriod(), Period.ofMonths(1));
+    private static final Map<String, Period> MAP_PERIOD_SETTING_TO_DURATION = ImmutableMap.of(JmapSettings.WeeklyPeriod(), Period.ofWeeks(1),
+        JmapSettings.MonthlyPeriod(), Period.ofMonths(1));
 
     private final UsersRepository usersRepository;
     private final JmapSettingsRepository jmapSettingsRepository;
@@ -105,7 +105,7 @@ public class CleanupTrashService {
     }
 
     private MailboxSession getMailboxSession(Username username) {
-        return storeMailboxManager.createSystemSession(username);
+        return storeMailboxManager.getSessionProvider().createSystemSession(username);
     }
 
     private Mono<MessageManager> getMessageManagerForTrashMailbox(Username username) {
@@ -114,9 +114,6 @@ public class CleanupTrashService {
 
     private Mono<Void> deleteExpiredMessages(Instant expiredDate, CleanupContext context, MessageManager messageManager, MailboxSession mailboxSession) {
         return Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
-            .map(messageResult -> {
-                return messageResult;
-            })
             .filter(messageResult -> messageResult.getSaveDate().orElse(messageResult.getInternalDate()).toInstant().isBefore(expiredDate))
             .map(MessageResult::getUid)
             .collect(ImmutableList.toImmutableList())

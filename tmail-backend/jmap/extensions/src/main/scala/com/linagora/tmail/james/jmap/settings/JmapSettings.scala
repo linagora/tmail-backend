@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap.settings
 
 import com.google.common.base.CharMatcher
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{monthlyPeriod, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
+import com.linagora.tmail.james.jmap.settings.JmapSettings.{MonthlyPeriod, TrashCleanupEnabledSetting, TrashCleanupPeriodSetting}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsKey.SettingKeyType
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
@@ -50,21 +50,21 @@ case class JmapSettingsValue(value: String) extends AnyVal
 trait JmapSettingEntry
 
 object JmapSettings {
-  val trashCleanupEnabledSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.enabled")
-  val trashCleanupPeriodSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.period")
+  val TrashCleanupEnabledSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.enabled")
+  val TrashCleanupPeriodSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.period")
 
-  val weeklyPeriod: String = "weekly"
-  val monthlyPeriod: String = "monthly"
+  val WeeklyPeriod: String = "weekly"
+  val MonthlyPeriod: String = "monthly"
 }
 
 case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state: UuidState) {
   def trashCleanupEnabled(): Boolean =
-    settings.get(trashCleanupEnabledSetting).exists(trashCleanupEnabled => trashCleanupEnabled.value.toBoolean)
+    settings.get(TrashCleanupEnabledSetting).exists(trashCleanupEnabled => trashCleanupEnabled.value.toBoolean)
 
   def trashCleanupPeriod(): String =
-    settings.get(trashCleanupPeriodSetting)
+    settings.get(TrashCleanupPeriodSetting)
       .map(trashCleanupPeriod => trashCleanupPeriod.value)
-      .getOrElse(monthlyPeriod)
+      .getOrElse(MonthlyPeriod)
 }
 
 case class JmapSettingsUpsertRequest(settings: Map[JmapSettingsKey, JmapSettingsValue])

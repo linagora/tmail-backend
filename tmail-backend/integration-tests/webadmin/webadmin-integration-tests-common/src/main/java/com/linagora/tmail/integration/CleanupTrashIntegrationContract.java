@@ -63,7 +63,7 @@ public abstract class CleanupTrashIntegrationContract {
         given()
             .queryParam("task", "CleanupTrash")
             .post()
-            .then()
+        .then()
             .statusCode(201)
             .body("taskId", notNullValue());
     }
@@ -71,10 +71,10 @@ public abstract class CleanupTrashIntegrationContract {
     @Test
     void cleanupTrashTaskShouldWork(GuiceJamesServer server, UpdatableTickingClock clock) throws Exception {
         server.getProbe(JmapSettingsProbe.class)
-            .reset(BOB, Map.of(JmapSettings.trashCleanupEnabledSetting().asString(),
+            .reset(BOB, Map.of(JmapSettings.TrashCleanupEnabledSetting().asString(),
                 "true",
-                JmapSettings.trashCleanupPeriodSetting().asString(),
-                JmapSettings.weeklyPeriod()));
+                JmapSettings.TrashCleanupPeriodSetting().asString(),
+                JmapSettings.WeeklyPeriod()));
 
         clock.setInstant(VERY_OLD_INSTANT);
         appendMessage(BOB, MailboxPath.forUser(BOB, DefaultMailboxes.TRASH), server);

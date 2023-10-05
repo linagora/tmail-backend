@@ -74,10 +74,10 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldRemoveMessageWhenMessageIsExpiredAndPeriodSettingIsWeekly() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
+                JmapSettings.TrashCleanupEnabledSetting(),
                 new JmapSettingsValue("true"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
+                JmapSettings.TrashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.WeeklyPeriod()))
             ))))).block();
 
         MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
@@ -102,10 +102,10 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldKeepMessageWhenMessageIsNotExpiredAndPeriodSettingIsWeekly() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
+                JmapSettings.TrashCleanupEnabledSetting(),
                 new JmapSettingsValue("true"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
+                JmapSettings.TrashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.WeeklyPeriod()))
             ))))).block();
 
         MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
@@ -130,10 +130,10 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldRemoveMessageWhenMessageIsExpiredAndPeriodSettingIsMonthly() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
+                JmapSettings.TrashCleanupEnabledSetting(),
                 new JmapSettingsValue("true"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.monthlyPeriod()))
+                JmapSettings.TrashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.MonthlyPeriod()))
             ))))).block();
 
         MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
@@ -158,10 +158,10 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldKeepMessageWhenMessageIsNotExpiredAndPeriodSettingIsMonthly() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
+                JmapSettings.TrashCleanupEnabledSetting(),
                 new JmapSettingsValue("true"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.monthlyPeriod()))
+                JmapSettings.TrashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.MonthlyPeriod()))
             ))))).block();
 
         MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
@@ -186,10 +186,10 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldKeepMessageWhenTrashCleanupEnabledSettingIsFalse() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.trashCleanupEnabledSetting(),
+                JmapSettings.TrashCleanupEnabledSetting(),
                 new JmapSettingsValue("false"),
-                JmapSettings.trashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
+                JmapSettings.TrashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.WeeklyPeriod()))
             ))))).block();
 
         MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
