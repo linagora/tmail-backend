@@ -658,6 +658,23 @@ Return codes:
  - `201` Success. Corresponding task id is returned.
  - `400` Error in the request. Details can be found in the reported error.
 
+=== Clean Spam
+
+....
+curl -XPOST http://ip:port/mailboxes?task=CleanupSpam&usersPerSecond={usersPerSecondValue}
+....
+
+Delete all messages in the spam mailbox that are expired
+
+An admin can specify the concurrency that should be used when running the task:
+
+- usersPerSecond rate at which users should be processed, per second. Default to 1.
+
+Return codes:
+
+- `201` Success. Corresponding task id is returned.
+- `400` Error in the request. Details can be found in the reported error.
+
 === Inbox archival
 
 The Inbox archival task that allows old messages in users' INBOX to be archived.

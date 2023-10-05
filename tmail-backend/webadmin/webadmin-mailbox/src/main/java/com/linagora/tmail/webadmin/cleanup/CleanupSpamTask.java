@@ -8,22 +8,22 @@ import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.task.TaskType;
 
-public class CleanupTrashTask implements Task {
-    static final TaskType TASK_TYPE = TaskType.of("cleanup-trash");
+public class CleanupSpamTask implements Task {
+    static final TaskType TASK_TYPE = TaskType.of("cleanup-spam");
 
     private final CleanupService cleanupService;
     private final RunningOptions runningOptions;
     private final CleanupContext context;
 
-    public CleanupTrashTask(CleanupService cleanupService, RunningOptions runningOptions) {
+    public CleanupSpamTask(CleanupService cleanupService, RunningOptions runningOptions) {
         this.cleanupService = cleanupService;
         this.runningOptions = runningOptions;
-        this.context = new CleanupContext();
+        this.context =  new CleanupContext();
     }
 
     @Override
-    public Result run() throws InterruptedException {
-        return cleanupService.cleanup(Role.TRASH, runningOptions, context).block();
+    public Task.Result run() throws InterruptedException {
+        return cleanupService.cleanup(Role.SPAM, runningOptions, context).block();
     }
 
     @Override
@@ -38,7 +38,7 @@ public class CleanupTrashTask implements Task {
     @Override
     public Optional<TaskExecutionDetails.AdditionalInformation> details() {
         CleanupContext.Snapshot snapshot = context.snapshot();
-        return Optional.of(new CleanupTrashTaskDetails(Clock.systemUTC().instant(),
+        return Optional.of(new CleanupSpamTaskDetails(Clock.systemUTC().instant(),
             snapshot.processedUsersCount(),
             snapshot.deletedMessagesCount(),
             snapshot.failedUsers(),
