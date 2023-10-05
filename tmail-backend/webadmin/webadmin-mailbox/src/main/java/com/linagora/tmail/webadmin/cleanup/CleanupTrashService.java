@@ -13,11 +13,11 @@ import org.apache.james.core.Username;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.Role;
+import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.SystemMailboxesProvider;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
-import org.apache.james.mailbox.store.StoreMailboxManager;
 import org.apache.james.task.Task;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.util.ReactorUtils;
@@ -34,21 +34,21 @@ import reactor.core.publisher.Mono;
 
 public class CleanupTrashService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CleanupTrashService.class);
-    private static final Map<String, Period> MAP_PERIOD_SETTING_TO_DURATION = ImmutableMap.of(JmapSettings.WeeklyPeriod(), Period.ofWeeks(1),
-        JmapSettings.MonthlyPeriod(), Period.ofMonths(1));
+    private static final Map<String, Period> MAP_PERIOD_SETTING_TO_DURATION = ImmutableMap.of(JmapSettings.weeklyPeriod(), Period.ofWeeks(1),
+        JmapSettings.monthlyPeriod(), Period.ofMonths(1));
 
     private final UsersRepository usersRepository;
     private final JmapSettingsRepository jmapSettingsRepository;
-    private final StoreMailboxManager storeMailboxManager;
+    private final SessionProvider sessionProvider;
     private final SystemMailboxesProvider systemMailboxesProvider;
     private final Clock clock;
 
     @Inject
-    public CleanupTrashService(UsersRepository usersRepository, JmapSettingsRepository jmapSettingsRepository, StoreMailboxManager storeMailboxManager,
+    public CleanupTrashService(UsersRepository usersRepository, JmapSettingsRepository jmapSettingsRepository, SessionProvider sessionProvider,
                                SystemMailboxesProvider systemMailboxesProvider, Clock clock) {
         this.usersRepository = usersRepository;
         this.jmapSettingsRepository = jmapSettingsRepository;
-        this.storeMailboxManager = storeMailboxManager;
+        this.sessionProvider = sessionProvider;
         this.systemMailboxesProvider = systemMailboxesProvider;
         this.clock = clock;
     }
@@ -68,7 +68,8 @@ public class CleanupTrashService {
 
     private Mono<Task.Result> cleanupTrashForSingleUser(Username username, CleanupContext context) {
         return Mono.from(jmapSettingsRepository.get(username))
-            .flatMap(jmapSettings -> cleanupTrashForSingleUser(username, jmapSettings, context))
+            .filter(JmapSettings::trashCleanupEnabled)
+            .flatMap(jmapSettings -> cleanupTrashForSingleUser(username, toPeriod(jmapSettings.trashCleanupPeriod()), context))
             .defaultIfEmpty(Task.Result.COMPLETED)
             .doOnNext(result -> {
                 LOGGER.info("Trash mailbox is cleaned for user {}", username);
@@ -78,16 +79,6 @@ public class CleanupTrashService {
                 context.addToFailedUsers(username.asString());
                 return Mono.just(Task.Result.PARTIAL);
             });
-    }
-
-    private Mono<Task.Result> cleanupTrashForSingleUser(Username username, JmapSettings jmapSettings, CleanupContext context) {
-        if (jmapSettings.trashCleanupEnabled()) {
-            return cleanupTrashForSingleUser(username,
-                toPeriod(jmapSettings.trashCleanupPeriod()),
-                context);
-        } else {
-            return Mono.just(Task.Result.COMPLETED);
-        }
     }
 
     private Period toPeriod(String trashCleanupPeriod) {
@@ -105,7 +96,7 @@ public class CleanupTrashService {
     }
 
     private MailboxSession getMailboxSession(Username username) {
-        return storeMailboxManager.getSessionProvider().createSystemSession(username);
+        return sessionProvider.createSystemSession(username);
     }
 
     private Mono<MessageManager> getMessageManagerForTrashMailbox(Username username) {
