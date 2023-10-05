@@ -26,18 +26,18 @@ public class MailboxesCleanupModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    public TaskDTOModule<? extends Task, ? extends TaskDTO> cleanupTrashTaskDTO(CleanupTrashService cleanupTrashService) {
-        return CleanupTrashTaskDTO.module(cleanupTrashService);
+    public TaskDTOModule<? extends Task, ? extends TaskDTO> cleanupTrashTaskDTO(CleanupService cleanupService) {
+        return CleanupTrashTaskDTO.module(cleanupService);
     }
 
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> cleanupTrashTaskAdditionalInformation() {
-        return CleanupTrashTaskAdditionalInformationDTO.module();
+        return CleanupTaskAdditionalInformationDTO.cleanupTrashModule();
     }
 
     @Named(DTOModuleInjections.WEBADMIN_DTO)
     @ProvidesIntoSet
     public AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> webAdminCleanupTrashTaskAdditionalInformation() {
-        return CleanupTrashTaskAdditionalInformationDTO.module();
+        return CleanupTaskAdditionalInformationDTO.cleanupTrashModule();
     }
 }

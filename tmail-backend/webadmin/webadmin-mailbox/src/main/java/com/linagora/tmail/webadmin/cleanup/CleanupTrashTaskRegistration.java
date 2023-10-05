@@ -15,8 +15,8 @@ public class CleanupTrashTaskRegistration extends TaskFromRequestRegistry.TaskRe
     private static final TaskRegistrationKey CLEANUP_TRASH = TaskRegistrationKey.of("CleanupTrash");
 
     @Inject
-    public CleanupTrashTaskRegistration(CleanupTrashService cleanupTrashService) {
-        super(CLEANUP_TRASH, request -> new CleanupTrashTask(cleanupTrashService, parseRunningOptions(request)));
+    public CleanupTrashTaskRegistration(CleanupService cleanupService) {
+        super(CLEANUP_TRASH, request -> new CleanupTrashTask(cleanupService, parseRunningOptions(request)));
     }
 
     private static RunningOptions parseRunningOptions(Request request) {

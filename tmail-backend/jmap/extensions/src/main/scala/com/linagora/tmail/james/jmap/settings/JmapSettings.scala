@@ -5,7 +5,7 @@ import java.util.Locale
 
 import com.google.common.base.CharMatcher
 import com.linagora.tmail.james.jmap.settings.InboxArchivalFormat.InboxArchivalFormat
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, monthlyPeriod, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
+import com.linagora.tmail.james.jmap.settings.JmapSettings.{INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, cleanupDefaultPeriod, mapPeriodSettingToPeriod, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsKey.SettingKeyType
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
@@ -86,6 +86,12 @@ object JmapSettings {
   val weeklyPeriod: String = "weekly"
   val monthlyPeriod: String = "monthly"
 
+  val cleanupDefaultPeriod: Period = Period.ofMonths(1)
+
+  val mapPeriodSettingToPeriod: Map[String, Period] = Map(
+    JmapSettings.weeklyPeriod -> Period.ofWeeks(1),
+    JmapSettings.monthlyPeriod -> Period.ofMonths(1))
+
   val INBOX_ARCHIVAL_ENABLE_KEY = "inbox.archival.enabled"
   val INBOX_ARCHIVAL_PERIOD_KEY = "inbox.archival.period"
   val INBOX_ARCHIVAL_FORMAT_KEY = "inbox.archival.format"
@@ -99,10 +105,11 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
   def trashCleanupEnabled(): Boolean =
     settings.get(trashCleanupEnabledSetting).exists(trashCleanupEnabled => trashCleanupEnabled.value.toBoolean)
 
-  def trashCleanupPeriod(): String =
+  def trashCleanupPeriod(): Period =
     settings.get(trashCleanupPeriodSetting)
       .map(trashCleanupPeriod => trashCleanupPeriod.value)
-      .getOrElse(monthlyPeriod)
+      .map(periodString => mapPeriodSettingToPeriod.getOrElse(periodString, cleanupDefaultPeriod))
+      .getOrElse(cleanupDefaultPeriod)
 
   def inboxArchivalEnable(): Boolean =
     settings.get(JmapSettingsKey.liftOrThrow(INBOX_ARCHIVAL_ENABLE_KEY))

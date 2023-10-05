@@ -22,19 +22,19 @@ public class CleanupTrashTaskSerializationTest {
         "\"timestamp\":\"2018-11-13T12:00:55Z\"" +
         "}";
 
-    CleanupTrashService cleanupTrashService = mock(CleanupTrashService.class);
+    CleanupService cleanupService = mock(CleanupService.class);
 
     @Test
     void taskShouldBeSerializable() throws Exception {
-        JsonSerializationVerifier.dtoModule(CleanupTrashTaskDTO.module(cleanupTrashService))
-            .bean(new CleanupTrashTask(cleanupTrashService, RunningOptions.of(9)))
+        JsonSerializationVerifier.dtoModule(CleanupTrashTaskDTO.module(cleanupService))
+            .bean(new CleanupTrashTask(cleanupService, RunningOptions.of(9)))
             .json("{\"type\":\"cleanup-trash\",\"runningOptions\":{\"usersPerSecond\":9}}")
             .verify();
     }
 
     @Test
     void additionalInformationShouldBeSerializable() throws Exception {
-        JsonSerializationVerifier.dtoModule(CleanupTrashTaskAdditionalInformationDTO.module())
+        JsonSerializationVerifier.dtoModule(CleanupTaskAdditionalInformationDTO.cleanupTrashModule())
             .bean(new CleanupTaskDetails(TIMESTAMP, 12, 55,
                 ImmutableList.of("bob@localhost"), RunningOptions.DEFAULT))
             .json(SERIALIZED_ADDITIONAL_INFORMATION)

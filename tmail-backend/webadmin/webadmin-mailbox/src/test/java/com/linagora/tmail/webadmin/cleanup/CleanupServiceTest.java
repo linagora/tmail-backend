@@ -41,10 +41,10 @@ import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 
 import reactor.core.publisher.Flux;
 
-public class CleanupTrashServiceTest {
+public class CleanupServiceTest {
     private static final Domain DOMAIN = Domain.of("example.org");
     private static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
-    private CleanupTrashService cleanupTrashService;
+    private CleanupService cleanupService;
     private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     private SessionProvider sessionProvider;
     private SystemMailboxesProvider systemMailboxesProvider;
@@ -72,7 +72,7 @@ public class CleanupTrashServiceTest {
         JmapSettingsRepository jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         clock = new UpdatableTickingClock(Instant.now());
-        cleanupTrashService = new CleanupTrashService(usersRepository, jmapSettingsRepository, sessionProvider, systemMailboxesProvider, clock);
+        cleanupService = new CleanupService(usersRepository, jmapSettingsRepository, sessionProvider, systemMailboxesProvider, clock);
     }
 
     @Test
@@ -88,7 +88,7 @@ public class CleanupTrashServiceTest {
 
         clock.setInstant(clock.instant().plus(8, ChronoUnit.DAYS));
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupService.cleanup(Role.TRASH, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(bobMessageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
@@ -109,7 +109,7 @@ public class CleanupTrashServiceTest {
 
         clock.setInstant(clock.instant().plus(5, ChronoUnit.DAYS));
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupService.cleanup(Role.TRASH, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
@@ -130,7 +130,7 @@ public class CleanupTrashServiceTest {
 
         clock.setInstant(clock.instant().plus(45, ChronoUnit.DAYS));
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupService.cleanup(Role.TRASH, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
             .collect(ImmutableList.toImmutableList())
             .block())
@@ -151,7 +151,7 @@ public class CleanupTrashServiceTest {
 
         clock.setInstant(clock.instant().plus(15, ChronoUnit.DAYS));
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupService.cleanup(Role.TRASH, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
             .collect(ImmutableList.toImmutableList())
             .block())
@@ -172,7 +172,7 @@ public class CleanupTrashServiceTest {
 
         clock.setInstant(clock.instant().plus(8, ChronoUnit.DAYS));
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupService.cleanup(Role.TRASH, RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
