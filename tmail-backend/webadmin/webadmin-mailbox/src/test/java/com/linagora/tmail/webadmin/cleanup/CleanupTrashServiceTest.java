@@ -19,6 +19,7 @@ import org.apache.james.mailbox.DefaultMailboxes;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.Role;
+import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.SystemMailboxesProvider;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.FetchGroup;
@@ -50,49 +51,54 @@ public class CleanupTrashServiceTest {
     private static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
     private CleanupTrashService cleanupTrashService;
     private JmapSettingsRepository jmapSettingsRepository;
-    private StoreMailboxManager storeMailboxManager;
+    private SessionProvider sessionProvider;
     private SystemMailboxesProvider systemMailboxesProvider;
     private UpdatableTickingClock clock;
+    private MailboxSession bobMailboxSession;
+    private MessageManager bobMessageManager;
 
     @BeforeEach
     void setUp() throws Exception {
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
-        storeMailboxManager = resources.getMailboxManager();
+        StoreMailboxManager storeMailboxManager = resources.getMailboxManager();
+        sessionProvider = storeMailboxManager.getSessionProvider();
         systemMailboxesProvider = new SystemMailboxesProviderImpl(storeMailboxManager);
+        bobMailboxSession = sessionProvider.createSystemSession(BOB);
         DNSService dnsService = mock(DNSService.class);
         MemoryDomainList domainList = new MemoryDomainList(dnsService);
         domainList.configure(DomainListConfiguration.DEFAULT);
         domainList.addDomain(DOMAIN);
         MemoryUsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
         usersRepository.addUser(BOB, "anyPassword");
+        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB,
+                DefaultMailboxes.TRASH),
+            bobMailboxSession);
+        bobMessageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         clock = new UpdatableTickingClock(Instant.now());
-        cleanupTrashService = new CleanupTrashService(usersRepository, jmapSettingsRepository, storeMailboxManager, systemMailboxesProvider, clock);
+        cleanupTrashService = new CleanupTrashService(usersRepository, jmapSettingsRepository, sessionProvider, systemMailboxesProvider, clock);
     }
 
     @Test
     void cleanupTrashShouldRemoveMessageWhenMessageIsExpiredAndPeriodSettingIsWeekly() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.TrashCleanupEnabledSetting(),
+                JmapSettings.trashCleanupEnabledSetting(),
                 new JmapSettingsValue("true"),
-                JmapSettings.TrashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.WeeklyPeriod()))
+                JmapSettings.trashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
             ))))).block();
 
-        MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
-        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.TRASH), mailboxSession);
-        MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
-        messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
+        bobMessageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
                 new Date(),
-                mailboxSession,
+            bobMailboxSession,
                 false,
                 new Flags());
 
         clock.setInstant(clock.instant().plus(8, ChronoUnit.DAYS));
 
         assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
-        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
+        assertThat(Flux.from(bobMessageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
             .hasSize(0);
@@ -102,25 +108,23 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldKeepMessageWhenMessageIsNotExpiredAndPeriodSettingIsWeekly() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.TrashCleanupEnabledSetting(),
+                JmapSettings.trashCleanupEnabledSetting(),
                 new JmapSettingsValue("true"),
-                JmapSettings.TrashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.WeeklyPeriod()))
+                JmapSettings.trashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
             ))))).block();
 
-        MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
-        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.TRASH), mailboxSession);
         MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
             new Date(),
-            mailboxSession,
+            bobMailboxSession,
             false,
             new Flags());
 
         clock.setInstant(clock.instant().plus(5, ChronoUnit.DAYS));
 
         assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
-        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
             .hasSize(1);
@@ -130,25 +134,23 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldRemoveMessageWhenMessageIsExpiredAndPeriodSettingIsMonthly() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.TrashCleanupEnabledSetting(),
+                JmapSettings.trashCleanupEnabledSetting(),
                 new JmapSettingsValue("true"),
-                JmapSettings.TrashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.MonthlyPeriod()))
+                JmapSettings.trashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.monthlyPeriod()))
             ))))).block();
 
-        MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
-        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.TRASH), mailboxSession);
         MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
             new Date(),
-            mailboxSession,
+            bobMailboxSession,
             false,
             new Flags());
 
         clock.setInstant(clock.instant().plus(45, ChronoUnit.DAYS));
 
         assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
-        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
             .collect(ImmutableList.toImmutableList())
             .block())
             .hasSize(0);
@@ -158,25 +160,23 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldKeepMessageWhenMessageIsNotExpiredAndPeriodSettingIsMonthly() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.TrashCleanupEnabledSetting(),
+                JmapSettings.trashCleanupEnabledSetting(),
                 new JmapSettingsValue("true"),
-                JmapSettings.TrashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.MonthlyPeriod()))
+                JmapSettings.trashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.monthlyPeriod()))
             ))))).block();
 
-        MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
-        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.TRASH), mailboxSession);
         MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
             new Date(),
-            mailboxSession,
+            bobMailboxSession,
             false,
             new Flags());
 
         clock.setInstant(clock.instant().plus(15, ChronoUnit.DAYS));
 
         assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
-        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
             .collect(ImmutableList.toImmutableList())
             .block())
             .hasSize(1);
@@ -186,25 +186,23 @@ public class CleanupTrashServiceTest {
     void cleanupTrashShouldKeepMessageWhenTrashCleanupEnabledSettingIsFalse() throws Exception {
         Mono.from(jmapSettingsRepository.reset(BOB,
             new JmapSettingsUpsertRequest(Map.from(JavaConverters.asScala(ImmutableMap.of(
-                JmapSettings.TrashCleanupEnabledSetting(),
+                JmapSettings.trashCleanupEnabledSetting(),
                 new JmapSettingsValue("false"),
-                JmapSettings.TrashCleanupPeriodSetting(),
-                new JmapSettingsValue(JmapSettings.WeeklyPeriod()))
+                JmapSettings.trashCleanupPeriodSetting(),
+                new JmapSettingsValue(JmapSettings.weeklyPeriod()))
             ))))).block();
 
-        MailboxSession mailboxSession = storeMailboxManager.getSessionProvider().createSystemSession(BOB);
-        storeMailboxManager.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.TRASH), mailboxSession);
         MessageManager messageManager = systemMailboxesProvider.findMailbox(Role.TRASH, BOB);
         messageManager.appendMessage(new ByteArrayInputStream("Subject: test\r\n\r\ntestmail".getBytes()),
             new Date(),
-            mailboxSession,
+            bobMailboxSession,
             false,
             new Flags());
 
         clock.setInstant(clock.instant().plus(8, ChronoUnit.DAYS));
 
         assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
-        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
+        assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, bobMailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
             .hasSize(1);
