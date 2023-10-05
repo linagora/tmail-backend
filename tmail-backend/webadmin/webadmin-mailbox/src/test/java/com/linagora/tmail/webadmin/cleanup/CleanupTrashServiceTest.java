@@ -90,9 +90,8 @@ public class CleanupTrashServiceTest {
                 new Flags());
 
         clock.setInstant(clock.instant().plus(8, ChronoUnit.DAYS));
-        cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block();
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
@@ -119,9 +118,8 @@ public class CleanupTrashServiceTest {
             new Flags());
 
         clock.setInstant(clock.instant().plus(5, ChronoUnit.DAYS));
-        cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block();
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())
@@ -148,9 +146,8 @@ public class CleanupTrashServiceTest {
             new Flags());
 
         clock.setInstant(clock.instant().plus(45, ChronoUnit.DAYS));
-        cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block();
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
             .collect(ImmutableList.toImmutableList())
             .block())
@@ -177,9 +174,8 @@ public class CleanupTrashServiceTest {
             new Flags());
 
         clock.setInstant(clock.instant().plus(15, ChronoUnit.DAYS));
-        cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block();
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
             .collect(ImmutableList.toImmutableList())
             .block())
@@ -206,9 +202,8 @@ public class CleanupTrashServiceTest {
             new Flags());
 
         clock.setInstant(clock.instant().plus(8, ChronoUnit.DAYS));
-        cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block();
 
-        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT).block()).isEqualTo(Task.Result.COMPLETED);
+        assertThat(cleanupTrashService.cleanupTrash(RunningOptions.DEFAULT, new CleanupContext()).block()).isEqualTo(Task.Result.COMPLETED);
         assertThat(Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, mailboxSession))
                 .collect(ImmutableList.toImmutableList())
                 .block())

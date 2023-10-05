@@ -218,13 +218,13 @@ Please pay attention that if an account owner disables the Firebase push, his da
 
 === Trash cleanup enable
 Setting key: `trash.cleanup.enabled`
-Setting value: One in these values (`true`, `false`). Optional.
+Setting value: One in these values (`true`, `false`). Optional. Default value to `false`.
 
 This setting is used to enable/disable the trash cleanup function
 
 === Trash cleanup period
 Setting key: `trash.cleanup.period`
-Setting value: One in these values (`weekly`, `monthly`). Optional.
+Setting value: One in these values (`weekly`, `monthly`). Optional. Default value to `monthly`.
 
 This setting is used to determine if a message in trash should be keep or deleted. For example, if the value is `weekly`, any messages that exist for more than a week would be deleted.
 
