@@ -657,3 +657,16 @@ Return codes:
 
  - `201` Success. Corresponding task id is returned.
  - `400` Error in the request. Details can be found in the reported error.
+
+=== Inbox archival
+
+The Inbox archival task that allows old messages in users' INBOX to be archived.
+
+....
+curl -XPOST http://ip:port/mailboxes?task=InboxArchival
+....
+
+Response codes:
+
+* 201: Success. Corresponding task id is returned.
+* 400: Error in the request. Details can be found in the reported error.

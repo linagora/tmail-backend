@@ -144,6 +144,7 @@ import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
+import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
 public class DistributedServer {
@@ -170,7 +171,8 @@ public class DistributedServer {
         new WebAdminMailOverWebModule(),
         new EmailAddressContactRoutesModule(),
         new UserIdentityModule(),
-        new MailboxesCleanupModule());
+        new MailboxesCleanupModule(),
+        new InboxArchivalTaskModule());
 
     public static final Module JMAP = Modules.override(
         new CalendarEventMethodModule(),

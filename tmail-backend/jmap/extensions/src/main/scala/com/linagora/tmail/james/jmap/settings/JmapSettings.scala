@@ -1,12 +1,18 @@
 package com.linagora.tmail.james.jmap.settings
 
+import java.time.Period
+import java.util.Locale
+
 import com.google.common.base.CharMatcher
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{monthlyPeriod, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
+import com.linagora.tmail.james.jmap.settings.InboxArchivalFormat.InboxArchivalFormat
+import com.linagora.tmail.james.jmap.settings.JmapSettings.{INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, monthlyPeriod, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsKey.SettingKeyType
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
 import org.apache.james.jmap.api.model.{State, TypeName}
 import org.apache.james.jmap.core.UuidState
+
+import scala.util.Try
 
 object JmapSettingsKey {
   case class JmapSettingKeyConstraint()
@@ -49,12 +55,44 @@ case class JmapSettingsValue(value: String) extends AnyVal
 
 trait JmapSettingEntry
 
+object InboxArchivalPeriod {
+  def parse(string: String): Option[Period] =
+    string.toLowerCase(Locale.US) match {
+      case "monthly" => Some(Period.ofMonths(1))
+      case "yearly" => Some(Period.ofYears(1))
+      case _ => None
+    }
+}
+
+object InboxArchivalFormat extends Enumeration {
+  type InboxArchivalFormat = Value
+  val Single = Value("single")
+  val Monthly = Value("monthly")
+  val Yearly = Value("yearly")
+
+  def parse(string: String): Option[InboxArchivalFormat] =
+    string.toLowerCase(Locale.US) match {
+      case "single" => Some(Single)
+      case "monthly" => Some(Monthly)
+      case "yearly" => Some(Yearly)
+      case _ => None
+    }
+}
+
 object JmapSettings {
   val trashCleanupEnabledSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.enabled")
   val trashCleanupPeriodSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.period")
 
   val weeklyPeriod: String = "weekly"
   val monthlyPeriod: String = "monthly"
+
+  val INBOX_ARCHIVAL_ENABLE_KEY = "inbox.archival.enabled"
+  val INBOX_ARCHIVAL_PERIOD_KEY = "inbox.archival.period"
+  val INBOX_ARCHIVAL_FORMAT_KEY = "inbox.archival.format"
+
+  val INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE: Boolean = false
+  val INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE: Period = Period.ofMonths(1)
+  val INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE: InboxArchivalFormat = InboxArchivalFormat.Single
 }
 
 case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state: UuidState) {
@@ -65,6 +103,22 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
     settings.get(trashCleanupPeriodSetting)
       .map(trashCleanupPeriod => trashCleanupPeriod.value)
       .getOrElse(monthlyPeriod)
+
+  def inboxArchivalEnable(): Boolean =
+    settings.get(JmapSettingsKey.liftOrThrow(INBOX_ARCHIVAL_ENABLE_KEY))
+      .exists(value => Try(value.value.toBoolean)
+        .fold(_ => INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE,
+          bool => bool))
+
+  def inboxArchivalPeriod(): Period =
+    settings.get(JmapSettingsKey.liftOrThrow(INBOX_ARCHIVAL_PERIOD_KEY))
+      .flatMap(value => InboxArchivalPeriod.parse(value.value))
+      .getOrElse(INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE)
+
+  def inboxArchivalFormat(): InboxArchivalFormat =
+    settings.get(JmapSettingsKey.liftOrThrow(INBOX_ARCHIVAL_FORMAT_KEY))
+      .flatMap(value => InboxArchivalFormat.parse(value.value))
+      .getOrElse(INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE)
 }
 
 case class JmapSettingsUpsertRequest(settings: Map[JmapSettingsKey, JmapSettingsValue])
