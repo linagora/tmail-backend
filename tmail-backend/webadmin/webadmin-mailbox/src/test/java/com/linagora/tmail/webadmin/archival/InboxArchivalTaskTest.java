@@ -28,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
@@ -343,6 +344,9 @@ class InboxArchivalTaskTest {
             .isEqualTo(InboxArchivalTask.Context.Snapshot.builder()
                 .archivedMessageCount(0)
                 .errorMessageCount(0)
+                .successfulUsersCount(0)
+                .failedUsersCount(0)
+                .failedUsers(ImmutableSet.of())
                 .build());
     }
 
@@ -363,6 +367,9 @@ class InboxArchivalTaskTest {
             .isEqualTo(InboxArchivalTask.Context.Snapshot.builder()
                 .archivedMessageCount(2)
                 .errorMessageCount(0)
+                .successfulUsersCount(2)
+                .failedUsersCount(0)
+                .failedUsers(ImmutableSet.of())
                 .build());
     }
 
@@ -383,6 +390,9 @@ class InboxArchivalTaskTest {
             .isEqualTo(InboxArchivalTask.Context.Snapshot.builder()
                 .archivedMessageCount(1)
                 .errorMessageCount(0)
+                .successfulUsersCount(1)
+                .failedUsersCount(0)
+                .failedUsers(ImmutableSet.of())
                 .build());
     }
 

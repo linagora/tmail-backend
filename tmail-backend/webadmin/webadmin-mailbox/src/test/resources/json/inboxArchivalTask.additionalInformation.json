@@ -1,6 +1,9 @@
 {
   "archivedMessageCount": 4,
   "errorMessageCount": 2,
+  "successfulUsersCount": 1,
+  "failedUsersCount": 1,
+  "failedUsers": ["bob@domain.tld"],
   "timestamp": "2007-12-03T10:15:30Z",
   "type": "InboxArchivalTask"
 }

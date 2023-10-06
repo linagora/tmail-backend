@@ -1,6 +1,7 @@
 package com.linagora.tmail.integration;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -87,6 +88,9 @@ public abstract class InboxArchivalIntegrationContract {
             .body("submitDate", is(notNullValue()))
             .body("additionalInformation.type", is("InboxArchivalTask"))
             .body("additionalInformation.archivedMessageCount", is(1))
-            .body("additionalInformation.errorMessageCount", is(0));
+            .body("additionalInformation.errorMessageCount", is(0))
+            .body("additionalInformation.successfulUsersCount", is(1))
+            .body("additionalInformation.failedUsersCount", is(0))
+            .body("additionalInformation.failedUsers", empty());
     }
 }

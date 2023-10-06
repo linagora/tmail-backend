@@ -2,69 +2,38 @@ package com.linagora.tmail.webadmin.archival;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.james.core.Username;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.task.TaskType;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableSet;
 
 public class InboxArchivalTask implements Task {
     public static final TaskType TASK_TYPE = TaskType.of("InboxArchivalTask");
+    private static final int MAX_STORED_FAILED_USERS = 100;
 
-    public static class AdditionalInformation implements TaskExecutionDetails.AdditionalInformation {
+    public record AdditionalInformation(Instant timestamp, long archivedMessageCount, long errorMessageCount,
+                                        long successfulUsersCount, long failedUsersCount,
+                                        Set<Username> failedUsers) implements TaskExecutionDetails.AdditionalInformation {
 
         private static AdditionalInformation from(Context context) {
             Context.Snapshot snapshot = context.snapshot();
-            return new AdditionalInformation(Clock.systemUTC().instant(), snapshot.getArchivedMessageCount(), snapshot.getErrorMessageCount());
-        }
-
-        private final Instant timestamp;
-        private final long archivedMessageCount;
-        private final long errorMessageCount;
-
-        public AdditionalInformation(Instant timestamp, long archivedMessageCount, long errorMessageCount) {
-            this.timestamp = timestamp;
-            this.archivedMessageCount = archivedMessageCount;
-            this.errorMessageCount = errorMessageCount;
-        }
-
-        public long getArchivedMessageCount() {
-            return archivedMessageCount;
-        }
-
-        public long getErrorMessageCount() {
-            return errorMessageCount;
-        }
-
-        @Override
-        public Instant timestamp() {
-            return timestamp;
-        }
-
-        @Override
-        public final boolean equals(Object o) {
-            if (o instanceof AdditionalInformation that) {
-                return Objects.equals(this.archivedMessageCount, that.archivedMessageCount)
-                    && Objects.equals(this.errorMessageCount, that.errorMessageCount)
-                    && Objects.equals(this.timestamp, that.timestamp);
-            }
-            return false;
-        }
-
-        @Override
-        public final int hashCode() {
-            return Objects.hash(timestamp, archivedMessageCount, errorMessageCount);
+            return new AdditionalInformation(Clock.systemUTC().instant(), snapshot.archivedMessageCount(), snapshot.errorMessageCount(),
+                snapshot.successfulUsersCount, snapshot.failedUsersCount, snapshot.failedUsers);
         }
     }
 
     public static class Context {
 
-        public static class Snapshot {
+        public record Snapshot(long archivedMessageCount, long errorMessageCount, long successfulUsersCount,
+                               long failedUsersCount, Set<Username> failedUsers) {
 
             public static Builder builder() {
                 return new Builder();
@@ -73,15 +42,24 @@ public class InboxArchivalTask implements Task {
             static class Builder {
                 private Optional<Long> archivedMessageCount;
                 private Optional<Long> errorMessageCount;
+                private Optional<Long> successfulUsersCount;
+                private Optional<Long> failedUsersCount;
+                private Optional<Set<Username>> failedUsers;
 
                 Builder() {
                     archivedMessageCount = Optional.empty();
                     errorMessageCount = Optional.empty();
+                    successfulUsersCount = Optional.empty();
+                    failedUsersCount = Optional.empty();
+                    failedUsers = Optional.empty();
                 }
 
                 public Snapshot build() {
                     return new Snapshot(archivedMessageCount.orElse(0L),
-                        errorMessageCount.orElse(0L));
+                        errorMessageCount.orElse(0L),
+                        successfulUsersCount.orElse(0L),
+                        failedUsersCount.orElse(0L),
+                        failedUsers.orElse(ImmutableSet.of()));
                 }
 
                 public Builder archivedMessageCount(long archivedMessageCount) {
@@ -93,53 +71,36 @@ public class InboxArchivalTask implements Task {
                     this.errorMessageCount = Optional.of(errorMessageCount);
                     return this;
                 }
-            }
 
-            private final long archivedMessageCount;
-            private final long errorMessageCount;
-
-            public Snapshot(long archivedMessageCount, long errorMessageCount) {
-                this.archivedMessageCount = archivedMessageCount;
-                this.errorMessageCount = errorMessageCount;
-            }
-
-            public long getArchivedMessageCount() {
-                return archivedMessageCount;
-            }
-
-            public long getErrorMessageCount() {
-                return errorMessageCount;
-            }
-
-            @Override
-            public final boolean equals(Object o) {
-                if (o instanceof Snapshot snapshot) {
-                    return Objects.equals(this.archivedMessageCount, snapshot.archivedMessageCount)
-                        && Objects.equals(this.errorMessageCount, snapshot.errorMessageCount);
+                public Builder successfulUsersCount(long successfulUsersCount) {
+                    this.successfulUsersCount = Optional.of(successfulUsersCount);
+                    return this;
                 }
-                return false;
-            }
 
-            @Override
-            public final int hashCode() {
-                return Objects.hash(archivedMessageCount, errorMessageCount);
-            }
+                public Builder failedUsersCount(long failedUsersCount) {
+                    this.failedUsersCount = Optional.of(failedUsersCount);
+                    return this;
+                }
 
-            @Override
-            public String toString() {
-                return MoreObjects.toStringHelper(this)
-                    .add("archivedMessageCount", archivedMessageCount)
-                    .add("errorMessageCount", errorMessageCount)
-                    .toString();
+                public Builder failedUsers(Set<Username> failedUsers) {
+                    this.failedUsers = Optional.of(failedUsers);
+                    return this;
+                }
             }
         }
 
         private final AtomicLong archivedMessageCount;
         private final AtomicLong errorMessageCount;
+        private final AtomicLong successfulUsersCount;
+        private final AtomicLong failedUsersCount;
+        private final Set<Username> failedUsers;
 
         public Context() {
             this.archivedMessageCount = new AtomicLong();
             this.errorMessageCount = new AtomicLong();
+            this.successfulUsersCount = new AtomicLong();
+            this.failedUsersCount = new AtomicLong();
+            this.failedUsers = ConcurrentHashMap.newKeySet();
         }
 
         public void increaseArchivedMessageCount(int count) {
@@ -150,10 +111,39 @@ public class InboxArchivalTask implements Task {
             errorMessageCount.incrementAndGet();
         }
 
+        public void increaseSuccessfulUsers() {
+            successfulUsersCount.incrementAndGet();
+        }
+
+        public void increaseFailedUsers() {
+            failedUsersCount.incrementAndGet();
+        }
+
+        public void addFailedUser(Username username) {
+            if (failedUsers.size() < MAX_STORED_FAILED_USERS) {
+                failedUsers.add(username);
+            }
+        }
+
+        public long getSuccessfulUsersCount() {
+            return successfulUsersCount.get();
+        }
+
+        public long getFailedUsersCount() {
+            return failedUsersCount.get();
+        }
+
+        public Set<Username> getFailedUsers() {
+            return failedUsers;
+        }
+
         public Snapshot snapshot() {
             return Snapshot.builder()
                 .archivedMessageCount(archivedMessageCount.get())
                 .errorMessageCount(errorMessageCount.get())
+                .successfulUsersCount(successfulUsersCount.get())
+                .failedUsersCount(failedUsersCount.get())
+                .failedUsers(failedUsers)
                 .build();
         }
     }

@@ -1,7 +1,10 @@
 package com.linagora.tmail.webadmin.archival;
 
 import java.time.Instant;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.apache.james.core.Username;
 import org.apache.james.json.DTOModule;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
@@ -19,24 +22,56 @@ public class InboxArchivalTaskAdditionalInformationDTO implements AdditionalInfo
             .withFactory(AdditionalInformationDTOModule::new);
 
     private static InboxArchivalTask.AdditionalInformation toDomainObject(InboxArchivalTaskAdditionalInformationDTO dto) {
-        return new InboxArchivalTask.AdditionalInformation(dto.timestamp, dto.archivedMessageCount, dto.errorMessageCount);
+        return new InboxArchivalTask.AdditionalInformation(dto.timestamp,
+            dto.archivedMessageCount,
+            dto.errorMessageCount,
+            dto.getSuccessfulUsersCount(),
+            dto.getFailedUsersCount(),
+            toSetUsername(dto.failedUsers));
     }
 
     private static InboxArchivalTaskAdditionalInformationDTO toDto(InboxArchivalTask.AdditionalInformation domainObject, String type) {
-        return new InboxArchivalTaskAdditionalInformationDTO(type, domainObject.timestamp(), domainObject.getArchivedMessageCount(), domainObject.getErrorMessageCount());
+        return new InboxArchivalTaskAdditionalInformationDTO(type,
+            domainObject.timestamp(),
+            domainObject.successfulUsersCount(),
+            domainObject.failedUsersCount(),
+            toSetString(domainObject.failedUsers()),
+            domainObject.archivedMessageCount(),
+            domainObject.errorMessageCount());
+    }
+
+    private static Set<Username> toSetUsername(Set<String> usernames) {
+        return usernames.stream()
+            .map(Username::of)
+            .collect(Collectors.toSet());
+    }
+
+    private static Set<String> toSetString(Set<Username> usernames) {
+        return usernames.stream()
+            .map(Username::asString)
+            .collect(Collectors.toSet());
     }
 
     private final String type;
     private final Instant timestamp;
+    private final long successfulUsersCount;
+    private final long failedUsersCount;
+    private final Set<String> failedUsers;
     private final long archivedMessageCount;
     private final long errorMessageCount;
 
     public InboxArchivalTaskAdditionalInformationDTO(@JsonProperty("type") String type,
                                                      @JsonProperty("timestamp") Instant timestamp,
+                                                     @JsonProperty("successfulUsersCount") long successfulUsersCount,
+                                                     @JsonProperty("failedUsersCount") long failedUsersCount,
+                                                     @JsonProperty("failedUsers") Set<String> failedUsers,
                                                      @JsonProperty("archivedMessageCount") long archivedMessageCount,
                                                      @JsonProperty("errorMessageCount") long errorMessageCount) {
         this.type = type;
         this.timestamp = timestamp;
+        this.successfulUsersCount = successfulUsersCount;
+        this.failedUsersCount = failedUsersCount;
+        this.failedUsers = failedUsers;
         this.archivedMessageCount = archivedMessageCount;
         this.errorMessageCount = errorMessageCount;
     }
@@ -59,4 +94,15 @@ public class InboxArchivalTaskAdditionalInformationDTO implements AdditionalInfo
         return errorMessageCount;
     }
 
+    public long getSuccessfulUsersCount() {
+        return successfulUsersCount;
+    }
+
+    public long getFailedUsersCount() {
+        return failedUsersCount;
+    }
+
+    public Set<String> getFailedUsers() {
+        return failedUsers;
+    }
 }

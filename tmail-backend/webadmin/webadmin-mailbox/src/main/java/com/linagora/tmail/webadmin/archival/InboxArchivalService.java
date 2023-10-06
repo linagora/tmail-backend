@@ -63,7 +63,7 @@ public class InboxArchivalService {
         return Flux.from(usersRepository.listReactive())
             .flatMap(username -> Mono.from(jmapSettingsRepository.get(username))
                 .filter(JmapSettings::inboxArchivalEnable)
-                .flatMap(jmapSettings -> inboxArchive(username, jmapSettings, context))
+                .flatMap(jmapSettings -> archiveInbox(username, jmapSettings, context))
                 .defaultIfEmpty(Task.Result.COMPLETED), LOW_CONCURRENCY)
             .reduce(Task.Result.COMPLETED, Task::combine)
             .onErrorResume(e -> {
@@ -72,7 +72,7 @@ public class InboxArchivalService {
             });
     }
 
-    private Mono<Task.Result> inboxArchive(Username username, JmapSettings jmapSettings, InboxArchivalTask.Context context) {
+    private Mono<Task.Result> archiveInbox(Username username, JmapSettings jmapSettings, InboxArchivalTask.Context context) {
         Date archiveDate = Date.from(Instant.now(clock).atZone(ZoneOffset.UTC)
             .minus(jmapSettings.inboxArchivalPeriod())
             .toInstant());
@@ -83,9 +83,14 @@ public class InboxArchivalService {
             .flatMapMany(getMailboxMessagesMetadata(mailboxSession))
             .filter(messagesOlderThanArchiveDate(archiveDate))
             .flatMap(mailboxMessage -> archiveMessage(mailboxMessage, mailboxSession, jmapSettings, context), ReactorUtils.DEFAULT_CONCURRENCY)
-            .then(Mono.just(Task.Result.COMPLETED))
+            .then(Mono.fromCallable(() -> {
+                context.increaseSuccessfulUsers();
+                return Task.Result.COMPLETED;
+            }))
             .onErrorResume(e -> {
                 LOGGER.error("Error while archiving INBOX for user {}", username.asString(), e);
+                context.increaseFailedUsers();
+                context.addFailedUser(username);
                 return Mono.just(Task.Result.PARTIAL);
             });
     }
