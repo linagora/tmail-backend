@@ -2,14 +2,17 @@ package com.linagora.tmail.mailets
 
 import java.util.Optional
 
+import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.mailets.TmailLocalDelivery.LOCAL_DELIVERED_MAILS_METRIC_NAME
 import com.linagora.tmail.team.TeamMailboxRepository
 import javax.inject.{Inject, Named}
+import org.apache.commons.lang3.StringUtils
 import org.apache.james.mailbox.MailboxManager
 import org.apache.james.mailbox.model.MailboxConstants
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.transport.mailets.delivery.{MailDispatcher, SimpleMailStore}
 import org.apache.james.user.api.UsersRepository
+import org.apache.james.util.AuditTrail
 import org.apache.mailet.Mail
 import org.apache.mailet.base.{GenericMailet, MailetUtil}
 
@@ -23,7 +26,19 @@ class TmailLocalDelivery @Inject()(usersRepository: UsersRepository,
                                    metricFactory: MetricFactory) extends GenericMailet {
   private var mailDispatcher: MailDispatcher = _
 
-  override def service(mail: Mail): Unit = mailDispatcher.dispatch(mail)
+  override def service(mail: Mail): Unit = {
+    mailDispatcher.dispatch(mail)
+
+    AuditTrail.entry
+      .protocol("mailetcontainer")
+      .action("TmailLocalDelivery")
+      .parameters(() => ImmutableMap.of(
+        "mailId", mail.getName,
+        "mimeMessageId", Option(mail.getMessage).map(_.getMessageID).getOrElse(""),
+        "sender", mail.getMaybeSender.asString,
+        "recipients", StringUtils.join(mail.getRecipients)))
+      .log("Local delivery mail dispatched")
+  }
 
   override def getMailetInfo(): String = "TMail local delivery mailet"
 

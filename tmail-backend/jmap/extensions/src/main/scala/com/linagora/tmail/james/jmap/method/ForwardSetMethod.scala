@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.method
 
+import com.google.common.collect.ImmutableMap
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.json.ForwardSerializer
@@ -19,11 +20,12 @@ import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.rrt.api.RecipientRewriteTable
 import org.apache.james.rrt.lib.Mapping.Type
 import org.apache.james.rrt.lib.MappingSource
-import org.apache.james.util.ReactorUtils
+import org.apache.james.util.{AuditTrail, ReactorUtils}
 import org.reactivestreams.Publisher
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters.StreamHasToScala
 
 class ForwardSetMethodModule extends AbstractModule {
@@ -96,6 +98,13 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
         case (deletedForwards, addedForwards) => deleteMappings(mappingSource, deletedForwards)
           .thenMany(addMappings(mappingSource, addedForwards))
       }.`then`()
+      .doOnSuccess(_ -> AuditTrail.entry()
+        .username(() => mappingSource.asUsername().toScala.map(_.asString()).getOrElse(""))
+        .protocol("JMAP")
+        .action("ForwardSet")
+        .parameters(() => ImmutableMap.of("mappingSource", mappingSource.asUsername().toScala.map(_.asString()).getOrElse(""),
+          "forwardList", forwardDestinations.map(_.asString).mkString(",")))
+        .log("Update forward."))
       .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)))
       .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateSuccess))
 
