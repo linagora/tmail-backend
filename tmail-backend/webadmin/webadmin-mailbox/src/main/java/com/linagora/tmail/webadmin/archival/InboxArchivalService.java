@@ -157,7 +157,7 @@ public class InboxArchivalService {
     }
 
     private Mono<Void> createMailbox(MailboxSession mailboxSession, MailboxPath archiveMailbox) {
-        return Mono.from(mailboxManager.createMailboxReactive(archiveMailbox, mailboxSession))
+        return Mono.from(mailboxManager.createMailboxReactive(archiveMailbox, MailboxManager.CreateOption.CREATE_SUBSCRIPTION, mailboxSession))
             .onErrorResume(MailboxExistsException.class, e -> Mono.empty())
             .then();
     }
