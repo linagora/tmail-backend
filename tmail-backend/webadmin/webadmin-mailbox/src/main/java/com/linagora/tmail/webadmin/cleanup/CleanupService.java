@@ -66,11 +66,8 @@ public class CleanupService {
             .filter(jmapSettings -> checkCleanupEnabled(role, jmapSettings))
             .flatMap(jmapSettings -> cleanupForSingleUser(role, username, periodByRole(role, jmapSettings), context))
             .defaultIfEmpty(Task.Result.COMPLETED)
-            .doOnNext(result -> {
-                LOGGER.info("Trash mailbox is cleaned for user {}", username);
-                context.incrementProcessed();
-            }).onErrorResume(e -> {
-                LOGGER.error("Error while cleaning trash for user {}", username, e);
+            .onErrorResume(e -> {
+                LOGGER.error("Error while cleaning mailbox {} for user {}", role.serialize(), username, e);
                 context.addToFailedUsers(username.asString());
                 return Mono.just(Task.Result.PARTIAL);
             });
@@ -95,7 +92,11 @@ public class CleanupService {
                     context,
                     messageManager,
                     getMailboxSession(username)))
-            .then(Mono.just(Task.Result.COMPLETED));
+            .then(Mono.just(Task.Result.COMPLETED))
+            .doOnNext(result -> {
+                LOGGER.info("Mailbox {} is cleaned for user {}", role.serialize(), username);
+                context.incrementProcessed();
+            });
     }
 
     private MailboxSession getMailboxSession(Username username) {
