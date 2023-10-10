@@ -19,3 +19,13 @@ sn: user1Surname
 mail: james-user@tmail.com
 userPassword: secret
 description: James user
+
+dn: uid=james-user2@tmail.com,ou=users,dc=tmail,dc=com
+objectClass: inetOrgPerson
+uid: james-user2@tmail.com
+cn: james-user2
+givenName: user2Firstname
+sn: user2Surname
+mail: james-user2@tmail.com
+userPassword: secret
+description: James user2
