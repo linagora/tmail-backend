@@ -58,7 +58,9 @@ routes:
     plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
-        uri: /upload
+        regex_uri:
+          - "^/oidc/upload/(.*)"
+          - "/upload/$1"
   -
     id: upload_draft
     uri: /oidc/upload
@@ -69,9 +71,7 @@ routes:
     plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
-        regex_uri:
-          - "^/oidc/upload/(.*)"
-          - "/upload/$1"
+        uri: /upload
   -
     id: web_known_finger
     uris:
