@@ -15,6 +15,7 @@ import org.apache.james.mailbox.DefaultMailboxes;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.exception.MailboxExistsException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MailboxPath;
@@ -145,13 +146,19 @@ public class InboxArchivalService {
     private Mono<Void> moveMessage(MailboxMessage mailboxMessage, MailboxSession mailboxSession, MailboxPath archiveMailbox, InboxArchivalTask.Context context) {
         MailboxPath inbox = MailboxPath.inbox(mailboxSession.getUser());
         return Mono.from(mailboxManager.moveMessagesReactive(MessageRange.one(mailboxMessage.getUid()), inbox, archiveMailbox, mailboxSession))
-            .onErrorResume(MailboxNotFoundException.class, e -> Mono.from(mailboxManager.createMailboxReactive(archiveMailbox, mailboxSession))
+            .onErrorResume(MailboxNotFoundException.class, e -> createMailbox(mailboxSession, archiveMailbox)
                 .then(Mono.from(mailboxManager.moveMessagesReactive(MessageRange.one(mailboxMessage.getUid()), inbox, archiveMailbox, mailboxSession))))
             .then(Mono.fromRunnable(() -> context.increaseArchivedMessageCount(1)))
             .doOnError(e -> {
                 LOGGER.error("Error when archiving messageId {} from mailbox {} to mailbox {}", mailboxMessage.getMessageId().serialize(), inbox.asString(), archiveMailbox.asString(), e);
                 context.increaseErrorMessageCount();
             })
+            .then();
+    }
+
+    private Mono<Void> createMailbox(MailboxSession mailboxSession, MailboxPath archiveMailbox) {
+        return Mono.from(mailboxManager.createMailboxReactive(archiveMailbox, mailboxSession))
+            .onErrorResume(MailboxExistsException.class, e -> Mono.empty())
             .then();
     }
 }
