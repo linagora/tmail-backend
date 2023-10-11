@@ -25,7 +25,6 @@ import org.apache.james.mailbox.store.mail.MessageMapper;
 import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.task.Task;
 import org.apache.james.user.api.UsersRepository;
-import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +61,7 @@ public class InboxArchivalService {
 
     public Mono<Task.Result> archiveInbox(InboxArchivalTask.Context context) {
         return Flux.from(usersRepository.listReactive())
-            .flatMap(username -> Mono.from(jmapSettingsRepository.get(username))
+            .concatMap(username -> Mono.from(jmapSettingsRepository.get(username))
                 .filter(JmapSettings::inboxArchivalEnable)
                 .flatMap(jmapSettings -> archiveInbox(username, jmapSettings, context))
                 .defaultIfEmpty(Task.Result.COMPLETED), LOW_CONCURRENCY)
@@ -83,7 +82,7 @@ public class InboxArchivalService {
             .map(Throwing.function(MessageManager::getMailboxEntity))
             .flatMapMany(getMailboxMessagesMetadata(mailboxSession))
             .filter(messagesOlderThanArchiveDate(archiveDate))
-            .flatMap(mailboxMessage -> archiveMessage(mailboxMessage, mailboxSession, jmapSettings, context), ReactorUtils.DEFAULT_CONCURRENCY)
+            .flatMap(mailboxMessage -> archiveMessage(mailboxMessage, mailboxSession, jmapSettings, context), 4)
             .then(Mono.fromCallable(() -> {
                 context.increaseSuccessfulUsers();
                 return Task.Result.COMPLETED;
