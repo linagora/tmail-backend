@@ -1,10 +1,7 @@
 package com.linagora.tmail.rspamd;
 
 import java.io.FileNotFoundException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.time.Clock;
-import java.util.Optional;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.core.healthcheck.HealthCheck;
@@ -55,13 +52,8 @@ public class RspamdModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public RspamdClientConfiguration rspamdClientConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException, MalformedURLException {
-        try {
-            return RspamdClientConfiguration.from(propertiesProvider.getConfiguration("rspamd"));
-        } catch (FileNotFoundException e) {
-            LOGGER.info("Start without rspamd configuration file");
-            return new RspamdClientConfiguration(new URL("http://localhost:11334"), "", Optional.empty());
-        }
+    public RspamdClientConfiguration rspamdClientConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
+        return RspamdClientConfiguration.from(propertiesProvider.getConfiguration("rspamd"));
     }
 
     @Provides
