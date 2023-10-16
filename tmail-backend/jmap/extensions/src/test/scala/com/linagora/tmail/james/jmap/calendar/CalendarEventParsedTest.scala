@@ -8,6 +8,7 @@ import com.linagora.tmail.james.jmap.model.{CalendarEventByDay, CalendarEventByM
 import net.fortuna.ical4j.model.Recur.Frequency
 import net.fortuna.ical4j.model.{Month, WeekDay}
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{Nested, Test}
 
 import scala.jdk.CollectionConverters._
@@ -188,6 +189,70 @@ class CalendarEventParsedTest {
     assertThat(calendarEventParsed.priority.get.value).isEqualTo(5)
     assertThat(s"${calendarEventParsed.freeBusyStatus.get.value}").isEqualTo("busy")
     assertThat(s"${calendarEventParsed.privacy.get.value}").isEqualTo("public")
+  }
+
+  @Test
+  def parseWindowTimeZoneShouldSucceed(): Unit = {
+    val icsPayload =
+      """BEGIN:VCALENDAR
+        |METHOD:REQUEST
+        |PRODID:Microsoft Exchange Server 2010
+        |VERSION:2.0
+        |BEGIN:VTIMEZONE
+        |TZID:Romance Standard Time
+        |BEGIN:STANDARD
+        |DTSTART:16010101T030000
+        |TZOFFSETFROM:+0200
+        |TZOFFSETTO:+0100
+        |RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=-1SU;BYMONTH=10
+        |END:STANDARD
+        |BEGIN:DAYLIGHT
+        |DTSTART:16010101T020000
+        |TZOFFSETFROM:+0100
+        |TZOFFSETTO:+0200
+        |RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=-1SU;BYMONTH=3
+        |END:DAYLIGHT
+        |END:VTIMEZONE
+        |BEGIN:VEVENT
+        |ORGANIZER;CN=Bob:mailto:bob@example.com
+        |ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=btellier:mailto:btellier@example.com
+        |ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=Bob:mailto:bob@example.com
+        |DESCRIPTION;LANGUAGE=fr-FR:Petit point cassandra
+        |UID:040000008200E00074C5B7101A82E00800000000602312E836EDD901000000000000000
+        | 01000000009C40B24EBC55C49B5E76D3C60DFC74F
+        |SUMMARY;LANGUAGE=fr-FR:[SV] point cassandra
+        |DTSTART;TZID=Romance Standard Time:20230922T160000
+        |DTEND;TZID=Romance Standard Time:20230922T170000
+        |CLASS:PUBLIC
+        |PRIORITY:5
+        |DTSTAMP:20230922T072808Z
+        |TRANSP:OPAQUE
+        |STATUS:CONFIRMED
+        |SEQUENCE:0
+        |LOCATION;LANGUAGE=fr-FR:Réunion Microsoft Teams
+        |X-MICROSOFT-CDO-APPT-SEQUENCE:0
+        |BEGIN:VALARM
+        |DESCRIPTION:REMINDER
+        |TRIGGER;RELATED=START:-PT15M
+        |ACTION:DISPLAY
+        |END:VALARM
+        |END:VEVENT
+        |END:VCALENDAR""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    SoftAssertions.assertSoftly(softly => {
+      assertThat(calendarEventParsed.timeZone.get.value.getID)
+        .isEqualTo("Europe/Paris")
+      softly.assertThat(calendarEventParsed.start.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+        .isEqualTo("2023-09-22T16:00:00+02")
+      assertThat(calendarEventParsed.utcStart.get.asUTC.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+        .isEqualTo("2023-09-22T14:00:00Z")
+      assertThat(calendarEventParsed.end.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+        .isEqualTo("2023-09-22T17:00:00+02")
+      assertThat(calendarEventParsed.utcEnd.get.asUTC.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+        .isEqualTo("2023-09-22T15:00:00Z")
+    })
   }
 
   @Nested

@@ -162,6 +162,95 @@ trait LinagoraCalendarEventParseMethodContract {
   }
 
   @Test
+  def parseWindowTimeZoneShouldSucceed(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/window_timezone.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "CalendarEvent/parse",
+           |    {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "parsed": {
+           |            "$blobId": [
+           |                {
+           |                    "method": "REQUEST",
+           |                    "priority": 5,
+           |                    "location": "Réunion Microsoft Teams",
+           |                    "organizer": {
+           |                        "name": "Bob",
+           |                        "mailto": "bob@example.com"
+           |                    },
+           |                    "description": "Petit point cassandra",
+           |                    "participants": [
+           |                        {
+           |                            "name": "btellier",
+           |                            "mailto": "btellier@example.com",
+           |                            "role": "REQ-PARTICIPANT",
+           |                            "participationStatus": "NEEDS-ACTION",
+           |                            "expectReply": true
+           |                        },
+           |                        {
+           |                            "name": "Bob",
+           |                            "mailto": "bob@example.com",
+           |                            "role": "REQ-PARTICIPANT",
+           |                            "participationStatus": "NEEDS-ACTION",
+           |                            "expectReply": true
+           |                        }
+           |                    ],
+           |                    "recurrenceRules": [],
+           |                    "utcEnd": "2023-09-22T15:00:00Z",
+           |                    "sequence": 0,
+           |                    "status": "confirmed",
+           |                    "freeBusyStatus": "busy",
+           |                    "extensionFields": {
+           |                        "X-MICROSOFT-CDO-APPT-SEQUENCE": [
+           |                            "0"
+           |                        ]
+           |                    },
+           |                    "end": "2023-09-22T17:00:00",
+           |                    "start": "2023-09-22T16:00:00",
+           |                    "timeZone": "Europe/Paris",
+           |                    "excludedRecurrenceRules": [],
+           |                    "privacy": "public",
+           |                    "utcStart": "2023-09-22T14:00:00Z",
+           |                    "uid": "040000008200E00074C5B7101A82E00800000000602312E836EDD901000000000000000"
+           |                }
+           |            ]
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
   def parseAnIcsWithMultipleEventsShouldSucceed(): Unit = {
     val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/multipleEvents.ics"))
 

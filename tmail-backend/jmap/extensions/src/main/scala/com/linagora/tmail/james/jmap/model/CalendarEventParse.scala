@@ -5,11 +5,12 @@ import java.time.{Duration, ZoneId, ZonedDateTime}
 import java.util.{Locale, TimeZone}
 
 import com.google.common.base.Preconditions
+import com.ibm.icu.util.{TimeZone => Icu4jTimeZone}
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.EventStatus
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
 import com.linagora.tmail.james.jmap.model.CalendarPrivacyField.CalendarPrivacy
-import com.linagora.tmail.james.jmap.model.CalendarStartField.getTimeZoneAlternative
+import com.linagora.tmail.james.jmap.model.CalendarStartField.getAlternativeZoneId
 import com.linagora.tmail.james.jmap.model.RecurrenceRulesField.parseRecurrenceRules
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -28,6 +29,7 @@ import org.apache.james.jmap.method.WithAccountId
 
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
+import scala.util.Try
 
 case class CalendarEventParseRequest(accountId: AccountId,
                                      blobIds: BlobIds,
@@ -173,11 +175,13 @@ object CalendarStartField {
     Option(calendarEvent.getStartDate)
       .flatMap(startDate => Option(startDate.getDate)
         .map(date => CalendarStartField(ZonedDateTime.ofInstant(date.toInstant,
-          Option(startDate.getTimeZone).getOrElse(getTimeZoneAlternative(calendarEvent)).toZoneId))))
+          Option(startDate.getTimeZone)
+            .flatMap(timeZone => CalendarTimeZoneField.extractZoneId(timeZone.getID))
+            .getOrElse(getAlternativeZoneId(calendarEvent))))))
 
-  def getTimeZoneAlternative(calendarEvent: VEvent): TimeZone =
-    CalendarTimeZoneField.getTimeZoneFromTZID(calendarEvent)
-      .getOrElse(TimeZone.getTimeZone(ZoneId.of("UTC")))
+  def getAlternativeZoneId(calendarEvent: VEvent): ZoneId =
+    CalendarTimeZoneField.getZoneIdFromTZID(calendarEvent)
+      .getOrElse(ZoneId.of("UTC"))
 }
 
 case class CalendarStartField(value: ZonedDateTime) extends AnyVal {
@@ -189,7 +193,9 @@ object CalendarEndField {
     Option(calendarEvent.getEndDate())
       .flatMap(endDate => Option(endDate.getDate)
         .map(date => CalendarEndField(ZonedDateTime.ofInstant(date.toInstant,
-          Option(endDate.getTimeZone).getOrElse(getTimeZoneAlternative(calendarEvent)).toZoneId))))
+          Option(endDate.getTimeZone)
+            .flatMap(timeZone => CalendarTimeZoneField.extractZoneId(timeZone.getID))
+            .getOrElse(getAlternativeZoneId(calendarEvent))))))
 }
 
 case class CalendarEndField(value: ZonedDateTime) extends AnyVal {
@@ -208,20 +214,32 @@ case class CalendarDurationField(value: Duration) extends AnyVal
 
 object CalendarTimeZoneField {
   def from(calendarEvent: VEvent): Option[CalendarTimeZoneField] =
-    getTimeZoneFromTZID(calendarEvent)
-      .orElse(getTimeZoneFromStartDate(calendarEvent))
-      .map(CalendarTimeZoneField(_))
+    getZoneIdFromTZID(calendarEvent)
+      .orElse(getZoneIdFromStartDate(calendarEvent))
+      .map(zoneId => CalendarTimeZoneField(TimeZone.getTimeZone(zoneId)))
 
-  def getTimeZoneFromTZID(calendarEvent: VEvent): Option[TimeZone] =
+  def getZoneIdFromTZID(calendarEvent: VEvent): Option[ZoneId] =
     Option(calendarEvent.getProperty(Property.TZID).asInstanceOf[Property])
       .map(_.getValue)
-      .map(TimeZone.getTimeZone)
+      .flatMap(string => extractZoneId(string))
 
-  private def getTimeZoneFromStartDate(calendarEvent: VEvent): Option[TimeZone] =
+  private def getZoneIdFromStartDate(calendarEvent: VEvent): Option[ZoneId] =
     Option(calendarEvent.getStartDate)
       .flatMap(date => Option(date.getTimeZone))
-      .map(_.toZoneId)
-      .map(TimeZone.getTimeZone)
+      .flatMap(timeZone => extractZoneId(timeZone.getID))
+
+  def extractZoneId(value: String): Option[ZoneId] = {
+    def parseIANAZone: ZoneId =
+      ZoneId.of(value)
+
+    def parseWindowZone(value: String): Option[ZoneId] =
+      Option(Icu4jTimeZone.getIDForWindowsID(value, "US"))
+        .map(value => ZoneId.of(value))
+
+    Try(parseIANAZone)
+      .fold(_ => parseWindowZone(value),
+        ianaZoneId => Some(ianaZoneId))
+  }
 }
 
 case class CalendarTimeZoneField(value: TimeZone) extends AnyVal
