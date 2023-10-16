@@ -1,5 +1,8 @@
 package com.linagora.tmail.james.common
 
+import java.util.Optional
+
+import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.common.probe.JmapGuiceCustomProbe
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -9,7 +12,7 @@ import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
-import org.apache.james.core.Username
+import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.api.filtering.Rule
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
@@ -624,6 +627,100 @@ trait LinagoraFilterGetMethodContract {
          |              "appendIn": {
          |                "mailboxIds":["$generateMailboxIdForUser"]
          |              },"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
+         |            }
+         |          }
+         |        ]
+         |      }
+         |    ],
+         |    "notFound": []
+         |  }, "c1"]]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def filterGetShouldReturnRuleWithActionForward(server: GuiceJamesServer): Unit = {
+    val usernameString = "alice@james.org"
+    val forwardedMailAddresses = ImmutableList.of(new MailAddress(usernameString))
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(generateUsername(),
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.ConditionGroup.of(Rule.ConditionCombiner.AND,
+            Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question")))
+          .action(Rule.Action.builder().setAppendInMailboxes(Rule.Action.AppendInMailboxes.withMailboxIds())
+            .setWithKeywords(ImmutableList.of)
+            .setForward(Optional.of(Rule.Action.Forward.of(forwardedMailAddresses, true)))
+            .build())
+          .build)
+
+    val request =
+      s"""{
+         |  "using": ["com:linagora:params:jmap:filter" ],
+         |  "methodCalls": [
+         |    [
+         |      "Filter/get",
+         |        {
+         |          "accountId": "$generateAccountIdAsString",
+         |          "ids": ["singleton"]
+         |        },
+         |          "c1"]
+         |    ]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+      .when()
+      .post()
+      .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [[
+         |    "Filter/get", {
+         |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
+         |      "list": [
+         |      {
+         |        "id": "singleton",
+         |        "rules": [
+         |          {
+         |            "name": "My first rule",
+         |            "conditionGroup": {
+         |              "conditionCombiner": "AND",
+         |              "conditions": [
+         |                {
+         |                  "comparator": "contains",
+         |                  "field": "subject",
+         |                  "value": "question"
+         |                }
+         |              ]
+         |            },
+         |            "condition": {
+         |              "field": "subject",
+         |              "comparator": "contains",
+         |              "value": "question"
+         |            },
+         |            "action": {
+         |              "appendIn": {
+         |                "mailboxIds":[]
+         |              },
+         |              "markAsSeen":false,
+         |              "markAsImportant":false,
+         |              "reject":false,
+         |              "withKeywords":[],
+         |              "forwardTo": {
+         |                "addresses": ["$usernameString"],
+         |                "keepACopy":true
+         |              }
          |            }
          |          }
          |        ]

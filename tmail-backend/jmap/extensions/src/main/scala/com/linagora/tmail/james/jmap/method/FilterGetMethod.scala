@@ -77,8 +77,12 @@ class FilterGetMethod @Inject()(val metricFactory: MetricFactory,
 
   private def retrieveFiltersWithVersion(username: Username) : SMono[FilterWithVersion] =
     SMono.fromPublisher(filteringManagement.listRulesForUser(username))
-      .map(rulesWithVersion => FilterWithVersion(Filter("singleton", rulesWithVersion.getRules.asScala.toList.map(rule => Rule.fromJava(rule, mailboxIdFactory))),
-        rulesWithVersion.getVersion))
+      .map(rulesWithVersion => {
+        FilterWithVersion(Filter("singleton", rulesWithVersion.getRules.asScala.toList.map(rule => {
+          println(s"Rule $rule")
+          Rule.fromJava(rule, mailboxIdFactory)
+        })), rulesWithVersion.getVersion)
+      })
 
   private def getFilterGetResponse(request: FilterGetRequest,
                                    mailboxSession: MailboxSession): SMono[FilterGetResponse] =
