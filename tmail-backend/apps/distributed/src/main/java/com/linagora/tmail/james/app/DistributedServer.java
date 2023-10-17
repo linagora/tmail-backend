@@ -263,7 +263,6 @@ public class DistributedServer {
             new RabbitMQModule(),
             new RabbitMQMailQueueModule(),
             new RabbitMailQueueRoutesModule(),
-            new RspamdModule(),
             new ScheduledReconnectionHandler.Module(),
             new TasksHeathCheckModule(),
             new TeamMailboxModule());
@@ -296,6 +295,7 @@ public class DistributedServer {
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(chooseRedisRateLimiterModule(configuration))
+            .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseQuotaModule(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration));
@@ -354,6 +354,19 @@ public class DistributedServer {
             configuration.propertiesProvider().getConfiguration("redis");
             return List.of(new RedisRateLimiterModule());
         } catch (FileNotFoundException notFoundException) {
+            LOGGER.info("Redis configuration not found, disabling Redis rate limiter module");
+            return List.of();
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static List<Module> chooseRspamdModule(DistributedJamesConfiguration configuration) {
+        try {
+            configuration.propertiesProvider().getConfiguration("rspamd");
+            return List.of(new RspamdModule());
+        } catch (FileNotFoundException notFoundException) {
+            LOGGER.info("Rspamd configuration not found, disabling Rspamd module");
             return List.of();
         } catch (ConfigurationException e) {
             throw new RuntimeException(e);
