@@ -14,3 +14,25 @@ Specified to TMail backend, we can configure the following configurations in the
 | Optional. Duration, default to 60 days. Cassandra Time-to-live for Label change records.
 Setting time-to-live to zero means refusing to use time-to-live on label changes.
 Example: `label.change.ttl=0 second`.
+|===
+
+== Firebase Cloud Messaging configurations
+
+If you wish you to configure pushing notifications via FCM, please configure the `firebase.properties` file.
+Omitting the file would mean disable FCM usage.
+
+.firebase.properties
+|===
+| Property name | explanation
+| enable
+| Optional. Boolean, default to true. Whether to enable FCM usage.
+
+Example: `enable=true`.
+
+| privatekey.url
+| Required if FCM usage is enabled. String. Path to a Service Account key file in JSON format from the Google Developers
+Console or a stored user credential using the format supported by the Cloud SDK.
+Documentation to generate a private key file for service account: https://firebase.google.com/docs/admin/setup?hl=en#initialize_the_sdk_in_non-google_environments.
+
+Example: `privatekey.url=/root/conf/firebase_push_privatekey.json`.
+|===
