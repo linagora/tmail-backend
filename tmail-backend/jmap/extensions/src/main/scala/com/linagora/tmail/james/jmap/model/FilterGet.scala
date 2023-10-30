@@ -87,8 +87,9 @@ object Rule {
         convert(rule.getAction.getForward)))
 
   private def convert(forwardOptional: Optional[JavaRule.Action.Forward]): Option[FilterForward] =
-    forwardOptional.toScala
-      .map(actionForward => FilterForward(actionForward.getAddresses.asScala.toList.map(mailAddress => MailAddress(mailAddress.asString())), KeepACopy(actionForward.isKeepACopy)))
+    forwardOptional.toScala.map(actionForward => FilterForward(
+      actionForward.getAddresses.asScala.toList.map(mailAddress => MailAddress(mailAddress.asString())),
+      KeepACopy(actionForward.isKeepACopy)))
 
   private def convertFromJavaConditionToScalaCondition(condition: JavaCondition): Condition =
     Condition(Field(condition.getField.asString()), Comparator(condition.getComparator.asString()), condition.getValue)
