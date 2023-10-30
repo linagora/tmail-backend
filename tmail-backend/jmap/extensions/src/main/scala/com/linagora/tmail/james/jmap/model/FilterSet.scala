@@ -77,10 +77,10 @@ object RuleWithId {
       .setForward(convertScalaForwardToJavaForward(ruleWithId.action.forwardTo))
       .build()
 
-  private def convertScalaForwardToJavaForward(forwardOption: Option[FilterForward]): Optional[Rule.Action.Forward] = forwardOption match {
-    case Some(forward) => Optional.of(Rule.Action.Forward.of(forward.addresses.map(address => new MailAddress(address.string)).asJava, forward.keepACopy.value))
-    case None => Optional.empty
-  }
+  private def convertScalaForwardToJavaForward(forwardOption: Option[FilterForward]): Optional[Rule.Action.Forward] =
+    forwardOption.map(forward =>
+      Optional.of(Rule.Action.Forward.of(forward.addresses.map(address => new MailAddress(address.string)).asJava, forward.keepACopy.value)))
+      .getOrElse(Optional.empty())
 }
 
 case class FilterSetError(`type`: SetErrorType, description: Option[SetErrorDescription])

@@ -671,9 +671,9 @@ trait LinagoraFilterGetMethodContract {
     val response = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
-      .when()
+    .when()
       .post()
-      .`then`
+    .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
       .contentType(JSON)

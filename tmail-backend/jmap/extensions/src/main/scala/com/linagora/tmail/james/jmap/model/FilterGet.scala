@@ -12,6 +12,7 @@ import org.apache.james.jmap.mail.{Keyword, Name}
 import org.apache.james.jmap.method.WithAccountId
 import org.apache.james.mailbox.model.MailboxId
 
+import scala.jdk.OptionConverters._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -85,14 +86,9 @@ object Rule {
         Some(WithKeywords(rule.getAction.getWithKeywords.asScala.map(s => Keyword.of(s).get).toSeq)),
         convert(rule.getAction.getForward)))
 
-  private def convert(forwardOptional: Optional[JavaRule.Action.Forward]): Option[FilterForward] = {
-    if (forwardOptional.isPresent) {
-      Some(FilterForward(forwardOptional.get().getAddresses.asScala.toList.map(mailAddress => MailAddress(mailAddress.asString())),
-        KeepACopy(forwardOptional.get().isKeepACopy)))
-    } else {
-      None
-    }
-  }
+  private def convert(forwardOptional: Optional[JavaRule.Action.Forward]): Option[FilterForward] =
+    forwardOptional.toScala
+      .map(actionForward => FilterForward(actionForward.getAddresses.asScala.toList.map(mailAddress => MailAddress(mailAddress.asString())), KeepACopy(actionForward.isKeepACopy)))
 
   private def convertFromJavaConditionToScalaCondition(condition: JavaCondition): Condition =
     Condition(Field(condition.getField.asString()), Comparator(condition.getComparator.asString()), condition.getValue)

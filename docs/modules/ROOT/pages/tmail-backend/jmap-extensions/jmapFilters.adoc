@@ -51,10 +51,16 @@ An `Action` object has the following properties:
 - **reject** `Boolean` optional defaults to false. Should the matching email be rejected.
 - **withKeywords** `String[]` optional defaults to empty. The keyword to apply to matching emails.
 - **appendIn**: `AppendIn`, specified the "append in mailboxes" action.
+- **forwardTo**: `ForwardTo`, optional. specified the "forward" action.
 
 An `AppendIn` object has the following properties:
 
  - **mailboxIds**: `List[Id]`: The list of mailboxes to put the message in.
+
+An `ForwardTo` object has the following properties:
+
+ - **addresses**: `String[]`: The list of email addresses to forward the email to.
+ - **keepACopy**: `Boolean`: Should the email be kept locally or not.
 
 === Filter/get
 
@@ -105,6 +111,10 @@ A client can register for updates on the `Filter` datatype using either eventsou
 					"action": {
 						"appendIn": {
 							"mailboxIds": ["42"]
+						},
+						"forwardTo": {
+							"addresses": ["alice@james.org"],
+							"keepACopy": false
 						}
 					}
 				}]
@@ -173,6 +183,10 @@ Will return:
 						"action": {
 							"appendIn": {
 								"mailboxIds": ["42"]
+							},
+							"forwardTo": {
+								"addresses": ["alice@james.org"],
+								"keepACopy": false
 							}
 						}
 					}]
@@ -204,6 +218,10 @@ Will return:
 					"action": {
 						"appendIn": {
 							"mailboxIds": ["42"]
+						},
+						"forwardTo": {
+							"addresses": ["alice@james.org"],
+							"keepACopy": false
 						}
 					}
 				}]
@@ -267,6 +285,10 @@ Will return:
 						"action": {
 							"appendIn": {
 								"mailboxIds": ["42"]
+							},
+							"forwardTo": {
+								"addresses": ["alice@james.org"],
+								"keepACopy": false
 							}
 						}
 					}]

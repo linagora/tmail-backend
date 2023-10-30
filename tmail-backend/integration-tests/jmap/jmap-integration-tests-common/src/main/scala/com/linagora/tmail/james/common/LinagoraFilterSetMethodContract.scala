@@ -399,7 +399,6 @@ trait LinagoraFilterSetMethodContract {
          |						"appendIn": {
          |							"mailboxIds": []
          |						},
-         |						"withKeywords": [],
          |						"forwardTo": {
          |							"addresses": ["$usernameString"],
          |							"keepACopy":true
