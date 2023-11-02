@@ -12,8 +12,8 @@ import org.apache.james.jmap.mail.{Keyword, Name}
 import org.apache.james.jmap.method.WithAccountId
 import org.apache.james.mailbox.model.MailboxId
 
-import scala.jdk.OptionConverters._
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 import scala.util.Try
 
 case class FilterGetRequest(accountId: AccountId,
