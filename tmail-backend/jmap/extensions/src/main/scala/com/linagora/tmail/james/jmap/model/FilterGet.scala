@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.util.Optional
+
 import com.google.common.collect.ImmutableList
 import org.apache.james.jmap.api.filtering.Rule.{Condition => JavaCondition}
 import org.apache.james.jmap.api.filtering.{Version, Rule => JavaRule}
@@ -11,6 +13,7 @@ import org.apache.james.jmap.method.WithAccountId
 import org.apache.james.mailbox.model.MailboxId
 
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 import scala.util.Try
 
 case class FilterGetRequest(accountId: AccountId,
@@ -38,8 +41,13 @@ case class MarkAsImportant(value: Boolean)
 case class Reject(value: Boolean)
 
 case class WithKeywords(keywords: Seq[Keyword])
+
+case class MailAddress(string: String) extends AnyVal
+case class KeepACopy(value: Boolean)
+case class FilterForward(addresses: List[MailAddress], keepACopy: KeepACopy)
+
 case class Action(appendIn: AppendIn, markAsSeen: Option[MarkAsSeen], markAsImportant: Option[MarkAsImportant],
-                  reject: Option[Reject], withKeywords: Option[WithKeywords])
+                  reject: Option[Reject], withKeywords: Option[WithKeywords], forwardTo: Option[FilterForward])
 
 case class Rule(name: Name, conditionGroup: ConditionGroup, condition: Condition,  action: Action)
 
@@ -75,7 +83,13 @@ object Rule {
         Some(MarkAsSeen(rule.getAction.isMarkAsSeen)),
         Some(MarkAsImportant(rule.getAction.isMarkAsImportant)),
         Some(Reject(rule.getAction.isReject)),
-        Some(WithKeywords(rule.getAction.getWithKeywords.asScala.map(s => Keyword.of(s).get).toSeq))))
+        Some(WithKeywords(rule.getAction.getWithKeywords.asScala.map(s => Keyword.of(s).get).toSeq)),
+        convert(rule.getAction.getForward)))
+
+  private def convert(forwardOptional: Optional[JavaRule.Action.Forward]): Option[FilterForward] =
+    forwardOptional.toScala.map(actionForward => FilterForward(
+      actionForward.getAddresses.asScala.toList.map(mailAddress => MailAddress(mailAddress.asString())),
+      KeepACopy(actionForward.isKeepACopy)))
 
   private def convertFromJavaConditionToScalaCondition(condition: JavaCondition): Condition =
     Condition(Field(condition.getField.asString()), Comparator(condition.getComparator.asString()), condition.getValue)

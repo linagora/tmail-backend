@@ -1,6 +1,9 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.util.Optional
+
 import com.google.common.collect.ImmutableList
+import org.apache.james.core.MailAddress
 import org.apache.james.jmap.api.filtering.Rule
 import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id
@@ -66,11 +69,19 @@ object RuleWithId {
     condition.value)
 
   private def asAction(ruleWithId: RuleWithId): Rule.Action =
-    Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(AppendIn.convertListMailboxIdToListString(ruleWithId.action.appendIn.mailboxIds).asJava),
-      ruleWithId.action.markAsSeen.map(_.value).getOrElse(false),
-      ruleWithId.action.markAsImportant.map(_.value).getOrElse(false),
-      ruleWithId.action.reject.map(_.value).getOrElse(false),
-      ruleWithId.action.withKeywords.map(keywords => ImmutableList.copyOf(keywords.keywords.map(k => k.flagName).toList.asJavaCollection)).getOrElse(ImmutableList.of()))
+    Rule.Action.builder.setAppendInMailboxes(Rule.Action.AppendInMailboxes.withMailboxIds(AppendIn.convertListMailboxIdToListString(ruleWithId.action.appendIn.mailboxIds).asJava))
+      .setMarkAsSeen(ruleWithId.action.markAsSeen.map(_.value).getOrElse(false))
+      .setMarkAsImportant(ruleWithId.action.markAsImportant.map(_.value).getOrElse(false))
+      .setReject(ruleWithId.action.reject.map(_.value).getOrElse(false))
+      .setWithKeywords(ruleWithId.action.withKeywords.map(keywords => ImmutableList.copyOf(keywords.keywords.map(k => k.flagName).toList.asJavaCollection)).getOrElse(ImmutableList.of()))
+      .setForward(convertScalaForwardToJavaForward(ruleWithId.action.forwardTo))
+      .build()
+
+  private def convertScalaForwardToJavaForward(forwardOption: Option[FilterForward]): Optional[Rule.Action.Forward] =
+    forwardOption.map(forward => Optional.of(Rule.Action.Forward.of(
+      forward.addresses.map(address => new MailAddress(address.string)).asJava,
+      forward.keepACopy.value)))
+      .getOrElse(Optional.empty())
 }
 
 case class FilterSetError(`type`: SetErrorType, description: Option[SetErrorDescription])

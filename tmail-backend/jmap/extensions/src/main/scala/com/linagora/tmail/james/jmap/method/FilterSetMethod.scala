@@ -143,7 +143,7 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
   def update(mailboxSession: MailboxSession, filterSetRequest: FilterSetRequest): SMono[FilterSetUpdateResults] =
     SFlux.fromIterable(filterSetRequest.parseUpdate())
       .flatMap[FilterSetUpdateResult](tuple =>
-        tuple._2.flatMap(validateRules)
+        tuple._2.flatMap(validateRules(_, mailboxSession))
           .map(update => SMono.fromCallable(() => RuleWithId.toJava(update.rules)))
           .fold(SMono.error, rules => rules.flatMap(rule => updateRules(mailboxSession.getUser, rule, filterSetRequest.ifInState)))
           .onErrorResume(e => SMono.just(FilterSetUpdateFailure(tuple._1, e))))
@@ -167,9 +167,11 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
         Some(SetErrorDescription("'destroy' is not supported on singleton objects")))))
         .toMap)
 
-  def validateRules(update: Update): Either[IllegalArgumentException, Update] =
+  def validateRules(update: Update, mailboxSession: MailboxSession): Either[IllegalArgumentException, Update] =
     if (!update.rules.distinctBy(_.id).length.equals(update.rules.length)) {
       Left(new DuplicatedRuleException("There are some duplicated rules"))
+    } else if (update.rules.exists(_.action.forwardTo.exists(forward => forward.addresses.map(_.string).contains(mailboxSession.getUser.asString)))) {
+      Left(new IllegalArgumentException("The mail address that are forwarded to could not be this mail address"))
     } else {
       Right(update)
     }
