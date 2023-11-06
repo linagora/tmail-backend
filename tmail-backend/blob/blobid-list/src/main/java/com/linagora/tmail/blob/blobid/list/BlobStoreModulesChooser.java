@@ -40,8 +40,8 @@ import org.apache.james.modules.blobstore.BlobDeduplicationGCModule;
 import org.apache.james.modules.blobstore.validation.EventsourcingStorageStrategy;
 import org.apache.james.modules.blobstore.validation.StorageStrategyModule;
 import org.apache.james.modules.mailbox.BlobStoreAPIModule;
-import org.apache.james.modules.objectstorage.DefaultBucketModule;
 import org.apache.james.modules.objectstorage.S3BlobStoreModule;
+import org.apache.james.modules.objectstorage.S3BucketModule;
 import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore;
 import org.apache.james.server.blob.deduplication.PassThroughBlobStore;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
@@ -96,7 +96,7 @@ public class BlobStoreModulesChooser {
     static class SingleSaveDeclarationModule extends AbstractModule {
         @Override
         protected void configure() {
-            install(new DefaultBucketModule());
+            install(new S3BucketModule());
             install(new S3BlobStoreModule());
             install(new SingleSaveBlobStoreModule());
             bind(BlobStoreDAO.class).annotatedWith(Names.named(UNENCRYPTED)).to(SingleSaveBlobStoreDAO.class);
@@ -106,7 +106,7 @@ public class BlobStoreModulesChooser {
     static class MultiSaveDeclarationModule extends AbstractModule {
         @Override
         protected void configure() {
-            install(new DefaultBucketModule());
+            install(new S3BucketModule());
             install(new S3BlobStoreModule());
             bind(BlobStoreDAO.class).annotatedWith(Names.named(UNENCRYPTED)).to(S3BlobStoreDAO.class);
         }
