@@ -46,6 +46,7 @@ import org.apache.james.mailbox.model.SearchQuery.Criterion;
 import org.apache.james.mailbox.model.SearchQuery.HeaderOperator;
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.Operator;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 
@@ -157,16 +158,21 @@ public class CriterionConverter {
     private QueryBuilder convertTextCriterion(SearchQuery.TextCriterion textCriterion) {
         return switch (textCriterion.getType()) {
             case BODY -> boolQuery()
-                .should(matchQuery(JsonMessageConstants.TEXT_BODY, textCriterion.getOperator().getValue()))
+                .should(matchQuery(JsonMessageConstants.TEXT_BODY, textCriterion.getOperator().getValue())
+                    .operator(Operator.AND))
                 .should(matchQuery(JsonMessageConstants.HTML_BODY, textCriterion.getOperator().getValue()));
             case FULL -> boolQuery()
-                .should(matchQuery(JsonMessageConstants.TEXT_BODY, textCriterion.getOperator().getValue()))
-                .should(matchQuery(JsonMessageConstants.HTML_BODY, textCriterion.getOperator().getValue()))
+                .should(matchQuery(JsonMessageConstants.TEXT_BODY, textCriterion.getOperator().getValue())
+                    .operator(Operator.AND))
+                .should(matchQuery(JsonMessageConstants.HTML_BODY, textCriterion.getOperator().getValue())
+                    .operator(Operator.AND))
                 .should(matchQuery(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.TEXT_CONTENT,
-                    textCriterion.getOperator().getValue()));
+                    textCriterion.getOperator().getValue())
+                    .operator(Operator.AND));
             case ATTACHMENTS -> boolQuery()
                 .should(matchQuery(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.TEXT_CONTENT,
-                    textCriterion.getOperator().getValue()));
+                    textCriterion.getOperator().getValue())
+                    .operator(Operator.AND));
             case ATTACHMENT_FILE_NAME -> boolQuery()
                 .should(termQuery(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.FILENAME,
                     textCriterion.getOperator().getValue()));
@@ -297,6 +303,7 @@ public class CriterionConverter {
     }
 
     private QueryBuilder convertSubject(SearchQuery.SubjectCriterion headerCriterion) {
-        return matchQuery(JsonMessageConstants.SUBJECT, headerCriterion.getSubject());
+        return matchQuery(JsonMessageConstants.SUBJECT, headerCriterion.getSubject())
+            .operator(Operator.AND);
     }
 }
