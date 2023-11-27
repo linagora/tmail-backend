@@ -428,21 +428,14 @@ class ElasticSearchIntegrationTest extends AbstractMessageSearchIndexTest {
     @Disabled("JAMES-3963 Not fixing those tests")
     @Test
     @Override
-    public void bodyContainsShouldReturnUidOfMessageContainingTheApproximativeText() {
+    public void sortOnFromShouldWork() {
 
     }
 
     @Disabled("JAMES-3963 Not fixing those tests")
     @Test
     @Override
-    public void searchWithFullTextShouldReturnMailsWhenNotAPerfectMatch() {
-
-    }
-
-    @Disabled("JAMES-3963 Not fixing those tests")
-    @Test
-    @Override
-    public void mailsContainsShouldIncludeMailHavingAttachmentsMatchingTheRequest() {
+    public void sortOnToShouldWork() {
 
     }
 
