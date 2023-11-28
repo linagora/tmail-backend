@@ -3,6 +3,7 @@ package com.linagora.tmail.mailets
 import java.time.Duration
 import java.util
 import java.util.stream.IntStream
+
 import com.codahale.metrics.MetricRegistry
 import com.linagora.tmail.mailets.EnforceRateLimitingPlanTest.{USER1, USER2}
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingPlanUserRepository
