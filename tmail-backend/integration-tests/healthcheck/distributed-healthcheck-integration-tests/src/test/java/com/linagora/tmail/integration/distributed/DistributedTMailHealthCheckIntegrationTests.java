@@ -3,8 +3,8 @@ package com.linagora.tmail.integration.distributed;
 import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.apache.james.rate.limiter.RedisExtension;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
