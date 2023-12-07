@@ -391,4 +391,25 @@ trait FirebaseSubscriptionRepositoryContract {
     assertThat(subscriptions.map(_.id).toList.asJava).containsOnly(nonOutdatedSubscription)
   }
 
+  @Test
+  def extendExpiredSubscriptionShouldSucceed(): Unit = {
+    val deviceClientId1 = DeviceClientId("1")
+    val validRequest1 = FirebaseSubscriptionCreationRequest(
+      deviceClientId = deviceClientId1,
+      token = SAMPLE_DEVICE_TOKEN_1,
+      expires = Option(FirebaseSubscriptionExpiredTime(VALID_EXPIRE.plusDays(1))),
+      types = Seq(CustomTypeName1))
+    val toExpiredSubscriptionId = SMono.fromPublisher(testee.save(ALICE, validRequest1)).block().id
+
+    clock.setInstant(VALID_EXPIRE.plusDays(2).toInstant)
+
+    SMono.fromPublisher(testee.updateExpireTime(ALICE, toExpiredSubscriptionId,VALID_EXPIRE.plusDays(3)))
+      .block()
+
+    val extendedSubscription = SFlux.fromPublisher(testee.get(ALICE, java.util.Set.of(toExpiredSubscriptionId))).blockFirst().get
+
+    assertThat(extendedSubscription.expires.value)
+      .isEqualTo(VALID_EXPIRE.plusDays(3))
+  }
+
 }
