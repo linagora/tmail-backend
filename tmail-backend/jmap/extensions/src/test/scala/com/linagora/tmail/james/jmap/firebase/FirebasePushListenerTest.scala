@@ -41,7 +41,7 @@ class FirebasePushListenerTest {
     pushClient = mock(classOf[FirebasePushClient])
     delegationStore = new MemoryDelegationStore()
     jmapSettingsRepository = MemoryJmapSettingsRepository()
-    testee = new FirebasePushListener(subscriptionRepository, delegationStore, jmapSettingsRepository, pushClient)
+    testee = new FirebasePushListener(subscriptionRepository, delegationStore, jmapSettingsRepository, pushClient, Clock.systemUTC())
 
     when(pushClient.push(any())).thenReturn(Mono.empty)
   }

@@ -321,27 +321,23 @@ trait FirebaseSubscriptionRepositoryContract {
   }
 
   @Test
-  def getSubscriptionsShouldNotReturnOutdatedSubscription(): Unit = {
-    val deviceClientId1 = DeviceClientId("1")
-    val deviceClientId2 = DeviceClientId("2")
+  def getShouldReturnExpiredSubscription(): Unit = {
     val validRequest1 = FirebaseSubscriptionCreationRequest(
-      deviceClientId = deviceClientId1,
+      deviceClientId = DeviceClientId("1"),
       token = SAMPLE_DEVICE_TOKEN_1,
       expires = Option(FirebaseSubscriptionExpiredTime(VALID_EXPIRE.plusDays(1))),
       types = Seq(CustomTypeName1))
-    val validRequest2 = FirebaseSubscriptionCreationRequest(
-      deviceClientId = deviceClientId2,
-      token = SAMPLE_DEVICE_TOKEN_2,
-      expires = Option(FirebaseSubscriptionExpiredTime(VALID_EXPIRE.plusDays(3))),
-      types = Seq(CustomTypeName2))
-    val outdatedSubscriptionId1 = SMono.fromPublisher(testee.save(ALICE, validRequest1)).block().id
-    val nonOutdatedSubscriptionId2 = SMono.fromPublisher(testee.save(ALICE, validRequest2)).block().id
+
+    val toExpiredSubscriptionId: FirebaseSubscriptionId = SMono.fromPublisher(testee.save(ALICE, validRequest1)).block()
+      .id
 
     clock.setInstant(VALID_EXPIRE.plusDays(2).toInstant)
 
-    val subscriptions = SFlux.fromPublisher(testee.get(ALICE, Set(outdatedSubscriptionId1, nonOutdatedSubscriptionId2).asJava)).collectSeq().block()
+    val subscriptions = SFlux.fromPublisher(testee.get(ALICE, java.util.Set.of(toExpiredSubscriptionId)))
+      .collectSeq()
+      .block()
 
-    assertThat(subscriptions.map(_.id).toList.asJava).containsOnly(nonOutdatedSubscriptionId2)
+    assertThat(subscriptions.map(_.id).toList.asJava).containsOnly(toExpiredSubscriptionId)
   }
 
   @Test
@@ -368,27 +364,23 @@ trait FirebaseSubscriptionRepositoryContract {
   }
 
   @Test
-  def listSubscriptionShouldNotReturnOutdatedSubscriptions(): Unit = {
-    val deviceClientId1 = DeviceClientId("1")
-    val deviceClientId2 = DeviceClientId("2")
+  def listShouldReturnExpiredSubscription(): Unit = {
     val validRequest1 = FirebaseSubscriptionCreationRequest(
-      deviceClientId = deviceClientId1,
+      deviceClientId = DeviceClientId("1"),
       token = SAMPLE_DEVICE_TOKEN_1,
       expires = Option(FirebaseSubscriptionExpiredTime(VALID_EXPIRE.plusDays(1))),
       types = Seq(CustomTypeName1))
-    val validRequest2 = FirebaseSubscriptionCreationRequest(
-      deviceClientId = deviceClientId2,
-      token = SAMPLE_DEVICE_TOKEN_2,
-      expires = Option(FirebaseSubscriptionExpiredTime(VALID_EXPIRE.plusDays(3))),
-      types = Seq(CustomTypeName2))
-    SMono.fromPublisher(testee.save(ALICE, validRequest1)).block().id
-    val nonOutdatedSubscription = SMono.fromPublisher(testee.save(ALICE, validRequest2)).block().id
+
+    val toExpiredSubscriptionId: FirebaseSubscriptionId = SMono.fromPublisher(testee.save(ALICE, validRequest1)).block()
+      .id
 
     clock.setInstant(VALID_EXPIRE.plusDays(2).toInstant)
 
-    val subscriptions = SFlux.fromPublisher(testee.list(ALICE)).collectSeq().block()
+    val subscriptions = SFlux.fromPublisher(testee.list(ALICE))
+      .collectSeq()
+      .block()
 
-    assertThat(subscriptions.map(_.id).toList.asJava).containsOnly(nonOutdatedSubscription)
+    assertThat(subscriptions.map(_.id).toList.asJava).containsOnly(toExpiredSubscriptionId)
   }
 
   @Test

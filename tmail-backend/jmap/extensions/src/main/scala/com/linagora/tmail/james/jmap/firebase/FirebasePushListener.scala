@@ -1,7 +1,10 @@
 package com.linagora.tmail.james.jmap.firebase
 
+import java.time.Clock
+
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener.{GROUP, LOGGER}
+import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.isNotOutdatedSubscription
 import com.linagora.tmail.james.jmap.model.FirebaseSubscription
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository
 import javax.inject.Inject
@@ -30,7 +33,8 @@ object FirebasePushListener {
 class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptionRepository,
                                      delegationStore: DelegationStore,
                                      jmapSettingsRepository: JmapSettingsRepository,
-                                     pushClient: FirebasePushClient) extends ReactiveGroupEventListener {
+                                     pushClient: FirebasePushClient,
+                                     clock: Clock) extends ReactiveGroupEventListener {
   override def getDefaultGroup: Group = GROUP
 
   override def isHandling(event: Event): Boolean = event.isInstanceOf[StateChangeEvent]
@@ -58,6 +62,7 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       .filterWhen(firebasePushEnabled(_))
       .concatWith(SMono.just(event.username))
       .flatMap(subscriptionRepository.list)
+      .filter(isNotOutdatedSubscription(_, clock))
       .flatMap(sendNotification(_, event), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
       .`then`(SMono.empty)
