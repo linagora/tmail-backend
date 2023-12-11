@@ -52,25 +52,8 @@ pipeline {
               }
 
               echo "Docker tag: ${env.DOCKER_TAG}"
-
-              // Load docker from tar file
-              sh "docker load -i tmail-backend/apps/distributed/target/jib-image.tar"
-              sh "docker load -i tmail-backend/apps/distributed-es6-backport/target/jib-image.tar"
-              sh "docker load -i tmail-backend/apps/memory/target/jib-image.tar"
-
-              // Temporary retag image names
-              sh "docker tag linagora/tmail-backend-memory linagora/tmail-backend:memory-${env.DOCKER_TAG}"
-              sh "docker tag linagora/tmail-backend-distributed linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
-              sh "docker tag linagora/tmail-backend-distributed-esv6 linagora/tmail-backend:distributed-esv6-${env.DOCKER_TAG}"
-
-              def memoryImage = docker.image "linagora/tmail-backend:memory-${env.DOCKER_TAG}"
-              def distributedImage = docker.image "linagora/tmail-backend:distributed-${env.DOCKER_TAG}"
-              def distributedEs6Image = docker.image "linagora/tmail-backend:distributed-esv6-${env.DOCKER_TAG}"
-              docker.withRegistry('', 'dockerHub') {
-                memoryImage.push()
-                distributedImage.push()
-                distributedEs6Image.push()
-              }
+              // build and push docker images
+              sh "mvn -Pci jib:build -pl apps/distributed,apps/distributed-es6-backport,apps/memory -X"
             }
           }
           post {
