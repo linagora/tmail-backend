@@ -6,7 +6,7 @@ import java.util.Optional
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
-import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.{evaluateExpiresTime, isInThePast, isNotOutdatedSubscription}
+import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.{evaluateExpiresTime, isInThePast}
 import com.linagora.tmail.james.jmap.model.{DeviceClientIdInvalidException, ExpireTimeInvalidException, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionNotFoundException, TokenInvalidException}
 import javax.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
@@ -86,11 +86,9 @@ class CassandraFirebaseSubscriptionRepository @Inject()(dao: CassandraFirebaseSu
   override def get(username: Username, ids: util.Set[FirebaseSubscriptionId]): Publisher[FirebaseSubscription] =
     dao.selectAll(username)
       .filter(subscription => ids.contains(subscription.id))
-      .filter(isNotOutdatedSubscription(_, clock))
 
   override def list(username: Username): Publisher[FirebaseSubscription] =
     dao.selectAll(username)
-      .filter(isNotOutdatedSubscription(_, clock))
 
   private def isDuplicatedDeviceClientId(username: Username, deviceClientId: String): SMono[Boolean] =
     dao.selectAll(username)

@@ -2,7 +2,6 @@ package com.linagora.tmail.james.jmap.firebase;
 
 import static com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.evaluateExpiresTime;
 import static com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.isInThePast;
-import static com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.isNotOutdatedSubscription;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -123,15 +122,13 @@ public class MemoryFirebaseSubscriptionRepository implements FirebaseSubscriptio
     public Publisher<FirebaseSubscription> get(Username username, Set<FirebaseSubscriptionId> ids) {
         return Flux.fromIterable(table.row(username).entrySet())
             .filter(entry -> ids.contains(entry.getKey()))
-            .map(Map.Entry::getValue)
-            .filter(subscription -> isNotOutdatedSubscription(subscription, clock));
+            .map(Map.Entry::getValue);
     }
 
     @Override
     public Publisher<FirebaseSubscription> list(Username username) {
         return Flux.fromIterable(table.row(username).entrySet())
-            .map(Map.Entry::getValue)
-            .filter(subscription -> isNotOutdatedSubscription(subscription, clock));
+            .map(Map.Entry::getValue);
     }
 
     private boolean isUniqueDeviceClientId(Username username, String deviceClientId) {
