@@ -342,12 +342,8 @@
                             <to>
                                 <image>linagora/tmail-backend</image>
                                 <tags>
-                                    <tag>memory-${env.DOCKER_TAG}</tag>
+                                    <tag>memory-branch-master</tag>
                                 </tags>
-                                <auth>
-                                    <username>${env.DOCKER_HUB_USER}</username>
-                                    <password>${env.DOCKER_HUB_TOKEN}</password>
-                                </auth>
                             </to>
                             <container>
                                 <mainClass>com.linagora.tmail.james.app.MemoryServer</mainClass>

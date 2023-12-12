@@ -3,6 +3,10 @@ pipeline {
       label 'jdk17'
     }
 
+    environment {
+        DOCKER_HUB_CREDENTIAL = credentials('dockerHub')
+    }
+
     options {
         // Configure an overall timeout for the build.
         timeout(time: 3, unit: 'HOURS')
@@ -53,7 +57,10 @@ pipeline {
 
               echo "Docker tag: ${env.DOCKER_TAG}"
               // build and push docker images
-              sh "mvn -Pci jib:build -pl apps/distributed,apps/distributed-es6-backport,apps/memory -X"
+              dir("tmail-backend") {
+                sh "mvn -Pci jib:build -Djib.to.auth.username=${DOCKER_HUB_CREDENTIAL_USR} -Djib.to.auth.password=${DOCKER_HUB_CREDENTIAL_PSW} -Djib.to.tags=distributed-${env.DOCKER_TAG} -pl apps/distributed -X"
+                sh "mvn -Pci jib:build -Djib.to.auth.username=${DOCKER_HUB_CREDENTIAL_USR} -Djib.to.auth.password=${DOCKER_HUB_CREDENTIAL_PSW} -Djib.to.tags=memory-${env.DOCKER_TAG} -pl apps/memory -X"
+              }
             }
           }
           post {
