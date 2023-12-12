@@ -519,12 +519,8 @@
                             <to>
                                 <image>linagora/tmail-backend</image>
                                 <tags>
-                                    <tag>distributed-${env.DOCKER_TAG}</tag>
+                                    <tag>distributed-branch-master</tag>
                                 </tags>
-                                <auth>
-                                    <username>${env.DOCKER_HUB_USER}</username>
-                                    <password>${env.DOCKER_HUB_TOKEN}</password>
-                                </auth>
                             </to>
                             <container>
                                 <mainClass>com.linagora.tmail.james.app.DistributedServer</mainClass>
