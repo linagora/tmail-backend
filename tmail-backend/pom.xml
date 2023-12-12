@@ -20,8 +20,6 @@
     <modules>
         <module>apps</module>
 
-        <module>backend-commons/elasticsearch-v6</module>
-
         <module>blob/blobid-list</module>
 
         <module>combined-identity</module>
@@ -29,24 +27,20 @@
         <module>deployment-tests</module>
 
         <module>guice/distributed</module>
-        <module>guice/elasticsearch-v6</module>
         <module>guice/encrypted-mailbox</module>
         <module>guice/protocols/jmap</module>
         <module>guice/team-mailboxes</module>
 
         <module>integration-tests</module>
 
-        <module>mailbox/elasticsearch-v6</module>
         <module>mailbox/encrypted</module>
         <module>mailbox/encrypted/pgp-utils</module>
-        <module>mailbox/plugin/quota-search-elasticsearch-v6</module>
         <module>mailbox/team-mailboxes</module>
 
         <module>mailets</module>
 
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
-        <module>jmap/extensions-es-v6</module>
         <module>jmap/extensions-opensearch</module>
         <module>jmap/extensions-rabbitmq</module>
 
@@ -71,17 +65,6 @@
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>backends-es-v6</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>backends-es-v6</artifactId>
-                <version>${project.version}</version>
-                <type>test-jar</type>
-            </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>backends-opensearch</artifactId>
@@ -118,11 +101,6 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>distributed</artifactId>
                 <type>test-jar</type>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>distributed-es6-backport</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -220,11 +198,6 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>jmap-extensions-es-v6</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-data-cassandra</artifactId>
                 <type>test-jar</type>
@@ -238,23 +211,7 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>james-server-guice-elasticsearch-v6</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
                 <artifactId>jmap-integration-tests-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>mailbox-elasticsearch-v6</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>mailbox-elasticsearch-v6</artifactId>
-                <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -276,11 +233,6 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>mailbox-encrypted-cassandra</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>mailbox-quota-search-elasticsearch-v6</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

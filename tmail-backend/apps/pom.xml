@@ -16,6 +16,5 @@
     <modules>
         <module>memory</module>
         <module>distributed</module>
-        <module>distributed-es6-backport</module>
     </modules>
 </project>

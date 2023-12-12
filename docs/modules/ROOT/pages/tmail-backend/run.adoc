@@ -116,13 +116,3 @@ The xref:james-distributed-app::operate/cli.adoc[CLI] can easily be used once yo
 ....
 docker exec james james-cli ListDomains
 ....
-
-=== Support earlier version of ElasticSearch
-
-We do backport a TMail server compatible with earlier versions of ElasticSearch.
-
-You then need to run ElasticSearch version 6.3.2.
-
-To use it, you just need to change the docker image to `linagora/tmail-backend:distributed-esv6-branch-master`.
-
-You can also use a link:https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed-es6-backport/docker-compose.yml[docker-compose] file.

@@ -9,9 +9,7 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 public class ThirdPartyContainers {
-    public static String ES6_IMAGE_NAME = "docker.elastic.co/elasticsearch/elasticsearch:6.3.2";
     public static String OS_IMAGE_NAME = "opensearchproject/opensearch:2.1.0";
-    public static String ES6_NETWORK_ALIAS = "elasticsearch";
     public static String OS_NETWORK_ALIAS = "opensearch";
 
     @SuppressWarnings("resource")
