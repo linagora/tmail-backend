@@ -12,7 +12,6 @@
 
     <properties>
         <target.jdk>17</target.jdk>
-        <jib.base.image>eclipse-temurin:20-jre-jammy</jib.base.image>
     </properties>
 
     <modules>
