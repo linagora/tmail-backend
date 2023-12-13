@@ -85,7 +85,7 @@ Return codes:
 === Adding a member to a Team Mailbox
 
 ....
-curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/bob@domain.tld
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/members/bob@domain.tld
 ....
 
 Allows creating `bob@domain.tld` user as a member of `marketing@domain.tld` team mailbox.
@@ -99,7 +99,7 @@ Return codes:
 === Removing a member for a Team Mailbox
 
 ....
-curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/bob@domain.tld
+curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketing/members/bob@domain.tld
 ....
 
 Allows deleting `bob@domain.tld` user as a member of `marketing@domain.tld` team mailbox.
