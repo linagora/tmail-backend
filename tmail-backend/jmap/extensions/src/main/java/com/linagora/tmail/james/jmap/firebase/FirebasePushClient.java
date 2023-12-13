@@ -102,6 +102,7 @@ public class FirebasePushClient {
                 .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
                 .setAps(Aps.builder()
                     .setContentAvailable(true)
+                    .setMutableContent(true)
                     .build())
                 .build())
             .setWebpushConfig(WebpushConfig.builder()
