@@ -18,6 +18,7 @@ import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.AndroidConfig;
 import com.google.firebase.messaging.ApnsConfig;
 import com.google.firebase.messaging.Aps;
+import com.google.firebase.messaging.ApsAlert;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
@@ -83,6 +84,9 @@ public class FirebasePushClient {
                 .setApnsConfig(ApnsConfig.builder()
                     .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
                     .setAps(Aps.builder()
+                        .setAlert(ApsAlert.builder()
+                            .setTitle("TMail notification")
+                            .build())
                         .setContentAvailable(true)
                         .setMutableContent(true)
                         .build())
@@ -101,6 +105,9 @@ public class FirebasePushClient {
             .setApnsConfig(ApnsConfig.builder()
                 .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
                 .setAps(Aps.builder()
+                    .setAlert(ApsAlert.builder()
+                        .setTitle("TMail notification")
+                        .build())
                     .setContentAvailable(true)
                     .setMutableContent(true)
                     .build())
