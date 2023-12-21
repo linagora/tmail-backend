@@ -79,7 +79,7 @@ public class RewriteXUserFilter implements PluginFilter {
             }
             logger.warn("Wrong userinfo field userInfo {}", jsonNode.getClass());
             return Optional.empty();
-        } catch (IOException e) {
+        } catch (NullPointerException | IOException e) {
             logger.warn("Can not extract user from userInfo header", e);
             return Optional.empty();
         }
