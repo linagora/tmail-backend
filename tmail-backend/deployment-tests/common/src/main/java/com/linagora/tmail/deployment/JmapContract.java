@@ -1,5 +1,7 @@
 package com.linagora.tmail.deployment;
 
+import static com.linagora.tmail.deployment.JmxCredentialsFixture.JMX_PASSWORD;
+import static com.linagora.tmail.deployment.JmxCredentialsFixture.JMX_USER;
 import static io.restassured.RestAssured.given;
 import static io.restassured.config.EncoderConfig.encoderConfig;
 import static io.restassured.config.RestAssuredConfig.newConfig;
@@ -40,9 +42,9 @@ public interface JmapContract {
 
     @BeforeEach
     default void setUp() throws Exception {
-        jmapContainer().execInContainer("james-cli", "AddDomain", "domain.tld");
-        jmapContainer().execInContainer("james-cli", "AddUser", BOB.asString(), BOB_PASSWORD);
-        jmapContainer().execInContainer("james-cli", "AddUser", ALICE.asString(), ALICE_PASSWORD);
+        jmapContainer().execInContainer("james-cli", "-username", JMX_USER, "-password", JMX_PASSWORD, "AddDomain", "domain.tld");
+        jmapContainer().execInContainer("james-cli", "-username", JMX_USER, "-password", JMX_PASSWORD, "AddUser", BOB.asString(), BOB_PASSWORD);
+        jmapContainer().execInContainer("james-cli", "-username", JMX_USER, "-password", JMX_PASSWORD, "AddUser", ALICE.asString(), ALICE_PASSWORD);
 
         PreemptiveBasicAuthScheme authScheme = new PreemptiveBasicAuthScheme();
         authScheme.setUserName(BOB.asString());

@@ -1,5 +1,8 @@
 package com.linagora.tmail.deployment;
 
+import static com.linagora.tmail.deployment.JmxCredentialsFixture.JMX_PASSWORD;
+import static com.linagora.tmail.deployment.JmxCredentialsFixture.JMX_USER;
+
 import org.apache.james.mpt.api.ImapHostSystem;
 import org.apache.james.mpt.imapmailbox.external.james.DeploymentValidation;
 import org.apache.james.mpt.imapmailbox.external.james.ExternalJamesModule;
@@ -25,8 +28,8 @@ public abstract class ImapAndSmtpContract extends DeploymentValidation {
     @Override
     @BeforeEach
     public void setUp() throws Exception {
-        container().execInContainer("james-cli", "AddDomain", "domain");
-        container().execInContainer("james-cli", "AddUser", "imapuser@domain", "password");
+        container().execInContainer("james-cli", "-username", JMX_USER, "-password", JMX_PASSWORD, "AddDomain", "domain");
+        container().execInContainer("james-cli", "-username", JMX_USER, "-password", JMX_PASSWORD, "AddUser", "imapuser@domain", "password");
 
         configuration = configuration();
         Injector injector = Guice.createInjector(new ExternalJamesModule(configuration, new NoopDomainsAndUserAdder()));
