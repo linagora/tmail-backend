@@ -58,7 +58,9 @@
             <mailet match="All" class="RemoveMimeHeader">
                 <name>bcc</name>
             </mailet>
-            <mailet match="All" class="RecipientRewriteTable" />
+            <mailet match="All" class="RecipientRewriteTable">
+                <errorProcessor>rrt-error</errorProcessor>
+            </mailet>
             <mailet match="RecipientIsLocal" class="ToProcessor">
                 <processor>local-delivery</processor>
             </mailet>
@@ -116,6 +118,13 @@
             </mailet>
         </processor>
 
+        <processor state="rrt-error" enableJmx="false">
+            <mailet match="All" class="ToRepository">
+                <repositoryPath>cassandra://var/mail/rrt-error/</repositoryPath>
+            </mailet>
+            <mailet match="IsSenderInRRTLoop" class="Null"/>
+            <mailet match="All" class="Bounce"/>
+        </processor>
     </processors>
 
 </mailetcontainer>

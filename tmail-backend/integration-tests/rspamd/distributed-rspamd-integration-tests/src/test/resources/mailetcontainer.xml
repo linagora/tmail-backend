@@ -20,7 +20,9 @@
             <mailet match="All" class="org.apache.james.transport.mailets.RemoveMimeHeader">
                 <name>bcc</name>
             </mailet>
-            <mailet match="All" class="org.apache.james.transport.mailets.RecipientRewriteTable"/>
+            <mailet match="All" class="org.apache.james.transport.mailets.RecipientRewriteTable">
+                <errorProcessor>rrt-error</errorProcessor>
+            </mailet>
             <mailet match="RecipientIsLocal" class="org.apache.james.transport.mailets.VacationMailet"/>
             <mailet match="RecipientIsLocal" class="org.apache.james.jmap.mailet.filter.JMAPFiltering"/>
             <mailet match="RecipientIsLocal" class="org.apache.james.transport.mailets.Sieve"/>
@@ -68,6 +70,14 @@
             <mailet match="All" class="ToRepository">
                 <repositoryPath>cassandra://var/mail/virus/</repositoryPath>
             </mailet>
+        </processor>
+
+        <processor state="rrt-error" enableJmx="false">
+            <mailet match="All" class="ToRepository">
+                <repositoryPath>cassandra://var/mail/rrt-error/</repositoryPath>
+            </mailet>
+            <mailet match="IsSenderInRRTLoop" class="Null"/>
+            <mailet match="All" class="Bounce"/>
         </processor>
     </processors>
 </mailetcontainer>
