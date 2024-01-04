@@ -1,12 +1,13 @@
 package com.linagora.tmail.mailets
 
+import java.util
+
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxRepository}
 import org.apache.james.core.MailAddress
 import org.apache.mailet.Mail
 import org.apache.mailet.base.GenericMatcher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.util
 import scala.jdk.CollectionConverters._
 
 class IsTeamMailbox(teamMailboxRepository: TeamMailboxRepository) extends GenericMatcher {
