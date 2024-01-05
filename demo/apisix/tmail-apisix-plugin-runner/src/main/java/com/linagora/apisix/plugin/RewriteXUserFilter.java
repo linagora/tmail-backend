@@ -73,11 +73,17 @@ public class RewriteXUserFilter implements PluginFilter {
 
     public Optional<String> extractUserFromUserInfo(String userInfo) {
         try {
-            JsonNode jsonNode = json.readTree(Base64.getDecoder().decode(userInfo)).get(userInfoField);
-            if (jsonNode.isTextual()) {
-                return Optional.of(jsonNode.asText());
+            JsonNode userInfoAsJsonNode = json.readTree(Base64.getDecoder().decode(userInfo));
+
+            if (userInfoAsJsonNode.hasNonNull(userInfoField)) {
+                JsonNode jsonNode = userInfoAsJsonNode.get(userInfoField);
+                if (jsonNode.isTextual()) {
+                    return Optional.of(jsonNode.asText());
+                }
+                logger.warn("Wrong userinfo field userInfo {}", jsonNode.getClass());
+            } else {
+                logger.warn("JSON of userInfo does not contain property '{}'", userInfoField);
             }
-            logger.warn("Wrong userinfo field userInfo {}", jsonNode.getClass());
             return Optional.empty();
         } catch (IOException e) {
             logger.warn("Can not extract user from userInfo header", e);
