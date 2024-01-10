@@ -32,11 +32,17 @@ import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.data.LdapUsersRepositoryModule;
 import org.apache.james.modules.data.CassandraUsersRepositoryModule;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
+import org.apache.james.user.cassandra.CassandraUsersDAO;
+import org.apache.james.user.lib.UsersDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
+import com.google.inject.AbstractModule;
 import com.google.inject.Module;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 
 public class UsersRepositoryModuleChooser {
 
@@ -45,7 +51,14 @@ public class UsersRepositoryModuleChooser {
     public static List<Module> chooseModules(Implementation implementation) {
         return switch (implementation) {
             case LDAP -> ImmutableList.of(new LdapUsersRepositoryModule());
-            case COMBINED -> ImmutableList.of(new CombinedUsersRepositoryModule());
+            case COMBINED -> ImmutableList.of(new CombinedUsersRepositoryModule(), new AbstractModule() {
+                @Provides
+                @Singleton
+                @Named(CombinedUserDAO.DATABASE_INJECT_NAME)
+                public UsersDAO provideBackportUserDAO(CassandraUsersDAO cassandraUsersDAO) {
+                    return cassandraUsersDAO;
+                }
+            });
             case DEFAULT -> ImmutableList.of(new CassandraUsersRepositoryModule());
         };
     }
