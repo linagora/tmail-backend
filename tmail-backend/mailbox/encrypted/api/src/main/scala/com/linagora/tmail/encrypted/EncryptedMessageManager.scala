@@ -58,8 +58,6 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
 
   override def getMailboxEntity: Mailbox = messageManager.getMailboxEntity
 
-  override def getSupportedMessageCapabilities: util.EnumSet[MailboxManager.MessageCapabilities] = messageManager.getSupportedMessageCapabilities
-
   override def getId: MailboxId = messageManager.getId
 
   override def getMailboxPath: MailboxPath = messageManager.getMailboxPath
