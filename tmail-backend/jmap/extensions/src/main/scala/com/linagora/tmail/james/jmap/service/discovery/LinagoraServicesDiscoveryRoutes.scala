@@ -1,6 +1,5 @@
 package com.linagora.tmail.james.jmap.service.discovery
 
-import java.net.URL
 import java.util.stream.Stream
 
 import com.google.inject.multibindings.Multibinder
@@ -19,13 +18,18 @@ import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
 import org.apache.james.utils.PropertiesProvider
 import org.slf4j.{Logger, LoggerFactory}
-import play.api.libs.json.{JsString, Json, Writes}
+import play.api.libs.json.{JsObject, JsString, Json, OWrites, Writes}
 import reactor.core.publisher.Mono
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
 private[discovery] object Serializers {
-  private implicit val urlWrites: Writes[URL] = url => JsString(url.toString)
-  private implicit val responseWrites: Writes[LinagoraServicesDiscoveryConfiguration] = Json.writes[LinagoraServicesDiscoveryConfiguration]
+  private implicit val serviceItemsWrites: OWrites[List[LinagoraServicesDiscoveryItem]] =
+    (ids: List[LinagoraServicesDiscoveryItem]) => {
+      ids.foldLeft(JsObject.empty)((jsObject, item) => {
+        jsObject.+(item.key, JsString.apply(item.value))
+      })
+    }
+  private implicit val responseWrites: Writes[LinagoraServicesDiscoveryConfiguration] = Json.valueWrites[LinagoraServicesDiscoveryConfiguration]
 
   def serialize(response: LinagoraServicesDiscoveryConfiguration): String = Json.stringify(Json.toJson(response))
 }

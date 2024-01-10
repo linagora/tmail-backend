@@ -42,7 +42,7 @@ trait LinagoraServicesDiscoveryRoutesContract {
     assertThatJson(response)
       .isEqualTo(
         s"""{
-           |	"linShareApiUrl": "https://linshare.linagora.com/linshare/webservice",
+           |	"linshareApiUrl": "https://linshare.linagora.com/linshare/webservice",
            |	"linToApiUrl": "https://linto.ai/demo",
            |	"linToApiKey": "apiKey",
            |	"twakeApiUrl": "https://api.twake.app"
@@ -68,7 +68,7 @@ trait LinagoraServicesDiscoveryRoutesContract {
     assertThatJson(response)
       .isEqualTo(
         s"""{
-           |	"linShareApiUrl": "https://linshare.linagora.com/linshare/webservice",
+           |	"linshareApiUrl": "https://linshare.linagora.com/linshare/webservice",
            |	"linToApiUrl": "https://linto.ai/demo",
            |	"linToApiKey": "apiKey",
            |	"twakeApiUrl": "https://api.twake.app"
