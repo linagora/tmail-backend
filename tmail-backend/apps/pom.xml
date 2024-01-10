@@ -34,5 +34,6 @@
     <modules>
         <module>memory</module>
         <module>distributed</module>
+        <module>postgres</module>
     </modules>
 </project>

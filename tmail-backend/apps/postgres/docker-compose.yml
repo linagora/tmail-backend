@@ -1,0 +1,35 @@
+version: '3.4'
+
+x-common-environment: &common-environment
+  POSTGRES_DB: tmail
+  POSTGRES_USER: tmail
+  POSTGRES_PASSWORD: secret1
+
+services:
+
+  tmail-backend:
+    depends_on:
+      - postgres
+    image: linagora/tmail-backend-postgresql-experimental
+    container_name: tmail-backend
+    hostname: tmail-backend.local
+    command:
+      - --generate-keystore
+    ports:
+      - "80:80"
+      - "25:25"
+      - "110:110"
+      - "143:143"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+      - "8000:8000"
+    environment:
+      <<: *common-environment
+
+  postgres:
+    image: postgres:16.1
+    ports:
+      - "5432:5432"
+    environment:
+      <<: *common-environment
