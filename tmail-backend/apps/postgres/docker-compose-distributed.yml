@@ -1,0 +1,93 @@
+version: '3.4'
+
+x-common-environment: &common-environment
+  POSTGRES_DB: tmail
+  POSTGRES_USER: tmail
+  POSTGRES_PASSWORD: secret1
+
+services:
+
+  tmail-backend:
+    depends_on:
+      postgres:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
+      s3:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    image: linagora/tmail-backend-postgresql-experimental
+    container_name: tmail-backend
+    hostname: tmail-backend.local
+    command:
+      - --generate-keystore
+    environment:
+      <<: *common-environment
+      OBJECT_STORAGE_ENDPOINT: http://s3.docker.test:8000/
+      OBJECT_STORAGE_REGION: us-east-1
+      OBJECT_STORAGE_ACCESS_KEY_ID: accessKey1
+      OBJECT_STORAGE_SECRET_KEY: secretKey1
+
+    ports:
+      - "80:80"
+      - "25:25"
+      - "110:110"
+      - "143:143"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+      - "8000:8000"
+    volumes:
+      - ./sample-configuration/distributed/opensearch.properties:/root/conf/opensearch.properties
+      - ./sample-configuration/distributed/blob.properties:/root/conf/blob.properties
+      - ./sample-configuration/distributed/rabbitmq.properties:/root/conf/rabbitmq.properties
+    networks:
+      - tmail
+
+  opensearch:
+    image: opensearchproject/opensearch:2.8.0
+    container_name: opensearch
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://opensearch:9200"]
+      interval: 3s
+      timeout: 10s
+      retries: 5
+    environment:
+      - discovery.type=single-node
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
+    networks:
+      - tmail
+
+  postgres:
+    image: postgres:16.1
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      <<: *common-environment
+    networks:
+      - tmail
+
+  s3:
+    image: registry.scality.com/cloudserver/cloudserver:8.7.25
+    container_name: s3.docker.test
+    environment:
+      SCALITY_ACCESS_KEY_ID: accessKey1
+      SCALITY_SECRET_ACCESS_KEY: secretKey1
+      LOG_LEVEL: trace
+      REMOTE_MANAGEMENT_DISABLE: 1
+    networks:
+      - tmail
+
+  rabbitmq:
+    image: rabbitmq:3.12.1-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - tmail
+
+networks:
+  tmail:
