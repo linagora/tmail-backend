@@ -81,16 +81,7 @@ public class FirebasePushClient {
                 .setAndroidConfig(AndroidConfig.builder()
                     .setPriority(AndroidConfig.Priority.NORMAL)
                     .build())
-                .setApnsConfig(ApnsConfig.builder()
-                    .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
-                    .setAps(Aps.builder()
-                        .setAlert(ApsAlert.builder()
-                            .setTitle("TMail notification")
-                            .build())
-                        .setContentAvailable(true)
-                        .setMutableContent(true)
-                        .build())
-                    .build())
+                .setApnsConfig(buildApnsConfig(pushRequest))
                 .setWebpushConfig(WebpushConfig.builder()
                     .putHeader(WEB_PUSH_URGENCY_HEADER, "normal")
                     .build())
@@ -102,20 +93,38 @@ public class FirebasePushClient {
             .setAndroidConfig(AndroidConfig.builder()
                 .setPriority(AndroidConfig.Priority.HIGH)
                 .build())
-            .setApnsConfig(ApnsConfig.builder()
-                .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
-                .setAps(Aps.builder()
-                    .setAlert(ApsAlert.builder()
-                        .setTitle("TMail notification")
-                        .build())
-                    .setContentAvailable(true)
-                    .setMutableContent(true)
-                    .build())
-                .build())
+            .setApnsConfig(buildApnsConfig(pushRequest))
             .setWebpushConfig(WebpushConfig.builder()
                 .putHeader(WEB_PUSH_URGENCY_HEADER, "high")
                 .build())
             .build();
+    }
+
+    private ApnsConfig buildApnsConfig(FirebasePushRequest pushRequest) {
+        return ApnsConfig.builder()
+            .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
+            .setAps(buildApsDictionary(pushRequest))
+            .build();
+    }
+
+    private Aps buildApsDictionary(FirebasePushRequest pushRequest) {
+        if (containsEmailDelivery(pushRequest)) {
+            return Aps.builder()
+                .setAlert(ApsAlert.builder()
+                    .setTitle("Twake Mail")
+                    .setBody("You have new message")
+                    .build())
+                .setContentAvailable(true)
+                .setMutableContent(true)
+                .build();
+        }
+        return Aps.builder()
+            .setContentAvailable(true)
+            .build();
+    }
+
+    private boolean containsEmailDelivery(FirebasePushRequest pushRequest) {
+        return pushRequest.urgency().equals(FirebasePushUrgency.HIGH);
     }
 
     private Message createEmptyMessage(FirebaseToken token) {

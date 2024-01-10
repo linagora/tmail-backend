@@ -95,14 +95,17 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
     accountId.id.value + ":" + typeName.asString()
 
   private def urgency(filterStateChange: StateChange): FirebasePushUrgency =
-    if (filterStateChange.changes
-      .values
-      .flatMap(_.changes.keys)
-      .exists(_.equals(EmailDeliveryTypeName))) {
+    if (containsEmailDelivery(filterStateChange)) {
       FirebasePushUrgency.HIGH
     } else {
       FirebasePushUrgency.NORMAL
     }
+
+  private def containsEmailDelivery(filterStateChange: StateChange): Boolean =
+    filterStateChange.changes
+      .values
+      .flatMap(_.changes.keys)
+      .exists(_.equals(EmailDeliveryTypeName))
 }
 
 class FirebasePushListenerRegister extends Startable
