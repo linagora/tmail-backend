@@ -44,22 +44,15 @@ pipeline {
         stage('Deliver Docker images') {
           when {
             anyOf {
-              branch 'master'
+              branch 'postgresql'
               buildingTag()
             }
           }
           steps {
             script {
-              env.DOCKER_TAG = 'branch-master'
-              if (env.TAG_NAME) {
-                env.DOCKER_TAG = env.TAG_NAME
-              }
-
-              echo "Docker tag: ${env.DOCKER_TAG}"
               // build and push docker images
               dir("tmail-backend") {
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=distributed-$DOCKER_TAG -pl apps/distributed -X'
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=memory-$DOCKER_TAG -pl apps/memory -X'
+                sh "mvn -Pci jib:build -Djib.to.auth.username=${DOCKER_HUB_CREDENTIAL_USR} -Djib.to.auth.password=${DOCKER_HUB_CREDENTIAL_PSW} -Djib.to.image=linagora/tmail-backend:postgresql-experimental -pl apps/postgres -X"
               }
             }
           }
