@@ -1,35 +1,22 @@
 package com.linagora.tmail.james.jmap.service.discovery;
 
-import java.net.URL
+import org.apache.commons.configuration2.Configuration
 
-import org.apache.commons.configuration2.Configuration;
+import scala.jdk.CollectionConverters._
 
-case class LinagoraServicesDiscoveryConfiguration(linShareApiUrl: URL,
-                                                  linToApiUrl: URL,
-                                                  linToApiKey: String,
-                                                  twakeApiUrl: URL)
+case class LinagoraServicesDiscoveryItem(key: String, value: String)
+
+case class LinagoraServicesDiscoveryConfiguration(services: List[LinagoraServicesDiscoveryItem]) {
+  def getServicesAsJava(): java.util.List[LinagoraServicesDiscoveryItem] = services.asJava
+}
 
 object LinagoraServicesDiscoveryConfiguration {
   def from(configuration: Configuration): LinagoraServicesDiscoveryConfiguration = {
-    val linShareApiUrl: URL = Option(configuration.getString("linshareApiUrl", null))
-      .filter(_.nonEmpty)
-      .map(string => new URL(string))
-      .getOrElse(throw new IllegalArgumentException("Missing LinShare URL configuration"))
+    val services: List[LinagoraServicesDiscoveryItem] = configuration.getKeys
+      .asScala
+      .toList
+      .map(key => LinagoraServicesDiscoveryItem(key, configuration.getString(key)))
 
-    val linToApiUrl: URL = Option(configuration.getString("linToApiUrl", null))
-      .filter(_.nonEmpty)
-      .map(string => new URL(string))
-      .getOrElse(throw new IllegalArgumentException("Missing LinTo URL configuration"))
-
-    val linToApiKey: String = Option(configuration.getString("linToApiKey", null))
-      .filter(_.nonEmpty)
-      .getOrElse(throw new IllegalArgumentException("Missing LinTo API Key configuration"))
-
-    val twakeApiUrl: URL = Option(configuration.getString("twakeApiUrl", null))
-      .filter(_.nonEmpty)
-      .map(string => new URL(string))
-      .getOrElse(throw new IllegalArgumentException("Missing Twake URL configuration"))
-
-    LinagoraServicesDiscoveryConfiguration(linShareApiUrl, linToApiUrl, linToApiKey, twakeApiUrl)
+    LinagoraServicesDiscoveryConfiguration(services)
   }
 }
