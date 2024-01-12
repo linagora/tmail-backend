@@ -19,6 +19,7 @@
         <module>distributed</module>
         <module>distributed-ldap</module>
         <module>memory</module>
+        <module>postgres</module>
     </modules>
 
     <dependencyManagement>
