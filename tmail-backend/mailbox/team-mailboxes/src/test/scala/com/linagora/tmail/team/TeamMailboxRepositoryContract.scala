@@ -154,6 +154,45 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
+  def addMemberShouldAddImplicitRightsToTeamMailboxSubfolders(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
+    val inboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.inboxPath, bobSession).getEntries
+    val sentEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.sentPath, bobSession).getEntries
+    val outboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), bobSession).getEntries
+    val draftsEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), bobSession).getEntries
+    val trashEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Trash"), bobSession).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(inboxEntriesRights)
+        .hasSize(1)
+      softly.assertThat(inboxEntriesRights.asScala.head._2.toString)
+        .isEqualTo("ilprstw")
+
+      softly.assertThat(sentEntriesRights)
+        .hasSize(1)
+      softly.assertThat(sentEntriesRights.asScala.head._2.toString)
+        .isEqualTo("ilprstw")
+
+      softly.assertThat(outboxEntriesRights)
+        .hasSize(1)
+      softly.assertThat(outboxEntriesRights.asScala.head._2.toString)
+        .isEqualTo("ilprstw")
+
+      softly.assertThat(draftsEntriesRights)
+        .hasSize(1)
+      softly.assertThat(draftsEntriesRights.asScala.head._2.toString)
+        .isEqualTo("ilprstw")
+
+      softly.assertThat(trashEntriesRights)
+        .hasSize(1)
+      softly.assertThat(trashEntriesRights.asScala.head._2.toString)
+        .isEqualTo("ilprstw")
+    })
+  }
+
+  @Test
   def addMemberShouldSubscribeTeamMailboxByDefault(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
@@ -162,7 +201,8 @@ trait TeamMailboxRepositoryContract {
     assertThat(SFlux(subscriptionManager.subscriptionsReactive(bobSession))
       .collectSeq()
       .block().asJava)
-      .contains(TEAM_MAILBOX_MARKETING.mailboxPath, TEAM_MAILBOX_MARKETING.inboxPath, TEAM_MAILBOX_MARKETING.sentPath)
+      .containsExactlyInAnyOrder(TEAM_MAILBOX_MARKETING.mailboxPath, TEAM_MAILBOX_MARKETING.inboxPath, TEAM_MAILBOX_MARKETING.sentPath,
+        TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), TEAM_MAILBOX_MARKETING.mailboxPath("Trash"))
   }
 
   @Test
@@ -200,7 +240,8 @@ trait TeamMailboxRepositoryContract {
     assertThat(SFlux(subscriptionManager.subscriptionsReactive(mailboxManager.createSystemSession(BOB)))
       .collectSeq()
       .block().asJava)
-      .doesNotContain(TEAM_MAILBOX_MARKETING.mailboxPath, TEAM_MAILBOX_MARKETING.inboxPath, TEAM_MAILBOX_MARKETING.sentPath)
+      .doesNotContain(TEAM_MAILBOX_MARKETING.mailboxPath, TEAM_MAILBOX_MARKETING.inboxPath, TEAM_MAILBOX_MARKETING.sentPath,
+        TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), TEAM_MAILBOX_MARKETING.mailboxPath("Trash"))
   }
 
   @Test

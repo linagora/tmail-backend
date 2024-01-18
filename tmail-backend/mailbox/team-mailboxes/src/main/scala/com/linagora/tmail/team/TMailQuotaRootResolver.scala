@@ -49,7 +49,7 @@ class TMailQuotaRootResolver @Inject()(sessionProvider: SessionProvider,
 
   private def retrieveAssociatedMailboxes(teamMailbox: TeamMailbox, session: MailboxSession): SFlux[Mailbox] = {
     val mailboxMapper = factory.getMailboxMapper(session)
-    SFlux.just(teamMailbox.mailboxPath, teamMailbox.inboxPath, teamMailbox.sentPath)
+    SFlux.fromIterable(teamMailbox.defaultMailboxPaths)
       .flatMap(path => SMono(mailboxMapper.findMailboxByPath(path))
         .onErrorResume {
           case _: MailboxNotFoundException => SMono.empty
