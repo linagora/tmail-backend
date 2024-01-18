@@ -120,7 +120,6 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
-            <version>1.19.1</version>
             <scope>test</scope>
         </dependency>
         <!-- Override MIME4J version -->
@@ -142,6 +141,10 @@
             <artifactId>jmap-extensions</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-healthcheck</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
