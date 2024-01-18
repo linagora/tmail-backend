@@ -589,6 +589,243 @@ trait TeamMailboxesContract {
   }
 
   @Test
+  def mailboxGetShouldListOutboxMailbox(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = mailboxId(server, teamMailbox.mailboxPath("Outbox"))
+
+    val id2 = mailboxId(server, teamMailbox.mailboxPath)
+
+    val request =s"""{
+                    |  "using": [
+                    |    "urn:ietf:params:jmap:core",
+                    |    "urn:ietf:params:jmap:mail",
+                    |    "urn:apache:james:params:jmap:mail:shares"],
+                    |  "methodCalls": [[
+                    |    "Mailbox/get",
+                    |    {
+                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "ids": ["$id1"]
+                    |    },
+                    |    "c1"]]
+                    |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
+        s"""{
+           |  "sessionState": "${SESSION_STATE.value}",
+           |  "methodResponses": [[
+           |    "Mailbox/get",
+           |    {
+           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "list": [
+           |        {
+           |          "id": "$id1",
+           |          "parentId": "$id2",
+           |          "name": "Outbox",
+           |          "sortOrder": 1000,
+           |          "totalEmails": 0,
+           |          "unreadEmails": 0,
+           |          "totalThreads": 0,
+           |          "unreadThreads": 0,
+           |          "myRights": {
+           |            "mayReadItems": true,
+           |            "mayAddItems": true,
+           |            "mayRemoveItems": true,
+           |            "maySetSeen": true,
+           |            "maySetKeywords": true,
+           |            "mayCreateChild": false,
+           |            "mayRename": false,
+           |            "mayDelete": false,
+           |            "maySubmit": false
+           |          },
+           |          "isSubscribed": true,
+           |          "namespace": "TeamMailbox[marketing@domain.tld]",
+           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |        }
+           |      ],
+           |      "notFound": []
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def mailboxGetShouldListDraftsMailbox(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = mailboxId(server, teamMailbox.mailboxPath("Drafts"))
+
+    val id2 = mailboxId(server, teamMailbox.mailboxPath)
+
+    val request =s"""{
+                    |  "using": [
+                    |    "urn:ietf:params:jmap:core",
+                    |    "urn:ietf:params:jmap:mail",
+                    |    "urn:apache:james:params:jmap:mail:shares"],
+                    |  "methodCalls": [[
+                    |    "Mailbox/get",
+                    |    {
+                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "ids": ["$id1"]
+                    |    },
+                    |    "c1"]]
+                    |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
+        s"""{
+           |  "sessionState": "${SESSION_STATE.value}",
+           |  "methodResponses": [[
+           |    "Mailbox/get",
+           |    {
+           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "list": [
+           |        {
+           |          "id": "$id1",
+           |          "parentId": "$id2",
+           |          "name": "Drafts",
+           |          "sortOrder": 1000,
+           |          "totalEmails": 0,
+           |          "unreadEmails": 0,
+           |          "totalThreads": 0,
+           |          "unreadThreads": 0,
+           |          "myRights": {
+           |            "mayReadItems": true,
+           |            "mayAddItems": true,
+           |            "mayRemoveItems": true,
+           |            "maySetSeen": true,
+           |            "maySetKeywords": true,
+           |            "mayCreateChild": false,
+           |            "mayRename": false,
+           |            "mayDelete": false,
+           |            "maySubmit": false
+           |          },
+           |          "isSubscribed": true,
+           |          "namespace": "TeamMailbox[marketing@domain.tld]",
+           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |        }
+           |      ],
+           |      "notFound": []
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def mailboxGetShouldListTrashMailbox(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val id1 = mailboxId(server, teamMailbox.mailboxPath("Trash"))
+
+    val id2 = mailboxId(server, teamMailbox.mailboxPath)
+
+    val request =s"""{
+                    |  "using": [
+                    |    "urn:ietf:params:jmap:core",
+                    |    "urn:ietf:params:jmap:mail",
+                    |    "urn:apache:james:params:jmap:mail:shares"],
+                    |  "methodCalls": [[
+                    |    "Mailbox/get",
+                    |    {
+                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "ids": ["$id1"]
+                    |    },
+                    |    "c1"]]
+                    |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .whenIgnoringPaths("methodResponses[0][1].state")
+      .isEqualTo(
+        s"""{
+           |  "sessionState": "${SESSION_STATE.value}",
+           |  "methodResponses": [[
+           |    "Mailbox/get",
+           |    {
+           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "list": [
+           |        {
+           |          "id": "$id1",
+           |          "parentId": "$id2",
+           |          "name": "Trash",
+           |          "sortOrder": 1000,
+           |          "totalEmails": 0,
+           |          "unreadEmails": 0,
+           |          "totalThreads": 0,
+           |          "unreadThreads": 0,
+           |          "myRights": {
+           |            "mayReadItems": true,
+           |            "mayAddItems": true,
+           |            "mayRemoveItems": true,
+           |            "maySetSeen": true,
+           |            "maySetKeywords": true,
+           |            "mayCreateChild": false,
+           |            "mayRename": false,
+           |            "mayDelete": false,
+           |            "maySubmit": false
+           |          },
+           |          "isSubscribed": true,
+           |          "namespace": "TeamMailbox[marketing@domain.tld]",
+           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |        }
+           |      ],
+           |      "notFound": []
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+  }
+
+  @Test
   def mailboxGetShouldNotReturnTeamMailboxesWhenNoShareExtension(server: GuiceJamesServer): Unit = {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
@@ -1302,6 +1539,12 @@ trait TeamMailboxesContract {
 
     val id3 = mailboxId(server, teamMailbox.sentPath)
 
+    val id4 = mailboxId(server, teamMailbox.mailboxPath("Outbox"))
+
+    val id5 = mailboxId(server, teamMailbox.mailboxPath("Drafts"))
+
+    val id6 = mailboxId(server, teamMailbox.mailboxPath("Trash"))
+
     val request =
       s"""{
          |  "using": [
@@ -1340,7 +1583,7 @@ trait TeamMailboxesContract {
            |                "hasMoreChanges": false,
            |                "updatedProperties": null,
            |                "created": [],
-           |                "updated": ["$id1", "$id2", "$id3"],
+           |                "updated": ["$id1", "$id2", "$id3", "$id4", "$id5", "$id6"],
            |                "destroyed": []
            |            },
            |            "c1"

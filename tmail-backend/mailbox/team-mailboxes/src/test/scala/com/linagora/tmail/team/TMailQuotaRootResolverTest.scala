@@ -99,7 +99,8 @@ class TMailQuotaRootResolverTest {
         .map(_.generateAssociatedPath())
         .collectList()
         .block())
-      .containsOnly(teamMailbox.mailboxPath, teamMailbox.inboxPath, teamMailbox.sentPath)
+      .containsOnly(teamMailbox.mailboxPath, teamMailbox.inboxPath, teamMailbox.sentPath,
+        teamMailbox.mailboxPath("Drafts"), teamMailbox.mailboxPath("Outbox"), teamMailbox.mailboxPath("Trash"))
   }
 
   @Test
