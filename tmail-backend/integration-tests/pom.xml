@@ -52,6 +52,7 @@
         <module>rspamd/distributed-rspamd-integration-tests</module>
         <module>healthcheck/healthcheck-integration-tests-common</module>
         <module>healthcheck/distributed-healthcheck-integration-tests</module>
+        <module>healthcheck/postgres-healthcheck-integration-tests</module>
     </modules>
 
     <dependencyManagement>

@@ -60,6 +60,7 @@ import com.google.inject.name.Named;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.combined.identity.CombinedUserDAO;
 import com.linagora.tmail.combined.identity.CombinedUsersRepositoryModule;
+import com.linagora.tmail.rspamd.RspamdModule;
 
 public class PostgresTmailServer {
     static Logger LOGGER = LoggerFactory.getLogger("org.apache.james.CONFIGURATION");
@@ -89,6 +90,7 @@ public class PostgresTmailServer {
             .combineWith(chooseEventBusModules(configuration))
             .combineWith(chooseDeletedMessageVaultModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
+            .combineWith(chooseRspamdModule(configuration))
             .combineWith(POSTGRES_MODULE_AGGREGATE);
     }
 
@@ -177,11 +179,10 @@ public class PostgresTmailServer {
         return Modules.EMPTY_MODULE;
     }
 
-    // TODO: RspamdModule require MessageIdManager, We should do it later
-    /*private static Module chooseRspamdModule(PostgresTmailConfiguration configuration) {
+    private static Module chooseRspamdModule(PostgresTmailConfiguration configuration) {
         if (configuration.hasConfigurationProperties("rspamd")) {
             return new RspamdModule();
         }
         return Modules.EMPTY_MODULE;
-    }*/
+    }
 }
