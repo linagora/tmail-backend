@@ -17,56 +17,22 @@
  * under the License.                                           *
  ****************************************************************/
 
-/**
- * This class is copied & adapted from {@link org.apache.james.data.UsersRepositoryModuleChooser}
- */
+package com.linagora.tmail;
 
-package com.linagora.tmail.combined.identity;
 
-import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.data.LdapUsersRepositoryModule;
-import org.apache.james.modules.data.CassandraUsersRepositoryModule;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
-import org.apache.james.user.cassandra.CassandraUsersDAO;
-import org.apache.james.user.lib.UsersDAO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableList;
-import com.google.inject.AbstractModule;
 import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.name.Named;
+import com.google.inject.util.Modules;
+import com.linagora.tmail.combined.identity.CombinedUsersRepositoryModule;
 
 public class UsersRepositoryModuleChooser {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(UsersRepositoryModuleChooser.class);
-
-    public static List<Module> chooseModules(Implementation implementation) {
-        return switch (implementation) {
-            case LDAP -> ImmutableList.of(new LdapUsersRepositoryModule());
-            case COMBINED -> ImmutableList.of(new CombinedUsersRepositoryModule(), new AbstractModule() {
-                @Provides
-                @Singleton
-                @Named(CombinedUserDAO.DATABASE_INJECT_NAME)
-                public UsersDAO provideBackportUserDAO(CassandraUsersDAO cassandraUsersDAO) {
-                    return cassandraUsersDAO;
-                }
-            });
-            case DEFAULT -> ImmutableList.of(new CassandraUsersRepositoryModule());
-        };
-    }
-
-    public static List<Module> chooseModules(FileConfigurationProvider fileConfigurationProvider) {
-        return chooseModules(Implementation.parse(fileConfigurationProvider));
-    }
-
     public enum Implementation {
         LDAP,
         COMBINED,
@@ -86,9 +52,25 @@ public class UsersRepositoryModuleChooser {
                     })
                     .orElse(DEFAULT);
             } catch (ConfigurationException e) {
-                LOGGER.warn("Error reading usersrepository.xml, defaulting to default implementation", e);
-                return Implementation.DEFAULT;
+                throw new RuntimeException("Error reading usersrepository.xml", e);
             }
         }
+    }
+
+    private final DatabaseCombinedUserRequireModule<?> databaseCombinedUserRequireModule;
+
+    private final Module defaultModule;
+
+    public UsersRepositoryModuleChooser(DatabaseCombinedUserRequireModule<?> databaseCombinedUserRequireModule, Module defaultModule) {
+        this.databaseCombinedUserRequireModule = databaseCombinedUserRequireModule;
+        this.defaultModule = defaultModule;
+    }
+
+    public Module chooseModule(Implementation implementation) {
+        return switch (implementation) {
+            case LDAP -> new LdapUsersRepositoryModule();
+            case COMBINED -> Modules.override(defaultModule).with(Modules.combine(new CombinedUsersRepositoryModule(), databaseCombinedUserRequireModule));
+            case DEFAULT -> defaultModule;
+        };
     }
 }
