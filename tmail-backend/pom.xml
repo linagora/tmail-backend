@@ -30,6 +30,7 @@
         <module>deployment-tests</module>
 
         <module>guice/blob-guice</module>
+        <module>guice/common</module>
         <module>guice/distributed</module>
         <module>guice/encrypted-mailbox</module>
         <module>guice/protocols/jmap</module>
@@ -169,6 +170,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-guice-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
