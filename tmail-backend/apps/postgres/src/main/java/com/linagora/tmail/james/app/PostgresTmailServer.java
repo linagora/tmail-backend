@@ -5,7 +5,6 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.SearchModuleChooser;
-import org.apache.james.data.LdapUsersRepositoryModule;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
@@ -47,19 +46,14 @@ import org.apache.james.modules.server.WebAdminReIndexingTaskSerializationModule
 import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
-import org.apache.james.user.lib.UsersDAO;
 import org.apache.james.user.postgres.PostgresUsersDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.inject.AbstractModule;
 import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import com.google.inject.util.Modules;
-import com.linagora.tmail.combined.identity.CombinedUserDAO;
-import com.linagora.tmail.combined.identity.CombinedUsersRepositoryModule;
+import com.linagora.tmail.DatabaseCombinedUserRequireModule;
+import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.rspamd.RspamdModule;
 
 public class PostgresTmailServer {
@@ -149,20 +143,10 @@ public class PostgresTmailServer {
 
     public static Module chooseUserRepositoryModule(PostgresTmailConfiguration configuration) {
         return Modules.combine(PostgresUsersRepositoryModule.USER_CONFIGURATION_MODULE,
-            switch (configuration.usersRepositoryImplementation()) {
-                case LDAP -> new LdapUsersRepositoryModule();
-                case COMBINED -> Modules.override(new PostgresUsersRepositoryModule())
-                    .with(Modules.combine(new CombinedUsersRepositoryModule(),
-                        new AbstractModule() {
-                            @Provides
-                            @Singleton
-                            @Named(CombinedUserDAO.DATABASE_INJECT_NAME)
-                            public UsersDAO provideDatabaseUserDAO(PostgresUsersDAO postgresUsersDAO) {
-                                return postgresUsersDAO;
-                            }
-                        }));
-                case DEFAULT -> new PostgresUsersRepositoryModule();
-            });
+            new UsersRepositoryModuleChooser(
+                DatabaseCombinedUserRequireModule.of(PostgresUsersDAO.class),
+                new PostgresUsersRepositoryModule())
+                .chooseModule(configuration.usersRepositoryImplementation()));
     }
 
     private static Module chooseDeletedMessageVaultModules(PostgresTmailConfiguration configuration) {
