@@ -67,6 +67,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-guice-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-guice-distributed</artifactId>
         </dependency>
         <dependency>
