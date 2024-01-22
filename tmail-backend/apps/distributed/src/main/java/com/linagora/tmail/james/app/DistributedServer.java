@@ -3,17 +3,21 @@ package com.linagora.tmail.james.app;
 import static org.apache.james.JamesServerMain.LOGGER;
 
 import java.io.FileNotFoundException;
+import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
 import javax.inject.Named;
+import javax.mail.Flags;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
-import org.apache.james.SearchModuleChooser;
+import org.apache.james.events.Group;
 import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
@@ -21,7 +25,19 @@ import org.apache.james.jmap.draft.JMAPListenerModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
+import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.Mailbox;
+import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.SearchQuery;
+import org.apache.james.mailbox.model.UpdatedFlags;
+import org.apache.james.mailbox.store.mail.model.MailboxMessage;
+import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
+import org.apache.james.mailbox.store.search.MessageSearchIndex;
+import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
 import org.apache.james.modules.DistributedTaskManagerModule;
@@ -47,6 +63,9 @@ import org.apache.james.modules.mailbox.CassandraMailboxQuotaLegacyModule;
 import org.apache.james.modules.mailbox.CassandraMailboxQuotaModule;
 import org.apache.james.modules.mailbox.CassandraQuotaMailingModule;
 import org.apache.james.modules.mailbox.CassandraSessionModule;
+import org.apache.james.modules.mailbox.OpenSearchClientModule;
+import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
+import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
 import org.apache.james.modules.mailrepository.CassandraMailRepositoryModule;
 import org.apache.james.modules.metrics.CassandraMetricsModule;
@@ -72,6 +91,7 @@ import org.apache.james.modules.server.MailboxRoutesModule;
 import org.apache.james.modules.server.MailboxesExportRoutesModule;
 import org.apache.james.modules.server.MessagesRoutesModule;
 import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
+import org.apache.james.modules.server.ReIndexingModule;
 import org.apache.james.modules.server.SieveRoutesModule;
 import org.apache.james.modules.server.UserIdentityModule;
 import org.apache.james.modules.server.WebAdminMailOverWebModule;
@@ -80,6 +100,8 @@ import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.modules.webadmin.CassandraRoutesModule;
 import org.apache.james.modules.webadmin.InconsistencySolvingRoutesModule;
+import org.apache.james.quota.search.QuotaSearcher;
+import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -89,6 +111,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.ProvidesIntoSet;
@@ -109,6 +132,7 @@ import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandr
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -147,7 +171,85 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 public class DistributedServer {
+    private static class ScanningQuotaSearchModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            bind(ScanningQuotaSearcher.class).in(Scopes.SINGLETON);
+            bind(QuotaSearcher.class).to(ScanningQuotaSearcher.class);
+        }
+    }
+
+    // Required for CLI
+    private static class FakeMessageSearchIndex extends ListeningMessageSearchIndex {
+
+        public FakeMessageSearchIndex() {
+            super(null, ImmutableSet.of(), null);
+        }
+
+        @Override
+        public Mono<Void> add(MailboxSession session, Mailbox mailbox, MailboxMessage message) {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public Mono<Void> delete(MailboxSession session, MailboxId mailboxId, Collection<MessageUid> expungedUids) {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public Mono<Void> deleteAll(MailboxSession session, MailboxId mailboxId) {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public Mono<Void> update(MailboxSession session, MailboxId mailboxId, List<UpdatedFlags> updatedFlagsList) {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public Mono<Flags> retrieveIndexedFlags(Mailbox mailbox, MessageUid uid) {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public Group getDefaultGroup() {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public Flux<MessageUid> doSearch(MailboxSession session, Mailbox mailbox, SearchQuery searchQuery) throws MailboxException {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public Flux<MessageId> search(MailboxSession session, Collection<MailboxId> mailboxIds, SearchQuery searchQuery, long limit) {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public EnumSet<MailboxManager.SearchCapabilities> getSupportedCapabilities(EnumSet<MailboxManager.MessageCapabilities> messageCapabilities) {
+            throw new NotImplementedException("not implemented");
+        }
+
+        @Override
+        public ExecutionMode getExecutionMode() {
+            throw new NotImplementedException("not implemented");
+        }
+    }
+
+    private static class ScanningSearchModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            bind(MessageSearchIndex.class).to(SimpleMessageSearchIndex.class);
+            bind(FakeMessageSearchIndex.class).in(Scopes.SINGLETON);
+            bind(ListeningMessageSearchIndex.class).to(FakeMessageSearchIndex.class);
+        }
+    }
+
     public static final Module WEBADMIN = Modules.combine(
         new CassandraRoutesModule(),
         new DataRoutesModules(),
@@ -257,7 +359,6 @@ public class DistributedServer {
             new DistributedEmailAddressContactEventModule(),
             new DistributedTaskSerializationModule(),
             new JMAPEventBusModule(),
-            new OSContactAutoCompleteModule(),
             new RabbitMQEmailAddressContactModule(),
             new RabbitMQEventBusModule(),
             new RabbitMQModule(),
@@ -290,15 +391,38 @@ public class DistributedServer {
             .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.mailQueueViewChoice()))
             .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
-            .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
             .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseQuotaModule(configuration))
+            .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration));
+    }
+
+    public static List<Module> chooseModules(SearchConfiguration searchConfiguration) {
+        switch (searchConfiguration.getImplementation()) {
+            case OpenSearch:
+                return ImmutableList.of(
+                    new OSContactAutoCompleteModule(),
+                    new OpenSearchClientModule(),
+                    new OpenSearchMailboxModule(),
+                    new ReIndexingModule());
+            case Scanning:
+                return ImmutableList.of(
+                    binder -> binder.bind(EmailAddressContactSearchEngine.class).to(DisabledEmailAddressContactSearchEngine.class),
+                    new ScanningQuotaSearchModule(),
+                    new ScanningSearchModule());
+            case OpenSearchDisabled:
+                return ImmutableList.of(
+                    binder -> binder.bind(EmailAddressContactSearchEngine.class).to(DisabledEmailAddressContactSearchEngine.class),
+                    new OpenSearchDisabledModule(),
+                    new ScanningQuotaSearchModule());
+            default:
+                throw new RuntimeException("Unsupported search implementation " + searchConfiguration.getImplementation());
+        }
     }
 
     private static Module chooseJmapModule(DistributedJamesConfiguration configuration) {
