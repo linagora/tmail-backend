@@ -52,6 +52,9 @@ public class TmailPostgresExtension implements BeforeEachCallback, AfterEachCall
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/keystore"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jmxremote.password"), "/root/conf/")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/blob.properties"), "/root/conf/")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/rabbitmq.properties"), "/root/conf/")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/opensearch.properties"), "/root/conf/")
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-postgres-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80, 8000);
