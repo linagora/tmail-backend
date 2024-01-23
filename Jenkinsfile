@@ -52,7 +52,7 @@ pipeline {
             script {
               // build and push docker images
               dir("tmail-backend") {
-                sh "mvn -Pci jib:build -Djib.to.auth.username=${DOCKER_HUB_CREDENTIAL_USR} -Djib.to.auth.password=${DOCKER_HUB_CREDENTIAL_PSW} -Djib.to.image=linagora/tmail-backend:postgresql-experimental -pl apps/postgres -X"
+                sh "mvn -Pci jib:build -Djib.to.auth.username=${DOCKER_HUB_CREDENTIAL_USR} -Djib.to.auth.password=${DOCKER_HUB_CREDENTIAL_PSW} -Djib.to.image=linagora/tmail-backend:postgresql-experimental -Djib.to.tags=postgresql-experimental -pl apps/postgres -X"
               }
             }
           }
