@@ -145,30 +145,31 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .flatMapIterable(_ => teamMailbox.defaultMailboxPaths)
       .flatMap(mailboxPath => addRightForMember(mailboxPath, user, session)
-        .`then`(subscribeForMember(mailboxPath, memberSession))
-        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
+        .`then`(subscribeForMember(mailboxPath, memberSession)))
       .`then`()
   }
 
   private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession): SMono[Unit] =
-    SMono.fromCallable(() => mailboxManager.applyRightsCommand(path,
+    SMono(mailboxManager.applyRightsCommandReactive(path,
       MailboxACL.command
         .forUser(user)
         .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
         .asAddition(),
       session))
+      .`then`()
 
   private def subscribeForMember(path: MailboxPath, memberSession: MailboxSession): SMono[Unit] =
     SMono(subscriptionManager.subscribeReactive(path, memberSession)).`then`()
 
   private def removeRightForMember(path: MailboxPath, user: Username, session: MailboxSession): SMono[Unit] =
-    SMono.fromCallable(() => mailboxManager.applyRightsCommand(
+    SMono(mailboxManager.applyRightsCommandReactive(
       path,
       MailboxACL.command
         .forUser(user)
         .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
         .asRemoval(),
       session))
+      .`then`()
 
   private def unSubscribeForMember(path: MailboxPath, memberSession: MailboxSession): SMono[Unit] =
     SMono(subscriptionManager.unsubscribeReactive(path, memberSession)).`then`()
@@ -183,8 +184,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         .filter(userInTeamMailbox => userInTeamMailbox)
         .flatMapIterable(_ => teamMailbox.defaultMailboxPaths)
         .flatMap(mailboxPath => removeRightForMember(mailboxPath, user, session)
-          .`then`(unSubscribeForMember(mailboxPath, memberSession))
-          .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
+          .`then`(unSubscribeForMember(mailboxPath, memberSession)))
         .`then`())
       .`then`()
   }
@@ -203,8 +203,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
     SMono.fromPublisher(exists(teamMailbox))
       .filter(b => b)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
-      .flatMap(_ => SMono.fromCallable(() => mailboxManager.listRights(teamMailbox.mailboxPath, session))
-        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
+      .flatMap(_ => SMono(mailboxManager.listRightsReactive(teamMailbox.mailboxPath, session)))
       .flatMapIterable(mailboxACL => mailboxACL.getEntries.asScala)
       .map(entryKeyAndRights => entryKeyAndRights._1)
       .filter(entryKey => NameType.user.equals(entryKey.getNameType))
