@@ -11,7 +11,7 @@
     <inceptionYear>2020</inceptionYear>
 
     <properties>
-        <target.jdk>17</target.jdk>
+        <target.jdk>21</target.jdk>
         <jib.base.image>eclipse-temurin:21-jre-jammy</jib.base.image>
     </properties>
 
