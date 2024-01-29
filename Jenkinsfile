@@ -1,6 +1,6 @@
 pipeline {
     agent {
-      label 'jdk17'
+      label 'jdk21'
     }
 
     environment {
