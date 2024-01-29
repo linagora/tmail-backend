@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<usersrepository name="LocalUsers"
+                 class="com.linagora.tmail.combined.identity.CombinedUsersRepository"
+                 ldapHost="ldap://ldap:389"
+                 principal="cn=admin,dc=james,dc=org"
+                 credentials="secret"
+                 userBase="ou=people,dc=james,dc=org"
+                 userIdAttribute="mail"
+                 userObjectClass="person">
+    <algorithm>SHA-512</algorithm>
+    <enableVirtualHosting>true</enableVirtualHosting>
+    <enableForwarding>true</enableForwarding>
+</usersrepository>

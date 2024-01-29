@@ -25,12 +25,12 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.utility.MountableFile;
 
 public class TmailPostgresExtension implements BeforeEachCallback, AfterEachCallback {
-    private final Network network;
-    private final GenericContainer<?> postgres;
-    private final GenericContainer<?> opensearch;
-    private final GenericContainer<?> rabbitmq;
-    private final GenericContainer<?> s3;
-    private final GenericContainer<?> tmailBackend;
+    protected final Network network;
+    protected final GenericContainer<?> postgres;
+    protected final GenericContainer<?> opensearch;
+    protected final GenericContainer<?> rabbitmq;
+    protected final GenericContainer<?> s3;
+    protected final GenericContainer<?> tmailBackend;
 
     public TmailPostgresExtension() {
         network = Network.newNetwork();
@@ -42,7 +42,7 @@ public class TmailPostgresExtension implements BeforeEachCallback, AfterEachCall
     }
 
     @SuppressWarnings("resource")
-    private GenericContainer<?> createTmailDistributed() {
+    protected GenericContainer<?> createTmailDistributed() {
         return new GenericContainer<>("linagora/tmail-backend-postgresql-experimental:latest")
             .withNetworkAliases("tmail-postgres")
             .withNetwork(network)
@@ -55,20 +55,20 @@ public class TmailPostgresExtension implements BeforeEachCallback, AfterEachCall
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/blob.properties"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/rabbitmq.properties"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/opensearch.properties"), "/root/conf/")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-postgres-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-backend-postgres-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80, 8000);
     }
 
     @SuppressWarnings("resource")
-    private GenericContainer<?> createPostgres(Network network) {
+    protected static GenericContainer<?> createPostgres(Network network) {
         return new GenericContainer<>("postgres:16.1")
             .withNetworkAliases("postgres")
             .withNetwork(network)
             .withEnv("POSTGRES_USER", "tmail")
             .withEnv("POSTGRES_PASSWORD", "secret1")
             .withEnv("POSTGRES_DB", "postgres")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-postgres-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-postgres-database-testing" + UUID.randomUUID()))
             .waitingFor((new LogMessageWaitStrategy()).withRegEx(".*database system is ready to accept connections.*\\s").withTimes(2).withStartupTimeout(Duration.of(60L, ChronoUnit.SECONDS)))
             .withExposedPorts(5432);
     }
