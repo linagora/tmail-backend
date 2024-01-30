@@ -1,3 +1,4 @@
 [submodule "james-project"]
 	path = james-project
-	url = https://github.com/apache/james-project
+	url = https://github.com/vttranlina/james-project
+	branch = java21
