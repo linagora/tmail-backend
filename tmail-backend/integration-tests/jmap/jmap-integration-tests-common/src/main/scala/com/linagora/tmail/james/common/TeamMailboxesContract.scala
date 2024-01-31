@@ -32,6 +32,7 @@ import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.asPayload
 import org.apache.james.mailbox.DefaultMailboxes
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath, MessageId}
@@ -52,10 +53,7 @@ import sttp.client3.okhttp.OkHttpSyncBackend
 import sttp.client3.{Identity, RequestT, SttpBackend, asWebSocket, basicRequest}
 import sttp.model.Uri
 import sttp.monad.MonadError
-import sttp.monad.syntax.MonadErrorOps
 import sttp.ws.WebSocketFrame
-import sttp.ws.WebSocketFrame.Text
-
 object TeamMailboxesContract {
   private var webAdminApi: RequestSpecification = _
 }
@@ -2708,9 +2706,9 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
 
-    val response: Either[String, String] =
+    val response: Either[String, List[String]] =
       authenticatedRequest(server)
-        .response(asWebSocket[Identity, String] {
+        .response(asWebSocket[Identity, List[String]] {
           ws =>
             ws.send(WebSocketFrame.text(
               """{
@@ -2725,11 +2723,10 @@ trait TeamMailboxesContract {
               .getMessageId.serialize()
 
             Thread.sleep(100)
+            List(
+              ws.receive().asPayload,
+              ws.receive().asPayload)
 
-            ws.receive()
-              .map { case t: Text =>
-                t.payload
-              }
         })
         .send(backend)
         .body
@@ -2741,7 +2738,7 @@ trait TeamMailboxesContract {
 
     val globalState: String = PushState.fromOption(Some(UuidState.fromJava(mailboxState)), Some(UuidState.fromJava(emailState))).get.value
 
-    assertThatJson(response.toOption.get)
+    assertThatJson(response.toOption.get.last)
       .isEqualTo(
         s"""{
            |  "@type":"StateChange",
