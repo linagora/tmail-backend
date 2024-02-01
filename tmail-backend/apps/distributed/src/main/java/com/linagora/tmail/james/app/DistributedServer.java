@@ -139,6 +139,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener;
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListenerRegister;
 import com.linagora.tmail.james.jmap.label.CassandraLabelRepositoryModule;
+import com.linagora.tmail.james.jmap.mail.TMailMailboxSortOrderProviderModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
@@ -366,7 +367,8 @@ public class DistributedServer {
             new RabbitMailQueueRoutesModule(),
             new ScheduledReconnectionHandler.Module(),
             new TasksHeathCheckModule(),
-            new TeamMailboxModule());
+            new TeamMailboxModule(),
+            new TMailMailboxSortOrderProviderModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()

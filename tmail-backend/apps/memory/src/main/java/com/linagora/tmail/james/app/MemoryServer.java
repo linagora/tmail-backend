@@ -52,6 +52,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
 import com.linagora.tmail.james.jmap.label.MemoryLabelRepositoryModule;
+import com.linagora.tmail.james.jmap.mail.TMailMailboxSortOrderProviderModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
@@ -143,7 +144,8 @@ public class MemoryServer {
             new MemoryEmailAddressContactModule(),
             new EmailAddressContactRoutesModule(),
             new MemoryLabelRepositoryModule(),
-            new MemoryJmapSettingsRepositoryModule());
+            new MemoryJmapSettingsRepositoryModule(),
+            new TMailMailboxSortOrderProviderModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()
