@@ -7,6 +7,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerConcreteContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
@@ -29,9 +30,12 @@ class DistributedServerTest implements JamesServerConcreteContract, JmapJamesSer
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                .disableCache()
+                .enableCache()
                 .deduplication()
-                .noCryptoConfig()
+                .cryptoConfig(CryptoConfig.builder()
+                    .password("myPass".toCharArray())
+                    .salt("73616c7479")
+                    .build())
                 .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
             .mailbox(new MailboxConfiguration(false))
