@@ -30,6 +30,7 @@ import org.apache.james.blob.aes.AESBlobStoreDAO;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreDAO;
+import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.eventsourcing.Event;
@@ -59,7 +60,9 @@ import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 
 public class BlobStoreModulesChooser {
-    private static final String UNENCRYPTED = "unencrypted";
+    private static final String TOP_NAMED = "top";
+    private static final String PRE_LAST_NAMED = "pre_last";
+    private static final String LAST_NAMED = "last";
 
     static class EncryptionModule extends AbstractModule {
         private final CryptoConfig cryptoConfig;
@@ -69,63 +72,99 @@ public class BlobStoreModulesChooser {
         }
 
         @Provides
-        @Singleton
-        BlobStoreDAO blobStoreDAO(@Named(UNENCRYPTED) BlobStoreDAO unencrypted) {
-            return new AESBlobStoreDAO(unencrypted, cryptoConfig);
-        }
-
-        @Provides
         CryptoConfig cryptoConfig() {
             return cryptoConfig;
         }
+
+        @Provides
+        @Singleton
+        @Named(PRE_LAST_NAMED)
+        BlobStoreDAO providePrelastBlobStoreDAO(@Named(TOP_NAMED) BlobStoreDAO blobStoreDAO) {
+            return new AESBlobStoreDAO(blobStoreDAO, cryptoConfig);
+        }
+
     }
 
     static class NoEncryptionModule extends AbstractModule {
         @Provides
         @Singleton
-        BlobStoreDAO blobStoreDAO(@Named(UNENCRYPTED) BlobStoreDAO unencrypted) {
-            return unencrypted;
+        @Named(PRE_LAST_NAMED)
+        BlobStoreDAO providePrelastBlobStoreDAO(@Named(TOP_NAMED) BlobStoreDAO blobStoreDAO) {
+            return blobStoreDAO;
         }
     }
 
     public static Module chooseEncryptionModule(Optional<CryptoConfig> cryptoConfig) {
-        Optional<Module> encryptionModule = cryptoConfig.map(EncryptionModule::new);
-        return encryptionModule.orElse(new NoEncryptionModule());
+        if (cryptoConfig.isPresent()) {
+            return new EncryptionModule(cryptoConfig.get());
+        }
+        return new NoEncryptionModule();
     }
 
     static class SingleSaveDeclarationModule extends AbstractModule {
         @Override
         protected void configure() {
-            install(new S3BucketModule());
-            install(new S3BlobStoreModule());
             install(new SingleSaveBlobStoreModule());
-            bind(BlobStoreDAO.class).annotatedWith(Names.named(UNENCRYPTED)).to(SingleSaveBlobStoreDAO.class);
+        }
+
+        @Provides
+        @Singleton
+        SingleSaveBlobStoreDAO singleSaveBlobStoreDAO(@Named(PRE_LAST_NAMED) BlobStoreDAO blobStoreDAO,
+                                                      BlobIdList blobIdList,
+                                                      BucketName defaultBucketName) {
+            return new SingleSaveBlobStoreDAO(blobStoreDAO, blobIdList, defaultBucketName);
+        }
+
+        @Provides
+        @Singleton
+        @Named(LAST_NAMED)
+        public BlobStoreDAO provideLast(SingleSaveBlobStoreDAO blobStoreDAO) {
+            return blobStoreDAO;
         }
     }
 
     static class MultiSaveDeclarationModule extends AbstractModule {
+
+        @Provides
+        @Singleton
+        @Named(LAST_NAMED)
+        public BlobStoreDAO provideLastBlobStoreDAO(@Named(PRE_LAST_NAMED) BlobStoreDAO blobStoreDAO) {
+            return blobStoreDAO;
+        }
+    }
+
+    static class BaseDeclarationModule extends AbstractModule {
         @Override
         protected void configure() {
             install(new S3BucketModule());
             install(new S3BlobStoreModule());
-            bind(BlobStoreDAO.class).annotatedWith(Names.named(UNENCRYPTED)).to(S3BlobStoreDAO.class);
+            bind(BlobStoreDAO.class).annotatedWith(Names.named(TOP_NAMED))
+                .to(S3BlobStoreDAO.class)
+                .in(Scopes.SINGLETON);
+        }
+
+        @Provides
+        @Singleton
+        BlobStoreDAO provdePrimaryBlobStoreDAO(@Named(LAST_NAMED) BlobStoreDAO blobStoreDAO) {
+            return blobStoreDAO;
         }
     }
 
-    public static Module chooseObjectStorageModule(boolean singleSaveEnabled) {
+    public static ImmutableList<Module> chooseObjectStorageModule(boolean singleSaveEnabled) {
+        ImmutableList.Builder<Module> modulesBuilder = ImmutableList.<Module>builder()
+            .add(new BaseDeclarationModule());
         if (singleSaveEnabled) {
-            return new SingleSaveDeclarationModule();
+            return modulesBuilder.add(new SingleSaveDeclarationModule()).build();
         }
-        return new MultiSaveDeclarationModule();
+        return modulesBuilder.add(new MultiSaveDeclarationModule()).build();
     }
 
     private static ImmutableList<Module> chooseStoragePolicyModule(StorageStrategy storageStrategy) {
         return switch (storageStrategy) {
-            case DEDUPLICATION ->
-                ImmutableList.of(new BlobDeduplicationGCModule(),
-                    binder -> binder.bind(BlobStore.class)
-                        .annotatedWith(Names.named(CachedBlobStore.BACKEND))
-                        .to(DeDuplicationBlobStore.class));
+            case DEDUPLICATION -> ImmutableList.of(new BlobDeduplicationGCModule(),
+                binder -> binder.bind(BlobStore.class)
+                    .annotatedWith(Names.named(CachedBlobStore.BACKEND))
+                    .to(DeDuplicationBlobStore.class));
             case PASSTHROUGH -> ImmutableList.of(
                 binder -> binder.bind(BlobStore.class)
                     .annotatedWith(Names.named(CachedBlobStore.BACKEND))
@@ -160,7 +199,7 @@ public class BlobStoreModulesChooser {
     public static List<Module> chooseModules(BlobStoreConfiguration choosingConfiguration) {
         return ImmutableList.<Module>builder()
             .add(chooseEncryptionModule(choosingConfiguration.cryptoConfig()))
-            .add(chooseObjectStorageModule(choosingConfiguration.singleSaveEnabled()))
+            .addAll(chooseObjectStorageModule(choosingConfiguration.singleSaveEnabled()))
             .addAll(chooseStoragePolicyModule(choosingConfiguration.storageStrategy()))
             .add(new StoragePolicyConfigurationSanityEnforcementModule(choosingConfiguration))
             .build();

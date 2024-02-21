@@ -3,8 +3,6 @@ package com.linagora.tmail.blob.blobid.list;
 import java.io.InputStream;
 import java.util.Collection;
 
-import javax.inject.Inject;
-
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
@@ -22,7 +20,6 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     private final BlobIdList blobIdList;
     private final BucketName defaultBucketName;
 
-    @Inject
     public SingleSaveBlobStoreDAO(BlobStoreDAO blobStoreDAO,
                                   BlobIdList blobIdList,
                                   BucketName defaultBucketName) {
