@@ -264,6 +264,8 @@ plugin_configs:
           failures: 3  # should be var: JMAP_CIRCUIT_BREAKER_MAXERRORS
         healthy:
           successes: 1
+      client-control:
+        max_body_size: 20000000
       ext-plugin-pre-req:
         _meta:
           filter:
