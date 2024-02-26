@@ -34,7 +34,7 @@ class TmailLocalDelivery @Inject()(usersRepository: UsersRepository,
       .action("TmailLocalDelivery")
       .parameters(() => ImmutableMap.of(
         "mailId", mail.getName,
-        "mimeMessageId", Option(mail.getMessage).map(_.getMessageID).getOrElse(""),
+        "mimeMessageId", Option(mail.getMessage).flatMap(message => Option(message.getMessageID)).getOrElse(""),
         "sender", mail.getMaybeSender.asString,
         "recipients", StringUtils.join(mail.getRecipients)))
       .log("Local delivery mail dispatched")
