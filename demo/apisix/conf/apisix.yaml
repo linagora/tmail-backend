@@ -61,6 +61,8 @@ routes:
         regex_uri:
           - "^/oidc/upload/(.*)"
           - "/upload/$1"
+      client-control:
+        max_body_size: 20000000
   -
     id: upload_draft
     uri: /oidc/upload
@@ -72,6 +74,8 @@ routes:
     plugins:
       proxy-rewrite:
         uri: /upload
+      client-control:
+        max_body_size: 20000000
   -
     id: web_known_finger
     uris:
@@ -153,6 +157,9 @@ routes:
       - POST
       - OPTIONS
     plugin_config_id: jmap-plugin
+    plugins:
+      client-control:
+        max_body_size: 20000000
   - id: upload_draft_basic_auth
     uri: /upload
     service_id: jmap_service_basic_auth
@@ -160,6 +167,9 @@ routes:
       - POST
       - OPTIONS
     plugin_config_id: jmap-plugin
+    plugins:
+      client-control:
+        max_body_size: 20000000
   - id: web_known_linagora_ecosystem_basic_auth
     uri: /.well-known/linagora-ecosystem
     service_id: jmap_service_basic_auth
@@ -264,6 +274,8 @@ plugin_configs:
           failures: 3  # should be var: JMAP_CIRCUIT_BREAKER_MAXERRORS
         healthy:
           successes: 1
+      client-control:
+        max_body_size: 1000000
       ext-plugin-pre-req:
         _meta:
           filter:
