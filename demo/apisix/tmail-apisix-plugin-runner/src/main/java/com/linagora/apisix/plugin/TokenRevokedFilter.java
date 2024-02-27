@@ -42,7 +42,7 @@ public class TokenRevokedFilter implements PluginFilter {
             .ifPresent(sid -> {
                 boolean existSid = tokenRepository.exist(sid);
                 if (existSid) {
-                    logger.debug("Token has been revoked, Sid: " + sid);
+                    logger.info("Token has been revoked, Sid: " + sid);
                     makeUnAuthorizedRequest(request, response);
                 } else {
                     logger.debug("Token valid, Sid: " + sid);
