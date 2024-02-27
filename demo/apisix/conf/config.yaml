@@ -5,4 +5,4 @@ deployment:
 
 ext-plugin:
   path_for_test: /tmp/runner.sock
-  cmd: ['java', '-jar', '-DREDIS_PASSWORD=secret1', '-DREDIS_URL=redis.example.com:6379', '-Xmx1g', '-Xms1g', '/usr/local/apisix/token_revoker_plugin.jar']
+  cmd: ['java', '-jar', '-Dspring.profiles.active=prod', '-DREDIS_PASSWORD=secret1', '-DREDIS_URL=redis.example.com:6379', '-Xmx1g', '-Xms1g', '/usr/local/apisix/token_revoker_plugin.jar']

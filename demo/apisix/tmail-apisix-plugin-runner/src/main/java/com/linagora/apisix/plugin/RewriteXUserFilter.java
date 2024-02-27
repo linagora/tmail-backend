@@ -36,7 +36,7 @@ public class RewriteXUserFilter implements PluginFilter {
         this.json = new ObjectMapper();
         this.userInfoField = xUserUserInfoField;
         Preconditions.checkArgument(StringUtils.hasText(userInfoField));
-        logger.debug("RewriteXUserPlugin init with userinfo field: {}", userInfoField);
+        logger.info("RewriteXUserPlugin init with userinfo field: {}", userInfoField);
     }
 
     @Override
@@ -67,7 +67,7 @@ public class RewriteXUserFilter implements PluginFilter {
             .or(() -> Optional.ofNullable(request.getHeader(TMAIL_X_USER_HEADER_NAME.toLowerCase(Locale.US))))
             .ifPresent(deniedHeader -> {
                 makeUnAuthorizedRequest(request, response);
-                logger.debug("The client request has X-User header has been denied. {}", deniedHeader);
+                logger.info("The client request has X-User header has been denied. {}", deniedHeader);
             });
     }
 
