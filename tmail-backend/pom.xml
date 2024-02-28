@@ -54,6 +54,8 @@
         <module>webadmin/webadmin-team-mailboxes</module>
         <module>webadmin/webadmin-rate-limit</module>
         <module>healthcheck</module>
+
+        <module>event-bus-redis</module>
     </modules>
 
     <properties>
@@ -168,6 +170,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-healthcheck</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-event-bus-redis</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
