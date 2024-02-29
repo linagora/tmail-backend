@@ -34,7 +34,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
                                             boolean jmapEnabled,
                                             PropertiesProvider propertiesProvider,
-                                            boolean quotaCompatibilityMode) implements Configuration {
+                                            boolean quotaCompatibilityMode,
+                                            EventBusKeysChoice eventBusKeysChoice) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -46,7 +47,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
-
+        private Optional<EventBusKeysChoice> eventBusKeysChoice;
         private Optional<Boolean> quotaCompatibilityMode;
 
         private Builder() {
@@ -61,6 +62,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             quotaCompatibilityMode = Optional.empty();
+            eventBusKeysChoice = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -136,6 +138,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder eventBusKeysChoice(EventBusKeysChoice eventBusKeysChoice) {
+            this.eventBusKeysChoice = Optional.of(eventBusKeysChoice);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -188,6 +195,9 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 }
             });
 
+            EventBusKeysChoice eventBusKeysChoice = this.eventBusKeysChoice.orElseGet(Throwing.supplier(
+                () -> EventBusKeysChoice.parse(propertiesProvider)));
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -200,7 +210,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 servicesDiscoveryModuleChooserConfiguration,
                 jmapEnabled,
                 propertiesProvider,
-                quotaCompatibilityMode);
+                quotaCompatibilityMode,
+                eventBusKeysChoice);
         }
     }
 
