@@ -131,6 +131,7 @@ import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStor
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
+import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
@@ -401,7 +402,8 @@ public class DistributedServer {
             .combineWith(chooseQuotaModule(configuration))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
-            .overrideWith(chooseJmapModule(configuration));
+            .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(overrideEventBusModule(configuration));
     }
 
     public static List<Module> chooseModules(SearchConfiguration searchConfiguration) {
@@ -504,6 +506,20 @@ public class DistributedServer {
             return Modules.combine(new CassandraMailboxQuotaLegacyModule(), new CassandraSieveQuotaLegacyModule());
         } else {
             return Modules.combine(new CassandraMailboxQuotaModule(), new CassandraSieveQuotaModule());
+        }
+    }
+
+    private static Module overrideEventBusModule(DistributedJamesConfiguration configuration) {
+        switch (configuration.eventBusKeysChoice()) {
+            case REDIS -> {
+                LOGGER.info("Using Redis for Event Bus user notifications");
+                return new RabbitMQAndRedisEventBusModule();
+            }
+            case RABBITMQ -> {
+                LOGGER.info("Using RabbitMQ for Event Bus user notifications");
+                return Modules.EMPTY_MODULE;
+            }
+            default -> throw new NotImplementedException();
         }
     }
 }
