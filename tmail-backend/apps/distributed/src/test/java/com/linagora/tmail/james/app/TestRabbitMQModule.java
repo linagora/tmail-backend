@@ -73,7 +73,8 @@ public class TestRabbitMQModule extends AbstractModule {
     public RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration(RabbitMQConfiguration rabbitMQConfiguration) {
         return new RabbitMQEmailAddressContactConfiguration(ADDRESS_CONTACT_QUEUE,
             rabbitMQConfiguration.getUri(),
-            rabbitMQConfiguration.getManagementCredentials());
+            rabbitMQConfiguration.getManagementCredentials(),
+            rabbitMQConfiguration.getVhost());
     }
 
     @Provides

@@ -13,12 +13,25 @@ import org.junit.jupiter.api.Test;
 class RabbitMQEmailAddressContactConfigurationTest {
 
     @Test
-    void amqpURIShouldSupportVhost() {
+    void amqpURIShouldSupportVhostInURI() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("address.contact.uri", "amqp://james:james@rabbitmqhost:5672/vhost1");
         configuration.addProperty("address.contact.user", "DEFAULT_USER");
         configuration.addProperty("address.contact.password", "DEFAULT_PASSWORD");
         configuration.addProperty("address.contact.queue", "DEFAULT_QUEUE");
+
+        assertThat(RabbitMQEmailAddressContactConfiguration.from(configuration).vhost())
+            .isEqualTo(Optional.of("vhost1"));
+    }
+
+    @Test
+    void amqpURIShouldSupportDefaultVhost() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("address.contact.uri", "amqp://james:james@rabbitmqhost:5672");
+        configuration.addProperty("address.contact.user", "DEFAULT_USER");
+        configuration.addProperty("address.contact.password", "DEFAULT_PASSWORD");
+        configuration.addProperty("address.contact.queue", "DEFAULT_QUEUE");
+        configuration.addProperty("vhost", "vhost1");
 
         assertThat(RabbitMQEmailAddressContactConfiguration.from(configuration).vhost())
             .isEqualTo(Optional.of("vhost1"));
