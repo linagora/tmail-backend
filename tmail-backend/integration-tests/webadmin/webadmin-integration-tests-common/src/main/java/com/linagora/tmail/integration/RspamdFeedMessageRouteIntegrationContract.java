@@ -8,8 +8,6 @@ import static org.hamcrest.Matchers.nullValue;
 import java.io.ByteArrayInputStream;
 import java.util.Date;
 
-import javax.mail.Flags;
-
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
@@ -24,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.RestAssured;
+import jakarta.mail.Flags;
 
 public abstract class RspamdFeedMessageRouteIntegrationContract {
     protected static final Domain DOMAIN = Domain.of("domain.tld");

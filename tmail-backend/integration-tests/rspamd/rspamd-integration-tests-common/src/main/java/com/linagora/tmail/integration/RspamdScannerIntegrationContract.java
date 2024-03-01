@@ -6,8 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import java.io.IOException;
 import java.time.Duration;
 
-import javax.mail.internet.MimeMessage;
-
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
@@ -26,6 +24,8 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import jakarta.mail.internet.MimeMessage;
 
 public abstract class RspamdScannerIntegrationContract {
     protected static final Domain DOMAIN = Domain.of("example.com");

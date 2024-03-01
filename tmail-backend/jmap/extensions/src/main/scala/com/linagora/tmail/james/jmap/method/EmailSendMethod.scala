@@ -10,10 +10,10 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.EmailSubmissionHelper.resolveEnvelope
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationRequest, EmailSendCreationRequestInvalidException, EmailSendCreationResponse, EmailSendRequest, EmailSendResults, EmailSetCreationFailure, EmailSetCreationResult, EmailSetCreationSuccess, EmailSubmissionCreationRequest, MimeMessageSourceImpl}
 import eu.timepit.refined.auto._
+import jakarta.mail.Flags
+import jakarta.mail.internet.{InternetAddress, MimeMessage}
 import javax.annotation.PreDestroy
 import javax.inject.Inject
-import javax.mail.Flags
-import javax.mail.internet.{InternetAddress, MimeMessage}
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.JMAPConfiguration
 import org.apache.james.jmap.api.model.Size

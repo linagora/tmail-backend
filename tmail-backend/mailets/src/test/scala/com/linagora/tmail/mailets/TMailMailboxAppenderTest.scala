@@ -23,8 +23,8 @@ import java.time.Duration
 import com.linagora.tmail.mailets.TMailMailboxAppenderTest.{DOMAIN, EMPTY_FOLDER, FOLDER, STORAGE_DIRECTIVE, TEAM_MAILBOX, USER}
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxCallbackNoop, TeamMailboxName, TeamMailboxRepository, TeamMailboxRepositoryImpl}
 import eu.timepit.refined.auto._
-import javax.mail.MessagingException
-import javax.mail.internet.MimeMessage
+import jakarta.mail.MessagingException
+import jakarta.mail.internet.MimeMessage
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources

@@ -9,8 +9,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Map;
 
-import javax.mail.Flags;
-
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
@@ -39,6 +37,7 @@ import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 
+import jakarta.mail.Flags;
 import reactor.core.publisher.Flux;
 
 public class CleanupServiceTest {

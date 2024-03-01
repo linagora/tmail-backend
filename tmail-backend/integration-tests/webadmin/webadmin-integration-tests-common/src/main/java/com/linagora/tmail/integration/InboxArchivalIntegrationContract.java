@@ -10,8 +10,6 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
-import javax.mail.Flags;
-
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
@@ -30,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 
 import io.restassured.RestAssured;
+import jakarta.mail.Flags;
 
 public abstract class InboxArchivalIntegrationContract {
     protected static final Domain DOMAIN = Domain.of("domain.tld");

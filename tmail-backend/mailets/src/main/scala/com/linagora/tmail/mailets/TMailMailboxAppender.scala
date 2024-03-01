@@ -3,7 +3,7 @@ package com.linagora.tmail.mailets
 import java.util.Optional
 
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxRepository}
-import javax.mail.internet.MimeMessage
+import jakarta.mail.internet.MimeMessage
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager
 import org.apache.james.mailbox.MessageManager.AppendResult

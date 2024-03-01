@@ -1,9 +1,9 @@
 package com.linagora.tmail.james.jmap.model
 
 import cats.implicits.toTraverseOps
-import javax.mail.Address
-import javax.mail.Message.RecipientType
-import javax.mail.internet.{InternetAddress, MimeMessage}
+import jakarta.mail.Address
+import jakarta.mail.Message.RecipientType
+import jakarta.mail.internet.{InternetAddress, MimeMessage}
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.mail.{EmailSubmissionAddress, Envelope}
 

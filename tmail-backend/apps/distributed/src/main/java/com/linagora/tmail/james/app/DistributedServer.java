@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Set;
 
 import javax.inject.Named;
-import javax.mail.Flags;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.NotImplementedException;
@@ -173,6 +172,7 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
+import jakarta.mail.Flags;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

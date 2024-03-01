@@ -9,8 +9,6 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
-import javax.mail.Flags;
-
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
@@ -32,6 +30,8 @@ import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
+
+import jakarta.mail.Flags;
 
 class InboxArchivalTaskTest {
     private static final Domain DOMAIN = Domain.of("domain.tld");
