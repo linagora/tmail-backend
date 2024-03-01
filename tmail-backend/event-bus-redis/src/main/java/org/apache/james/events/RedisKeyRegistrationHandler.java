@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.MDCBuilder;
 import org.apache.james.util.MDCStructuredLogger;
@@ -126,27 +125,19 @@ class RedisKeyRegistrationHandler {
             return Mono.empty();
         }
 
-        // Redis Pub/Sub does not support headers for message. Therefore, likely we need to embed the eventBusId into the message.
-        // Or store the messages headers in Redis: not viable because an EventId can be mapped to many routing key.
-        String[] parts = StringUtils.split(channelMessage.getMessage(), TMailEventDispatcher.REDIS_CHANNEL_MESSAGE_DELIMITER, 3);
-
-        String serializedEventBusId = parts[0];
-        EventBusId eventBusId = EventBusId.of(serializedEventBusId);
-
-        String routingKey = parts[1];
-        RegistrationKey registrationKey = routingKeyConverter.toRegistrationKey(routingKey);
+        KeyChannelMessage keyChannelMessage = KeyChannelMessage.parse(channelMessage.getMessage());
+        RegistrationKey registrationKey = routingKeyConverter.toRegistrationKey(keyChannelMessage.routingKey());
 
         List<EventListener.ReactiveEventListener> listenersToCall = localListenerRegistry.getLocalListeners(registrationKey)
             .stream()
-            .filter(listener -> !isLocalSynchronousListeners(eventBusId, listener))
+            .filter(listener -> !isLocalSynchronousListeners(keyChannelMessage.eventBusId(), listener))
             .collect(ImmutableList.toImmutableList());
 
         if (listenersToCall.isEmpty()) {
             return Mono.empty();
         }
 
-        String eventAsJson = parts[2];
-        Event event = toEvent(eventAsJson);
+        Event event = toEvent(keyChannelMessage.eventAsJson());
 
         return Flux.fromIterable(listenersToCall)
             .flatMap(listener -> executeListener(listener, event, registrationKey), EventBus.EXECUTION_RATE)
