@@ -14,6 +14,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
+import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.Fixture;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.awaitility.Awaitility;
@@ -29,6 +30,7 @@ import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
+import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceContactAutocompleteModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -61,10 +63,12 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
                 .deduplication()
                 .noCryptoConfig()
                 .disableSingleSave())
+            .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(rabbitMQExtensionModule)
+        .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

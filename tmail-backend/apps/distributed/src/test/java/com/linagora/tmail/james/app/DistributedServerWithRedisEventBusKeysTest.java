@@ -7,6 +7,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerConcreteContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
@@ -22,7 +23,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-class DistributedServerTest implements JamesServerConcreteContract, JmapJamesServerContract {
+class DistributedServerWithRedisEventBusKeysTest implements JamesServerConcreteContract, JmapJamesServerContract {
     @RegisterExtension
     static JamesServerExtension testExtension =  new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
@@ -35,6 +36,7 @@ class DistributedServerTest implements JamesServerConcreteContract, JmapJamesSer
                 .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
             .mailbox(new MailboxConfiguration(false))
+            .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
@@ -43,6 +45,7 @@ class DistributedServerTest implements JamesServerConcreteContract, JmapJamesSer
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
+        .extension(new RedisExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
