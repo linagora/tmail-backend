@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -55,7 +56,10 @@ class RabbitMQEmailAddressContactSubscriberTest {
         rabbitMQEmailAddressContactConfiguration = new RabbitMQEmailAddressContactConfiguration(
             aqmpContactQueue,
             URI.create("amqp://james:james@rabbitmqhost:5672"),
-            mock(RabbitMQConfiguration.ManagementCredentials.class));
+            mock(RabbitMQConfiguration.ManagementCredentials.class),
+            Optional.empty(),
+            false,
+            0);
 
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         subscriber = new RabbitMQEmailAddressContactSubscriber(rabbitMQExtension.getReceiverProvider(),

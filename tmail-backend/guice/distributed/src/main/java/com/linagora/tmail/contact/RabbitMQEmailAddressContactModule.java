@@ -46,6 +46,8 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
             .managementUri(rabbitMQEmailAddressContactConfiguration.amqpUri())
             .managementCredentials(rabbitMQEmailAddressContactConfiguration.managementCredentials())
             .vhost(rabbitMQEmailAddressContactConfiguration.vhost())
+            .useQuorumQueues(rabbitMQEmailAddressContactConfiguration.useQuorumQueues())
+            .quorumQueueReplicationFactor(rabbitMQEmailAddressContactConfiguration.quorumQueueReplicationFactor())
             .build();
     }
 
