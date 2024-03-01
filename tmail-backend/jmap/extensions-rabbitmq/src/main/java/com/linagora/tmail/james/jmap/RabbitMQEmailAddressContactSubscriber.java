@@ -17,7 +17,6 @@ import org.apache.james.lifecycle.api.Startable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.jmap.contact.ContactMessageHandlerResult;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactMessageHandler;
 import com.linagora.tmail.james.jmap.contact.Failure;
@@ -64,13 +63,15 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
                 sender.declareQueue(QueueSpecification
                     .queue(rabbitMQConfiguration.queueName())
                     .durable(DURABLE)
-                    .arguments(ImmutableMap.<String, Object>builder()
+                    .arguments(rabbitMQConfiguration.queueArgumentsBuilderTmp()
                         .put("x-dead-letter-exchange", rabbitMQConfiguration.getDeadLetterExchange())
                         .put("x-dead-letter-routing-key", EMPTY_ROUTING_KEY)
                         .build())),
                 sender.declareQueue(QueueSpecification
                     .queue(rabbitMQConfiguration.getDeadLetterQueue())
-                    .durable(DURABLE)),
+                    .durable(DURABLE)
+                    .arguments(rabbitMQConfiguration.queueArgumentsBuilderTmp()
+                        .build())),
                 sender.bind(BindingSpecification.binding()
                     .exchange(rabbitMQConfiguration.getExchangeName())
                     .queue(rabbitMQConfiguration.queueName())
