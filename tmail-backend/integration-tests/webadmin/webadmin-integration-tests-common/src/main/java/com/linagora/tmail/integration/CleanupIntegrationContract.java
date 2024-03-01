@@ -10,8 +10,6 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
-import javax.mail.Flags;
-
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
@@ -34,6 +32,7 @@ import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 
 import io.restassured.RestAssured;
+import jakarta.mail.Flags;
 
 public abstract class CleanupIntegrationContract {
 

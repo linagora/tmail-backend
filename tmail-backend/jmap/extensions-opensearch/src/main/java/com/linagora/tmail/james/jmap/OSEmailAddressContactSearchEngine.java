@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import javax.inject.Inject;
-import javax.mail.internet.AddressException;
 
 import org.apache.james.backends.opensearch.DocumentId;
 import org.apache.james.backends.opensearch.OpenSearchIndexer;
@@ -47,6 +46,7 @@ import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.dto.DomainContactDocument;
 import com.linagora.tmail.james.jmap.dto.UserContactDocument;
 
+import jakarta.mail.internet.AddressException;
 import reactor.core.publisher.Mono;
 
 public class OSEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {

@@ -3,7 +3,6 @@ package com.linagora.tmail.webadmin;
 import static org.eclipse.jetty.http.HttpHeader.LOCATION;
 
 import javax.inject.Inject;
-import javax.mail.internet.AddressException;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
@@ -25,6 +24,7 @@ import com.linagora.tmail.webadmin.model.EmailAddressContactDTO;
 import com.linagora.tmail.webadmin.model.EmailAddressContactIdResponse;
 import com.linagora.tmail.webadmin.model.EmailAddressContactResponse;
 
+import jakarta.mail.internet.AddressException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import spark.Request;
