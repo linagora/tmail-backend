@@ -39,7 +39,6 @@ import reactor.util.function.Tuples;
 import reactor.util.retry.Retry;
 
 public class TMailEventDispatcher {
-    public static final String REDIS_CHANNEL_MESSAGE_DELIMITER = "|||";
     private static final Logger LOGGER = LoggerFactory.getLogger(TMailEventDispatcher.class);
 
     private final NamingStrategy namingStrategy;
@@ -173,12 +172,7 @@ public class TMailEventDispatcher {
 
         return Flux.fromIterable(routingKeys)
             .flatMap(routingKey -> getTargetChannels(routingKey)
-                .flatMap(channel -> {
-                    // message format: eventbusId|||routingKey|||event
-                    // It seems quite dummy but the general idea is to embed the eventBusId and routingKey into the channel message without refactoring the Event (not good to put them into Event IMO).
-                    String channelMessageToPublish = eventBusId.asString() + REDIS_CHANNEL_MESSAGE_DELIMITER + routingKey.asString() + REDIS_CHANNEL_MESSAGE_DELIMITER + eventAsJson;
-                    return redisPublisher.publish(channel, channelMessageToPublish);
-                })
+                .flatMap(channel -> redisPublisher.publish(channel, KeyChannelMessage.from(eventBusId, routingKey, eventAsJson).serialize()))
                 .then())
             .then();
     }
