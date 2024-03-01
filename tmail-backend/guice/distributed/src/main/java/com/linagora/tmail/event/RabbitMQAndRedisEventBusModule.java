@@ -38,6 +38,7 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
+import com.linagora.tmail.james.jmap.contact.TmailJmapEventSerializer;
 
 import reactor.rabbitmq.Sender;
 
@@ -107,7 +108,7 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Singleton
     @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
     RabbitMQAndRedisEventBus provideEmailAddressContactEventBus(Sender sender, ReceiverProvider receiverProvider,
-                                                                JmapEventSerializer eventSerializer,
+                                                                TmailJmapEventSerializer eventSerializer,
                                                                 RetryBackoffConfiguration retryBackoffConfiguration,
                                                                 EventDeadLetters eventDeadLetters,
                                                                 MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
