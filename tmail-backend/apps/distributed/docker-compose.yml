@@ -15,6 +15,8 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+      redis:
+        condition: service_started
       s3:
         condition: service_started
     image: linagora/tmail-backend-distributed
@@ -83,6 +85,11 @@ services:
       - S3BACKEND=mem
       - LOG_LEVEL=trace
       - REMOTE_MANAGEMENT_DISABLE=1
+    networks:
+      - emaily
+
+  redis:
+    image: redis:7.0.12
     networks:
       - emaily
 
