@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.james.backends.redis.DockerRedis;
 import org.apache.james.backends.redis.RedisExtension;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -29,6 +30,7 @@ import io.lettuce.core.pubsub.api.reactive.RedisPubSubReactiveCommands;
 import io.lettuce.core.pubsub.api.sync.RedisPubSubCommands;
 import reactor.core.publisher.Mono;
 
+@Disabled("Avoid CI build cost. This test suite is just for local dev experiment with Redis.")
 class RedisPlaygroundTest {
 
     @RegisterExtension
