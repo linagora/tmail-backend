@@ -42,7 +42,6 @@ class RedisKeyRegistrationHandler {
     private final MetricFactory metricFactory;
     private final RedisPubSubReactiveCommands<String, String> redisSubscriber;
     private Scheduler scheduler;
-    private Disposable newSubscription;
 
     RedisKeyRegistrationHandler(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer,
                                 RoutingKeyConverter routingKeyConverter, LocalListenerRegistry localListenerRegistry,
@@ -67,22 +66,14 @@ class RedisKeyRegistrationHandler {
 
         declarePubSubChannel();
 
-        newSubscription = Mono.from(redisSubscriber.subscribe(registrationChannel.asString()))
+        Disposable newSubscription = Mono.from(redisSubscriber.subscribe(registrationChannel.asString()))
             .thenMany(redisSubscriber.observeChannels())
-                .flatMap(this::handleChannelMessage, EventBus.EXECUTION_RATE)
+            .flatMap(this::handleChannelMessage, EventBus.EXECUTION_RATE)
             .doOnError(throwable -> LOGGER.error(throwable.getMessage()))
             .subscribeOn(scheduler)
             .subscribe();
 
         receiverSubscriber = Optional.of(newSubscription);
-    }
-
-    void restart() {
-        Optional<Disposable> previousReceiverSubscriber = receiverSubscriber;
-        receiverSubscriber = Optional.of(newSubscription);
-        previousReceiverSubscriber
-            .filter(Predicate.not(Disposable::isDisposed))
-            .ifPresent(Disposable::dispose);
     }
 
     void declarePubSubChannel() {
