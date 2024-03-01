@@ -7,6 +7,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ public class CombinedIdentityJamesServerTest {
             .configurationFromClasspath()
             .searchConfiguration(SearchConfiguration.openSearch())
             .usersRepository(UsersRepositoryModuleChooser.Implementation.COMBINED)
+            .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
@@ -36,6 +38,7 @@ public class CombinedIdentityJamesServerTest {
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new LdapExtension())
+        .extension(new RedisExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 

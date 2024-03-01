@@ -7,6 +7,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerConcreteContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.jmap.draft.JmapJamesServerContract;
@@ -56,6 +57,7 @@ class EncryptedDistributedServerTest implements JamesServerConcreteContract, Jma
                 .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
             .mailbox(new MailboxConfiguration(true))
+            .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
@@ -65,6 +67,7 @@ class EncryptedDistributedServerTest implements JamesServerConcreteContract, Jma
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
+        .extension(new RedisExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 

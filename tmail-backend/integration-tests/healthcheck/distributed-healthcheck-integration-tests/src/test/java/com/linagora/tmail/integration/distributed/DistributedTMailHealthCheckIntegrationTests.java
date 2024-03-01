@@ -13,6 +13,7 @@ import com.linagora.tmail.integration.TMailHealthCheckIntegrationTests;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
+import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.rspamd.RspamdExtensionModule;
@@ -28,6 +29,7 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
                 .deduplication()
                 .noCryptoConfig()
                 .disableSingleSave())
+            .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
