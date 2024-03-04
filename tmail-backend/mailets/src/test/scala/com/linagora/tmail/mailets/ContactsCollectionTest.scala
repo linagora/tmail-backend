@@ -102,6 +102,26 @@ class ContactsCollectionTest {
   }
 
   @Test
+  def serviceShouldDispatchEventWhenHasInvalidRecipient(): Unit = {
+    mailet.init(MAILET_CONFIG)
+
+    val mail: FakeMail = FakeMail.builder()
+      .name("mail1")
+      .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+        .setSender(SENDER)
+        .addToRecipient("recipient", RECIPIENT3)
+        .setSubject("Subject 01")
+        .setText("Content mail 123"))
+      .sender(SENDER)
+      .recipient(RECIPIENT)
+      .build()
+
+    mailet.service(mail)
+    assertThat(eventListener.contactReceived())
+      .containsExactlyInAnyOrder(ContactFields(new MailAddress(RECIPIENT3)))
+  }
+
+  @Test
   def parsingAddressShouldRelyOnMime4J(): Unit = {
     mailet.init(MAILET_CONFIG)
 

@@ -1,7 +1,5 @@
 package com.linagora.tmail.mailets
 
-import java.util.stream.Stream
-
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.google.common.collect.{ImmutableList, ImmutableSet}
@@ -22,7 +20,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
-import scala.jdk.StreamConverters._
+import scala.util.Try
 
 /**
  * <p><b>ContactsCollection</b> allows extracting the recipient's contact of a message
@@ -72,22 +70,23 @@ class ContactsCollection @Inject()(@Named(EmailAddressContactInjectKeys.AUTOCOMP
       .flatMap(recipientType => Option(mail.getMessage.getHeader(recipientType.toString, ",")))
       .flatMap(mergedHeaderValue => LenientAddressParser.DEFAULT
         .parseAddressList(mergedHeaderValue)
-        .stream()
+        .asScala
         .flatMap(address => convertAddressToMailboxStream(address))
-        .map((mime4jAddress: Mailbox) => extractContactField(mime4jAddress))
-        .toScala(Seq)
+        .flatMap(mime4jAddress => extractContactField(mime4jAddress))
+        .toSeq
         .asInstanceOf[Seq[ContactFields]])
       .distinctBy(_.address)
 
-  private def convertAddressToMailboxStream(address: Address): Stream[Mailbox] =
+  private def convertAddressToMailboxStream(address: Address): List[Mailbox] =
     address match {
-      case mailbox: Mailbox => Stream.of(mailbox)
-      case group: Group => group.getMailboxes.stream()
-      case _ => Stream.empty
+      case mailbox: Mailbox => List(mailbox)
+      case group: Group => group.getMailboxes.asScala.toList
+      case _ => List.empty
     }
 
-  private def extractContactField(mime4jAddress: Mailbox) =
-    ContactFields(new MailAddress(mime4jAddress.getAddress), firstname = Option(mime4jAddress.getName).getOrElse(""))
+  private def extractContactField(mime4jAddress: Mailbox): Option[ContactFields] =
+    Try(ContactFields(new MailAddress(mime4jAddress.getAddress), firstname = Option(mime4jAddress.getName).getOrElse("")))
+      .toOption
 
   private def dispatchEvents(sender: MailAddress, contacts: Seq[ContactFields]): SMono[Unit] =
     SFlux.fromIterable(contacts)
