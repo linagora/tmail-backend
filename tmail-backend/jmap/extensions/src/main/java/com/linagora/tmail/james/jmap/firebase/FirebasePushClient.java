@@ -65,6 +65,7 @@ public class FirebasePushClient {
         return sendReactive(createEmptyMessage(token), DRY_RUN)
             .thenReturn(true)
             .onErrorResume(FirebaseMessagingException.class, e -> {
+                LOGGER.info("Invalid token", e);
                 if (e.getMessagingErrorCode() == MessagingErrorCode.INVALID_ARGUMENT
                     || e.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
                     return Mono.just(false);
