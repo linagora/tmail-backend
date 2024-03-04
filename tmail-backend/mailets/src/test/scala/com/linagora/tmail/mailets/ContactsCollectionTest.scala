@@ -109,7 +109,7 @@ class ContactsCollectionTest {
       .name("mail1")
       .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
         .setSender(SENDER)
-        .addToRecipient("recipient", RECIPIENT3)
+        .addToRecipient("invalidRecipient", RECIPIENT3)
         .setSubject("Subject 01")
         .setText("Content mail 123"))
       .sender(SENDER)
