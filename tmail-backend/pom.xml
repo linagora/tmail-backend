@@ -49,6 +49,7 @@
 
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
+        <module>jmap/extensions-postgres</module>
         <module>jmap/extensions-opensearch</module>
         <module>jmap/extensions-rabbitmq</module>
 
@@ -259,6 +260,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>jmap-extensions-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jmap-extensions-postgres</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
