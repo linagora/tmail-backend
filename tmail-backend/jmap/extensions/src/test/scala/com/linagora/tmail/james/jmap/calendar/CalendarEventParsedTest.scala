@@ -1,12 +1,17 @@
 package com.linagora.tmail.james.jmap.calendar
 
 import java.io.ByteArrayInputStream
+import java.net.URI
 import java.time.format.DateTimeFormatter
 
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.{Cancelled, Confirmed, Tentative}
 import com.linagora.tmail.james.jmap.model.{CalendarEventByDay, CalendarEventByMonth, CalendarEventParsed, CalendarEventStatusField, RecurrenceRule, RecurrenceRuleFrequency, RecurrenceRuleInterval}
+import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
 import net.fortuna.ical4j.model.Recur.Frequency
-import net.fortuna.ical4j.model.{Month, WeekDay}
+import net.fortuna.ical4j.model.component.VEvent
+import net.fortuna.ical4j.model.parameter.{Cn, CuType, PartStat, Role}
+import net.fortuna.ical4j.model.property.Attendee
+import net.fortuna.ical4j.model.{Calendar, Month, Property, PropertyList, TimeZoneRegistryFactory, WeekDay}
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{Nested, Test}
@@ -475,6 +480,83 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.status.head)
         .isEqualTo(CalendarEventStatusField(Tentative))
     }
+  }
+
+  @Test
+  def test1(): Unit = {
+    val payload: String  = s"""BEGIN:VCALENDAR
+                              |PRODID:-//Google Inc//Google Calendar 70.9054//EN
+                              |VERSION:2.0
+                              |CALSCALE:GREGORIAN
+                              |METHOD:REPLY
+                              |BEGIN:VEVENT
+                              |DTSTART:20240308T063000Z
+                              |DTEND:20240308T070000Z
+                              |DTSTAMP:20240306T083902Z
+                              |ORGANIZER;CN=Van Tung TRAN:mailto:vttran@linagora.com
+                              |UID:9696ab0e-663e-4b81-8757-78df6d96877f
+                              |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;CN=Tung T
+                              | ran Van;X-NUM-GUESTS=0:mailto:tungtv202@gmail.com
+                              |CREATED:20240306T083847Z
+                              |DESCRIPTION:
+                              |LAST-MODIFIED:20240306T083902Z
+                              |LOCATION:
+                              |SEQUENCE:0
+                              |STATUS:CONFIRMED
+                              |SUMMARY:test3
+                              |TRANSP:OPAQUE
+                              |ATTACH;FILENAME=account-multiple.png:?view=att&th=18e12ea531e8eb48&attid=0.
+                              | 0.0.1&disp=attd&zw
+                              |ATTACH;FILENAME=clock.png:?view=att&th=18e12ea531e8eb48&attid=0.0.0.2&disp=
+                              | attd&zw
+                              |ATTACH;FILENAME=folder-download.png:?view=att&th=18e12ea531e8eb48&attid=0.0
+                              | .0.3&disp=attd&zw
+                              |ATTACH;FILENAME=format-align-justify.png:?view=att&th=18e12ea531e8eb48&atti
+                              | d=0.0.0.4&disp=attd&zw
+                              |ATTACH;FILENAME=logo.png:?view=att&th=18e12ea531e8eb48&attid=0.0.0.5&disp=a
+                              | ttd&zw
+                              |ATTACH;FILENAME=map-marker.png:?view=att&th=18e12ea531e8eb48&attid=0.0.0.6&
+                              | disp=attd&zw
+                              |ATTACH;FILENAME=resource.png:?view=att&th=18e12ea531e8eb48&attid=0.0.0.7&di
+                              | sp=attd&zw
+                              |ATTACH;FILENAME=to.png:?view=att&th=18e12ea531e8eb48&attid=0.0.0.8&disp=att
+                              | d&zw
+                              |ATTACH;FILENAME=videoconference.png:?view=att&th=18e12ea531e8eb48&attid=0.0
+                              | .0.9&disp=attd&zw
+                              |END:VEVENT
+                              |END:VCALENDAR
+                              |""".stripMargin
+
+    val calendar = new CalendarBuilder(CalendarParserFactory.getInstance.get,
+      new ContentHandlerContext().withSupressInvalidProperties(true),
+      TimeZoneRegistryFactory.getInstance.createRegistry)
+      .build( new ByteArrayInputStream(payload.getBytes()))
+
+    val vEventList: List[VEvent] = calendar.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.toList
+
+    val requestEvent = vEventList.head
+    val calendar1 = new Calendar()
+
+    val ATTENDEE = new Attendee(URI.create("mailto:dev1@mycompany.com"))
+      .withParameter(Role.REQ_PARTICIPANT)
+      .withParameter(new Cn("Tung Tran Van"))
+      .withParameter(PartStat.DECLINED)
+      .withParameter(CuType.INDIVIDUAL)
+
+    val initProperty = new PropertyList[Property]()
+
+    val t = requestEvent.getProperties
+      .stream()
+      .filter(p => p.getName != "ATTENDEE")
+      .toList
+
+    initProperty.addAll(t)
+
+
+    val event = new VEvent(initProperty)
+      .withProperty(ATTENDEE.getFluentTarget)
+
+      println(vEventList)
   }
 
   def icsPayloadWith(additionalField: String): String =
