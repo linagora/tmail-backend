@@ -62,6 +62,7 @@
         <james.groupId>org.apache.james</james.groupId>
         <james.version>3.9.0-SNAPSHOT</james.version>
         <firebase-admin-sdk.version>9.2.0</firebase-admin-sdk.version>
+        <bouncycastle.version>1.70</bouncycastle.version>
         <scala.base>2.13</scala.base>
     </properties>
 
@@ -323,7 +324,17 @@
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcpg-jdk15on</artifactId>
-                <version>1.70</version>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk15on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk15on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.firebase</groupId>
