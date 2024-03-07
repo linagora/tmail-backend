@@ -95,10 +95,8 @@ class CalendarEventReplyGeneratorTest {
           |DTEND;TZID=Europe/Paris:20240223T163000
           |CLASS:PUBLIC
           |SUMMARY:Simple event
-          |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@a
-          | EXAMPLE.COM:ATTENDEE\;PARTSTAT=NEEDS-ACTION\;RSVP=TRUE\;ROLE=REQ-PARTICIPANT\;CUTYPE=INDIVI
-          | DUAL:mailto:btellier@example.com
-          | OMPTETEST15.LINAGORA@DOMAIN.TLD:DTSTAMP:20240222T204008Z
+          |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
+          |DTSTAMP:20240222T204008Z
           |SEQUENCE:0
           |ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;CUTYPE=INDIVIDUAL:mailto:bob@domain.com
           |END:VEVENT
@@ -115,7 +113,7 @@ class CalendarEventReplyGeneratorTest {
   }
 
   @Test
-  def shouldThrowWhen123(): Unit = {
+  def shouldNotThrownWhenCalScaleAbsentInRequest(): Unit = {
 
     val requestDoesNotContainCalScale: String =
       s"""BEGIN:VCALENDAR
@@ -146,14 +144,10 @@ class CalendarEventReplyGeneratorTest {
          |DTEND;TZID=Europe/Paris:20240223T163000
          |CLASS:PUBLIC
          |SUMMARY:Simple event
-         |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@a
-         | example.com
-         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
-         | DUAL:mailto:btellier@example.com
-         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
-         | DUAL:mailto:other@example.com
-         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:c
-         | omptetest15.linagora@domain.tld
+         |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:btellier@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:other@example.com
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:comptetest15.linagora@domain.tld
          |DTSTAMP:20240222T204008Z
          |SEQUENCE:0
          |END:VEVENT
@@ -212,14 +206,10 @@ class CalendarEventReplyGeneratorTest {
          |DTEND;TZID=Europe/Paris:20240223T163000
          |CLASS:PUBLIC
          |SUMMARY:Simple event
-         |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@a
-         | example.com
-         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
-         | DUAL:mailto:btellier@example.com
-         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
-         | DUAL:mailto:other@example.com
-         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:c
-         | omptetest15.linagora@domain.tld
+         |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:btellier@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:other@example.com
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:comptetest15.linagora@domain.tld
          |DTSTAMP:20240222T204008Z
          |SEQUENCE:0
          |END:VEVENT
