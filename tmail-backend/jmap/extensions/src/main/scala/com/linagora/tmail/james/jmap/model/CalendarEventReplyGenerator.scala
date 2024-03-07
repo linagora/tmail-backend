@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.model
 
+import java.net.URI
+
 import com.google.common.base.Preconditions
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.parameter.{CuType, PartStat, Role}
@@ -7,7 +9,6 @@ import net.fortuna.ical4j.model.property.{Attendee, Method}
 import net.fortuna.ical4j.model.{Calendar, Property, PropertyList}
 import org.apache.james.core.Username
 
-import java.net.URI
 import scala.jdk.CollectionConverters._
 
 object CalendarEventReplyGenerator {
