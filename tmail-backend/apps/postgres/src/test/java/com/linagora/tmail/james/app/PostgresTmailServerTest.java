@@ -7,6 +7,7 @@ import org.apache.james.JamesServerConcreteContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
+import org.apache.james.jmap.draft.JmapJamesServerContract;
 import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -15,8 +16,9 @@ import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-class PostgresTmailServerTest implements JamesServerConcreteContract {
+class PostgresTmailServerTest implements JamesServerConcreteContract, JmapJamesServerContract {
     static PostgresExtension postgresExtension = PostgresExtension.empty();
 
     @RegisterExtension
@@ -34,6 +36,7 @@ class PostgresTmailServerTest implements JamesServerConcreteContract {
             .eventBusImpl(IN_MEMORY)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
         .extension(postgresExtension)

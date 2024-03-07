@@ -144,6 +144,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>mailbox-encrypted-memory</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-healthcheck</artifactId>
         </dependency>
         <dependency>

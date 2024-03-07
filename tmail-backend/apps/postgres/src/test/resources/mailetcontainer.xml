@@ -85,6 +85,14 @@
             </mailet>
         </processor>
 
+        <processor state="local-delivery" enableJmx="true">
+            <mailet match="All" class="VacationMailet"/>
+            <mailet match="All" class="Sieve"/>
+            <mailet match="All" class="AddDeliveredToHeader"/>
+            <mailet match="All" class="org.apache.james.jmap.mailet.filter.JMAPFiltering"/>
+            <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery"/>
+        </processor>
+
         <processor state="relay" enableJmx="true">
             <mailet match="All" class="RemoteDelivery">
                 <outgoingQueue>outgoing</outgoingQueue>
