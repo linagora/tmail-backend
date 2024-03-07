@@ -3,10 +3,10 @@ package com.linagora.tmail.james.jmap.calendar
 import java.io.ByteArrayInputStream
 import java.util.stream.Stream
 
-import com.linagora.tmail.james.jmap.model.{CalendarEventParsed, CalendarEventReplyGenerator => testee}
+import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarEventParsed, CalendarEventReplyGenerator => testee}
 import net.fortuna.ical4j.model.Calendar
-import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.parameter.PartStat
+import net.fortuna.ical4j.model.component.{VEvent, VTimeZone}
+import net.fortuna.ical4j.model.parameter.{Cn, PartStat}
 import net.fortuna.ical4j.model.property.Attendee
 import org.apache.james.core.Username
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
@@ -30,7 +30,7 @@ class CalendarEventReplyGeneratorTest {
 
   @Test
   def shouldRemoveAllUnrelatedParticipantsInfo(): Unit = {
-    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, Username.of("bob@domain.com"), PartStat.DECLINED)
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED))
 
     val replyAttendee: String = replyCalendarEvent.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.head.getProperties("ATTENDEE").toString
 
@@ -43,7 +43,7 @@ class CalendarEventReplyGeneratorTest {
 
   @Test
   def shouldAddTheAttendeeToTheReply(): Unit = {
-    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, Username.of("bob@domain.com"), PartStat.DECLINED)
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED))
     val replyAttendee: String = replyCalendarEvent.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.head.getProperty("ATTENDEE").toString
     assertSoftly(softly => {
       softly.assertThat(replyAttendee).contains("ROLE=REQ-PARTICIPANT")
@@ -54,7 +54,7 @@ class CalendarEventReplyGeneratorTest {
 
   @Test
   def shouldKeepCalScaleFromRequest(): Unit = {
-    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, Username.of("bob@domain.com"), PartStat.DECLINED)
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED))
 
     assertThat(replyCalendarEvent.getCalendarScale.getValue)
       .isEqualTo(calendarEventRequestTemplate.getCalendarScale.getValue)
@@ -62,7 +62,7 @@ class CalendarEventReplyGeneratorTest {
 
   @Test
   def shouldHasMethodReply(): Unit = {
-    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, Username.of("bob@domain.com"), PartStat.DECLINED)
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED))
     assertThat(replyCalendarEvent.getMethod.getValue)
       .isEqualTo("REPLY")
   }
@@ -70,7 +70,7 @@ class CalendarEventReplyGeneratorTest {
   @ParameterizedTest
   @MethodSource(value = Array("partStats"))
   def shouldGenerateCorrectPartStat(partStat: PartStat): Unit = {
-    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, Username.of("bob@domain.com"), partStat)
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), partStat))
     val replyAttendee: Attendee = replyCalendarEvent.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.head.getProperty("ATTENDEE").asInstanceOf[Attendee]
     assertThat(replyAttendee.getParameter("PARTSTAT").asInstanceOf[PartStat].getValue)
       .isEqualTo(partStat.getValue)
@@ -78,13 +78,14 @@ class CalendarEventReplyGeneratorTest {
 
   @Test
   def shouldKeepAlmostVEventPropertiesOfRequest(): Unit = {
-    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, Username.of("bob@domain.com"), PartStat.DECLINED)
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED))
 
     assertThat(replyCalendarEvent.toString.replaceAll("\\n|\\r\\n", System.getProperty("line.separator")))
       .isEqualTo(
         """BEGIN:VCALENDAR
           |CALSCALE:GREGORIAN
           |VERSION:2.0
+          |PRODID:-//Linagora//TMail Calendar//EN
           |METHOD:REPLY
           |CALSCALE:GREGORIAN
           |BEGIN:VEVENT
@@ -107,9 +108,9 @@ class CalendarEventReplyGeneratorTest {
 
   @Test
   def shouldThrowWhenMethodIsNotRequest(): Unit = {
-    val replyCalendar: Calendar = testee.generate(calendarEventRequestTemplate, Username.of("bob@domain.com"), PartStat.DECLINED)
+    val replyCalendar: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED))
 
-    assertThatThrownBy(() => testee.generate(replyCalendar, Username.of("bob@domain.com"), PartStat.DECLINED))
+    assertThatThrownBy(() => testee.generate(replyCalendar, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED)))
       .isInstanceOf(classOf[IllegalArgumentException])
   }
 
@@ -160,8 +161,24 @@ class CalendarEventReplyGeneratorTest {
 
     val calendarRequest: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(requestDoesNotContainCalScale.getBytes()))
 
-    assertThatCode(() => testee.generate(calendarRequest, Username.of("bob@domain.com"), PartStat.DECLINED))
+    assertThatCode(() => testee.generate(calendarRequest, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED)))
       .doesNotThrowAnyException()
+  }
+
+  @Test
+  def shouldShowAttendeeCNWhenPresent(): Unit = {
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED, Some(new Cn("Tran Van Tung"))))
+
+    val replyAttendee: String = replyCalendarEvent.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.head.getProperties("ATTENDEE").toString
+
+    assertThat(replyAttendee).contains("CN=Tran Van Tung")
+  }
+
+  @Test
+  def shouldCopyVTimezoneFromRequest(): Unit = {
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED))
+    assertThat(replyCalendarEvent.getComponent[VEvent]("VEVENT").getComponent[VTimeZone]("VTIMEZONE"))
+      .isEqualTo(calendarEventRequestTemplate.getComponent[VEvent]("VEVENT").getComponent[VTimeZone]("VTIMEZONE"))
   }
 
   def calendarEventRequestTemplate: Calendar = {
