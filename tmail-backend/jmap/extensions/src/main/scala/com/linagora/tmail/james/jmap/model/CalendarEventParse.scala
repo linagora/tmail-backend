@@ -498,7 +498,7 @@ case class RecurrenceRule(frequency: RecurrenceRuleFrequency,
                           bySecond: Option[Seq[Int]] = None,
                           bySetPosition: Option[Seq[Int]] = None)
 
-case class InvalidCalendarFileException(blobId: BlobId) extends RuntimeException
+case class InvalidCalendarFileException(blobId: BlobId, originException: Throwable) extends RuntimeException
 
 object CalendarEventParsed {
   def from(calendarContent: InputStream): List[CalendarEventParsed] =
