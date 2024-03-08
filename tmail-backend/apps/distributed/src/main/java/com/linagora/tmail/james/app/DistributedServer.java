@@ -15,7 +15,7 @@ import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.SearchModuleChooser;
 import org.apache.james.events.RabbitMQEventBus;
-import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
+import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.draft.JMAPListenerModule;
 import org.apache.james.json.DTO;
