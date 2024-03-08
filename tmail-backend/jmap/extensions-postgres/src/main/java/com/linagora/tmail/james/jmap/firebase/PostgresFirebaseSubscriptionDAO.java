@@ -74,16 +74,19 @@ public class PostgresFirebaseSubscriptionDAO {
     }
 
     public Flux<FirebaseSubscription> listByUsername(Username username) {
-        return postgresExecutor.executeRows(dslContext -> Flux.from(dslContext.selectFrom(TABLE_NAME)
+        return postgresExecutor.executeRows(dslContext -> Flux.from(dslContext.select(DEVICE_CLIENT_ID, ID, EXPIRES, TYPES, FCM_TOKEN)
+                .from(TABLE_NAME)
                 .where(USER.eq(username.asString()))))
             .map(this::toSubscription);
     }
 
     public Flux<FirebaseSubscription> getByUsernameAndIds(Username username, Collection<FirebaseSubscriptionId> ids) {
-        Function<Collection<FirebaseSubscriptionId>, Flux<FirebaseSubscription>> queryPublisherFunction = idsMatching -> postgresExecutor.executeRows(dslContext -> Flux.from(dslContext.selectFrom(TABLE_NAME)
-                .where(USER.eq(username.asString()))
-                .and(ID.in(idsMatching.stream().map(FirebaseSubscriptionId::value)
-                    .toList()))))
+        Function<Collection<FirebaseSubscriptionId>, Flux<FirebaseSubscription>> queryPublisherFunction = idsMatching -> postgresExecutor.executeRows(dslContext ->
+                Flux.from(dslContext.select(DEVICE_CLIENT_ID, ID, EXPIRES, TYPES, FCM_TOKEN)
+                    .from(TABLE_NAME)
+                    .where(USER.eq(username.asString()))
+                    .and(ID.in(idsMatching.stream().map(FirebaseSubscriptionId::value)
+                        .toList()))))
             .map(this::toSubscription);
 
         if (ids.size() <= IN_CLAUSE_MAX_SIZE) {
