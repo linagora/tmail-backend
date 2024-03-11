@@ -80,7 +80,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
-import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepositoryModule;
+import com.linagora.tmail.james.jmap.settings.PostgresJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
@@ -192,7 +192,7 @@ public class PostgresTmailServer {
                 new MemoryEmailAddressContactModule(),
                 new EmailAddressContactRoutesModule(),
                 new PostgresLabelRepositoryModule(),
-                new MemoryJmapSettingsRepositoryModule());
+                new PostgresJmapSettingsRepositoryModule());
 
     private static Module chooseBlobStoreModules(PostgresTmailConfiguration configuration) {
         return Modules.combine(Modules.combine(BlobStoreModulesChooser.chooseModules(configuration.blobStoreConfiguration())),
