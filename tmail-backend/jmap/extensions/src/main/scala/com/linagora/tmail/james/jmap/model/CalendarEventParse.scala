@@ -502,16 +502,20 @@ case class InvalidCalendarFileException(blobId: BlobId) extends RuntimeException
 
 object CalendarEventParsed {
   def from(calendarContent: InputStream): List[CalendarEventParsed] =
-    from(new CalendarBuilder(CalendarParserFactory.getInstance.get,
-      new ContentHandlerContext().withSupressInvalidProperties(true),
-      TimeZoneRegistryFactory.getInstance.createRegistry)
-      .build(calendarContent))
+    from(parseICal4jCalendar(calendarContent))
 
   def from(calendar: Calendar): List[CalendarEventParsed] = {
     val vEventList: List[VEvent] = calendar.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.toList
     Preconditions.checkArgument(vEventList.nonEmpty, "Calendar does not contain VEVENT component".asInstanceOf[Object])
 
     vEventList.map(fromVEvent(_, calendar))
+  }
+
+  def parseICal4jCalendar(calendarContent: InputStream): Calendar = {
+    new CalendarBuilder(CalendarParserFactory.getInstance.get,
+      new ContentHandlerContext().withSupressInvalidProperties(true),
+      TimeZoneRegistryFactory.getInstance.createRegistry)
+      .build(calendarContent)
   }
 
   private def fromVEvent(vevent: VEvent, calendar: Calendar): CalendarEventParsed = {
