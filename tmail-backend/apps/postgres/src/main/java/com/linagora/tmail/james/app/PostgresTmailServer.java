@@ -63,7 +63,7 @@ import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
-import com.linagora.tmail.james.jmap.label.MemoryLabelRepositoryModule;
+import com.linagora.tmail.james.jmap.label.PostgresLabelRepositoryModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
@@ -191,7 +191,7 @@ public class PostgresTmailServer {
                 new RateLimitPlanRoutesModule(),
                 new MemoryEmailAddressContactModule(),
                 new EmailAddressContactRoutesModule(),
-                new MemoryLabelRepositoryModule(),
+                new PostgresLabelRepositoryModule(),
                 new MemoryJmapSettingsRepositoryModule());
 
     private static Module chooseBlobStoreModules(PostgresTmailConfiguration configuration) {
