@@ -1,8 +1,5 @@
 package com.linagora.tmail.james.jmap.label;
 
-import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelChangeTable.INDEX;
-import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelChangeTable.TABLE;
-
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -43,8 +40,32 @@ public interface PostgresLabelModule {
                 .on(TABLE_NAME, CREATED_DATE));
     }
 
+    interface LabelTable {
+        Table<Record> TABLE_NAME = DSL.table("labels");
+
+        Field<String> USERNAME = DSL.field("username", SQLDataType.VARCHAR.notNull());
+        Field<String> KEYWORD = DSL.field("keyword", SQLDataType.VARCHAR.notNull());
+        Field<String> DISPLAY_NAME = DSL.field("display_name", SQLDataType.VARCHAR.notNull());
+        Field<String> COLOR = DSL.field("color", SQLDataType.VARCHAR);
+
+        PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
+            .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
+                .column(USERNAME)
+                .column(KEYWORD)
+                .column(DISPLAY_NAME)
+                .column(COLOR)
+                .constraint(DSL.primaryKey(USERNAME, KEYWORD))
+                .comment("Hold user JMAP labels")))
+            .supportsRowLevelSecurity()
+            .build();
+
+        PostgresIndex USERNAME_INDEX = PostgresIndex.name("index_labels_username")
+            .createIndexStep((dslContext, indexName) -> dslContext.createIndexIfNotExists(indexName)
+                .on(TABLE_NAME, USERNAME));
+    }
+
     PostgresModule MODULE = PostgresModule.builder()
-        .addTable(TABLE)
-        .addIndex(INDEX)
+        .addTable(LabelChangeTable.TABLE, LabelTable.TABLE)
+        .addIndex(LabelChangeTable.INDEX, LabelTable.USERNAME_INDEX)
         .build();
 }
