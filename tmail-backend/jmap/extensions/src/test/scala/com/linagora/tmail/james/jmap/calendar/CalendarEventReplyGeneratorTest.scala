@@ -35,7 +35,6 @@ class CalendarEventReplyGeneratorTest {
     val replyAttendee: String = replyCalendarEvent.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.head.getProperties("ATTENDEE").toString
 
     assertSoftly(softly => {
-      softly.assertThat(replyAttendee).doesNotContain("comptetest15.linagora@domain.tld")
       softly.assertThat(replyAttendee).doesNotContain("other@example.com")
       softly.assertThat(replyAttendee).doesNotContain("btellier@example.com")
     })
@@ -147,7 +146,7 @@ class CalendarEventReplyGeneratorTest {
          |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:btellier@example.com
          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:other@example.com
-         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:comptetest15.linagora@domain.tld
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:bob@domain.com
          |DTSTAMP:20240222T204008Z
          |SEQUENCE:0
          |END:VEVENT
@@ -173,6 +172,12 @@ class CalendarEventReplyGeneratorTest {
     val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED))
     assertThat(replyCalendarEvent.getComponent[VEvent]("VEVENT").getComponent[VTimeZone]("VTIMEZONE"))
       .isEqualTo(calendarEventRequestTemplate.getComponent[VEvent]("VEVENT").getComponent[VTimeZone]("VTIMEZONE"))
+  }
+
+  @Test
+  def shouldThrowWhenNotInvitedToAttend(): Unit = {
+    assertThatThrownBy(() => testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("not-invited@domain.com"), PartStat.DECLINED)))
+      .isInstanceOf(classOf[IllegalArgumentException])
   }
 
   def calendarEventRequestTemplate: Calendar = {
@@ -209,7 +214,7 @@ class CalendarEventReplyGeneratorTest {
          |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:btellier@example.com
          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:other@example.com
-         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:comptetest15.linagora@domain.tld
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:bob@domain.com
          |DTSTAMP:20240222T204008Z
          |SEQUENCE:0
          |END:VEVENT

@@ -25,6 +25,11 @@ object CalendarEventReplyGenerator {
     val requestVEvent: VEvent = requestVEventOpt.get
     val timeZone: Option[VTimeZone] = requestVEvent.getComponents[VTimeZone]("VTIMEZONE").asScala.headOption
 
+    val attendeeInRequest: Option[Attendee] = requestVEvent.getProperties[Attendee]("ATTENDEE").asScala.toSeq
+      .find(attendee => attendeeReply.attendee.asString().equals(attendee.getCalAddress.getSchemeSpecificPart))
+
+    Preconditions.checkArgument(attendeeInRequest.isDefined, "Can not reply when not invited to attend".asInstanceOf[Object])
+
     val replyProperty: PropertyList[Property] = Some(new PropertyList[Property])
       .map(propertyList => {
         requestVEvent.getProperties
