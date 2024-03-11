@@ -121,5 +121,16 @@ case class CalendarEventReplyRejectedResponse(accountId: AccountId,
   override val notDone: Option[CalendarEventNotDone] = notRejected
 }
 
+object CalendarEventReplyMaybeResponse {
+  def from(accountId: AccountId, results: CalendarEventReplyResults): CalendarEventReplyMaybeResponse =
+    CalendarEventReplyMaybeResponse(accountId, results.done, results.notFound, results.notDone)
+}
 
 
+case class CalendarEventReplyMaybeResponse(accountId: AccountId,
+                                           maybe: BlobIds,
+                                           notFound: Option[CalendarEventNotFound],
+                                           notMaybe: Option[CalendarEventNotDone]) extends CalendarEventReplyResponse {
+  override val done: BlobIds = maybe
+  override val notDone: Option[CalendarEventNotDone] = notMaybe
+}
