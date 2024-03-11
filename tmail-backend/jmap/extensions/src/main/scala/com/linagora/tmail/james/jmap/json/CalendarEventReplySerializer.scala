@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{CalendarEventNotDone, CalendarEventNotFound, CalendarEventReplyAcceptedResponse, CalendarEventReplyRejectResponse, CalendarEventReplyRequest, CalendarEventReplyResponse, LanguageLocation}
+import com.linagora.tmail.james.jmap.model.{CalendarEventNotDone, CalendarEventNotFound, CalendarEventReplyAcceptedResponse, CalendarEventReplyRejectedResponse, CalendarEventReplyRequest, CalendarEventReplyResponse, LanguageLocation}
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json.{Format, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
@@ -24,7 +24,7 @@ object CalendarEventReplySerializer {
   private implicit val calendarEventReplyResponseWrites: Writes[CalendarEventReplyResponse] = new Writes[CalendarEventReplyResponse] {
     def writes(response: CalendarEventReplyResponse): JsObject = response match {
       case accepted: CalendarEventReplyAcceptedResponse => writeResponse(accepted, "Accepted")
-      case reject: CalendarEventReplyRejectResponse => writeResponse(reject, "Rejected")
+      case rejected: CalendarEventReplyRejectedResponse => writeResponse(rejected, "Rejected")
     }
 
     private def writeResponse(response: CalendarEventReplyResponse, donePropertyName: String): JsObject = {

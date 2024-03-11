@@ -108,10 +108,15 @@ case class CalendarEventReplyAcceptedResponse(accountId: AccountId,
   override val notDone: Option[CalendarEventNotDone] = notAccepted
 }
 
-case class CalendarEventReplyRejectResponse(accountId: AccountId,
-                                            reject: BlobIds,
-                                            notFound: Option[CalendarEventNotFound],
-                                            notRejected: Option[CalendarEventNotDone]) extends CalendarEventReplyResponse {
+object CalendarEventReplyRejectedResponse {
+  def from(accountId: AccountId, results: CalendarEventReplyResults): CalendarEventReplyRejectedResponse =
+    CalendarEventReplyRejectedResponse(accountId, results.done, results.notFound, results.notDone)
+}
+
+case class CalendarEventReplyRejectedResponse(accountId: AccountId,
+                                              reject: BlobIds,
+                                              notFound: Option[CalendarEventNotFound],
+                                              notRejected: Option[CalendarEventNotDone]) extends CalendarEventReplyResponse {
   override val done: BlobIds = reject
   override val notDone: Option[CalendarEventNotDone] = notRejected
 }
