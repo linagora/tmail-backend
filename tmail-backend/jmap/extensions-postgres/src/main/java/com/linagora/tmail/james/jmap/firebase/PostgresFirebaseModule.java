@@ -38,7 +38,8 @@ public interface PostgresFirebaseModule {
                 .constraint(DSL.constraint(PRIMARY_KEY_CONSTRAINT)
                     .primaryKey(USER, DEVICE_CLIENT_ID))
                 .constraint(DSL.constraint(FCM_TOKEN_UNIQUE_CONSTRAINT)
-                    .unique(FCM_TOKEN))))
+                    .unique(FCM_TOKEN))
+                .comment("Hold user firebase push subscriptions data")))
             .supportsRowLevelSecurity()
             .build();
 

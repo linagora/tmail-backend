@@ -31,7 +31,8 @@ public interface PostgresLabelModule {
                 .column(UPDATED)
                 .column(DESTROYED)
                 .column(CREATED_DATE)
-                .constraint(DSL.primaryKey(ACCOUNT_ID, STATE))))
+                .constraint(DSL.primaryKey(ACCOUNT_ID, STATE))
+                .comment("Hold JMAP label changes")))
             .supportsRowLevelSecurity()
             .build();
 
