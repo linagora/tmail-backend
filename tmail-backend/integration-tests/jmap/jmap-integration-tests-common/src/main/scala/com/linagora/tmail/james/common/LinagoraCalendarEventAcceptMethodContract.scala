@@ -53,7 +53,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def acceptShouldSucceed(): Unit = {
-    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
 
     val request: String =
       s"""{
@@ -180,7 +180,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
   def shouldSucceedWhenMixSeveralCases(): Unit = {
     val notAcceptedId: String = uploadAndGetBlobId(new ByteArrayInputStream("notIcsFileFormat".getBytes))
     val notFoundBlobId: String = randomBlobId
-    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
     val request: String =
       s"""{
          |  "using": [
@@ -337,7 +337,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldNotFoundWhenDoesNotHavePermission(server: GuiceJamesServer): Unit = {
-    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
 
     val request: String =
       s"""{
@@ -379,7 +379,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldSucceedWhenDelegated(server: GuiceJamesServer): Unit = {
-    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
     server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
 
     val bobAccountId = ACCOUNT_ID
@@ -515,7 +515,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldFailWhenInvalidLanguage(): Unit = {
-    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
 
     `given`
       .body(s"""{
@@ -540,7 +540,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldFailWhenUnsupportedLanguage(): Unit = {
-    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
 
     val response =  `given`
       .body(s"""{
@@ -581,7 +581,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldSupportSpecialValidLanguages(): Unit = {
-    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
 
     val request: String =
       s"""{
