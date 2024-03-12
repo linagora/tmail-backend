@@ -118,7 +118,6 @@ public class PostgresTmailServer {
             .combineWith(chooseUserRepositoryModule(configuration))
             .combineWith(chooseBlobStoreModules(configuration))
             .combineWith(chooseEventBusModules(configuration))
-            .combineWith(chooseDeletedMessageVaultModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
@@ -128,6 +127,7 @@ public class PostgresTmailServer {
     private static final Module WEBADMIN = Modules.combine(
         new WebAdminServerModule(),
         new DataRoutesModules(),
+        new DeletedMessageVaultRoutesModule(),
         new InconsistencyQuotasSolvingRoutesModule(),
         new MailboxRoutesModule(),
         new MailQueueRoutesModule(),
@@ -182,7 +182,8 @@ public class PostgresTmailServer {
         new TaskManagerModule(),
         new PostgresEventStoreModule(),
         new TikaMailboxModule(),
-        new PostgresVacationModule());
+        new PostgresVacationModule(),
+        new PostgresDeletedMessageVaultModule());
 
     private static final Module POSTGRES_MODULE_AGGREGATE = Modules.override(Modules.combine(
         new MailetProcessingModule(), POSTGRES_SERVER_MODULE, PROTOCOLS, JMAP_LINAGORA))
@@ -214,10 +215,6 @@ public class PostgresTmailServer {
                 DatabaseCombinedUserRequireModule.of(PostgresUsersDAO.class),
                 new PostgresUsersRepositoryModule())
                 .chooseModule(configuration.usersRepositoryImplementation()));
-    }
-
-    private static Module chooseDeletedMessageVaultModules(PostgresTmailConfiguration configuration) {
-        return Modules.combine(new PostgresDeletedMessageVaultModule(), new DeletedMessageVaultRoutesModule());
     }
 
     private static Module chooseRedisRateLimiterModule(PostgresTmailConfiguration configuration) {
