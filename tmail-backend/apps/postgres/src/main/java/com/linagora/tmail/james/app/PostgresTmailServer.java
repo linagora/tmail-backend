@@ -83,7 +83,7 @@ import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.settings.PostgresJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
-import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
+import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
@@ -188,7 +188,7 @@ public class PostgresTmailServer {
     private static final Module POSTGRES_MODULE_AGGREGATE = Modules.override(Modules.combine(
         new MailetProcessingModule(), POSTGRES_SERVER_MODULE, PROTOCOLS, JMAP_LINAGORA))
             .with(new TeamMailboxModule(),
-                new MemoryRateLimitingModule(),
+                new PostgresRateLimitingModule(),
                 new RateLimitPlanRoutesModule(),
                 new MemoryEmailAddressContactModule(),
                 new EmailAddressContactRoutesModule(),
