@@ -18,7 +18,6 @@ import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
 import org.apache.james.utils.PropertiesProvider;
-import org.apache.james.vault.VaultConfiguration;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
@@ -36,8 +35,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
                                          boolean jmapEnabled,
                                          PropertiesProvider propertiesProvider,
-                                         PostgresJamesConfiguration.EventBusImpl eventBusImpl,
-                                         VaultConfiguration deletedMessageVaultConfiguration) implements Configuration {
+                                         PostgresJamesConfiguration.EventBusImpl eventBusImpl) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -49,9 +47,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
-
         private Optional<PostgresJamesConfiguration.EventBusImpl> eventBusImpl;
-        private Optional<VaultConfiguration> deletedMessageVaultConfiguration;
 
         private Builder() {
             searchConfiguration = Optional.empty();
@@ -65,7 +61,6 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             eventBusImpl = Optional.empty();
-            deletedMessageVaultConfiguration = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -141,11 +136,6 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return this;
         }
 
-        public Builder deletedMessageVaultConfiguration(VaultConfiguration deletedMessageVaultConfiguration) {
-            this.deletedMessageVaultConfiguration = Optional.of(deletedMessageVaultConfiguration);
-            return this;
-        }
-
         public PostgresTmailConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -191,16 +181,6 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
 
             PostgresJamesConfiguration.EventBusImpl eventBusImpl = this.eventBusImpl.orElseGet(() -> PostgresJamesConfiguration.EventBusImpl.from(propertiesProvider));
 
-            VaultConfiguration deletedMessageVaultConfiguration = this.deletedMessageVaultConfiguration.orElseGet(() -> {
-                try {
-                    return VaultConfiguration.from(propertiesProvider.getConfiguration("deletedMessageVault"));
-                } catch (FileNotFoundException e) {
-                    return VaultConfiguration.DEFAULT;
-                } catch (ConfigurationException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-
             return new PostgresTmailConfiguration(
                 configurationPath,
                 directories,
@@ -213,8 +193,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 servicesDiscoveryModuleChooserConfiguration,
                 jmapEnabled,
                 propertiesProvider,
-                eventBusImpl,
-                deletedMessageVaultConfiguration);
+                eventBusImpl);
         }
     }
 
