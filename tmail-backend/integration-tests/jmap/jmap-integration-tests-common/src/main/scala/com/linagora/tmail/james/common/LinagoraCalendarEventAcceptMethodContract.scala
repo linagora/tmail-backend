@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.common
 
 import java.io.{ByteArrayInputStream, InputStream}
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -10,7 +9,6 @@ import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
-import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus
@@ -20,15 +18,9 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
-import org.apache.james.mailbox.MessageManager.AppendCommand
-import org.apache.james.mailbox.model.MailboxACL.Right
-import org.apache.james.mailbox.model.{MailboxACL, MailboxId, MailboxPath, MessageId}
-import org.apache.james.mime4j.dom.Message
-import org.apache.james.mime4j.message.{BodyPartBuilder, MultipartBuilder}
-import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
-import org.apache.james.util.ClassLoaderUtils
+import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
-import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.Json
@@ -573,7 +565,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "error",
            |    {
            |        "type": "invalidArguments",
-           |        "description": "The language only supports [fr, en]"
+           |        "description": "The language only supports [en, fr]"
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -661,7 +653,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |	]
            |}""".stripMargin))
 
-    TimeUnit.SECONDS.sleep(2)
+    TimeUnit.SECONDS.sleep(1)
 
     awaitAtMostTenSeconds.untilAsserted { () =>
       val response: String =
@@ -708,7 +700,116 @@ trait LinagoraCalendarEventAcceptMethodContract {
         .isEqualTo(
           s"""{
              |    "subject": "ACCEPTED: Simple event @ Fri Feb 23, 2024 (bob@domain.tld)",
-             |    "preview": "bob@domain.tld has accepted this invitation",
+             |    "preview": "bob@domain.tld has accepted this invitation.",
+             |    "id": "$${json-unit.ignore}",
+             |    "hasAttachment": true,
+             |    "attachments": [
+             |        {
+             |            "charset": "UTF-8",
+             |            "size": 540,
+             |            "partId": "3",
+             |            "blobId": "$${json-unit.ignore}",
+             |            "type": "text/calendar"
+             |        },
+             |        {
+             |            "charset": "us-ascii",
+             |            "disposition": "attachment",
+             |            "size": 540,
+             |            "partId": "4",
+             |            "blobId": "$${json-unit.ignore}",
+             |            "name": "invite.ics",
+             |            "type": "application/ics"
+             |        }
+             |    ]
+             |}""".stripMargin)
+    }
+  }
+
+  @Test
+  def mailReplyShouldSupportI18nWhenLanguageRequest(server: GuiceJamesServer): Unit = {
+    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
+    val blobId: String = uploadAndGetBlobId(new ByteArrayInputStream(generateInviteIcs(BOB.asString(), ANDRE.asString()).getBytes))
+
+    `given`
+      .body( s"""{
+                |  "using": [
+                |    "urn:ietf:params:jmap:core",
+                |    "com:linagora:params:calendar:event"],
+                |  "methodCalls": [[
+                |    "CalendarEvent/accept",
+                |    {
+                |      "accountId": "$ACCOUNT_ID",
+                |      "blobIds": [ "$blobId" ],
+                |      "language": "fr"
+                |    },
+                |    "c1"]]
+                |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("", jsonEquals(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |            "CalendarEvent/accept",
+           |            {
+           |                "accountId": "$ACCOUNT_ID",
+           |                "accepted": [ "$blobId" ]
+           |            },
+           |            "c1"
+           |        ]
+           |	]
+           |}""".stripMargin))
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      val response: String =
+        `given`(buildAndreRequestSpecification(server))
+          .body( s"""{
+                    |    "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
+                    |    "methodCalls": [
+                    |        [
+                    |            "Email/query",
+                    |            {
+                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "filter": {
+                    |                    "inMailbox": "${andreInboxId.serialize}"
+                    |                }
+                    |            },
+                    |            "c1"
+                    |        ],
+                    |        [
+                    |            "Email/get",
+                    |            {
+                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "properties": [ "subject", "hasAttachment", "attachments", "preview" ],
+                    |                "#ids": {
+                    |                    "resultOf": "c1",
+                    |                    "name": "Email/query",
+                    |                    "path": "ids/*"
+                    |                }
+                    |            },
+                    |            "c2"
+                    |        ]
+                    |    ]
+                    |}""".stripMargin)
+        .when
+          .post
+        .`then`
+          .statusCode(SC_OK)
+          .contentType(JSON)
+          .extract
+          .body
+          .asString
+
+      assertThatJson(response)
+        .inPath("methodResponses[1][1].list[0]")
+        .isEqualTo(
+          s"""{
+             |    "subject": "ACCEPTÉ: Simple event @ Fri Feb 23, 2024 (bob@domain.tld)",
+             |    "preview": "bob@domain.tld a accepté cette invitation.",
              |    "id": "$${json-unit.ignore}",
              |    "hasAttachment": true,
              |    "attachments": [

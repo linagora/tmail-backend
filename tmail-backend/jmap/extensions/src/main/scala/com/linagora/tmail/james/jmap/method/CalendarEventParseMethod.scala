@@ -61,6 +61,7 @@ class CalendarEventMethodModule extends AbstractModule {
       .to(classOf[CalendarEventMaybeMethod])
 
     bind(classOf[CalendarEventReplyPerformer]).in(Scopes.SINGLETON)
+    bind(classOf[CalendarEventReplySupportedLanguage]).in(Scopes.SINGLETON)
   }
 
   @ProvidesIntoSet
