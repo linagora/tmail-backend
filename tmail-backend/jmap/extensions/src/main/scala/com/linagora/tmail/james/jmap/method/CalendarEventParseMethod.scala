@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap.method
 
-import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
+import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.json.CalendarEventSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
 import com.linagora.tmail.james.jmap.model.{CalendarEventParse, CalendarEventParseRequest, CalendarEventParseResponse, CalendarEventParseResults, CalendarEventParsed, InvalidCalendarFileException}
@@ -17,6 +17,7 @@ import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequir
 import org.apache.james.jmap.routes.{BlobNotFoundException, BlobResolvers, SessionSupplier}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
+import org.apache.james.utils.{InitializationOperation, InitilizationOperationBuilder}
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -49,7 +50,21 @@ class CalendarEventMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[CalendarEventParseMethod])
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[CalendarEventAcceptMethod])
+
+    bind(classOf[CalendarEventReplyPerformer]).in(Scopes.SINGLETON)
   }
+
+  @ProvidesIntoSet
+  def initCalendarEventReplyPerformer(instance: CalendarEventReplyPerformer): InitializationOperation = {
+    InitilizationOperationBuilder.forClass(classOf[CalendarEventReplyPerformer])
+      .init(new org.apache.james.utils.InitilizationOperationBuilder.Init() {
+        override def init(): Unit = instance.init
+      })
+  }
+
 }
 
 class CalendarEventParseMethod @Inject()(val blobResolvers: BlobResolvers,
@@ -121,7 +136,7 @@ class CalendarEventParseMethod @Inject()(val blobResolvers: BlobResolvers,
   private def toParseResults(blobId: BlobId, mailboxSession: MailboxSession): SMono[CalendarEventParseResults] =
     blobResolvers.resolve(blobId, mailboxSession)
       .flatMap(blob => Using(blob.content)(CalendarEventParsed.from)
-        .fold(_ => SMono.error[List[CalendarEventParsed]](InvalidCalendarFileException(blobId)), result => SMono.just(result)))
+        .fold(error => SMono.error[List[CalendarEventParsed]](InvalidCalendarFileException(blobId, error)), result => SMono.just(result)))
       .map(parsed => CalendarEventParseResults.parse(blobId, parsed))
       .onErrorResume {
         case e: BlobNotFoundException => SMono.just(CalendarEventParseResults.notFound(e.blobId))
