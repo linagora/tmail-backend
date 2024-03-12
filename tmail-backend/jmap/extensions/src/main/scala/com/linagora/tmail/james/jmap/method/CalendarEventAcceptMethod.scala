@@ -20,7 +20,8 @@ import play.api.libs.json.JsObject
 class CalendarEventAcceptMethod @Inject()(val calendarEventReplyPerformer: CalendarEventReplyPerformer,
                                           val metricFactory: MetricFactory,
                                           val sessionTranslator: SessionTranslator,
-                                          val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[CalendarEventReplyRequest] {
+                                          val sessionSupplier: SessionSupplier,
+                                          val supportedLanguage: CalendarEventReplySupportedLanguage) extends MethodRequiringAccountId[CalendarEventReplyRequest] {
 
 
   override val methodName: Invocation.MethodName = MethodName("CalendarEvent/accept")
@@ -30,7 +31,7 @@ class CalendarEventAcceptMethod @Inject()(val calendarEventReplyPerformer: Calen
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, CalendarEventReplyRequest] =
     CalendarEventReplySerializer.deserializeRequest(invocation.arguments.value)
       .asEither.left.map(ResponseSerializer.asException)
-      .flatMap(_.validate)
+      .flatMap(_.validate(supportedLanguage.valueAsStringSet))
 
   override def doProcess(capabilities: Set[CapabilityIdentifier],
                          invocation: InvocationWithContext,

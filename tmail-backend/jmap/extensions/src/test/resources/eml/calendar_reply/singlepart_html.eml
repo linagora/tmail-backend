@@ -1,0 +1,18 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Example HTML Email
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Example HTML Email</title>
+</head>
+<body>
+    <h1>Hello, {{ORGANIZER}}!</h1>
+    <p>This is an example HTML email.</p>
+    <p>For more information, visit <a href="https://example.com">example.com</a>.</p>
+</body>
+</html>

@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.model
 import java.util.Locale
 
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest.{LANGUAGE_SUPPORTED, MAXIMUM_NUMBER_OF_BLOB_IDS}
+import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.WithAccountId
@@ -11,37 +11,30 @@ import org.apache.james.jmap.method.WithAccountId
 import scala.util.Try
 
 object LanguageLocation {
-  def fromString(languageCode: String): Try[LanguageLocation] = {
+  def fromString(languageCode: String): Try[LanguageLocation] = detectLocale(languageCode).map(LanguageLocation.apply)
+
+  def detectLocale(languageCode: String): Try[Locale] =
     if (Locale.getISOLanguages.contains(languageCode)) {
-      Try(Locale.forLanguageTag(languageCode)).map(LanguageLocation.apply)
+      Try(Locale.forLanguageTag(languageCode))
     } else {
       throw new IllegalArgumentException("The language must be a valid ISO language code")
     }
-  }
 }
 
 case class LanguageLocation(language: Locale) {
-  def validate: Either[IllegalArgumentException, LanguageLocation] =
-    if (language.getLanguage.isEmpty) {
-      Left(new IllegalArgumentException("The language must not be empty"))
-    } else {
-      scala.Right(this)
-    }
-
   def value: String = language.toLanguageTag
 }
 
 object CalendarEventReplyRequest {
   val MAXIMUM_NUMBER_OF_BLOB_IDS: Int = 16
-  val LANGUAGE_SUPPORTED: Set[String] = Set("fr", "en")
 }
 
 case class CalendarEventReplyRequest(accountId: AccountId,
                                      blobIds: BlobIds,
                                      language: Option[LanguageLocation]) extends WithAccountId {
-  def validate: Either[Exception, CalendarEventReplyRequest] =
+  def validate(supportedLanguage: Set[String]): Either[Exception, CalendarEventReplyRequest] =
     validateBlobIdsSize
-      .flatMap(_.validateLanguage)
+      .flatMap(_.validateLanguage(supportedLanguage))
 
   private def validateBlobIdsSize: Either[RequestTooLargeException, CalendarEventReplyRequest] =
     if (blobIds.value.length > MAXIMUM_NUMBER_OF_BLOB_IDS) {
@@ -50,10 +43,10 @@ case class CalendarEventReplyRequest(accountId: AccountId,
       scala.Right(this)
     }
 
-  private def validateLanguage: Either[IllegalArgumentException, CalendarEventReplyRequest] =
+  private def validateLanguage(supportedLanguage: Set[String]): Either[IllegalArgumentException, CalendarEventReplyRequest] =
     language match {
-      case Some(value) if LANGUAGE_SUPPORTED.contains(value.value) => scala.Right(this)
-      case Some(_) => Left(new IllegalArgumentException("The language only supports [fr, en]"))
+      case Some(value) if supportedLanguage.contains(value.value) => scala.Right(this)
+      case Some(_) => Left(new IllegalArgumentException(s"The language only supports [${supportedLanguage.mkString(", ")}]"))
       case None => scala.Right(this)
     }
 }

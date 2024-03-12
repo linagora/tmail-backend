@@ -564,7 +564,7 @@ trait LinagoraCalendarEventRejectMethodContract {
            |    "error",
            |    {
            |        "type": "invalidArguments",
-           |        "description": "The language only supports [fr, en]"
+           |        "description": "The language only supports [en, fr]"
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -652,7 +652,7 @@ trait LinagoraCalendarEventRejectMethodContract {
            |	]
            |}""".stripMargin))
 
-    TimeUnit.SECONDS.sleep(2)
+    TimeUnit.SECONDS.sleep(1)
 
     awaitAtMostTenSeconds.untilAsserted { () =>
       val response: String =
@@ -698,8 +698,119 @@ trait LinagoraCalendarEventRejectMethodContract {
         .inPath("methodResponses[1][1].list[0]")
         .isEqualTo(
           s"""{
-             |    "subject": "DECLINED: Simple event @ Fri Feb 23, 2024 (bob@domain.tld)",
-             |    "preview": "bob@domain.tld has declined this invitation",
+             |    "subject": "Declined: Simple event @ Fri Feb 23, 2024 (bob@domain.tld)",
+             |    "preview": "bob@domain.tld has declined this invitation.",
+             |    "id": "$${json-unit.ignore}",
+             |    "hasAttachment": true,
+             |    "attachments": [
+             |        {
+             |            "charset": "UTF-8",
+             |            "size": 540,
+             |            "partId": "3",
+             |            "blobId": "$${json-unit.ignore}",
+             |            "type": "text/calendar"
+             |        },
+             |        {
+             |            "charset": "us-ascii",
+             |            "disposition": "attachment",
+             |            "size": 540,
+             |            "partId": "4",
+             |            "blobId": "$${json-unit.ignore}",
+             |            "name": "invite.ics",
+             |            "type": "application/ics"
+             |        }
+             |    ]
+             |}""".stripMargin)
+    }
+  }
+
+  @Test
+  def mailReplyShouldSupportI18nWhenLanguageRequest(server: GuiceJamesServer): Unit = {
+    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
+    val blobId: String = uploadAndGetBlobId(new ByteArrayInputStream(generateInviteIcs(BOB.asString(), ANDRE.asString()).getBytes))
+
+    `given`
+      .body( s"""{
+                |  "using": [
+                |    "urn:ietf:params:jmap:core",
+                |    "com:linagora:params:calendar:event"],
+                |  "methodCalls": [[
+                |    "CalendarEvent/reject",
+                |    {
+                |      "accountId": "$ACCOUNT_ID",
+                |      "blobIds": [ "$blobId" ],
+                |      "language": "fr"
+                |    },
+                |    "c1"]]
+                |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("", jsonEquals(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [
+           |		[
+           |            "CalendarEvent/reject",
+           |            {
+           |                "accountId": "$ACCOUNT_ID",
+           |                "rejected": [ "$blobId" ]
+           |            },
+           |            "c1"
+           |        ]
+           |	]
+           |}""".stripMargin))
+
+    TimeUnit.SECONDS.sleep(1)
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      val response: String =
+        `given`(buildAndreRequestSpecification(server))
+          .body( s"""{
+                    |    "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
+                    |    "methodCalls": [
+                    |        [
+                    |            "Email/query",
+                    |            {
+                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "filter": {
+                    |                    "inMailbox": "${andreInboxId.serialize}"
+                    |                }
+                    |            },
+                    |            "c1"
+                    |        ],
+                    |        [
+                    |            "Email/get",
+                    |            {
+                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "properties": [ "subject", "hasAttachment", "attachments", "preview" ],
+                    |                "#ids": {
+                    |                    "resultOf": "c1",
+                    |                    "name": "Email/query",
+                    |                    "path": "ids/*"
+                    |                }
+                    |            },
+                    |            "c2"
+                    |        ]
+                    |    ]
+                    |}""".stripMargin)
+        .when
+          .post
+        .`then`
+          .statusCode(SC_OK)
+          .contentType(JSON)
+          .extract
+          .body
+          .asString
+
+      assertThatJson(response)
+        .inPath("methodResponses[1][1].list[0]")
+        .isEqualTo(
+          s"""{
+             |    "subject": "Décliné: Simple event @ Fri Feb 23, 2024 (bob@domain.tld)",
+             |    "preview": "bob@domain.tld a décliné cette invitation.",
              |    "id": "$${json-unit.ignore}",
              |    "hasAttachment": true,
              |    "attachments": [

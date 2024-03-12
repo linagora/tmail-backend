@@ -24,9 +24,53 @@ object CalendarEventReplyGeneratorTest {
       Arguments.of(PartStat.DECLINED),
       Arguments.of(PartStat.TENTATIVE))
   }
+
+  val calendarEventRequestTemplate: Calendar = {
+    val payload: String =
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |CALSCALE:GREGORIAN
+         |METHOD:REQUEST
+         |BEGIN:VTIMEZONE
+         |TZID:Europe/Paris
+         |BEGIN:DAYLIGHT
+         |TZOFFSETFROM:+0100
+         |TZOFFSETTO:+0200
+         |TZNAME:CEST
+         |DTSTART:19700329T020000
+         |RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+         |END:DAYLIGHT
+         |BEGIN:STANDARD
+         |TZOFFSETFROM:+0200
+         |TZOFFSETTO:+0100
+         |TZNAME:CET
+         |DTSTART:19701025T030000
+         |RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+         |END:STANDARD
+         |END:VTIMEZONE
+         |BEGIN:VEVENT
+         |UID:8eae5147-f2df-4853-8fe0-c88678bc8b9f
+         |TRANSP:OPAQUE
+         |DTSTART;TZID=Europe/Paris:20240223T160000
+         |DTEND;TZID=Europe/Paris:20240223T163000
+         |CLASS:PUBLIC
+         |SUMMARY:Simple event
+         |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:btellier@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:other@example.com
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:bob@domain.com
+         |DTSTAMP:20240222T204008Z
+         |SEQUENCE:0
+         |END:VEVENT
+         |END:VCALENDAR""".stripMargin
+
+    CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(payload.getBytes()))
+  }
 }
 
 class CalendarEventReplyGeneratorTest {
+  import CalendarEventReplyGeneratorTest._
 
   @Test
   def shouldRemoveAllUnrelatedParticipantsInfo(): Unit = {
@@ -178,48 +222,5 @@ class CalendarEventReplyGeneratorTest {
   def shouldThrowWhenNotInvitedToAttend(): Unit = {
     assertThatThrownBy(() => testee.generate(calendarEventRequestTemplate, AttendeeReply(Username.of("not-invited@domain.com"), PartStat.DECLINED)))
       .isInstanceOf(classOf[IllegalArgumentException])
-  }
-
-  def calendarEventRequestTemplate: Calendar = {
-    val payload: String =
-      s"""BEGIN:VCALENDAR
-         |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
-         |CALSCALE:GREGORIAN
-         |METHOD:REQUEST
-         |BEGIN:VTIMEZONE
-         |TZID:Europe/Paris
-         |BEGIN:DAYLIGHT
-         |TZOFFSETFROM:+0100
-         |TZOFFSETTO:+0200
-         |TZNAME:CEST
-         |DTSTART:19700329T020000
-         |RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
-         |END:DAYLIGHT
-         |BEGIN:STANDARD
-         |TZOFFSETFROM:+0200
-         |TZOFFSETTO:+0100
-         |TZNAME:CET
-         |DTSTART:19701025T030000
-         |RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
-         |END:STANDARD
-         |END:VTIMEZONE
-         |BEGIN:VEVENT
-         |UID:8eae5147-f2df-4853-8fe0-c88678bc8b9f
-         |TRANSP:OPAQUE
-         |DTSTART;TZID=Europe/Paris:20240223T160000
-         |DTEND;TZID=Europe/Paris:20240223T163000
-         |CLASS:PUBLIC
-         |SUMMARY:Simple event
-         |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
-         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:btellier@example.com
-         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:other@example.com
-         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:bob@domain.com
-         |DTSTAMP:20240222T204008Z
-         |SEQUENCE:0
-         |END:VEVENT
-         |END:VCALENDAR""".stripMargin
-
-    CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(payload.getBytes()))
   }
 }

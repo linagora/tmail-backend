@@ -1,0 +1,35 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Example Email
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="boundary-example"
+
+--boundary-example
+Content-Type: text/html; charset=utf-8
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Example Email</title>
+</head>
+<body>
+    <h1>Hello, {{ORGANIZER}}!</h1>
+    <p>This is an example HTML email.</p>
+    <p>For more information, visit <a href="https://example.com">example.com</a>.</p>
+</body>
+</html>
+
+--boundary-example
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="example.pdf"
+
+...binary data of PDF file...
+
+--boundary-example
+Content-Type: image/jpeg
+Content-Disposition: attachment; filename="example.jpg"
+
+...binary data of JPEG image...
+
+--boundary-example--
