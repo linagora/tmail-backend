@@ -3,16 +3,17 @@ package com.linagora.tmail.rate.limiter.api.postgres.repository
 import com.google.common.base.Preconditions
 import com.linagora.tmail.rate.limiter.api.postgres.dao.PostgresRateLimitPlanUserDAO
 import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
-import javax.inject.Inject
+import javax.inject.{Inject, Named}
 import org.apache.james.backends.postgres.utils.PostgresExecutor
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 
-class PostgresRateLimitingPlanUserRepository @Inject()(executorFactory: PostgresExecutor.Factory) extends RateLimitingPlanUserRepository {
-  private val daoWithoutRLS: PostgresRateLimitPlanUserDAO =
-    PostgresRateLimitPlanUserDAO(executorFactory.create())
+class PostgresRateLimitingPlanUserRepository @Inject()(executorFactory: PostgresExecutor.Factory,
+                                                      @Named(PostgresExecutor.NON_RLS_INJECT) bypassRlsExecutor: PostgresExecutor) extends RateLimitingPlanUserRepository {
+  private val byPassRlsDao: PostgresRateLimitPlanUserDAO =
+    PostgresRateLimitPlanUserDAO(bypassRlsExecutor)
 
   override def applyPlan(username: Username, planId: RateLimitingPlanId): Publisher[Unit] = {
     Preconditions.checkNotNull(username)
@@ -32,7 +33,7 @@ class PostgresRateLimitingPlanUserRepository @Inject()(executorFactory: Postgres
   override def listUsers(planId: RateLimitingPlanId): Publisher[Username] = {
     Preconditions.checkNotNull(planId)
 
-    daoWithoutRLS.getUsersByPlanId(planId)
+    byPassRlsDao.getUsersByPlanId(planId)
   }
 
   override def getPlanByUser(username: Username): Publisher[RateLimitingPlanId] = {

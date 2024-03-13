@@ -19,7 +19,7 @@ class PostgresRateLimitingPlanUserRepositoryTest implements RateLimitingPlanUser
 
     @BeforeEach
     void setUp() {
-        repository = new PostgresRateLimitingPlanUserRepository(postgresExtension.getExecutorFactory());
+        repository = new PostgresRateLimitingPlanUserRepository(postgresExtension.getExecutorFactory(), postgresExtension.getNonRLSPostgresExecutor());
     }
 
     @Override
