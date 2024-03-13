@@ -12,8 +12,8 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.CollectionConverters._
 
 object RateLimitingPlanUserRepositoryContract {
-  val BOB: Username = Username.of("BOB")
-  val ALICE: Username = Username.of("ALICE")
+  val BOB: Username = Username.of("BOB@domain1.tld")
+  val ALICE: Username = Username.of("ALICE@domain2.tld")
   val PLAN_ID_1: RateLimitingPlanId = RateLimitingPlanId(UUID.randomUUID())
   val PLAN_ID_2: RateLimitingPlanId = RateLimitingPlanId(UUID.randomUUID())
 }
