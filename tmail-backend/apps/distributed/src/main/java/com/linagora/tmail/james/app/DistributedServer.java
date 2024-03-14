@@ -132,6 +132,7 @@ import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
+import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
@@ -279,6 +280,7 @@ public class DistributedServer {
         new InboxArchivalTaskModule());
 
     public static final Module JMAP = Modules.override(
+        new TMailJMAPModule(),
         new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
         new CassandraJmapModule(),

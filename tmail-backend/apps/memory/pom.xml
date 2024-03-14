@@ -281,6 +281,10 @@
                                 <from>src/main/provisioning</from>
                                 <into>/root/provisioning</into>
                             </path>
+                            <path>
+                                <from>src/main/eml-template</from>
+                                <into>/root/eml-template</into>
+                            </path>
                         </paths>
                         <permissions>
                             <permission>
