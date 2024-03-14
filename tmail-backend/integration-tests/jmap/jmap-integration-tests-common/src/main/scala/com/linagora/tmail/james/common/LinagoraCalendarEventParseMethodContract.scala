@@ -58,7 +58,9 @@ trait LinagoraCalendarEventParseMethodContract {
       .body()
       .asString()
 
-    assertThat(response).contains("\"com:linagora:params:calendar:event\":{}")
+    assertThatJson(response)
+      .inPath("capabilities[\"com:linagora:params:calendar:event\"]")
+      .isEqualTo("{\"replySupportedLanguage\":[\"en\",\"fr\"]}")
   }
 
   @Test

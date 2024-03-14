@@ -24,24 +24,23 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.util.Using
 
-case object CalendarCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = CalendarCapability
+case class CalendarCapabilityFactory(supportedLanguage: CalendarEventReplySupportedLanguage) extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability = CalendarCapability(CalendarCapabilityProperties(supportedLanguage.valueAsStringSet))
 
   override def id(): CapabilityIdentifier = LINAGORA_CALENDAR
 }
 
-case object CalendarCapability extends Capability {
-  val properties: CapabilityProperties = CalendarCapabilityProperties
+final case class CalendarCapability(properties: CalendarCapabilityProperties) extends Capability {
   val identifier: CapabilityIdentifier = LINAGORA_CALENDAR
 }
 
-case object CalendarCapabilityProperties extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj()
+case class CalendarCapabilityProperties(replySupportedLanguage: Set[String]) extends CapabilityProperties {
+  override def jsonify(): JsObject = Json.obj("replySupportedLanguage" -> replySupportedLanguage)
 }
 
 class CalendarCapabilitiesModule extends AbstractModule {
   @ProvidesIntoSet
-  private def capability(): CapabilityFactory = CalendarCapabilityFactory
+  private def capability(supportedLanguage: CalendarEventReplySupportedLanguage): CapabilityFactory = CalendarCapabilityFactory(supportedLanguage)
 }
 
 class CalendarEventMethodModule extends AbstractModule {
