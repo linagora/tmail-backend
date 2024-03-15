@@ -33,6 +33,7 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.queue.api.MailQueueFactory.SPOOL
 import org.apache.james.queue.api.{MailQueue, MailQueueFactory}
 import org.apache.james.server.core.{MailImpl, MimeMessageInputStreamSource, MimeMessageWrapper, MissingArgumentException}
+import org.apache.james.user.api.UsersRepository
 import org.apache.james.utils.PropertiesProvider
 import org.apache.mailet.Mail
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -50,7 +51,8 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarRe
                                             mailQueueFactory: MailQueueFactory[_ <: MailQueue],
                                             fileSystem: FileSystem,
                                             @Named("jmap") jmapConfiguration: Configuration,
-                                            supportedLanguage: CalendarEventReplySupportedLanguage) extends Startable {
+                                            supportedLanguage: CalendarEventReplySupportedLanguage,
+                                            usersRepository: UsersRepository) extends Startable {
 
   private val mailReplyGenerator: CalendarEventMailReplyGenerator = Try(jmapConfiguration.getString(I18N_MAIL_TEMPLATE_LOCATION_PROPERTY))
     .map(i18nEmlDirectory => new I18NCalendarEventReplyMessageGenerator(fileSystem, i18nEmlDirectory)) match {
@@ -67,16 +69,17 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarRe
   def dispose: Unit = Try(queue.close()).recover(e => LOGGER.debug("error closing queue", e))
 
   def process(request: CalendarEventReplyRequest, mailboxSession: MailboxSession, partStat: PartStat): SMono[CalendarEventReplyResults] = {
-    val attendeeReply: AttendeeReply = AttendeeReply(mailboxSession.getUser, partStat)
     val language: Locale = getLanguageLocale(request)
     Preconditions.checkArgument(supportedLanguage.isSupported(language), s"The language only supports ${supportedLanguage.value}".asInstanceOf[Object])
 
-    SMono.fromCallable(() => extractParsedBlobIds(request))
-      .flatMapMany { case (notParsable: CalendarEventNotParsable, parsedBlobId: Seq[BlobId]) =>
-        SFlux.fromIterable(parsedBlobId)
-          .flatMap(blobId => generateReplyMailAndTryEnqueue(blobId, mailboxSession, attendeeReply, language))
-          .mergeWith(SFlux.just(CalendarEventReplyResults.notDone(notParsable)))
-      }
+    SMono.fromCallable(() => usersRepository.getMailAddressFor(mailboxSession.getUser))
+      .map(mailAddress => AttendeeReply(mailAddress, partStat))
+      .flatMapMany(attendeeReply => SMono.fromCallable(() => extractParsedBlobIds(request))
+        .flatMapMany { case (notParsable: CalendarEventNotParsable, parsedBlobId: Seq[BlobId]) =>
+          SFlux.fromIterable(parsedBlobId)
+            .flatMap(blobId => generateReplyMailAndTryEnqueue(blobId, mailboxSession, attendeeReply, language))
+            .mergeWith(SFlux.just(CalendarEventReplyResults.notDone(notParsable)))
+        })
       .reduce(CalendarEventReplyResults.empty)(CalendarEventReplyResults.merge)
   }
 
