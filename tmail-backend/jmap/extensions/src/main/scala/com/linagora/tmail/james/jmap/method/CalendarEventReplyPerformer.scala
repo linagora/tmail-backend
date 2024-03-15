@@ -13,8 +13,8 @@ import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MU
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.I18N_MAIL_TEMPLATE_LOCATION_PROPERTY
 import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarParticipantsField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException, LanguageLocation}
 import eu.timepit.refined.auto._
-import jakarta.mail.Part
-import jakarta.mail.internet.{MimeMessage, MimeMultipart}
+import jakarta.mail.internet.{InternetAddress, MimeMessage, MimeMultipart}
+import jakarta.mail.{Message, Part}
 import javax.annotation.PreDestroy
 import javax.inject.{Inject, Named}
 import net.fortuna.ical4j.model.Calendar
@@ -162,6 +162,7 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
       .fold(e => SMono.error(e), recipient => generateAttachmentPart(calendarRequest, attendeeReply)
         .flatMap(attachmentPart => bodyPartContentGenerator.getBasedMimeMessage(language, attendeeReply, calendarRequest)
           .map(decoratedMimeMessage => appendAttachmentPartToMail(attachmentPart, decoratedMimeMessage)))
+        .map(mimeMessage => addHeaderToMimeMessage(recipient, attendeeReply.attendee, mimeMessage))
         .map(mimeMessage => MailImpl.builder()
           .name(generateMailName())
           .sender(attendeeReply.attendee.asString())
@@ -207,6 +208,12 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
         mimeMessage.setContent(mimeMultipart)
       case _ => throw new IllegalArgumentException("The eml file must contain a text body.")
     }
+    mimeMessage
+  }
+
+  private def addHeaderToMimeMessage(toAddress: MailAddress, fromAddress: MailAddress, mimeMessage: MimeMessage): MimeMessage = {
+    mimeMessage.addFrom(Array(new InternetAddress(fromAddress.asString())))
+    mimeMessage.addRecipients(Message.RecipientType.TO, toAddress.asString())
     mimeMessage.saveChanges()
     mimeMessage
   }
