@@ -39,6 +39,8 @@ object LimitTypes {
     liftOrThrow(limitTypes)
   }
 
+  def fromMutableMap(limitTypeAndAllowedQuantity: scala.collection.mutable.Map[String, Long]): LimitTypes =
+    from(limitTypeAndAllowedQuantity.toMap)
 }
 
 object LimitType {
