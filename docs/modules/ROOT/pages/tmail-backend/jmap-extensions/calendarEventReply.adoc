@@ -1,0 +1,128 @@
+= Calendar event reply
+:navtitle: calendar event reply
+
+Allows users to reply to calendar event invitations. They can respond with Accept, Deny, or Tentative statuses, corresponding to three methods: `CalendarEvent/accept`, `CalendarEvent/reject`, and `CalendarEvent/maybe`, respectively.
+
+== Additions to the capability object
+
+Servers supporting the calendar event parse extension need
+to advertise it through the session capabilities:
+....
+com:linagora:params:calendar:event
+....
+
+The associated object sample:
+
+....
+{
+    "replySupportedLanguage": ["en", "fr"]
+}
+....
+
+The replySupportedLanguage object contains a list of languages supported by the application for determining email templates.
+
+== CalendarEvent/accept
+
+This method allows the client to accept a calendar event invitation.
+The CalendarEvent/accept method takes the following arguments:
+
+- *accountId*: `Id` The id of the account to use.
+- *blobIds*: `Id[]` The ids correspond to the blob of calendar event invitations file that the user intends to accept.
+They must be validated to ensure they can be parsed using the `CalendarEvent/parse` method for verification.
+- *language*: `String`. Optional, Default is `en`. The language tag that the client wants the server to use when determining the email template.
+
+The response object contains the following arguments:
+
+- *accountId*: `Id` The id of the account used for the call.
+- *accepted*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were successfully accepted, or `null` if none.
+- *notFound*: `Id[]|null` A list of blob ids given that could not be found, or `null` if none.
+- *notCreated*: `Id[]|null`  A list of ids of the calendar events that could not be found, or null if none.
+
+== Example
+
+The client makes a request to accept a calendar event invitation:
+
+....
+{
+	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:calendar:event"],
+	"methodCalls": [
+        [ "CalendarEvent/accept", {
+            "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            "blobIds": ["0f9f65ab-dc7b-4146-850f-6e4881093965"]
+        }, "c1"]
+	]
+}
+....
+
+The server responds:
+
+```
+[[ "CalendarEvent/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "accepted": [ "0f9f65ab-dc7b-4146-850f-6e4881093965" ],
+}, "c1" ]]
+```
+
+In the case that a blob id is not found, the server would respond:
+
+```
+[[ "CalendarEvent/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "notFound": [ "0f9f65ab-dc7b-4146-850f-6e4881093965" ]
+}, "c1" ]]
+```
+
+If the blob id has been found but is not generate & reply email, the server would respond:
+
+```
+[[ "CalendarEvent/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "notCreated": [ "0f9f65ab-dc7b-4146-850f-6e4881093965" ]
+}, "c1" ]]
+```
+
+== CalendarEvent/reject
+Similarly to CalendarEvent/accept, CalendarEvent/reject function in a similar manner.
+However, in the response properties, 'rejected' replace 'created', while 'notRejected' replace 'notCreated'.
+
+== CalendarEvent/maybe
+Similarly to CalendarEvent/accept, CalendarEvent/maybe function in a similar manner.
+However, in the response properties, 'maybe' replace 'created', while 'notMaybe' replace 'notCreated'.
+
+== Internationalization configuration
+
+The Internationalization configuration allows setting the location directory for email templates used in generating reply emails for the CalendarEvent reply method, as well as specifying the supported languages for replying to CalendarEvent emails.
+
+These properties are added to the `jmap.properties` file to configure the internationalization settings.
+
+- *calendarEvent.reply.mailTemplateLocation*: Specifies the directory location for storing email templates used to generate reply emails for CalendarEvent method. Example: `file://eml-template/`
+
+- *calendarEvent.reply.supportedLanguages*: Specifies the supported languages for replying to CalendarEvent emails. Languages are indicated by language tags, such as `en` for English and `fr` for French. Example: `en,fr`
+
+In the specified directory location, valid email template files should follow a naming convention that includes the language tag, such as:
+```
+calendar_reply_accepted-en.eml
+calendar_reply_declined-en.eml
+calendar_reply_tentative-en.eml
+```
+Example file for French language:
+```
+calendar_reply_accepted-fr.eml
+```
+
+Additionally, the reply email templates support Mustache data for dynamic content generation. Mustache tags are placeholders in the email templates that are replaced with actual data before sending. Below is a list of supported Mustache tags:
+
+- PART_STAT: The status of the reply, such as ACCEPTED, REJECTED, or MAYBE.
+- ATTENDEE: The attendee's name and email address.
+- ATTENDEE_CN: The attendee's name.
+- EVENT_ORGANIZER: The event organizer's name and email address.
+- EVENT_ORGANIZER_CN: The event organizer's name.
+- EVENT_TITLE: The title of the event.
+- EVENT_START_DATE: The start date and time of the event.
+- EVENT_END_DATE: The end date and time of the event.
+- EVENT_LOCATION: The location of the event.
+
+To access sample template files, please visit the https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed/src/main/eml-template[tmail-backend].
