@@ -7,11 +7,11 @@ import net.fortuna.ical4j.model.component.{VEvent, VTimeZone}
 import net.fortuna.ical4j.model.parameter.{Cn, CuType, PartStat, Role}
 import net.fortuna.ical4j.model.property.{Attendee, Method}
 import net.fortuna.ical4j.model.{Calendar, Property, PropertyList}
-import org.apache.james.core.Username
+import org.apache.james.core.MailAddress
 
 import scala.jdk.CollectionConverters._
 
-case class AttendeeReply(attendee: Username, partStat: PartStat, cn : Option[Cn] = None)
+case class AttendeeReply(attendee: MailAddress, partStat: PartStat, cn : Option[Cn] = None)
 
 object CalendarEventReplyGenerator {
 

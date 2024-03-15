@@ -11,7 +11,7 @@ import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarEventParsed}
 import jakarta.mail.internet.{MimeMessage, MimeMultipart}
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.parameter.PartStat
-import org.apache.james.core.Username
+import org.apache.james.core.MailAddress
 import org.apache.james.server.core.filesystem.FileSystemImpl
 import org.apache.james.util.MimeMessageUtil
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
@@ -21,7 +21,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 
 object I18NCalendarEventReplyMessageGeneratorTest {
-  val attendeeReply: AttendeeReply = AttendeeReply(Username.of("bob@domain.com"), PartStat.DECLINED)
+  val attendeeReply: AttendeeReply = AttendeeReply(new MailAddress("bob@domain.com"), PartStat.DECLINED)
 
   def i18nFileNameTestSuite: Stream[Arguments] = {
     Stream.of(
