@@ -56,7 +56,7 @@ object CalendarEventReplyGeneratorTest {
          |DTEND;TZID=Europe/Paris:20240223T163000
          |CLASS:PUBLIC
          |SUMMARY:Simple event
-         |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
+         |ORGANIZER;CN=Taylor Swift:mailto:comptetest15.linagora@example.com
          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:btellier@example.com
          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:other@example.com
          |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:bob@domain.com
@@ -138,7 +138,7 @@ class CalendarEventReplyGeneratorTest {
           |DTEND;TZID=Europe/Paris:20240223T163000
           |CLASS:PUBLIC
           |SUMMARY:Simple event
-          |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:comptetest15.linagora@example.com
+          |ORGANIZER;CN=Taylor Swift:mailto:comptetest15.linagora@example.com
           |DTSTAMP:20240222T204008Z
           |SEQUENCE:0
           |ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED;CUTYPE=INDIVIDUAL:mailto:bob@domain.com

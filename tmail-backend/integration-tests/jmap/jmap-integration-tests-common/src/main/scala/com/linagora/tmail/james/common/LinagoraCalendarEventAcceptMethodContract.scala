@@ -699,8 +699,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
         .inPath("methodResponses[1][1].list[0]")
         .isEqualTo(
           s"""{
-             |    "subject": "ACCEPTED: Simple event @ Fri Feb 23, 2024 (bob@domain.tld)",
-             |    "preview": "bob@domain.tld has accepted this invitation.",
+             |    "subject": "ACCEPTED: Simple event @ Fri Feb 23, 2024 (BOB <bob@domain.tld>)",
+             |    "preview": "BOB <bob@domain.tld> has accepted this invitation.",
              |    "id": "$${json-unit.ignore}",
              |    "hasAttachment": true,
              |    "attachments": [
@@ -808,8 +808,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
         .inPath("methodResponses[1][1].list[0]")
         .isEqualTo(
           s"""{
-             |    "subject": "ACCEPTÉ: Simple event @ Fri Feb 23, 2024 (bob@domain.tld)",
-             |    "preview": "bob@domain.tld a accepté cette invitation.",
+             |    "subject": "ACCEPTÉ: Simple event @ Fri Feb 23, 2024 (BOB <bob@domain.tld>)",
+             |    "preview": "BOB <bob@domain.tld> a accepté cette invitation.",
              |    "id": "$${json-unit.ignore}",
              |    "hasAttachment": true,
              |    "attachments": [
@@ -869,7 +869,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
        |ORGANIZER;CN=comptetest15.linagora@domain.tld:mailto:${organizer}
        |DTSTAMP:20240222T204008Z
        |SEQUENCE:0
-       |ATTENDEE;CUTYPE=INDIVIDUAL;RSVP=TRUE;CN=Attendee 2;PARTSTAT=NEEDS-ACTION;X-OBM-ID=348:mailto:${invitee}
+       |ATTENDEE;CUTYPE=INDIVIDUAL;RSVP=TRUE;CN=BOB;PARTSTAT=NEEDS-ACTION;X-OBM-ID=348:mailto:${invitee}
        |END:VEVENT
        |END:VCALENDAR
        |""".stripMargin

@@ -6,11 +6,12 @@ import java.nio.charset.StandardCharsets
 import java.time.format.DateTimeFormatter
 import java.util.{Locale, UUID, Map => JavaMap}
 
-import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.{DefaultMustacheFactory, MustacheFactory}
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.I18N_MAIL_TEMPLATE_LOCATION_PROPERTY
-import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException, LanguageLocation}
+import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarParticipantsField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException, LanguageLocation}
 import eu.timepit.refined.auto._
 import jakarta.mail.Part
 import jakarta.mail.internet.{MimeMessage, MimeMultipart}
@@ -216,7 +217,9 @@ private object I18NCalendarEventReplyMessageGenerator {
   private object MUSTACHE {
     val PART_STAT: String = "PART_STAT"
     val ATTENDEE: String = "ATTENDEE"
+    val ATTENDEE_CN: String = "ATTENDEE_CN"
     val EVENT_ORGANIZER: String = "ORGANIZER"
+    val EVENT_ORGANIZER_CN: String = "ORGANIZER_CN"
     val EVENT_TITLE: String = "EVENT_TITLE"
     val EVENT_START_DATE: String = "EVENT_START_DATE"
     val EVENT_END_DATE: String = "EVENT_END_DATE"
@@ -278,18 +281,47 @@ class I18NCalendarEventReplyMessageGenerator(fileSystem: FileSystem, i18nEmlDire
     val startDate: Option[CalendarStartField] = CalendarStartField.from(event)
     val endDate: Option[CalendarEndField] = CalendarEndField.from(event)
     val location: Option[CalendarLocationField] = CalendarLocationField.from(event)
-    ImmutableMap.of(
-      MUSTACHE.PART_STAT, attendeeReply.partStat.getValue,
-      MUSTACHE.ATTENDEE, attendeeReply.attendee.asMailAddress().toString,
-      MUSTACHE.EVENT_ORGANIZER, CalendarOrganizerField.from(event).flatMap(_.mailto.map(_.asString())).getOrElse(""),
-      MUSTACHE.EVENT_TITLE, eventTitle.map(_.value).getOrElse(""),
-      MUSTACHE.EVENT_START_DATE, startDate.map(sd => sd.value.format(DATE_TIME_FORMATTER)).getOrElse(""),
-      MUSTACHE.EVENT_END_DATE, endDate.map(ed => ed.value.format(DATE_TIME_FORMATTER)).getOrElse(""),
-      MUSTACHE.EVENT_LOCATION, location.map(_.value).getOrElse(""))
+
+    ImmutableMap.builder[String, String]
+      .putAll(getAttendeeMustache(event, attendeeReply))
+      .putAll(getOrganizerMustache(event))
+      .putAll(ImmutableMap.of(
+        MUSTACHE.PART_STAT, attendeeReply.partStat.getValue,
+        MUSTACHE.EVENT_TITLE, eventTitle.map(_.value).getOrElse(""),
+        MUSTACHE.EVENT_START_DATE, startDate.map(sd => sd.value.format(DATE_TIME_FORMATTER)).getOrElse(""),
+        MUSTACHE.EVENT_END_DATE, endDate.map(ed => ed.value.format(DATE_TIME_FORMATTER)).getOrElse(""),
+        MUSTACHE.EVENT_LOCATION, location.map(_.value).getOrElse("")))
+      .build()
   }
 
   def evaluateMailTemplateFileName(partStat: PartStat, language: Locale): String =
     s"calendar_reply_${partStat.getValue.toLowerCase}-${language.getLanguage}.eml"
+  def getAttendeeMustache(event: VEvent, attendeeReply: AttendeeReply): JavaMap[String, String] = {
+    val attendeeInRequest: Option[CalendarAttendeeField] = CalendarParticipantsField.from(event)
+      .findParticipantByMailTo(attendeeReply.attendee.asString())
+
+    val (attendeeMustache, attendeeCNMustache) = attendeeInRequest match {
+      case Some(attendee) =>
+        val attendeeMustache: String = (attendee.name, attendee.mailto) match {
+          case (Some(n), Some(m)) => s"${n.value} ${m.value.asPrettyString()}"
+          case (_, Some(m)) => m.value.toString
+        }
+        val attendeeNameMustache: String = attendee.name.map(_.value).getOrElse("")
+        (attendeeMustache, attendeeNameMustache)
+      case None => ("", "")
+    }
+
+    ImmutableMap.of(MUSTACHE.ATTENDEE, attendeeMustache, MUSTACHE.ATTENDEE_CN, attendeeCNMustache)
+  }
+
+  def getOrganizerMustache(event: VEvent): JavaMap[String, String] = {
+    val (organizerCn, organizer) = CalendarOrganizerField.from(event)
+      .map(e => (e.name, e.mailto) match {
+        case (Some(n), Some(m)) => (n, s"$n ${m.asPrettyString()}")
+        case (_, Some(m)) => ("", m.toString)
+      }).getOrElse(("", ""))
+    ImmutableMap.of(MUSTACHE.EVENT_ORGANIZER, organizer, MUSTACHE.EVENT_ORGANIZER_CN, organizerCn)
+  }
 
   private def decorateSubjectMessage(mustacheSubject: String, dataMap: JavaMap[String, String]): String =
     replaceMustache(mustacheSubject, dataMap)
@@ -298,11 +330,24 @@ class I18NCalendarEventReplyMessageGenerator(fileSystem: FileSystem, i18nEmlDire
     replaceMustache(mustacheTextBody, dataMap)
 
   private def replaceMustache(input: String, dataMap: JavaMap[String, String]): String = {
-    val mf = new DefaultMustacheFactory
-    val mustache = mf.compile(new StringReader(input), "example")
+    val mustache = MUSTACHE_FACTORY.compile(new StringReader(input), "example")
     val writer = new StringWriter
     mustache.execute(writer, dataMap)
     writer.flush()
     writer.toString
   }
+}
+
+object CalendarEventReplyMustacheFactory {
+  val MUSTACHE_FACTORY: MustacheFactory = new CalendarEventReplyMustacheFactory
+}
+
+// To avoid HTML escaping
+private class CalendarEventReplyMustacheFactory extends DefaultMustacheFactory {
+
+  override def encode(value: String, writer: java.io.Writer): Unit =
+    Try(writer.append(value)) match {
+      case Success(_) => ()
+      case Failure(e) => throw new RuntimeException("Encode failed", e)
+    }
 }
