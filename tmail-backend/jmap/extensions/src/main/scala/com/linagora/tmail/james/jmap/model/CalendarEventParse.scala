@@ -333,7 +333,11 @@ object CalendarParticipantsField {
       .map(attendee => CalendarAttendeeField.from(attendee))
       .toSeq)
 }
-case class CalendarParticipantsField(list: Seq[CalendarAttendeeField] = Seq())
+case class CalendarParticipantsField(list: Seq[CalendarAttendeeField] = Seq()) {
+
+  def findParticipantByMailTo(mailto:String): Option[CalendarAttendeeField] =
+    list.find(_.mailto.exists(_.serialize() == mailto))
+}
 
 object CalendarExtensionFields {
   private val EXTENSION_FIELD_PREFIX: String = "X-"
