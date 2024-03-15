@@ -194,7 +194,10 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
         mimeMessage.setContent(mimeMultipart)
       case singleTextPart: String =>
         val mimeMultipart = new MimeMultipart
-        val textBodyPart = MimeMessageBuilder.bodyPartBuilder.data(singleTextPart).build()
+        val textBodyPart = MimeMessageBuilder.bodyPartBuilder
+          .data(singleTextPart)
+          .`type`(mimeMessage.getContentType)
+          .build()
         mimeMultipart.addBodyPart(textBodyPart)
         attachmentPart.foreach(part => mimeMultipart.addBodyPart(part.build))
         mimeMessage.setContent(mimeMultipart)
