@@ -1,12 +1,13 @@
 package com.linagora.tmail.james.jmap.model
 
 import java.net.URI
+import java.util.function.Predicate
 
 import com.google.common.base.Preconditions
 import net.fortuna.ical4j.model.component.{VEvent, VTimeZone}
 import net.fortuna.ical4j.model.parameter.{Cn, CuType, PartStat, Role}
-import net.fortuna.ical4j.model.property.{Attendee, Method}
-import net.fortuna.ical4j.model.{Calendar, Property, PropertyList}
+import net.fortuna.ical4j.model.property.{Attendee, DtStamp, LastModified, Method}
+import net.fortuna.ical4j.model.{Calendar, DateTime, Property, PropertyList}
 import org.apache.james.core.MailAddress
 
 import scala.jdk.CollectionConverters._
@@ -30,13 +31,21 @@ object CalendarEventReplyGenerator {
 
     Preconditions.checkArgument(attendeeInRequest.isDefined, "Can not reply when not invited to attend".asInstanceOf[Object])
 
+    def notProperties(properties: String*): Predicate[Property] = property => !properties.contains(property.getName)
+
     val replyProperty: PropertyList[Property] = Some(new PropertyList[Property])
       .map(propertyList => {
         requestVEvent.getProperties
           .stream()
-          .filter(!_.getName.equals("ATTENDEE"))
+          .filter(notProperties("ATTENDEE", "DTSTAMP", "LAST-MODIFIED"))
           .forEach(e => propertyList.add(e))
+
         propertyList.add(buildReplyAttendee(attendeeReply))
+
+        val replyTime: DateTime = new DateTime(true)
+        propertyList.add(new DtStamp(replyTime))
+        propertyList.add(new LastModified(replyTime))
+
         propertyList
       }).get
 
