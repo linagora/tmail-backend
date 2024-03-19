@@ -6,60 +6,26 @@ import static com.linagora.tmail.rate.limiter.api.postgres.table.PostgresRateLim
 import static com.linagora.tmail.rate.limiter.api.postgres.table.PostgresRateLimitPlanModule.PostgresRateLimitPlanTable.RATE_LIMITATIONS;
 import static com.linagora.tmail.rate.limiter.api.postgres.table.PostgresRateLimitPlanModule.PostgresRateLimitPlanTable.TABLE_NAME;
 
-import java.time.Duration;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Function;
 
 import javax.inject.Inject;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.jooq.JSON;
+import org.jooq.Record;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableMap;
-import com.linagora.tmail.rate.limiter.api.LimitType;
-import com.linagora.tmail.rate.limiter.api.LimitTypes;
-import com.linagora.tmail.rate.limiter.api.OperationLimitations;
-import com.linagora.tmail.rate.limiter.api.RateLimitation;
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanId;
 import com.linagora.tmail.rate.limiter.api.postgres.RateLimitingPlanEntry;
+import com.linagora.tmail.rate.limiter.api.postgres.RateLimitingPlanEntry.RateLimitationsDTO;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import scala.jdk.javaapi.CollectionConverters;
 
 public class PostgresRateLimitingPlanDAO {
-    public static class RateLimitationsDTO {
-        private String rateLimitationName;
-        private Long rateLimitationPeriod;
-        private Map<String, Long> limitMap;
-
-        @JsonCreator
-        public RateLimitationsDTO(@JsonProperty("rateLimitationName") String rateLimitationName,
-                                  @JsonProperty("rateLimitationPeriod") Long rateLimitationPeriod,
-                                  @JsonProperty("limitMap")Map<String, Long> limitMap) {
-            this.rateLimitationName = rateLimitationName;
-            this.rateLimitationPeriod = rateLimitationPeriod;
-            this.limitMap = limitMap;
-        }
-
-        public String getRateLimitationName() {
-            return rateLimitationName;
-        }
-
-        public Long getRateLimitationPeriod() {
-            return rateLimitationPeriod;
-        }
-
-        public Map<String, Long> getLimitMap() {
-            return limitMap;
-        }
-    }
-
     private final PostgresExecutor postgresExecutor;
     private final ObjectMapper objectMapper;
 
@@ -75,8 +41,8 @@ public class PostgresRateLimitingPlanDAO {
             .map(planEntry -> dslContext.insertInto(TABLE_NAME)
                 .set(PLAN_ID, planEntry.planId())
                 .set(PLAN_NAME, planEntry.planName())
-                .set(OPERATION_LIMITATION_NAME, planEntry.operationLimitations().asString())
-                .set(RATE_LIMITATIONS, toJSON(CollectionConverters.asJava(planEntry.operationLimitations().rateLimitations()))))
+                .set(OPERATION_LIMITATION_NAME, planEntry.operationLimitationName())
+                .set(RATE_LIMITATIONS, toJSON(planEntry.rateLimitationsDTOS())))
             .toList())));
     }
 
@@ -85,8 +51,8 @@ public class PostgresRateLimitingPlanDAO {
             .stream()
             .map(planEntry -> dslContext.update(TABLE_NAME)
                 .set(PLAN_NAME, planEntry.planName())
-                .set(OPERATION_LIMITATION_NAME, planEntry.operationLimitations().asString())
-                .set(RATE_LIMITATIONS, toJSON(CollectionConverters.asJava(planEntry.operationLimitations().rateLimitations())))
+                .set(OPERATION_LIMITATION_NAME, planEntry.operationLimitationName())
+                .set(RATE_LIMITATIONS, toJSON(planEntry.rateLimitationsDTOS()))
                 .where(PLAN_ID.eq(planEntry.planId())))
             .toList())));
     }
@@ -94,50 +60,38 @@ public class PostgresRateLimitingPlanDAO {
     public Flux<RateLimitingPlanEntry> getPlans(RateLimitingPlanId planId) {
         return postgresExecutor.executeRows(dslContext -> Flux.from(dslContext.selectFrom(TABLE_NAME)
             .where(PLAN_ID.eq(planId.value()))))
-            .map(record -> new RateLimitingPlanEntry(record.get(PLAN_ID),
-                record.get(PLAN_NAME),
-                OperationLimitations.liftOrThrow(record.get(OPERATION_LIMITATION_NAME),
-                    CollectionConverters.asScala(toRateLimitationList(record.get(RATE_LIMITATIONS))).toSeq())));
+            .map(recordRateLimitingPlanEntryFunction());
     }
 
     public Flux<RateLimitingPlanEntry> getPlans() {
         return postgresExecutor.executeRows(dslContext -> Flux.from(dslContext.selectFrom(TABLE_NAME)))
-            .map(record -> new RateLimitingPlanEntry(record.get(PLAN_ID),
-                record.get(PLAN_NAME),
-                OperationLimitations.liftOrThrow(record.get(OPERATION_LIMITATION_NAME),
-                    CollectionConverters.asScala(toRateLimitationList(record.get(RATE_LIMITATIONS))).toSeq())));
+            .map(recordRateLimitingPlanEntryFunction());
+    }
+
+    private Function<Record, RateLimitingPlanEntry> recordRateLimitingPlanEntryFunction() {
+        return record -> new RateLimitingPlanEntry(record.get(PLAN_ID),
+            record.get(PLAN_NAME),
+            record.get(OPERATION_LIMITATION_NAME),
+            toRateLimitationsDTOList(record.get(RATE_LIMITATIONS)));
     }
 
     public Mono<Boolean> planExists(RateLimitingPlanId id) {
-        return postgresExecutor.executeExists(dslContext -> dslContext.selectFrom(TABLE_NAME)
+        return postgresExecutor.executeExists(dslContext -> dslContext.select(PLAN_ID)
+            .from(TABLE_NAME)
             .where(PLAN_ID.eq(id.value())));
     }
 
-    private JSON toJSON(List<RateLimitation> rateLimitations) {
+    private JSON toJSON(List<RateLimitationsDTO> rateLimitations) {
         try {
-            return JSON.json(objectMapper.writeValueAsString(rateLimitations.stream()
-                .map(rateLimitation -> new RateLimitationsDTO(rateLimitation.name(),
-                    rateLimitation.period().toMillis(),
-                    CollectionConverters.asJava(rateLimitation.limitsValue()).stream()
-                        .collect(ImmutableMap.toImmutableMap(LimitType::asString,
-                            PostgresRateLimitingDAOUtils::getQuantity))))
-                .toList()));
+            return JSON.json(objectMapper.writeValueAsString(rateLimitations));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private List<RateLimitation> toRateLimitationList(JSON json) {
+    private List<RateLimitationsDTO> toRateLimitationsDTOList(JSON json) {
         try {
-            return objectMapper.readValue(json.data(), new TypeReference<List<RateLimitationsDTO>>() {})
-                .stream()
-                .map(rateLimitationsDTO -> new RateLimitation(rateLimitationsDTO.getRateLimitationName(),
-                    Duration.ofMillis(rateLimitationsDTO.getRateLimitationPeriod()),
-                    LimitTypes.fromMutableMap(CollectionConverters.asScala(rateLimitationsDTO.getLimitMap()
-                        .entrySet()
-                        .stream()
-                        .collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue))))))
-                .toList();
+            return objectMapper.readValue(json.data(), new TypeReference<List<RateLimitationsDTO>>() {});
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
