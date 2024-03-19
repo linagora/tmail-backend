@@ -16,6 +16,7 @@ import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.RunArgumentsModule;
 import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
 import org.apache.james.modules.blobstore.BlobStoreModulesChooser;
+import org.apache.james.modules.data.PostgresDLPConfigurationStoreModule;
 import org.apache.james.modules.data.PostgresDataModule;
 import org.apache.james.modules.data.PostgresDelegationStoreModule;
 import org.apache.james.modules.data.PostgresEventStoreModule;
@@ -183,6 +184,7 @@ public class PostgresTmailServer {
         new PostgresEventStoreModule(),
         new TikaMailboxModule(),
         new PostgresVacationModule(),
+        new PostgresDLPConfigurationStoreModule(),
         new PostgresDeletedMessageVaultModule());
 
     private static final Module POSTGRES_MODULE_AGGREGATE = Modules.override(Modules.combine(
