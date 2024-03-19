@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import com.linagora.tmail.rate.limiter.api.LimitType;
 import com.linagora.tmail.rate.limiter.api.LimitTypes;
 import com.linagora.tmail.rate.limiter.api.OperationLimitations;
 import com.linagora.tmail.rate.limiter.api.RateLimitation;
@@ -117,9 +118,9 @@ public class PostgresRateLimitingPlanDAO {
             return JSON.json(objectMapper.writeValueAsString(rateLimitations.stream()
                 .map(rateLimitation -> new RateLimitationsDTO(rateLimitation.name(),
                     rateLimitation.period().toMillis(),
-                    CollectionConverters.asJava(rateLimitation.limits()).stream()
-                        .collect(ImmutableMap.toImmutableMap(limitType -> limitType.asString(),
-                            limitType -> PostgresRateLimitingDAOUtils.getQuantity(limitType)))))
+                    CollectionConverters.asJava(rateLimitation.limitsValue()).stream()
+                        .collect(ImmutableMap.toImmutableMap(LimitType::asString,
+                            PostgresRateLimitingDAOUtils::getQuantity))))
                 .toList()));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

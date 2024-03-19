@@ -14,17 +14,17 @@ public record RateLimitingPlanEntry(UUID planId,
                                     String planName,
                                     OperationLimitations operationLimitations) {
     static List<RateLimitingPlanEntry> from(RateLimitingPlanId rateLimitingPlanId, RateLimitingPlanCreateRequest createRequest) {
-        return CollectionConverters.asJava(createRequest.operationLimitations()).stream()
+        return CollectionConverters.asJava(createRequest.operationLimitationsValue()).stream()
             .map(limitations -> new RateLimitingPlanEntry(rateLimitingPlanId.value(),
-                createRequest.name(),
+                createRequest.nameValue(),
                 limitations))
             .toList();
     }
 
     static List<RateLimitingPlanEntry> from(RateLimitingPlanResetRequest resetRequest) {
-        return CollectionConverters.asJava(resetRequest.operationLimitations()).stream()
+        return CollectionConverters.asJava(resetRequest.operationLimitationsValue()).stream()
             .map(limitations -> new RateLimitingPlanEntry(resetRequest.id().value(),
-                resetRequest.name(),
+                resetRequest.nameValue(),
                 limitations))
             .toList();
     }
