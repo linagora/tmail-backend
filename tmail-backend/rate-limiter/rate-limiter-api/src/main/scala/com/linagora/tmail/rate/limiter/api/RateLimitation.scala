@@ -39,6 +39,8 @@ object LimitTypes {
     liftOrThrow(limitTypes)
   }
 
+  def fromMutableMap(limitTypeAndAllowedQuantity: scala.collection.mutable.Map[String, Long]): LimitTypes =
+    from(limitTypeAndAllowedQuantity.toMap)
 }
 
 object LimitType {
@@ -75,7 +77,9 @@ case class Size(quantity: AllowedQuantity) extends LimitType {
   override def allowedQuantity(): AllowedQuantity = quantity
 }
 
-case class RateLimitation(name: String, period: Duration, limits: LimitTypes)
+case class RateLimitation(name: String, period: Duration, limits: LimitTypes) {
+  def limitsValue: Set[LimitType] = limits.value
+}
 
 object RateLimitingPlanId {
   def generate: RateLimitingPlanId = RateLimitingPlanId(UUID.randomUUID())
@@ -161,8 +165,16 @@ object RateLimitingPlan {
 
 case class RateLimitingPlan(id: RateLimitingPlanId, name: RateLimitingPlanName, operationLimitations: Seq[OperationLimitations])
 
-case class RateLimitingPlanCreateRequest(name: RateLimitingPlanName, operationLimitations: OperationLimitationsType)
+case class RateLimitingPlanCreateRequest(name: RateLimitingPlanName, operationLimitations: OperationLimitationsType) {
+  def operationLimitationsValue: Seq[OperationLimitations] = operationLimitations.value
 
-case class RateLimitingPlanResetRequest(id: RateLimitingPlanId, name: RateLimitingPlanName, operationLimitations: OperationLimitationsType)
+  def nameValue: String = name.value
+}
+
+case class RateLimitingPlanResetRequest(id: RateLimitingPlanId, name: RateLimitingPlanName, operationLimitations: OperationLimitationsType) {
+  def operationLimitationsValue: Seq[OperationLimitations] = operationLimitations.value
+
+  def nameValue: String = name.value
+}
 
 case class UsernameToRateLimitingPlanId(username: Username, rateLimitingPlanId: RateLimitingPlanId)
