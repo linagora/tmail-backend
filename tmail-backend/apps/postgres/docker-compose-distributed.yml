@@ -42,6 +42,11 @@ services:
       - ./sample-configuration/distributed/opensearch.properties:/root/conf/opensearch.properties
       - ./sample-configuration/distributed/blob.properties:/root/conf/blob.properties
       - ./sample-configuration/distributed/rabbitmq.properties:/root/conf/rabbitmq.properties
+      - ${RSA_PUBLICKEY_PATH}:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - ${RSA_PRIVATEKEY_PATH}:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+      # Key generation:
+      # openssl genrsa -out jwt_privatekey 4096
+      # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
     networks:
       - tmail
 

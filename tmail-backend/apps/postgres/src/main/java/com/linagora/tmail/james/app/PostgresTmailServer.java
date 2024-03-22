@@ -60,6 +60,7 @@ import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
+import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -148,6 +149,7 @@ public class PostgresTmailServer {
 
     public static final Module JMAP_LINAGORA = Modules.override(
         JMAP,
+        new TMailJMAPModule(),
         new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
         new CustomMethodModule(),

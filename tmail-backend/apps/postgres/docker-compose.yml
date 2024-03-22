@@ -15,6 +15,12 @@ services:
     hostname: tmail-backend.local
     command:
       - --generate-keystore
+    volumes:
+      - ${RSA_PUBLICKEY_PATH}:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - ${RSA_PRIVATEKEY_PATH}:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+      # Key generation:
+      # openssl genrsa -out jwt_privatekey 4096
+      # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
     ports:
       - "80:80"
       - "25:25"

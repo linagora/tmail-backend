@@ -58,6 +58,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import io.restassured.specification.RequestSpecification;
 
@@ -83,6 +84,7 @@ class DistributedPostgresTmailServerTest implements JamesServerConcreteContract 
             .eventBusImpl(RABBITMQ)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
         .extension(rabbitMQExtension)
