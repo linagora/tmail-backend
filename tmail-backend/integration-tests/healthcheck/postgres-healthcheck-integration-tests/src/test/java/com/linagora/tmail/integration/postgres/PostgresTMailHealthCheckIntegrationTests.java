@@ -25,6 +25,7 @@ import com.linagora.tmail.integration.TMailHealthCheckIntegrationTests;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.rspamd.RspamdExtensionModule;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class PostgresTMailHealthCheckIntegrationTests extends TMailHealthCheckIntegrationTests {
 
@@ -43,6 +44,7 @@ public class PostgresTMailHealthCheckIntegrationTests extends TMailHealthCheckIn
             .eventBusImpl(RABBITMQ)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
+            .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
         .extension(PostgresExtension.empty())
