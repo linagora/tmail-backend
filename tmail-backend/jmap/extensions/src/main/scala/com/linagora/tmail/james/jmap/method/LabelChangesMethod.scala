@@ -7,10 +7,11 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{LabelChangesRequest => Request, LabelChangesResponse => Response}
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.api.change.{State => JavaState}
+import org.apache.james.jmap.api.exception.ChangeNotFoundException
 import org.apache.james.jmap.api.model.{AccountId => JavaAccountId}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Invocation, SessionTranslator}
+import org.apache.james.jmap.core.{ErrorCode, Invocation, SessionTranslator}
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
@@ -36,6 +37,10 @@ class LabelChangesMethod @Inject()(val metricFactory: MetricFactory,
           arguments = Arguments(Serializer.serialize(res)),
           methodCallId = invocation.invocation.methodCallId),
         processingContext = invocation.processingContext))
+      .onErrorResume {
+        case e: ChangeNotFoundException => SMono.just(InvocationWithContext(Invocation.error(ErrorCode.CannotCalculateChanges, e.getMessage, invocation.invocation.methodCallId), invocation.processingContext))
+        case e => SMono.error(e)
+      }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, Request] =
     Serializer.deserializeRequest(invocation.arguments.value).asEitherRequest
