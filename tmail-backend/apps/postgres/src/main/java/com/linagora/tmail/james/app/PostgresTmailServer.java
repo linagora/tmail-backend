@@ -200,7 +200,8 @@ public class PostgresTmailServer {
                 new PostgresJmapSettingsRepositoryModule());
 
     private static Module chooseBlobStoreModules(PostgresTmailConfiguration configuration) {
-        return Modules.combine(Modules.combine(BlobStoreModulesChooser.chooseModules(configuration.blobStoreConfiguration())),
+        return Modules.combine(Modules.combine(BlobStoreModulesChooser.chooseModules(configuration.blobStoreConfiguration(),
+                BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.POSTGRES)),
             new BlobStoreCacheModulesChooser.CacheDisabledModule());
     }
 
