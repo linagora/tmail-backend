@@ -93,6 +93,8 @@ public class BlobStoreModulesChooser {
         @Override
         protected void configure() {
             install(new DefaultBucketModule());
+            bind(BucketName.class)
+                .toInstance(BucketName.DEFAULT);
 
             bind(BlobStoreDAO.class).annotatedWith(Names.named(TOP_NAMED))
                 .to(FileBlobStoreDAO.class)
@@ -106,6 +108,8 @@ public class BlobStoreModulesChooser {
             install(new BlobPostgresModule());
 
             install(new DefaultBucketModule());
+            bind(BucketName.class)
+                .toInstance(BucketName.DEFAULT);
 
             bind(BlobStoreDAO.class).annotatedWith(Names.named(TOP_NAMED))
                 .to(PostgresBlobStoreDAO.class)
