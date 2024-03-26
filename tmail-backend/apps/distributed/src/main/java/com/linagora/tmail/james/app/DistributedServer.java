@@ -323,7 +323,8 @@ public class DistributedServer {
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
             .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.mailQueueViewChoice()))
-            .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
+            .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration,
+                BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.CASSANDRA))
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(chooseUsersModule(configuration))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))

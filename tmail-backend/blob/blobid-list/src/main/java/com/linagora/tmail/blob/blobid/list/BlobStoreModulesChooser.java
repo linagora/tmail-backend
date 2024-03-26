@@ -23,6 +23,8 @@
 
 package com.linagora.tmail.blob.blobid.list;
 
+import static com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.CASSANDRA;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -63,6 +65,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import com.linagora.tmail.blob.blobid.list.postgres.PostgresSingleSaveBlobStoreModule;
 
 import modules.BlobPostgresModule;
 
@@ -147,10 +150,25 @@ public class BlobStoreModulesChooser {
         return new NoEncryptionModule();
     }
 
-    static class SingleSaveDeclarationModule extends AbstractModule {
+    public static class SingleSaveDeclarationModule extends AbstractModule {
+        public enum BackedStorage {
+            CASSANDRA,
+            POSTGRES
+        }
+
+        private final BackedStorage backedStorage;
+
+        public SingleSaveDeclarationModule(BackedStorage backedStorage) {
+            this.backedStorage = backedStorage;
+        }
+
         @Override
         protected void configure() {
-            install(new SingleSaveBlobStoreModule());
+            if (backedStorage == CASSANDRA) {
+                install(new CassandraSingleSaveBlobStoreModule());
+            } else {
+                install(new PostgresSingleSaveBlobStoreModule());
+            }
         }
 
         @Provides
@@ -187,11 +205,11 @@ public class BlobStoreModulesChooser {
         }
     }
 
-    public static ImmutableList<Module> chooseObjectStorageModule(boolean singleSaveEnabled) {
+    public static ImmutableList<Module> chooseObjectStorageModule(boolean singleSaveEnabled, SingleSaveDeclarationModule.BackedStorage backedSingleSaveStorage) {
         ImmutableList.Builder<Module> modulesBuilder = ImmutableList.<Module>builder()
             .add(new BaseDeclarationModule());
         if (singleSaveEnabled) {
-            return modulesBuilder.add(new SingleSaveDeclarationModule()).build();
+            return modulesBuilder.add(new SingleSaveDeclarationModule(backedSingleSaveStorage)).build();
         }
         return modulesBuilder.add(new MultiSaveDeclarationModule()).build();
     }
@@ -245,14 +263,18 @@ public class BlobStoreModulesChooser {
         }
     }
 
-    @VisibleForTesting
-    public static List<Module> chooseModules(BlobStoreConfiguration choosingConfiguration) {
+    public static List<Module> chooseModules(BlobStoreConfiguration choosingConfiguration, SingleSaveDeclarationModule.BackedStorage backedSingleSaveStorage) {
         return ImmutableList.<Module>builder()
             .add(chooseBlobStoreDAOModule(choosingConfiguration.implementation()))
             .add(chooseEncryptionModule(choosingConfiguration.cryptoConfig()))
-            .addAll(chooseObjectStorageModule(choosingConfiguration.singleSaveEnabled()))
+            .addAll(chooseObjectStorageModule(choosingConfiguration.singleSaveEnabled(), backedSingleSaveStorage))
             .addAll(chooseStoragePolicyModule(choosingConfiguration.storageStrategy()))
             .add(new StoragePolicyConfigurationSanityEnforcementModule(choosingConfiguration))
             .build();
+    }
+
+    @VisibleForTesting
+    public static List<Module> chooseModules(BlobStoreConfiguration choosingConfiguration) {
+        return chooseModules(choosingConfiguration, CASSANDRA);
     }
 }
