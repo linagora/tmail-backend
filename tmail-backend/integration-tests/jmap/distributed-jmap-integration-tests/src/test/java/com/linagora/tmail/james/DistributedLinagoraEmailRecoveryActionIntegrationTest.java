@@ -1,5 +1,7 @@
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
+
 import org.apache.james.CassandraExtension;
 import org.apache.james.ClockExtension;
 import org.apache.james.JamesServerBuilder;
@@ -29,6 +31,7 @@ public class DistributedLinagoraEmailRecoveryActionIntegrationTest implements Em
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .implementation(S3)
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()

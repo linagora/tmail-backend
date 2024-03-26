@@ -31,8 +31,12 @@ import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
+import org.apache.james.blob.api.ObjectStorageHealthCheck;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
+import org.apache.james.blob.file.FileBlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
+import org.apache.james.blob.postgres.PostgresBlobStoreDAO;
+import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTO;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTOModule;
@@ -41,6 +45,7 @@ import org.apache.james.modules.blobstore.BlobDeduplicationGCModule;
 import org.apache.james.modules.blobstore.validation.EventsourcingStorageStrategy;
 import org.apache.james.modules.blobstore.validation.StorageStrategyModule;
 import org.apache.james.modules.mailbox.BlobStoreAPIModule;
+import org.apache.james.modules.mailbox.DefaultBucketModule;
 import org.apache.james.modules.objectstorage.S3BlobStoreModule;
 import org.apache.james.modules.objectstorage.S3BucketModule;
 import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore;
@@ -59,10 +64,51 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 
+import modules.BlobPostgresModule;
+
 public class BlobStoreModulesChooser {
     private static final String TOP_NAMED = "top";
     private static final String PRE_LAST_NAMED = "pre_last";
     private static final String LAST_NAMED = "last";
+
+    static class ObjectStorageBlobStoreDAODeclarationModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            install(new S3BlobStoreModule());
+            install(new S3BucketModule());
+
+            bind(BlobStoreDAO.class)
+                .annotatedWith(Names.named(TOP_NAMED))
+                .to(S3BlobStoreDAO.class)
+                .in(Scopes.SINGLETON);
+
+            Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding().to(ObjectStorageHealthCheck.class);
+        }
+    }
+
+    static class FileBlobStoreDAODeclarationModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            install(new DefaultBucketModule());
+
+            bind(BlobStoreDAO.class).annotatedWith(Names.named(TOP_NAMED))
+                .to(FileBlobStoreDAO.class)
+                .in(Scopes.SINGLETON);
+        }
+    }
+
+    static class PostgresBlobStoreDAODeclarationModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            install(new BlobPostgresModule());
+
+            install(new DefaultBucketModule());
+
+            bind(BlobStoreDAO.class).annotatedWith(Names.named(TOP_NAMED))
+                .to(PostgresBlobStoreDAO.class)
+                .in(Scopes.SINGLETON);
+        }
+    }
 
     static class EncryptionModule extends AbstractModule {
         private final CryptoConfig cryptoConfig;
@@ -134,15 +180,6 @@ public class BlobStoreModulesChooser {
     }
 
     static class BaseDeclarationModule extends AbstractModule {
-        @Override
-        protected void configure() {
-            install(new S3BucketModule());
-            install(new S3BlobStoreModule());
-            bind(BlobStoreDAO.class).annotatedWith(Names.named(TOP_NAMED))
-                .to(S3BlobStoreDAO.class)
-                .in(Scopes.SINGLETON);
-        }
-
         @Provides
         @Singleton
         BlobStoreDAO provdePrimaryBlobStoreDAO(@Named(LAST_NAMED) BlobStoreDAO blobStoreDAO) {
@@ -195,9 +232,23 @@ public class BlobStoreModulesChooser {
         }
     }
 
+    public static Module chooseBlobStoreDAOModule(BlobStoreConfiguration.BlobStoreImplName implementation) {
+        switch (implementation) {
+            case S3:
+                return new ObjectStorageBlobStoreDAODeclarationModule();
+            case FILE:
+                return new FileBlobStoreDAODeclarationModule();
+            case POSTGRES:
+                return new PostgresBlobStoreDAODeclarationModule();
+            default:
+                throw new RuntimeException("Unsupported blobStore implementation " + implementation);
+        }
+    }
+
     @VisibleForTesting
     public static List<Module> chooseModules(BlobStoreConfiguration choosingConfiguration) {
         return ImmutableList.<Module>builder()
+            .add(chooseBlobStoreDAOModule(choosingConfiguration.implementation()))
             .add(chooseEncryptionModule(choosingConfiguration.cryptoConfig()))
             .addAll(chooseObjectStorageModule(choosingConfiguration.singleSaveEnabled()))
             .addAll(chooseStoragePolicyModule(choosingConfiguration.storageStrategy()))

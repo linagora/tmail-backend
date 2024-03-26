@@ -25,6 +25,7 @@ public class DistributedRspamdScannerIntegrationTest extends RspamdScannerIntegr
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
