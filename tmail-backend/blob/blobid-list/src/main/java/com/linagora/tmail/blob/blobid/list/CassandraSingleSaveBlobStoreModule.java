@@ -7,7 +7,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.blobid.list.cassandra.BlobIdListCassandraModule;
 import com.linagora.tmail.blob.blobid.list.cassandra.CassandraBlobIdListModule;
 
-public class SingleSaveBlobStoreModule extends AbstractModule {
+public class CassandraSingleSaveBlobStoreModule extends AbstractModule {
 
     @Override
     protected void configure() {
