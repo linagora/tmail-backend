@@ -48,6 +48,7 @@ class EncryptedDistributedServerTest implements JamesServerConcreteContract, Jma
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
                 .enableCache()
                 .deduplication()
                 .cryptoConfig(CryptoConfig.builder()

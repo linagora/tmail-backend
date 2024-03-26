@@ -44,12 +44,14 @@ public class BlobStoreConfigurationValidationStartUpCheckTest {
 
     private static BlobStoreConfiguration DEDUPLICATION_STRATEGY = BlobStoreConfiguration
             .builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .deduplication()
             .noCryptoConfig()
             .disableSingleSave();
     private static BlobStoreConfiguration PASSTHROUGH_STRATEGY = BlobStoreConfiguration
             .builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .passthrough()
             .noCryptoConfig()

@@ -10,6 +10,7 @@ public class BlobStoreModulesChooserTest {
     @Test
     void provideBlobStoreShouldReturnNoEncryptionWhenNoneConfigured() {
         assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .deduplication()
             .noCryptoConfig()
@@ -21,6 +22,7 @@ public class BlobStoreModulesChooserTest {
     @Test
     void provideBlobStoreShouldReturnEncryptionWhenConfigured() {
         assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .passthrough()
             .cryptoConfig(CryptoConfig.builder()
@@ -36,6 +38,7 @@ public class BlobStoreModulesChooserTest {
     @Test
     void objectStorageShouldReturnSingleSaveDeclarationModuleWhenEnableSingleSave() {
         assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .deduplication()
             .noCryptoConfig()
@@ -47,6 +50,7 @@ public class BlobStoreModulesChooserTest {
     @Test
     void objectStorageShouldReturnMultiSaveDeclarationModuleWhenDisableSingleSave() {
         assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .deduplication()
             .noCryptoConfig()

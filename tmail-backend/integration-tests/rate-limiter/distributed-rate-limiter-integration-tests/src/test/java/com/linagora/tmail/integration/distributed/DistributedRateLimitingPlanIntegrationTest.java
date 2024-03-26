@@ -32,6 +32,7 @@ public class DistributedRateLimitingPlanIntegrationTest implements RateLimitingP
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()

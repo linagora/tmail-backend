@@ -1,5 +1,6 @@
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
 
 import org.apache.james.JamesServerBuilder;
@@ -30,6 +31,7 @@ public class DistributedLinagoraFilterGetMethodTest implements LinagoraFilterGet
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                    .implementation(S3)
                     .disableCache()
                     .deduplication()
                     .noCryptoConfig()
