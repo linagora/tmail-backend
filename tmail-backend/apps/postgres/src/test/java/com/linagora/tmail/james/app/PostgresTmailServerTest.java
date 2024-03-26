@@ -32,7 +32,7 @@ class PostgresTmailServerTest implements JamesServerConcreteContract, JmapJamesS
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
-                .disableSingleSave())
+                .enableSingleSave())
             .searchConfiguration(SearchConfiguration.scanning())
             .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(IN_MEMORY)
