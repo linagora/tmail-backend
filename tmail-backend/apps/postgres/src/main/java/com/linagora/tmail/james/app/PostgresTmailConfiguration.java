@@ -10,7 +10,6 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.jmap.draft.JMAPModule;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
@@ -21,6 +20,7 @@ import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
+import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
