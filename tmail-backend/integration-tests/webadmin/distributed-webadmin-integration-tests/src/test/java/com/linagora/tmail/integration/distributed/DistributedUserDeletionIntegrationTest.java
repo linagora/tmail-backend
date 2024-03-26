@@ -1,5 +1,6 @@
 package com.linagora.tmail.integration.distributed;
 
+import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
 import static com.linagora.tmail.james.jmap.OpenSearchContactConfiguration.DEFAULT_CONFIGURATION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;

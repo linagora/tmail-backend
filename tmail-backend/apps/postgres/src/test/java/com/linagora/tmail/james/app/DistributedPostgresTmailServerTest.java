@@ -19,6 +19,7 @@
 
 package com.linagora.tmail.james.app;
 
+import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.FIVE_HUNDRED_MILLISECONDS;
@@ -37,7 +38,6 @@ import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.QuotaProbesImpl;
 import org.apache.james.modules.RabbitMQExtension;
-import org.apache.james.modules.blobstore.BlobStoreConfiguration;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
 import org.apache.james.utils.DataProbeImpl;
@@ -55,6 +55,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.base.Strings;
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
@@ -75,10 +76,11 @@ class DistributedPostgresTmailServerTest implements JamesServerConcreteContract 
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                .s3()
+                .implementation(S3)
                 .disableCache()
                 .deduplication()
-                .noCryptoConfig())
+                .noCryptoConfig()
+                .disableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
             .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(RABBITMQ)

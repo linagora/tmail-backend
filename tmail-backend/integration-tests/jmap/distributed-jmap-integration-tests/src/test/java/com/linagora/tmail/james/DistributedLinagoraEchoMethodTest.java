@@ -1,5 +1,8 @@
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
+
+import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
@@ -21,7 +24,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraEchoMethodTest implements LinagoraEchoMethodContract {
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+    JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()

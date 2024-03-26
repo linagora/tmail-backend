@@ -10,8 +10,12 @@ public class BlobStoreCacheModulesChooserTest {
     @Test
     void chooseModulesShouldReturnCacheDisabledModuleWhenCacheDisabled() {
         assertThat(BlobStoreCacheModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+<<<<<<< HEAD
             .s3()
             .noSecondaryS3BlobStore()
+=======
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
+>>>>>>> ISSUE-922 Modularize BlobStoreModulesChooser for postgres-app
             .disableCache()
             .deduplication()
             .noCryptoConfig()
@@ -24,8 +28,12 @@ public class BlobStoreCacheModulesChooserTest {
     @Test
     void chooseModulesShouldReturnCacheEnabledAndCassandraCacheModulesWhenCacheEnabled() {
         assertThat(BlobStoreCacheModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+<<<<<<< HEAD
             .s3()
             .noSecondaryS3BlobStore()
+=======
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
+>>>>>>> ISSUE-922 Modularize BlobStoreModulesChooser for postgres-app
             .enableCache()
             .deduplication()
             .noCryptoConfig()

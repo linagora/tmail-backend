@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.modules.mailbox.ConfigurationComponent;
@@ -37,6 +38,11 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
 
         default RequireSecondaryS3BlobStoreConfig s3() {
             return implementation(BlobStoreImplName.S3);
+        }
+
+        default RequireCache postgres() {
+            return implementation(BlobStoreImplName.POSTGRES)
+                .noSecondaryS3BlobStore();
         }
     }
 
@@ -112,7 +118,8 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
 
     public enum BlobStoreImplName {
         FILE("file"),
-        S3("s3");
+        S3("s3"),
+        POSTGRES("postgres");
 
         static String supportedImplNames() {
             return Stream.of(BlobStoreImplName.values())
@@ -173,6 +180,12 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
     }
 
     static BlobStoreConfiguration from(Configuration configuration) throws ConfigurationException {
+        BlobStoreImplName blobStoreImplName = Optional.ofNullable(configuration.getString(BLOBSTORE_IMPLEMENTATION_PROPERTY))
+            .filter(StringUtils::isNotBlank)
+            .map(StringUtils::trim)
+            .map(BlobStoreImplName::from)
+            .orElse(BlobStoreImplName.S3);
+
         boolean cacheEnabled = configuration.getBoolean(CACHE_ENABLE_PROPERTY, false);
         boolean deduplicationEnabled = Try.ofCallable(() -> configuration.getBoolean(DEDUPLICATION_ENABLE_PROPERTY))
                 .getOrElseThrow(() -> new IllegalStateException("""
