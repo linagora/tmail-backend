@@ -10,9 +10,9 @@ import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.EventStore;
+import org.apache.james.eventsourcing.eventstore.JsonEventSerializer;
 import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreExtension;
 import org.apache.james.eventsourcing.eventstore.cassandra.CassandraEventStoreModule;
-import org.apache.james.eventsourcing.eventstore.JsonEventSerializer;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTO;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTOModule;
 import org.apache.james.lifecycle.api.StartUpCheck;
@@ -44,12 +44,14 @@ public class BlobStoreConfigurationValidationStartUpCheckTest {
 
     private static BlobStoreConfiguration DEDUPLICATION_STRATEGY = BlobStoreConfiguration
             .builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .deduplication()
             .noCryptoConfig()
             .disableSingleSave();
     private static BlobStoreConfiguration PASSTHROUGH_STRATEGY = BlobStoreConfiguration
             .builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .passthrough()
             .noCryptoConfig()

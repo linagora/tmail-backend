@@ -25,6 +25,7 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()

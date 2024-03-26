@@ -10,6 +10,7 @@ public class BlobStoreCacheModulesChooserTest {
     @Test
     void chooseModulesShouldReturnCacheDisabledModuleWhenCacheDisabled() {
         assertThat(BlobStoreCacheModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .disableCache()
             .deduplication()
             .noCryptoConfig()
@@ -22,6 +23,7 @@ public class BlobStoreCacheModulesChooserTest {
     @Test
     void chooseModulesShouldReturnCacheEnabledAndCassandraCacheModulesWhenCacheEnabled() {
         assertThat(BlobStoreCacheModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
             .enableCache()
             .deduplication()
             .noCryptoConfig()
