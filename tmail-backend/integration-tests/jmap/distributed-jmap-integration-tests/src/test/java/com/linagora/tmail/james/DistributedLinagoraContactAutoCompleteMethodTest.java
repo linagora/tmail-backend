@@ -47,10 +47,10 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
     private static final com.linagora.tmail.james.app.RabbitMQExtension rabbitMQExtensionModule = new com.linagora.tmail.james.app.RabbitMQExtension();
 
     @RegisterExtension
-    DockerOpenSearchExtension opensearchExtension = new DockerOpenSearchExtension();
+    static DockerOpenSearchExtension opensearchExtension = new DockerOpenSearchExtension();
 
     @RegisterExtension
-    RabbitMQExtension rabbitMQExtension = RabbitMQExtension.dockerRabbitMQ(rabbitMQExtensionModule.dockerRabbitMQ())
+    static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.dockerRabbitMQ(rabbitMQExtensionModule.dockerRabbitMQ())
         .restartPolicy(RabbitMQExtension.DockerRestartPolicy.PER_CLASS)
         .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
 
