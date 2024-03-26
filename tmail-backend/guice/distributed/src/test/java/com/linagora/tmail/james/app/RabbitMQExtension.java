@@ -10,25 +10,16 @@ import com.google.inject.Module;
 
 public class RabbitMQExtension implements GuiceModuleTestExtension {
 
-    private final DockerRabbitMQRule rabbitMQRule = new DockerRabbitMQRule();
-
-    @Override
-    public void beforeAll(ExtensionContext extensionContext) {
-        rabbitMQRule.start();
-    }
+    private final DockerRabbitMQ dockerRabbitMQ = DockerRabbitMQ.withoutCookie();
 
     @Override
     public void afterAll(ExtensionContext extensionContext) {
-        rabbitMQRule.stop();
+        dockerRabbitMQ.stop();
     }
 
     @Override
-    public Module getModule() {
-        return new TestRabbitMQModule(rabbitMQRule.dockerRabbitMQ());
-    }
-
-    public DockerRabbitMQ dockerRabbitMQ() {
-        return rabbitMQRule.dockerRabbitMQ();
+    public void beforeAll(ExtensionContext extensionContext) {
+        dockerRabbitMQ.start();
     }
 
     @Override
@@ -38,6 +29,16 @@ public class RabbitMQExtension implements GuiceModuleTestExtension {
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return dockerRabbitMQ();
+        return dockerRabbitMQ;
     }
+
+    @Override
+    public Module getModule() {
+        return new TestRabbitMQModule(dockerRabbitMQ);
+    }
+
+    public DockerRabbitMQ dockerRabbitMQ() {
+        return dockerRabbitMQ;
+    }
+
 }

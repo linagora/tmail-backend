@@ -34,6 +34,12 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-guice-distributed</artifactId>
+            <scope>test</scope>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-guice-jmap</artifactId>
             <scope>test</scope>
             <type>test-jar</type>
