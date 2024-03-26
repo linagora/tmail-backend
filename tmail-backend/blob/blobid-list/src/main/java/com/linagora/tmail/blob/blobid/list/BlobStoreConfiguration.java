@@ -25,9 +25,12 @@ package com.linagora.tmail.blob.blobid.list;
 
 import java.io.FileNotFoundException;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.modules.mailbox.ConfigurationComponent;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
@@ -38,11 +41,29 @@ import org.slf4j.LoggerFactory;
 
 import io.vavr.control.Try;
 
-public record BlobStoreConfiguration(boolean cacheEnabled,
+public record BlobStoreConfiguration(BlobStoreImplName implementation,
+                                     boolean cacheEnabled,
                                      StorageStrategy storageStrategy,
                                      Optional<CryptoConfig> cryptoConfig,
                                      boolean singleSaveEnabled) {
     private static final Logger LOGGER = LoggerFactory.getLogger(BlobStoreConfiguration.class);
+
+    @FunctionalInterface
+    public interface RequireImplementation {
+        RequireCache implementation(BlobStoreImplName implementation);
+
+        default RequireCache file() {
+            return implementation(BlobStoreImplName.FILE);
+        }
+
+        default RequireCache s3() {
+            return implementation(BlobStoreImplName.S3);
+        }
+
+        default RequireCache postgres() {
+            return implementation(BlobStoreImplName.POSTGRES);
+        }
+    }
 
     @FunctionalInterface
     public interface RequireCache {
@@ -96,11 +117,42 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
         }
     }
 
-    public static RequireCache builder() {
-        return enableCache -> storageStrategy -> cryptoConfig -> enableSingleSave ->
-            new BlobStoreConfiguration(enableCache, storageStrategy, cryptoConfig, enableSingleSave);
+    public static RequireImplementation builder() {
+        return implementation -> enableCache -> storageStrategy -> cryptoConfig -> enableSingleSave ->
+            new BlobStoreConfiguration(implementation, enableCache, storageStrategy, cryptoConfig, enableSingleSave);
     }
 
+    public enum BlobStoreImplName {
+        FILE("file"),
+        S3("s3"),
+        POSTGRES("postgres");
+
+        static String supportedImplNames() {
+            return Stream.of(BlobStoreImplName.values())
+                .map(BlobStoreImplName::getName)
+                .collect(Collectors.joining(", "));
+        }
+
+        static BlobStoreImplName from(String name) {
+            return Stream.of(values())
+                .filter(blobName -> blobName.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(String.format("%s is not a valid name of BlobStores, " +
+                    "please use one of supported values in: %s", name, supportedImplNames())));
+        }
+
+        private final String name;
+
+        BlobStoreImplName(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    static final String BLOBSTORE_IMPLEMENTATION_PROPERTY = "implementation";
     static final String CACHE_ENABLE_PROPERTY = "cache.enable";
     static final String ENCRYPTION_ENABLE_PROPERTY = "encryption.aes.enable";
     static final String ENCRYPTION_PASSWORD_PROPERTY = "encryption.aes.password";
@@ -123,6 +175,7 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
         } catch (FileNotFoundException e) {
             LOGGER.warn("Could not find " + ConfigurationComponent.NAME + " configuration file, using s3 blobstore as the default");
             return BlobStoreConfiguration.builder()
+                .implementation(BlobStoreImplName.S3)
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
@@ -131,6 +184,12 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
     }
 
     static BlobStoreConfiguration from(Configuration configuration) {
+        BlobStoreImplName blobStoreImplName = Optional.ofNullable(configuration.getString(BLOBSTORE_IMPLEMENTATION_PROPERTY))
+            .filter(StringUtils::isNotBlank)
+            .map(StringUtils::trim)
+            .map(BlobStoreImplName::from)
+            .orElse(BlobStoreImplName.S3);
+
         boolean cacheEnabled = configuration.getBoolean(CACHE_ENABLE_PROPERTY, false);
         boolean deduplicationEnabled = Try.ofCallable(() -> configuration.getBoolean(DEDUPLICATION_ENABLE_PROPERTY))
                 .getOrElseThrow(() -> new IllegalStateException("""
@@ -145,12 +204,14 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
 
         if (deduplicationEnabled) {
             return builder()
+                .implementation(blobStoreImplName)
                 .enableCache(cacheEnabled)
                 .deduplication()
                 .cryptoConfig(cryptoConfig)
                 .enableSingleSave(singleSaveEnabled);
         } else {
             return builder()
+                .implementation(blobStoreImplName)
                 .enableCache(cacheEnabled)
                 .passthrough()
                 .cryptoConfig(cryptoConfig)

@@ -1,5 +1,7 @@
 package com.linagora.tmail.integration.distributed;
 
+import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
+
 import org.apache.james.CassandraExtension;
 import org.apache.james.ClockExtension;
 import org.apache.james.JamesServerBuilder;
@@ -28,6 +30,7 @@ public class DistributedCleanupIntegrationContract extends CleanupIntegrationCon
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .implementation(S3)
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()

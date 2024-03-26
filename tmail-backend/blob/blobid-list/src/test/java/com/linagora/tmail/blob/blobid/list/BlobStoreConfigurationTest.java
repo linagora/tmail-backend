@@ -61,6 +61,7 @@ public class BlobStoreConfigurationTest {
 
         assertThat(parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
+                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
@@ -78,6 +79,7 @@ public class BlobStoreConfigurationTest {
 
         assertThat(parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
+                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
@@ -98,6 +100,7 @@ public class BlobStoreConfigurationTest {
 
         assertThat(parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
+                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
                 .disableCache()
                 .passthrough()
                 .cryptoConfig(CryptoConfig.builder()
@@ -204,5 +207,14 @@ public class BlobStoreConfigurationTest {
 
         assertThatThrownBy(() -> BlobStoreConfiguration.from(configuration))
             .isInstanceOf(ConversionException.class);
+    }
+
+    @Test
+    void blobImplementationShouldDefaultToS3() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("deduplication.enable", "true");
+
+        assertThat(BlobStoreConfiguration.from(configuration).implementation())
+            .isEqualTo(BlobStoreConfiguration.BlobStoreImplName.S3);
     }
 }

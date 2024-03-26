@@ -1,5 +1,6 @@
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
 import static com.linagora.tmail.james.app.TestRabbitMQModule.ADDRESS_CONTACT_EXCHANGE;
 import static com.linagora.tmail.james.jmap.OpenSearchContactConfiguration.DEFAULT_CONFIGURATION;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -59,6 +60,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .implementation(S3)
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
