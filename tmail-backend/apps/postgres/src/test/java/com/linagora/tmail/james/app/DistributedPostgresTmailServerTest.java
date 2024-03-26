@@ -80,7 +80,7 @@ class DistributedPostgresTmailServerTest implements JamesServerConcreteContract 
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
-                .disableSingleSave())
+                .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
             .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(RABBITMQ)
