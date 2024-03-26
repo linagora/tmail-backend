@@ -19,5 +19,6 @@
         <module>api</module>
         <module>memory</module>
         <module>cassandra</module>
+        <module>mailbox-encrypted-postgres</module>
     </modules>
 </project>
