@@ -3,8 +3,6 @@ package com.linagora.tmail.james.app;
 import static org.apache.james.JamesServerMain.LOGGER;
 
 import java.io.FileNotFoundException;
-import java.util.Collection;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -16,7 +14,6 @@ import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
-import org.apache.james.events.Group;
 import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
@@ -24,16 +21,7 @@ import org.apache.james.jmap.draft.JMAPListenerModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
-import org.apache.james.mailbox.MailboxSession;
-import org.apache.james.mailbox.MessageUid;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
-import org.apache.james.mailbox.exception.MailboxException;
-import org.apache.james.mailbox.model.Mailbox;
-import org.apache.james.mailbox.model.MailboxId;
-import org.apache.james.mailbox.model.MessageId;
-import org.apache.james.mailbox.model.SearchQuery;
-import org.apache.james.mailbox.model.UpdatedFlags;
-import org.apache.james.mailbox.store.mail.model.MailboxMessage;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
@@ -173,74 +161,12 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
-import jakarta.mail.Flags;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 public class DistributedServer {
     private static class ScanningQuotaSearchModule extends AbstractModule {
         @Override
         protected void configure() {
             bind(ScanningQuotaSearcher.class).in(Scopes.SINGLETON);
             bind(QuotaSearcher.class).to(ScanningQuotaSearcher.class);
-        }
-    }
-
-    // Required for CLI
-    private static class FakeMessageSearchIndex extends ListeningMessageSearchIndex {
-
-        public FakeMessageSearchIndex() {
-            super(null, ImmutableSet.of(), null);
-        }
-
-        @Override
-        public Mono<Void> add(MailboxSession session, Mailbox mailbox, MailboxMessage message) {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public Mono<Void> delete(MailboxSession session, MailboxId mailboxId, Collection<MessageUid> expungedUids) {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public Mono<Void> deleteAll(MailboxSession session, MailboxId mailboxId) {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public Mono<Void> update(MailboxSession session, MailboxId mailboxId, List<UpdatedFlags> updatedFlagsList) {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public Mono<Flags> retrieveIndexedFlags(Mailbox mailbox, MessageUid uid) {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public Group getDefaultGroup() {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public Flux<MessageUid> doSearch(MailboxSession session, Mailbox mailbox, SearchQuery searchQuery) throws MailboxException {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public Flux<MessageId> search(MailboxSession session, Collection<MailboxId> mailboxIds, SearchQuery searchQuery, long limit) {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public EnumSet<MailboxManager.SearchCapabilities> getSupportedCapabilities(EnumSet<MailboxManager.MessageCapabilities> messageCapabilities) {
-            throw new NotImplementedException("not implemented");
-        }
-
-        @Override
-        public ExecutionMode getExecutionMode() {
-            throw new NotImplementedException("not implemented");
         }
     }
 
