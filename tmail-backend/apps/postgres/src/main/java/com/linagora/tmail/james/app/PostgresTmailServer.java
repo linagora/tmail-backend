@@ -7,9 +7,10 @@ import java.util.List;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
-import org.apache.james.SearchConfiguration;
-import org.apache.james.SearchModuleChooser;
 import org.apache.james.jmap.draft.JMAPListenerModule;
+import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
+import org.apache.james.mailbox.store.search.MessageSearchIndex;
+import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
@@ -25,6 +26,9 @@ import org.apache.james.modules.data.SievePostgresRepositoryModules;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.events.PostgresDeadLetterModule;
 import org.apache.james.modules.mailbox.DefaultEventModule;
+import org.apache.james.modules.mailbox.OpenSearchClientModule;
+import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
+import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
 import org.apache.james.modules.mailbox.PostgresDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.PostgresMailboxModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
@@ -54,12 +58,16 @@ import org.apache.james.modules.server.WebAdminMailOverWebModule;
 import org.apache.james.modules.server.WebAdminReIndexingTaskSerializationModule;
 import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
+import org.apache.james.quota.search.QuotaSearcher;
+import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.user.postgres.PostgresUsersDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.inject.AbstractModule;
 import com.google.inject.Module;
+import com.google.inject.Scopes;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
@@ -67,6 +75,7 @@ import com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser;
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -87,6 +96,7 @@ import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
+import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.settings.PostgresJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
@@ -119,17 +129,15 @@ public class PostgresTmailServer {
     }
 
     public static GuiceJamesServer createServer(PostgresTmailConfiguration configuration) {
-        SearchConfiguration searchConfiguration = configuration.searchConfiguration();
-
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(POSTGRES_MODULE_AGGREGATE)
-            .combineWith(SearchModuleChooser.chooseModules(searchConfiguration))
             .combineWith(chooseUserRepositoryModule(configuration))
             .combineWith(chooseBlobStoreModules(configuration))
             .combineWith(chooseEventBusModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
+            .overrideWith(chooseSearchModules(configuration))
             .overrideWith(chooseJmapModule(configuration));
     }
 
@@ -216,6 +224,23 @@ public class PostgresTmailServer {
                 new PostgresLabelRepositoryModule(),
                 new PostgresJmapSettingsRepositoryModule());
 
+    private static final Module SCANNING_QUOTA_SEARCH_MODULE = new AbstractModule() {
+        @Override
+        protected void configure() {
+            bind(ScanningQuotaSearcher.class).in(Scopes.SINGLETON);
+            bind(QuotaSearcher.class).to(ScanningQuotaSearcher.class);
+        }
+    };
+
+    private static final Module SCANNING_SEARCH_MODULE = new AbstractModule() {
+        @Override
+        protected void configure() {
+            bind(MessageSearchIndex.class).to(SimpleMessageSearchIndex.class);
+            bind(FakeMessageSearchIndex.class).in(Scopes.SINGLETON);
+            bind(ListeningMessageSearchIndex.class).to(FakeMessageSearchIndex.class);
+        }
+    };
+
     private static Module chooseBlobStoreModules(PostgresTmailConfiguration configuration) {
         return Modules.combine(Modules.combine(BlobStoreModulesChooser.chooseModules(configuration.blobStoreConfiguration(),
                 BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.POSTGRES)),
@@ -267,4 +292,27 @@ public class PostgresTmailServer {
         }
         return List.of();
     }
+
+    public static List<Module> chooseSearchModules(PostgresTmailConfiguration configuration) {
+        switch (configuration.searchConfiguration().getImplementation()) {
+            case OpenSearch:
+                return List.of(
+                    new OSContactAutoCompleteModule(),
+                    new OpenSearchClientModule(),
+                    new OpenSearchMailboxModule(),
+                    new ReIndexingModule());
+            case Scanning:
+                return List.of(
+                    SCANNING_SEARCH_MODULE,
+                    SCANNING_QUOTA_SEARCH_MODULE);
+            case OpenSearchDisabled:
+                return List.of(
+                    binder -> binder.bind(EmailAddressContactSearchEngine.class).to(DisabledEmailAddressContactSearchEngine.class),
+                    new OpenSearchDisabledModule(),
+                    SCANNING_QUOTA_SEARCH_MODULE);
+            default:
+                throw new RuntimeException("Unsupported search implementation " + configuration.searchConfiguration().getImplementation());
+        }
+    }
+
 }
