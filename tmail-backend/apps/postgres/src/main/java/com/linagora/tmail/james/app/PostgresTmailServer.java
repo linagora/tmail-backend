@@ -36,15 +36,21 @@ import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.activemq.ActiveMQQueueModule;
 import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
+import org.apache.james.modules.server.DLPRoutesModule;
 import org.apache.james.modules.server.DataRoutesModules;
 import org.apache.james.modules.server.InconsistencyQuotasSolvingRoutesModule;
 import org.apache.james.modules.server.JMXServerModule;
+import org.apache.james.modules.server.JmapUploadCleanupModule;
 import org.apache.james.modules.server.MailQueueRoutesModule;
 import org.apache.james.modules.server.MailRepositoriesRoutesModule;
 import org.apache.james.modules.server.MailboxRoutesModule;
+import org.apache.james.modules.server.MailboxesExportRoutesModule;
+import org.apache.james.modules.server.MessagesRoutesModule;
 import org.apache.james.modules.server.ReIndexingModule;
 import org.apache.james.modules.server.SieveRoutesModule;
 import org.apache.james.modules.server.TaskManagerModule;
+import org.apache.james.modules.server.UserIdentityModule;
+import org.apache.james.modules.server.WebAdminMailOverWebModule;
 import org.apache.james.modules.server.WebAdminReIndexingTaskSerializationModule;
 import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
@@ -90,6 +96,7 @@ import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
+import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
@@ -127,16 +134,28 @@ public class PostgresTmailServer {
     }
 
     private static final Module WEBADMIN = Modules.combine(
-        new WebAdminServerModule(),
         new DataRoutesModules(),
         new DeletedMessageVaultRoutesModule(),
+        new DLPRoutesModule(),
+        new EmailAddressContactRoutesModule(),
         new InconsistencyQuotasSolvingRoutesModule(),
+        new InboxArchivalTaskModule(),
+        new JmapUploadCleanupModule(),
         new MailboxRoutesModule(),
+        new MailboxesCleanupModule(),
+        new MailboxesExportRoutesModule(),
         new MailQueueRoutesModule(),
         new MailRepositoriesRoutesModule(),
+        new MessagesRoutesModule(),
+        new RateLimitPlanRoutesModule(),
         new ReIndexingModule(),
         new SieveRoutesModule(),
-        new WebAdminReIndexingTaskSerializationModule());
+        new TeamMailboxModule(),
+        new TeamMailboxRoutesModule(),
+        new UserIdentityModule(),
+        new WebAdminMailOverWebModule(),
+        new WebAdminReIndexingTaskSerializationModule(),
+        new WebAdminServerModule());
 
     private static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
@@ -168,9 +187,7 @@ public class PostgresTmailServer {
         new WebFingerModule(),
         new EmailRecoveryActionMethodModule(),
         new LabelMethodModule(),
-        new JmapSettingsMethodModule(),
-        new MailboxesCleanupModule(),
-        new InboxArchivalTaskModule())
+        new JmapSettingsMethodModule())
         .with(new TeamMailboxJmapModule());
 
     private static final Module POSTGRES_SERVER_MODULE = Modules.combine(
