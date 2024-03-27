@@ -58,7 +58,7 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser;
-import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
+import com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
@@ -159,7 +159,7 @@ public class PostgresTmailServer {
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
         new ForwardGetMethodModule(),
-        new InMemoryEncryptedEmailContentStoreModule(),
+        new PostgresEncryptedEmailContentStoreModule(),
         new PostgresKeystoreModule(),
         new ForwardSetMethodModule(),
         new KeystoreSetMethodModule(),
