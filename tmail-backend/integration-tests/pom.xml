@@ -26,6 +26,7 @@
 
         <module>webadmin/webadmin-integration-tests-common</module>
         <module>webadmin/distributed-webadmin-integration-tests</module>
+        <module>webadmin/postgres-webadmin-integration-tests</module>
 
         <module>rate-limiter/rate-limiter-integration-tests-common</module>
         <module>rate-limiter/distributed-rate-limiter-integration-tests</module>
