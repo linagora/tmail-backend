@@ -140,7 +140,7 @@ public class PostgresTmailServer {
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .overrideWith(chooseSearchModules(configuration))
-            .combineWith(chooseMailbox(configuration.mailboxConfiguration()))
+            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration));
     }
 
