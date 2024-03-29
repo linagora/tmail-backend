@@ -38,6 +38,12 @@
             <artifactId>tmail-guice-distributed</artifactId>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-guice-distributed</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-backends-rabbitmq</artifactId>
             <type>test-jar</type>
