@@ -7,6 +7,7 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.receiveMessageInTimespan
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
@@ -17,9 +18,7 @@ import sttp.client3.okhttp.OkHttpSyncBackend
 import sttp.client3.{Identity, RequestT, SttpBackend, asWebSocket, basicRequest}
 import sttp.model.Uri
 import sttp.monad.MonadError
-import sttp.monad.syntax.MonadErrorOps
 import sttp.ws.WebSocketFrame
-import sttp.ws.WebSocketFrame.Text
 
 import scala.jdk.CollectionConverters._
 
@@ -86,15 +85,7 @@ trait LinagoraFilterStateChangeTest {
                  |	]
                  |}""".stripMargin))
 
-            List(
-              ws.receive()
-                .map { case t: Text =>
-                  t.payload
-                },
-              ws.receive()
-                .map { case t: Text =>
-                  t.payload
-                })
+            ws.receiveMessageInTimespan()
         })
         .send(backend)
         .body
@@ -150,15 +141,7 @@ trait LinagoraFilterStateChangeTest {
                  |	]
                  |}""".stripMargin))
 
-            List(
-              ws.receive()
-                .map { case t: Text =>
-                  t.payload
-                },
-              ws.receive()
-                .map { case t: Text =>
-                  t.payload
-                })
+            ws.receiveMessageInTimespan()
         })
         .send(backend)
         .body
