@@ -8,7 +8,6 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
-import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Disabled;
@@ -54,7 +53,6 @@ public class PostgresTMailHealthCheckIntegrationTests extends TMailHealthCheckIn
         .extension(new AwsS3BlobStoreExtension())
         .extension(new DockerOpenSearchExtension())
         .extension(new RspamdExtensionModule())
-        .extension(new RedisExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
