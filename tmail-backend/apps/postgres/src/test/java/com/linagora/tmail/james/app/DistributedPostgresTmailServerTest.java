@@ -63,8 +63,6 @@ import io.restassured.specification.RequestSpecification;
 
 class DistributedPostgresTmailServerTest implements JamesServerConcreteContract {
 
-    static PostgresExtension postgresExtension = PostgresExtension.empty();
-
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
         PostgresTmailConfiguration.builder()
@@ -85,7 +83,7 @@ class DistributedPostgresTmailServerTest implements JamesServerConcreteContract 
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
         .extension(new RabbitMQExtension())
-        .extension(postgresExtension)
+        .extension(PostgresExtension.empty())
         .extension(new AwsS3BlobStoreExtension())
         .extension(new DockerOpenSearchExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
