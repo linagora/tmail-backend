@@ -1,0 +1,5 @@
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Subject: =?ISO-8859-1?Q?ACCEPT=C9?=: {{EVENT_TITLE}} @ {{EVENT_START_DATE}} ({{ATTENDEE}})
+
+{{ATTENDEE}} a accepté cette invitation.
