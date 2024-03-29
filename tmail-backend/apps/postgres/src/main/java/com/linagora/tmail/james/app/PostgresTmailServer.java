@@ -34,6 +34,7 @@ import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
 import org.apache.james.modules.mailbox.PostgresDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.PostgresMailboxModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
+import org.apache.james.modules.plugins.QuotaMailingModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.LMTPServerModule;
 import org.apache.james.modules.protocols.ManageSieveServerModule;
@@ -85,8 +86,10 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.postgres.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule;
+import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -145,10 +148,10 @@ public class PostgresTmailServer {
             .combineWith(POSTGRES_MODULE_AGGREGATE)
             .combineWith(chooseUserRepositoryModule(configuration))
             .combineWith(chooseBlobStoreModules(configuration))
-            .combineWith(chooseEventBusModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
+            .overrideWith(chooseEventBusModules(configuration))
             .overrideWith(chooseSearchModules(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration));
@@ -227,13 +230,13 @@ public class PostgresTmailServer {
         new PostgresDeletedMessageVaultModule(),
         new PostgresEventStoreModule());
 
+    public static final Module PLUGINS = new QuotaMailingModule();
     private static final Module POSTGRES_MODULE_AGGREGATE = Modules.override(Modules.combine(
-        new MailetProcessingModule(), new DKIMMailetModule(), POSTGRES_SERVER_MODULE, PROTOCOLS, JMAP_LINAGORA))
+        new MailetProcessingModule(), new DKIMMailetModule(), POSTGRES_SERVER_MODULE, PROTOCOLS, JMAP_LINAGORA, PLUGINS))
             .with(new TeamMailboxModule(),
                 new TMailMailboxSortOrderProviderModule(),
                 new PostgresRateLimitingModule(),
                 new RateLimitPlanRoutesModule(),
-                new MemoryEmailAddressContactModule(),
                 new EmailAddressContactRoutesModule(),
                 new PostgresLabelRepositoryModule(),
                 new PostgresJmapSettingsRepositoryModule());
@@ -261,10 +264,18 @@ public class PostgresTmailServer {
             new BlobStoreCacheModulesChooser.CacheDisabledModule());
     }
 
+    private static final Module IN_MEMORY_EVENT_BUS_FEATURE_MODULE = Modules.combine(
+        new MemoryEmailAddressContactModule()
+    );
+
+    private static final Module RABBITMQ_EVENT_BUS_FEATURE_MODULE = Modules.combine(
+        new DistributedEmailAddressContactEventModule());
+
     public static Module chooseEventBusModules(PostgresTmailConfiguration configuration) {
         return switch (configuration.eventBusImpl()) {
             case IN_MEMORY -> Modules.combine(new DefaultEventModule(),
-                new ActiveMQQueueModule());
+                new ActiveMQQueueModule(),
+                IN_MEMORY_EVENT_BUS_FEATURE_MODULE);
             case RABBITMQ -> Modules.combine(new RabbitMQModule(),
                 new RabbitMQMailQueueModule(),
                 new FakeMailQueueViewModule(),
@@ -272,7 +283,8 @@ public class PostgresTmailServer {
                 new RabbitMQEmailAddressContactModule(),
                 new ScheduledReconnectionHandler.Module(),
                 Modules.override(new DefaultEventModule())
-                    .with(new RabbitMQEventBusModule()));
+                    .with(new RabbitMQEventBusModule()),
+                RABBITMQ_EVENT_BUS_FEATURE_MODULE);
         };
     }
 
@@ -330,6 +342,7 @@ public class PostgresTmailServer {
                     new ReIndexingModule());
             case Scanning:
                 return List.of(
+                    binder -> binder.bind(EmailAddressContactSearchEngine.class).toInstance(new InMemoryEmailAddressContactSearchEngine()),
                     SCANNING_SEARCH_MODULE,
                     SCANNING_QUOTA_SEARCH_MODULE);
             case OpenSearchDisabled:
