@@ -70,7 +70,7 @@ public class PostgresFirebaseSubscriptionDAO {
             .onErrorMap(UNIQUE_CONSTRAINT_VIOLATION_PREDICATE.and(IS_PRIMARY_KEY_UNIQUE_CONSTRAINT),
                 e -> new DeviceClientIdInvalidException(subscription.deviceClientId(), "deviceClientId must be unique"))
             .onErrorMap(UNIQUE_CONSTRAINT_VIOLATION_PREDICATE.and(IS_FCM_TOKEN_UNIQUE_CONSTRAINT),
-                e -> new TokenInvalidException("token must be unique"));
+                e -> new TokenInvalidException("deviceToken must be unique"));
     }
 
     public Flux<FirebaseSubscription> listByUsername(Username username) {
