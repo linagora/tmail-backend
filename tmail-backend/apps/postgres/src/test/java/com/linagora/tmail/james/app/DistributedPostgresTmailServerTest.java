@@ -26,7 +26,6 @@ import static org.awaitility.Durations.FIVE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.hamcrest.Matchers.equalTo;
 
-import org.apache.james.DockerOpenSearchExtension;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerConcreteContract;
@@ -37,7 +36,6 @@ import org.apache.james.core.healthcheck.ResultStatus;
 import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.QuotaProbesImpl;
-import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
 import org.apache.james.utils.DataProbeImpl;
@@ -68,9 +66,6 @@ class DistributedPostgresTmailServerTest implements JamesServerConcreteContract 
     static PostgresExtension postgresExtension = PostgresExtension.empty();
 
     @RegisterExtension
-    static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
-
-    @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
         PostgresTmailConfiguration.builder()
             .workingDirectory(tmpDir)
@@ -89,7 +84,7 @@ class DistributedPostgresTmailServerTest implements JamesServerConcreteContract 
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
-        .extension(rabbitMQExtension)
+        .extension(new RabbitMQExtension())
         .extension(postgresExtension)
         .extension(new AwsS3BlobStoreExtension())
         .extension(new DockerOpenSearchExtension())
