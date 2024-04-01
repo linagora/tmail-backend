@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.app;
 
+import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 import static org.apache.james.PostgresJamesServerMain.JMAP;
 
 import java.util.List;
@@ -23,8 +24,10 @@ import org.apache.james.modules.data.PostgresEventStoreModule;
 import org.apache.james.modules.data.PostgresUsersRepositoryModule;
 import org.apache.james.modules.data.PostgresVacationModule;
 import org.apache.james.modules.data.SievePostgresRepositoryModules;
+import org.apache.james.modules.event.JMAPEventBusModule;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.events.PostgresDeadLetterModule;
+import org.apache.james.modules.eventstore.MemoryEventStoreModule;
 import org.apache.james.modules.mailbox.DefaultEventModule;
 import org.apache.james.modules.mailbox.OpenSearchClientModule;
 import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
@@ -39,17 +42,22 @@ import org.apache.james.modules.protocols.POP3ServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.activemq.ActiveMQQueueModule;
+import org.apache.james.modules.queue.rabbitmq.FakeMailQueueViewModule;
+import org.apache.james.modules.queue.rabbitmq.RabbitMQMailQueueModule;
 import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
+import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.DLPRoutesModule;
 import org.apache.james.modules.server.DataRoutesModules;
 import org.apache.james.modules.server.InconsistencyQuotasSolvingRoutesModule;
 import org.apache.james.modules.server.JMXServerModule;
+import org.apache.james.modules.server.JmapTasksModule;
 import org.apache.james.modules.server.JmapUploadCleanupModule;
 import org.apache.james.modules.server.MailQueueRoutesModule;
 import org.apache.james.modules.server.MailRepositoriesRoutesModule;
 import org.apache.james.modules.server.MailboxRoutesModule;
 import org.apache.james.modules.server.MailboxesExportRoutesModule;
 import org.apache.james.modules.server.MessagesRoutesModule;
+import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
 import org.apache.james.modules.server.ReIndexingModule;
 import org.apache.james.modules.server.SieveRoutesModule;
 import org.apache.james.modules.server.TaskManagerModule;
@@ -70,8 +78,10 @@ import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
+import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser;
+import com.linagora.tmail.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.postgres.PostgresEncryptedMailboxModule;
@@ -83,6 +93,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.PostgresFirebaseRepositoryModule;
 import com.linagora.tmail.james.jmap.label.PostgresLabelRepositoryModule;
+import com.linagora.tmail.james.jmap.mail.TMailMailboxSortOrderProviderModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
@@ -152,6 +163,7 @@ public class PostgresTmailServer {
         new InconsistencyQuotasSolvingRoutesModule(),
         new InboxArchivalTaskModule(),
         new JmapUploadCleanupModule(),
+        new JmapTasksModule(),
         new MailboxRoutesModule(),
         new MailboxesCleanupModule(),
         new MailboxesExportRoutesModule(),
@@ -202,7 +214,6 @@ public class PostgresTmailServer {
         .with(new TeamMailboxJmapModule());
 
     private static final Module POSTGRES_SERVER_MODULE = Modules.combine(
-        new ActiveMQQueueModule(),
         new BlobExportMechanismModule(),
         new PostgresDelegationStoreModule(),
         new PostgresMailboxModule(),
@@ -211,15 +222,15 @@ public class PostgresTmailServer {
         new MailboxModule(),
         new SievePostgresRepositoryModules(),
         new TaskManagerModule(),
-        new PostgresEventStoreModule(),
         new TikaMailboxModule(),
         new PostgresVacationModule(),
         new PostgresDLPConfigurationStoreModule(),
         new PostgresDeletedMessageVaultModule());
 
     private static final Module POSTGRES_MODULE_AGGREGATE = Modules.override(Modules.combine(
-        new MailetProcessingModule(), POSTGRES_SERVER_MODULE, PROTOCOLS, JMAP_LINAGORA))
+        new MailetProcessingModule(), new DKIMMailetModule(), POSTGRES_SERVER_MODULE, PROTOCOLS, JMAP_LINAGORA))
             .with(new TeamMailboxModule(),
+                new TMailMailboxSortOrderProviderModule(),
                 new PostgresRateLimitingModule(),
                 new RateLimitPlanRoutesModule(),
                 new MemoryEmailAddressContactModule(),
@@ -252,8 +263,16 @@ public class PostgresTmailServer {
 
     public static Module chooseEventBusModules(PostgresTmailConfiguration configuration) {
         return switch (configuration.eventBusImpl()) {
-            case IN_MEMORY -> new DefaultEventModule();
+            case IN_MEMORY -> Modules.combine(new DefaultEventModule(),
+                new ActiveMQQueueModule(),
+                new MemoryEventStoreModule());
             case RABBITMQ -> Modules.combine(new RabbitMQModule(),
+                new RabbitMQMailQueueModule(),
+                new FakeMailQueueViewModule(),
+                new RabbitMailQueueRoutesModule(),
+                new RabbitMQEmailAddressContactModule(),
+                new ScheduledReconnectionHandler.Module(),
+                new PostgresEventStoreModule(),
                 Modules.override(new DefaultEventModule())
                     .with(new RabbitMQEventBusModule()));
         };
@@ -283,10 +302,17 @@ public class PostgresTmailServer {
 
     private static Module chooseJmapModule(PostgresTmailConfiguration configuration) {
         if (configuration.jmapEnabled()) {
-            return new JMAPListenerModule();
+            return Modules.combine(chooseJmapEventBusModule(configuration), new JMAPListenerModule());
         }
         return binder -> {
         };
+    }
+
+    public static Module chooseJmapEventBusModule(PostgresTmailConfiguration configuration) {
+        if (configuration.eventBusImpl().equals(RABBITMQ)) {
+            return new JMAPEventBusModule();
+        }
+        return Modules.EMPTY_MODULE;
     }
 
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
