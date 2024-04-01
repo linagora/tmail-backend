@@ -27,7 +27,6 @@ import org.apache.james.modules.data.SievePostgresRepositoryModules;
 import org.apache.james.modules.event.JMAPEventBusModule;
 import org.apache.james.modules.event.RabbitMQEventBusModule;
 import org.apache.james.modules.events.PostgresDeadLetterModule;
-import org.apache.james.modules.eventstore.MemoryEventStoreModule;
 import org.apache.james.modules.mailbox.DefaultEventModule;
 import org.apache.james.modules.mailbox.OpenSearchClientModule;
 import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
@@ -225,7 +224,8 @@ public class PostgresTmailServer {
         new TikaMailboxModule(),
         new PostgresVacationModule(),
         new PostgresDLPConfigurationStoreModule(),
-        new PostgresDeletedMessageVaultModule());
+        new PostgresDeletedMessageVaultModule(),
+        new PostgresEventStoreModule());
 
     private static final Module POSTGRES_MODULE_AGGREGATE = Modules.override(Modules.combine(
         new MailetProcessingModule(), new DKIMMailetModule(), POSTGRES_SERVER_MODULE, PROTOCOLS, JMAP_LINAGORA))
@@ -264,15 +264,13 @@ public class PostgresTmailServer {
     public static Module chooseEventBusModules(PostgresTmailConfiguration configuration) {
         return switch (configuration.eventBusImpl()) {
             case IN_MEMORY -> Modules.combine(new DefaultEventModule(),
-                new ActiveMQQueueModule(),
-                new MemoryEventStoreModule());
+                new ActiveMQQueueModule());
             case RABBITMQ -> Modules.combine(new RabbitMQModule(),
                 new RabbitMQMailQueueModule(),
                 new FakeMailQueueViewModule(),
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEmailAddressContactModule(),
                 new ScheduledReconnectionHandler.Module(),
-                new PostgresEventStoreModule(),
                 Modules.override(new DefaultEventModule())
                     .with(new RabbitMQEventBusModule()));
         };
