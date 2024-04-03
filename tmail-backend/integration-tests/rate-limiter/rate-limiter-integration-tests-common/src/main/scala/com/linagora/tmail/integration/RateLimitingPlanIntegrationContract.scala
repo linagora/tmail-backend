@@ -2,7 +2,7 @@ package com.linagora.tmail.integration
 
 import java.util.stream.IntStream
 
-import com.linagora.tmail.integration.RateLimitingPlanIntegrationContract.{DOMAIN, ERROR_REPOSITORY, RECIPIENT1, RECIPIENT2, RECIPIENT3, SENDER1, SENDER2}
+import com.linagora.tmail.integration.RateLimitingPlanIntegrationContract.{DOMAIN, RECIPIENT1, RECIPIENT2, RECIPIENT3, SENDER1, SENDER2}
 import io.restassured.RestAssured
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -25,10 +25,11 @@ object RateLimitingPlanIntegrationContract {
   val RECIPIENT1: Username = Username.fromLocalPartWithDomain("recipient1", DOMAIN)
   val RECIPIENT2: Username = Username.fromLocalPartWithDomain("recipient2", DOMAIN)
   val RECIPIENT3: Username = Username.fromLocalPartWithDomain("recipient3", DOMAIN)
-  val ERROR_REPOSITORY: MailRepositoryUrl = MailRepositoryUrl.from("cassandra://var/mail/error/")
 }
 
 trait RateLimitingPlanIntegrationContract {
+
+  def getErrorRepository: MailRepositoryUrl
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -136,7 +137,7 @@ trait RateLimitingPlanIntegrationContract {
       .sendMessageWithHeaders(SENDER1.asString, RECIPIENT2.asString, "subject: test2\r\rcontent 2\r.\r")
 
     awaitAtMostOneMinute.until(() => server.getProbe(classOf[MailRepositoryProbeImpl])
-      .getRepositoryMailCount(ERROR_REPOSITORY) == 1)
+      .getRepositoryMailCount(getErrorRepository) == 1)
 
     assertThat(testImapClient(server)
       .login(RECIPIENT2, PASSWORD)
@@ -175,7 +176,7 @@ trait RateLimitingPlanIntegrationContract {
       .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "subject: test2\r\rcontent 2\r.\r")
 
     awaitAtMostOneMinute.until(() => server.getProbe(classOf[MailRepositoryProbeImpl])
-      .getRepositoryMailCount(ERROR_REPOSITORY) == 1)
+      .getRepositoryMailCount(getErrorRepository) == 1)
 
     assertThat(testImapClient(server)
       .login(RECIPIENT1, PASSWORD)
@@ -225,7 +226,7 @@ trait RateLimitingPlanIntegrationContract {
       .sendMessageWithHeaders(SENDER1.asString, RECIPIENT2.asString, "subject: test2\r\rcontent 2\r.\r")
 
     awaitAtMostOneMinute.until(() => server.getProbe(classOf[MailRepositoryProbeImpl])
-      .getRepositoryMailCount(ERROR_REPOSITORY) == 1)
+      .getRepositoryMailCount(getErrorRepository) == 1)
 
     assertThat(testImapClient(server)
       .login(RECIPIENT2, PASSWORD)
@@ -245,7 +246,7 @@ trait RateLimitingPlanIntegrationContract {
     messageSender(server).authenticate(SENDER2.asString(), PASSWORD)
       .sendMessageWithHeaders(SENDER2.asString, RECIPIENT3.asString, s"""subject: test4\r\rcontent 4\r.\r""")
     awaitAtMostOneMinute.until(() => server.getProbe(classOf[MailRepositoryProbeImpl])
-      .getRepositoryMailCount(ERROR_REPOSITORY) == 2)
+      .getRepositoryMailCount(getErrorRepository) == 2)
   }
 
 }
