@@ -21,6 +21,7 @@
 
         <module>smtp/distributed-smtp-integration-tests</module>
         <module>smtp/memory-smtp-integration-tests</module>
+        <module>smtp/postgres-smtp-integration-tests</module>
         <module>smtp/smtp-integration-tests-common</module>
 
         <module>webadmin/webadmin-integration-tests-common</module>
@@ -29,9 +30,12 @@
 
         <module>rate-limiter/rate-limiter-integration-tests-common</module>
         <module>rate-limiter/distributed-rate-limiter-integration-tests</module>
+        <module>rate-limiter/postgres-rate-limiter-integration-tests</module>
 
         <module>rspamd/rspamd-integration-tests-common</module>
         <module>rspamd/distributed-rspamd-integration-tests</module>
+        <module>rspamd/postgres-rspamd-integration-tests</module>
+
         <module>healthcheck/healthcheck-integration-tests-common</module>
         <module>healthcheck/distributed-healthcheck-integration-tests</module>
         <module>healthcheck/postgres-healthcheck-integration-tests</module>
