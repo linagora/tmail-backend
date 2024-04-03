@@ -3,15 +3,12 @@ package com.linagora.tmail.integration.postgres;
 import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.GuiceProbe;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
@@ -55,16 +52,4 @@ public class PostgresTMailHealthCheckIntegrationTests extends TMailHealthCheckIn
         .extension(new RspamdExtensionModule())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
-
-    @Disabled("We need a TaskExecutionDetailsProjection for PostgresTmailServer")
-    @Test
-    void tmailHealthCheckShouldBeWellBinded(GuiceJamesServer jamesServer) {
-
-    }
-
-    @Disabled("We need a TaskExecutionDetailsProjection for PostgresTmailServer")
-    @Test
-    void tasksHealthCheckShouldReturnHealthyByDefault(GuiceJamesServer jamesServer) {
-
-    }
 }
