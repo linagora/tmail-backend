@@ -4,15 +4,21 @@ import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 import static org.apache.james.PostgresJamesServerMain.JMAP;
 
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
+import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.draft.JMAPListenerModule;
+import org.apache.james.json.DTO;
+import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.modules.BlobExportMechanismModule;
+import org.apache.james.modules.DistributedTaskSerializationModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.RunArgumentsModule;
@@ -65,6 +71,8 @@ import org.apache.james.modules.server.UserIdentityModule;
 import org.apache.james.modules.server.WebAdminMailOverWebModule;
 import org.apache.james.modules.server.WebAdminReIndexingTaskSerializationModule;
 import org.apache.james.modules.server.WebAdminServerModule;
+import org.apache.james.modules.task.DistributedTaskManagerModule;
+import org.apache.james.modules.task.PostgresTaskExecutionDetailsProjectionGuiceModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.quota.search.QuotaSearcher;
 import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
@@ -76,6 +84,8 @@ import org.slf4j.LoggerFactory;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import com.google.inject.TypeLiteral;
+import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
@@ -87,6 +97,7 @@ import com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreM
 import com.linagora.tmail.encrypted.postgres.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
+import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
@@ -126,7 +137,12 @@ import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
 public class PostgresTmailServer {
-    static Logger LOGGER = LoggerFactory.getLogger("org.apache.james.CONFIGURATION");
+    static final Logger LOGGER = LoggerFactory.getLogger("org.apache.james.CONFIGURATION");
+
+    private static final Module EVENT_STORE_JSON_SERIALIZATION_DEFAULT_MODULE = binder ->
+        binder.bind(new TypeLiteral<Set<DTOModule<?, ? extends DTO>>>() {
+            }).annotatedWith(Names.named(EventNestedTypes.EVENT_NESTED_TYPES_INJECTION_NAME))
+            .toInstance(Set.of());
 
     public static void main(String[] args) throws Exception {
         ExtraProperties.initialize();
@@ -145,16 +161,16 @@ public class PostgresTmailServer {
 
     public static GuiceJamesServer createServer(PostgresTmailConfiguration configuration) {
         return GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(POSTGRES_MODULE_AGGREGATE)
+            .combineWith(POSTGRES_MODULE_AGGREGATE.apply(configuration))
             .combineWith(chooseUserRepositoryModule(configuration))
             .combineWith(chooseBlobStoreModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
-            .overrideWith(chooseEventBusModules(configuration))
             .overrideWith(chooseSearchModules(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
-            .overrideWith(chooseJmapModule(configuration));
+            .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(chooseTaskManagerModules(configuration));
     }
 
     private static final Module WEBADMIN = Modules.combine(
@@ -182,15 +198,6 @@ public class PostgresTmailServer {
         new WebAdminReIndexingTaskSerializationModule(),
         new WebAdminServerModule());
 
-    private static final Module PROTOCOLS = Modules.combine(
-        new IMAPServerModule(),
-        new LMTPServerModule(),
-        new ManageSieveServerModule(),
-        new POP3ServerModule(),
-        new ProtocolHandlerModule(),
-        new SMTPServerModule(),
-        WEBADMIN);
-
     public static final Module JMAP_LINAGORA = Modules.override(
         JMAP,
         new TMailJMAPModule(),
@@ -215,6 +222,16 @@ public class PostgresTmailServer {
         new JmapSettingsMethodModule())
         .with(new TeamMailboxJmapModule());
 
+    private static final Module PROTOCOLS = Modules.combine(
+        JMAP_LINAGORA,
+        new IMAPServerModule(),
+        new LMTPServerModule(),
+        new ManageSieveServerModule(),
+        new POP3ServerModule(),
+        new ProtocolHandlerModule(),
+        new SMTPServerModule(),
+        WEBADMIN);
+
     private static final Module POSTGRES_SERVER_MODULE = Modules.combine(
         new BlobExportMechanismModule(),
         new PostgresDelegationStoreModule(),
@@ -228,18 +245,27 @@ public class PostgresTmailServer {
         new PostgresVacationModule(),
         new PostgresDLPConfigurationStoreModule(),
         new PostgresDeletedMessageVaultModule(),
-        new PostgresEventStoreModule());
+        new PostgresEventStoreModule(),
+        EVENT_STORE_JSON_SERIALIZATION_DEFAULT_MODULE);
 
     public static final Module PLUGINS = new QuotaMailingModule();
-    private static final Module POSTGRES_MODULE_AGGREGATE = Modules.override(Modules.combine(
-        new MailetProcessingModule(), new DKIMMailetModule(), POSTGRES_SERVER_MODULE, PROTOCOLS, JMAP_LINAGORA, PLUGINS))
-            .with(new TeamMailboxModule(),
-                new TMailMailboxSortOrderProviderModule(),
-                new PostgresRateLimitingModule(),
-                new RateLimitPlanRoutesModule(),
-                new EmailAddressContactRoutesModule(),
-                new PostgresLabelRepositoryModule(),
-                new PostgresJmapSettingsRepositoryModule());
+
+    public static final Function<PostgresTmailConfiguration, Module> POSTGRES_MODULE_AGGREGATE = configuration -> Modules
+        .override(Modules.combine(
+            new MailetProcessingModule(),
+            new DKIMMailetModule(),
+            POSTGRES_SERVER_MODULE,
+            PROTOCOLS,
+            PLUGINS))
+        .with(new TeamMailboxModule(),
+            new TMailMailboxSortOrderProviderModule(),
+            new PostgresRateLimitingModule(),
+            new RateLimitPlanRoutesModule(),
+            new EmailAddressContactRoutesModule(),
+            new PostgresLabelRepositoryModule(),
+            new PostgresJmapSettingsRepositoryModule(),
+            new TasksHeathCheckModule(),
+            chooseEventBusModules(configuration));
 
     private static final Module SCANNING_QUOTA_SEARCH_MODULE = new AbstractModule() {
         @Override
@@ -284,8 +310,20 @@ public class PostgresTmailServer {
                 new ScheduledReconnectionHandler.Module(),
                 Modules.override(new DefaultEventModule())
                     .with(new RabbitMQEventBusModule()),
+                new DistributedTaskSerializationModule(),
                 RABBITMQ_EVENT_BUS_FEATURE_MODULE);
         };
+    }
+
+    public static List<Module> chooseTaskManagerModules(PostgresTmailConfiguration configuration) {
+        switch (configuration.eventBusImpl()) {
+            case IN_MEMORY:
+                return List.of(new TaskManagerModule(), new PostgresTaskExecutionDetailsProjectionGuiceModule());
+            case RABBITMQ:
+                return List.of(new DistributedTaskManagerModule());
+            default:
+                throw new RuntimeException("Unsupported event-bus implementation " + configuration.eventBusImpl().name());
+        }
     }
 
     public static Module chooseUserRepositoryModule(PostgresTmailConfiguration configuration) {
