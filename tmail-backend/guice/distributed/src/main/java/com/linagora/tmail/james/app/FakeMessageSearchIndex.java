@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 
+import jakarta.mail.Flags;
+
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.events.Group;
 import org.apache.james.mailbox.MailboxManager;
@@ -20,7 +22,6 @@ import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 
 import com.google.common.collect.ImmutableSet;
 
-import jakarta.mail.Flags;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
