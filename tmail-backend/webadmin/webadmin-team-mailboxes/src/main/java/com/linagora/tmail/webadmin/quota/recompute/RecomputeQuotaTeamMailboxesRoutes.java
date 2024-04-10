@@ -2,7 +2,7 @@ package com.linagora.tmail.webadmin.quota.recompute;
 
 import java.util.Optional;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.task.Task;

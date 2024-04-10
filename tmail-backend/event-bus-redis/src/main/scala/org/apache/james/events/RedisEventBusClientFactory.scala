@@ -6,7 +6,7 @@ import io.lettuce.core.api.reactive.RedisSetReactiveCommands
 import io.lettuce.core.cluster.RedisClusterClient
 import io.lettuce.core.pubsub.api.reactive.RedisPubSubReactiveCommands
 import io.lettuce.core.{AbstractRedisClient, RedisClient, RedisURI}
-import javax.inject.{Inject, Singleton}
+import jakarta.inject.{Inject, Singleton}
 import org.apache.james.backends.redis.RedisConfiguration
 
 import scala.jdk.CollectionConverters._

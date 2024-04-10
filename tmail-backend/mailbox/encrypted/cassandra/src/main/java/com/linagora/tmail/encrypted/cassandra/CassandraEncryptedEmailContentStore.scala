@@ -8,7 +8,7 @@ import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_S
 import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore.DEFAULT_STORAGE_POLICY
 import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailStoreModule
 import com.linagora.tmail.encrypted.{AttachmentNotFoundException, EncryptedEmailContent, EncryptedEmailContentStore, EncryptedEmailDetailedView, EncryptedEmailFastView, MessageNotFoundException}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}

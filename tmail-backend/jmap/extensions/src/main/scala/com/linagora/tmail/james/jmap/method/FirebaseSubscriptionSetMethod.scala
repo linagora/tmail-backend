@@ -5,7 +5,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FIREBA
 import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetCreatePerformer.CreationResults
 import com.linagora.tmail.james.jmap.model.{FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{ClientId, Invocation, ServerId}

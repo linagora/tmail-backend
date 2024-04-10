@@ -8,7 +8,7 @@ import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.function.Predicate;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.DefaultMailboxes;

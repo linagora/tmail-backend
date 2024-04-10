@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.common.probe;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.utils.GuiceProbe;

@@ -3,7 +3,7 @@ package com.linagora.tmail.combined.identity;
 import java.util.Iterator;
 import java.util.Optional;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.user.api.UsersRepositoryException;

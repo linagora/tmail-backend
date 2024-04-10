@@ -4,7 +4,7 @@ import com.linagora.tmail.james.jmap.json.CalendarEventReplySerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
 import com.linagora.tmail.james.jmap.model.{CalendarEventReplyMaybeResponse, CalendarEventReplyRequest}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import net.fortuna.ical4j.model.parameter.PartStat
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}

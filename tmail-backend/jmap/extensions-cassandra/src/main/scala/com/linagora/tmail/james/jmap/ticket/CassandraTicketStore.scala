@@ -9,7 +9,7 @@ import com.datastax.oss.driver.api.querybuilder.SchemaBuilder
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStore.{clientAddress, generatedOn, key, ticketTable, username, validUntil}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.backends.cassandra.init.{CassandraTypesProvider, CassandraZonedDateTimeModule}
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor

@@ -8,7 +8,7 @@ import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.encrypted.cassandra.table.CassandraKeystoreModule
 import com.linagora.tmail.encrypted.{KeyId, KeystoreManager, PGPKeysUserDeletionTaskStep, PGPKeysUsernameChangeTaskStep, PublicKey}
 import com.linagora.tmail.pgp.Encrypter
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.core.Username
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}

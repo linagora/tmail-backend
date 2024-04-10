@@ -26,7 +26,7 @@ package com.linagora.tmail.blob.blobid.list;
 import java.io.FileNotFoundException;
 import java.util.List;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;

@@ -4,7 +4,7 @@ import java.util
 import java.util.Optional
 
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.UserEntityValidator.{EntityType, ValidationFailure}
 import org.apache.james.core.{Domain, Username}

@@ -7,8 +7,7 @@ import com.datastax.oss.driver.api.core.cql.Row
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.encrypted.cassandra.table.KeyStoreTable.{ID, KEY, TABLE_NAME, USERNAME}
 import com.linagora.tmail.encrypted.{KeyId, PublicKey}
-import javax.inject.Inject
-import org.apache.james.backends.cassandra.init.CassandraTypesProvider
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.core.Username
 import reactor.core.scala.publisher.{SFlux, SMono}

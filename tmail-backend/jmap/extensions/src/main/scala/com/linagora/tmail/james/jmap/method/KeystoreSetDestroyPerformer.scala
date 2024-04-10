@@ -2,7 +2,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.encrypted.{KeyId, KeystoreManager}
 import com.linagora.tmail.james.jmap.model.KeystoreSetRequest
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.mailbox.MailboxSession
 import reactor.core.scala.publisher.{SFlux, SMono}
 

@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.AccountId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono

@@ -1,6 +1,6 @@
 package com.linagora.tmail.team
 
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.utils.GuiceProbe
 import reactor.core.scala.publisher.{SFlux, SMono}

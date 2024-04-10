@@ -4,7 +4,7 @@ import java.net.InetAddress
 import java.time.{Clock, ZonedDateTime}
 import java.util.UUID
 
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UTCDate
 import reactor.core.scala.publisher.SMono

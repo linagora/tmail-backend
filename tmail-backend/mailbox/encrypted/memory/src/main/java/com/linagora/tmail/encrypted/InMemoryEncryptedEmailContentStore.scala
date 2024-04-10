@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 import com.google.common.base.Preconditions
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.blob.api.{BlobId, BlobStore}
 import org.apache.james.mailbox.model.MessageId

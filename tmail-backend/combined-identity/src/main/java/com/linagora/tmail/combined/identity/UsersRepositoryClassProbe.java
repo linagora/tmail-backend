@@ -1,6 +1,6 @@
 package com.linagora.tmail.combined.identity;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.lib.UsersDAO;

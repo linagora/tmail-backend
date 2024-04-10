@@ -3,7 +3,7 @@ package com.linagora.tmail.webadmin;
 import static org.apache.james.webadmin.Constants.SEPARATOR;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.user.api.UsersRepository;

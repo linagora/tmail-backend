@@ -3,7 +3,7 @@ package com.linagora.tmail.team
 import java.lang
 import java.util.stream
 
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.rrt.api.{AliasReverseResolver, RecipientRewriteTable}
 import org.apache.james.rrt.lib.CanSendFromImpl

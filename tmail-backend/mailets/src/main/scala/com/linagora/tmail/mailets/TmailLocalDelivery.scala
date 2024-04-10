@@ -5,7 +5,7 @@ import java.util.Optional
 import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.mailets.TmailLocalDelivery.LOCAL_DELIVERED_MAILS_METRIC_NAME
 import com.linagora.tmail.team.TeamMailboxRepository
-import javax.inject.{Inject, Named}
+import jakarta.inject.{Inject, Named}
 import org.apache.commons.lang3.StringUtils
 import org.apache.james.mailbox.MailboxManager
 import org.apache.james.mailbox.model.MailboxConstants

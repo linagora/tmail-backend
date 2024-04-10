@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap.contact
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.{Event, EventSerializer}

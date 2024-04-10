@@ -23,7 +23,7 @@
 
 package com.linagora.tmail.blob.blobid.list;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.lifecycle.api.StartUpCheck;
 import org.apache.james.modules.blobstore.validation.EventsourcingStorageStrategy;

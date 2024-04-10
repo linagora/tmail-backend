@@ -12,7 +12,7 @@ import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, delete
 import com.linagora.tmail.rate.limiter.api.cassandra.table.CassandraRateLimitPlanHeaderEntry.{RATE_LIMITATION_DURATION_INDEX, RATE_LIMITATION_NAME_INDEX, RATE_LIMITS_INDEX}
 import com.linagora.tmail.rate.limiter.api.cassandra.table.CassandraRateLimitPlanTable.{OPERATION_LIMITATION_NAME, PLAN_ID, PLAN_NAME, RATE_LIMITATIONS, TABLE_NAME}
 import com.linagora.tmail.rate.limiter.api.{LimitTypes, OperationLimitations, RateLimitation, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanResetRequest}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import reactor.core.scala.publisher.{SFlux, SMono}
 

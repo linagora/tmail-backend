@@ -2,7 +2,7 @@ package com.linagora.tmail.blob.blobid.list.cassandra
 
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.blob.blobid.list.BlobIdList
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.blob.api.BlobId
 import org.reactivestreams.Publisher
 

@@ -5,8 +5,8 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.google.common.collect.{ImmutableList, ImmutableSet}
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys
 import com.linagora.tmail.james.jmap.contact.{ContactFields, TmailContactUserAddedEvent}
+import jakarta.inject.{Inject, Named}
 import jakarta.mail.Message
-import javax.inject.{Inject, Named}
 import org.apache.commons.collections.CollectionUtils
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.events.Event.EventId

@@ -7,7 +7,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MESSAG
 import com.linagora.tmail.james.jmap.method.EmailRecoveryActionSetCreatePerformer.CreationResults
 import com.linagora.tmail.james.jmap.model.{EmailRecoveryActionCreation, EmailRecoveryActionCreationId, EmailRecoveryActionCreationParseException, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdateException, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, UnparsedEmailRecoveryActionId}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
