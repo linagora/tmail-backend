@@ -5,7 +5,7 @@ import com.linagora.tmail.james.jmap.method.LabelSetCreatePerformer.LabelCreatio
 import com.linagora.tmail.james.jmap.method.LabelSetDeletePerformer.LabelDeletionResults
 import com.linagora.tmail.james.jmap.method.LabelUpdateResults
 import com.linagora.tmail.james.jmap.model.LabelId
-import javax.inject.Named
+import jakarta.inject.Named
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.EventBus

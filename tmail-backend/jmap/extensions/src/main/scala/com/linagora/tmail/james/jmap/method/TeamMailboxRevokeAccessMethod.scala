@@ -6,7 +6,7 @@ import com.linagora.tmail.james.jmap.method.TeamMailboxRevokeAccessMethod.{TeamM
 import com.linagora.tmail.james.jmap.model.{TeamMailboxRevokeAccessRequest, TeamMailboxRevokeAccessResponse, UnparsedTeamMailbox}
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxNotFoundException, TeamMailboxRepository}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription

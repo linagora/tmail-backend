@@ -5,8 +5,8 @@ import java.util
 import java.util.Date
 
 import com.linagora.tmail.pgp.Encrypter
+import jakarta.inject.Inject
 import jakarta.mail.Flags
-import javax.inject.Inject
 import org.apache.james.mailbox.MessageManager.{AppendCommand, AppendResult, MailboxMetaData}
 import org.apache.james.mailbox.model.{ComposedMessageIdWithMetaData, FetchGroup, Mailbox, MailboxACL, MailboxConstants, MailboxCounters, MailboxId, MailboxPath, MessageRange, MessageResultIterator, SearchQuery}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}

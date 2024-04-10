@@ -7,7 +7,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SETTIN
 import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsGetResult, JmapSettingsObject}
 import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, SettingsTypeName}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}

@@ -3,7 +3,7 @@ package com.linagora.tmail.encrypted
 import java.util.Optional
 import java.{lang, util}
 
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager.{MailboxCapabilities, MailboxRenamedResult, MessageCapabilities, SearchCapabilities}
 import org.apache.james.mailbox.model.search.MailboxQuery

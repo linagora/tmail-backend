@@ -4,7 +4,7 @@ import com.linagora.tmail.james.jmap.json.LabelSerializer
 import com.linagora.tmail.james.jmap.label.LabelRepository
 import com.linagora.tmail.james.jmap.method.LabelSetCreatePerformer.{LabelCreationFailure, LabelCreationResult, LabelCreationResults, LabelCreationSuccess}
 import com.linagora.tmail.james.jmap.model.{LabelCreationId, LabelCreationRequest, LabelCreationResponse, LabelSetRequest}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.mailbox.MailboxSession

@@ -1,6 +1,6 @@
 package com.linagora.tmail.webadmin;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;

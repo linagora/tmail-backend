@@ -5,7 +5,7 @@ import com.linagora.tmail.james.jmap.json.FirebaseSubscriptionSerializer
 import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetCreatePerformer.{CreationFailure, CreationResult, CreationResults, CreationSuccess, LOGGER}
 import com.linagora.tmail.james.jmap.model.{DeviceClientIdInvalidException, ExpireTimeInvalidException, FirebaseSubscriptionCreation, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationParseException, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionSetRequest, TokenInvalidException}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError}

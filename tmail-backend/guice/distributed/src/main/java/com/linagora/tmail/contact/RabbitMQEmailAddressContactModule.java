@@ -1,7 +1,7 @@
 package com.linagora.tmail.contact;
 
-import javax.inject.Named;
-import javax.inject.Provider;
+import jakarta.inject.Named;
+import jakarta.inject.Provider;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;

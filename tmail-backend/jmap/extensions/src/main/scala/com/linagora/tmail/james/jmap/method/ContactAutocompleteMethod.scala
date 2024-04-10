@@ -7,7 +7,7 @@ import com.linagora.tmail.james.jmap.json.ContactSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT
 import com.linagora.tmail.james.jmap.model.{Contact, ContactAutocompleteRequest, ContactAutocompleteResponse, ContactFirstname, ContactId, ContactSurname}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}

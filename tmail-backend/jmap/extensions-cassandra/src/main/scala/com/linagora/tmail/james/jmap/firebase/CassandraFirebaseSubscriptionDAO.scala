@@ -9,7 +9,7 @@ import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
 import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseToken}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.core.Username

@@ -8,7 +8,7 @@ import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscovery
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus._
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus}
-import javax.inject.{Inject, Named}
+import jakarta.inject.{Inject, Named}
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.ProblemDetails
 import org.apache.james.jmap.exceptions.UnauthorizedException

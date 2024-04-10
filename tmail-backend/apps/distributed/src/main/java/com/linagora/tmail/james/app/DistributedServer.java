@@ -6,7 +6,7 @@ import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.NotImplementedException;
@@ -15,7 +15,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.events.RabbitMQEventBus;
-import org.apache.james.eventsourcing.eventstore.cassandra.EventNestedTypes;
+import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.draft.JMAPListenerModule;
 import org.apache.james.json.DTO;

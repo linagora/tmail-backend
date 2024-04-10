@@ -6,7 +6,7 @@ import com.linagora.tmail.james.jmap.model.SettingsSet.OBJECT_ID
 import com.linagora.tmail.james.jmap.model.{SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
 import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, SettingsTypeName}
 import eu.timepit.refined.auto._
-import javax.inject.{Inject, Named}
+import jakarta.inject.{Inject, Named}
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.EventBus

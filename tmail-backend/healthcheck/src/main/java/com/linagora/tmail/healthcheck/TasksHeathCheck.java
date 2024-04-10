@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;

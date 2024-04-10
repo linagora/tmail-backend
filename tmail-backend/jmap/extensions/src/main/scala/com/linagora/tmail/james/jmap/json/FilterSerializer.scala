@@ -1,8 +1,8 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.ConditionCombiner.ConditionCombiner
-import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, ConditionCombiner, ConditionGroup, Field, Filter, FilterForward, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, Forward, KeepACopy, MailAddress, MarkAsImportant, MarkAsSeen, Reject, Rule, RuleWithId, SerializedRule, Update, WithKeywords}
-import javax.inject.Inject
+import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, ConditionCombiner, ConditionGroup, Field, Filter, FilterForward, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, KeepACopy, MailAddress, MarkAsImportant, MarkAsSeen, Reject, Rule, RuleWithId, SerializedRule, Update, WithKeywords}
+import jakarta.inject.Inject
 import org.apache.james.jmap.mail.{Keyword, Name}
 import org.apache.james.mailbox.model.MailboxId
 import play.api.libs.json.{Format, JsError, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}

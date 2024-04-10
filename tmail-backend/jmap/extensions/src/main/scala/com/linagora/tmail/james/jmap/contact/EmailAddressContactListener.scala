@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}
 import org.apache.james.jmap.api.model.AccountId

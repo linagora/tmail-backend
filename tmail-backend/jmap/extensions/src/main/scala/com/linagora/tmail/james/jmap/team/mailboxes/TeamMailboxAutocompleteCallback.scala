@@ -2,7 +2,7 @@ package com.linagora.tmail.james.jmap.team.mailboxes
 
 import com.linagora.tmail.james.jmap.contact.{ContactFields, EmailAddressContactSearchEngine}
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxCallback}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
 

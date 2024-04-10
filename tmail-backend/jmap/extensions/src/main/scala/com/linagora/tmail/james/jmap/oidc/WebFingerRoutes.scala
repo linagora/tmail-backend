@@ -10,7 +10,7 @@ import com.linagora.tmail.james.jmap.oidc.WebFingerRoutes.LOGGER
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, INTERNAL_SERVER_ERROR}
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus, QueryStringDecoder}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.commons.configuration2.Configuration
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.ProblemDetails

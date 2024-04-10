@@ -1,6 +1,6 @@
 package com.linagora.tmail.encrypted
 
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.Preview
 import org.apache.james.mailbox.model.ParsedAttachment
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser

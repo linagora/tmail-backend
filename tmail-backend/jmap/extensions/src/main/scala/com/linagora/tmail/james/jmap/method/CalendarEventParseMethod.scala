@@ -7,7 +7,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALEND
 import com.linagora.tmail.james.jmap.model.{CalendarEventParse, CalendarEventParseRequest, CalendarEventParseResponse, CalendarEventParseResults, CalendarEventParsed, InvalidCalendarFileException}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, Properties, SessionTranslator, UrlPrefixes}

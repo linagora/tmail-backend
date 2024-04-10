@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.method
 import java.io.{ByteArrayInputStream, InputStream}
 
 import com.linagora.tmail.encrypted.{EncryptedAttachmentBlobId, EncryptedEmailContentStore}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.blob.api.BlobStore
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.jmap.api.model.Size

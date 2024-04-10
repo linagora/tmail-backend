@@ -6,7 +6,7 @@ import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}

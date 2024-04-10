@@ -3,7 +3,7 @@ package com.linagora.tmail.team
 import java.util.Comparator
 
 import com.google.inject.{AbstractModule, Scopes}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.quota.search.scanning.ClauseConverter
 import org.apache.james.quota.search.{Limit, QuotaQuery, QuotaSearcher}

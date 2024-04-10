@@ -1,6 +1,6 @@
 package com.linagora.tmail.event;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;

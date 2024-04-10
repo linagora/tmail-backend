@@ -2,7 +2,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.james.jmap.label.LabelRepository
 import com.linagora.tmail.james.jmap.model.{LabelId, LabelNotFoundException, LabelPatchObject, LabelPatchUpdateValidationException, LabelSetRequest, LabelUpdateResponse, UnparsedLabelId, ValidatedLabelPatchObject}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.core.SetError

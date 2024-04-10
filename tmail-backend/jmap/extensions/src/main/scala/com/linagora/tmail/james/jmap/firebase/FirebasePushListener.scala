@@ -7,7 +7,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebasePushListener.{GROUP, LOGGE
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.isNotOutdatedSubscription
 import com.linagora.tmail.james.jmap.model.FirebaseSubscription
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}

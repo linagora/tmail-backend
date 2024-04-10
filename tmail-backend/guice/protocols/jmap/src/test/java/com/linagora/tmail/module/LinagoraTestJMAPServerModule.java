@@ -1,6 +1,6 @@
 package com.linagora.tmail.module;
 
-import javax.inject.Singleton;
+import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;

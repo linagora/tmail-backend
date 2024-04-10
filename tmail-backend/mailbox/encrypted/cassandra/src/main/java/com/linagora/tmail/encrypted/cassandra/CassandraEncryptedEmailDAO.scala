@@ -10,7 +10,7 @@ import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.encrypted.cassandra.table.EncryptedEmailTable.{ENCRYPTED_ATTACHMENT_METADATA, ENCRYPTED_HTML, ENCRYPTED_PREVIEW, HAS_ATTACHMENT, MESSAGE_ID, POSITION_BLOB_ID_MAPPING, TABLE_NAME}
 import com.linagora.tmail.encrypted.{EncryptedAttachmentMetadata, EncryptedEmailDetailedView, EncryptedHtml, EncryptedPreview}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.blob.api.{BlobId, BlobReferenceSource}
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId

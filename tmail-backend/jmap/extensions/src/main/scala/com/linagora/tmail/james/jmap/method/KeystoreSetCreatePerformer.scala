@@ -6,7 +6,7 @@ import com.linagora.tmail.encrypted.KeystoreManager
 import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.KeystoreSetCreatePerformer.{KeystoreCreationFailure, KeystoreCreationResult, KeystoreCreationResults, KeystoreCreationSuccess}
 import com.linagora.tmail.james.jmap.model.{KeystoreCreationId, KeystoreCreationRequest, KeystoreCreationResponse, KeystoreSetRequest}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.mailbox.MailboxSession

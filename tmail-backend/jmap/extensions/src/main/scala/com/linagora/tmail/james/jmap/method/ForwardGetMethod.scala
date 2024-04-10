@@ -7,7 +7,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWAR
 import com.linagora.tmail.james.jmap.model.Forwards.UNPARSED_SINGLETON
 import com.linagora.tmail.james.jmap.model.{ForwardGetRequest, ForwardGetResponse, ForwardNotFound, Forwards, UnparsedForwardId}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodCallId, MethodName}

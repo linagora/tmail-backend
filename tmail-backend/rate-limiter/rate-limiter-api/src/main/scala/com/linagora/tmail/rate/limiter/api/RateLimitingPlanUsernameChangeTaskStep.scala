@@ -1,6 +1,6 @@
 package com.linagora.tmail.rate.limiter.api
 
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.user.api.UsernameChangeTaskStep
 import org.apache.james.user.api.UsernameChangeTaskStep.StepName

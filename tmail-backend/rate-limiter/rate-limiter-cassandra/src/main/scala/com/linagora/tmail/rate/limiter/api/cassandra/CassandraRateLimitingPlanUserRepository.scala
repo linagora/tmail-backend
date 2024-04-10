@@ -3,7 +3,7 @@ package com.linagora.tmail.rate.limiter.api.cassandra
 import com.google.common.base.Preconditions
 import com.linagora.tmail.rate.limiter.api.cassandra.dao.CassandraRateLimitPlanUserDAO
 import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import reactor.core.scala.publisher.{SFlux, SMono}
 

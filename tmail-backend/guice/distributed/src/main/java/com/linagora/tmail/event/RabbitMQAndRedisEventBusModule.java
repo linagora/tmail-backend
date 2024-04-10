@@ -5,8 +5,8 @@ import static org.apache.james.events.NamingStrategy.JMAP_NAMING_STRATEGY;
 
 import java.io.FileNotFoundException;
 
-import javax.inject.Named;
-import javax.inject.Singleton;
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;

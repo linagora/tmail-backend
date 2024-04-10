@@ -13,10 +13,10 @@ import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MU
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.I18N_MAIL_TEMPLATE_LOCATION_PROPERTY
 import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarParticipantsField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException, LanguageLocation}
 import eu.timepit.refined.auto._
+import jakarta.annotation.PreDestroy
+import jakarta.inject.{Inject, Named}
 import jakarta.mail.internet.{InternetAddress, MimeMessage, MimeMultipart}
 import jakarta.mail.{Message, Part}
-import javax.annotation.PreDestroy
-import javax.inject.{Inject, Named}
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.parameter.PartStat

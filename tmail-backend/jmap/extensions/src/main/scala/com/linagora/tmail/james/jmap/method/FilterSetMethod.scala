@@ -8,7 +8,7 @@ import com.linagora.tmail.james.jmap.json.FilterSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
 import com.linagora.tmail.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId, Update}
 import eu.timepit.refined.auto._
-import javax.inject.{Inject, Named}
+import jakarta.inject.{Inject, Named}
 import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.EventBus

@@ -1,6 +1,6 @@
 package com.linagora.tmail.webadmin.archival;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.webadmin.tasks.TaskFromRequestRegistry;
 import org.apache.james.webadmin.tasks.TaskRegistrationKey;

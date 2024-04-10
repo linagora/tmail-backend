@@ -3,7 +3,7 @@ package com.linagora.tmail.mailbox;
 import java.io.IOException;
 import java.util.Date;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;

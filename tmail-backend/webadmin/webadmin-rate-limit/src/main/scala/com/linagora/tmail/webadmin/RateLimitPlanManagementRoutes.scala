@@ -8,7 +8,7 @@ import com.linagora.tmail.rate.limiter.api.OperationLimitations.{DELIVERY_LIMITA
 import com.linagora.tmail.rate.limiter.api.{LimitTypes, OperationLimitations, OperationLimitationsType, RateLimitation, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanId, RateLimitingPlanName, RateLimitingPlanNotFoundException, RateLimitingPlanRepository, RateLimitingPlanResetRequest}
 import com.linagora.tmail.webadmin.model.RateLimitingPlanCreateRequestDTO.{DELIVERY_LIMIT_KEY, RELAY_LIMIT_KEY, TRANSIT_LIMIT_KEY}
 import com.linagora.tmail.webadmin.model.{GetAllRateLimitPlanResponseDTO, OperationLimitationsDTO, RateLimitationDTO, RateLimitingPlanCreateRequestDTO, RateLimitingPlanDTO, RateLimitingPlanIdResponse, RateLimitingPlanResetRequestDTO}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.webadmin.Constants.SEPARATOR
 import org.apache.james.webadmin.Routes
 import org.apache.james.webadmin.utils.{ErrorResponder, JsonExtractor, JsonTransformer, Responses}

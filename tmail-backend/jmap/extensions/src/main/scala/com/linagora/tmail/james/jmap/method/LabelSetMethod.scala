@@ -5,7 +5,7 @@ import com.linagora.tmail.james.jmap.label.LabelChangesPopulate
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{LabelSetRequest, LabelSetResponse}
 import eu.timepit.refined.auto._
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.{AccountId => JavaAccountId}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}

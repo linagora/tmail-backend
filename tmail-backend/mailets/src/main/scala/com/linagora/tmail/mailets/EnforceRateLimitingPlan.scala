@@ -9,7 +9,7 @@ import com.google.common.collect.ImmutableList
 import com.linagora.tmail.mailets.EnforceRateLimitingPlan.{ACCEPTABLE_OPERATIONS, LIMIT_PER_RECIPIENTS_OPERATIONS, LIMIT_PER_SENDER_OPERATIONS}
 import com.linagora.tmail.rate.limiter.api.OperationLimitations.{DELIVERY_LIMITATIONS_NAME, RELAY_LIMITATIONS_NAME, TRANSIT_LIMITATIONS_NAME}
 import com.linagora.tmail.rate.limiter.api.{CacheRateLimitingPlan, OperationLimitations, RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanRepository, RateLimitingPlanUserRepository}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.lifecycle.api.LifecycleUtil
 import org.apache.james.metrics.api.GaugeRegistry

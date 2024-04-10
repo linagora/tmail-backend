@@ -4,7 +4,7 @@ import com.google.common.base.Preconditions
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsStateFactory.INITIAL
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UuidState

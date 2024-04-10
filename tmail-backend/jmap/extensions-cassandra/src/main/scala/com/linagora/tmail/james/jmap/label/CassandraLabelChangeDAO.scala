@@ -9,7 +9,7 @@ import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, insertInto, selectFrom}
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder.RowsPerPartition.rows
 import com.linagora.tmail.james.jmap.model.LabelId
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.backends.cassandra.utils.CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION

@@ -12,7 +12,7 @@ import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
-import javax.inject.Inject
+import jakarta.inject.Inject
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import net.javacrumbs.jsonunit.core.internal.Options
