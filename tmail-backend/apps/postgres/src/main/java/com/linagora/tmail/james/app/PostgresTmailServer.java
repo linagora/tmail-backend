@@ -124,6 +124,8 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
+import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.PostgresJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
@@ -166,6 +168,7 @@ public class PostgresTmailServer {
             .combineWith(chooseBlobStoreModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
+            .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .overrideWith(chooseSearchModules(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
@@ -393,6 +396,12 @@ public class PostgresTmailServer {
         }
     }
 
+    private static List<Module> chooseLinagoraServicesDiscovery(LinagoraServicesDiscoveryModuleChooserConfiguration moduleChooserConfiguration) {
+        if (moduleChooserConfiguration.enable()) {
+            return List.of(new LinagoraServicesDiscoveryModule());
+        }
+        return List.of();
+    }
 
     private static Module chooseMailbox(MailboxConfiguration mailboxConfiguration) {
         if (mailboxConfiguration.isEncryptionEnabled()) {
