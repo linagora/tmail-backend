@@ -10,7 +10,7 @@ import com.github.mustachejava.{DefaultMustacheFactory, MustacheFactory}
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.I18N_MAIL_TEMPLATE_LOCATION_PROPERTY
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY}
 import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarParticipantsField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException, LanguageLocation}
 import eu.timepit.refined.auto._
 import jakarta.annotation.PreDestroy
@@ -44,6 +44,7 @@ import scala.util.{Failure, Success, Try, Using}
 
 object CalendarEventReplyPerformer {
   val I18N_MAIL_TEMPLATE_LOCATION_PROPERTY: String = "calendarEvent.reply.mailTemplateLocation"
+  val I18N_MAIL_TEMPLATE_LOCATION_DEFAULT: String = "file://eml-template/"
   val SUPPORTED_LANGUAGES_PROPERTY: String = "calendarEvent.reply.supportedLanguages"
 }
 
@@ -54,10 +55,10 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarRe
                                             supportedLanguage: CalendarEventReplySupportedLanguage,
                                             usersRepository: UsersRepository) extends Startable {
 
-  private val mailReplyGenerator: CalendarEventMailReplyGenerator = Try(jmapConfiguration.getString(I18N_MAIL_TEMPLATE_LOCATION_PROPERTY))
+  private val mailReplyGenerator: CalendarEventMailReplyGenerator = Try(jmapConfiguration.getString(I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, I18N_MAIL_TEMPLATE_LOCATION_DEFAULT))
     .map(i18nEmlDirectory => new I18NCalendarEventReplyMessageGenerator(fileSystem, i18nEmlDirectory)) match {
     case Success(value) => new CalendarEventMailReplyGenerator(value)
-    case Failure(_) => throw new MissingArgumentException("JMAP CalendarEvent needs a " + I18N_MAIL_TEMPLATE_LOCATION_PROPERTY + " entry")
+    case Failure(error) => throw error;
   }
 
   var queue: MailQueue = _
