@@ -61,21 +61,4 @@ public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract {
         .extension(new ClockExtension())
         .build();
 
-    @Override
-    @Test
-    @Disabled("Flaky test. TODO stabilize it.")
-    public void listMailsShouldBeSortedWhenUsingTo(GuiceJamesServer server) {
-    }
-
-    @Override
-    @Test
-    @Disabled("Flaky test. TODO stabilize it.")
-    public void listMailsShouldBeSortedWhenUsingFrom(GuiceJamesServer server) {
-    }
-
-    @Override
-    @Test
-    @Disabled("Flaky test. TODO stabilize it.")
-    public void inMailboxOtherThanShouldBeRejectedWhenInOperator(GuiceJamesServer server) {
-    }
 }
