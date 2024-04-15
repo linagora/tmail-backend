@@ -255,6 +255,47 @@ class CalendarEventParsedTest {
     })
   }
 
+  @Test
+  def parseShouldSupportUnfolding(): Unit = {
+    val icsPayload =
+      s"""BEGIN:VCALENDAR
+         |PRODID:-//Google Inc//Google Calendar 70.9054//EN
+         |VERSION:2.0
+         |CALSCALE:GREGORIAN
+         |METHOD:REQUEST
+         |BEGIN:VEVENT
+         |DTSTART;VALUE=DATE:20240401
+         |DTEND;VALUE=DATE:20240402
+         |DTSTAMP:20240401T073652Z
+         |ORGANIZER:mailto:hoangdat.pham2911@gmail.com
+         |UID:7d8r01rdp8h2ivk2v1b4nlsnu9@google.com
+         |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+         | TRUE;CN=tddang@example.com;X-NUM-GUESTS=0:mailto:tddang@example.com
+         |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+         | TRUE;CN=dphamhoang@example.com;X-NUM-GUESTS=0:mailto:dphamhoang@linagora.c
+         | om
+         |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+         | ;X-NUM-GUESTS=0:mailto:hoangdat.pham2911@gmail.com
+         |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+         | TRUE;CN=tdvu@example.com;X-NUM-GUESTS=0:mailto:tdvu@example.com
+         |X-MICROSOFT-CDO-OWNERAPPTID:-1506694246
+         |CREATED:20240401T073650Z
+         |DESCRIPTION:&lt
+         |LAST-MODIFIED:20240401T073650Z
+         |LOCATION:
+         |SEQUENCE:0
+         |STATUS:CONFIRMED
+         |SUMMARY:test
+         |TRANSP:TRANSPARENT
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+    assertThat(calendarEventParsed.participants.list.size)
+      .isEqualTo(4)
+  }
+
   @Nested
   class RecurrenceRuleTest {
     @Test

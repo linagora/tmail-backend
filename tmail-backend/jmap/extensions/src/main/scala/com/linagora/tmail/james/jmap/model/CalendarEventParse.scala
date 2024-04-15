@@ -20,6 +20,7 @@ import net.fortuna.ical4j.model.WeekDay.Day
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.property.{Attendee, Clazz, ExRule, RRule, Status, Transp}
 import net.fortuna.ical4j.model.{Calendar, Month, NumberList, Parameter, Property, Recur, TimeZoneRegistryFactory}
+import net.fortuna.ical4j.util.CompatibilityHints
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
 import org.apache.james.jmap.core.{AccountId, Id, Properties, UTCDate, UnsignedInt}
@@ -505,6 +506,11 @@ case class RecurrenceRule(frequency: RecurrenceRuleFrequency,
 case class InvalidCalendarFileException(blobId: BlobId, originException: Throwable) extends RuntimeException
 
 object CalendarEventParsed {
+  val init : Unit =
+     if (Option(System.getProperty(CompatibilityHints.KEY_RELAXED_UNFOLDING, null)).isEmpty) {
+       CompatibilityHints.setHintEnabled(CompatibilityHints.KEY_RELAXED_UNFOLDING, true)
+     }
+
   def from(calendarContent: InputStream): List[CalendarEventParsed] =
     from(parseICal4jCalendar(calendarContent))
 
