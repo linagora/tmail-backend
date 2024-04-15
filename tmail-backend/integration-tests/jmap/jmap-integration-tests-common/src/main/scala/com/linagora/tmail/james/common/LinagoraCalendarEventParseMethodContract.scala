@@ -237,13 +237,14 @@ trait LinagoraCalendarEventParseMethodContract {
            |                            "0"
            |                        ]
            |                    },
+           |                    "title": "[SV] point cassandra",
            |                    "end": "2023-09-22T17:00:00",
            |                    "start": "2023-09-22T16:00:00",
            |                    "timeZone": "Europe/Paris",
            |                    "excludedRecurrenceRules": [],
            |                    "privacy": "public",
            |                    "utcStart": "2023-09-22T14:00:00Z",
-           |                    "uid": "040000008200E00074C5B7101A82E00800000000602312E836EDD901000000000000000"
+           |                    "uid": "040000008200E00074C5B7101A82E00800000000602312E836EDD90100000000000000001000000009C40B24EBC55C49B5E76D3C60DFC74F"
            |                }
            |            ]
            |        }

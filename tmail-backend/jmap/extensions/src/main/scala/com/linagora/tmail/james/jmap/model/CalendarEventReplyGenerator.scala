@@ -8,11 +8,12 @@ import net.fortuna.ical4j.model.component.{VEvent, VTimeZone}
 import net.fortuna.ical4j.model.parameter.{Cn, CuType, PartStat, Role}
 import net.fortuna.ical4j.model.property.{Attendee, DtStamp, LastModified, Method}
 import net.fortuna.ical4j.model.{Calendar, DateTime, Property, PropertyList}
+import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.MailAddress
 
 import scala.jdk.CollectionConverters._
 
-case class AttendeeReply(attendee: MailAddress, partStat: PartStat, cn : Option[Cn] = None)
+case class AttendeeReply(attendee: MailAddress, partStat: PartStat, cn: Option[Cn] = None)
 
 object CalendarEventReplyGenerator {
 
@@ -25,11 +26,6 @@ object CalendarEventReplyGenerator {
 
     val requestVEvent: VEvent = requestVEventOpt.get
     val timeZone: Option[VTimeZone] = requestVEvent.getComponents[VTimeZone]("VTIMEZONE").asScala.headOption
-
-    val attendeeInRequest: Option[Attendee] = requestVEvent.getProperties[Attendee]("ATTENDEE").asScala.toSeq
-      .find(attendee => attendeeReply.attendee.asString().equals(attendee.getCalAddress.getSchemeSpecificPart))
-
-    Preconditions.checkArgument(attendeeInRequest.isDefined, "Can not reply when not invited to attend".asInstanceOf[Object])
 
     def notProperties(properties: String*): Predicate[Property] = property => !properties.contains(property.getName)
 
@@ -48,6 +44,18 @@ object CalendarEventReplyGenerator {
 
         propertyList
       }).get
+
+    val validationResult: Seq[ValidationResult] = replyProperty.asScala
+      .map(_.validate())
+      .filter(_.hasErrors)
+      .toSeq
+
+    Preconditions.checkArgument(validationResult.isEmpty, s"Invalidate calendar event: ${validationResultAsString(validationResult)}".asInstanceOf[Object])
+
+    val attendeeInRequest: Option[Attendee] = requestVEvent.getProperties[Attendee]("ATTENDEE").asScala.toSeq
+      .find(attendee => attendeeReply.attendee.asString().equals(attendee.getCalAddress.getSchemeSpecificPart))
+
+    Preconditions.checkArgument(attendeeInRequest.isDefined, "Can not reply when not invited to attend".asInstanceOf[Object])
 
     val calendar = new Calendar()
       .withDefaults()
@@ -69,4 +77,7 @@ object CalendarEventReplyGenerator {
         attendeeReply.cn.map(cn => attendee.withParameter(cn))
         attendee
       }).get.getFluentTarget
+
+  private def validationResultAsString(input: Seq[ValidationResult]): String =
+    input.flatMap(_.getEntries.asScala.toSeq).map(error => s"${error.getContext} : ${error.getMessage}").mkString(";")
 }
