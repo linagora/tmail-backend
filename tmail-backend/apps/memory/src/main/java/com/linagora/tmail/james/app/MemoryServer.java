@@ -11,7 +11,7 @@ import org.apache.james.FakeSearchMailboxModule;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.data.UsersRepositoryModuleChooser;
-import org.apache.james.jmap.draft.JMAPListenerModule;
+import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.modules.BlobExportMechanismModule;

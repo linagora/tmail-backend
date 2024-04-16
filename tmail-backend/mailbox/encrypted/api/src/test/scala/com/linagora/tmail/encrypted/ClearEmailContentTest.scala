@@ -5,7 +5,7 @@ import java.util.stream.IntStream
 
 import com.google.common.io.ByteSource
 import org.apache.james.jmap.api.model.Preview
-import org.apache.james.jmap.draft.utils.JsoupHtmlTextExtractor
+import org.apache.james.jmap.utils.JsoupHtmlTextExtractor
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser
 import org.apache.james.mime4j.dom.{Message, Multipart}
 import org.apache.james.mime4j.message.{BasicBodyFactory, BodyPartBuilder, MultipartBuilder}

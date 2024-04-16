@@ -17,7 +17,7 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
-import org.apache.james.jmap.draft.JMAPListenerModule;
+import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
