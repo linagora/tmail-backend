@@ -11,7 +11,7 @@ import reactor.core.scala.publisher.SMono
 class EmailAddressContactListener @Inject()(contactSearchEngine: EmailAddressContactSearchEngine) extends ReactiveGroupEventListener {
   private val LOGGER: Logger = LoggerFactory.getLogger(classOf[EmailAddressContactListener])
 
-  override def getDefaultGroup: Group = PushListenerGroup()
+  override def getDefaultGroup: Group = EmailAddressContactListenerGroup()
 
   override def reactiveEvent(event: Event): Publisher[Void] = {
     event match {
@@ -28,4 +28,4 @@ class EmailAddressContactListener @Inject()(contactSearchEngine: EmailAddressCon
       .`then`()
 }
 
-case class PushListenerGroup() extends Group {}
+case class EmailAddressContactListenerGroup() extends Group {}
