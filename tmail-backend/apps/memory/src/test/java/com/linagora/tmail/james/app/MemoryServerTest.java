@@ -7,7 +7,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.MailsShouldBeWellReceived;
-import org.apache.james.jmap.draft.JmapJamesServerContract;
+import org.apache.james.jmap.JmapJamesServerContract;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Disabled;

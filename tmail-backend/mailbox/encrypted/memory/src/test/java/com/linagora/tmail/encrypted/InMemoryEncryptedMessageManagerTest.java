@@ -15,7 +15,7 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.HashBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreDAO;
 import org.apache.james.jmap.api.model.Preview;
-import org.apache.james.jmap.draft.utils.JsoupHtmlTextExtractor;
+import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;

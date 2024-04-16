@@ -30,7 +30,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
-import org.apache.james.jmap.draft.JmapJamesServerContract;
+import org.apache.james.jmap.JmapJamesServerContract;
 import org.apache.james.jmap.http.UserCredential;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.modules.MailboxProbeImpl;

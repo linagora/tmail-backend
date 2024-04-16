@@ -54,7 +54,7 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>james-server-jmap-draft</artifactId>
+            <artifactId>james-server-jmap-rfc-8621</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>

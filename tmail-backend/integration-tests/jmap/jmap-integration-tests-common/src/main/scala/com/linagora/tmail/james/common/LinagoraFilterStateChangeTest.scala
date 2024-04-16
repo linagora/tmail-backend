@@ -4,7 +4,7 @@ import java.net.URI
 
 import io.restassured.RestAssured.requestSpecification
 import org.apache.james.GuiceJamesServer
-import org.apache.james.jmap.draft.JmapGuiceProbe
+import org.apache.james.jmap.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.receiveMessageInTimespan
