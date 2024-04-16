@@ -2,7 +2,7 @@ package com.linagora.tmail.rate.limiter.api.postgres;
 
 import java.util.List;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.reactivestreams.Publisher;
 
