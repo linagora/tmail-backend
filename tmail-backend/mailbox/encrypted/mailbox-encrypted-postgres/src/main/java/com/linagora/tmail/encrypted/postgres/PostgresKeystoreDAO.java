@@ -8,8 +8,8 @@ import static com.linagora.tmail.encrypted.postgres.table.PostgresKeystoreModule
 
 import java.util.Optional;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.apache.james.core.Domain;
