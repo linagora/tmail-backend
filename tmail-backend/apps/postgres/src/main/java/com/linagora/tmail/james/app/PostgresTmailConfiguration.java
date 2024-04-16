@@ -9,7 +9,7 @@ import org.apache.james.PostgresJamesConfiguration;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
-import org.apache.james.jmap.draft.JMAPModule;
+import org.apache.james.jmap.JMAPModule;
 import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;

@@ -3,7 +3,7 @@ package com.linagora.tmail.rate.limiter.api.postgres.repository
 import com.google.common.base.Preconditions
 import com.linagora.tmail.rate.limiter.api.postgres.dao.PostgresRateLimitPlanUserDAO
 import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
-import javax.inject.{Inject, Named}
+import jakarta.inject.{Inject, Named}
 import org.apache.james.backends.postgres.utils.PostgresExecutor
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
