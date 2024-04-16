@@ -11,7 +11,7 @@ import static com.linagora.tmail.encrypted.postgres.table.PostgresEncryptedEmail
 import java.util.Map;
 import java.util.Optional;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.apache.james.blob.api.BlobId;
