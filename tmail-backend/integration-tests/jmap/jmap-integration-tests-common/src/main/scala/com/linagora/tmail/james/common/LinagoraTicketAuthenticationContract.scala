@@ -10,9 +10,9 @@ import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.jmap.JmapGuiceProbe
 import org.apache.james.jmap.core.JmapRfc8621Configuration
 import org.apache.james.jmap.core.JmapRfc8621Configuration.{UPLOAD_LIMIT_DEFAULT, URL_PREFIX_DEFAULT, WEBSOCKET_URL_PREFIX_DEFAULT}
-import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, baseRequestSpecBuilder, getHeadersWith}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
