@@ -290,6 +290,7 @@ public class DistributedServer {
             new CassandraRateLimitingModule(),
             new CassandraJmapSettingsRepositoryModule(),
             new DistributedEmailAddressContactEventModule(),
+            new DistributedEmailAddressContactEventDeadLettersModule(),
             new DistributedTaskSerializationModule(),
             new JMAPEventBusModule(),
             new RabbitMQEmailAddressContactModule(),
