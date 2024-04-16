@@ -110,7 +110,7 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     RabbitMQAndRedisEventBus provideEmailAddressContactEventBus(Sender sender, ReceiverProvider receiverProvider,
                                                                 TmailJmapEventSerializer eventSerializer,
                                                                 RetryBackoffConfiguration retryBackoffConfiguration,
-                                                                EventDeadLetters eventDeadLetters,
+                                                                @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventDeadLetters eventDeadLetters,
                                                                 MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
                                                                 @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBusId eventBusId,
                                                                 RabbitMQConfiguration configuration,
