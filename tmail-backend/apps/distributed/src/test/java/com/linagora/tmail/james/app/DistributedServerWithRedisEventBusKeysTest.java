@@ -8,7 +8,7 @@ import org.apache.james.JamesServerConcreteContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
-import org.apache.james.jmap.draft.JmapJamesServerContract;
+import org.apache.james.jmap.JmapJamesServerContract;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.utils.GuiceProbe;

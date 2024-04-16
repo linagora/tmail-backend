@@ -24,11 +24,11 @@ import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.core.quota.{QuotaCountLimit, QuotaSizeLimit}
+import org.apache.james.jmap.JmapGuiceProbe
 import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.{PushState, UTCDate, UuidState}
-import org.apache.james.jmap.draft.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
@@ -54,6 +54,7 @@ import sttp.client3.{Identity, RequestT, SttpBackend, asWebSocket, basicRequest}
 import sttp.model.Uri
 import sttp.monad.MonadError
 import sttp.ws.WebSocketFrame
+
 object TeamMailboxesContract {
   private var webAdminApi: RequestSpecification = _
 }

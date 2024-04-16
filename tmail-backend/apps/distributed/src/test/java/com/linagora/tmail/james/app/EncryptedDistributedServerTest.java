@@ -10,7 +10,7 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.blob.api.BlobStoreDAO;
-import org.apache.james.jmap.draft.JmapJamesServerContract;
+import org.apache.james.jmap.JmapJamesServerContract;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Disabled;
