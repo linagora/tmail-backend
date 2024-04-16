@@ -298,7 +298,8 @@ public class PostgresTmailServer {
     );
 
     private static final Module RABBITMQ_EVENT_BUS_FEATURE_MODULE = Modules.combine(
-        new DistributedEmailAddressContactEventModule());
+        new DistributedEmailAddressContactEventModule(),
+        new PostgresEmailAddressContactEventDeadLettersModule());
 
     public static Module chooseEventBusModules(PostgresTmailConfiguration configuration) {
         return switch (configuration.eventBusImpl()) {
