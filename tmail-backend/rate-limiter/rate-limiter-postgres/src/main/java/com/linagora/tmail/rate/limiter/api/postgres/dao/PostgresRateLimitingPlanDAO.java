@@ -9,7 +9,7 @@ import static com.linagora.tmail.rate.limiter.api.postgres.table.PostgresRateLim
 import java.util.List;
 import java.util.function.Function;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.jooq.JSON;

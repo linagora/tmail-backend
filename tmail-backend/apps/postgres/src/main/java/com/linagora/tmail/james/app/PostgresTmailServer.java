@@ -11,7 +11,7 @@ import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
-import org.apache.james.jmap.draft.JMAPListenerModule;
+import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;

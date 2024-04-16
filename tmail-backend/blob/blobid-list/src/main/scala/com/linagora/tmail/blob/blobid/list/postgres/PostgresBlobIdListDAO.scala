@@ -1,7 +1,7 @@
 package com.linagora.tmail.blob.blobid.list.postgres
 
 import com.linagora.tmail.blob.blobid.list.postgres.PostgresBlobIdListModule.{BLOB_ID, TABLE_NAME}
-import javax.inject.Inject
+import jakarta.inject.Inject
 import org.apache.james.backends.postgres.utils.PostgresExecutor
 import org.apache.james.blob.api.BlobId
 import reactor.core.publisher.Mono

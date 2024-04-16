@@ -2,7 +2,7 @@ package com.linagora.tmail.encrypted.postgres;
 
 import java.io.ByteArrayInputStream;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
