@@ -574,6 +574,10 @@
                                         <from>src/main/extensions-jars</from>
                                         <into>/root/extensions-jars</into>
                                     </path>
+                                    <path>
+                                        <from>src/main/eml-template</from>
+                                        <into>/root/eml-template</into>
+                                    </path>
                                 </paths>
                                 <permissions>
                                     <permission>
