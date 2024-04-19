@@ -1,5 +1,6 @@
 package com.linagora.tmail.pgp;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.stream.Stream;
@@ -78,8 +79,9 @@ public class Decrypter {
         Object message = retrieveMessage(plainFact);
 
         if (message instanceof PGPLiteralData literalData) {
+            byte[] bytes = literalData.getInputStream().readAllBytes();
             assertIntegrity(pgpPublicKeyEncryptedData);
-            return Stream.of(literalData.getInputStream());
+            return Stream.of(new ByteArrayInputStream(bytes));
         }
         throw new PGPException("message is not a simple encrypted file - type unknown.");
     }
