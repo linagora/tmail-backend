@@ -10,6 +10,7 @@ import static org.awaitility.Durations.TEN_SECONDS;
 import static org.mockito.Mockito.mock;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +50,7 @@ class RabbitMQEmailAddressContactSubscriberTest {
 
 
     @BeforeEach
-    void setup() {
+    void setup() throws URISyntaxException {
         String aqmpSuffix = UUID.randomUUID().toString();
         String aqmpContactQueue = "AddressContactQueueForTesting" + aqmpSuffix;
 
@@ -63,7 +64,8 @@ class RabbitMQEmailAddressContactSubscriberTest {
         subscriber = new RabbitMQEmailAddressContactSubscriber(rabbitMQExtension.getReceiverProvider(),
             rabbitMQExtension.getSender(),
             rabbitMQEmailAddressContactConfiguration,
-            new EmailAddressContactMessageHandler(searchEngine));
+            new EmailAddressContactMessageHandler(searchEngine),
+            rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration());
         subscriber.start();
     }
 
