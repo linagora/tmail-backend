@@ -419,6 +419,18 @@ class RedisPlaygroundTest {
             // The message has been received by only consumer 1. Consumer 2 does not connect / subscribe to the channel when the message is being fired and forget, therefore it does not receive the message.
             assertThat(receivedConsumersCount).isEqualTo(1L);
         }
+
+        @Test
+        void publishMessageToANonExistingChannelShouldNotFail(DockerRedis redis) {
+            String nonExistingChannel = "testChannel1000";
+            String message = "Hello, Lettuce Redis Pub/Sub!";
+
+            Long consumersReceivedCount = createRawRedisClient(redis).connectPubSub().reactive()
+                .publish(nonExistingChannel, message)
+                .block();
+
+            assertThat(consumersReceivedCount).isEqualTo(0);
+        }
     }
 
     private void publishMessageToRedisStream(RedisCommands<String, String> redisCommands, String redisStream) {
