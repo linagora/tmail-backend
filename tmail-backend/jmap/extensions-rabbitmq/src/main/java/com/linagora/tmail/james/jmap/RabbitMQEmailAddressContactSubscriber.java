@@ -3,6 +3,7 @@ package com.linagora.tmail.james.jmap;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.apache.james.backends.rabbitmq.Constants.REQUEUE;
+import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
@@ -12,12 +13,12 @@ import java.util.Optional;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.lifecycle.api.Startable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.jmap.contact.ContactMessageHandlerResult;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactMessageHandler;
 import com.linagora.tmail.james.jmap.contact.Failure;
@@ -38,46 +39,51 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQEmailAddressContactSubscriber.class);
 
-    private final RabbitMQEmailAddressContactConfiguration rabbitMQConfiguration;
+    private final RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration;
     private final ReceiverProvider receiverProvider;
     private final EmailAddressContactMessageHandler messageHandler;
     private final Sender sender;
+    private final RabbitMQConfiguration commonRabbitMQConfiguration;
     private Disposable messageConsume;
 
     @Inject
     public RabbitMQEmailAddressContactSubscriber(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) ReceiverProvider receiverProvider,
                                                  @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) Sender sender,
                                                  RabbitMQEmailAddressContactConfiguration configuration,
-                                                 EmailAddressContactMessageHandler messageHandler) {
-        this.rabbitMQConfiguration = configuration;
+                                                 EmailAddressContactMessageHandler messageHandler,
+                                                 RabbitMQConfiguration commonRabbitMQConfiguration) {
+        this.rabbitMQEmailAddressContactConfiguration = configuration;
         this.receiverProvider = receiverProvider;
         this.messageHandler = messageHandler;
         this.sender = sender;
+        this.commonRabbitMQConfiguration = commonRabbitMQConfiguration;
     }
 
     public void start() {
         Flux.concat(
-                sender.declareExchange(ExchangeSpecification.exchange(rabbitMQConfiguration.getExchangeName())
+                sender.declareExchange(ExchangeSpecification.exchange(rabbitMQEmailAddressContactConfiguration.getExchangeName())
                     .durable(DURABLE)),
-                sender.declareExchange(ExchangeSpecification.exchange(rabbitMQConfiguration.getDeadLetterExchange())
+                sender.declareExchange(ExchangeSpecification.exchange(rabbitMQEmailAddressContactConfiguration.getDeadLetterExchange())
                     .durable(DURABLE)),
                 sender.declareQueue(QueueSpecification
-                    .queue(rabbitMQConfiguration.queueName())
-                    .durable(DURABLE)
-                    .arguments(ImmutableMap.<String, Object>builder()
-                        .put("x-dead-letter-exchange", rabbitMQConfiguration.getDeadLetterExchange())
+                    .queue(rabbitMQEmailAddressContactConfiguration.queueName())
+                    .durable(evaluateDurable(DURABLE, commonRabbitMQConfiguration.isQuorumQueuesUsed()))
+                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder()
+                        .put("x-dead-letter-exchange", rabbitMQEmailAddressContactConfiguration.getDeadLetterExchange())
                         .put("x-dead-letter-routing-key", EMPTY_ROUTING_KEY)
                         .build())),
                 sender.declareQueue(QueueSpecification
-                    .queue(rabbitMQConfiguration.getDeadLetterQueue())
-                    .durable(DURABLE)),
+                    .queue(rabbitMQEmailAddressContactConfiguration.getDeadLetterQueue())
+                    .durable(evaluateDurable(DURABLE, commonRabbitMQConfiguration.isQuorumQueuesUsed()))
+                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder()
+                        .build())),
                 sender.bind(BindingSpecification.binding()
-                    .exchange(rabbitMQConfiguration.getExchangeName())
-                    .queue(rabbitMQConfiguration.queueName())
+                    .exchange(rabbitMQEmailAddressContactConfiguration.getExchangeName())
+                    .queue(rabbitMQEmailAddressContactConfiguration.queueName())
                     .routingKey(EMPTY_ROUTING_KEY)),
                 sender.bind(BindingSpecification.binding()
-                    .exchange(rabbitMQConfiguration.getDeadLetterExchange())
-                    .queue(rabbitMQConfiguration.getDeadLetterQueue())
+                    .exchange(rabbitMQEmailAddressContactConfiguration.getDeadLetterExchange())
+                    .queue(rabbitMQEmailAddressContactConfiguration.getDeadLetterQueue())
                     .routingKey(EMPTY_ROUTING_KEY)))
             .then()
             .block();
@@ -87,7 +93,7 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
 
     public Flux<AcknowledgableDelivery> delivery() {
         return Flux.using(receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(rabbitMQConfiguration.queueName()),
+            receiver -> receiver.consumeManualAck(rabbitMQEmailAddressContactConfiguration.queueName()),
             Receiver::close);
     }
 

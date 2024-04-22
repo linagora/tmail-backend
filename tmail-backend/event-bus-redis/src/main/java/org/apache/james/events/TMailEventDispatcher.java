@@ -6,7 +6,9 @@ import static org.apache.james.backends.rabbitmq.Constants.DIRECT_EXCHANGE;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.apache.james.backends.rabbitmq.Constants.EXCLUSIVE;
-import static org.apache.james.backends.rabbitmq.QueueArguments.NO_ARGUMENTS;
+import static org.apache.james.backends.rabbitmq.Constants.evaluateAutoDelete;
+import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
+import static org.apache.james.backends.rabbitmq.Constants.evaluateExclusive;
 import static org.apache.james.events.RabbitMQAndRedisEventBus.EVENT_BUS_ID;
 
 import java.time.Duration;
@@ -88,10 +90,11 @@ public class TMailEventDispatcher {
                 .durable(DURABLE)
                 .type(DIRECT_EXCHANGE)),
             sender.declareQueue(namingStrategy.deadLetterQueue()
-                .durable(DURABLE)
-                .exclusive(!EXCLUSIVE)
-                .autoDelete(!AUTO_DELETE)
-                .arguments(NO_ARGUMENTS)),
+                .durable(evaluateDurable(DURABLE, configuration.isQuorumQueuesUsed()))
+                .exclusive(evaluateExclusive(!EXCLUSIVE, configuration.isQuorumQueuesUsed()))
+                .autoDelete(evaluateAutoDelete(!AUTO_DELETE, configuration.isQuorumQueuesUsed()))
+                .arguments(configuration.workQueueArgumentsBuilder()
+                    .build())),
             sender.bind(BindingSpecification.binding()
                 .exchange(namingStrategy.deadLetterExchange())
                 .queue(namingStrategy.deadLetterQueue().getName())
