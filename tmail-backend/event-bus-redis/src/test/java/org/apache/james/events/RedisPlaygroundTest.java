@@ -84,6 +84,18 @@ class RedisPlaygroundTest {
         }
 
         @Test
+        void reAddExistingElementToASetShouldNotFailAndNotDuplicateTheElement(DockerRedis redis) {
+            RedisCommands<String, String> client = redis.createClient();
+            String key = "KEY1";
+            String value1 = "Value1";
+            client.sadd(key, value1);
+
+            client.sadd(key, value1);
+
+            assertThat(client.smembers(key)).containsOnly(value1);
+        }
+
+        @Test
         void getANonExistingSetShouldReturnEmpty(DockerRedis redis) {
             RedisCommands<String, String> client = redis.createClient();
             String nonExistingKey = "KEY1";
