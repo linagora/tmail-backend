@@ -167,12 +167,17 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
         .flatMap(attachmentPart => bodyPartContentGenerator.getBasedMimeMessage(language, attendeeReply, calendarRequest)
           .map(decoratedMimeMessage => appendAttachmentPartToMail(attachmentPart, decoratedMimeMessage)))
         .map(mimeMessage => addHeaderToMimeMessage(recipient, attendeeReply.attendee, mimeMessage))
-        .map(mimeMessage => MailImpl.builder()
-          .name(generateMailName())
-          .sender(attendeeReply.attendee.asString())
-          .addRecipients(recipient)
-          .mimeMessage(mimeMessage)
-          .build()))
+        .map(mimeMessage => {
+          val mailImpl = MailImpl.builder()
+            .name(generateMailName())
+            .sender(attendeeReply.attendee.asString())
+            .addRecipients(recipient)
+            .mimeMessage(mimeMessage)
+            .build()
+          LifecycleUtil.dispose(mimeMessage)
+          mailImpl
+        }))
+      .subscribeOn(Schedulers.boundedElastic())
 
   private def generateAttachmentPart(calendarRequest: Calendar, attendeeReply: AttendeeReply): SMono[Seq[BodyPartBuilder]] =
     SMono.fromCallable(() => CalendarEventReplyGenerator.generate(calendarRequest, attendeeReply))
