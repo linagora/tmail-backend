@@ -17,8 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.lettuce.core.Consumer;
+import io.lettuce.core.KeyScanArgs;
 import io.lettuce.core.RedisClient;
-import io.lettuce.core.ScanArgs;
 import io.lettuce.core.ScanCursor;
 import io.lettuce.core.StreamMessage;
 import io.lettuce.core.XGroupCreateArgs;
@@ -122,30 +122,45 @@ class RedisPlaygroundTest {
         @Test
         void cleanMappingsToInactiveChannels(DockerRedis redis) {
             RedisCommands<String, String> client = redis.createClient();
-            String nonRelatedKey = "nonRelatedKey";
-            String routingKey1 = "redis-eventbus-routingKey1";
-            List<String> activeChannels = List.of("activeChannel1", "activeChannel2");
-            client.sadd(nonRelatedKey, "whateverValue");
-            client.sadd(routingKey1, "activeChannel1", "inactiveChannel");
+
+            // assume having active channels using PUBSUB CHANNELS command
+            String activeChannel1 = "mailboxEvent-eventbus-178c5bf9-67ce-4013-9500-f4be557260a8";
+            String activeChannel2 = "emailAddressContactEvent-eventbus-33e7bbc4-715d-4bd2-a04d-fcb251721ccf";
+            String inactiveChannel = "jmapEvent-eventbus-eba72423-26be-4275-ab0a-88b59e790826";
+            List<String> activeChannels = List.of(activeChannel1, activeChannel2);
+
+            // provision some event bus mappings
+            String nonRelatedSetKey = "nonRelatedSetKey";
+            String routingKey1 = "mailboxId1";
+            client.sadd(nonRelatedSetKey, "whateverValue");
+            client.sadd(routingKey1, activeChannel1, activeChannel2, inactiveChannel);
 
             // before clean up
-            assertThat(client.smembers(routingKey1)).contains("inactiveChannel");
+            assertThat(client.smembers(routingKey1)).contains(inactiveChannel);
 
             // clean up
-            ScanArgs scanEventBusKeys = ScanArgs.Builder.matches("redis-eventbus-*");
-            List<String> eventBusKeys = client.scan(ScanCursor.INITIAL, scanEventBusKeys)
+            KeyScanArgs scanRedisSetKeys = KeyScanArgs.Builder
+                .type("set");
+            List<String> setKeys = client.scan(ScanCursor.INITIAL, scanRedisSetKeys)
                 .getKeys();
 
-            eventBusKeys.forEach(key -> {
-                client.smembers(key).forEach(channel -> {
-                    if (!activeChannels.contains(channel)) {
-                        client.srem(key, channel);
-                    }
-                });
+            setKeys.forEach(key -> {
+                if (isEventBusKey(key)) {
+                    client.smembers(key).forEach(channel -> {
+                        if (!activeChannels.contains(channel)) {
+                            client.srem(key, channel);
+                        }
+                    });
+                }
             });
 
-            // after clean up mapping to inactive channels
-            assertThat(client.smembers(routingKey1)).doesNotContain("inactiveChannel");
+            // after clean up mapping to the inactive channel
+            assertThat(client.smembers(routingKey1)).doesNotContain(inactiveChannel);
+        }
+
+        private boolean isEventBusKey(String value) {
+            // in reality we could use RoutingKeyConverter::toRegistrationKey to know if it is a RegistrationKey.
+            return value.contains("mailboxId");
         }
     }
 
