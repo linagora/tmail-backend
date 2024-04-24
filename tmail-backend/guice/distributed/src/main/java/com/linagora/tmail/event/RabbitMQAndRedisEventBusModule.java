@@ -13,6 +13,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.backends.redis.RedisConfiguration;
+import org.apache.james.events.CleanRedisEventBusService;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventDeadLetters;
@@ -25,6 +26,7 @@ import org.apache.james.jmap.change.Factory;
 import org.apache.james.jmap.change.JmapEventSerializer;
 import org.apache.james.jmap.pushsubscription.PushListener;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.util.ReactorUtils;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
@@ -81,10 +83,15 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    InitializationOperation workQueue(RabbitMQAndRedisEventBus instance) {
+    InitializationOperation workQueue(RabbitMQAndRedisEventBus instance, CleanRedisEventBusService cleanRedisEventBusService) {
         return InitilizationOperationBuilder
             .forClass(RabbitMQAndRedisEventBus.class)
-            .init(instance::start);
+            .init(() -> {
+                instance.start();
+                cleanRedisEventBusService.cleanUp()
+                    .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+                    .subscribe();
+            });
     }
 
     @Provides

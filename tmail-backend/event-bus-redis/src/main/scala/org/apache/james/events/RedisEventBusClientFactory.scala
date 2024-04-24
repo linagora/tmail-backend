@@ -2,7 +2,7 @@ package org.apache.james.events
 
 import java.util
 
-import io.lettuce.core.api.reactive.RedisSetReactiveCommands
+import io.lettuce.core.api.reactive.{RedisKeyReactiveCommands, RedisSetReactiveCommands}
 import io.lettuce.core.cluster.RedisClusterClient
 import io.lettuce.core.pubsub.api.reactive.RedisPubSubReactiveCommands
 import io.lettuce.core.{AbstractRedisClient, RedisClient, RedisURI}
@@ -31,6 +31,15 @@ class RedisEventBusClientFactory @Singleton() @Inject()
     }
 
   def createRedisSetCommand(): RedisSetReactiveCommands[String, String] =
+    if (redisConfiguration.isCluster) {
+      rawRedisClient.asInstanceOf[RedisClusterClient]
+        .connect().reactive()
+    } else {
+      rawRedisClient.asInstanceOf[RedisClient]
+        .connect().reactive()
+    }
+
+  def createRedisKeyCommand(): RedisKeyReactiveCommands[String, String] =
     if (redisConfiguration.isCluster) {
       rawRedisClient.asInstanceOf[RedisClusterClient]
         .connect().reactive()

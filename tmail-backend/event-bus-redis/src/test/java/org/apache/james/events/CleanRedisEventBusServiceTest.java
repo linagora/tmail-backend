@@ -1,0 +1,162 @@
+package org.apache.james.events;
+
+import static org.apache.james.events.EventBusTestFixture.ALL_GROUPS;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.stream.Stream;
+
+import org.apache.james.backends.rabbitmq.RabbitMQExtension;
+import org.apache.james.backends.redis.DockerRedis;
+import org.apache.james.backends.redis.RedisConfiguration;
+import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
+import io.lettuce.core.api.sync.RedisCommands;
+import reactor.core.publisher.Mono;
+import reactor.rabbitmq.ExchangeSpecification;
+import reactor.rabbitmq.QueueSpecification;
+
+class CleanRedisEventBusServiceTest {
+    private static final NamingStrategy TEST_NAMING_STRATEGY = new NamingStrategy(new EventBusName("test"));
+
+    @RegisterExtension
+    static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
+        .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
+
+    @RegisterExtension
+    static RedisExtension redisExtension = new RedisExtension();
+
+    private final RoutingKeyConverter routingKeyConverter = RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory());
+    private final CleanRedisEventBusService service = new CleanRedisEventBusService(new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)),
+        RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()));
+
+    private RabbitMQAndRedisEventBus eventBus1;
+    private RabbitMQAndRedisEventBus eventBus2;
+    private RabbitMQAndRedisEventBus eventBus3;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        eventBus1 = newEventBus();
+        eventBus2 = newEventBus();
+        eventBus3 = newEventBus();
+
+        eventBus1.start();
+        eventBus2.start();
+        eventBus3.start();
+    }
+
+    @AfterEach
+    void tearDown() {
+        eventBus1.stop();
+        eventBus2.stop();
+        eventBus3.stop();
+        Stream.concat(
+                ALL_GROUPS.stream(),
+                Stream.of(GroupRegistrationHandler.GROUP))
+            .map(TEST_NAMING_STRATEGY::workQueue)
+            .forEach(queueName -> rabbitMQExtension.getSender().delete(QueueSpecification.queue(queueName.asString())).block());
+        rabbitMQExtension.getSender()
+            .delete(ExchangeSpecification.exchange(TEST_NAMING_STRATEGY.exchange()))
+            .block();
+        rabbitMQExtension.getSender()
+            .delete(TEST_NAMING_STRATEGY.deadLetterQueue())
+            .block();
+    }
+
+    private RabbitMQAndRedisEventBus newEventBus() throws Exception {
+        return new RabbitMQAndRedisEventBus(TEST_NAMING_STRATEGY, rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
+            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, routingKeyConverter,
+            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
+            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
+            new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)));
+    }
+
+    @Test
+    void emptyCleanShouldSucceed() {
+        service.cleanUp().block();
+
+        assertThat(service.getContext().getTotalBindings()).isZero();
+        assertThat(service.getContext().getDanglingBindings()).isZero();
+        assertThat(service.getContext().getCleanedBindings()).isZero();
+    }
+
+    @Test
+    void shouldCleanBindingsToInactiveChannels() {
+        registerEventBusBinding(eventBus1, "registrationKey1");
+        registerEventBusBinding(eventBus2, "registrationKey2");
+        registerEventBusBinding(eventBus3, "registrationKey3");
+
+        // shutdown the eventbus to make the channels inactive (a.k.a James nodes crashes and do not let client unregister the bindings)
+        eventBus1.stop();
+        eventBus2.stop();
+        eventBus3.stop();
+
+        // clean up
+        service.cleanUp().block();
+
+        assertThat(service.getContext().getTotalBindings()).isEqualTo(3);
+        assertThat(service.getContext().getDanglingBindings()).isEqualTo(3);
+        assertThat(service.getContext().getCleanedBindings()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldNotCleanBindingsToActiveChannels() {
+        registerEventBusBinding(eventBus1, "registrationKey1");
+        registerEventBusBinding(eventBus2, "registrationKey2");
+        registerEventBusBinding(eventBus3, "registrationKey3");
+
+        // clean up
+        service.cleanUp().block();
+
+        assertThat(service.getContext().getTotalBindings()).isEqualTo(3);
+        assertThat(service.getContext().getDanglingBindings()).isZero();
+        assertThat(service.getContext().getCleanedBindings()).isZero();
+    }
+
+    @Test
+    void mixedCase() {
+        registerEventBusBinding(eventBus1, "registrationKey1");
+        registerEventBusBinding(eventBus2, "registrationKey2");
+        registerEventBusBinding(eventBus3, "registrationKey3");
+
+        // shutdown the eventbus to make the channels inactive (a.k.a James nodes crashes and do not let client unregister the bindings)
+        eventBus3.stop();
+
+        // clean up
+        service.cleanUp().block();
+
+        assertThat(service.getContext().getTotalBindings()).isEqualTo(3);
+        assertThat(service.getContext().getDanglingBindings()).isEqualTo(1);
+        assertThat(service.getContext().getCleanedBindings()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldNotImpactOtherApplicationSets(DockerRedis redis) {
+        // Assume some 3rd party data using Redis Set
+        RedisCommands<String, String> client = redis.createClient();
+        client.sadd("rspamdKey", "value1", "value2");
+
+        registerEventBusBinding(eventBus1, "registrationKey1");
+
+        // shutdown the eventbus to make the channels inactive (a.k.a James nodes crashes and do not let client unregister the bindings)
+        eventBus1.stop();
+
+        // clean up
+        service.cleanUp().block();
+        assertThat(service.getContext().getTotalBindings()).isEqualTo(1);
+        assertThat(service.getContext().getDanglingBindings()).isEqualTo(1);
+        assertThat(service.getContext().getCleanedBindings()).isEqualTo(1);
+
+        // should not impact the 3rd party Set
+        assertThat(client.smembers("rspamdKey")).containsExactlyInAnyOrder("value1", "value2");
+    }
+
+    private void registerEventBusBinding(RabbitMQAndRedisEventBus eventBus, String registrationKey) {
+        // create 1 binding to the eventBus's channel
+        Mono.from(eventBus.register(new EventCollector(), new EventBusTestFixture.TestRegistrationKey(registrationKey))).block();
+    }
+}
