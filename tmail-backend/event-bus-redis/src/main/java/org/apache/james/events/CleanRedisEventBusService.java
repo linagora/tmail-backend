@@ -105,8 +105,14 @@ public class CleanRedisEventBusService {
     }
 
     private Flux<String> listRedisSetKeys() {
-        return redisKeyCommands.scan(ScanCursor.INITIAL, KeyScanArgs.Builder.type("set"))
+        return recursiveScanCursors()
             .flatMapIterable(KeyScanCursor::getKeys);
+    }
+
+    private Flux<KeyScanCursor<String>> recursiveScanCursors() {
+        KeyScanArgs setType = KeyScanArgs.Builder.type("set");
+        return Flux.defer(() -> redisKeyCommands.scan(ScanCursor.INITIAL, setType))
+            .expand(nextCursor -> nextCursor.isFinished() ? Flux.empty() : redisKeyCommands.scan(nextCursor, setType));
     }
 
     private Flux<String> listElementsOfSet(String registrationKey) {
