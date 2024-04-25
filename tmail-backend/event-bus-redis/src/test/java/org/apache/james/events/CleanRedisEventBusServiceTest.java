@@ -3,6 +3,7 @@ package org.apache.james.events;
 import static org.apache.james.events.EventBusTestFixture.ALL_GROUPS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.lettuce.core.api.sync.RedisCommands;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.QueueSpecification;
@@ -153,6 +155,43 @@ class CleanRedisEventBusServiceTest {
 
         // should not impact the 3rd party Set
         assertThat(client.smembers("rspamdKey")).containsExactlyInAnyOrder("value1", "value2");
+    }
+
+    @Test
+    void shouldBeAbleToScanBigNumberOfBindings() {
+        Flux.fromStream(IntStream.rangeClosed(1 ,1000).boxed())
+            .flatMap(i -> Mono.fromRunnable(() -> registerEventBusBinding(eventBus1, i.toString())))
+            .then()
+            .block();
+
+        // clean up
+        service.cleanUp().block();
+
+        assertThat(service.getContext().getTotalBindings()).isEqualTo(1000);
+        assertThat(service.getContext().getDanglingBindings()).isEqualTo(0);
+        assertThat(service.getContext().getCleanedBindings()).isEqualTo(0);
+    }
+
+    @Test
+    void shouldBeAbleToCleanBigNumberOfBindings() {
+        Flux.fromStream(IntStream.rangeClosed(1 ,500).boxed())
+            .flatMap(i -> Mono.fromRunnable(() -> registerEventBusBinding(eventBus1, i.toString())))
+            .then()
+            .block();
+        Flux.fromStream(IntStream.rangeClosed(1 ,500).boxed())
+            .flatMap(i -> Mono.fromRunnable(() -> registerEventBusBinding(eventBus2, i.toString())))
+            .then()
+            .block();
+
+        // Make 500 bindings of eventBus1 dangling
+        eventBus1.stop();
+
+        // clean up
+        service.cleanUp().block();
+
+        assertThat(service.getContext().getTotalBindings()).isEqualTo(1000);
+        assertThat(service.getContext().getDanglingBindings()).isEqualTo(500);
+        assertThat(service.getContext().getCleanedBindings()).isEqualTo(500);
     }
 
     private void registerEventBusBinding(RabbitMQAndRedisEventBus eventBus, String registrationKey) {
