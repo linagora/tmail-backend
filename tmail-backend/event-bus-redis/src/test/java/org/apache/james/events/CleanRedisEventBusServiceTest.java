@@ -2,6 +2,7 @@ package org.apache.james.events;
 
 import static org.apache.james.events.EventBusTestFixture.ALL_GROUPS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -192,6 +193,38 @@ class CleanRedisEventBusServiceTest {
         assertThat(service.getContext().getTotalBindings()).isEqualTo(1000);
         assertThat(service.getContext().getDanglingBindings()).isEqualTo(500);
         assertThat(service.getContext().getCleanedBindings()).isEqualTo(500);
+    }
+
+    @Test
+    void cleanUpInParallelShouldSucceed() {
+        Flux.fromStream(IntStream.rangeClosed(1 ,500).boxed())
+            .flatMap(i -> Mono.fromRunnable(() -> registerEventBusBinding(eventBus1, i.toString())))
+            .then()
+            .block();
+        Flux.fromStream(IntStream.rangeClosed(1 ,500).boxed())
+            .flatMap(i -> Mono.fromRunnable(() -> registerEventBusBinding(eventBus2, i.toString())))
+            .then()
+            .block();
+
+        // Make 500 bindings of eventBus1 dangling
+        eventBus1.stop();
+
+        // Assume 3 James nodes clean up Redis data in parallel
+        CleanRedisEventBusService node1 = new CleanRedisEventBusService(new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)),
+            RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()));
+        CleanRedisEventBusService node2 = new CleanRedisEventBusService(new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)),
+            RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()));
+        CleanRedisEventBusService node3 = new CleanRedisEventBusService(new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)),
+            RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()));
+
+        assertThatCode(() -> Flux.just(node1, node2, node3)
+            .flatMap(CleanRedisEventBusService::cleanUp)
+            .then()
+            .block())
+            .doesNotThrowAnyException();
+
+        assertThat(node1.getContext().getCleanedBindings() + node2.getContext().getCleanedBindings() + node3.getContext().getCleanedBindings())
+            .isEqualTo(500L);
     }
 
     private void registerEventBusBinding(RabbitMQAndRedisEventBus eventBus, String registrationKey) {
