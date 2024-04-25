@@ -83,12 +83,14 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    InitializationOperation workQueue(RabbitMQAndRedisEventBus instance, CleanRedisEventBusService cleanRedisEventBusService) {
+    InitializationOperation workQueue(RabbitMQAndRedisEventBus instance,
+                                      RedisEventBusClientFactory redisEventBusClientFactory,
+                                      RoutingKeyConverter routingKeyConverter) {
         return InitilizationOperationBuilder
             .forClass(RabbitMQAndRedisEventBus.class)
             .init(() -> {
                 instance.start();
-                cleanRedisEventBusService.cleanUp()
+                new CleanRedisEventBusService(redisEventBusClientFactory, routingKeyConverter).cleanUp()
                     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
                     .subscribe();
             });

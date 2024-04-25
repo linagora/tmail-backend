@@ -4,9 +4,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
-
 import org.apache.james.util.MDCStructuredLogger;
 import org.apache.james.util.ReactorUtils;
 import org.apache.james.util.StructuredLogger;
@@ -69,8 +66,6 @@ public class CleanRedisEventBusService {
     private final RoutingKeyConverter routingKeyConverter;
     private Context context;
 
-    @Inject
-    @Singleton
     public CleanRedisEventBusService(RedisEventBusClientFactory redisEventBusClientFactory,
                                      RoutingKeyConverter routingKeyConverter) {
         this.redisSetCommands = redisEventBusClientFactory.createRedisSetCommand();
