@@ -1,5 +1,6 @@
 package com.linagora.apisix.plugin;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,6 +28,12 @@ public class AppConfiguration {
     @Value("${redis.password}")
     private String redisPassword;
 
+    @Value("${redis.timeout:5000}")
+    private Integer redisTimeout;
+
+    @Value("${redis.ignoreErrors:false}")
+    private Boolean ignoreRedisErrors;
+
     @Value("${redis.cluster.enable}")
     private Boolean redisClusterEnable;
 
@@ -34,19 +41,30 @@ public class AppConfiguration {
     @Bean
     public IRevokedTokenRepository revokedTokenRepository() {
         if (StringUtils.hasText(redisUrl)) {
-            logger.info("The plugin using redis for storage revoked tokens. \nURI = {}\nCluster.enable = {}",
-                redisUrl, redisClusterEnable);
-            return new RedisRevokedTokenRepository(initRedisCommand(redisUrl, redisPassword, redisClusterEnable));
+            logger.info("The plugin using redis for storage revoked tokens. \nURI = {}\n" +
+                    "cluster.enable = {}\n" +
+                    "ignoreErrors = {}\n" +
+                    "redisTimeout = {}\n",
+                redisUrl,
+                redisClusterEnable,
+                ignoreRedisErrors,
+                Duration.ofMillis(redisTimeout));
+
+            return new RedisRevokedTokenRepository(initRedisCommand(redisUrl, redisPassword, redisClusterEnable, Duration.ofMillis(redisTimeout)), ignoreRedisErrors);
         }
 
         logger.info("The plugin using local memory for storage revoked tokens");
         return new IRevokedTokenRepository.MemoryRevokedTokenRepository();
     }
 
-    public static RedisStringCommands<String, String> initRedisCommand(String redisUrl, String redisPassword, boolean redisClusterEnable) {
+    public static RedisStringCommands<String, String> initRedisCommand(String redisUrl,
+                                                                       String redisPassword,
+                                                                       boolean redisClusterEnable,
+                                                                       Duration redisTimeout) {
         List<RedisURI> redisURIList = Arrays.stream(redisUrl.split(","))
             .map(url -> buildRedisUri(url, redisPassword))
             .map(RedisURI::create)
+            .peek(uri -> uri.setTimeout(redisTimeout))
             .collect(Collectors.toList());
         if (redisURIList.size() > 1 && !redisClusterEnable) {
             throw new IllegalArgumentException("Can not provide multi Redis URI when cluster.enable=false");

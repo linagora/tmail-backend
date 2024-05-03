@@ -1,6 +1,12 @@
 package com.linagora.apisix.plugin;
 
+import static com.linagora.apisix.plugin.RedisRevokedTokenRepository.IGNORE_REDIS_ERRORS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.io.IOException;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -8,14 +14,16 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
+import io.lettuce.core.RedisException;
 import io.lettuce.core.api.sync.RedisStringCommands;
 
-public class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
+class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
     private static final String REDIS_PASSWORD = "my_password";
 
     static Network dockernetwork = Network.newNetwork();
@@ -70,13 +78,14 @@ public class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepos
         RedisStringCommands<String, String> stringStringRedisStringCommands = AppConfiguration.initRedisCommand(
             String.format("localhost:%d,localhost:%d",
                 REDIS_MASTER.getMappedPort(6379), REDIS_REPLICA.getMappedPort(6379)),
-            REDIS_PASSWORD, true);
+            REDIS_PASSWORD, true, Duration.ofSeconds(3));
 
-        revokedTokenRepository = new RedisRevokedTokenRepository(stringStringRedisStringCommands);
+        revokedTokenRepository = new RedisRevokedTokenRepository(stringStringRedisStringCommands, IGNORE_REDIS_ERRORS);
     }
 
     @AfterEach
     void afterEach() throws IOException, InterruptedException {
+        ContainerHelper.unPause(REDIS_MASTER);
         REDIS_MASTER.execInContainer("redis-cli", "-a", REDIS_PASSWORD, "flushall");
         TimeUnit.MILLISECONDS.sleep(100);
     }
@@ -84,5 +93,41 @@ public class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepos
     @Override
     public IRevokedTokenRepository testee() {
         return revokedTokenRepository;
+    }
+
+    @Test
+    void existShouldNotThrowWhenIgnoreWasConfiguredAndRedisError() throws InterruptedException {
+        ContainerHelper.pause(REDIS_MASTER);
+        TimeUnit.SECONDS.sleep(1);
+
+        assertThatCode(() -> testee().exist("sid1")).doesNotThrowAnyException();
+    }
+
+
+    @Test
+    void existsShouldReturnCorrectWhenIgnoreWasConfigured() throws InterruptedException {
+        testee().add("sid1");
+        assertThat(testee().exist("sid1")).isTrue();
+
+        ContainerHelper.pause(REDIS_MASTER);
+        TimeUnit.SECONDS.sleep(1);
+        assertThat(testee().exist("sid1")).isFalse();
+
+        ContainerHelper.unPause(REDIS_MASTER);
+        TimeUnit.SECONDS.sleep(1);
+        assertThat(testee().exist("sid1")).isTrue();
+    }
+
+    @Test
+    void existsShouldThrowWhenIgnoreWasNotConfiguredAndRedisError() throws InterruptedException {
+        boolean ignoreRedisErrors = false;
+        RedisRevokedTokenRepository testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommand(
+            String.format("localhost:%d,localhost:%d",
+                REDIS_MASTER.getMappedPort(6379), REDIS_REPLICA.getMappedPort(6379)),
+            REDIS_PASSWORD, true, Duration.ofSeconds(3)), ignoreRedisErrors);
+
+        ContainerHelper.pause(REDIS_MASTER);
+        TimeUnit.SECONDS.sleep(1);
+        assertThatThrownBy(() -> testee.exist("sid1")).isInstanceOf(RedisException.class);
     }
 }

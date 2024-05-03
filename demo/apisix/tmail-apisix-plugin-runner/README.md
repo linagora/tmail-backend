@@ -43,6 +43,8 @@ ext-plugin:
     - `redis.password` (or environment `REDIS_PASSWORD`): [String] the redis password (Optional).
     - `redis.cluster.enabled` (or environment `REDIS_CLUSTER_ENABLE`): [Boolean]. `true` for redis master-replicas topology, 
     `false` for standalone topology
+    - `redis.timeout` (or environment `REDIS_TIMEOUT`): [Integer] the timeout for redis command when client send to Redis server. Default to 5000 (5 seconds)
+    - `redis.ignoreErrors` (or environment `REDIS_IGNORE_ERRORS`): [Boolean]. This configuration determines whether errors from Redis should be ignored or not. If set to `true`, when the application is unable to connect to Redis, the revoked token will not be checked. Default to true
 
 Eg: 
 ```yaml
@@ -50,11 +52,15 @@ redis:
   url: redis.example.com:6379
   password: secret1
   cluster.enable: false 
+  timeout: 5000
+  ignoreErrors: true
 ```
 or
 ```yaml
 redis:
   url: redis-master.example.com:6379,redis-replica1.example.com:6379
   password: secret1
-  cluster.enable: true 
+  cluster.enable: true
+  timeout: 5000
+  ignoreErrors: true
 ```
