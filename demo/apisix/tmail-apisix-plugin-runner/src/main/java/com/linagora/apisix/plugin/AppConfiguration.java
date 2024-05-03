@@ -31,7 +31,7 @@ public class AppConfiguration {
     @Value("${redis.timeout:5000}")
     private Integer redisTimeout;
 
-    @Value("${redis.ignoreErrors:false}")
+    @Value("${redis.ignoreErrors:true}")
     private Boolean ignoreRedisErrors;
 
     @Value("${redis.cluster.enable}")
