@@ -1,5 +1,7 @@
 package org.apache.james.events;
 
+import static org.apache.james.events.TMailEventDispatcher.REDIS_ERROR_PREDICATE;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -41,12 +43,13 @@ class RedisKeyRegistrationHandler {
     private final MetricFactory metricFactory;
     private final RedisPubSubReactiveCommands<String, String> redisSubscriber;
     private Scheduler scheduler;
+    private final RedisEventBusConfiguration redisEventBusConfiguration;
 
     RedisKeyRegistrationHandler(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer,
                                 RoutingKeyConverter routingKeyConverter, LocalListenerRegistry localListenerRegistry,
                                 ListenerExecutor listenerExecutor, RetryBackoffConfiguration retryBackoff, MetricFactory metricFactory,
                                 RedisEventBusClientFactory redisEventBusClientFactory,
-                                RedisSetReactiveCommands<String, String> redisSetReactiveCommands) {
+                                RedisSetReactiveCommands<String, String> redisSetReactiveCommands, RedisEventBusConfiguration redisEventBusConfiguration) {
         this.eventBusId = eventBusId;
         this.eventSerializer = eventSerializer;
         this.routingKeyConverter = routingKeyConverter;
@@ -54,6 +57,7 @@ class RedisKeyRegistrationHandler {
         this.listenerExecutor = listenerExecutor;
         this.retryBackoff = retryBackoff;
         this.metricFactory = metricFactory;
+        this.redisEventBusConfiguration = redisEventBusConfiguration;
         this.registrationChannel = namingStrategy.queueName(eventBusId);
         this.registrationBinder = new RedisKeyRegistrationBinder(redisSetReactiveCommands, registrationChannel);
         this.receiverSubscriber = Optional.empty();
@@ -66,7 +70,12 @@ class RedisKeyRegistrationHandler {
         declarePubSubChannel();
 
         Disposable newSubscription = Mono.from(redisSubscriber.subscribe(registrationChannel.asString()))
-            .thenMany(redisSubscriber.observeChannels())
+            .thenMany(redisSubscriber.observeChannels()
+                .timeout(redisEventBusConfiguration.durationTimeout())
+                .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()), e -> {
+                    LOGGER.warn("Error while observing channels: {}", e.getMessage());
+                    return Flux.empty();
+                }))
             .flatMap(this::handleChannelMessage, EventBus.EXECUTION_RATE)
             .doOnError(throwable -> LOGGER.error(throwable.getMessage()))
             .subscribeOn(scheduler)
@@ -82,6 +91,11 @@ class RedisKeyRegistrationHandler {
     void stop() {
         // delete the Pub/Sub channel: Redis Channels are ephemeral and automatically expire when they have no more subscribers.
         redisSubscriber.unsubscribe(registrationChannel.asString())
+            .timeout(redisEventBusConfiguration.durationTimeout())
+            .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()), e -> {
+                LOGGER.warn("Error while unsubscribing from channel: {}", e.getMessage());
+                return Mono.empty();
+            })
             .block();
         receiverSubscriber.filter(Predicate.not(Disposable::isDisposed))
                 .ifPresent(Disposable::dispose);

@@ -75,7 +75,8 @@ class CleanRedisEventBusServiceTest {
             EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, routingKeyConverter,
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)));
+            new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)),
+            RedisEventBusConfiguration.DEFAULT);
     }
 
     @Test

@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
+import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
@@ -19,6 +20,7 @@ import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventDeadLetters;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
 import org.apache.james.events.RedisEventBusClientFactory;
+import org.apache.james.events.RedisEventBusConfiguration;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.RoutingKeyConverter;
 import org.apache.james.jmap.InjectionKeys;
@@ -75,11 +77,12 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
                                                  MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
                                                  @Named(InjectionKeys.JMAP) EventBusId eventBusId,
                                                  RabbitMQConfiguration configuration,
-                                                 RedisEventBusClientFactory redisEventBusClientFactory) {
+                                                 RedisEventBusClientFactory redisEventBusClientFactory,
+                                                 RedisEventBusConfiguration redisEventBusConfiguration) {
         return new RabbitMQAndRedisEventBus(
             JMAP_NAMING_STRATEGY,
             sender, receiverProvider, eventSerializer, retryBackoffConfiguration, new RoutingKeyConverter(ImmutableSet.of(new Factory())),
-            eventDeadLetters, metricFactory, channelPool, eventBusId, configuration, redisEventBusClientFactory);
+            eventDeadLetters, metricFactory, channelPool, eventBusId, configuration, redisEventBusClientFactory, redisEventBusConfiguration);
     }
 
     @ProvidesIntoSet
@@ -123,11 +126,12 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
                                                                 MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
                                                                 @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBusId eventBusId,
                                                                 RabbitMQConfiguration configuration,
-                                                                RedisEventBusClientFactory redisEventBusClientFactory) {
+                                                                RedisEventBusClientFactory redisEventBusClientFactory,
+                                                                RedisEventBusConfiguration redisEventBusConfiguration) {
         return new RabbitMQAndRedisEventBus(
             EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY,
             sender, receiverProvider, eventSerializer, retryBackoffConfiguration, new RoutingKeyConverter(ImmutableSet.of(new Factory())),
-            eventDeadLetters, metricFactory, channelPool, eventBusId, configuration, redisEventBusClientFactory);
+            eventDeadLetters, metricFactory, channelPool, eventBusId, configuration, redisEventBusClientFactory, redisEventBusConfiguration);
     }
 
     @Provides
@@ -146,5 +150,12 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
                 instance.start();
                 instance.register(emailAddressContactListener);
             });
+    }
+
+    @Provides
+    @Singleton
+    RedisEventBusConfiguration redisEventBusConfiguration(PropertiesProvider propertiesProvider) throws FileNotFoundException, ConfigurationException {
+        Configuration config = propertiesProvider.getConfiguration("redis");
+        return RedisEventBusConfiguration.from(config);
     }
 }
