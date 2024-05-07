@@ -86,7 +86,7 @@ class RedisKeyRegistrationHandler {
         redisSubscriber.unsubscribe(registrationChannel.asString())
             .timeout(redisEventBusConfiguration.durationTimeout())
             .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()), e -> {
-                LOGGER.warn("Error while unsubscribing from channel: {}", e.getMessage());
+                LOGGER.warn("Error while unsubscribing from channel", e);
                 return Mono.empty();
             })
             .block();
@@ -112,7 +112,7 @@ class RedisKeyRegistrationHandler {
                             .jitter(retryBackoff.getJitterFactor())
                             .scheduler(Schedulers.boundedElastic()))
                         .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
-                            LOGGER.warn("Error while unbinding key: {}", error.getMessage());
+                            LOGGER.warn("Error while unbinding key", error);
                             return Mono.empty();
                         })));
                 }
@@ -127,7 +127,7 @@ class RedisKeyRegistrationHandler {
                 .timeout(redisEventBusConfiguration.durationTimeout())
                 .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.boundedElastic()))
                 .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
-                    LOGGER.warn("Error while binding key: {}", error.getMessage());
+                    LOGGER.warn("Error while binding key", error);
                     return Mono.empty();
                 });
         }

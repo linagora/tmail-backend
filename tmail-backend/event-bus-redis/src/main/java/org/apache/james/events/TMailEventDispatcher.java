@@ -184,7 +184,7 @@ public class TMailEventDispatcher {
                 .flatMap(channel -> redisPublisher.publish(channel, KeyChannelMessage.from(eventBusId, routingKey, eventAsJson).serialize()))
                 .timeout(redisEventBusConfiguration.durationTimeout())
                 .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()), e -> {
-                    LOGGER.warn("Error while dispatching event to remote listeners: {}", e.getMessage());
+                    LOGGER.warn("Error while dispatching event to remote listeners", e);
                     return Flux.empty();
                 })
                 .then())
