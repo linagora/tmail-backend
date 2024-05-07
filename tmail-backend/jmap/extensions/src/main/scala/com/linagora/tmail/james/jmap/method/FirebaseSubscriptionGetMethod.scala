@@ -1,6 +1,9 @@
 package com.linagora.tmail.james.jmap.method
 
+import java.time.Clock
+
 import com.google.inject.Inject
+import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.isInThePast
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
 import com.linagora.tmail.james.jmap.json.FirebaseSubscriptionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FIREBASE
@@ -23,7 +26,8 @@ import scala.jdk.CollectionConverters._
 class FirebaseSubscriptionGetMethod @Inject()()(val serializer: FirebaseSubscriptionSerializer,
                                                 val repository: FirebaseSubscriptionRepository,
                                                 val metricFactory: MetricFactory,
-                                                val sessionSupplier: SessionSupplier) extends MethodWithoutAccountId[FirebaseSubscriptionGetRequest] {
+                                                val sessionSupplier: SessionSupplier,
+                                                val clock: Clock) extends MethodWithoutAccountId[FirebaseSubscriptionGetRequest] {
 
   override val methodName: Invocation.MethodName = MethodName("FirebaseRegistration/get")
 
@@ -45,7 +49,7 @@ class FirebaseSubscriptionGetMethod @Inject()()(val serializer: FirebaseSubscrip
           .map(invocationResult => InvocationWithContext(invocationResult, invocation.processingContext)))
 
   private def retrieveFirebaseSubscription(username: Username, ids: Option[FirebaseSubscriptionIds]): SFlux[FirebaseSubscription] =
-    ids match {
+    (ids match {
       case None => SFlux(repository.list(username))
       case Some(value) =>
         SFlux(repository.get(username,
@@ -53,5 +57,13 @@ class FirebaseSubscriptionGetMethod @Inject()()(val serializer: FirebaseSubscrip
             .filter(_.isDefined)
             .map(_.get)
             .toSet.asJava))
-    }
+    })
+      .flatMap(subscription => {
+        if (isInThePast(subscription.expires, clock)) {
+          SMono(repository.revoke(username, subscription.id))
+            .`then`(SMono.empty)
+        } else {
+          SMono.fromCallable(() => subscription)
+        }
+      })
 }

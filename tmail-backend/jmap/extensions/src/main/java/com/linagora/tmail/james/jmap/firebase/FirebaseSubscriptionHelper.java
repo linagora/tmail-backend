@@ -16,7 +16,7 @@ public class FirebaseSubscriptionHelper {
         return expire.map(value -> isInThePast(value, clock)).getOrElse(() -> false);
     }
 
-    private static boolean isInThePast(FirebaseSubscriptionExpiredTime expire, Clock clock) {
+    public static boolean isInThePast(FirebaseSubscriptionExpiredTime expire, Clock clock) {
         return expire.isBefore(ZonedDateTime.now(clock));
     }
 

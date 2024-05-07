@@ -3,6 +3,7 @@ package com.linagora.tmail.james;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
+import org.apache.james.ClockExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -25,6 +26,7 @@ public class MemoryFirebaseSubscriptionGetMethodTest implements FirebaseSubscrip
             .usersRepository(DEFAULT)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .build())
+        .extension(new ClockExtension())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new FirebaseSubscriptionProbeModule())

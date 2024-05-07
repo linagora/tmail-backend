@@ -24,7 +24,8 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UTCDate
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
-import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
+import org.apache.james.utils.{DataProbeImpl, GuiceProbe, UpdatableTickingClock}
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.Mockito.mock
 import reactor.core.scala.publisher.SMono
@@ -160,6 +161,55 @@ trait FirebaseSubscriptionGetMethodContract {
          |        ]
          |    ]
          |}""".stripMargin)
+  }
+
+  @Test
+  def getShouldNotReturnExpiredSubscriptionAndTriggerTheDeletion(server: GuiceJamesServer, clock: UpdatableTickingClock): Unit = {
+    val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+
+    clock.setInstant(ZonedDateTime.now().plusDays(100).toInstant)
+
+    assertThatJson(`given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:jmap:firebase:push"],
+           |  "methodCalls": [[
+           |    "FirebaseRegistration/get",
+           |    {
+           |      "accountId": "$ACCOUNT_ID",
+           |      "ids": null
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString)
+      .isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "FirebaseRegistration/get",
+         |            {
+         |                "notFound": [],
+         |                "list": []
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+
+    assertThat(server.getProbe(classOf[FirebaseSubscriptionProbe])
+      .retrieveSubscription(BOB, firebaseSubscription.id))
+      .isNull()
   }
 
   @Test
