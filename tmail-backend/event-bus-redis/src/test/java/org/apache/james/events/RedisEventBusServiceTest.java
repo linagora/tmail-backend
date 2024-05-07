@@ -16,6 +16,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import reactor.core.publisher.Mono;
+
 class RedisEventBusServiceTest {
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
@@ -91,4 +93,56 @@ class RedisEventBusServiceTest {
             .hasCauseInstanceOf(TimeoutException.class);
     }
 
+
+    @Test
+    void registerShouldNotThrowWhenRedisDownAndFailureIgnoreIsTrue() throws Exception {
+        // Given EventBus with failureIgnore set to true
+        RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(true, Duration.ofSeconds(3));
+        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
+            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
+            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
+            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
+            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
+            new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)),
+            redisEventBusConfiguration);
+        eventBus.start();
+
+        EventCollector listener = new EventCollector();
+
+        //When Redis down
+        redisExtension.dockerRedis().pause();
+        Thread.sleep(500);
+
+        RegistrationKey KEY_1 = new EventBusTestFixture.TestRegistrationKey("a");
+
+        // Then register should not throw
+        assertThatCode(() -> Mono.from(eventBus.register(listener, KEY_1)).block())
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    void registerShouldThrowWhenRedisDownAndFailureIgnoreIsFalse() throws Exception {
+        // Given EventBus with failureIgnore set to false
+        RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
+        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
+            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
+            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
+            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
+            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
+            new RedisEventBusClientFactory(RedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString(), false)),
+            redisEventBusConfiguration);
+        eventBus.start();
+
+        EventCollector listener = new EventCollector();
+
+        //When Redis down
+        redisExtension.dockerRedis().pause();
+        Thread.sleep(500);
+
+        RegistrationKey KEY_1 = new EventBusTestFixture.TestRegistrationKey("a");
+
+        // Then register should throw
+        assertThatThrownBy(() -> Mono.from(eventBus.register(listener, KEY_1)).block())
+            .hasCauseInstanceOf(TimeoutException.class);
+    }
 }

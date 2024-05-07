@@ -154,8 +154,13 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
 
     @Provides
     @Singleton
-    RedisEventBusConfiguration redisEventBusConfiguration(PropertiesProvider propertiesProvider) throws FileNotFoundException, ConfigurationException {
-        Configuration config = propertiesProvider.getConfiguration("redis");
-        return RedisEventBusConfiguration.from(config);
+    RedisEventBusConfiguration redisEventBusConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+        try {
+            Configuration config = propertiesProvider.getConfiguration("redis");
+            return RedisEventBusConfiguration.from(config);
+        } catch (FileNotFoundException e) {
+            LOGGER.error("Missing `redis.properties` configuration file -> using default RedisEventBusConfiguration");
+            return RedisEventBusConfiguration.DEFAULT;
+        }
     }
 }
