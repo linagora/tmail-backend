@@ -63,7 +63,7 @@ class FirebaseSubscriptionGetMethod @Inject()()(val serializer: FirebaseSubscrip
           SMono(repository.revoke(username, subscription.id))
             .`then`(SMono.empty)
         } else {
-          SMono.fromCallable(() => subscription)
+          SMono.just(subscription)
         }
       })
 }
