@@ -16,6 +16,8 @@ pipeline {
     stages {
         stage('Git submodule init') {
             steps {
+                sh 'echo $DOCKER_HUB_CREDENTIAL_USR'
+                sh 'echo $DOCKER_HUB_CREDENTIAL_PSW'
                 sh 'git submodule init'
                 sh 'git submodule update'
             }
