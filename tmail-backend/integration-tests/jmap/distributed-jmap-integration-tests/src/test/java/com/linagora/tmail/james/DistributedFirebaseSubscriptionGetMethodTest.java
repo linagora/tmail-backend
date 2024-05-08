@@ -1,6 +1,7 @@
 package com.linagora.tmail.james;
 
 import org.apache.james.CassandraExtension;
+import org.apache.james.ClockExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
@@ -40,6 +41,7 @@ public class DistributedFirebaseSubscriptionGetMethodTest implements FirebaseSub
         .extension(new RabbitMQExtension())
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
+        .extension(new ClockExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new FirebaseSubscriptionProbeModule())
