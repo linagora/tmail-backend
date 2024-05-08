@@ -14,6 +14,8 @@ import static org.apache.james.events.RabbitMQAndRedisEventBus.EVENT_BUS_ID;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.events.RoutingKeyConverter.RoutingKey;
@@ -28,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.rabbitmq.client.AMQP;
 
+import io.lettuce.core.RedisException;
 import io.lettuce.core.api.reactive.RedisSetReactiveCommands;
 import io.lettuce.core.pubsub.api.reactive.RedisPubSubReactiveCommands;
 import reactor.core.publisher.Flux;
@@ -41,6 +44,7 @@ import reactor.util.function.Tuples;
 import reactor.util.retry.Retry;
 
 public class TMailEventDispatcher {
+    public static final Predicate<? super Throwable> REDIS_ERROR_PREDICATE = throwable -> throwable instanceof RedisException || throwable instanceof TimeoutException;
     private static final Logger LOGGER = LoggerFactory.getLogger(TMailEventDispatcher.class);
 
     private final NamingStrategy namingStrategy;
@@ -55,13 +59,14 @@ public class TMailEventDispatcher {
     private final RedisPubSubReactiveCommands<String, String> redisPublisher;
     private final RedisSetReactiveCommands<String, String> redisSetReactiveCommands;
     private final EventBusId eventBusId;
+    private final RedisEventBusConfiguration redisEventBusConfiguration;
 
     TMailEventDispatcher(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer, Sender sender,
                          LocalListenerRegistry localListenerRegistry,
                          ListenerExecutor listenerExecutor,
                          EventDeadLetters deadLetters, RabbitMQConfiguration configuration,
                          RedisPubSubReactiveCommands<String, String> redisPubSubReactiveCommands,
-                         RedisSetReactiveCommands<String, String> redisSetReactiveCommands) {
+                         RedisSetReactiveCommands<String, String> redisSetReactiveCommands, RedisEventBusConfiguration redisEventBusConfiguration) {
         this.namingStrategy = namingStrategy;
         this.eventSerializer = eventSerializer;
         this.sender = sender;
@@ -79,6 +84,7 @@ public class TMailEventDispatcher {
         this.redisPublisher = redisPubSubReactiveCommands;
         this.redisSetReactiveCommands = redisSetReactiveCommands;
         this.eventBusId = eventBusId;
+        this.redisEventBusConfiguration = redisEventBusConfiguration;
     }
 
     void start() {
@@ -176,6 +182,11 @@ public class TMailEventDispatcher {
         return Flux.fromIterable(routingKeys)
             .flatMap(routingKey -> getTargetChannels(routingKey)
                 .flatMap(channel -> redisPublisher.publish(channel, KeyChannelMessage.from(eventBusId, routingKey, eventAsJson).serialize()))
+                .timeout(redisEventBusConfiguration.durationTimeout())
+                .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()), e -> {
+                    LOGGER.warn("Error while dispatching event to remote listeners", e);
+                    return Flux.empty();
+                })
                 .then())
             .then();
     }

@@ -47,6 +47,7 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
     private GroupRegistrationHandler groupRegistrationHandler;
     private RedisKeyRegistrationHandler keyRegistrationHandler;
     private TMailEventDispatcher eventDispatcher;
+    private final RedisEventBusConfiguration redisEventBusConfiguration;
 
     @Inject
     public RabbitMQAndRedisEventBus(NamingStrategy namingStrategy, Sender sender, ReceiverProvider receiverProvider, EventSerializer eventSerializer,
@@ -54,7 +55,8 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
                                     RoutingKeyConverter routingKeyConverter,
                                     EventDeadLetters eventDeadLetters, MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
                                     EventBusId eventBusId, RabbitMQConfiguration configuration,
-                                    RedisEventBusClientFactory redisEventBusClientFactory) {
+                                    RedisEventBusClientFactory redisEventBusClientFactory,
+                                    RedisEventBusConfiguration redisEventBusConfiguration) {
         this.namingStrategy = namingStrategy;
         this.sender = sender;
         this.receiverProvider = receiverProvider;
@@ -72,6 +74,7 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
         this.redisPublisher = redisEventBusClientFactory.createRedisPubSubCommand();
         this.isRunning = false;
         this.isStopping = false;
+        this.redisEventBusConfiguration = redisEventBusConfiguration;
     }
 
     public void start() {
@@ -79,10 +82,10 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
 
             LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
             keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
-                localListenerRegistry, listenerExecutor, retryBackoff, metricFactory, redisEventBusClientFactory, redisSetReactiveCommands);
+                localListenerRegistry, listenerExecutor, retryBackoff, metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
             groupRegistrationHandler = new GroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, retryBackoff, eventDeadLetters, listenerExecutor, eventBusId, configuration);
             eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, localListenerRegistry, listenerExecutor, eventDeadLetters, configuration,
-                redisPublisher, redisSetReactiveCommands);
+                redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
 
             eventDispatcher.start();
             keyRegistrationHandler.start();
@@ -96,10 +99,10 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
 
             LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
             keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
-                localListenerRegistry, listenerExecutor, retryBackoff, metricFactory, redisEventBusClientFactory, redisSetReactiveCommands);
+                localListenerRegistry, listenerExecutor, retryBackoff, metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
             groupRegistrationHandler = new GroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, retryBackoff, eventDeadLetters, listenerExecutor, eventBusId, configuration);
             eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, localListenerRegistry, listenerExecutor, eventDeadLetters, configuration,
-                redisPublisher, redisSetReactiveCommands);
+                redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
 
             keyRegistrationHandler.declarePubSubChannel();
 

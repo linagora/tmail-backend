@@ -1,6 +1,7 @@
 package org.apache.james.events;
 
-import java.time.Duration;
+import static org.apache.james.events.TMailEventDispatcher.REDIS_ERROR_PREDICATE;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -27,7 +28,6 @@ import reactor.util.retry.Retry;
 
 class RedisKeyRegistrationHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisKeyRegistrationHandler.class);
-    private static final Duration TOPOLOGY_CHANGES_TIMEOUT = Duration.ofMinutes(1);
 
     private final EventBusId eventBusId;
     private final LocalListenerRegistry localListenerRegistry;
@@ -41,12 +41,13 @@ class RedisKeyRegistrationHandler {
     private final MetricFactory metricFactory;
     private final RedisPubSubReactiveCommands<String, String> redisSubscriber;
     private Scheduler scheduler;
+    private final RedisEventBusConfiguration redisEventBusConfiguration;
 
     RedisKeyRegistrationHandler(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer,
                                 RoutingKeyConverter routingKeyConverter, LocalListenerRegistry localListenerRegistry,
                                 ListenerExecutor listenerExecutor, RetryBackoffConfiguration retryBackoff, MetricFactory metricFactory,
                                 RedisEventBusClientFactory redisEventBusClientFactory,
-                                RedisSetReactiveCommands<String, String> redisSetReactiveCommands) {
+                                RedisSetReactiveCommands<String, String> redisSetReactiveCommands, RedisEventBusConfiguration redisEventBusConfiguration) {
         this.eventBusId = eventBusId;
         this.eventSerializer = eventSerializer;
         this.routingKeyConverter = routingKeyConverter;
@@ -54,6 +55,7 @@ class RedisKeyRegistrationHandler {
         this.listenerExecutor = listenerExecutor;
         this.retryBackoff = retryBackoff;
         this.metricFactory = metricFactory;
+        this.redisEventBusConfiguration = redisEventBusConfiguration;
         this.registrationChannel = namingStrategy.queueName(eventBusId);
         this.registrationBinder = new RedisKeyRegistrationBinder(redisSetReactiveCommands, registrationChannel);
         this.receiverSubscriber = Optional.empty();
@@ -82,6 +84,11 @@ class RedisKeyRegistrationHandler {
     void stop() {
         // delete the Pub/Sub channel: Redis Channels are ephemeral and automatically expire when they have no more subscribers.
         redisSubscriber.unsubscribe(registrationChannel.asString())
+            .timeout(redisEventBusConfiguration.durationTimeout())
+            .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()), e -> {
+                LOGGER.warn("Error while unsubscribing from channel", e);
+                return Mono.empty();
+            })
             .block();
         receiverSubscriber.filter(Predicate.not(Disposable::isDisposed))
                 .ifPresent(Disposable::dispose);
@@ -100,8 +107,14 @@ class RedisKeyRegistrationHandler {
                 if (registration.unregister().lastListenerRemoved()) {
                     return Mono.from(metricFactory.decoratePublisherWithTimerMetric("redis-unregister", registrationBinder.unbind(key)
                         .doOnError(throwable -> LOGGER.error(throwable.getMessage()))
-                        .timeout(TOPOLOGY_CHANGES_TIMEOUT)
-                        .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.boundedElastic()))));
+                        .timeout(redisEventBusConfiguration.durationTimeout())
+                        .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff())
+                            .jitter(retryBackoff.getJitterFactor())
+                            .scheduler(Schedulers.boundedElastic()))
+                        .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
+                            LOGGER.warn("Error while unbinding key", error);
+                            return Mono.empty();
+                        })));
                 }
                 return Mono.empty();
             }));
@@ -111,8 +124,12 @@ class RedisKeyRegistrationHandler {
         if (registration.isFirstListener()) {
             return registrationBinder.bind(key)
                 .doOnError(throwable -> LOGGER.error(throwable.getMessage()))
-                .timeout(TOPOLOGY_CHANGES_TIMEOUT)
-                .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.boundedElastic()));
+                .timeout(redisEventBusConfiguration.durationTimeout())
+                .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.boundedElastic()))
+                .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
+                    LOGGER.warn("Error while binding key", error);
+                    return Mono.empty();
+                });
         }
         return Mono.empty();
     }
