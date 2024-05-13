@@ -14,6 +14,8 @@ import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.backends.redis.RedisHealthCheck;
+import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
@@ -101,6 +103,7 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
@@ -409,7 +412,16 @@ public class DistributedServer {
     private static List<Module> chooseRedisRateLimiterModule(DistributedJamesConfiguration configuration) {
         try {
             configuration.propertiesProvider().getConfiguration("redis");
-            return List.of(new RedisRateLimiterModule());
+
+            return List.of(Modules.override(new RedisRateLimiterModule())
+                .with(new AbstractModule() {
+                    @Override
+                    protected void configure() {
+                        Multibinder.newSetBinder(binder(), HealthCheck.class)
+                            .addBinding()
+                            .to(RedisHealthCheck.class);
+                    }
+                }));
         } catch (FileNotFoundException notFoundException) {
             LOGGER.info("Redis configuration not found, disabling Redis rate limiter module");
             return List.of();
