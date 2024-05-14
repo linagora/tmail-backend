@@ -115,7 +115,6 @@ public class FirebasePushClient {
                     .setTitle("Twake Mail")
                     .setBody("You have new message")
                     .build())
-                .setContentAvailable(true)
                 .setMutableContent(true)
                 .build();
         }
