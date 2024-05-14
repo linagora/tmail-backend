@@ -24,7 +24,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Test}
 
-trait LinagoraCalendarEventReplyWithAQMPWorkflowContract {
+trait LinagoraCalendarEventReplyWithAMQPWorkflowContract {
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -42,10 +42,10 @@ trait LinagoraCalendarEventReplyWithAQMPWorkflowContract {
 
   def randomBlobId: String
 
-  def readAQMPContent: Optional[String]
+  def readAMQPContent: Optional[String]
 
   @Test
-  def shouldPublishAQMPMessageWhenReplyAcceptSuccess(server: GuiceJamesServer): Unit = {
+  def shouldPublishAMQPMessageWhenReplyAcceptSuccess(server: GuiceJamesServer): Unit = {
     // Given an invitation file
     val andreInboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
     val blobId: String = uploadAndGetBlobId(new ByteArrayInputStream(generateInviteIcs(BOB.asString(), ANDRE.asString()).getBytes))
@@ -126,7 +126,7 @@ trait LinagoraCalendarEventReplyWithAQMPWorkflowContract {
     }
 
     // Checking the AQMP message
-    val aqmpContent: Optional[String] = readAQMPContent
+    val aqmpContent: Optional[String] = readAMQPContent
     assertThat(aqmpContent).isPresent
     assertThatJson(aqmpContent.get())
       .withOptions(new Options(Option.IGNORING_EXTRA_FIELDS))

@@ -18,15 +18,15 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.james.common.LinagoraCalendarEventReplyWithAQMPWorkflowContract;
+import com.linagora.tmail.james.common.LinagoraCalendarEventReplyWithAMQPWorkflowContract;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class MemoryCalendarEventReplyWithAQMPWorkflowTest implements LinagoraCalendarEventReplyWithAQMPWorkflowContract {
-    static final String AQMP_EXCHANGE_NAME = "james:events";
-    static final String AQMP_ROUTING_KEY = "icalendar_routing_key2";
+public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCalendarEventReplyWithAMQPWorkflowContract {
+    static final String AMQP_EXCHANGE_NAME = "james:events";
+    static final String AMQP_ROUTING_KEY = "icalendar_routing_key2";
 
     @RegisterExtension
-    public static AmqpExtension amqpExtension = new AmqpExtension(AQMP_EXCHANGE_NAME, AQMP_ROUTING_KEY);
+    public static AmqpExtension amqpExtension = new AmqpExtension(AMQP_EXCHANGE_NAME, AMQP_ROUTING_KEY);
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(
@@ -36,9 +36,9 @@ public class MemoryCalendarEventReplyWithAQMPWorkflowTest implements LinagoraCal
             Throwing.runnable(() -> FileUtils.copyDirectory(new File(ClassLoader.getSystemClassLoader().getResource(".").getFile()),
                 confPath.toFile())).run();
 
-            // Replace amqp uri in the mailetcontainer_with_aqmpforward_openpass.xml and write it to mailetcontainer.xml
+            // Replace amqp uri in the mailetcontainer_with_amqpforward_openpass.xml and write it to mailetcontainer.xml
             Throwing.runnable(() -> {
-                String sourceContent = FileUtils.readFileToString(confPath.resolve("mailetcontainer_with_aqmpforward_openpass.xml").toFile(), StandardCharsets.UTF_8);
+                String sourceContent = FileUtils.readFileToString(confPath.resolve("mailetcontainer_with_amqpforward_openpass.xml").toFile(), StandardCharsets.UTF_8);
                 String newContent = sourceContent.replace("{{AmqpForwardAttribute_uri}}", amqpExtension.getAmqpUri());
                 FileUtils.writeStringToFile(confPath.resolve("mailetcontainer.xml").toFile(), newContent, StandardCharsets.UTF_8);
             }).run();
@@ -59,7 +59,7 @@ public class MemoryCalendarEventReplyWithAQMPWorkflowTest implements LinagoraCal
     }
 
     @Override
-    public Optional<String> readAQMPContent() {
+    public Optional<String> readAMQPContent() {
         return Throwing.supplier(() -> amqpExtension.readContent()).get();
     }
 }
