@@ -126,3 +126,40 @@ Additionally, the reply email templates support Mustache data for dynamic conten
 - EVENT_LOCATION: The location of the event.
 
 To access sample template files, please visit the https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed/src/main/eml-template[tmail-backend].
+
+== Integrates with OpenPaaS Calendar by AmqpForwardAttribute mailet
+
+This configuration helps process iCalendar data from emails and forwards it to OpenPaaS Calendar system (via AMQP) for further operations, such as updating the event status.
+
+The mailets pipeline configuration bellow should be added to transport processor within `mailetcontainer.xml`:
+```
+            <!-- ICAL pipeline for EventCaleandar response -->
+            <mailet match="SenderIsLocal" class="StripAttachment">
+                <mimeType>text/calendar</mimeType>
+                <attribute>rawIcalendar2</attribute>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="SenderIsLocal" class="MimeDecodingMailet">
+                <attribute>rawIcalendar2</attribute>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="SenderIsLocal" class="ICalendarParser">
+                <sourceAttribute>rawIcalendar2</sourceAttribute>
+                <destinationAttribute>icalendar2</destinationAttribute>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="SenderIsLocal" class="com.linagora.tmail.mailet.SenderICALToJsonAttribute">
+                <source>icalendar2</source>
+                <destination>icalendarAsJson2</destination>
+                <rawSource>rawIcalendar2</rawSource>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="SenderIsLocal" class="AmqpForwardAttribute">
+                <uri>amqp://${env:OP_JAMES_AMQP_USERNAME}:${env:OP_JAMES_AMQP_PASSWORD}@${env:OP_JAMES_AMQP_HOST}:${env:OP_JAMES_AMQP_PORT}</uri>
+                <exchange>james:events</exchange>
+                <attribute>icalendarAsJson2</attribute>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <!-- End of ICAL pipeline -->
+```
+

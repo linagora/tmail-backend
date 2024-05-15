@@ -60,6 +60,10 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
+            <artifactId>apache-mailet-icalendar</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
             <artifactId>apache-mailet-test</artifactId>
         </dependency>
         <dependency>
