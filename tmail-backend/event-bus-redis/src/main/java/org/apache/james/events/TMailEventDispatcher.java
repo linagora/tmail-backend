@@ -164,7 +164,14 @@ public class TMailEventDispatcher {
                 event.getEventId().getId(),
                 ex))
             .onErrorResume(ex -> deadLetters.store(dispatchingFailureGroup, event)
-                .then(Mono.error(ex)));
+                .then(propagateErrorIfNeeded(ex)));
+    }
+
+    private Mono<Void> propagateErrorIfNeeded(Throwable throwable) {
+        if (configuration.eventBusPropagateDispatchError()) {
+            return Mono.error(throwable);
+        }
+        return Mono.empty();
     }
 
     private Mono<Void> remoteKeysDispatch(String eventAsJson, Set<RegistrationKey> keys) {
