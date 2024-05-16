@@ -1,11 +1,13 @@
 package com.linagora.tmail.blob.blobid.list
 
 import java.io.ByteArrayInputStream
+import java.time.Duration
 import java.util.UUID
 
 import com.google.common.io.ByteSource
 import org.apache.james.blob.api.BlobStoreDAOFixture.{SHORT_BYTEARRAY, TEST_BUCKET_NAME}
 import org.apache.james.blob.api.{BlobId, BlobStoreDAOContract, BucketName, ObjectStoreException}
+import org.apache.james.util.concurrency.ConcurrentTestRunner
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable
 import org.junit.jupiter.api.Test
@@ -51,6 +53,16 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
     assertThatCode(() => SMono.fromPublisher(testee.save(defaultBucketName, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block())
       .doesNotThrowAnyException()
+  }
+
+  @Test
+  def saveInputStreamConcurrentlyWithTheSameBlobShouldNoop(): Unit = {
+    val blobId: BlobId = blobIdFactory.randomId()
+
+    ConcurrentTestRunner.builder
+      .operation((a: Int, b: Int) => SMono.fromPublisher(testee.save(defaultBucketName, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block())
+      .threadCount(100)
+      .runSuccessfullyWithin(Duration.ofMinutes(1))
   }
 
   @Test
