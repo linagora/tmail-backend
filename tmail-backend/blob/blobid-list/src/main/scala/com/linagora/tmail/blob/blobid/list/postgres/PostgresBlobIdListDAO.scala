@@ -10,7 +10,8 @@ import reactor.core.scala.publisher.SMono
 class PostgresBlobIdListDAO @Inject()(postgresExecutor: PostgresExecutor) {
   def insert(blobId: BlobId): SMono[Unit] =
     SMono.fromPublisher(postgresExecutor.executeVoid(dsl => Mono.from(dsl.insertInto(TABLE_NAME)
-        .set(BLOB_ID, blobId.asString()))))
+        .set(BLOB_ID, blobId.asString())
+        .onConflictDoNothing())))
       .`then`
 
   def isStored(blobId: BlobId): SMono[java.lang.Boolean] =
