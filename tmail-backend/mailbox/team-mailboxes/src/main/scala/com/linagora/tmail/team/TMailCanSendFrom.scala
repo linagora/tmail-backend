@@ -1,17 +1,16 @@
 package com.linagora.tmail.team
 
 import java.lang
-import java.util.stream
 
 import jakarta.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
-import org.apache.james.rrt.api.{AliasReverseResolver, RecipientRewriteTable}
+import org.apache.james.rrt.api.AliasReverseResolver
 import org.apache.james.rrt.lib.CanSendFromImpl
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-class TMailCanSendFrom @Inject()(rrt: RecipientRewriteTable, aliasReverseResolver: AliasReverseResolver, teamMailboxRepository: TeamMailboxRepository) extends CanSendFromImpl(rrt, aliasReverseResolver) {
+class TMailCanSendFrom @Inject()(aliasReverseResolver: AliasReverseResolver, teamMailboxRepository: TeamMailboxRepository) extends CanSendFromImpl(aliasReverseResolver) {
   override def userCanSendFrom(connectedUser: Username, fromUser: Username): Boolean =
     super.userCanSendFrom(connectedUser, fromUser) || validTeamMailbox(connectedUser, fromUser)
 
@@ -46,7 +45,8 @@ class TMailCanSendFrom @Inject()(rrt: RecipientRewriteTable, aliasReverseResolve
       case None => SMono.just(false)
     }
 
-  override def allValidFromAddressesForUser(user: Username): stream.Stream[MailAddress] = stream.Stream.concat(
-    super.allValidFromAddressesForUser(user),
-    Flux.from(teamMailboxRepository.listTeamMailboxes(user)).map(_.asMailAddress).toStream)
+  override def allValidFromAddressesForUser(user: Username): Flux[MailAddress] =
+    Flux.merge(super.allValidFromAddressesForUser(user),
+      Flux.from(teamMailboxRepository.listTeamMailboxes(user))
+        .map(_.asMailAddress))
 }
