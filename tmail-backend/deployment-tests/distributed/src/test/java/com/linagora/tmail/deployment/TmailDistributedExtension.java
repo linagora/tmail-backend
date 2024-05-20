@@ -4,6 +4,7 @@ import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_IMAGE_NAME;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_NETWORK_ALIAS;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createCassandra;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createRabbitMQ;
+import static com.linagora.tmail.deployment.ThirdPartyContainers.createRedis;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createS3;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createSearchContainer;
 
@@ -29,6 +30,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
     private final GenericContainer<?> opensearch;
     private final GenericContainer<?> rabbitmq;
     private final GenericContainer<?> s3;
+    private final GenericContainer<?> redis;
     private final GenericContainer<?> james;
 
     public TmailDistributedExtension() {
@@ -37,6 +39,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
         opensearch = createSearchContainer(network, OS_IMAGE_NAME, OS_NETWORK_ALIAS);
         rabbitmq = createRabbitMQ(network);
         s3 = createS3(network);
+        redis = createRedis(network);
         james = createTmailDistributed();
     }
 
@@ -45,7 +48,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
         return new GenericContainer<>("linagora/tmail-backend-distributed:latest")
             .withNetworkAliases("james-distributed")
             .withNetwork(network)
-            .dependsOn(cassandra, opensearch, s3, rabbitmq)
+            .dependsOn(cassandra, opensearch, s3, rabbitmq, redis)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
@@ -71,7 +74,8 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
             cassandra::stop,
             opensearch::stop,
             rabbitmq::stop,
-            s3::stop);
+            s3::stop,
+            redis::stop);
     }
 
     public GenericContainer<?> getContainer() {

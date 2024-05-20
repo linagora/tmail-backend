@@ -7,6 +7,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
 
 public class ThirdPartyContainers {
     public static String OS_IMAGE_NAME = "opensearchproject/opensearch:2.1.0";
@@ -66,5 +67,17 @@ public class ThirdPartyContainers {
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-s3-testing" + UUID.randomUUID()))
             .waitingFor(new LogMessageWaitStrategy().withRegEx(".*server started.*").withTimes(1)
                 .withStartupTimeout(Duration.ofMinutes(3)));
+    }
+
+    @SuppressWarnings("resource")
+    public static GenericContainer<?> createRedis(Network network) {
+        return new GenericContainer<>(DockerImageName.parse("redis").withTag("7.0.12"))
+            .withExposedPorts(6379)
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-redis-testing" + UUID.randomUUID()))
+            .withCommand("--loglevel", "debug")
+            .withNetworkAliases("redis")
+            .withNetwork(network)
+            .waitingFor(Wait.forLogMessage(".*Ready to accept connections.*", 1)
+                .withStartupTimeout(Duration.ofMinutes(2)));
     }
 }
