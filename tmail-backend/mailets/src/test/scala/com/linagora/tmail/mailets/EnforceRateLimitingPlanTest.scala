@@ -9,7 +9,7 @@ import com.linagora.tmail.mailets.EnforceRateLimitingPlanTest.{USER1, USER2}
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingPlanUserRepository
 import com.linagora.tmail.rate.limiter.api.{DeliveryLimitations, InMemoryRateLimitingPlanRepository, LimitTypes, OperationLimitationsType, RateLimitation, RateLimitingPlan, RateLimitingPlanCreateRequest, RateLimitingPlanRepository, RateLimitingPlanUserRepository, RelayLimitations, TransitLimitations}
 import eu.timepit.refined.auto._
-import org.apache.james.backends.redis.{DockerRedis, RedisConfiguration, RedisExtension}
+import org.apache.james.backends.redis.{DockerRedis, RedisExtension, StandaloneRedisConfiguration}
 import org.apache.james.core.Username
 import org.apache.james.metrics.api.NoopGaugeRegistry
 import org.apache.james.metrics.dropwizard.DropWizardGaugeRegistry
@@ -46,7 +46,7 @@ class EnforceRateLimitingPlanTest {
   def setup(redis: DockerRedis): Unit = {
     rateLimitationPlanRepository = new InMemoryRateLimitingPlanRepository
     rateLimitingPlanUserRepository = new MemoryRateLimitingPlanUserRepository
-    redisRateLimiterFactory = new RedisRateLimiterFactory(RedisConfiguration.from(redis.redisURI().toString, isCluster = false))
+    redisRateLimiterFactory = new RedisRateLimiterFactory(StandaloneRedisConfiguration.from(redis.redisURI().toString))
 
     val rateLimitingPlan: RateLimitingPlan = SMono.fromPublisher(rateLimitationPlanRepository.create(RateLimitingPlanCreateRequest(
       name = "PaidPlan",
