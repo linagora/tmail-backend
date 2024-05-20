@@ -1,6 +1,5 @@
 package com.linagora.tmail.team
 
-import com.google.common.collect.ImmutableList
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.dnsservice.api.DNSService
@@ -15,6 +14,7 @@ import org.apache.james.user.memory.MemoryUsersRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.Mockito.mock
+import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.SMono
 
 class TMailCanSendFromTest extends CanSendFromContract {
@@ -43,7 +43,7 @@ class TMailCanSendFromTest extends CanSendFromContract {
     rrt.setDomainList(domainList)
     rrt.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED)
 
-    testee = new TMailCanSendFrom(rrt, new AliasReverseResolverImpl(rrt), teamMailboxRepository)
+    testee = new TMailCanSendFrom(new AliasReverseResolverImpl(rrt), teamMailboxRepository)
   }
 
   override def canSendFrom: CanSendFrom = testee
@@ -89,7 +89,8 @@ class TMailCanSendFromTest extends CanSendFromContract {
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
     SMono(teamMailboxRepository.addMember(teamMailbox, Username.of("bob@domain.tld"))).block()
 
-    assertThat(testee.allValidFromAddressesForUser(Username.of("bob@domain.tld")).collect(ImmutableList.toImmutableList[MailAddress]))
+    assertThat(Flux.from(testee.allValidFromAddressesForUser(Username.of("bob@domain.tld")))
+      .collectList().block())
       .containsOnly(new MailAddress("marketing@domain.tld"), new MailAddress("bob@domain.tld"))
   }
 }
