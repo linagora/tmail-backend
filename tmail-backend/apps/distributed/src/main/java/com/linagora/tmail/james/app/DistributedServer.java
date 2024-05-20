@@ -147,6 +147,7 @@ import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
+import com.linagora.tmail.james.jmap.method.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
@@ -224,6 +225,7 @@ public class DistributedServer {
         new ForwardSetMethodModule(),
         new JMAPServerModule(),
         new JmapEventBusModule(),
+        new PublicAssetsModule(),
         new KeystoreCassandraModule(),
         new KeystoreGetMethodModule(),
         new KeystoreSetMethodModule(),

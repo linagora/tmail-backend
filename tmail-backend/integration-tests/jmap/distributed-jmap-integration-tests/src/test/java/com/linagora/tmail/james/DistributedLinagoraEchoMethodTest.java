@@ -21,7 +21,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraEchoMethodTest implements LinagoraEchoMethodContract {
     @RegisterExtension
-    JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
