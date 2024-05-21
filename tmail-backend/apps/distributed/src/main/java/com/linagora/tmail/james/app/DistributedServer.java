@@ -149,6 +149,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetRepositoryModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
@@ -291,6 +292,7 @@ public class DistributedServer {
         .with(new CassandraLabelRepositoryModule(),
             new CassandraRateLimitingModule(),
             new CassandraJmapSettingsRepositoryModule(),
+            new CassandraPublicAssetRepositoryModule(),
             new DistributedEmailAddressContactEventModule(),
             new DistributedEmailAddressContactEventDeadLettersModule(),
             new DistributedTaskSerializationModule(),

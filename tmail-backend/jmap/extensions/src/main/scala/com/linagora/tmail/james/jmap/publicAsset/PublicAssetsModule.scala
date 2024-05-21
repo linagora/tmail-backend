@@ -19,8 +19,6 @@ class PublicAssetsModule extends AbstractModule {
     Multibinder.newSetBinder(binder, classOf[BlobReferenceSource])
       .addBinding()
       .to(classOf[PublicAssetBlobReferenceSource])
-
-    install(new PublicAssetsMemoryModule())
   }
 
   @Provides

@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.ByteArrayInputStream
 import java.net.URI
+import java.util.UUID
 
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import org.apache.james.blob.api.HashBlobId
@@ -18,7 +19,7 @@ import scala.jdk.CollectionConverters._
 
 object PublicAssetRepositoryContract {
   val USERNAME: Username = Username.of("username1")
-  val PUBLIC_ASSET_ID: PublicAssetId = PublicAssetIdFactory.generate()
+  val PUBLIC_ASSET_ID: PublicAssetId = PublicAssetId(UUID.fromString("1b06c9d0-18bd-11ef-b7f8-53e7505899cf"))
   val CONTENT_TYPE: ContentType = ContentType.of("image/png")
   val IMAGE_CONTENT_TYPE: ImageContentType = ImageContentType.from(CONTENT_TYPE).toOption.get
   val IDENTITY_IDS: Seq[IdentityId] = Seq(IdentityId.generate, IdentityId.generate)
@@ -90,7 +91,7 @@ trait PublicAssetRepositoryContract {
     // Then the public asset should has the expected identity ids
     val updatedPublicAsset = SMono(teste.get(USERNAME, Set(publicAsset.id))).block()
     assertThat(updatedPublicAsset.identityIds.asJava)
-      .containsExactlyElementsOf(IDENTITY_IDS.asJava)
+      .containsExactlyInAnyOrderElementsOf(IDENTITY_IDS.asJava)
   }
 
   @Test
@@ -126,8 +127,7 @@ trait PublicAssetRepositoryContract {
 
   @Test
   def removeShouldNotFailWhenPublicAssetNotFound(): Unit = {
-    val publicAssetIdNotFound = PublicAssetIdFactory.generate()
-    assertThatCode(() => SMono(teste.remove(USERNAME, publicAssetIdNotFound)).block())
+    assertThatCode(() => SMono(teste.remove(USERNAME, PUBLIC_ASSET_ID)).block())
       .doesNotThrowAnyException()
   }
 
@@ -167,8 +167,7 @@ trait PublicAssetRepositoryContract {
 
   @Test
   def getShouldReturnEmptyWhenNoPublicAsset(): Unit = {
-    val notFoundPublicAssetId = PublicAssetIdFactory.generate()
-    assertThat(SFlux(teste.get(USERNAME, notFoundPublicAssetId)).collectSeq().block().asJava).isEmpty()
+    assertThat(SFlux(teste.get(USERNAME, PUBLIC_ASSET_ID)).collectSeq().block().asJava).isEmpty()
   }
 
   @Test

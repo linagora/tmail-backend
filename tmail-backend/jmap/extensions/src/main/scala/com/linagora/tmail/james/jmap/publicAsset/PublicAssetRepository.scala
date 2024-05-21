@@ -1,16 +1,13 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
-import java.io.{ByteArrayInputStream, InputStream}
+import java.io.ByteArrayInputStream
 import java.net.URI
 
 import com.google.common.collect.{HashBasedTable, Table, Tables}
-import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
-import com.linagora.tmail.james.jmap.publicAsset.MemoryPublicAssetRepository.PublicAssetMetadata
 import jakarta.inject.{Inject, Named}
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.IdentityId
-import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -34,37 +31,6 @@ trait PublicAssetRepository {
 
   def listAllBlobIds(): Publisher[BlobId]
 
-}
-
-object MemoryPublicAssetRepository {
-
-  object PublicAssetMetadata {
-    def from(publicAsset: PublicAssetStorage): PublicAssetMetadata =
-      PublicAssetMetadata(
-        publicAsset.id,
-        publicAsset.publicURI,
-        publicAsset.size,
-        publicAsset.contentType,
-        publicAsset.blobId,
-        publicAsset.identityIds)
-  }
-
-  case class PublicAssetMetadata(id: PublicAssetId,
-                                 publicURI: PublicURI,
-                                 size: Size,
-                                 contentType: ImageContentType,
-                                 blobId: BlobId,
-                                 identityIds: Seq[IdentityId]) {
-
-    def asPublicAssetStorage(content: InputStream): PublicAssetStorage =
-      PublicAssetStorage(id = id,
-        publicURI = publicURI,
-        size = size,
-        contentType = contentType,
-        blobId = blobId,
-        identityIds = identityIds,
-        content = () => content)
-  }
 }
 
 class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
