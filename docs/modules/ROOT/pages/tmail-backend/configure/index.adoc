@@ -48,3 +48,17 @@ Specified to TMail backend, we can configure the following configurations in the
 
 Example: `event.bus.keys.choice=redis` if you want to use Redis for user notifications.
 |===
+
+== Additional JMAP configurations
+Specified to TMail backend, we can configure the following configurations in the *jmap.properties* file.
+
+.jmap.properties additional content
+|===
+| Property name | explanation
+| publicAssetTotalSize
+| Optional. Configuration maximum size of total public assets that can be uploaded by a user.
+
+Default to 20MB. Supported units are B (bytes) K (KB) M (MB) G (GB).
+
+Example: `publicAssetTotalSize=20MB`.
+|===
