@@ -70,6 +70,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepositoryModule;
@@ -126,6 +127,7 @@ public class MemoryServer {
         new EmailRecoveryActionMethodModule(),
         new LabelMethodModule(),
         new JmapSettingsMethodModule(),
+        new PublicAssetsModule(),
         new MailboxesCleanupModule(),
         new InboxArchivalTaskModule())
         .with(new TeamMailboxJmapModule());

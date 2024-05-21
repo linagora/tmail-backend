@@ -274,4 +274,16 @@ trait LinagoraEchoMethodContract {
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("capabilities", hasKey("com:linagora:params:jmap:messages:vault"))
+
+  @Test
+  def shouldReturnPublicAssetsCapability(): Unit =
+      `given`()
+    .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities", hasKey("com:linagora:params:jmap:public:assets"))
+      .body("capabilities.'com:linagora:params:jmap:public:assets'", hasKey("publicAssetTotalSize"))
 }
