@@ -1,15 +1,27 @@
 package com.linagora.tmail.james.jmap.method
 
-import com.google.inject.multibindings.Multibinder
-import com.google.inject.{AbstractModule, Inject}
+import com.google.inject.Inject
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PUBLIC_ASSETS
+import com.linagora.tmail.james.jmap.method.PublicAssetTotalByteLimit.PUBLIC_ASSET_TOTAL_BYTE_LIMIT_DEFAULT
+import eu.timepit.refined
+import jakarta.inject.Named
 import org.apache.commons.configuration2.Configuration
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
-import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
+import org.apache.james.jmap.core.UnsignedInt.{UnsignedInt, UnsignedIntConstraint}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UnsignedInt, UrlPrefixes}
+import org.apache.james.util.Size
 import play.api.libs.json.{JsObject, Json}
 
-import jakarta.inject.Named
+import scala.util.{Failure, Success, Try}
+
+object PublicAssetTotalByteLimit {
+  val PUBLIC_ASSET_TOTAL_BYTE_LIMIT_DEFAULT: PublicAssetTotalByteLimit = PublicAssetTotalByteLimit(UnsignedInt.liftOrThrow(20 * 1024 * 1024)) // 20MB
+
+  def of(size: Size): Try[PublicAssetTotalByteLimit] = refined.refineV[UnsignedIntConstraint](size.asBytes()) match {
+    case Right(value) => Success(PublicAssetTotalByteLimit(value))
+    case Left(error) => Failure(new NumberFormatException(error))
+  }
+}
 
 case class PublicAssetTotalByteLimit(value: UnsignedInt)
 
@@ -19,9 +31,9 @@ case class PublicAssetsCapabilityProperties(publicAssetTotalByteSize: PublicAsse
 
 final case class PublicAssetsCapability(properties: PublicAssetsCapabilityProperties,
                                         identifier: CapabilityIdentifier = LINAGORA_PUBLIC_ASSETS) extends Capability
+
 object PublicAssetsConfiguration {
   val PUBLIC_ASSET_TOTAL_BYTE_SIZE_PROPERTY: String = "publicAssetTotalSize"
-  val PUBLIC_ASSET_TOTAL_BYTE_SIZE_DEFAULT: Int = 20 * 1024 * 1024 // 20MB
 }
 
 class PublicAssetsCapabilityFactory @Inject()(@Named("jmap") jmapConfiguration: Configuration) extends CapabilityFactory {
@@ -31,15 +43,11 @@ class PublicAssetsCapabilityFactory @Inject()(@Named("jmap") jmapConfiguration: 
   override def id(): CapabilityIdentifier = LINAGORA_PUBLIC_ASSETS
 
   override def create(urlPrefixes: UrlPrefixes): Capability = {
-    val publicAssetTotalByteLimit = jmapConfiguration.getInteger(PUBLIC_ASSET_TOTAL_BYTE_SIZE_PROPERTY, PUBLIC_ASSET_TOTAL_BYTE_SIZE_DEFAULT)
-    PublicAssetsCapability(PublicAssetsCapabilityProperties(PublicAssetTotalByteLimit(UnsignedInt.liftOrThrow(publicAssetTotalByteLimit.longValue()))))
-  }
-}
+    val publicAssetTotalByteLimit = Option(jmapConfiguration.getString(PUBLIC_ASSET_TOTAL_BYTE_SIZE_PROPERTY, null))
+      .map(value => Size.parse(value))
+      .map(size => PublicAssetTotalByteLimit.of(size).get)
+      .getOrElse(PUBLIC_ASSET_TOTAL_BYTE_LIMIT_DEFAULT)
 
-class PublicAssetsModule extends AbstractModule {
-  override def configure(): Unit = {
-    Multibinder.newSetBinder(binder(), classOf[CapabilityFactory])
-      .addBinding()
-      .to(classOf[PublicAssetsCapabilityFactory])
+    PublicAssetsCapability(PublicAssetsCapabilityProperties(publicAssetTotalByteLimit))
   }
 }
