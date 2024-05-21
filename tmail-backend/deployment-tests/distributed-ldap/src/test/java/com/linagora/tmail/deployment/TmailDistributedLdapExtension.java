@@ -4,6 +4,7 @@ import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_IMAGE_NAME;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.OS_NETWORK_ALIAS;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createCassandra;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createRabbitMQ;
+import static com.linagora.tmail.deployment.ThirdPartyContainers.createRedis;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createS3;
 import static com.linagora.tmail.deployment.ThirdPartyContainers.createSearchContainer;
 
@@ -34,6 +35,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
     private final GenericContainer<?> opensearch;
     private final GenericContainer<?> rabbitmq;
     private final GenericContainer<?> s3;
+    private final GenericContainer<?> redis;
     private final GenericContainer<?> james;
     private final GenericContainer<?> ldap;
 
@@ -43,6 +45,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
         opensearch = createSearchContainer(network, OS_IMAGE_NAME, OS_NETWORK_ALIAS);
         rabbitmq = createRabbitMQ(network);
         s3 = createS3(network);
+        redis = createRedis(network);
         ldap = createLdap(network);
         james = createTmailDistributedLdap();
     }
@@ -69,7 +72,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
         return new GenericContainer<>("linagora/tmail-backend-distributed:latest")
             .withNetworkAliases("james-distributed-ldap")
             .withNetwork(network)
-            .dependsOn(cassandra, opensearch, s3, rabbitmq, ldap)
+            .dependsOn(cassandra, opensearch, s3, rabbitmq, ldap, redis)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/usersrepository.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
@@ -97,7 +100,8 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             opensearch::stop,
             rabbitmq::stop,
             s3::stop,
-            ldap::stop);
+            ldap::stop,
+            redis::stop);
     }
 
     public GenericContainer<?> getContainer() {
