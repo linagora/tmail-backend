@@ -18,7 +18,7 @@ The value of this property in the JMAP session capabilities property is an objec
 }
 ....
 
-The `publicAssetTotalSize` object is an `UnsignedInt` representing the quota of public assets allowed for the user, in Mb.
+The `publicAssetTotalSize` object is an `UnsignedInt` representing the quota of public assets allowed for the user, in bytes.
 
 == PublicAsset
 
@@ -29,8 +29,8 @@ It has the following fields:
 
 - *id*: `Id`. Server-set. The computed identifier of the PublicAsset.
 - *publicURI*: `String`. Server-set. The public URI serving the PublicAsset.
-- *size*: `UnsignedInt`. Server-set. The size of the PublicAsset.
-- *contentType*: `String`. Server-set. The content type of the PublicAsset.
+- *size*: `UnsignedInt`. Server-set. The size of the PublicAsset, from the previously uploaded blob it refers to.
+- *contentType*: `String`. Server-set. The content type of the PublicAsset, from the previously uploaded blob it refers to.
 - *blobId*: `Id`. The blobId of the publicAsset in the object store.
 - *identityIds*: `Id[]|null`. Default to null. The identity ids that are using the PublicAsset.
 
@@ -48,7 +48,9 @@ Example:
 ....
 
 Note: The JMAP server needs to expose an extra JMAP route to be able to serve the public URI of the `PublicAsset` object.
-The public URI is generated following this pattern: `{jmap_endpoint}/publicAsset/{account_id}/{asset_id}`
+The public URI is generated following this pattern: `{jmap_endpoint}/publicAsset/{account_id}/{asset_id}`.
+The public URI has the role to fetch the `PublicAsset` in the blob store to serve the image it represents via a HTTP GET method.
+It is a public endpoint so no authentication is required.
 
 == PublicAsset/get
 
