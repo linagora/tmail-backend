@@ -1,0 +1,238 @@
+= Public Assets
+:navtitle: public assets
+
+Some mail providers, like Gmail, do not support base64 inline images reading in signatures. Allowing clients to store
+images as public assets to use on their TMail signature with a public URI for example could help showing the images
+correctly in other mail clients in this case.
+
+== Additions to the capability object
+
+Servers supporting the JMAP public assets extension need to advertise it via the
+`com:linagora:params:public:assets` capability.
+
+The value of this property in the JMAP session capabilities property is an object with the following field:
+
+....
+{
+    "publicAssetTotalSize": 20971520
+}
+....
+
+The `publicAssetTotalSize` object is an `UnsignedInt` representing the quota of public assets allowed for the user, in bytes.
+
+== PublicAsset
+
+The `PublicAsset` object represents an image that the user can use to show in its signature for interoperability with
+other mail providers.
+
+It has the following fields:
+
+- *id*: `Id`. Server-set. The computed identifier of the PublicAsset.
+- *publicURI*: `String`. Server-set. The public URI serving the PublicAsset.
+- *size*: `UnsignedInt`. Server-set. The size of the PublicAsset, from the previously uploaded blob it refers to.
+- *contentType*: `String`. Server-set. The content type of the PublicAsset, from the previously uploaded blob it refers to.
+- *blobId*: `Id`. The blobId of the publicAsset in the object store.
+- *identityIds*: `Id[]|null`. Default to null. The identity ids that are using the PublicAsset.
+
+Example:
+
+....
+{
+  "id": "02242f08",
+  "publicURI": "http://jmap.example.com/publicAsset/368ef913/02242f08"
+  "size": 1234,
+  "contentType": "image/png",
+  "blobId": "1234-5678",
+  "identityIds: ["098cd", "8567af"]
+}
+....
+
+Note: The JMAP server needs to expose an extra JMAP route to be able to serve the public URI of the `PublicAsset` object.
+The public URI is generated following this pattern: `{jmap_endpoint}/publicAsset/{account_id}/{asset_id}`.
+The public URI has the role to fetch the `PublicAsset` in the blob store to serve the image it represents via a HTTP GET method.
+It is a public endpoint so no authentication is required.
+
+== PublicAsset/get
+
+Standard */get* method as described in Section 5.1, RFC8620.
+
+== PublicAsset/set
+
+Standard */set* method as described in Section 5.3, RFC8620. Only the following field can be updated: `identityIds`,
+and the identity ids need to be validated.
+
+For `create`, the JMAP server needs to ensure that:
+ - the `blobId` belongs to a blob that has been uploaded to the upload bucket previously via the JMAP upload route.
+ - the blob it refers to is an image.
+ - the user does not reach the quota defined by the `publicAssetTotalSize` property in his session, in which a `OverQuotaException` should be returned.
+
+The `create` method should then copy the blob from upload bucket to the default one.
+
+== Examples
+
+=== PublicAsset/get
+
+Request:
+....
+{
+  "using": [
+      "urn:ietf:params:jmap:core", "com:linagora:params:public:assets"
+  ],
+  "methodCalls": [
+      [
+          "PublicAsset/get",
+          {
+              "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+              "ids": [
+                  "297bf5a7-855d-459a-9853-02031169b704",
+                  "notFound"
+              ]
+          },
+          "c1"
+      ]
+  ]
+}
+....
+
+Response:
+....
+{
+  "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+  "methodResponses": [
+      [
+          "PublicAsset/get",
+          {
+              "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+              "state": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+              "list": [
+                  {
+                      "id": "297bf5a7-855d-459a-9853-02031169b704",
+                      "publicURI": "https://jmap.example.com/publicAsset/29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6/297bf5a7-855d-459a-9853-02031169b704",
+                      "size": 11534336,
+                      "content-type": "image/png",
+                      "identityIds": [
+                          "858e7569-7085-46d2-82da-5ba0d723e94b",
+                          "497f99e1-af19-4d7d-bdcb-660b69e219af"
+                      ]
+                  }
+              ],
+              "notFound": [
+                  "notFound"
+              ]
+          },
+          "c1"
+      ]
+  ]
+}
+....
+
+=== PublicAsset/set create
+
+Request:
+....
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:public:assets"],
+  "methodCalls": [
+    [
+      "PublicAsset/set", {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "create": {
+          "4f29": {
+            "blobId": "1234",
+            "identityIds": ["12", "34"]
+          }
+        }
+      }, "0"
+    ]
+  ]
+}
+....
+
+Response:
+....
+{
+  "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+  "methodResponses": [
+    ["PublicAsset/set", {
+      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+      "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+      "created": {
+        "4f29": {
+          "id": "123456",
+          "publicURI": "http://jmap/accountid/assetid",
+          "size": 65432,
+          "contentType": "image/png"
+        }
+      }
+    }, "0"]
+  ]
+}
+....
+
+=== PublicAsset/set destroy
+
+Request:
+....
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:public:assets"],
+  "methodCalls": [
+    [
+      "PublicAsset/set", {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "destroy": ["1234"]
+      }, "0"
+    ]
+  ]
+}
+....
+
+Response:
+....
+{
+  "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+  "methodResponses": [
+    ["PublicAsset/set", {
+      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+      "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+      "destroyed": ["1234"]
+    }, "0"]
+  ]
+}
+....
+
+=== PublicAsset/set update
+
+Request:
+....
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:public:assets"],
+  "methodCalls": [
+    [
+      "PublicAsset/set", {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "update": {
+          "4f29": {
+            "identityIds": ["12", "34", "56"]
+          }
+        }
+      }, "0"
+    ]
+  ]
+}
+....
+
+Response:
+....
+{
+  "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+  "methodResponses": [
+    ["PublicAsset/set", {
+      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+      "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+      "updated": {
+        "4f29": null
+      }
+    }, "0"]
+  ]
+}
+....
