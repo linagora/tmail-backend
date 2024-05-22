@@ -3,7 +3,6 @@ package com.linagora.tmail.james.jmap.publicAsset
 import java.io.{ByteArrayInputStream, InputStream}
 
 import com.google.common.collect.{HashBasedTable, Table, Tables}
-import com.google.common.io.CountingInputStream
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import com.linagora.tmail.james.jmap.publicAsset.MemoryPublicAssetRepository.PublicAssetMetadata
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
@@ -31,6 +30,8 @@ trait PublicAssetRepository {
 
   def list(username: Username): Publisher[PublicAssetStorage]
 
+  def listAllBlobIds(): Publisher[BlobId]
+
 }
 
 object MemoryPublicAssetRepository {
@@ -53,14 +54,14 @@ object MemoryPublicAssetRepository {
                                  blobId: BlobId,
                                  identityIds: Seq[IdentityId]) {
 
-    def asPublicAssetStorage(bytes: Array[Byte]): PublicAssetStorage =
+    def asPublicAssetStorage(content: InputStream): PublicAssetStorage =
       PublicAssetStorage(id = id,
         publicURI = publicURI,
         size = size,
         contentType = contentType,
         blobId = blobId,
         identityIds = identityIds,
-        content = () => new ByteArrayInputStream(bytes))
+        content = () => content)
   }
 }
 
@@ -71,21 +72,19 @@ class MemoryPublicAssetRepository(val blobStore: BlobStore) extends PublicAssetR
 
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): SMono[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
-      .flatMap((dataAsByte: Array[Byte]) =>
-        SMono.fromCallable(() => new CountingInputStream(new ByteArrayInputStream(dataAsByte)))
-          .flatMap((dataAsByte: InputStream) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST)))
-          .map(blobId => {
-            val publicAssetId = PublicAssetIdFactory.generate()
-            val publicAsset: PublicAssetStorage = PublicAssetStorage(id = publicAssetId,
-              publicURI = creationRequest.publicURI,
-              size = creationRequest.size,
-              contentType = creationRequest.contentType,
-              blobId = blobId,
-              identityIds = creationRequest.identityIds,
-              content = () => new ByteArrayInputStream(dataAsByte))
-            tableStore.put(username, publicAssetId, PublicAssetMetadata.from(publicAsset))
-            publicAsset
-          }))
+      .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
+        .map(blobId => {
+          val publicAssetId = PublicAssetIdFactory.generate()
+          val publicAsset: PublicAssetStorage = PublicAssetStorage(id = publicAssetId,
+            publicURI = creationRequest.publicURI,
+            size = creationRequest.size,
+            contentType = creationRequest.contentType,
+            blobId = blobId,
+            identityIds = creationRequest.identityIds,
+            content = () => new ByteArrayInputStream(dataAsByte))
+          tableStore.put(username, publicAssetId, PublicAssetMetadata.from(publicAsset))
+          publicAsset
+        })).subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
 
   override def update(username: Username, id: PublicAssetId, identityIds: Set[IdentityId]): SMono[Void] =
     SMono.fromCallable(() => tableStore.get(username, id))
@@ -112,6 +111,9 @@ class MemoryPublicAssetRepository(val blobStore: BlobStore) extends PublicAssetR
       .flatMap(getBlobContentAndMapToPublicAssetStorage, ReactorUtils.DEFAULT_CONCURRENCY)
 
   private def getBlobContentAndMapToPublicAssetStorage(metaData: PublicAssetMetadata): SMono[PublicAssetStorage] =
-    SMono(blobStore.readBytes(bucketName, metaData.blobId))
+    SMono(blobStore.readReactive(bucketName, metaData.blobId))
       .map(bytes => metaData.asPublicAssetStorage(bytes))
+
+  override def listAllBlobIds(): Publisher[BlobId] =
+    SFlux.fromIterable(tableStore.values().asScala.map(_.blobId))
 }
