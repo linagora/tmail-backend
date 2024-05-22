@@ -8,7 +8,7 @@ import org.apache.james.jmap.core.AccountId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class PublicAssetTest {
+class PublicAssetURITest {
 
   @Test
   def fromShouldReturnCorrectPublicURI(): Unit = {

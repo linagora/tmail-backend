@@ -1,14 +1,14 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
+import java.io.ByteArrayInputStream
 import java.net.URI
 
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
-import eu.timepit.refined.auto._
+import org.apache.james.blob.api.HashBlobId
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.api.model.{IdentityId, Size}
 import org.apache.james.jmap.core.AccountId
-import org.apache.james.jmap.mail.BlobId
 import org.apache.james.mailbox.model.ContentType
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
@@ -25,12 +25,13 @@ object PublicAssetRepositoryContract {
   val IDENTITY_IDS: Seq[IdentityId] = Seq(IdentityId.generate, IdentityId.generate)
   val ASSET_CONTENT: Array[Byte] = Array[Byte](1, 2, 3)
   val SIZE: Size = Size.sanitizeSize(ASSET_CONTENT.length)
+  val BLOBID_FACTORY = new HashBlobId.Factory()
 
-  val CREATION_REQUEST: PublicAsset = PublicAsset(id = PUBLIC_ASSET_ID,
+  val CREATION_REQUEST: PublicAssetCreationRequest = PublicAssetCreationRequest(
     publicURI = PublicURI.from(PUBLIC_ASSET_ID, AccountId.from(USERNAME).toOption.get, new URI("http://localhost:8080/")),
     size = SIZE,
     contentType = IMAGE_CONTENT_TYPE,
-    blobId = BlobId("blob1"),
+    content = () => new ByteArrayInputStream(ASSET_CONTENT),
     identityIds = Seq.empty)
 }
 
@@ -39,6 +40,8 @@ trait PublicAssetRepositoryContract {
   import PublicAssetRepositoryContract._
 
   def teste: PublicAssetRepository
+
+  def blobIdFactory = BLOBID_FACTORY
 
   @Test
   def createShouldReturnPublicAssetWhenSuccess(): Unit = {
@@ -49,7 +52,10 @@ trait PublicAssetRepositoryContract {
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(publicAsset.sizeAsLong()).isEqualTo(ASSET_CONTENT.length)
       softly.assertThat(publicAsset.contentType.value).isEqualTo("image/png")
-      softly.assertThat(publicAsset.blobId.value.value).isEqualTo("blob1")
+      softly.assertThat(publicAsset.blobId.asString()).isNotNull
+      softly.assertThat(publicAsset.identityIds.asJava).containsExactlyInAnyOrder(CREATION_REQUEST.identityIds: _*)
+      softly.assertThat(publicAsset.content().readAllBytes()).isEqualTo(ASSET_CONTENT)
+      softly.assertThat(publicAsset.id.value).isNotNull
     })
   }
 
@@ -60,10 +66,14 @@ trait PublicAssetRepositoryContract {
 
     // Then the public asset should be stored
     val storedPublicAsset = SMono(teste.get(USERNAME, Set(publicAsset.id))).block()
+
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(storedPublicAsset.sizeAsLong()).isEqualTo(ASSET_CONTENT.length)
       softly.assertThat(storedPublicAsset.contentType.value).isEqualTo("image/png")
-      softly.assertThat(storedPublicAsset.blobId.value.value).isEqualTo(publicAsset.blobId.value.value)
+      softly.assertThat(storedPublicAsset.blobId.asString()).isNotNull
+      softly.assertThat(storedPublicAsset.identityIds.asJava).containsExactlyInAnyOrder(CREATION_REQUEST.identityIds: _*)
+      softly.assertThat(storedPublicAsset.content().readAllBytes()).isEqualTo(ASSET_CONTENT)
+      softly.assertThat(storedPublicAsset.id.value).isNotNull
     })
   }
 
@@ -123,10 +133,10 @@ trait PublicAssetRepositoryContract {
   def removeShouldRemoveAllPublicAssetsRelatedWhenSuccess(): Unit = {
     // Given a public asset
     val publicAsset1 = SMono(teste.create(USERNAME, CREATION_REQUEST)).block()
-    val publicAsset2 = SMono(teste.create(USERNAME, CREATION_REQUEST.copy(id = PublicAssetIdFactory.generate()))).block()
+    val publicAsset2 = SMono(teste.create(USERNAME, CREATION_REQUEST.copy(content = ()=> new ByteArrayInputStream("newContent2".getBytes)))).block()
 
-    assertThat(SFlux(teste.list(USERNAME)).collectSeq().block().asJava)
-      .containsExactlyInAnyOrder(publicAsset1, publicAsset2)
+    assertThat(SFlux(teste.list(USERNAME)).collectSeq().block().map(_.id).asJava)
+      .containsExactlyInAnyOrder(publicAsset1.id, publicAsset2.id)
 
     // When revoking all public assets
     SMono(teste.revoke(USERNAME)).block()
@@ -139,17 +149,18 @@ trait PublicAssetRepositoryContract {
   def removeShouldNotRemovePublicAssetsFromOtherUsers(): Unit = {
     // Given a public asset
     val publicAsset1 = SMono(teste.create(USERNAME, CREATION_REQUEST)).block()
-    val publicAsset2 = SMono(teste.create(Username.of("username2"), CREATION_REQUEST.copy(id = PublicAssetIdFactory.generate()))).block()
+    val publicAsset2 = SMono(teste.create(Username.of("username2"), CREATION_REQUEST.copy(content = ()=> new ByteArrayInputStream("newContent2".getBytes)))).block()
 
-    assertThat(SFlux(teste.list(USERNAME)).collectSeq().block().asJava)
-      .containsExactly(publicAsset1)
+    assertThat(SFlux(teste.list(USERNAME)).collectSeq().block().map(_.id).asJava)
+      .containsExactly(publicAsset1.id)
 
     // When revoking all public assets
     SMono(teste.revoke(USERNAME)).block()
 
     // Then the public asset should be removed
-    assertThat(SFlux(teste.list(Username.of("username2"))).collectSeq().block().asJava)
-      .containsExactly(publicAsset2)
+    assertThat(SFlux(teste.list(Username.of("username2"))).collectSeq().block()
+      .map(_.id).asJava)
+      .containsExactly(publicAsset2.id)
   }
 
   @Test
@@ -167,7 +178,9 @@ trait PublicAssetRepositoryContract {
     val retrievedPublicAsset = SMono(teste.get(USERNAME, publicAsset.id)).block()
 
     // Then the public asset should be retrieved
-    assertThat(retrievedPublicAsset).isEqualTo(publicAsset)
+    assertThat(retrievedPublicAsset)
+      .usingRecursiveComparison()
+      .isEqualTo(publicAsset)
   }
 
   @Test
@@ -188,13 +201,15 @@ trait PublicAssetRepositoryContract {
   def listShouldReturnAllPublicAssets(): Unit = {
     // Given a public asset
     val publicAsset1 = SMono(teste.create(USERNAME, CREATION_REQUEST)).block()
-    val publicAsset2 = SMono(teste.create(USERNAME, CREATION_REQUEST.copy(id = PublicAssetIdFactory.generate()))).block()
+    val publicAsset2 = SMono(teste.create(USERNAME, CREATION_REQUEST.copy(content = ()=> new ByteArrayInputStream("newContent2".getBytes)))).block()
 
     // When listing public assets
     val publicAssets = SFlux(teste.list(USERNAME)).collectSeq().block()
 
     // Then all public assets should be retrieved
-    assertThat(publicAssets.asJava).containsExactlyInAnyOrder(publicAsset1, publicAsset2)
+    assertThat(publicAssets.map(_.id)
+      .asJava)
+      .containsExactlyInAnyOrder(publicAsset1.id, publicAsset2.id)
   }
 
   @Test
@@ -203,6 +218,8 @@ trait PublicAssetRepositoryContract {
     val publicAsset = SMono(teste.create(USERNAME, CREATION_REQUEST)).block()
 
     // When listing public assets from another user
-    assertThat(SFlux(teste.list(Username.of("username2"))).collectSeq().block().asJava).isEmpty()
+    val publicAssets = SFlux(teste.list(Username.of("username2"))).collectSeq().block()
+    // Then no public asset of the other user should be retrieved
+    assertThat(publicAssets.asJava).isEmpty()
   }
 }

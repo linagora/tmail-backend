@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
+import java.io.InputStream
 import java.net.URI
 import java.util.UUID
 
@@ -8,10 +9,10 @@ import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentTy
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
 import org.apache.http.client.utils.URIBuilder
+import org.apache.james.blob.api.BlobId
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.core.AccountId
-import org.apache.james.jmap.mail.BlobId
 import org.apache.james.mailbox.model.ContentType
 
 import scala.util.Try
@@ -79,13 +80,21 @@ case class PublicAssetNotFoundException(id: PublicAssetId) extends PublicAssetEx
   override val message: String = s"Public asset not found: ${id.asString()}"
 }
 
-case class PublicAsset(id: PublicAssetId,
-                       publicURI: PublicURI,
-                       size: Size,
-                       contentType: ImageContentType,
-                       blobId: BlobId,
-                       identityIds: Seq[IdentityId] = Seq.empty) {
+
+case class PublicAssetStorage(id: PublicAssetId,
+                              publicURI: PublicURI,
+                              size: Size,
+                              contentType: ImageContentType,
+                              blobId: BlobId,
+                              identityIds: Seq[IdentityId] = Seq.empty,
+                              content: () => InputStream) {
   def sizeAsLong(): java.lang.Long = size.value
 
   def contentTypeAsString(): String = contentType.value
 }
+
+case class PublicAssetCreationRequest(publicURI: PublicURI,
+                                      size: Size,
+                                      contentType: ImageContentType,
+                                      identityIds: Seq[IdentityId] = Seq.empty,
+                                      content: () => InputStream)
