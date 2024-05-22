@@ -105,11 +105,13 @@ class MemoryPublicAssetRepository(val blobStore: BlobStore) extends PublicAssetR
 
   override def get(username: Username, ids: Set[PublicAssetId]): SFlux[PublicAssetStorage] =
     SFlux.fromIterable(ids.flatMap(id => Option(tableStore.get(username, id))))
-      .flatMap(metaData => SMono(blobStore.readBytes(bucketName, metaData.blobId))
-        .map(bytes => metaData.asPublicAssetStorage(bytes)), ReactorUtils.DEFAULT_CONCURRENCY)
+      .flatMap(getBlobContentAndMapToPublicAssetStorage, ReactorUtils.DEFAULT_CONCURRENCY)
 
   override def list(username: Username): SFlux[PublicAssetStorage] =
     SFlux.fromIterable(tableStore.row(username).values().asScala)
-      .flatMap(metaData => SMono(blobStore.readBytes(bucketName, metaData.blobId))
-        .map(bytes => metaData.asPublicAssetStorage(bytes)), ReactorUtils.DEFAULT_CONCURRENCY)
+      .flatMap(getBlobContentAndMapToPublicAssetStorage, ReactorUtils.DEFAULT_CONCURRENCY)
+
+  private def getBlobContentAndMapToPublicAssetStorage(metaData: PublicAssetMetadata): SMono[PublicAssetStorage] =
+    SMono(blobStore.readBytes(bucketName, metaData.blobId))
+      .map(bytes => metaData.asPublicAssetStorage(bytes))
 }
