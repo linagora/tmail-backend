@@ -14,7 +14,7 @@ The value of this property in the JMAP session capabilities property is an objec
 
 ....
 {
-    "publicAssetTotalSize": 20
+    "publicAssetTotalSize": 20971520
 }
 ....
 
