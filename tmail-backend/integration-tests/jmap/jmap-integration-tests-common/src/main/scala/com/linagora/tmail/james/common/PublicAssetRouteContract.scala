@@ -2,7 +2,7 @@ package com.linagora.tmail.james.common
 
 import java.io.ByteArrayInputStream
 
-import com.google.common.net.HttpHeaders.CONTENT_LENGTH
+import com.google.common.net.HttpHeaders.{CACHE_CONTROL, CONTENT_LENGTH}
 import com.linagora.tmail.james.common.PublicAssetRouteContract.{ASSET_CONTENT, IMAGE_CONTENT_TYPE, SIZE}
 import com.linagora.tmail.james.common.probe.JmapGuicePublicAssetProbe
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
@@ -65,6 +65,7 @@ trait PublicAssetRouteContract {
       .statusCode(SC_OK)
       .contentType(IMAGE_CONTENT_TYPE.value)
       .header(CONTENT_LENGTH, SIZE.toString())
+      .header(CACHE_CONTROL, "immutable, max-age=31536000")
       .extract()
       .body()
       .asByteArray()
