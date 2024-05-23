@@ -28,6 +28,11 @@ object PublicAssetIdFactory {
       .left.map(e => value -> new IllegalArgumentException(e))
 }
 
+object PublicAssetId {
+  def fromString(value: String): Try[PublicAssetId] =
+    Try(PublicAssetId(UUID.fromString(value)))
+}
+
 case class PublicAssetId(value: UUID) {
   def asString(): String = value.toString
 }
