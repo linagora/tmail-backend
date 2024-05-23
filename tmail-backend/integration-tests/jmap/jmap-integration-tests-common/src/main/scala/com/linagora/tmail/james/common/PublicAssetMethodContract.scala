@@ -11,6 +11,7 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.mailbox.model.ContentType.MimeType
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -19,7 +20,7 @@ import play.api.libs.json.{JsString, Json}
 import scala.jdk.CollectionConverters._
 
 object PublicAssetMethodContract {
-  case class UploadResponse(blobId: String, contentType: String, size: Long)
+  case class UploadResponse(blobId: String, contentType: MimeType, size: Long)
 }
 
 trait PublicAssetMethodContract {
@@ -51,11 +52,9 @@ trait PublicAssetMethodContract {
       .body
       .asString
 
-    val blobId: String = (Json.parse(uploadResponse) \ "blobId").as[String]
-    val size: Long = (Json.parse(uploadResponse) \ "size").as[Long]
-    val assetType: String = org.apache.james.mailbox.model.ContentType.of((Json.parse(uploadResponse) \ "type").as[String])
-      .mimeType().asString()
-    UploadResponse(blobId, assetType, size)
+    UploadResponse(blobId = (Json.parse(uploadResponse) \ "blobId").as[String],
+      contentType = org.apache.james.mailbox.model.ContentType.of((Json.parse(uploadResponse) \ "type").as[String]).mimeType(),
+      size = (Json.parse(uploadResponse) \ "size").as[Long])
   }
 
   @Test
@@ -102,9 +101,8 @@ trait PublicAssetMethodContract {
            |        "created": {
            |            "4f29": {
            |                "id": "$${json-unit.ignore}",
-           |                "blobId": "$${json-unit.ignore}",
            |                "size": ${uploadResponse.size},
-           |                "contentType": "${uploadResponse.contentType}",
+           |                "contentType": "${uploadResponse.contentType.asString()}",
            |                "publicURI": "$${json-unit.ignore}"
            |            }
            |        }
@@ -283,9 +281,8 @@ trait PublicAssetMethodContract {
         s"""{
            |    "4f29": {
            |        "id": "$${json-unit.ignore}",
-           |        "blobId": "$${json-unit.ignore}",
            |        "size": ${uploadResponse.size},
-           |        "contentType": "${uploadResponse.contentType}",
+           |        "contentType": "${uploadResponse.contentType.asString()}",
            |        "publicURI": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
@@ -441,10 +438,9 @@ trait PublicAssetMethodContract {
            |        "created": {
            |            "4f29": {
            |                "id": "$${json-unit.ignore}",
-           |                "blobId": "$${json-unit.ignore}",
            |                "publicURI": "$${json-unit.ignore}",
            |                "size": ${uploadResponse.size},
-           |                "contentType": "${uploadResponse.contentType}"
+           |                "contentType": "${uploadResponse.contentType.asString()}"
            |            }
            |        },
            |        "notCreated": {
@@ -601,7 +597,6 @@ trait PublicAssetMethodContract {
            |            "created": {
            |                "clientId1": {
            |                    "id": "$${json-unit.ignore}",
-           |                    "blobId": "$${json-unit.ignore}",
            |                    "publicURI": "$${json-unit.ignore}",
            |                    "size": ${uploadResponse.size},
            |                    "contentType": "$${json-unit.ignore}"

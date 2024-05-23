@@ -50,7 +50,6 @@ case class UnparsedPublicAssetId(id: String)
 object PublicAssetCreationResponse {
   def from(publicAsset: PublicAssetStorage): PublicAssetCreationResponse = {
     PublicAssetCreationResponse(publicAsset.id,
-      publicAsset.blobId,
       publicAsset.publicURI,
       publicAsset.size.value,
       publicAsset.contentType)
@@ -58,7 +57,6 @@ object PublicAssetCreationResponse {
 }
 
 case class PublicAssetCreationResponse(id: PublicAssetId,
-                                       blobId: BlobId,
                                        publicURI: PublicURI,
                                        size: Long,
                                        contentType: ImageContentType)

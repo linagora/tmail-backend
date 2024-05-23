@@ -4,7 +4,6 @@ import java.util.UUID
 
 import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetCreationId, PublicAssetCreationResponse, PublicAssetId, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicURI}
 import eu.timepit.refined.auto._
-import org.apache.james.blob.api.HashBlobId
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, SetError, UuidState}
 import org.assertj.core.api.Assertions.assertThat
@@ -93,7 +92,6 @@ class PublicAssetSerializerTest {
 
   @Test
   def serializePublicAssetSetResponseShouldSucceed(): Unit = {
-    val blobId = new HashBlobId.Factory().from("111")
     val response = PublicAssetSetResponse(
       accountId = AccountId("29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"),
       oldState = Some(UuidState.fromStringUnchecked("2c9f1b12-b35a-43e6-9af2-0106fb53a943")),
@@ -101,7 +99,6 @@ class PublicAssetSerializerTest {
       created = Some(Map(
         PublicAssetCreationId("4f29") -> PublicAssetCreationResponse(
           id = PublicAssetId(UUID.fromString("3b241101-feb9-4e23-a0c0-5b8843b4a760")),
-          blobId = blobId,
           publicURI = PublicURI.fromString("http://localhost:8080/3b241101-feb9-4e23-a0c0-5b8843b4a760").toOption.get,
           size = 1234,
           contentType = ImageContentType.validate("image/png").toOption.get)
@@ -122,7 +119,6 @@ class PublicAssetSerializerTest {
           |  "created": {
           |    "4f29": {
           |      "id": "3b241101-feb9-4e23-a0c0-5b8843b4a760",
-          |      "blobId": "111",
           |      "size": 1234,
           |      "publicURI": "http://localhost:8080/3b241101-feb9-4e23-a0c0-5b8843b4a760",
           |      "contentType": "image/png"

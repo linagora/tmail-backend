@@ -8,7 +8,7 @@ import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{AccountId, ClientId, Id, Invocation, ServerId, SessionTranslator, UuidState}
+import org.apache.james.jmap.core.{ClientId, Id, Invocation, ServerId, SessionTranslator, UuidState}
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.{Blob, BlobNotFoundException, BlobResolvers, ProcessingContext, SessionSupplier}
 import org.apache.james.mailbox.MailboxSession
@@ -68,7 +68,7 @@ class PublicAssetSetCreatePerformer @Inject()(val publicAssetRepository: PublicA
     SFlux.fromIterable(request.create.getOrElse(Map.empty))
       .concatMap {
         case (publicAssetCreationId: PublicAssetCreationId, publicAssetCreationRequestAsJson: JsObject) => parseCreate(publicAssetCreationRequestAsJson)
-          .fold(SMono.error(_), creationRequest => createPublicAssets(mailboxSession, creationRequest, request.accountId)
+          .fold(SMono.error(_), creationRequest => createPublicAssets(mailboxSession, creationRequest)
             .map(publicAsset => PublicAssetCreationSuccess(publicAssetCreationId, PublicAssetCreationResponse.from(publicAsset))))
           .onErrorResume(error => handleError(publicAssetCreationId, error))
       }.collectSeq()
@@ -82,9 +82,8 @@ class PublicAssetSetCreatePerformer @Inject()(val publicAssetRepository: PublicA
     }
 
   private def createPublicAssets(mailboxSession: MailboxSession,
-                                 creationRequest: PublicAssetSetCreationRequest,
-                                 accountId: AccountId): SMono[PublicAssetStorage] =
-    generatePublicAssetCreationRequest(creationRequest, mailboxSession, accountId)
+                                 creationRequest: PublicAssetSetCreationRequest): SMono[PublicAssetStorage] =
+    generatePublicAssetCreationRequest(creationRequest, mailboxSession)
       .flatMap(publicAsset => SMono(publicAssetRepository.create(mailboxSession.getUser, publicAsset)))
 
   private def parseCreate(jsObject: JsObject): Either[PublicAssetCreationParseException, PublicAssetSetCreationRequest] =
@@ -94,17 +93,15 @@ class PublicAssetSetCreatePerformer @Inject()(val publicAssetRepository: PublicA
         case JsError(errors) => Left(PublicAssetCreationParseException(standardError(errors)))
       })
 
-  private def parseAndCheckIdentityIds(creationRequest: PublicAssetSetCreationRequest, session: MailboxSession): SMono[Seq[IdentityId]] =
-    creationRequest.parseIdentityIds match {
-      case Right(identityIds) => publicAssetSetService.checkIdentityIdsExist(identityIds, session)
-      case Left(e) => SMono.error(e)
-    }
+  private def parseIdentityIds(creationRequest: PublicAssetSetCreationRequest): SMono[Seq[IdentityId]] =
+    SMono.fromCallable(() => creationRequest.parseIdentityIds)
+      .flatMap(result => result.fold(e => SMono.error(e), ids => SMono.just(ids)))
 
   private def generatePublicAssetCreationRequest(creationRequest: PublicAssetSetCreationRequest,
-                                                 session: MailboxSession,
-                                                 accountId: AccountId): SMono[PublicAssetCreationRequest] =
+                                                 session: MailboxSession): SMono[PublicAssetCreationRequest] =
     for {
-      identityIds <- parseAndCheckIdentityIds(creationRequest, session)
+      parsedIdentityIds <- parseIdentityIds(creationRequest)
+      identityIds <- publicAssetSetService.checkIdentityIdsExist(parsedIdentityIds, session)
       blob <- resolveBlob(session, creationRequest)
       creationRequest <- SMono.fromTry(buildPublicAssetCreationRequest(blob, identityIds).toTry)
     } yield {
