@@ -1,11 +1,12 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.{ByteArrayInputStream, InputStream}
+import java.net.URI
 
 import com.google.common.collect.{HashBasedTable, Table, Tables}
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import com.linagora.tmail.james.jmap.publicAsset.MemoryPublicAssetRepository.PublicAssetMetadata
-import jakarta.inject.Inject
+import jakarta.inject.{Inject, Named}
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.IdentityId
@@ -66,7 +67,8 @@ object MemoryPublicAssetRepository {
   }
 }
 
-class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore) extends PublicAssetRepository {
+class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
+                                            @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
   private val tableStore: Table[Username, PublicAssetId, PublicAssetMetadata] = Tables.synchronizedTable(HashBasedTable.create())
 
   private val bucketName: BucketName = blobStore.getDefaultBucketName
@@ -77,7 +79,7 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore) extends Pu
         .map(blobId => {
           val publicAssetId = PublicAssetIdFactory.generate()
           val publicAsset: PublicAssetStorage = PublicAssetStorage(id = publicAssetId,
-            publicURI = creationRequest.publicURI,
+            publicURI = PublicURI.from(publicAssetId, username, publicAssetUriPrefix),
             size = creationRequest.size,
             contentType = creationRequest.contentType,
             blobId = blobId,

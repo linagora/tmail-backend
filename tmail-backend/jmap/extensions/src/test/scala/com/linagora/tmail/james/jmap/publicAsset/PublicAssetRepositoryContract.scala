@@ -8,7 +8,6 @@ import org.apache.james.blob.api.HashBlobId
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.api.model.{IdentityId, Size}
-import org.apache.james.jmap.core.AccountId
 import org.apache.james.mailbox.model.ContentType
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
@@ -28,11 +27,12 @@ object PublicAssetRepositoryContract {
   val BLOBID_FACTORY = new HashBlobId.Factory()
 
   val CREATION_REQUEST: PublicAssetCreationRequest = PublicAssetCreationRequest(
-    publicURI = PublicURI.from(PUBLIC_ASSET_ID, AccountId.from(USERNAME).toOption.get, new URI("http://localhost:8080/")),
     size = SIZE,
     contentType = IMAGE_CONTENT_TYPE,
     content = () => new ByteArrayInputStream(ASSET_CONTENT),
     identityIds = Seq.empty)
+
+  val PUBLIC_ASSET_URI_PREFIX = new URI("http://localhost:8080")
 }
 
 trait PublicAssetRepositoryContract {
@@ -56,6 +56,7 @@ trait PublicAssetRepositoryContract {
       softly.assertThat(publicAsset.identityIds.asJava).containsExactlyInAnyOrder(CREATION_REQUEST.identityIds: _*)
       softly.assertThat(publicAsset.content().readAllBytes()).isEqualTo(ASSET_CONTENT)
       softly.assertThat(publicAsset.id.value).isNotNull
+      softly.assertThat(publicAsset.publicURI.value.toString).isEqualTo("http://localhost:8080/publicAsset/username1/" + publicAsset.id.value)
     })
   }
 
@@ -74,6 +75,7 @@ trait PublicAssetRepositoryContract {
       softly.assertThat(storedPublicAsset.identityIds.asJava).containsExactlyInAnyOrder(CREATION_REQUEST.identityIds: _*)
       softly.assertThat(storedPublicAsset.content().readAllBytes()).isEqualTo(ASSET_CONTENT)
       softly.assertThat(storedPublicAsset.id.value).isNotNull
+      softly.assertThat(publicAsset.publicURI.value.toString).isEqualTo("http://localhost:8080/publicAsset/username1/" + publicAsset.id.value)
     })
   }
 
