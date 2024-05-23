@@ -129,6 +129,7 @@ public class MemoryServer {
         new LabelMethodModule(),
         new JmapSettingsMethodModule(),
         new PublicAssetsModule(),
+        new PublicAssetsMemoryModule(),
         new MailboxesCleanupModule(),
         new InboxArchivalTaskModule())
         .with(new TeamMailboxJmapModule());

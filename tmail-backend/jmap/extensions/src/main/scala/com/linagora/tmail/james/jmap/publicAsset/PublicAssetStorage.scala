@@ -57,7 +57,7 @@ case class PublicURI(value: URI) extends AnyVal
 
 object ImageContentType {
   def from(contentType: ContentType): Either[PublicAssetInvalidContentTypeException, ImageContentType] =
-    validate(contentType.asString())
+    validate(contentType.mimeType().asString())
 
   def from(contentType: String): Either[PublicAssetInvalidContentTypeException, ImageContentType] =
     validate(contentType)
@@ -69,7 +69,7 @@ object ImageContentType {
   implicit val imageContentType: Validate.Plain[String, ImageContentTypeConstraint] =
     Validate.fromPredicate(
       str => str.startsWith("image/"),
-      str => s"$str starts with 'image/'",
+      str => s"'$str' is not a valid image content type. A valid image content type should start with 'image/'",
       ImageContentTypeConstraint())
 
   def validate(string: String): Either[PublicAssetInvalidContentTypeException, ImageContentType] =
