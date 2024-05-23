@@ -3,7 +3,6 @@ package com.linagora.tmail.james.jmap.publicAsset
 import java.io.ByteArrayInputStream
 import java.net.URI
 
-import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import jakarta.inject.{Inject, Named}
@@ -24,7 +23,7 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
       .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
         .flatMap(blobId => {
-          val assetId: PublicAssetId = PublicAssetId(Uuids.timeBased())
+          val assetId: PublicAssetId = PublicAssetIdFactory.generate()
           dao.insertAsset(username = username,
             publicAssetMetadata = PublicAssetMetadata(id = assetId,
               publicURI = PublicURI.from(assetId, username, publicAssetUriPrefix),
