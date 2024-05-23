@@ -7,6 +7,7 @@ import com.google.inject.{AbstractModule, Provides, Scopes, Singleton}
 import com.linagora.tmail.james.jmap.method.{PublicAssetGetMethod, PublicAssetSetMethod, PublicAssetsCapabilityFactory}
 import jakarta.inject.Named
 import org.apache.james.blob.api.BlobReferenceSource
+import org.apache.james.jmap.JMAPRoutes
 import org.apache.james.jmap.core.{CapabilityFactory, JmapRfc8621Configuration}
 import org.apache.james.jmap.method.Method
 
@@ -25,6 +26,9 @@ class PublicAssetsModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[PublicAssetGetMethod])
+
+    val routes: Multibinder[JMAPRoutes] = Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
+    routes.addBinding().to(classOf[PublicAssetRoutes])
   }
 
   @Provides
