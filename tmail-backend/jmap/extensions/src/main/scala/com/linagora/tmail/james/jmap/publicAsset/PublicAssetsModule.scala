@@ -1,8 +1,13 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
-import com.google.inject.AbstractModule
+import java.net.URI
+
 import com.google.inject.multibindings.Multibinder
+import com.google.inject.{AbstractModule, Provides, Scopes, Singleton}
 import com.linagora.tmail.james.jmap.method.PublicAssetsCapabilityFactory
+import jakarta.inject.Named
+import org.apache.commons.configuration2.Configuration
+import org.apache.james.blob.api.BlobReferenceSource
 import org.apache.james.jmap.core.CapabilityFactory
 
 class PublicAssetsModule extends AbstractModule {
@@ -10,5 +15,25 @@ class PublicAssetsModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[CapabilityFactory])
       .addBinding()
       .to(classOf[PublicAssetsCapabilityFactory])
+
+    Multibinder.newSetBinder(binder, classOf[BlobReferenceSource])
+      .addBinding()
+      .to(classOf[PublicAssetBlobReferenceSource])
+
+    install(new PublicAssetsMemoryModule())
+  }
+
+  @Provides
+  @Singleton
+  @Named("publicAssetUriPrefix")
+  def providePublicAssetUriPrefix(@Named("jmap") jmapConfiguration: Configuration): URI = {
+    PublicAssetURIPrefix.fromConfiguration(jmapConfiguration).fold(throw _, identity)
+  }
+}
+
+class PublicAssetsMemoryModule extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[MemoryPublicAssetRepository]).in(Scopes.SINGLETON)
+    bind(classOf[PublicAssetRepository]).to(classOf[MemoryPublicAssetRepository])
   }
 }
