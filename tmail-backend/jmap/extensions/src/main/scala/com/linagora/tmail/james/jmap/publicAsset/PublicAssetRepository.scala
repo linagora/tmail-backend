@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.{ByteArrayInputStream, InputStream}
-
 import com.google.common.collect.{HashBasedTable, Table, Tables}
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import com.linagora.tmail.james.jmap.publicAsset.MemoryPublicAssetRepository.PublicAssetMetadata
@@ -12,6 +11,8 @@ import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+import jakarta.inject.Inject
 
 import scala.jdk.CollectionConverters._
 
@@ -65,7 +66,7 @@ object MemoryPublicAssetRepository {
   }
 }
 
-class MemoryPublicAssetRepository(val blobStore: BlobStore) extends PublicAssetRepository {
+class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore) extends PublicAssetRepository {
   private val tableStore: Table[Username, PublicAssetId, PublicAssetMetadata] = Tables.synchronizedTable(HashBasedTable.create())
 
   private val bucketName: BucketName = blobStore.getDefaultBucketName

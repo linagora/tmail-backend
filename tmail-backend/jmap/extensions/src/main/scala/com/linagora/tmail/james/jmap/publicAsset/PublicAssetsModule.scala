@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
-import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
+import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.method.PublicAssetsCapabilityFactory
 import org.apache.james.blob.api.BlobReferenceSource
 import org.apache.james.jmap.core.CapabilityFactory
@@ -15,5 +15,15 @@ class PublicAssetsModule extends AbstractModule {
     Multibinder.newSetBinder(binder, classOf[BlobReferenceSource])
       .addBinding()
       .to(classOf[PublicAssetBlobReferenceSource])
+
+    install(new PublicAssetsMemoryModule())
+  }
+}
+
+class PublicAssetsMemoryModule extends AbstractModule {
+  override def configure(): Unit = {
+    bind(classOf[MemoryPublicAssetRepository]).in(Scopes.SINGLETON)
+    bind(classOf[MemoryPublicAssetRepository]).in(Scopes.SINGLETON)
+    bind(classOf[PublicAssetRepository]).to(classOf[MemoryPublicAssetRepository])
   }
 }
