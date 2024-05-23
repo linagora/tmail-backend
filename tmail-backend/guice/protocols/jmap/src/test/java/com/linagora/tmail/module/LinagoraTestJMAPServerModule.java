@@ -16,6 +16,7 @@ public class LinagoraTestJMAPServerModule extends TestJMAPServerModule {
     Configuration provideConfiguration() {
         Configuration configuration = new PropertiesConfiguration();
         configuration.addProperty("calendarEvent.reply.mailTemplateLocation", "classpath://eml/");
+        configuration.addProperty("url.prefix", "http://localhost:8000");
         return configuration;
     }
 }
