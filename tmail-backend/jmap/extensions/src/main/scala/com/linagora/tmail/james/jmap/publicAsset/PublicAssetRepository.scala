@@ -1,9 +1,11 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.{ByteArrayInputStream, InputStream}
+
 import com.google.common.collect.{HashBasedTable, Table, Tables}
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import com.linagora.tmail.james.jmap.publicAsset.MemoryPublicAssetRepository.PublicAssetMetadata
+import jakarta.inject.Inject
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.IdentityId
@@ -11,8 +13,6 @@ import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-import jakarta.inject.Inject
 
 import scala.jdk.CollectionConverters._
 
