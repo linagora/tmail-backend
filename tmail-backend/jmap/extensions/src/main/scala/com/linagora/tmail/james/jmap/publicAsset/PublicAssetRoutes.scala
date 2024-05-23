@@ -5,9 +5,9 @@ import java.nio.charset.StandardCharsets
 import java.util.stream
 import java.util.stream.Stream
 
-import com.linagora.tmail.james.jmap.publicAsset.PublicAssetRoutes.{BUFFER_SIZE, LOGGER}
+import com.linagora.tmail.james.jmap.publicAsset.PublicAssetRoutes.{BUFFER_SIZE, LOGGER, ONE_YEAR_AS_SECONDS}
 import io.netty.buffer.Unpooled
-import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
+import io.netty.handler.codec.http.HttpHeaderNames.{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE}
 import io.netty.handler.codec.http.HttpResponseStatus._
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus}
 import jakarta.inject.Inject
@@ -31,7 +31,7 @@ import scala.util.{Success, Try}
 
 object PublicAssetRoutes {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[PublicAssetRoutes])
-
+  val ONE_YEAR_AS_SECONDS: Int = 31536000
   val BUFFER_SIZE: Int = 16 * 1024
 }
 
@@ -93,6 +93,7 @@ class PublicAssetRoutes @Inject()(val publicAssetRepository: PublicAssetReposito
         (stream: InputStream) => addContentLengthHeader(size)
           .apply(response)
           .header(CONTENT_TYPE, contentType.asString)
+          .header(CACHE_CONTROL, s"immutable, max-age=$ONE_YEAR_AS_SECONDS")
           .status(OK)
           .send(ReactorUtils.toChunks(stream, BUFFER_SIZE)
             .map(Unpooled.wrappedBuffer(_))
