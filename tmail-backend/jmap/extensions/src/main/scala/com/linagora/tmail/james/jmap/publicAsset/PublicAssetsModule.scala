@@ -4,7 +4,7 @@ import java.net.URI
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Scopes, Singleton}
-import com.linagora.tmail.james.jmap.method.{PublicAssetSetMethod, PublicAssetsCapabilityFactory}
+import com.linagora.tmail.james.jmap.method.{PublicAssetGetMethod, PublicAssetSetMethod, PublicAssetsCapabilityFactory}
 import jakarta.inject.Named
 import org.apache.james.blob.api.BlobReferenceSource
 import org.apache.james.jmap.core.{CapabilityFactory, JmapRfc8621Configuration}
@@ -21,6 +21,10 @@ class PublicAssetsModule extends AbstractModule {
     Multibinder.newSetBinder(binder, classOf[BlobReferenceSource])
       .addBinding()
       .to(classOf[PublicAssetBlobReferenceSource])
+
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[PublicAssetGetMethod])
   }
 
   @Provides

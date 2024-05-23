@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.model.{PublicAssetDTO, PublicAssetGetRequest, PublicAssetGetResponse}
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationId, PublicAssetCreationResponse, PublicAssetId, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicURI, UnparsedPublicAssetId}
 import org.apache.james.jmap.api.model.IdentityId
@@ -24,6 +25,8 @@ object PublicAssetSerializer {
 
   private implicit val publicAssetSetRequestReads: Reads[PublicAssetSetRequest] = Json.reads[PublicAssetSetRequest]
 
+  private implicit val publicAssetGetReads: Reads[PublicAssetGetRequest] = Json.reads[PublicAssetGetRequest]
+
   private implicit val publicAssetIdWrites: Writes[PublicAssetId] = Json.valueWrites[PublicAssetId]
   private implicit val publicURIWrites: Writes[PublicURI] = Json.valueWrites[PublicURI]
   private implicit val imageContentTypeWrites: Writes[ImageContentType] = json => JsString(json.value)
@@ -43,15 +46,22 @@ object PublicAssetSerializer {
   private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
   private implicit val publicAssetSetResponseWrites: Writes[PublicAssetSetResponse] = Json.writes[PublicAssetSetResponse]
 
+  private implicit val publicAssetWrites: Writes[PublicAssetDTO] = Json.writes[PublicAssetDTO]
+  private implicit val publicAssetResponseWrites: Writes[PublicAssetGetResponse] = Json.writes[PublicAssetGetResponse]
+
   def deserializePublicAssetSetCreationRequest(input: JsValue): JsResult[PublicAssetSetCreationRequest] =
     Json.fromJson[PublicAssetSetCreationRequest](input)(publicAssetCreationRequestReads)
 
   def deserializePublicAssetSetRequest(input: JsValue): JsResult[PublicAssetSetRequest] =
     Json.fromJson[PublicAssetSetRequest](input)(publicAssetSetRequestReads)
 
+  def deserializeGetRequest(input: JsValue): JsResult[PublicAssetGetRequest] = Json.fromJson[PublicAssetGetRequest](input)
+
   def serializePublicAssetCreationResponse(response: PublicAssetCreationResponse): JsValue =
     Json.toJson(response)(publicAssetCreationResponseWrites)
 
   def serializePublicAssetSetResponse(response: PublicAssetSetResponse): JsValue =
     Json.toJson(response)(publicAssetSetResponseWrites)
+
+  def serializeGetResponse(response: PublicAssetGetResponse): JsValue = Json.toJson(response)
 }

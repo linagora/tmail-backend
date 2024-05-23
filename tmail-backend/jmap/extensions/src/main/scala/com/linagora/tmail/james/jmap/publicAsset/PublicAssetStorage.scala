@@ -4,6 +4,7 @@ import java.io.InputStream
 import java.net.URI
 import java.util.UUID
 
+import com.github.f4b6a3.uuid.UuidCreator
 import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import eu.timepit.refined
@@ -19,7 +20,12 @@ import org.apache.james.mailbox.model.ContentType
 import scala.util.Try
 
 object PublicAssetIdFactory {
-  def generate(): PublicAssetId = PublicAssetId(UUID.randomUUID())
+  def generate(): PublicAssetId = PublicAssetId(UuidCreator.getTimeBased)
+
+  def from(value: String): Either[(String, IllegalArgumentException), PublicAssetId] =
+    Try(PublicAssetId(UUID.fromString(value)))
+      .toEither
+      .left.map(e => value -> new IllegalArgumentException(e))
 }
 
 case class PublicAssetId(value: UUID) {
