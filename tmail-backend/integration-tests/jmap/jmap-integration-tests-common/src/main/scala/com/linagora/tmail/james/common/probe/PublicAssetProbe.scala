@@ -6,7 +6,7 @@ import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationRequest, Pu
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.utils.GuiceProbe
-import reactor.core.scala.publisher.SMono
+import reactor.core.scala.publisher.{SFlux, SMono}
 
 class PublicAssetProbeModule extends AbstractModule {
   override def configure(): Unit =
@@ -18,4 +18,7 @@ class PublicAssetProbeModule extends AbstractModule {
 class PublicAssetProbe @Inject()(publicAssetRepository: PublicAssetRepository) extends GuiceProbe {
   def create(username: Username, creationRequest: PublicAssetCreationRequest): PublicAssetStorage =
     SMono(publicAssetRepository.create(username, creationRequest)).block()
+
+  def list(username: Username): Seq[PublicAssetStorage] =
+    SFlux(publicAssetRepository.list(username)).collectSeq().block()
 }
