@@ -59,6 +59,9 @@ object ImageContentType {
   def from(contentType: ContentType): Either[PublicAssetInvalidContentTypeException, ImageContentType] =
     validate(contentType.asString())
 
+  def from(contentType: String): Either[PublicAssetInvalidContentTypeException, ImageContentType] =
+    validate(contentType)
+
   case class ImageContentTypeConstraint()
 
   type ImageContentType = String Refined ImageContentTypeConstraint
@@ -106,3 +109,33 @@ case class PublicAssetCreationRequest(size: Size,
                                       contentType: ImageContentType,
                                       identityIds: Seq[IdentityId] = Seq.empty,
                                       content: () => InputStream)
+
+object PublicAssetMetadata {
+  def from(publicAsset: PublicAssetStorage): PublicAssetMetadata =
+    PublicAssetMetadata(
+      publicAsset.id,
+      publicAsset.publicURI,
+      publicAsset.size,
+      publicAsset.contentType,
+      publicAsset.blobId,
+      publicAsset.identityIds)
+}
+
+case class PublicAssetMetadata(id: PublicAssetId,
+                               publicURI: PublicURI,
+                               size: Size,
+                               contentType: ImageContentType,
+                               blobId: BlobId,
+                               identityIds: Seq[IdentityId]) {
+
+  def asPublicAssetStorage(content: InputStream): PublicAssetStorage =
+    PublicAssetStorage(id = id,
+      publicURI = publicURI,
+      size = size,
+      contentType = contentType,
+      blobId = blobId,
+      identityIds = identityIds,
+      content = () => content)
+
+  def sizeAsLong(): java.lang.Long = size.value
+}
