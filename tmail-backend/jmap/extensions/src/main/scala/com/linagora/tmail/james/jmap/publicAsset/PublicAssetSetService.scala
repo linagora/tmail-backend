@@ -1,24 +1,19 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
 import jakarta.inject.Inject
+import org.apache.james.jmap.api.identity.IdentityRepository
 import org.apache.james.jmap.api.model.IdentityId
-import org.apache.james.jmap.method.IdentityResolver
 import org.apache.james.mailbox.MailboxSession
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-class PublicAssetSetService @Inject()(val identityResolver: IdentityResolver) {
+class PublicAssetSetService @Inject()(val identityRepository: IdentityRepository) {
   def checkIdentityIdsExist(identityIds: Seq[IdentityId], session: MailboxSession): SMono[Seq[IdentityId]] =
-    SFlux.fromIterable(identityIds)
-      .concatMap(identityId => checkIdentityIdExist(identityId, session))
+    SFlux(identityRepository.list(session.getUser))
+      .map(_.id)
       .collectSeq()
-
-  private def checkIdentityIdExist(identityId: IdentityId, session: MailboxSession): SMono[IdentityId] =
-    identityResolver.resolveIdentityId(identityId, session)
-      .handle(publishIfPresent)
-      .map(_ => identityId)
-      .switchIfEmpty(SMono.error(PublicAssetIdentityIdNotFoundException(identityId.serialize)))
-
-  private def publishIfPresent[T]: (Option[T], reactor.core.publisher.SynchronousSink[T]) => Unit =
-    (maybeT, sink) => maybeT.foreach(t => sink.next(t))
-
+      .map(existIdentityIds => identityIds diff existIdentityIds)
+      .flatMap {
+        case Seq() => SMono.just(identityIds)
+        case noExistIdentityIds => SMono.error(PublicAssetIdentityIdNotFoundException(noExistIdentityIds))
+      }
 }

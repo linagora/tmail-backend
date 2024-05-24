@@ -566,10 +566,10 @@ trait PublicAssetMethodContract {
          |      }, "c1"
          |    ],
          |    [
-         |			"Core/echo",
-         |			{ "arg1": "#clientId1" },
-         |			"c2"
-         |		]
+         |      "Core/echo",
+         |      { "arg1": "#clientId1" },
+         |      "c2"
+         |    ]
          |  ]
          |}""".stripMargin
 

@@ -83,8 +83,8 @@ case class PublicAssetInvalidIdentityIdException(identityId: String) extends Pub
   override val message: String = s"Invalid identityId: $identityId"
 }
 
-case class PublicAssetIdentityIdNotFoundException(identityId: String) extends PublicAssetException {
-  override val message: String = s"IdentityId not found: $identityId"
+case class PublicAssetIdentityIdNotFoundException(identityIds: Seq[IdentityId]) extends PublicAssetException {
+  override val message: String = s"IdentityId not found: ${identityIds.map(_.id.toString).mkString(", ")}"
 }
 
 sealed trait PublicAssetCreationResult {
