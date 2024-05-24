@@ -8,12 +8,12 @@ import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
-import org.apache.commons.configuration2.Configuration
 import org.apache.http.client.utils.URIBuilder
 import org.apache.james.blob.api.BlobId
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.api.model.Size.Size
+import org.apache.james.jmap.core.JmapRfc8621Configuration
 import org.apache.james.mailbox.model.ContentType
 
 import scala.util.Try
@@ -27,11 +27,8 @@ case class PublicAssetId(value: UUID) {
 }
 
 object PublicAssetURIPrefix {
-
-  def fromConfiguration(configuration: Configuration): Either[Throwable, URI] =
-    Option(configuration.getString("url.prefix", null))
-      .map(value => Try(new URI(value)).toEither)
-      .getOrElse(Left(new IllegalArgumentException("url.prefix is not set")))
+  def fromConfiguration(configuration: JmapRfc8621Configuration): Either[Throwable, URI] =
+    Try(new URI(configuration.urlPrefixString)).toEither
 }
 
 object PublicURI {
@@ -57,7 +54,7 @@ case class PublicURI(value: URI) extends AnyVal
 
 object ImageContentType {
   def from(contentType: ContentType): Either[PublicAssetInvalidContentTypeException, ImageContentType] =
-    validate(contentType.asString())
+    validate(contentType.mimeType().asString())
 
   def from(contentType: String): Either[PublicAssetInvalidContentTypeException, ImageContentType] =
     validate(contentType)
@@ -69,7 +66,7 @@ object ImageContentType {
   implicit val imageContentType: Validate.Plain[String, ImageContentTypeConstraint] =
     Validate.fromPredicate(
       str => str.startsWith("image/"),
-      str => s"$str starts with 'image/'",
+      str => s"'$str' is not a valid image content type. A valid image content type should start with 'image/'",
       ImageContentTypeConstraint())
 
   def validate(string: String): Either[PublicAssetInvalidContentTypeException, ImageContentType] =
