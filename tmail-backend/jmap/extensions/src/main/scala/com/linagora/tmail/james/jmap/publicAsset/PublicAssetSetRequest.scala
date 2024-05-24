@@ -1,9 +1,10 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
+import java.util.UUID
+
 import cats.implicits._
-import com.linagora.tmail.james.jmap.method.PublicAssetSetCreatePerformer.LOGGER
+import com.linagora.tmail.james.jmap.method.PublicAssetSetMethod.LOGGER
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
-import org.apache.james.blob.api.BlobId
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -11,11 +12,13 @@ import org.apache.james.jmap.core.{AccountId, Properties, SetError, UuidState}
 import org.apache.james.jmap.mail.{IdentityIds, BlobId => JmapBlobId}
 import org.apache.james.jmap.method.WithAccountId
 import org.apache.james.jmap.routes.BlobNotFoundException
-import play.api.libs.json.JsObject
+import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
+
+import scala.util.Try
 
 case class PublicAssetSetRequest(accountId: AccountId,
                                  create: Option[Map[PublicAssetCreationId, JsObject]],
-                                 update: Option[Map[UnparsedPublicAssetId, JsObject]],
+                                 update: Option[Map[UnparsedPublicAssetId, PublicAssetPatchObject]],
                                  destroy: Option[Seq[UnparsedPublicAssetId]]) extends WithAccountId
 
 case class PublicAssetCreationId(id: Id)
@@ -45,7 +48,11 @@ case class PublicAssetSetCreationRequest(blobId: JmapBlobId, identityIds: Option
     }
 }
 
-case class UnparsedPublicAssetId(id: String)
+case class UnparsedPublicAssetId(id: String) {
+
+  def tryAsPublicAssetId: Either[IllegalArgumentException, PublicAssetId] =
+    PublicAssetId.fromString(id)
+}
 
 object PublicAssetCreationResponse {
   def from(publicAsset: PublicAssetStorage): PublicAssetCreationResponse = {
@@ -65,7 +72,9 @@ case class PublicAssetSetResponse(accountId: AccountId,
                                   oldState: Option[UuidState],
                                   newState: UuidState,
                                   created: Option[Map[PublicAssetCreationId, PublicAssetCreationResponse]],
-                                  notCreated: Option[Map[PublicAssetCreationId, SetError]])
+                                  notCreated: Option[Map[PublicAssetCreationId, SetError]],
+                                  updated: Option[Map[PublicAssetId, PublicAssetUpdateResponse]],
+                                  notUpdated: Option[Map[UnparsedPublicAssetId, SetError]])
 
 case class PublicAssetCreationParseException(setError: SetError) extends PublicAssetException {
   override val message: String = s"Invalid public asset creation request: ${setError.description}"
@@ -100,7 +109,7 @@ case class PublicAssetCreationFailure(publicAssetCreationId: PublicAssetCreation
     case e: BlobNotFoundException => SetError.invalidArguments(SetError.SetErrorDescription(e.getMessage))
     case e: IllegalArgumentException => SetError.invalidArguments(SetError.SetErrorDescription(e.getMessage))
     case _ =>
-      LOGGER.warn("Unexpected exception", exception)
+      LOGGER.warn("Unexpected exception when create public asset", exception)
       SetError.serverFail(SetError.SetErrorDescription(exception.getMessage))
   }
 }
@@ -117,6 +126,89 @@ case class PublicAssetCreationResults(created: Seq[PublicAssetCreationResult]) {
   def retrieveErrors: Map[PublicAssetCreationId, SetError] = created
     .flatMap(result => result match {
       case failure: PublicAssetCreationFailure => Some(failure.publicAssetCreationId, failure.asPublicAssetSetError)
+      case _ => None
+    }).toMap
+}
+
+private object PublicAssetPatchObject {
+  private val identityIdsProperty: String = "identityIds"
+  private val updateProperties: Set[String] = Set(identityIdsProperty)
+}
+
+case class PublicAssetPatchObject(value: Map[String, JsValue]) {
+
+  def validate(): Either[PublicAssetPatchUpdateValidationException, ValidatedPublicAssetPatchObject] =
+    for {
+      _ <- validateProperties
+      identityIds <- validateIdentityIds
+    } yield ValidatedPublicAssetPatchObject(identityIds)
+
+  private def validateProperties: Either[PublicAssetPatchUpdateValidationException, PublicAssetPatchObject] =
+    value.find(mapEntry => !PublicAssetPatchObject.updateProperties.contains(mapEntry._1))
+      .map(e => Left(PublicAssetPatchUpdateValidationException(s"Some unknown properties were specified ${e._1}")))
+      .getOrElse(Right(this))
+
+  private def validateIdentityIds: Either[PublicAssetPatchUpdateValidationException, Seq[IdentityId]] = {
+    value.get(PublicAssetPatchObject.identityIdsProperty) match {
+      case Some(jsValue) => jsValue match {
+        case JsArray(arrayValue) => {
+          val eitherIdentityIds: Either[IllegalArgumentException, Seq[IdentityId]] = arrayValue.map(_.asInstanceOf[JsString].value)
+            .map(identityIdValue => validateIdentityId(identityIdValue))
+            .toSeq.sequence
+          eitherIdentityIds match {
+            case Right(identityIds) => Right(identityIds)
+            case Left(e) => Left(PublicAssetPatchUpdateValidationException(e.getMessage))
+          }
+        }
+        case _ => Left(PublicAssetPatchUpdateValidationException(s"${PublicAssetPatchObject.identityIdsProperty}: Expecting a JSON array as an argument"))
+      }
+      case None => Left(PublicAssetPatchUpdateValidationException(s"Missing '/${PublicAssetPatchObject.identityIdsProperty}'"))
+    }
+  }
+
+
+  private def validateIdentityId(identityId: String): Either[IllegalArgumentException, IdentityId] =
+    Try(UUID.fromString(identityId))
+      .toEither
+      .map(IdentityId(_))
+      .left.map {
+        case e: IllegalArgumentException => e
+        case e => new IllegalArgumentException(e)
+      }
+}
+
+case class PublicAssetPatchUpdateValidationException(error: String) extends PublicAssetException {
+  override val message: String = error
+}
+
+case class ValidatedPublicAssetPatchObject(identityIds: Seq[IdentityId])
+
+case class PublicAssetUpdateResponse()
+
+sealed trait PublicAssetUpdateResult
+
+case class PublicAssetUpdateFailure(id: UnparsedPublicAssetId, exception: Throwable) extends PublicAssetUpdateResult {
+  def asSetError: SetError = exception match {
+    case e: PublicAssetException => SetError.invalidArguments(SetErrorDescription(e.getMessage))
+    case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage))
+    case _ =>
+      LOGGER.warn("Unexpected exception when update public asset ", exception)
+      SetError.serverFail(SetErrorDescription(exception.getMessage))
+  }
+}
+
+case class PublicAssetUpdateSuccess(id: PublicAssetId) extends PublicAssetUpdateResult
+
+case class PublicAssetUpdateResults(results: Seq[PublicAssetUpdateResult]) {
+  def updated: Map[PublicAssetId, PublicAssetUpdateResponse] =
+    results.flatMap(result => result match {
+      case success: PublicAssetUpdateSuccess => Some((success.id, PublicAssetUpdateResponse()))
+      case _ => None
+    }).toMap
+
+  def notUpdated: Map[UnparsedPublicAssetId, SetError] =
+    results.flatMap(result => result match {
+      case failure: PublicAssetUpdateFailure => Some(failure.id, failure.asSetError)
       case _ => None
     }).toMap
 }

@@ -2,12 +2,12 @@ package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.{PublicAssetDTO, PublicAssetGetRequest, PublicAssetGetResponse}
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
-import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationId, PublicAssetCreationResponse, PublicAssetId, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicURI, UnparsedPublicAssetId}
+import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationId, PublicAssetCreationResponse, PublicAssetId, PublicAssetPatchObject, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetUpdateResponse, PublicURI, UnparsedPublicAssetId}
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.core.{SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{IdentityIds, UnparsedIdentityId, BlobId => JmapBlobId}
-import play.api.libs.json.{JsObject, JsResult, JsString, JsValue, Json, Reads, Writes}
+import play.api.libs.json.{JsNull, JsObject, JsResult, JsString, JsValue, Json, Reads, Writes}
 
 object PublicAssetSerializer {
   private implicit val blobIdReads: Reads[JmapBlobId] = Json.valueReads[JmapBlobId]
@@ -15,13 +15,14 @@ object PublicAssetSerializer {
   private implicit val identityIdsReads: Reads[IdentityIds] = Json.valueReads[IdentityIds]
   private implicit val publicAssetCreationRequestReads: Reads[PublicAssetSetCreationRequest] = Json.reads[PublicAssetSetCreationRequest]
   private implicit val publicAssetCreationIdReads: Reads[PublicAssetCreationId] = Json.reads[PublicAssetCreationId]
-  private implicit val unparsedPublicAssetIdReads: Reads[UnparsedPublicAssetId] = Json.reads[UnparsedPublicAssetId]
+  private implicit val unparsedPublicAssetIdReads: Reads[UnparsedPublicAssetId] = Json.valueReads[UnparsedPublicAssetId]
 
   private implicit val mapCreateRequestByPublicAssetCreationId: Reads[Map[PublicAssetCreationId, JsObject]] =
     Reads.mapReads[PublicAssetCreationId, JsObject] { string => Json.valueReads[PublicAssetCreationId].reads(JsString(string)) }
 
-  private implicit val mapUnparsedLabelIdJsObject: Reads[Map[UnparsedPublicAssetId, JsObject]] =
-    Reads.mapReads[UnparsedPublicAssetId, JsObject] { string => unparsedPublicAssetIdReads.reads(JsString(string)) }
+  private implicit val publicAssetPatchObjectReads: Reads[PublicAssetPatchObject] = Json.valueReads[PublicAssetPatchObject]
+  private implicit val mapUnparsedPublicAssetIdPatchObject: Reads[Map[UnparsedPublicAssetId, PublicAssetPatchObject]] =
+    Reads.mapReads[UnparsedPublicAssetId, PublicAssetPatchObject] { string => unparsedPublicAssetIdReads.reads(JsString(string)) }
 
   private implicit val publicAssetSetRequestReads: Reads[PublicAssetSetRequest] = Json.reads[PublicAssetSetRequest]
 
@@ -44,6 +45,12 @@ object PublicAssetSerializer {
   implicit val mapPublicAssetCreationIdPublicAssetCreationResponseWrites: Writes[Map[PublicAssetCreationId, PublicAssetCreationResponse]] =
     mapWrites[PublicAssetCreationId, PublicAssetCreationResponse](_.id.value, publicAssetCreationResponseWrites)
   private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
+  private implicit val updateResponseWrites: Writes[PublicAssetUpdateResponse] = _ => JsNull
+  private implicit val mapPublicAssetUpdateResponse: Writes[Map[PublicAssetId, PublicAssetUpdateResponse]] =
+    mapWrites[PublicAssetId, PublicAssetUpdateResponse](_.value.toString, updateResponseWrites)
+  private implicit val mapNotUpdatedResponse: Writes[Map[UnparsedPublicAssetId, SetError]] =
+    mapWrites[UnparsedPublicAssetId, SetError](_.id, setErrorWrites)
+
   private implicit val publicAssetSetResponseWrites: Writes[PublicAssetSetResponse] = Json.writes[PublicAssetSetResponse]
 
   private implicit val publicAssetWrites: Writes[PublicAssetDTO] = Json.writes[PublicAssetDTO]

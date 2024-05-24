@@ -15,6 +15,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.PublicAssetSetMethodContract;
+import com.linagora.tmail.james.common.probe.PublicAssetProbeModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMethodContract {
@@ -37,6 +38,7 @@ public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMet
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new PublicAssetProbeModule()))
         .build();
 }

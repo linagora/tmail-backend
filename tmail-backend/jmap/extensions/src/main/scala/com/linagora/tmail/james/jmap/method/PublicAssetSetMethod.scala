@@ -2,7 +2,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PUBLIC_ASSETS
-import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetBlobIdNotFoundException, PublicAssetCreationFailure, PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationRequest, PublicAssetCreationResponse, PublicAssetCreationResult, PublicAssetCreationResults, PublicAssetCreationSuccess, PublicAssetException, PublicAssetInvalidBlobIdException, PublicAssetRepository, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetSetService, PublicAssetStorage}
+import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetBlobIdNotFoundException, PublicAssetCreationFailure, PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationRequest, PublicAssetCreationResponse, PublicAssetCreationResult, PublicAssetCreationResults, PublicAssetCreationSuccess, PublicAssetException, PublicAssetId, PublicAssetInvalidBlobIdException, PublicAssetPatchObject, PublicAssetRepository, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetSetService, PublicAssetStorage, PublicAssetUpdateFailure, PublicAssetUpdateResult, PublicAssetUpdateResults, PublicAssetUpdateSuccess, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.IdentityId
@@ -13,12 +13,18 @@ import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccou
 import org.apache.james.jmap.routes.{Blob, BlobNotFoundException, BlobResolvers, ProcessingContext, SessionSupplier}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
+import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+object PublicAssetSetMethod {
+  val LOGGER: Logger = LoggerFactory.getLogger(classOf[PublicAssetSetMethod])
+}
+
 class PublicAssetSetMethod @Inject()(val createPerformer: PublicAssetSetCreatePerformer,
+                                     val updatePerformer: PublicAssetSetUpdatePerformer,
                                      val metricFactory: MetricFactory,
                                      val sessionTranslator: SessionTranslator,
                                      val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[PublicAssetSetRequest] {
@@ -29,7 +35,7 @@ class PublicAssetSetMethod @Inject()(val createPerformer: PublicAssetSetCreatePe
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: PublicAssetSetRequest): Publisher[InvocationWithContext] =
     for {
       creationResults <- createPerformer.createPublicAssets(mailboxSession, request)
-      // Add updated, notUpdated, destroyed, notDestroyed here when they are implemented
+      updateResults <- updatePerformer.updatePublicAssets(mailboxSession, request)
     } yield {
       InvocationWithContext(
         invocation = Invocation(
@@ -40,7 +46,9 @@ class PublicAssetSetMethod @Inject()(val createPerformer: PublicAssetSetCreatePe
               oldState = Some(UuidState.INSTANCE),
               newState = UuidState.INSTANCE,
               created = Some(creationResults.retrieveCreated).filter(_.nonEmpty),
-              notCreated = Some(creationResults.retrieveErrors).filter(_.nonEmpty))).as[JsObject]),
+              notCreated = Some(creationResults.retrieveErrors).filter(_.nonEmpty),
+              updated = Some(updateResults.updated).filter(_.nonEmpty),
+              notUpdated = Some(updateResults.notUpdated).filter(_.nonEmpty))).as[JsObject]),
           methodCallId = invocation.invocation.methodCallId),
         processingContext = recordCreationIdInProcessingContext(creationResults, invocation.processingContext))
     }
@@ -54,10 +62,6 @@ class PublicAssetSetMethod @Inject()(val createPerformer: PublicAssetSetCreatePe
       case (processingContext, (creationId, result)) =>
         processingContext.recordCreatedId(ClientId(creationId.id), ServerId(Id.validate(result.id.asString()).toOption.get))
     })
-}
-
-object PublicAssetSetCreatePerformer {
-  val LOGGER: Logger = LoggerFactory.getLogger(classOf[PublicAssetSetCreatePerformer])
 }
 
 class PublicAssetSetCreatePerformer @Inject()(val publicAssetRepository: PublicAssetRepository,
@@ -127,4 +131,35 @@ class PublicAssetSetCreatePerformer @Inject()(val publicAssetRepository: PublicA
         case _: BlobNotFoundException => PublicAssetBlobIdNotFoundException(creationRequest.blobId.value.value)
         case _: IllegalArgumentException => PublicAssetInvalidBlobIdException(creationRequest.blobId.value.value)
       }
+}
+
+
+class PublicAssetSetUpdatePerformer @Inject()(val publicAssetRepository: PublicAssetRepository,
+                                              val publicAssetSetService: PublicAssetSetService) {
+
+  def updatePublicAssets(mailboxSession: MailboxSession, request: PublicAssetSetRequest): SMono[PublicAssetUpdateResults] =
+    tryGetValidateUpdateRequest(request)
+      .flatMap({
+        case Left(updateFailure) => SMono.just(updateFailure)
+        case Right((publicAssetId, validatedPath)) => updatePublicAsset(publicAssetId, validatedPath, mailboxSession)
+      }, ReactorUtils.DEFAULT_CONCURRENCY)
+      .collectSeq()
+      .map(PublicAssetUpdateResults)
+
+  private def updatePublicAsset(publicAssetId: PublicAssetId, patch: ValidatedPublicAssetPatchObject, mailboxSession: MailboxSession): SMono[PublicAssetUpdateResult] =
+    publicAssetSetService.checkIdentityIdsExist(patch.identityIds.toSeq, mailboxSession)
+      .flatMap(checkedIdentityIds => SMono(publicAssetRepository.update(mailboxSession.getUser, publicAssetId, checkedIdentityIds.toSet)))
+      .`then`(SMono.just[PublicAssetUpdateResult](PublicAssetUpdateSuccess(publicAssetId)))
+      .onErrorResume(e => SMono.just(PublicAssetUpdateFailure(UnparsedPublicAssetId(publicAssetId.value.toString), e)))
+
+  private def tryGetValidateUpdateRequest(request: PublicAssetSetRequest): SFlux[Either[PublicAssetUpdateFailure, (PublicAssetId, ValidatedPublicAssetPatchObject)]] =
+    SFlux.fromIterable(request.update.getOrElse(Map.empty))
+      .map({
+        case (unparsedPublicAssetId: UnparsedPublicAssetId, patch: PublicAssetPatchObject) =>
+          (for {
+            publicAssetId <- unparsedPublicAssetId.tryAsPublicAssetId
+            validatedPath <- patch.validate()
+          } yield (publicAssetId, validatedPath))
+            .left.map(e => PublicAssetUpdateFailure(unparsedPublicAssetId, e))
+      })
 }
