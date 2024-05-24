@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.PublicAssetMethodContract.UploadResponse
+import com.linagora.tmail.james.common.PublicAssetSetMethodContract.UploadResponse
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -19,11 +19,11 @@ import play.api.libs.json.{JsString, Json}
 
 import scala.jdk.CollectionConverters._
 
-object PublicAssetMethodContract {
+object PublicAssetSetMethodContract {
   case class UploadResponse(blobId: String, contentType: MimeType, size: Long)
 }
 
-trait PublicAssetMethodContract {
+trait PublicAssetSetMethodContract {
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
@@ -198,7 +198,7 @@ trait PublicAssetMethodContract {
   @Test
   def createShouldReturnNotCreatedWhenBlobIdDoesNotExist(): Unit = {
     // Given an not found blobId
-    val notFoundBlobId: String = "uploads-6fa459ea-ee8a-3ca4-894e-db77e160355e"
+    val notFoundBlobId: String = "uploads-ce192a10-1992-11ef-b9f4-39749479be62"
     // When create a public asset with this blobId
     val response: String = `given`()
       .body(
@@ -233,7 +233,7 @@ trait PublicAssetMethodContract {
         s"""{
            |    "4f29": {
            |        "type": "invalidArguments",
-           |        "description": "BlobId not found: uploads-6fa459ea-ee8a-3ca4-894e-db77e160355e"
+           |        "description": "BlobId not found: $notFoundBlobId"
            |    }
            |}""".stripMargin)
   }
@@ -389,7 +389,7 @@ trait PublicAssetMethodContract {
     val identityIds: Seq[String] = getIdentityIds()
     val identityIdsAsJson: String = Json.stringify(Json.arr(identityIds)).replace("[[", "[").replace("]]", "]")
     val notFoundIdentityId: String = IdentityId.generate.serialize
-    val notFoundBlobId: String = "uploads-6fa459ea-ee8a-3ca4-894e-db77e160355e"
+    val notFoundBlobId: String = "uploads-ce192a10-1992-11ef-b9f4-39749479be62"
 
     // When create a public asset with mix cases
     val response: String = `given`()

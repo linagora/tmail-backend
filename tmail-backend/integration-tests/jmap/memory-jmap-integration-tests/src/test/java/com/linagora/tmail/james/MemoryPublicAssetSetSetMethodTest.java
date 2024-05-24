@@ -8,10 +8,10 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.james.common.PublicAssetMethodContract;
+import com.linagora.tmail.james.common.PublicAssetSetMethodContract;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class MemoryPublicAssetSetMethodTest implements PublicAssetMethodContract {
+public class MemoryPublicAssetSetSetMethodTest implements PublicAssetSetMethodContract {
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
         MemoryConfiguration.builder()
