@@ -152,7 +152,7 @@ trait PublicAssetMethodContract {
            |]""".stripMargin))
 
   @Test
-  def createShouldReturnNotCreatedWhenBlobIdDoesNotReferenceToAssetsContent(): Unit = {
+  def createShouldReturnNotCreatedWhenBlobIdIsNotImageContentType(): Unit = {
     // Given upload an blob that is not a picture content type
     val uploadResponse: UploadResponse = uploadAsset(contentType = "text/plain")
 
