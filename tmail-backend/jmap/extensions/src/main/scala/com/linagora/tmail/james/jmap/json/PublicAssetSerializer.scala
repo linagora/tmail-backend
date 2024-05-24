@@ -2,7 +2,6 @@ package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationId, PublicAssetCreationResponse, PublicAssetId, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicURI, UnparsedPublicAssetId}
-import org.apache.james.blob.api.BlobId
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.core.{SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
@@ -26,7 +25,6 @@ object PublicAssetSerializer {
   private implicit val publicAssetSetRequestReads: Reads[PublicAssetSetRequest] = Json.reads[PublicAssetSetRequest]
 
   private implicit val publicAssetIdWrites: Writes[PublicAssetId] = Json.valueWrites[PublicAssetId]
-  private implicit val blobIdWrites: Writes[BlobId] = value => JsString(value.asString())
   private implicit val publicURIWrites: Writes[PublicURI] = Json.valueWrites[PublicURI]
   private implicit val imageContentTypeWrites: Writes[ImageContentType] = json => JsString(json.value)
   private implicit val identityIdWrites: Writes[IdentityId] = Json.valueWrites[IdentityId]

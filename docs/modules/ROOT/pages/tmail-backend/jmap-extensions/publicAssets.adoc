@@ -31,8 +31,6 @@ It has the following fields:
 - *publicURI*: `String`. Server-set. The public URI serving the PublicAsset.
 - *size*: `UnsignedInt`. Server-set. The size of the PublicAsset, from the previously uploaded blob it refers to.
 - *contentType*: `String`. Server-set. The content type of the PublicAsset, from the previously uploaded blob it refers to.
-- *blobId*: `Id`. The blobId of the publicAsset in the object store.
-- *identityIds*: `Id[]|null`. Default to null. The identity ids that are using the PublicAsset.
 
 Example:
 
@@ -41,9 +39,7 @@ Example:
   "id": "02242f08",
   "publicURI": "http://jmap.example.com/publicAsset/368ef913/02242f08"
   "size": 1234,
-  "contentType": "image/png",
-  "blobId": "1234-5678",
-  "identityIds: ["098cd", "8567af"]
+  "contentType": "image/png"
 }
 ....
 
@@ -109,11 +105,7 @@ Response:
                       "id": "297bf5a7-855d-459a-9853-02031169b704",
                       "publicURI": "https://jmap.example.com/publicAsset/29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6/297bf5a7-855d-459a-9853-02031169b704",
                       "size": 11534336,
-                      "content-type": "image/png",
-                      "identityIds": [
-                          "858e7569-7085-46d2-82da-5ba0d723e94b",
-                          "497f99e1-af19-4d7d-bdcb-660b69e219af"
-                      ]
+                      "content-type": "image/png"
                   }
               ],
               "notFound": [
