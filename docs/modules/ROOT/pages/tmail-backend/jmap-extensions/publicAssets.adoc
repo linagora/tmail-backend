@@ -32,7 +32,8 @@ It has the following fields:
 - *size*: `UnsignedInt`. Server-set. The size of the PublicAsset, from the previously uploaded blob it refers to.
 - *contentType*: `String`. Server-set. The content type of the PublicAsset, from the previously uploaded blob it refers to.
 - *blobId*: `Id`. The blobId of the publicAsset in the object store.
-- *identityIds*: `Id[]|null`. Default to null. The identity ids that are using the PublicAsset.
+- *identityIds*: `Id`[Boolean] (default: {}). A set of identity ids that are using the PublicAsset.
+The set is represented as an object, with the keys being the identity ids. The value for each key in the object *MUST* be `true`.
 
 Example:
 
@@ -43,7 +44,10 @@ Example:
   "size": 1234,
   "contentType": "image/png",
   "blobId": "1234-5678",
-  "identityIds: ["098cd", "8567af"]
+  "identityIds": {
+      "098cd": true,
+      "8567af": true
+  }
 }
 ....
 
@@ -110,10 +114,10 @@ Response:
                       "publicURI": "https://jmap.example.com/publicAsset/29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6/297bf5a7-855d-459a-9853-02031169b704",
                       "size": 11534336,
                       "content-type": "image/png",
-                      "identityIds": [
-                          "858e7569-7085-46d2-82da-5ba0d723e94b",
-                          "497f99e1-af19-4d7d-bdcb-660b69e219af"
-                      ]
+                      "identityIds": {
+                          "858e7569-7085-46d2-82da-5ba0d723e94b": true,
+                          "497f99e1-af19-4d7d-bdcb-660b69e219af": true
+                      }
                   }
               ],
               "notFound": [
@@ -139,7 +143,10 @@ Request:
         "create": {
           "4f29": {
             "blobId": "1234",
-            "identityIds": ["12", "34"]
+            "identityIds": {
+                "12": true,
+                "34": true
+            }
           }
         }
       }, "0"
@@ -202,7 +209,7 @@ Response:
 
 === PublicAsset/set update
 
-Request:
+Full reset update request:
 ....
 {
   "using": ["urn:ietf:params:jmap:core", "com:linagora:params:public:assets"],
@@ -212,7 +219,11 @@ Request:
         "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
         "update": {
           "4f29": {
-            "identityIds": ["12", "34", "56"]
+            "identityIds": {
+               "id1": true,
+               "id2": true,
+               "id3": true
+            }
           }
         }
       }, "0"
@@ -220,6 +231,35 @@ Request:
   ]
 }
 ....
+
+This would override the current identity ids with the new identity ids.
+
+Partial update request:
+....
+{
+    "using": [
+        "urn:ietf:params:jmap:core",
+        "com:linagora:params:public:assets"
+    ],
+    "methodCalls": [
+        [
+            "PublicAsset/set",
+            {
+                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                "update": {
+                    "4f29": {
+                        "identityIds/id4": true,
+                        "identityIds/id1": null
+                    }
+                }
+            },
+            "0"
+        ]
+    ]
+}
+....
+
+This would add the identity id `id4` and remove the `id1`.
 
 Response:
 ....
