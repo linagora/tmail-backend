@@ -124,6 +124,8 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.publicAsset.PostgresPublicAssetRepositoryModule;
+import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.PostgresJmapSettingsRepositoryModule;
@@ -222,7 +224,8 @@ public class PostgresTmailServer {
         new WebFingerModule(),
         new EmailRecoveryActionMethodModule(),
         new LabelMethodModule(),
-        new JmapSettingsMethodModule())
+        new JmapSettingsMethodModule(),
+        new PublicAssetsModule())
         .with(new TeamMailboxJmapModule());
 
     private static final Module PROTOCOLS = Modules.combine(
@@ -267,6 +270,7 @@ public class PostgresTmailServer {
             new EmailAddressContactRoutesModule(),
             new PostgresLabelRepositoryModule(),
             new PostgresJmapSettingsRepositoryModule(),
+            new PostgresPublicAssetRepositoryModule(),
             new TasksHeathCheckModule(),
             chooseEventBusModules(configuration));
 
