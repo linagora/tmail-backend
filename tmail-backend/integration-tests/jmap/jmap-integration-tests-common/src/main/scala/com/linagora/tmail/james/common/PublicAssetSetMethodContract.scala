@@ -22,7 +22,7 @@ import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.model.ContentType.MimeType
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.hamcrest.Matchers.hasKey
+import org.hamcrest.Matchers.{hasItem, hasKey}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsString, Json}
 import reactor.core.scala.publisher.SMono
@@ -1657,6 +1657,280 @@ trait PublicAssetSetMethodContract {
       .extract
       .jsonPath()
       .get("methodResponses[0][1].created.4f29.id")
+  }
+
+  @Test
+  def setDestroyShouldReturnDestroyedWhenValidRequest(): Unit = {
+    // Given public asset Id
+    val publicAssetId: String = createPublicAssetId()
+
+    // When destroy the public asset
+    val response: String =  `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "destroy": ["$publicAssetId"]
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "PublicAsset/set",
+           |  {
+           |    "accountId": "$ACCOUNT_ID",
+           |    "oldState": "$${json-unit.ignore}",
+           |    "newState": "$${json-unit.ignore}",
+           |    "destroyed": ["$publicAssetId"]
+           |  },
+           |  "0"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def setDestroyShouldDeletePublicAssetWhenValidRequest(server: GuiceJamesServer): Unit = {
+    // Given public asset Id
+    val publicAssetId: String = createPublicAssetId()
+
+    // When destroy the public asset
+    `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "destroy": ["$publicAssetId"]
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].destroyed", hasItem(publicAssetId))
+
+    assertThat(server.getProbe(classOf[PublicAssetProbe])
+      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get))
+      .isNull()
+  }
+
+  @Test
+  def setDestroyShouldReturnNotDestroyedWhenInvalidPublicAssetId(): Unit = {
+    // Given an invalid public asset Id
+    val invalidPublicAssetId: String = "@InvalidId"
+
+    // When destroy the public asset with invalid public asset Id
+    val response: String =  `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "destroy": ["$invalidPublicAssetId"]
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return notDestroyed
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "PublicAsset/set",
+           |  {
+           |    "accountId": "$ACCOUNT_ID",
+           |    "oldState": "$${json-unit.ignore}",
+           |    "newState": "$${json-unit.ignore}",
+           |    "notDestroyed": {
+           |      "$invalidPublicAssetId": {
+           |        "type": "invalidArguments",
+           |        "description": "Invalid UUID string: $invalidPublicAssetId"
+           |      }
+           |    }
+           |  },
+           |  "0"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def setDestroyShouldBeIdempotent(): Unit = {
+    // Given public asset Id
+    val publicAssetId: String = createPublicAssetId()
+
+    // Destroy the public asset
+    `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "destroy": ["$publicAssetId"]
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].destroyed", hasItem(publicAssetId))
+
+    // When destroy the public asset again
+    val response: String =  `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "destroy": ["$publicAssetId"]
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return destroyed
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "PublicAsset/set",
+           |  {
+           |    "accountId": "$ACCOUNT_ID",
+           |    "oldState": "$${json-unit.ignore}",
+           |    "newState": "$${json-unit.ignore}",
+           |    "destroyed": ["$publicAssetId"]
+           |  },
+           |  "0"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def setDestroyShouldNotSupportDelegationWhenNotDelegatedUser(server: GuiceJamesServer): Unit = {
+    // Given public asset Id (of Bob)
+    val publicAssetId: String = createPublicAssetId()
+    val bobAccountID = ACCOUNT_ID
+
+    // When destroy the public asset with not delegated user
+    val response: String =  `given`()
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$bobAccountID",
+           |        "destroy": ["$publicAssetId"]
+           |      }, "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return notDestroyed
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "$${json-unit.ignore}",
+         |  "methodResponses": [
+         |    ["error", {
+         |      "type": "accountNotFound"
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin)
+    assertThat(server.getProbe(classOf[PublicAssetProbe])
+      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get))
+      .isNotNull
+  }
+
+  @Test
+  def setDestroyShouldSupportDelegationWhenDelegatedUser(server: GuiceJamesServer): Unit = {
+    // Given public asset Id (of Bob)
+    val publicAssetId: String = createPublicAssetId()
+    val bobAccountID = ACCOUNT_ID
+
+    // Given delegated user
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    // When destroy the public asset with delegated user
+    // Then the request should return destroyed
+    `given`()
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$bobAccountID",
+           |        "destroy": ["$publicAssetId"]
+           |      }, "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].destroyed", hasItem(publicAssetId))
+
+    // Then the public asset was deleted
+    assertThat(server.getProbe(classOf[PublicAssetProbe])
+      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get))
+      .isNull()
   }
 
   private def createPublicAssetIdWithIdentityId(identityIds: Seq[String]): String = {
