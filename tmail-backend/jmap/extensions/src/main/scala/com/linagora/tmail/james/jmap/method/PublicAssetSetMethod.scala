@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.method
 import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PUBLIC_ASSETS
-import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetBlobIdNotFoundException, PublicAssetCreationFailure, PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationRequest, PublicAssetCreationResponse, PublicAssetCreationResult, PublicAssetCreationResults, PublicAssetCreationSuccess, PublicAssetException, PublicAssetId, PublicAssetInvalidBlobIdException, PublicAssetPatchObject, PublicAssetRepository, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetSetService, PublicAssetStorage, PublicAssetUpdateFailure, PublicAssetUpdateResult, PublicAssetUpdateResults, PublicAssetUpdateSuccess, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
+import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetBlobIdNotFoundException, PublicAssetCreationFailure, PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationRequest, PublicAssetCreationResponse, PublicAssetCreationResult, PublicAssetCreationResults, PublicAssetCreationSuccess, PublicAssetDeletionFailure, PublicAssetDeletionResult, PublicAssetDeletionResults, PublicAssetDeletionSuccess, PublicAssetException, PublicAssetId, PublicAssetInvalidBlobIdException, PublicAssetPatchObject, PublicAssetRepository, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetSetService, PublicAssetStorage, PublicAssetUpdateFailure, PublicAssetUpdateResult, PublicAssetUpdateResults, PublicAssetUpdateSuccess, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.IdentityId
@@ -26,6 +26,7 @@ object PublicAssetSetMethod {
 
 class PublicAssetSetMethod @Inject()(val createPerformer: PublicAssetSetCreatePerformer,
                                      val updatePerformer: PublicAssetSetUpdatePerformer,
+                                     val destroyPerformer: PublicAssetSetDestroyPerformer,
                                      val metricFactory: MetricFactory,
                                      val sessionTranslator: SessionTranslator,
                                      val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[PublicAssetSetRequest] {
@@ -37,6 +38,7 @@ class PublicAssetSetMethod @Inject()(val createPerformer: PublicAssetSetCreatePe
     for {
       creationResults <- createPerformer.createPublicAssets(mailboxSession, request)
       updateResults <- updatePerformer.updatePublicAssets(mailboxSession, request)
+      deletionResults <- destroyPerformer.deletePublicAssets(mailboxSession, request)
     } yield {
       InvocationWithContext(
         invocation = Invocation(
@@ -49,7 +51,9 @@ class PublicAssetSetMethod @Inject()(val createPerformer: PublicAssetSetCreatePe
               created = Some(creationResults.retrieveCreated).filter(_.nonEmpty),
               notCreated = Some(creationResults.retrieveErrors).filter(_.nonEmpty),
               updated = Some(updateResults.updated).filter(_.nonEmpty),
-              notUpdated = Some(updateResults.notUpdated).filter(_.nonEmpty))).as[JsObject]),
+              notUpdated = Some(updateResults.notUpdated).filter(_.nonEmpty),
+              destroyed = Some(deletionResults.destroyed).filter(_.nonEmpty),
+              notDestroyed = Some(deletionResults.retrieveErrors).filter(_.nonEmpty))).as[JsObject]),
           methodCallId = invocation.invocation.methodCallId),
         processingContext = recordCreationIdInProcessingContext(creationResults, invocation.processingContext))
     }
@@ -178,4 +182,23 @@ class PublicAssetSetUpdatePerformer @Inject()(val publicAssetRepository: PublicA
           } yield (publicAssetId, validatedPath))
             .left.map(e => PublicAssetUpdateFailure(unparsedPublicAssetId, e))
       })
+}
+
+class PublicAssetSetDestroyPerformer @Inject()(val publicAssetRepository: PublicAssetRepository) {
+
+  def deletePublicAssets(mailboxSession: MailboxSession, request: PublicAssetSetRequest): SMono[PublicAssetDeletionResults] =
+    SFlux.fromIterable(request.destroy.getOrElse(Seq()))
+      .flatMap(unparsedId => deletePublicAsset(unparsedId, mailboxSession)
+        .onErrorRecover(e => PublicAssetDeletionFailure(unparsedId, e)),
+        maxConcurrency = ReactorUtils.DEFAULT_CONCURRENCY)
+      .collectSeq()
+      .map(PublicAssetDeletionResults)
+
+  private def deletePublicAsset(unparsedId: UnparsedPublicAssetId, mailboxSession: MailboxSession): SMono[PublicAssetDeletionResult] =
+    unparsedId.tryAsPublicAssetId match {
+      case Left(argumentException) => SMono.just(PublicAssetDeletionFailure(unparsedId, argumentException))
+      case Right(publicAssetId) => SMono.fromPublisher(publicAssetRepository.remove(mailboxSession.getUser, publicAssetId))
+        .`then`(SMono.just[PublicAssetDeletionResult](PublicAssetDeletionSuccess(publicAssetId)))
+        .onErrorResume(e => SMono.just(PublicAssetDeletionFailure(unparsedId, e)))
+    }
 }

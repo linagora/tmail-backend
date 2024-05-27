@@ -80,7 +80,9 @@ case class PublicAssetSetResponse(accountId: AccountId,
                                   created: Option[Map[PublicAssetCreationId, PublicAssetCreationResponse]],
                                   notCreated: Option[Map[PublicAssetCreationId, SetError]],
                                   updated: Option[Map[PublicAssetId, PublicAssetUpdateResponse]],
-                                  notUpdated: Option[Map[UnparsedPublicAssetId, SetError]])
+                                  notUpdated: Option[Map[UnparsedPublicAssetId, SetError]],
+                                  destroyed: Option[Seq[PublicAssetId]],
+                                  notDestroyed: Option[Map[UnparsedPublicAssetId, SetError]])
 
 case class PublicAssetCreationParseException(setError: SetError) extends PublicAssetException {
   override val message: String = s"Invalid public asset creation request: ${setError.description}"
@@ -217,6 +219,35 @@ case class PublicAssetUpdateResults(results: Seq[PublicAssetUpdateResult]) {
   def notUpdated: Map[UnparsedPublicAssetId, SetError] =
     results.flatMap(result => result match {
       case failure: PublicAssetUpdateFailure => Some(failure.id, failure.asSetError)
+      case _ => None
+    }).toMap
+}
+
+sealed trait PublicAssetDeletionResult
+
+case class PublicAssetDeletionSuccess(id: PublicAssetId) extends PublicAssetDeletionResult
+
+case class PublicAssetDeletionFailure(id: UnparsedPublicAssetId, exception: Throwable) extends PublicAssetDeletionResult {
+  def asSetError: SetError = exception match {
+    case e: Exception if e.isInstanceOf[PublicAssetException] || e.isInstanceOf[IllegalArgumentException] =>
+      LOGGER.info("Has error when delete public asset ", exception)
+      SetError.invalidArguments(SetErrorDescription(e.getMessage))
+    case _ =>
+      LOGGER.warn("Unexpected exception when delete public asset ", exception)
+      SetError.serverFail(SetErrorDescription(exception.getMessage))
+  }
+}
+
+case class PublicAssetDeletionResults(results: Seq[PublicAssetDeletionResult]) {
+  def destroyed: Seq[PublicAssetId] =
+    results.flatMap(result => result match {
+      case success: PublicAssetDeletionSuccess => Some(success.id)
+      case _ => None
+    })
+
+  def retrieveErrors: Map[UnparsedPublicAssetId, SetError] =
+    results.flatMap(result => result match {
+      case failure: PublicAssetDeletionFailure => Some(failure.id, failure.asSetError)
       case _ => None
     }).toMap
 }

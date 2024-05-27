@@ -68,6 +68,24 @@ class PublicAssetSerializerTest {
   }
 
   @Test
+  def deserializeSetDestroyRequestShouldSucceed() : Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |  "destroy": ["4f29"]
+        |}""".stripMargin)
+
+    val deserializeResult: JsResult[PublicAssetSetRequest] = PublicAssetSerializer.deserializePublicAssetSetRequest(jsInput)
+
+    assertThat(deserializeResult.isSuccess)
+      .isTrue
+
+    val setRequest: PublicAssetSetRequest = deserializeResult.get
+    assertThat(setRequest.destroy.get.asJava)
+      .containsExactly(UnparsedPublicAssetId("4f29"))
+  }
+
+  @Test
   def deserializeCreationRequestShouldSucceed(): Unit = {
     val jsInput: JsValue = Json.parse(
       """{
@@ -128,7 +146,9 @@ class PublicAssetSerializerTest {
         contentType = ImageContentType.validate("image/png").toOption.get))),
       notCreated = Some(Map(PublicAssetCreationId("4f30") -> SetError.invalidArguments(SetErrorDescription("Some unknown properties were specified")))),
       updated = None,
-      notUpdated = None)
+      notUpdated = None,
+      destroyed = None,
+      notDestroyed = None)
 
     val json = PublicAssetSerializer.serializePublicAssetSetResponse(response)
     assertThat(json)
@@ -165,7 +185,9 @@ class PublicAssetSerializerTest {
       created = None,
       notCreated = None,
       updated = Some(Map(PublicAssetId(UUID.fromString("3b241101-feb9-4e23-a0c0-5b8843b4a760")) -> PublicAssetUpdateResponse())),
-      notUpdated = Some(Map(UnparsedPublicAssetId("4f30") -> SetError.invalidArguments(SetErrorDescription("Some unknown properties were specified")))))
+      notUpdated = Some(Map(UnparsedPublicAssetId("4f30") -> SetError.invalidArguments(SetErrorDescription("Some unknown properties were specified")))),
+      destroyed = None,
+      notDestroyed = None)
 
     val json = PublicAssetSerializer.serializePublicAssetSetResponse(response)
     assertThat(json)
@@ -178,6 +200,36 @@ class PublicAssetSerializerTest {
           |    "3b241101-feb9-4e23-a0c0-5b8843b4a760": null
           |  },
           |  "notUpdated": {
+          |    "4f30": {
+          |      "type": "invalidArguments",
+          |      "description": "Some unknown properties were specified"
+          |    }
+          |  }
+          |}""".stripMargin))
+  }
+
+  @Test
+  def serializePublicAssetSetResponseShouldReturnCorrectDestroyed(): Unit = {
+    val response = PublicAssetSetResponse(
+      accountId = AccountId("29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"),
+      oldState = Some(UuidState.fromStringUnchecked("2c9f1b12-b35a-43e6-9af2-0106fb53a943")),
+      newState = UuidState.fromStringUnchecked("2c9f1b12-b35a-43e6-9af2-0106fb53a944"),
+      created = None,
+      notCreated = None,
+      destroyed = Some(Seq(PublicAssetId(UUID.fromString("3b241101-feb9-4e23-a0c0-5b8843b4a760")))),
+      notDestroyed = Some(Map(UnparsedPublicAssetId("4f30") -> SetError.invalidArguments(SetErrorDescription("Some unknown properties were specified")))),
+      updated = None,
+      notUpdated = None)
+
+    val json = PublicAssetSerializer.serializePublicAssetSetResponse(response)
+    assertThat(json)
+      .isEqualTo(Json.parse(
+        """{
+          |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+          |  "oldState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+          |  "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a944",
+          |  "destroyed": ["3b241101-feb9-4e23-a0c0-5b8843b4a760"],
+          |  "notDestroyed": {
           |    "4f30": {
           |      "type": "invalidArguments",
           |      "description": "Some unknown properties were specified"
