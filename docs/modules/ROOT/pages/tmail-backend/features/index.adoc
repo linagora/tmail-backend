@@ -115,3 +115,16 @@ Settings is a free floating `String[String]` map being set by the client. Our ex
 known usage proper to TeamMail mobile app features.
 
 xref:tmail-backend/jmap-extensions/jmapSettings.adoc[Read more]...
+
+== Public Assets Management
+
+TMail provides users the ability to upload and manage public images, for use in email signatures via the JMAP PublicAsset extension.
+
+This feature allows users to:
+- Upload images and generate public URIs for these images.
+- Reference these images in their email signatures using the public URIs.
+- Manage their uploaded images, including deletion if necessary.
+
+The PublicAsset extension ensures that images can be properly integrated into email signatures, improving personalization and branding efforts.
+
+xref:tmail-backend/jmap-extensions/publicAssets.adoc[Read more]...
