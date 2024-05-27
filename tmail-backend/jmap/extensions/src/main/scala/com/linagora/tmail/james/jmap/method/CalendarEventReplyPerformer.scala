@@ -183,7 +183,7 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
       .map(calendarReply => calendarReply.toString.getBytes(StandardCharsets.UTF_8))
       .map(calendarAsByte => Seq(MimeMessageBuilder.bodyPartBuilder
         .data(calendarAsByte)
-        .addHeader("Content-Type", "text/calendar; charset=UTF-8"),
+        .addHeader("Content-Type", "text/calendar; charset=UTF-8; method=REPLY"),
         MimeMessageBuilder.bodyPartBuilder
           .data(calendarAsByte)
           .filename(ICS_FILE_NAME)
