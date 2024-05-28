@@ -18,6 +18,7 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.IdentityProbe
 import org.apache.james.jmap.rfc8621.contract.IdentitySetContract.IDENTITY_CREATION_REQUEST
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.model.ContentType.MimeType
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
@@ -1504,6 +1505,98 @@ trait PublicAssetSetMethodContract {
            |    "description": "'/unknownProperty' property is not valid: Unknown property"
            |  }
            |}""".stripMargin)
+  }
+
+  @Test
+  def setUpdateShouldNotSupportDelegationWhenNotDelegatedUser(server: GuiceJamesServer): Unit = {
+    // Given public asset Id (of Bob)
+    val publicAssetId: String = createPublicAssetIdWithIdentityId(getIdentityIds())
+    val bobAccountID = ACCOUNT_ID
+
+    // when update the public asset with not delegated user
+    val response: String = `given`()
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$bobAccountID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds": { }
+           |          }
+           |        }
+           |      }, "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return error
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "$${json-unit.ignore}",
+         |  "methodResponses": [
+         |    ["error", {
+         |      "type": "accountNotFound"
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin)
+
+    // Then the public asset should not be updated
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server).size())
+      .isGreaterThan(0)
+  }
+
+  @Test
+  def setUpdateShouldSupportDelegationWhenDelegatedUser(server: GuiceJamesServer): Unit = {
+    // Given public asset Id (of Bob)
+    val publicAssetId: String = createPublicAssetIdWithIdentityId(getIdentityIds())
+    val bobAccountID = ACCOUNT_ID
+    // Given delegation
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(BOB, ANDRE)
+
+    // when update the public asset with delegated user
+    `given`()
+      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$bobAccountID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds": { }
+           |          }
+           |        }
+           |      }, "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].updated", hasKey(publicAssetId))
+
+    // Then the public asset should be updated
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server).size())
+      .isEqualTo(0)
   }
 
   private def getIdentityIdsByUsernameAndPublicAssetId(username: Username, publicAssetId: PublicAssetId, server: GuiceJamesServer): java.util.List[String] =
