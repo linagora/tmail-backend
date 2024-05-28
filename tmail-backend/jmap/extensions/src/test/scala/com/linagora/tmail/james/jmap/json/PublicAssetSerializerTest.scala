@@ -50,7 +50,7 @@ class PublicAssetSerializerTest {
         |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
         |  "update": {
         |    "4f29": {
-        |      "identityIds": ["12", "34"]
+        |      "identityIds": {"12":true, "34":true}
         |    }
         |  }
         |}""".stripMargin)
