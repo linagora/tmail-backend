@@ -22,10 +22,12 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.james.common.PublicAssetGetMethodContract;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
+import com.linagora.tmail.james.common.probe.PublicAssetProbe;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
@@ -33,6 +35,7 @@ import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 import io.restassured.RestAssured;
 import io.restassured.specification.RequestSpecification;
 import scala.Option;
+import scala.jdk.javaapi.CollectionConverters;
 
 public abstract class UserDeletionIntegrationContract {
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
@@ -144,5 +147,24 @@ public abstract class UserDeletionIntegrationContract {
             .body("additionalInformation.status.JmapSettingsUserDeletionTaskStep", Matchers.is("DONE"));
 
         assertThat(settingsProbe.get(BOB)).isNull();
+    }
+
+    @Test
+    void shouldDeletePublicAssets(GuiceJamesServer server) {
+        PublicAssetProbe publicAssetProbe = server.getProbe(PublicAssetProbe.class);
+        publicAssetProbe.create(ALICE, PublicAssetGetMethodContract.CREATION_REQUEST());
+
+        String taskId = webAdminApi
+            .queryParam("action", "deleteData")
+            .post("/users/" + ALICE.asString())
+            .jsonPath()
+            .get("taskId");
+
+        webAdminApi.get("/tasks/" + taskId + "/await")
+            .then()
+            .body("additionalInformation.status.PublicAssetDeletionTaskStep", Matchers.is("DONE"));
+
+        assertThat(CollectionConverters.asJava(publicAssetProbe.list(ALICE)))
+            .isEmpty();
     }
 }

@@ -607,6 +607,7 @@ Implemented extra steps for TMail are:
 - `FirebaseSubscriptionUserDeletionTaskStep`: deletes firebase subscriptions belonging to the user.
 - `LabelUserDeletionTaskStep`: deletes JMAP labels belonging to the user.
 - `JmapSettingsUserDeletionTaskStep`: deletes JMAP settings belonging to the user.
+- `PublicAssetDeletionTaskStep`: deletes public assets belonging to the user.
 
 Response codes:
 

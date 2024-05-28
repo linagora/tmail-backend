@@ -10,6 +10,7 @@ import org.apache.james.blob.api.BlobReferenceSource
 import org.apache.james.jmap.JMAPRoutes
 import org.apache.james.jmap.core.{CapabilityFactory, JmapRfc8621Configuration}
 import org.apache.james.jmap.method.Method
+import org.apache.james.user.api.DeleteUserDataTaskStep
 
 class PublicAssetsModule extends AbstractModule {
   override def configure(): Unit = {
@@ -29,6 +30,10 @@ class PublicAssetsModule extends AbstractModule {
 
     val routes: Multibinder[JMAPRoutes] = Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
     routes.addBinding().to(classOf[PublicAssetRoutes])
+
+    Multibinder.newSetBinder(binder(), classOf[DeleteUserDataTaskStep])
+      .addBinding()
+      .to(classOf[PublicAssetDeletionTaskStep])
   }
 
   @Provides
