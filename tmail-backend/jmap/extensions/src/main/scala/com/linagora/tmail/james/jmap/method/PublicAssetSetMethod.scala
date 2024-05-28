@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.method
 
+import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PUBLIC_ASSETS
 import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetBlobIdNotFoundException, PublicAssetCreationFailure, PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationRequest, PublicAssetCreationResponse, PublicAssetCreationResult, PublicAssetCreationResults, PublicAssetCreationSuccess, PublicAssetException, PublicAssetId, PublicAssetInvalidBlobIdException, PublicAssetPatchObject, PublicAssetRepository, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetSetService, PublicAssetStorage, PublicAssetUpdateFailure, PublicAssetUpdateResult, PublicAssetUpdateResults, PublicAssetUpdateSuccess, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
@@ -147,8 +148,23 @@ class PublicAssetSetUpdatePerformer @Inject()(val publicAssetRepository: PublicA
       .map(PublicAssetUpdateResults)
 
   private def updatePublicAsset(publicAssetId: PublicAssetId, patch: ValidatedPublicAssetPatchObject, mailboxSession: MailboxSession): SMono[PublicAssetUpdateResult] =
-    publicAssetSetService.checkIdentityIdsExist(patch.identityIds.toSeq, mailboxSession)
+    if (patch.isReset) {
+      updatePublicAssetWhenResetIdentityIds(publicAssetId, patch, mailboxSession)
+    } else {
+      updatePublicAssetWhenPartialUpdate(publicAssetId, patch, mailboxSession)
+    }
+
+  private def updatePublicAssetWhenResetIdentityIds(publicAssetId: PublicAssetId, patch: ValidatedPublicAssetPatchObject, mailboxSession: MailboxSession): SMono[PublicAssetUpdateResult] = {
+    Preconditions.checkArgument(patch.resetIdentityIds.isDefined, "resetIdentityIds must be defined".asInstanceOf[Object])
+    publicAssetSetService.checkIdentityIdsExist(patch.resetIdentityIds.get, mailboxSession)
       .flatMap(checkedIdentityIds => SMono(publicAssetRepository.update(mailboxSession.getUser, publicAssetId, checkedIdentityIds.toSet)))
+      .`then`(SMono.just[PublicAssetUpdateResult](PublicAssetUpdateSuccess(publicAssetId)))
+      .onErrorResume(e => SMono.just(PublicAssetUpdateFailure(UnparsedPublicAssetId(publicAssetId.value.toString), e)))
+  }
+
+  private def updatePublicAssetWhenPartialUpdate(publicAssetId: PublicAssetId, patch: ValidatedPublicAssetPatchObject, mailboxSession: MailboxSession): SMono[PublicAssetUpdateResult] =
+    publicAssetSetService.checkIdentityIdsExist(patch.identityIdsToAdd, mailboxSession)
+      .flatMap(checkedIdentityIdsToAdd => SMono(publicAssetRepository.updateIdentityIds(mailboxSession.getUser, publicAssetId, checkedIdentityIdsToAdd, patch.identityIdsToRemove)))
       .`then`(SMono.just[PublicAssetUpdateResult](PublicAssetUpdateSuccess(publicAssetId)))
       .onErrorResume(e => SMono.just(PublicAssetUpdateFailure(UnparsedPublicAssetId(publicAssetId.value.toString), e)))
 
@@ -158,7 +174,7 @@ class PublicAssetSetUpdatePerformer @Inject()(val publicAssetRepository: PublicA
         case (unparsedPublicAssetId: UnparsedPublicAssetId, patch: PublicAssetPatchObject) =>
           (for {
             publicAssetId <- unparsedPublicAssetId.tryAsPublicAssetId
-            validatedPath <- patch.validate()
+            validatedPath <- patch.validate
           } yield (publicAssetId, validatedPath))
             .left.map(e => PublicAssetUpdateFailure(unparsedPublicAssetId, e))
       })

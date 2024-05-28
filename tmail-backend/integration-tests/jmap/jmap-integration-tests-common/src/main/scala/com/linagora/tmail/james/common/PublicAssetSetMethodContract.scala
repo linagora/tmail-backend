@@ -12,14 +12,19 @@ import net.javacrumbs.jsonunit.JsonMatchers
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
-import org.apache.james.jmap.api.model.IdentityId
+import org.apache.james.core.Username
+import org.apache.james.jmap.api.model.{IdentityId, IdentityName}
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.IdentityProbe
+import org.apache.james.jmap.rfc8621.contract.IdentitySetContract.IDENTITY_CREATION_REQUEST
 import org.apache.james.mailbox.model.ContentType.MimeType
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers.hasKey
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsString, Json}
+import reactor.core.scala.publisher.SMono
 
 import scala.jdk.CollectionConverters._
 
@@ -648,7 +653,7 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "update": {
            |          "$publicAssetId": {
-           |            "identityIds": ["${identityIds.head}"]
+           |            "identityIds": { "${identityIds.head}": true }
            |          }
            |        }
            |      }, "0"
@@ -698,7 +703,7 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "update": {
            |          "$notFoundPublicAssetId": {
-           |            "identityIds": ["${identityIds.head}"]
+           |            "identityIds": { "${identityIds.head}": true }
            |          }
            |        }
            |      }, "0"
@@ -736,7 +741,7 @@ trait PublicAssetSetMethodContract {
   }
 
   @Test
-  def updateShouldReturnNotUpdatedWhenIdentityIdDoesNotExists():Unit = {
+  def updateShouldReturnNotUpdatedWhenResetIdentityIdDoesNotExists():Unit = {
     // Given public asset Id
     val publicAssetId: String = createPublicAssetId()
     val notFoundIdentityId: String = IdentityId.generate.serialize
@@ -752,7 +757,7 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "update": {
            |          "$publicAssetId": {
-           |            "identityIds": ["$notFoundIdentityId"]
+           |            "identityIds": { "${notFoundIdentityId}": true }
            |          }
            |        }
            |      }, "0"
@@ -790,7 +795,7 @@ trait PublicAssetSetMethodContract {
   }
 
   @Test
-  def updateShouldReturnNotUpdatedWhenIdentityIdsContainOneDoesNotExist(): Unit = {
+  def updateShouldReturnNotUpdatedWhenResetIdentityIdsContainOneDoesNotExist(): Unit = {
     // Given public asset Id
     val publicAssetId: String = createPublicAssetId()
     val notFoundIdentityId: String = IdentityId.generate.serialize
@@ -807,7 +812,7 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "update": {
            |          "$publicAssetId": {
-           |            "identityIds": ["$notFoundIdentityId", "$identityId"]
+           |            "identityIds": { "${notFoundIdentityId}": true,  "$identityId": true }
            |          }
            |        }
            |      }, "0"
@@ -845,7 +850,7 @@ trait PublicAssetSetMethodContract {
   }
 
   @Test
-  def updateShouldReturnNotUpdatedWhenMissingIdentityIdsProperty():Unit = {
+  def updateShouldReturnNotUpdatedWhenEmptyPatchUpdateRequest():Unit = {
     // Given public asset Id
     val publicAssetId: String = createPublicAssetId()
 
@@ -888,7 +893,7 @@ trait PublicAssetSetMethodContract {
            |    "notUpdated": {
            |      "$publicAssetId": {
            |        "type": "invalidArguments",
-           |        "description": "Missing '/identityIds'"
+           |        "description": "Cannot update identityIds with empty request"
            |      }
            |    }
            |  },
@@ -913,10 +918,10 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "update": {
            |          "$publicAssetId1": {
-           |            "identityIds": ["${identityIds.head}"]
+           |            "identityIds": { "${identityIds.head}": true }
            |          },
            |          "$publicAssetId2": {
-           |            "identityIds": ["${identityIds.head}"]
+           |            "identityIds": { "${identityIds.head}": true }
            |          }
            |        }
            |      }, "0"
@@ -956,10 +961,10 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "update": {
            |          "$publicAssetId1": {
-           |            "identityIds": ["$notFoundIdentityId", "$identityId"]
+           |            "identityIds": { "$identityId": true, "$notFoundIdentityId": true}
            |          },
            |          "$publicAssetId2": {
-           |            "identityIds": ["$identityId"]
+           |            "identityIds": { "$identityId": true }
            |          }
            |        }
            |      }, "0"
@@ -1012,7 +1017,7 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "update": {
            |          "$publicAssetId": {
-           |            "identityIds": ["${identityIds.head}"]
+           |            "identityIds":  { "${identityIds.head}": true }
            |          }
            |        }
            |      }, "0"
@@ -1039,7 +1044,7 @@ trait PublicAssetSetMethodContract {
   }
 
   @Test
-  def updateShouldSuccessWhenIdentityIdsIsEmpty(server: GuiceJamesServer): Unit = {
+  def updateShouldSuccessWhenResetIdentityIdsIsEmpty(server: GuiceJamesServer): Unit = {
     // give public asset Id with identityId
     val uploadResponse: UploadResponse = uploadAsset(content = UUID.randomUUID().toString.getBytes)
     val identityId: String = getIdentityIds().head
@@ -1086,7 +1091,7 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "update": {
            |          "$publicAssetId": {
-           |            "identityIds": []
+           |            "identityIds": {}
            |          }
            |        }
            |      }, "0"
@@ -1110,6 +1115,403 @@ trait PublicAssetSetMethodContract {
       .identityIds
       .asJava).hasSize(0)
   }
+
+  @Test
+  def updateShouldFailWhenUpdateRequestIsNotJson(server: GuiceJamesServer): Unit = {
+    // Given public asset Id
+    val publicAssetId: String = createPublicAssetId()
+
+    // when update the public asset with invalid update request (not json)
+    val response: String =  `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": "not-json"
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return fail
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "error",
+           |    {
+           |        "type": "invalidArguments",
+           |        "description": "'/update/$publicAssetId' property is not valid: error.expected.jsobject"
+           |    },
+           |    "0"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenInvalidResetIdentityIdsRequest(server: GuiceJamesServer): Unit = {
+    // Given public asset Id with identityId
+    val identityId: String = getIdentityIds().head
+    val publicAssetId: String = createPublicAssetIdWithIdentityId(Seq(identityId))
+
+    // when update the public asset with invalid identityIds
+    val response: String =  `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds": { "invalid-identity-id": true }
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return notUpdated
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated")
+      .isEqualTo(
+        s"""{
+           |  "$publicAssetId": {
+           |    "type": "invalidArguments",
+           |    "description": "$${json-unit.ignore}"
+           |  }
+           |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnUpdatedWhenAddPartialValidate(server: GuiceJamesServer): Unit = {
+    // Given public asset Id
+    val publicAssetId: String = createPublicAssetId()
+    val identityId1: String = getIdentityIds().head
+
+    // when update the public asset with identityIds
+    val response: String =  `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds/${identityId1}": true
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return updated
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated")
+      .isEqualTo(
+        s"""{"$publicAssetId":null}""")
+
+    // Then the public asset should have identityId1
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server))
+      .containsExactlyInAnyOrder(identityId1)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenAddPartialWithNotFoundIdentityId(server: GuiceJamesServer): Unit = {
+    // Given public asset Id
+    val publicAssetId: String = createPublicAssetId()
+    val notFoundIdentityId: String = IdentityId.generate.serialize
+
+    // when update the public asset with identityIds
+    val response: String =  `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds/$notFoundIdentityId": true
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return notUpdated
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated")
+      .isEqualTo(
+        s"""{
+           |  "$publicAssetId": {
+           |    "type": "invalidArguments",
+           |    "description": "IdentityId not found: $notFoundIdentityId"
+           |  }
+           |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnUpdatedWhenRemovePartialValidate(server: GuiceJamesServer): Unit = {
+    // Given public asset Id with identityId1
+    val identityId1: String = getIdentityIds().head
+    val publicAssetId: String = createPublicAssetIdWithIdentityId(Seq(identityId1))
+
+    // when update the public asset with identityId1
+    val response: String = `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds/${identityId1}": null
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return updated
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated")
+      .isEqualTo(
+        s"""{"$publicAssetId":null}""")
+
+    // Then the public asset should not have identityId1
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server))
+      .doesNotContain(identityId1)
+  }
+
+  @Test
+  def updateShouldReturnUpdatedWhenRemovePartialIdempotent(server: GuiceJamesServer): Unit = {
+    // Given public asset Id with empty identityIds
+    val identityId1: String = getIdentityIds().head
+    val publicAssetId: String = createPublicAssetId()
+
+    // when update the public asset with identityIds
+    `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds/${identityId1}": null
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].updated", hasKey(publicAssetId))
+
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server))
+      .hasSize(0)
+  }
+
+  @Test
+  def updateShouldSupportMixAddAndRemovePartialAtSameTime(server: GuiceJamesServer): Unit = {
+    // Given +3 identityIds
+    val identityProbe = server.getProbe(classOf[IdentityProbe])
+    val identityId1: String = SMono(identityProbe.save(BOB, IDENTITY_CREATION_REQUEST)).block().id.serialize
+    val identityId2: String = SMono(identityProbe.save(BOB, IDENTITY_CREATION_REQUEST.copy(name = Some(IdentityName("Bob (custom address)2"))))).block().id.serialize
+    val identityId3: String = SMono(identityProbe.save(BOB, IDENTITY_CREATION_REQUEST.copy(name = Some(IdentityName("Bob (custom address)3"))))).block().id.serialize
+    assertThat(getIdentityIds().size).isGreaterThan(3)
+
+    // Given public asset Id with identityId1 + identityId2
+    val publicAssetId: String = createPublicAssetIdWithIdentityId(Seq(identityId1, identityId2))
+
+    // when update the public asset with add identityId3 and remove identityId1
+    `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds/${identityId1}": null,
+           |            "identityIds/${identityId3}": true
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].updated", hasKey(publicAssetId))
+
+    // Then new IdentityIds should be is identityId2 + identityId3
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server))
+      .containsExactlyInAnyOrder(identityId2, identityId3)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenTryResetAndUpdatePartialAtSameTime(server: GuiceJamesServer): Unit = {
+    // Given public asset Id with identityId1
+    val identityProbe = server.getProbe(classOf[IdentityProbe])
+    val identityId1: String = SMono(identityProbe.save(BOB, IDENTITY_CREATION_REQUEST)).block().id.serialize
+    val publicAssetId: String = createPublicAssetIdWithIdentityId(Seq(identityId1))
+
+    // when update the public asset with reset and update partial at same time
+    val response: String = `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "identityIds": { "${identityId1}": true },
+           |            "identityIds/${identityId1}": null
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated")
+      .isEqualTo(
+        s"""{
+           |  "$publicAssetId": {
+           |    "type": "invalidArguments",
+           |    "description": "Cannot reset identityIds and add/remove identityIds at the same time"
+           |  }
+           |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenUnknownProperty(server: GuiceJamesServer): Unit = {
+    // Given public asset Id
+    val publicAssetId: String = createPublicAssetId()
+
+    // when update the public asset with unknown property
+    val response: String =  `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "update": {
+           |          "$publicAssetId": {
+           |            "unknownProperty": true
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .body()
+      .asString()
+
+    // Then the request should return notUpdated
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated")
+      .isEqualTo(
+        s"""{
+           |  "$publicAssetId": {
+           |    "type": "invalidArguments",
+           |    "description": "'/unknownProperty' property is not valid: Unknown property"
+           |  }
+           |}""".stripMargin)
+  }
+
+  private def getIdentityIdsByUsernameAndPublicAssetId(username: Username, publicAssetId: PublicAssetId, server: GuiceJamesServer): java.util.List[String] =
+    server.getProbe(classOf[PublicAssetProbe])
+      .getByUsernameAndAssetId(username, publicAssetId)
+      .identityIds
+      .map(_.id.toString)
+      .asJava
 
   private def getIdentityIds(): Seq[String] =
     `given`
@@ -1157,6 +1559,37 @@ trait PublicAssetSetMethodContract {
   .when()
       .post
   .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract
+      .jsonPath()
+      .get("methodResponses[0][1].created.4f29.id")
+  }
+
+  private def createPublicAssetIdWithIdentityId(identityIds: Seq[String]): String = {
+    val identityIdsAsJson: String = Json.stringify(Json.arr(identityIds)).replace("[[", "[").replace("]]", "]")
+    val uploadResponse: UploadResponse = uploadAsset(content = UUID.randomUUID().toString.getBytes)
+    `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "create": {
+           |          "4f29": {
+           |            "blobId": "${uploadResponse.blobId}",
+           |            "identityIds": $identityIdsAsJson
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post
+    .`then`
       .statusCode(HttpStatus.SC_OK)
       .contentType(JSON)
       .extract

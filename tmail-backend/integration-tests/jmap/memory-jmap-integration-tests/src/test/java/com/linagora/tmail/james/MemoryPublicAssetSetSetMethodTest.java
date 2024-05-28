@@ -4,6 +4,7 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.jmap.rfc8621.contract.IdentityProbeModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
@@ -22,6 +23,7 @@ public class MemoryPublicAssetSetSetMethodTest implements PublicAssetSetMethodCo
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new IdentityProbeModule())
             .overrideWith(new PublicAssetProbeModule()))
         .build();
 }

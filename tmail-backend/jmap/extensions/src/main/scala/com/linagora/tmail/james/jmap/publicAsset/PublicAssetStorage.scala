@@ -33,16 +33,6 @@ object PublicAssetId {
     Try(PublicAssetId(UUID.fromString(value)))
 }
 
-object PublicAssetId {
-  def fromString(value: String): Either[IllegalArgumentException, PublicAssetId] = Try(UUID.fromString(value))
-    .map(PublicAssetId.apply)
-    .toEither
-    .left.map {
-      case e: IllegalArgumentException => e
-      case e => new IllegalArgumentException(e)
-    }
-}
-
 case class PublicAssetId(value: UUID) {
   def asString(): String = value.toString
 }

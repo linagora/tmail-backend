@@ -3,16 +3,18 @@ package com.linagora.tmail.james.jmap.publicAsset
 import java.util.UUID
 
 import cats.implicits._
+import com.linagora.tmail.james.jmap.json.PublicAssetSerializer.PublicAssetSetUpdateReads
 import com.linagora.tmail.james.jmap.method.PublicAssetSetMethod.LOGGER
+import com.linagora.tmail.james.jmap.method.standardErrorMessage
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, Properties, SetError, UuidState}
 import org.apache.james.jmap.mail.{IdentityIds, BlobId => JmapBlobId}
-import org.apache.james.jmap.method.WithAccountId
+import org.apache.james.jmap.method.{WithAccountId, standardError}
 import org.apache.james.jmap.routes.BlobNotFoundException
-import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
+import play.api.libs.json.{JsArray, JsError, JsObject, JsString, JsSuccess, JsValue}
 
 import scala.util.Try
 
@@ -51,7 +53,11 @@ case class PublicAssetSetCreationRequest(blobId: JmapBlobId, identityIds: Option
 case class UnparsedPublicAssetId(id: String) {
 
   def tryAsPublicAssetId: Either[IllegalArgumentException, PublicAssetId] =
-    PublicAssetId.fromString(id)
+    PublicAssetId.fromString(id).toEither
+      .left.map {
+        case e: IllegalArgumentException => e
+        case e => new IllegalArgumentException(e)
+      }
 }
 
 object PublicAssetCreationResponse {
@@ -130,44 +136,10 @@ case class PublicAssetCreationResults(created: Seq[PublicAssetCreationResult]) {
     }).toMap
 }
 
-private object PublicAssetPatchObject {
-  private val identityIdsProperty: String = "identityIds"
-  private val updateProperties: Set[String] = Set(identityIdsProperty)
-}
+object PublicAssetPatchObject {
+  val identityIdsProperty: String = "identityIds"
 
-case class PublicAssetPatchObject(value: Map[String, JsValue]) {
-
-  def validate(): Either[PublicAssetPatchUpdateValidationException, ValidatedPublicAssetPatchObject] =
-    for {
-      _ <- validateProperties
-      identityIds <- validateIdentityIds
-    } yield ValidatedPublicAssetPatchObject(identityIds)
-
-  private def validateProperties: Either[PublicAssetPatchUpdateValidationException, PublicAssetPatchObject] =
-    value.find(mapEntry => !PublicAssetPatchObject.updateProperties.contains(mapEntry._1))
-      .map(e => Left(PublicAssetPatchUpdateValidationException(s"Some unknown properties were specified ${e._1}")))
-      .getOrElse(Right(this))
-
-  private def validateIdentityIds: Either[PublicAssetPatchUpdateValidationException, Seq[IdentityId]] = {
-    value.get(PublicAssetPatchObject.identityIdsProperty) match {
-      case Some(jsValue) => jsValue match {
-        case JsArray(arrayValue) => {
-          val eitherIdentityIds: Either[IllegalArgumentException, Seq[IdentityId]] = arrayValue.map(_.asInstanceOf[JsString].value)
-            .map(identityIdValue => validateIdentityId(identityIdValue))
-            .toSeq.sequence
-          eitherIdentityIds match {
-            case Right(identityIds) => Right(identityIds)
-            case Left(e) => Left(PublicAssetPatchUpdateValidationException(e.getMessage))
-          }
-        }
-        case _ => Left(PublicAssetPatchUpdateValidationException(s"${PublicAssetPatchObject.identityIdsProperty}: Expecting a JSON array as an argument"))
-      }
-      case None => Left(PublicAssetPatchUpdateValidationException(s"Missing '/${PublicAssetPatchObject.identityIdsProperty}'"))
-    }
-  }
-
-
-  private def validateIdentityId(identityId: String): Either[IllegalArgumentException, IdentityId] =
+  def validateIdentityId(identityId: String): Either[IllegalArgumentException, IdentityId] =
     Try(UUID.fromString(identityId))
       .toEither
       .map(IdentityId(_))
@@ -177,11 +149,43 @@ case class PublicAssetPatchObject(value: Map[String, JsValue]) {
       }
 }
 
+case class PublicAssetPatchObject(value: JsObject) {
+
+  def validate: Either[PublicAssetPatchUpdateValidationException, ValidatedPublicAssetPatchObject] =
+    (PublicAssetSetUpdateReads.reads(value) match {
+      case JsError(errors) => Left(PublicAssetPatchUpdateValidationException(standardErrorMessage(errors)))
+      case JsSuccess(patchObject, _) => Right(patchObject)
+    }).flatMap(e => e.validate())
+}
+
 case class PublicAssetPatchUpdateValidationException(error: String) extends PublicAssetException {
   override val message: String = error
 }
 
-case class ValidatedPublicAssetPatchObject(identityIds: Seq[IdentityId])
+case class ValidatedPublicAssetPatchObject(resetIdentityIds: Option[Seq[IdentityId]],
+                                           identityIdsToAdd: Seq[IdentityId] = Seq.empty,
+                                           identityIdsToRemove: Seq[IdentityId] = Seq.empty) {
+
+  // if resetIdentityIds is defined, then identityIdsToAdd and identityIdsToRemove must be empty
+  // if resetIdentityIds is not defined, then identityIdsToAdd and identityIdsToRemove must not be empty
+  // the value of identityIdsToAdd and identityIdsToRemove must be not conflict with each other
+  def validate(): Either[PublicAssetPatchUpdateValidationException, ValidatedPublicAssetPatchObject] =
+    resetIdentityIds match {
+      case Some(_) => (identityIdsToAdd, identityIdsToRemove) match {
+        case (Seq(), Seq()) => Right(this)
+        case _ => Left(PublicAssetPatchUpdateValidationException("Cannot reset identityIds and add/remove identityIds at the same time"))
+      }
+      case None => (identityIdsToAdd, identityIdsToRemove) match {
+        case (Seq(), Seq()) => Left(PublicAssetPatchUpdateValidationException("Cannot update identityIds with empty request"))
+        case _ => if (identityIdsToAdd.intersect(identityIdsToRemove).nonEmpty)
+          Left(PublicAssetPatchUpdateValidationException("Cannot add and remove the same identityId at the same time"))
+        else
+          Right(this)
+      }
+    }
+
+  def isReset: Boolean = resetIdentityIds.isDefined
+}
 
 case class PublicAssetUpdateResponse()
 
@@ -189,10 +193,14 @@ sealed trait PublicAssetUpdateResult
 
 case class PublicAssetUpdateFailure(id: UnparsedPublicAssetId, exception: Throwable) extends PublicAssetUpdateResult {
   def asSetError: SetError = exception match {
-    case e: PublicAssetException => SetError.invalidArguments(SetErrorDescription(e.getMessage))
-    case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage))
+    case e: PublicAssetException =>
+      LOGGER.info("Has an error when update public asset ", e)
+      SetError.invalidArguments(SetErrorDescription(e.getMessage))
+    case e: IllegalArgumentException =>
+      LOGGER.info("Has an error when update public asset ", e)
+      SetError.invalidArguments(SetErrorDescription(e.getMessage))
     case _ =>
-      LOGGER.warn("Unexpected exception when update public asset ", exception)
+      LOGGER.error("Unexpected exception when update public asset ", exception)
       SetError.serverFail(SetErrorDescription(exception.getMessage))
   }
 }
