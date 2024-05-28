@@ -193,6 +193,20 @@ routes:
       - OPTIONS
     plugin_config_id: jmap-plugin
 
+  # Public asset route
+  - id: jmap_public_asset_route
+    uri: /oidc/publicAsset/*
+    service_id: public_asset_service
+    methods:
+      - GET
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+    plugins:
+      proxy-rewrite:
+        regex_uri:
+          - "^/oidc/publicAsset/(.*)/(.*)"
+          - "/publicAsset/$1/$2"
+
 services:
   -
     id: jmap_service_oidc
@@ -237,6 +251,18 @@ services:
           remove:
             - X-Userinfo
             - X-User
+
+  - id: public_asset_service
+    upstream_id: jmap_upstream
+    plugins:
+      cors:
+        allow_origins: "https://example.com"
+        allow_methods: "GET,OPTIONS"
+        allow_headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range"
+        expose_headers: "**"
+        max_age: 1728000
+        allow_credential: false
+        allow_origins_by_regex: [ ".*\\.example.com", ".*\\..*\\.example.com" ]
 
 upstreams:
   -
