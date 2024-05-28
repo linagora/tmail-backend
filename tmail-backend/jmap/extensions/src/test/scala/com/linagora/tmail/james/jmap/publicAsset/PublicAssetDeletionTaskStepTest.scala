@@ -39,7 +39,7 @@ class PublicAssetDeletionTaskStepTest {
   }
 
   @Test
-  def shouldNotRemoveOtherUsersLabels(): Unit = {
+  def shouldNotRemoveOtherUsersAssets(): Unit = {
     SMono(publicAssetRepository.create(USERNAME, CREATION_REQUEST)).block()
     SMono(publicAssetRepository.create(USERNAME_2, CREATION_REQUEST)).block()
 
