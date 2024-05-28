@@ -2,7 +2,7 @@ package com.linagora.tmail.james.common.probe
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
-import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationRequest, PublicAssetRepository, PublicAssetStorage}
+import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationRequest, PublicAssetId, PublicAssetRepository, PublicAssetStorage}
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.utils.GuiceProbe
@@ -21,4 +21,7 @@ class PublicAssetProbe @Inject()(publicAssetRepository: PublicAssetRepository) e
 
   def list(username: Username): Seq[PublicAssetStorage] =
     SFlux(publicAssetRepository.list(username)).collectSeq().block()
+
+  def getByUsernameAndAssetId(username: Username, assetId: PublicAssetId): PublicAssetStorage =
+    SMono(publicAssetRepository.get(username, assetId)).block()
 }

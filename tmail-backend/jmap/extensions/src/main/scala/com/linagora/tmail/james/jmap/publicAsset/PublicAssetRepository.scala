@@ -31,6 +31,10 @@ trait PublicAssetRepository {
 
   def listAllBlobIds(): Publisher[BlobId]
 
+  def updateIdentityIds(username: Username, id: PublicAssetId, identityIdsToAdd: Seq[IdentityId], identityIdsToRemove: Seq[IdentityId]): Publisher[Void] =
+    SMono(get(username, id))
+      .map(publicAsset => (publicAsset.identityIds.toSet ++ identityIdsToAdd.toSet) -- identityIdsToRemove.toSet)
+      .flatMap(identityIds => SMono(update(username, id, identityIds)))
 }
 
 class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
