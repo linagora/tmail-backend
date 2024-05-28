@@ -200,12 +200,35 @@ routes:
     methods:
       - GET
       - OPTIONS
-    plugin_config_id: jmap-plugin
     plugins:
       proxy-rewrite:
         regex_uri:
           - "^/oidc/publicAsset/(.*)/(.*)"
           - "/publicAsset/$1/$2"
+        cors:
+          allow_origins: "*"
+          allow_methods: "GET,OPTIONS"
+          allow_headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range"
+          expose_headers: "**"
+          max_age: 1728000
+          allow_credential: false
+        limit-req:
+          rate: 100
+          burst: 50 # number of requests above 100 and below 150 per seconds will be delayed. Above 150 will be rejected
+          key: "server_addr"
+        api-breaker:
+          break_response_code: 503
+          max_breaker_sec: 300 # should be var: JMAP_CIRCUIT_BREAKER_TIMEOUT
+          unhealthy:
+            http_statuses:
+              - 500
+              - 501
+              - 502
+              - 503
+              - 504
+            failures: 3  # should be var: JMAP_CIRCUIT_BREAKER_MAXERRORS
+          healthy:
+            successes: 1
 
 services:
   -
@@ -254,15 +277,6 @@ services:
 
   - id: public_asset_service
     upstream_id: jmap_upstream
-    plugins:
-      cors:
-        allow_origins: "https://example.com"
-        allow_methods: "GET,OPTIONS"
-        allow_headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range"
-        expose_headers: "**"
-        max_age: 1728000
-        allow_credential: false
-        allow_origins_by_regex: [ ".*\\.example.com", ".*\\..*\\.example.com" ]
 
 upstreams:
   -
