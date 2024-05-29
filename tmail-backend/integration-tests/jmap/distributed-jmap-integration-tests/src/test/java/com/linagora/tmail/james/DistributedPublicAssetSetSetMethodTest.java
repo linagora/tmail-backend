@@ -5,6 +5,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.jmap.core.JmapRfc8621Configuration;
 import org.apache.james.jmap.rfc8621.contract.IdentityProbeModule;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
@@ -43,6 +44,8 @@ public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMet
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new IdentityProbeModule())
             .overrideWith(new DelegationProbeModule())
-            .overrideWith(new PublicAssetProbeModule()))
+            .overrideWith(new PublicAssetProbeModule())
+            .overrideWith(binder -> binder.bind(JmapRfc8621Configuration.class)
+                .toInstance(PublicAssetSetMethodContract.CONFIGURATION())))
         .build();
 }

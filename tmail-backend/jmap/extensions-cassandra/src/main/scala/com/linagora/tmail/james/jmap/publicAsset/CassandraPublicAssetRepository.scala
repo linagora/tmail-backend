@@ -65,6 +65,9 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
   private def getBlobContentAndMapToPublicAssetStorage(metaData: PublicAssetMetadata): SMono[PublicAssetStorage] =
     SMono(blobStore.readReactive(bucketName, metaData.blobId))
       .map(inputStream => metaData.asPublicAssetStorage(inputStream))
+
+  override def getTotalSize(username: Username): Publisher[Long] =
+    dao.selectSize(username).collectSeq().map(sizes => sizes.sum)
 }
 
 case class CassandraPublicAssetRepositoryModule() extends AbstractModule {

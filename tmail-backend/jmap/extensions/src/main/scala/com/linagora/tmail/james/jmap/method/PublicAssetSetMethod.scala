@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.method
 import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PUBLIC_ASSETS
-import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetBlobIdNotFoundException, PublicAssetCreationFailure, PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationRequest, PublicAssetCreationResponse, PublicAssetCreationResult, PublicAssetCreationResults, PublicAssetCreationSuccess, PublicAssetDeletionFailure, PublicAssetDeletionResult, PublicAssetDeletionResults, PublicAssetDeletionSuccess, PublicAssetException, PublicAssetId, PublicAssetInvalidBlobIdException, PublicAssetPatchObject, PublicAssetRepository, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetSetService, PublicAssetStorage, PublicAssetUpdateFailure, PublicAssetUpdateResult, PublicAssetUpdateResults, PublicAssetUpdateSuccess, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
+import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetBlobIdNotFoundException, PublicAssetCreationFailure, PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationRequest, PublicAssetCreationResponse, PublicAssetCreationResult, PublicAssetCreationResults, PublicAssetCreationSuccess, PublicAssetDeletionFailure, PublicAssetDeletionResult, PublicAssetDeletionResults, PublicAssetDeletionSuccess, PublicAssetException, PublicAssetId, PublicAssetInvalidBlobIdException, PublicAssetPatchObject, PublicAssetRepository, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetSetService, PublicAssetStorage, PublicAssetTotalSizeExceededException, PublicAssetUpdateFailure, PublicAssetUpdateResult, PublicAssetUpdateResults, PublicAssetUpdateSuccess, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.IdentityId
@@ -87,13 +87,14 @@ class PublicAssetSetCreatePerformer @Inject()(val publicAssetRepository: PublicA
     error match {
       case e: PublicAssetException => SMono.just(PublicAssetCreationFailure(publicAssetCreationId, e))
       case e: BlobNotFoundException => SMono.just(PublicAssetCreationFailure(publicAssetCreationId, e))
+      case e: PublicAssetTotalSizeExceededException => SMono.just(PublicAssetCreationFailure(publicAssetCreationId, e))
       case e => SMono.error(e)
     }
 
   private def createPublicAssets(mailboxSession: MailboxSession,
                                  creationRequest: PublicAssetSetCreationRequest): SMono[PublicAssetStorage] =
     generatePublicAssetCreationRequest(creationRequest, mailboxSession)
-      .flatMap(publicAsset => SMono(publicAssetRepository.create(mailboxSession.getUser, publicAsset)))
+      .flatMap(publicAsset => SMono(publicAssetSetService.create(mailboxSession.getUser, publicAsset)))
 
   private def parseCreate(jsObject: JsObject): Either[PublicAssetCreationParseException, PublicAssetSetCreationRequest] =
     PublicAssetSetCreationRequest.validateProperties(jsObject)

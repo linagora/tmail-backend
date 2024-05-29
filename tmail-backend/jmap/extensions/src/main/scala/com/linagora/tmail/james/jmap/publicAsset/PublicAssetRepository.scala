@@ -35,6 +35,8 @@ trait PublicAssetRepository {
     SMono(get(username, id))
       .map(publicAsset => (publicAsset.identityIds.toSet ++ identityIdsToAdd.toSet) -- identityIdsToRemove.toSet)
       .flatMap(identityIds => SMono(update(username, id, identityIds)))
+
+  def getTotalSize(username: Username): Publisher[Long]
 }
 
 class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
@@ -89,4 +91,11 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
 
   override def listAllBlobIds(): Publisher[BlobId] =
     SFlux.fromIterable(tableStore.values().asScala.map(_.blobId))
+
+  override def getTotalSize(username: Username): Publisher[Long] =
+    SMono.just(tableStore.row(username)
+      .values()
+      .asScala
+      .map(publicAssetMetadata => publicAssetMetadata.size.value)
+      .sum)
 }

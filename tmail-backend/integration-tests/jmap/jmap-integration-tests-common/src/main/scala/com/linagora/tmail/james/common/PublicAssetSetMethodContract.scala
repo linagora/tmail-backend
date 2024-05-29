@@ -14,12 +14,15 @@ import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.{IdentityId, IdentityName}
+import org.apache.james.jmap.core.JmapRfc8621Configuration.{URL_PREFIX_DEFAULT, WEBSOCKET_URL_PREFIX_DEFAULT}
+import org.apache.james.jmap.core.{JmapRfc8621Configuration, PublicAssetQuotaLimit}
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.IdentityProbe
 import org.apache.james.jmap.rfc8621.contract.IdentitySetContract.IDENTITY_CREATION_REQUEST
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.model.ContentType.MimeType
+import org.apache.james.util.Size
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.{hasItem, hasKey}
@@ -30,6 +33,12 @@ import reactor.core.scala.publisher.SMono
 import scala.jdk.CollectionConverters._
 
 object PublicAssetSetMethodContract {
+  val CONFIGURATION: JmapRfc8621Configuration = JmapRfc8621Configuration(
+    urlPrefixString = URL_PREFIX_DEFAULT,
+    websocketPrefixString = WEBSOCKET_URL_PREFIX_DEFAULT,
+    publicAssetQuotaLimit = PublicAssetQuotaLimit.of(Size.of(500L, Size.Unit.B)).get
+  )
+
   case class UploadResponse(blobId: String, contentType: MimeType, size: Long)
 }
 
@@ -1962,5 +1971,107 @@ trait PublicAssetSetMethodContract {
       .extract
       .jsonPath()
       .get("methodResponses[0][1].created.4f29.id")
+  }
+
+  @Test
+  def createShouldReturnFailWhenPublicAssetQuotaLimitIsExceeded(): Unit = {
+    val content = "Your asset content here".repeat(10).getBytes
+    val uploadResponse: UploadResponse = uploadAsset(content)
+    val uploadResponse2: UploadResponse = uploadAsset(content)
+    val uploadResponse3: UploadResponse = uploadAsset(content)
+
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+         |  "methodCalls": [
+         |    [
+         |      "PublicAsset/set", {
+         |        "accountId": "$ACCOUNT_ID",
+         |        "create": {
+         |          "4f29": {
+         |            "blobId": "${uploadResponse.blobId}"
+         |          }
+         |        }
+         |      }, "0"
+         |    ]
+         |  ]
+         |}""".stripMargin
+
+    `given`()
+      .body(request)
+      .when()
+      .post()
+      .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    val request2: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+         |  "methodCalls": [
+         |    [
+         |      "PublicAsset/set", {
+         |        "accountId": "$ACCOUNT_ID",
+         |        "create": {
+         |          "4f29": {
+         |            "blobId": "${uploadResponse2.blobId}"
+         |          }
+         |        }
+         |      }, "0"
+         |    ]
+         |  ]
+         |}""".stripMargin
+
+    `given`()
+      .body(request2)
+      .when()
+      .post()
+      .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    val request3: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+         |  "methodCalls": [
+         |    [
+         |      "PublicAsset/set", {
+         |        "accountId": "$ACCOUNT_ID",
+         |        "create": {
+         |          "4f29": {
+         |            "blobId": "${uploadResponse3.blobId}"
+         |          }
+         |        }
+         |      }, "0"
+         |    ]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .body(request3)
+      .when()
+      .post()
+      .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notCreated")
+      .isEqualTo(
+        s"""{
+           |    "4f29": {
+           |        "type": "serverFail",
+           |        "description": "Exceeding public asset quota limit"
+           |    }
+           |}""".stripMargin)
   }
 }
