@@ -5,7 +5,6 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
-import org.apache.james.jmap.core.JmapRfc8621Configuration;
 import org.apache.james.jmap.rfc8621.contract.IdentityProbeModule;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
@@ -19,6 +18,7 @@ import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.PublicAssetSetMethodContract;
 import com.linagora.tmail.james.common.probe.PublicAssetProbeModule;
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMethodContract {
@@ -45,7 +45,7 @@ public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMet
             .overrideWith(new IdentityProbeModule())
             .overrideWith(new DelegationProbeModule())
             .overrideWith(new PublicAssetProbeModule())
-            .overrideWith(binder -> binder.bind(JmapRfc8621Configuration.class)
+            .overrideWith(binder -> binder.bind(JMAPExtensionConfiguration.class)
                 .toInstance(PublicAssetSetMethodContract.CONFIGURATION())))
         .build();
 }

@@ -100,6 +100,9 @@ case class PublicAssetNotFoundException(id: PublicAssetId) extends PublicAssetEx
   override val message: String = s"Public asset not found: ${id.asString()}"
 }
 
+case class PublicAssetQuotaLimitExceededException() extends PublicAssetException {
+  override val message: String = "Exceeding public asset quota limit"
+}
 
 case class PublicAssetStorage(id: PublicAssetId,
                               publicURI: PublicURI,

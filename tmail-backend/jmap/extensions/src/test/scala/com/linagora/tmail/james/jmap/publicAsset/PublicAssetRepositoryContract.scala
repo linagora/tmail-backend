@@ -7,7 +7,7 @@ import java.util.UUID
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import org.apache.james.blob.api.HashBlobId
 import org.apache.james.core.Username
-import org.apache.james.jmap.api.model.Size.Size
+import org.apache.james.jmap.api.model.Size.{Size, sanitizeSize}
 import org.apache.james.jmap.api.model.{IdentityId, Size}
 import org.apache.james.mailbox.model.ContentType
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
@@ -246,5 +246,21 @@ trait PublicAssetRepositoryContract {
     assertThat(blobIds.map(_.asString())
       .asJava)
       .containsExactlyInAnyOrder(publicAsset1.blobId.asString(), publicAsset2.blobId.asString())
+  }
+
+  @Test
+  def getTotalSizeShouldWork(): Unit = {
+    SMono(teste.create(USERNAME, CREATION_REQUEST)).block()
+    val content2 = "newContent2"
+    SMono(teste.create(USERNAME, CREATION_REQUEST.copy(size = sanitizeSize(content2.length), content = () => new ByteArrayInputStream(content2.getBytes)))).block()
+
+    val totalSize = SMono(teste.getTotalSize(USERNAME)).block()
+    assertThat(totalSize).isEqualTo(14L)
+  }
+
+  @Test
+  def getTotalSizeShouldReturnZeroWhenNoAsset(): Unit = {
+    val totalSize = SMono(teste.getTotalSize(USERNAME)).block()
+    assertThat(totalSize).isEqualTo(0L)
   }
 }

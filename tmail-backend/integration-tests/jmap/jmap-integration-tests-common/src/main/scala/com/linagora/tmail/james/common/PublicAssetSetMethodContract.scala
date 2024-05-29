@@ -5,6 +5,7 @@ import java.util.UUID
 import com.linagora.tmail.james.common.PublicAssetSetMethodContract.UploadResponse
 import com.linagora.tmail.james.common.probe.PublicAssetProbe
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetId
+import com.linagora.tmail.james.jmap.{JMAPExtensionConfiguration, PublicAssetTotalSizeLimit}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -14,8 +15,6 @@ import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.{IdentityId, IdentityName}
-import org.apache.james.jmap.core.JmapRfc8621Configuration.{URL_PREFIX_DEFAULT, WEBSOCKET_URL_PREFIX_DEFAULT}
-import org.apache.james.jmap.core.{JmapRfc8621Configuration, PublicAssetQuotaLimit}
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.IdentityProbe
@@ -33,10 +32,8 @@ import reactor.core.scala.publisher.SMono
 import scala.jdk.CollectionConverters._
 
 object PublicAssetSetMethodContract {
-  val CONFIGURATION: JmapRfc8621Configuration = JmapRfc8621Configuration(
-    urlPrefixString = URL_PREFIX_DEFAULT,
-    websocketPrefixString = WEBSOCKET_URL_PREFIX_DEFAULT,
-    publicAssetQuotaLimit = PublicAssetQuotaLimit.of(Size.of(500L, Size.Unit.B)).get
+  val CONFIGURATION: JMAPExtensionConfiguration = JMAPExtensionConfiguration(
+    publicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.of(Size.of(500L, Size.Unit.B)).get
   )
 
   case class UploadResponse(blobId: String, contentType: MimeType, size: Long)
@@ -1975,10 +1972,9 @@ trait PublicAssetSetMethodContract {
 
   @Test
   def createShouldReturnFailWhenPublicAssetQuotaLimitIsExceeded(): Unit = {
-    val content = "Your asset content here".repeat(10).getBytes
+    val content = "Your asset content here".repeat(20).getBytes
     val uploadResponse: UploadResponse = uploadAsset(content)
     val uploadResponse2: UploadResponse = uploadAsset(content)
-    val uploadResponse3: UploadResponse = uploadAsset(content)
 
     val request: String =
       s"""{
@@ -1999,9 +1995,9 @@ trait PublicAssetSetMethodContract {
 
     `given`()
       .body(request)
-      .when()
+    .when()
       .post()
-      .`then`
+    .`then`
       .statusCode(HttpStatus.SC_OK)
       .contentType(JSON)
       .extract()
@@ -2025,39 +2021,11 @@ trait PublicAssetSetMethodContract {
          |  ]
          |}""".stripMargin
 
-    `given`()
-      .body(request2)
-      .when()
-      .post()
-      .`then`
-      .statusCode(HttpStatus.SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .asString()
-
-    val request3: String =
-      s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
-         |  "methodCalls": [
-         |    [
-         |      "PublicAsset/set", {
-         |        "accountId": "$ACCOUNT_ID",
-         |        "create": {
-         |          "4f29": {
-         |            "blobId": "${uploadResponse3.blobId}"
-         |          }
-         |        }
-         |      }, "0"
-         |    ]
-         |  ]
-         |}""".stripMargin
-
     val response: String = `given`()
-      .body(request3)
-      .when()
+      .body(request2)
+    .when()
       .post()
-      .`then`
+    .`then`
       .statusCode(HttpStatus.SC_OK)
       .contentType(JSON)
       .extract()
@@ -2069,7 +2037,7 @@ trait PublicAssetSetMethodContract {
       .isEqualTo(
         s"""{
            |    "4f29": {
-           |        "type": "serverFail",
+           |        "type": "invalidArguments",
            |        "description": "Exceeding public asset quota limit"
            |    }
            |}""".stripMargin)

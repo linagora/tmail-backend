@@ -55,10 +55,10 @@ Specified to TMail backend, we can configure the following configurations in the
 .jmap.properties additional content
 |===
 | Property name | explanation
-| publicAssetTotalSize
+| public.asset.total.size
 | Optional. Configuration maximum size of total public assets that can be uploaded by a user.
 
 Default to 20MB. Supported units are B (bytes) K (KB) M (MB) G (GB).
 
-Example: `publicAssetTotalSize=20MB`.
+Example: `public.asset.total.size=20MB`.
 |===

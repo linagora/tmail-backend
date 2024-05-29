@@ -22,4 +22,12 @@ class TMailJMAPModule extends AbstractModule {
         case _: FileNotFoundException => JMAP_CONFIGURATION_EMPTY
       }, identity)
 
+  @Provides
+  def provideJMAPExtensionConfiguration(propertiesProvider: PropertiesProvider): JMAPExtensionConfiguration = {
+    try {
+      JMAPExtensionConfiguration.from(propertiesProvider.getConfiguration("jmap"))
+    } catch {
+      case _: FileNotFoundException => JMAPExtensionConfiguration()
+    }
+  }
 }
