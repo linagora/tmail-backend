@@ -37,16 +37,18 @@ object PublicAssetSetCreationRequest {
   }
 }
 
-case class PublicAssetSetCreationRequest(blobId: JmapBlobId, identityIds: Option[IdentityIds] = None) {
+case class PublicAssetSetCreationRequest(blobId: JmapBlobId, identityIds: Option[Map[IdentityId, Boolean]] = None) {
 
-  def parseIdentityIds: Either[PublicAssetInvalidIdentityIdException, List[IdentityId]] =
+  def parseIdentityIds: Either[PublicAssetCreationParseException, List[IdentityId]] =
     identityIds match {
       case None => Right(List.empty)
-      case Some(value) if value.ids.isEmpty => Right(List.empty)
-      case Some(identityIds) => identityIds.ids
-        .map(unparsedIdentityId => unparsedIdentityId.validate
-          .fold(_ => Left(PublicAssetInvalidIdentityIdException(unparsedIdentityId.id.value)), e1 => Right(e1)))
-        .sequence
+      case Some(identityIdMap) => identityIdMap.map {
+        case (identityId: IdentityId, bolVal) => if (bolVal) {
+          Right(identityId)
+        } else {
+          scala.Left(PublicAssetCreationParseException(SetError.invalidArguments(SetErrorDescription(s"identityId '$identityId' must be a true"), Some(Properties.toProperties(Set("identityIds"))))))
+        }
+      }.toList.sequence
     }
 }
 

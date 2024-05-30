@@ -161,14 +161,14 @@ trait PublicAssetGetMethodContract {
            |                      "publicURI": "${publicAsset.publicURI.value}",
            |                      "size": 3,
            |                      "contentType": "image/png",
-           |                      "identityIds": [ "${IDENTITY_ID.id}" ]
+           |                      "identityIds": { "${IDENTITY_ID.id}": true }
            |                  },
            |                  {
            |                      "id": "${publicAsset2.id.value}",
            |                      "publicURI": "${publicAsset2.publicURI.value}",
            |                      "size": 3,
            |                      "contentType": "image/png",
-           |                      "identityIds": [ "${IDENTITY_ID.id}" ]
+           |                      "identityIds": { "${IDENTITY_ID.id}": true }
            |                  }
            |              ],
            |        "notFound": []
@@ -213,7 +213,7 @@ trait PublicAssetGetMethodContract {
            |                      "publicURI": "${publicAsset.publicURI.value}",
            |                      "size": 3,
            |                      "contentType": "image/png",
-           |                      "identityIds": [ "${IDENTITY_ID.id}" ]
+           |                      "identityIds": { "${IDENTITY_ID.id}": true }
            |                  }
            |        ],
            |        "notFound": []
@@ -263,7 +263,7 @@ trait PublicAssetGetMethodContract {
            |                      "publicURI": "${publicAsset.publicURI.value}",
            |                      "size": 3,
            |                      "contentType": "image/png",
-           |                      "identityIds": [ "${IDENTITY_ID.id}" ]
+           |                      "identityIds": { "${IDENTITY_ID.id}": true }
            |                  }
            |              ],
            |        "notFound": [ "notFound", "${nonExistedAssetId.value}" ]

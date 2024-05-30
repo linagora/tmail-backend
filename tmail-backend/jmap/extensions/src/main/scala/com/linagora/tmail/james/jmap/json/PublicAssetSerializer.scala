@@ -130,6 +130,8 @@ object PublicAssetSerializer {
     mapWrites[UnparsedPublicAssetId, SetError](_.id, setErrorWrites)
 
   private implicit val publicAssetSetResponseWrites: Writes[PublicAssetSetResponse] = Json.writes[PublicAssetSetResponse]
+  private implicit val identityIdsMapWrites: Writes[Map[IdentityId, Boolean]] =
+    mapWrites[IdentityId, Boolean](_.serialize, e => JsBoolean(e))
 
   private implicit val publicAssetWrites: Writes[PublicAssetDTO] = Json.writes[PublicAssetDTO]
   private implicit val publicAssetResponseWrites: Writes[PublicAssetGetResponse] = Json.writes[PublicAssetGetResponse]

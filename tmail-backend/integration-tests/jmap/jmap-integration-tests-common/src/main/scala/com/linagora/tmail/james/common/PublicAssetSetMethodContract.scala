@@ -22,7 +22,7 @@ import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.model.ContentType.MimeType
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.hamcrest.Matchers.{hasItem, hasKey}
+import org.hamcrest.Matchers.{containsString, hasItem, hasKey, is}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.{JsString, Json}
 import reactor.core.scala.publisher.SMono
@@ -254,7 +254,9 @@ trait PublicAssetSetMethodContract {
     val uploadResponse: UploadResponse = uploadAsset()
     // And some identityIds
     val identityIds: Seq[String] = getIdentityIds()
-    val identityIdsAsJson: String = Json.stringify(Json.arr(identityIds)).replace("[[", "[").replace("]]", "]")
+
+    val identityIdMap: Map[String, Boolean] = identityIds.map(identityId => identityId -> true).toMap
+    val identityIdMapAsJson: String = Json.stringify(Json.toJson(identityIdMap))
 
     // When create a public asset with identityIds property
     val response: String = `given`()
@@ -268,7 +270,7 @@ trait PublicAssetSetMethodContract {
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
-           |            "identityIds": $identityIdsAsJson
+           |            "identityIds": $identityIdMapAsJson
            |          }
            |        }
            |      }, "0"
@@ -317,7 +319,7 @@ trait PublicAssetSetMethodContract {
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
-           |            "identityIds": ["$invalidIdentityId"]
+           |            "identityIds": { "$invalidIdentityId": true }
            |          }
            |        }
            |      }, "0"
@@ -340,7 +342,7 @@ trait PublicAssetSetMethodContract {
         s"""{
            |    "4f29": {
            |        "type": "invalidArguments",
-           |        "description": "Invalid identityId: invalid-identity-id###"
+           |        "description": "'/identityIds/invalid-identity-id###' property is not valid: Invalid UUID string: invalid-identity-id###"
            |    }
            |}""".stripMargin)
   }
@@ -364,7 +366,7 @@ trait PublicAssetSetMethodContract {
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
-           |            "identityIds": ["$notFoundIdentityId"]
+           |            "identityIds": { "$notFoundIdentityId": true }
            |          }
            |        }
            |      }, "0"
@@ -397,7 +399,7 @@ trait PublicAssetSetMethodContract {
     val uploadResponse: UploadResponse = uploadAsset()
     val uploadResponse2: UploadResponse = uploadAsset(content = "Content2".getBytes)
     val identityIds: Seq[String] = getIdentityIds()
-    val identityIdsAsJson: String = Json.stringify(Json.arr(identityIds)).replace("[[", "[").replace("]]", "]")
+    val identityIdMapAsJson: String = Json.stringify(Json.toJson(identityIds.map(identityId => identityId -> true).toMap))
     val notFoundIdentityId: String = IdentityId.generate.serialize
     val notFoundBlobId: String = "uploads-ce192a10-1992-11ef-b9f4-39749479be62"
 
@@ -413,14 +415,14 @@ trait PublicAssetSetMethodContract {
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
-           |            "identityIds": $identityIdsAsJson
+           |            "identityIds": $identityIdMapAsJson
            |          },
            |          "4f30": {
            |            "blobId": "${notFoundBlobId}"
            |          },
            |          "4f31": {
            |            "blobId": "${uploadResponse2.blobId}",
-           |            "identityIds": ["$notFoundIdentityId"]
+           |            "identityIds": {"$notFoundIdentityId": true}
            |          }
            |        }
            |      }, "0"
@@ -555,6 +557,39 @@ trait PublicAssetSetMethodContract {
            |        ]
            |    }
            |}""".stripMargin)
+  }
+
+  @Test
+  def createShouldFailWhenIdentityIdValueIsFalse(): Unit = {
+    val uploadResponse: UploadResponse = uploadAsset()
+    val identityId: String = getIdentityIds().head
+
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+         |  "methodCalls": [
+         |    [
+         |      "PublicAsset/set", {
+         |        "accountId": "$ACCOUNT_ID",
+         |        "create": {
+         |          "4f29": {
+         |            "blobId": "${uploadResponse.blobId}",
+         |            "identityIds": { "$identityId": false }
+         |          }
+         |        }
+         |      }, "0"
+         |    ]
+         |  ]
+         |}""".stripMargin
+
+    `given`()
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .body("methodResponses[0][1].notCreated.4f29.type", is("invalidArguments"))
+      .body("methodResponses[0][1].notCreated.4f29.description", containsString("value can only be true"))
   }
 
   @Test
@@ -1060,7 +1095,7 @@ trait PublicAssetSetMethodContract {
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
-           |            "identityIds": ["${identityId}"]
+           |            "identityIds": { "${identityId}": true }
            |          }
            |        }
            |      }, "0"
@@ -1934,7 +1969,7 @@ trait PublicAssetSetMethodContract {
   }
 
   private def createPublicAssetIdWithIdentityId(identityIds: Seq[String]): String = {
-    val identityIdsAsJson: String = Json.stringify(Json.arr(identityIds)).replace("[[", "[").replace("]]", "]")
+    val identityIdMapAsJson: String = Json.stringify(Json.toJson(identityIds.map(identityId => identityId -> true).toMap))
     val uploadResponse: UploadResponse = uploadAsset(content = UUID.randomUUID().toString.getBytes)
     `given`()
       .body(
@@ -1947,7 +1982,7 @@ trait PublicAssetSetMethodContract {
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
-           |            "identityIds": $identityIdsAsJson
+           |            "identityIds": $identityIdMapAsJson
            |          }
            |        }
            |      }, "0"
