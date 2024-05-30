@@ -5,6 +5,7 @@ import java.net.URI
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import jakarta.inject.{Inject, Named}
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
@@ -16,10 +17,17 @@ import reactor.core.scala.publisher.SMono
 
 class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
                                                val blobStore: BlobStore,
+                                               val configuration: JMAPExtensionConfiguration,
                                                @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
   private val bucketName: BucketName = blobStore.getDefaultBucketName
 
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
+    SMono(getTotalSize(username))
+      .filter(totalSize => (totalSize + creationRequest.size.value) <= configuration.publicAssetTotalSizeLimit.asLong())
+      .flatMap(_ => SMono(createAsset(username, creationRequest)))
+      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException()))
+
+  private def createAsset(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
       .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
         .flatMap(blobId => {

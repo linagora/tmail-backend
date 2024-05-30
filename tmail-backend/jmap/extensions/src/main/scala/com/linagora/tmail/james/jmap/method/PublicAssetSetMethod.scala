@@ -93,7 +93,7 @@ class PublicAssetSetCreatePerformer @Inject()(val publicAssetRepository: PublicA
   private def createPublicAssets(mailboxSession: MailboxSession,
                                  creationRequest: PublicAssetSetCreationRequest): SMono[PublicAssetStorage] =
     generatePublicAssetCreationRequest(creationRequest, mailboxSession)
-      .flatMap(publicAsset => SMono(publicAssetSetService.create(mailboxSession.getUser, publicAsset)))
+      .flatMap(publicAsset => SMono(publicAssetRepository.create(mailboxSession.getUser, publicAsset)))
 
   private def parseCreate(jsObject: JsObject): Either[PublicAssetCreationParseException, PublicAssetSetCreationRequest] =
     PublicAssetSetCreationRequest.validateProperties(jsObject)
