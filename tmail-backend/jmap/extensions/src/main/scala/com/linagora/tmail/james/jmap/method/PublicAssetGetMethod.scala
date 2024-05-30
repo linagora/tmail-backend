@@ -87,5 +87,5 @@ class PublicAssetGetMethod @Inject()(val publicAssetRepository: PublicAssetRepos
       publicURI = publicAssetStorage.publicURI,
       size = publicAssetStorage.size,
       contentType = publicAssetStorage.contentType,
-      identityIds = publicAssetStorage.identityIds)
+      identityIds = publicAssetStorage.identityIds.map(identityId => identityId -> true).toMap)
 }

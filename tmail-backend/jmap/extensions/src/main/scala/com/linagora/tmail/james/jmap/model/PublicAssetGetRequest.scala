@@ -20,4 +20,4 @@ case class PublicAssetDTO(id: PublicAssetId,
                           publicURI: PublicURI,
                           size: Size,
                           contentType: ImageContentType,
-                          identityIds: Seq[IdentityId] = Seq.empty)
+                          identityIds: Map[IdentityId, Boolean] = Map.empty)

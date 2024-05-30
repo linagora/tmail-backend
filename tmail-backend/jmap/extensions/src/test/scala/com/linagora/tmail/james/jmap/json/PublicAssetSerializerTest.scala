@@ -5,6 +5,7 @@ import java.util.UUID
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer.PublicAssetSetUpdateReads
 import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetCreationId, PublicAssetCreationResponse, PublicAssetId, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetUpdateResponse, PublicURI, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
 import eu.timepit.refined.auto._
+import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, SetError, UuidState}
 import org.assertj.core.api.Assertions.assertThat
@@ -12,7 +13,6 @@ import org.junit.jupiter.api.Test
 import play.api.libs.json.{JsObject, JsResult, JsValue, Json}
 
 import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
 
 class PublicAssetSerializerTest {
 
@@ -24,7 +24,7 @@ class PublicAssetSerializerTest {
         |  "create": {
         |    "4f29": {
         |      "blobId": "1234",
-        |      "identityIds": ["12", "34"]
+        |      "identityIds": { "2c9f1b12-b35a-43e6-9af2-0106fb53a944": true, "2c9f1b12-b35a-43e6-9af2-0106fb53a945": true }
         |    }
         |  }
         |}""".stripMargin)
@@ -50,7 +50,7 @@ class PublicAssetSerializerTest {
         |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
         |  "update": {
         |    "4f29": {
-        |      "identityIds": {"12":true, "34":true}
+        |      "identityIds": { "2c9f1b12-b35a-43e6-9af2-0106fb53a944": true, "2c9f1b12-b35a-43e6-9af2-0106fb53a945": true }
         |    }
         |  }
         |}""".stripMargin)
@@ -68,7 +68,7 @@ class PublicAssetSerializerTest {
   }
 
   @Test
-  def deserializeSetDestroyRequestShouldSucceed() : Unit = {
+  def deserializeSetDestroyRequestShouldSucceed(): Unit = {
     val jsInput: JsValue = Json.parse(
       """{
         |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
@@ -90,7 +90,7 @@ class PublicAssetSerializerTest {
     val jsInput: JsValue = Json.parse(
       """{
         |  "blobId": "1234",
-        |  "identityIds": ["12", "34"]
+        |  "identityIds": { "2c9f1b12-b35a-43e6-9af2-0106fb53a944": true, "2c9f1b12-b35a-43e6-9af2-0106fb53a945": true }
         |}""".stripMargin)
 
     val deserializeResult: JsResult[PublicAssetSetCreationRequest] = PublicAssetSerializer.deserializePublicAssetSetCreationRequest(jsInput)
@@ -99,8 +99,11 @@ class PublicAssetSerializerTest {
       .isTrue
     assertThat(deserializeResult.get.blobId.value.value)
       .isEqualTo("1234")
-    assertThat(deserializeResult.get.identityIds.get.ids.map(_.id.value).asJava)
-      .containsExactly("12", "34")
+
+    assertThat(deserializeResult.get.identityIds.get.asJava)
+      .containsExactlyInAnyOrderEntriesOf(Map(
+        IdentityId(UUID.fromString("2c9f1b12-b35a-43e6-9af2-0106fb53a944")) -> true,
+        IdentityId(UUID.fromString("2c9f1b12-b35a-43e6-9af2-0106fb53a945")) -> true).asJava)
   }
 
   @Test
@@ -116,8 +119,7 @@ class PublicAssetSerializerTest {
       .isTrue
     assertThat(deserializeResult.get.blobId.value.value)
       .isEqualTo("1234")
-    assertThat(deserializeResult.get.identityIds.toJava)
-      .isEmpty()
+    assertThat(deserializeResult.get.identityIds.isEmpty).isTrue
   }
 
   @Test
