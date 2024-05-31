@@ -6,7 +6,8 @@ import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.mailbox.MailboxSession
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-class PublicAssetSetService @Inject()(val identityRepository: IdentityRepository) {
+class PublicAssetSetService @Inject()(val identityRepository: IdentityRepository,
+                                      val publicAssetRepository: PublicAssetRepository) {
   def checkIdentityIdsExist(identityIds: Seq[IdentityId], session: MailboxSession): SMono[Seq[IdentityId]] =
     SFlux(identityRepository.list(session.getUser))
       .map(_.id)

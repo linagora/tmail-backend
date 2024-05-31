@@ -5,6 +5,7 @@ import java.util.UUID
 import com.linagora.tmail.james.common.PublicAssetSetMethodContract.UploadResponse
 import com.linagora.tmail.james.common.probe.PublicAssetProbe
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetId
+import com.linagora.tmail.james.jmap.{JMAPExtensionConfiguration, PublicAssetTotalSizeLimit}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -20,6 +21,7 @@ import org.apache.james.jmap.rfc8621.contract.IdentityProbe
 import org.apache.james.jmap.rfc8621.contract.IdentitySetContract.IDENTITY_CREATION_REQUEST
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.model.ContentType.MimeType
+import org.apache.james.util.Size
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.{containsString, hasItem, hasKey, is}
@@ -30,6 +32,10 @@ import reactor.core.scala.publisher.SMono
 import scala.jdk.CollectionConverters._
 
 object PublicAssetSetMethodContract {
+  val CONFIGURATION: JMAPExtensionConfiguration = JMAPExtensionConfiguration(
+    publicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.of(Size.of(500L, Size.Unit.B)).get
+  )
+
   case class UploadResponse(blobId: String, contentType: MimeType, size: Long)
 }
 
@@ -1997,5 +2003,78 @@ trait PublicAssetSetMethodContract {
       .extract
       .jsonPath()
       .get("methodResponses[0][1].created.4f29.id")
+  }
+
+  @Test
+  def createShouldReturnFailWhenPublicAssetQuotaLimitIsExceeded(): Unit = {
+    val content = "Your asset content here".repeat(20).getBytes
+    val uploadResponse: UploadResponse = uploadAsset(content)
+    val uploadResponse2: UploadResponse = uploadAsset(content)
+
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+         |  "methodCalls": [
+         |    [
+         |      "PublicAsset/set", {
+         |        "accountId": "$ACCOUNT_ID",
+         |        "create": {
+         |          "4f29": {
+         |            "blobId": "${uploadResponse.blobId}"
+         |          }
+         |        }
+         |      }, "0"
+         |    ]
+         |  ]
+         |}""".stripMargin
+
+    `given`()
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    val request2: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+         |  "methodCalls": [
+         |    [
+         |      "PublicAsset/set", {
+         |        "accountId": "$ACCOUNT_ID",
+         |        "create": {
+         |          "4f29": {
+         |            "blobId": "${uploadResponse2.blobId}"
+         |          }
+         |        }
+         |      }, "0"
+         |    ]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .body(request2)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notCreated")
+      .isEqualTo(
+        s"""{
+           |    "4f29": {
+           |        "type": "invalidArguments",
+           |        "description": "Exceeding public asset quota limit"
+           |    }
+           |}""".stripMargin)
   }
 }

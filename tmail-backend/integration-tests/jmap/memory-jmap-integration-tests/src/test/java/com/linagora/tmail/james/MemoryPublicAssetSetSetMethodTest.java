@@ -12,6 +12,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.PublicAssetSetMethodContract;
 import com.linagora.tmail.james.common.probe.PublicAssetProbeModule;
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryPublicAssetSetSetMethodTest implements PublicAssetSetMethodContract {
@@ -26,6 +27,8 @@ public class MemoryPublicAssetSetSetMethodTest implements PublicAssetSetMethodCo
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new IdentityProbeModule())
             .overrideWith(new DelegationProbeModule())
-            .overrideWith(new PublicAssetProbeModule()))
+            .overrideWith(new PublicAssetProbeModule())
+            .overrideWith(binder -> binder.bind(JMAPExtensionConfiguration.class)
+                .toInstance(PublicAssetSetMethodContract.CONFIGURATION())))
         .build();
 }

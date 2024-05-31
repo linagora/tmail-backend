@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream
 import java.net.URI
 
 import com.google.common.collect.{HashBasedTable, Table, Tables}
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import jakarta.inject.{Inject, Named}
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.core.Username
@@ -35,15 +36,24 @@ trait PublicAssetRepository {
     SMono(get(username, id))
       .map(publicAsset => (publicAsset.identityIds.toSet ++ identityIdsToAdd.toSet) -- identityIdsToRemove.toSet)
       .flatMap(identityIds => SMono(update(username, id, identityIds)))
+
+  def getTotalSize(username: Username): Publisher[Long]
 }
 
 class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
+                                            val configuration: JMAPExtensionConfiguration,
                                             @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
   private val tableStore: Table[Username, PublicAssetId, PublicAssetMetadata] = Tables.synchronizedTable(HashBasedTable.create())
 
   private val bucketName: BucketName = blobStore.getDefaultBucketName
 
-  override def create(username: Username, creationRequest: PublicAssetCreationRequest): SMono[PublicAssetStorage] =
+  override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
+    SMono(getTotalSize(username))
+      .filter(totalSize => (totalSize + creationRequest.size.value) <= configuration.publicAssetTotalSizeLimit.asLong())
+      .flatMap(_ => SMono(createAsset(username, creationRequest)))
+      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException()))
+
+  private def createAsset(username: Username, creationRequest: PublicAssetCreationRequest): SMono[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
       .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
         .map(blobId => {
@@ -89,4 +99,11 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
 
   override def listAllBlobIds(): Publisher[BlobId] =
     SFlux.fromIterable(tableStore.values().asScala.map(_.blobId))
+
+  override def getTotalSize(username: Username): Publisher[Long] =
+    SMono.just(tableStore.row(username)
+      .values()
+      .asScala
+      .map(publicAssetMetadata => publicAssetMetadata.size.value)
+      .sum)
 }

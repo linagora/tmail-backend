@@ -8,6 +8,7 @@ import com.datastax.oss.driver.api.core.`type`.codec.registry.CodecRegistry
 import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
 import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
 import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
+import com.datastax.oss.driver.api.querybuilder.QueryBuilder
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetTable.{ASSET_ID, BLOB_ID, CONTENT_TYPE, FROZEN_OF_UUIDS_CODEC, IDENTITY_IDS, LIST_OF_TIME_UUIDS_CODEC, PUBLIC_URI, SIZE, TABLE_NAME, USER}
 import jakarta.inject.Inject
@@ -82,6 +83,11 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
     .column(BLOB_ID)
     .build())
 
+  private val selectSize: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
+    .column(SIZE)
+    .whereColumn(USER).isEqualTo(bindMarker(USER))
+    .build())
+
   private val deleteOne: PreparedStatement = session.prepare(deleteFrom(TABLE_NAME)
     .whereColumn(USER).isEqualTo(bindMarker(USER))
     .whereColumn(ASSET_ID).isEqualTo(bindMarker(ASSET_ID))
@@ -129,6 +135,11 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
   def selectAllBlobIds(): SFlux[BlobId] =
     SFlux(executor.executeRows(selectAllBlobIdsStatement.bind())
       .map(row => blobIdFactory.from(row.get(BLOB_ID, TypeCodecs.TEXT))))
+
+  def selectSize(username: Username): SFlux[Long] =
+    SFlux(executor.executeRows(selectSize.bind()
+        .set(USER, username.asString, TypeCodecs.TEXT))
+      .map(row => Size.sanitizeSize(row.get(SIZE, TypeCodecs.BIGINT)).value))
 
   def deleteAsset(username: Username, assetId: PublicAssetId): SMono[Unit] =
     SMono(executor.executeVoid(deleteOne.bind()
