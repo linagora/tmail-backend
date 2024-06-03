@@ -31,6 +31,7 @@ import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.mailbox.postgres.PostgresMessageId;
 import org.apache.james.utils.GuiceProbe;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.f4b6a3.uuid.UuidCreator;
 import com.google.inject.Module;
@@ -51,6 +52,8 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.team.TeamMailboxProbe;
 
 public class TmailJmapBase {
+    @RegisterExtension
+    static PostgresExtension postgresExtension = PostgresExtension.empty();
 
     public static Function<Module, JamesServerBuilder<PostgresTmailConfiguration>> JAMES_SERVER_EXTENSION_FUNCTION = overrideWithModule -> new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
         PostgresTmailConfiguration.builder()
@@ -77,7 +80,7 @@ public class TmailJmapBase {
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LabelChangesMethodContract.firebasePushClient()))
             .overrideWith(new DelegationProbeModule())
             .overrideWith(overrideWithModule))
-        .extension(PostgresExtension.empty())
+        .extension(postgresExtension)
         .extension(new ClockExtension());
 
     public static Supplier<JamesServerBuilder<PostgresTmailConfiguration>> JAMES_SERVER_EXTENSION_SUPPLIER = () -> JAMES_SERVER_EXTENSION_FUNCTION.apply(Modules.EMPTY_MODULE);
