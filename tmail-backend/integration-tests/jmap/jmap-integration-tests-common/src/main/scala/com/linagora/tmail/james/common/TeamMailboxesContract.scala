@@ -32,7 +32,7 @@ import org.apache.james.jmap.core.{PushState, UTCDate, UuidState}
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
-import org.apache.james.jmap.rfc8621.contract.asPayload
+import org.apache.james.jmap.rfc8621.contract.receiveMessageInTimespan
 import org.apache.james.mailbox.DefaultMailboxes
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath, MessageId}
@@ -54,6 +54,8 @@ import sttp.client3.{Identity, RequestT, SttpBackend, asWebSocket, basicRequest}
 import sttp.model.Uri
 import sttp.monad.MonadError
 import sttp.ws.WebSocketFrame
+
+import scala.concurrent.duration.MILLISECONDS
 
 object TeamMailboxesContract {
   private var webAdminApi: RequestSpecification = _
@@ -2723,11 +2725,7 @@ trait TeamMailboxesContract {
               .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
               .getMessageId.serialize()
 
-            Thread.sleep(100)
-            List(
-              ws.receive().asPayload,
-              ws.receive().asPayload)
-
+            ws.receiveMessageInTimespan(scala.concurrent.duration.Duration(2000, MILLISECONDS))
         })
         .send(backend)
         .body
