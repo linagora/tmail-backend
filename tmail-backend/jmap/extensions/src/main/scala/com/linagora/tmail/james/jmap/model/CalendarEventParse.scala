@@ -503,7 +503,9 @@ case class RecurrenceRule(frequency: RecurrenceRuleFrequency,
                           bySecond: Option[Seq[Int]] = None,
                           bySetPosition: Option[Seq[Int]] = None)
 
-case class InvalidCalendarFileException(blobId: BlobId, originException: Throwable) extends RuntimeException
+case class InvalidCalendarFileException(blobId: BlobId, originException: Throwable) extends RuntimeException {
+  override def getMessage: String = originException.getMessage
+}
 
 object CalendarEventParsed {
   val init : Unit =
