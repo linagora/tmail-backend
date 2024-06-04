@@ -2,11 +2,14 @@ package com.linagora.tmail.james.jmap.model
 
 import java.util.Locale
 
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.LOGGER
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
-import org.apache.james.jmap.core.AccountId
+import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.{AccountId, SetError}
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.WithAccountId
+import org.apache.james.mailbox.MailboxSession
 
 import scala.util.Try
 
@@ -63,14 +66,22 @@ object CalendarEventReplyResults {
   def empty: CalendarEventReplyResults = CalendarEventReplyResults()
 
   def notDone(notParsable: CalendarEventNotParsable): CalendarEventReplyResults =
-    CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(notParsable.value)))
+    CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(notParsable.asSetErrorMap)))
 
-  def notDone(blobId: BlobId): CalendarEventReplyResults = CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(Set(blobId.value))))
+  def notDone(blobId: BlobId, throwable: Throwable, mailboxSession: MailboxSession): CalendarEventReplyResults =
+    CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable, mailboxSession)))))
 
+  private def asSetError(throwable: Throwable, mailboxSession: MailboxSession): SetError = throwable match {
+    case _: InvalidCalendarFileException | _: IllegalArgumentException =>
+      LOGGER.info("Error when generate reply mail for {}: {}", mailboxSession.getUser.asString(), throwable.getMessage)
+      SetError.invalidPatch(SetErrorDescription(throwable.getMessage))
+    case _ =>
+      LOGGER.error("serverFail to generate reply mail for {}", mailboxSession.getUser.asString(), throwable)
+      SetError.serverFail(SetErrorDescription(throwable.getMessage))
+  }
 }
 
-
-case class CalendarEventNotDone(value: Set[UnparsedBlobId]) {
+case class CalendarEventNotDone(value: Map[UnparsedBlobId, SetError]) {
   def merge(other: CalendarEventNotDone): CalendarEventNotDone = CalendarEventNotDone(this.value ++ other.value)
 }
 

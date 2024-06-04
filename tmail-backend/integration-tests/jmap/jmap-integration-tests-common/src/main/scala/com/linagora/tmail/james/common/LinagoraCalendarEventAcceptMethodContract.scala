@@ -123,7 +123,12 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "CalendarEvent/accept",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "notAccepted": [ "$missingMethodIcsBlobId" ]
+           |        "notAccepted": {
+           |            "$missingMethodIcsBlobId": {
+           |                "type": "invalidPatch",
+           |                "description": "The calendar must have REQUEST as a method"
+           |            }
+           |        }
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -166,7 +171,12 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "CalendarEvent/accept",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "notAccepted": [ "$missingOrganizerIcsBlobId" ]
+           |        "notAccepted": {
+           |            "$missingOrganizerIcsBlobId": {
+           |                "type": "invalidPatch",
+           |                "description": "Cannot extract the organizer from the calendar event."
+           |            }
+           |        }
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -209,7 +219,12 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "CalendarEvent/accept",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "notAccepted": [ "$missingAttendeeIcsBlobId" ]
+           |        "notAccepted": {
+           |            "$missingAttendeeIcsBlobId": {
+           |                "type": "invalidPatch",
+           |                "description": "Can not reply when not invited to attend"
+           |            }
+           |        }
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -252,7 +267,12 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "CalendarEvent/accept",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "notAccepted": [ "$missingVEventIcsBlobId" ]
+           |        "notAccepted": {
+           |            "$missingVEventIcsBlobId": {
+           |                "type": "invalidPatch",
+           |                "description": "The calendar file must contain VEVENT component"
+           |            }
+           |        }
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -335,8 +355,14 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "CalendarEvent/accept",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "notAccepted": [ "$notParsableBlobId" ]
-           |    }, "c1"
+           |        "notAccepted": {
+           |            "$notParsableBlobId": {
+           |                "type": "invalidPatch",
+           |                "description": "Error at line 1:Expected [BEGIN], read [notIcsFileFormat]"
+           |            }
+           |        }
+           |    },
+           |    "c1"
            |]""".stripMargin)
   }
 
@@ -380,7 +406,12 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "accepted": [ "$blobId" ],
            |        "notFound": [ "$notFoundBlobId" ],
-           |        "notAccepted": [ "$notAcceptedId" ]
+           |        "notAccepted": {
+           |            "$notAcceptedId": {
+           |                "type": "invalidPatch",
+           |                "description": "Error at line 1:Expected [BEGIN], read [notIcsFileFormat]"
+           |            }
+           |        }
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -665,15 +696,21 @@ trait LinagoraCalendarEventAcceptMethodContract {
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
-           |	"CalendarEvent/accept",
-           |	{
-           |		"accountId": "$ACCOUNT_ID",
-           |		"notAccepted": [
-           |			"$blobId1",
-           |			"$blobId2"
-           |		]
-           |	},
-           |	"c1"
+           |    "CalendarEvent/accept",
+           |    {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "notAccepted": {
+           |            "$blobId2": {
+           |                "type": "invalidPatch",
+           |                "description": "Invalidate calendar event: STATUS : Value MUST match expression: TENTATIVE|CONFIRMED|CANCELLED|NEEDS-ACTION|COMPLETED|IN-PROCESS|CANCELLED|DRAFT|FINAL|CANCELLED"
+           |            },
+           |            "$blobId1": {
+           |                "type": "invalidPatch",
+           |                "description": "Invalidate calendar event: TRANSP : Value MUST match expression: OPAQUE|TRANSPARENT"
+           |            }
+           |        }
+           |    },
+           |    "c1"
            |]""".stripMargin)
   }
 

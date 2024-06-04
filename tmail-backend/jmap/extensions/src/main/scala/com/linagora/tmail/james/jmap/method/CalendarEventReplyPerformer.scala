@@ -15,7 +15,7 @@ import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField
 import eu.timepit.refined.auto._
 import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Named}
-import jakarta.mail.internet.{InternetAddress, MimeMessage, MimeMultipart}
+import jakarta.mail.internet.{InternetAddress, MimeMultipart}
 import jakarta.mail.{Message, Part}
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.component.VEvent
@@ -101,11 +101,8 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarRe
           .subscribeOn(Schedulers.boundedElastic()))
         .`then`(SMono.just(CalendarEventReplyResults(done = BlobIds(Seq(blobId.value))))))
       .onErrorResume({
-        case e@(_: InvalidCalendarFileException | _: IllegalArgumentException) =>
-          LOGGER.info("Error when generate reply mail for {}: {}", mailboxSession.getUser.asString(), e.getMessage)
-          SMono.just(CalendarEventReplyResults.notDone(blobId))
         case _: BlobNotFoundException => SMono.just(CalendarEventReplyResults.notFound(blobId))
-        case e => SMono.error(e)
+        case e => SMono.just(CalendarEventReplyResults.notDone(blobId, e, mailboxSession))
       })
 
   private def getLanguageLocale(request: CalendarEventReplyRequest): Locale =
