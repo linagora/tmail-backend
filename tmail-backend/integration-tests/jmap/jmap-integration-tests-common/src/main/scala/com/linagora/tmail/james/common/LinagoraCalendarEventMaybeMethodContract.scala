@@ -163,8 +163,14 @@ trait LinagoraCalendarEventMaybeMethodContract {
            |    "CalendarEvent/maybe",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "notMaybe": [ "$notParsableBlobId" ]
-           |    }, "c1"
+           |        "notMaybe": {
+           |            "$notParsableBlobId": {
+           |                "type": "invalidPatch",
+           |                "description": "Error at line 1:Expected [BEGIN], read [notIcsFileFormat]"
+           |            }
+           |        }
+           |    },
+           |    "c1"
            |]""".stripMargin)
   }
 
@@ -206,9 +212,18 @@ trait LinagoraCalendarEventMaybeMethodContract {
            |    "CalendarEvent/maybe",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "maybe": [ "$blobId" ],
-           |        "notFound": [ "$notFoundBlobId" ],
-           |        "notMaybe": [ "$notAcceptedId" ]
+           |        "maybe": [
+           |            "$blobId"
+           |        ],
+           |        "notFound": [
+           |            "$notFoundBlobId"
+           |        ],
+           |        "notMaybe": {
+           |            "$notAcceptedId": {
+           |                "type": "invalidPatch",
+           |                "description": "Error at line 1:Expected [BEGIN], read [notIcsFileFormat]"
+           |            }
+           |        }
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -493,15 +508,21 @@ trait LinagoraCalendarEventMaybeMethodContract {
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
-           |	"CalendarEvent/maybe",
-           |	{
-           |		"accountId": "$ACCOUNT_ID",
-           |		"notMaybe": [
-           |			"$blobId1",
-           |			"$blobId2"
-           |		]
-           |	},
-           |	"c1"
+           |    "CalendarEvent/maybe",
+           |    {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "notMaybe": {
+           |            "$blobId2": {
+           |                "type": "invalidPatch",
+           |                "description": "Invalidate calendar event: STATUS : Value MUST match expression: TENTATIVE|CONFIRMED|CANCELLED|NEEDS-ACTION|COMPLETED|IN-PROCESS|CANCELLED|DRAFT|FINAL|CANCELLED"
+           |            },
+           |            "$blobId1": {
+           |                "type": "invalidPatch",
+           |                "description": "Invalidate calendar event: TRANSP : Value MUST match expression: OPAQUE|TRANSPARENT"
+           |            }
+           |        }
+           |    },
+           |    "c1"
            |]""".stripMargin)
   }
 

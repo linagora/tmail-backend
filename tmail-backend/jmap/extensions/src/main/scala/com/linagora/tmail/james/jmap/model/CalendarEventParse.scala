@@ -22,8 +22,9 @@ import net.fortuna.ical4j.model.property.{Attendee, Clazz, ExRule, RRule, Status
 import net.fortuna.ical4j.model.{Calendar, Month, NumberList, Parameter, Property, Recur, TimeZoneRegistryFactory}
 import net.fortuna.ical4j.util.CompatibilityHints
 import org.apache.james.core.MailAddress
+import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
-import org.apache.james.jmap.core.{AccountId, Id, Properties, UTCDate, UnsignedInt}
+import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UTCDate, UnsignedInt}
 import org.apache.james.jmap.mail.MDNParseRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.WithAccountId
@@ -63,6 +64,10 @@ case class CalendarEventNotFound(value: Set[UnparsedBlobId]) {
 
 case class CalendarEventNotParsable(value: Set[UnparsedBlobId]) {
   def merge(other: CalendarEventNotParsable): CalendarEventNotParsable = CalendarEventNotParsable(this.value ++ other.value)
+
+  def asSetErrorMap: Map[UnparsedBlobId, SetError] =
+    value.map(unparseBlobId => unparseBlobId -> SetError.invalidArguments(SetErrorDescription("Can not parse blobId")))
+      .toMap
 }
 
 object CalendarEventNotParsable {

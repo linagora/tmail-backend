@@ -1,6 +1,9 @@
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.{CalendarEventNotDone, CalendarEventNotFound, CalendarEventReplyAcceptedResponse, CalendarEventReplyMaybeResponse, CalendarEventReplyRejectedResponse, CalendarEventReplyRequest, CalendarEventReplyResponse, LanguageLocation}
+import org.apache.james.jmap.core.SetError
+import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json.{Format, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
@@ -10,6 +13,8 @@ object CalendarEventReplySerializer {
   private implicit val blobIdReads: Reads[BlobId] = Json.valueReads[BlobId]
   private implicit val blobIdsWrites: Format[BlobIds] = Json.valueFormat[BlobIds]
   private implicit val calendarEventNotFoundWrites: Writes[CalendarEventNotFound] = Json.valueWrites[CalendarEventNotFound]
+  private implicit val mapSetErrorWrites: Writes[Map[UnparsedBlobId, SetError]] =
+    mapWrites[UnparsedBlobId, SetError](_.value, setErrorWrites)
   private implicit val calendarEventNotDoneWrites: Writes[CalendarEventNotDone] = Json.valueWrites[CalendarEventNotDone]
 
   private implicit val languageLocationReads: Reads[LanguageLocation] = {

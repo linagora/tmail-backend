@@ -4,7 +4,8 @@ import com.linagora.tmail.james.jmap.json.{CalendarEventReplySerializer => teste
 import com.linagora.tmail.james.jmap.model.{CalendarEventNotDone, CalendarEventNotFound, CalendarEventReplyAcceptedResponse, CalendarEventReplyRequest, LanguageLocation}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
-import org.apache.james.jmap.core.{AccountId, Id}
+import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.{AccountId, Id, SetError}
 import org.apache.james.jmap.mail.BlobIds
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -39,7 +40,7 @@ class CalendarEventReplySerializerTest {
       accountId = AccountId.from(Username.of("bob")).toOption.get,
       accepted = BlobIds(Seq("2c9f1b12-b35a-43e6-9af2-0106fb53a943")),
       notFound = Some(CalendarEventNotFound(Set(Id.validate("1111111-b35a-43e6-9af2-0106fb53a943").toOption.get))),
-      notAccepted = Some(CalendarEventNotDone(Set(Id.validate("456").toOption.get)))
+      notAccepted = Some(CalendarEventNotDone(Map(Id.validate("456").toOption.get -> SetError.invalidArguments(SetErrorDescription("Invalid ICS")))))
     )
 
     assertThat(testee.serialize(response))
@@ -52,9 +53,12 @@ class CalendarEventReplySerializerTest {
           |    "notFound": [
           |        "1111111-b35a-43e6-9af2-0106fb53a943"
           |    ],
-          |    "notAccepted": [
-          |        "456"
-          |    ]
+          |    "notAccepted": {
+          |        "456": {
+          |            "type": "invalidArguments",
+          |            "description": "Invalid ICS"
+          |        }
+          |    }
           |}""".stripMargin))
   }
 
