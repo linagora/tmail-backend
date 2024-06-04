@@ -173,6 +173,49 @@ trait LinagoraCalendarEventAcceptMethodContract {
   }
 
   @Test
+  def acceptAMissingAttendeeIcsShouldReturnNotAccept(): Unit = {
+    val missingAttendeeIcsBlobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/missing_attendee.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/accept",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$missingAttendeeIcsBlobId" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "CalendarEvent/accept",
+           |    {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "notAccepted": [ "$missingAttendeeIcsBlobId" ]
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
   def shouldReturnNotFoundResultWhenBlobIdDoesNotExist(): Unit = {
     val notFoundBlobId: String = randomBlobId
 
