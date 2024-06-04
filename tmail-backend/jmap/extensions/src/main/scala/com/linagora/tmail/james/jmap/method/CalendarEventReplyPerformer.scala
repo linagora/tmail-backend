@@ -123,9 +123,9 @@ class BlobCalendarResolver @Inject()(blobResolvers: BlobResolvers) {
 
   private def validate(calendar: Calendar): Either[IllegalArgumentException, Calendar] =
     if (calendar.getComponents("VEVENT").isEmpty) {
-      Left(new IllegalArgumentException("The calendar file must contain VEVENT componennt"))
+      Left(new IllegalArgumentException("The calendar file must contain VEVENT component"))
     } else if (Option(calendar.getMethod).map(_.getValue).orNull != "REQUEST") {
-      Left(new IllegalArgumentException("The calendar must have REQUEST a s a method"))
+      Left(new IllegalArgumentException("The calendar must have REQUEST as a method"))
     } else {
       Right(calendar)
     }
