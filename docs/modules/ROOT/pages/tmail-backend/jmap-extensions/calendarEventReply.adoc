@@ -36,7 +36,7 @@ The response object contains the following arguments:
 - *accountId*: `Id` The id of the account used for the call.
 - *accepted*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were successfully accepted, or `null` if none.
 - *notFound*: `Id[]|null` A list of blob ids given that could not be found, or `null` if none.
-- *notCreated*: `Id[]|null`  A list of ids of the calendar events that could not be found, or null if none.
+- *notAccepted*: `Id[SetError]|null`  A map of the blobId to a SetError object for each calendar event that failed to reply, or null if all successful.
 
 == Example
 
@@ -80,17 +80,22 @@ If the blob id has been found but is not generate & reply email, the server woul
 [[ "CalendarEvent/accept",
 {
     "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-    "notCreated": [ "0f9f65ab-dc7b-4146-850f-6e4881093965" ]
+    "notAccepted": {
+        "0f9f65ab-dc7b-4146-850f-6e4881093965": {
+            "type": "invalidPatch",
+            "description": "The calendar must have REQUEST as a method"
+        }
+    }
 }, "c1" ]]
 ```
 
 == CalendarEvent/reject
 Similarly to CalendarEvent/accept, CalendarEvent/reject function in a similar manner.
-However, in the response properties, 'rejected' replace 'created', while 'notRejected' replace 'notCreated'.
+However, in the response properties, 'rejected' replace 'accepted', while 'notRejected' replace 'notAccepted'.
 
 == CalendarEvent/maybe
 Similarly to CalendarEvent/accept, CalendarEvent/maybe function in a similar manner.
-However, in the response properties, 'maybe' replace 'created', while 'notMaybe' replace 'notCreated'.
+However, in the response properties, 'maybe' replace 'accepted', while 'notMaybe' replace 'notAccepted'.
 
 == Internationalization configuration
 
