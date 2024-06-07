@@ -169,8 +169,9 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
             .name(generateMailName())
             .sender(attendeeReply.attendee.asString())
             .addRecipients(recipient)
+            .mimeMessage(mimeMessage)
             .build()
-          mailImpl.setMessageNoCopy(mimeMessage)
+          LifecycleUtil.dispose(mimeMessage)
           mailImpl
         }))
       .subscribeOn(Schedulers.boundedElastic())
@@ -197,7 +198,7 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
 
   private def generateMailName(): String = "calendar-reply-" + UUID.randomUUID().toString
 
-  private def appendAttachmentPartToMail(attachmentPart: Seq[BodyPartBuilder], mimeMessage: MimeMessageWrapper): MimeMessageWrapper = {
+  private def appendAttachmentPartToMail(attachmentPart: Seq[BodyPartBuilder], mimeMessage: MimeMessage): MimeMessage = {
     mimeMessage.getContent match {
       case mimeMultipart: MimeMultipart =>
         attachmentPart.foreach(part => mimeMultipart.addBodyPart(part.build))
@@ -216,7 +217,7 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
     mimeMessage
   }
 
-  private def addHeaderToMimeMessage(toAddress: MailAddress, fromAddress: MailAddress, mimeMessage: MimeMessageWrapper): MimeMessageWrapper = {
+  private def addHeaderToMimeMessage(toAddress: MailAddress, fromAddress: MailAddress, mimeMessage: MimeMessage): MimeMessage = {
     mimeMessage.addFrom(Array(new InternetAddress(fromAddress.asString())))
     mimeMessage.addRecipients(Message.RecipientType.TO, toAddress.asString())
     mimeMessage.saveChanges()
@@ -225,7 +226,7 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
 }
 
 trait CalendarReplyMessageGenerator {
-  def getBasedMimeMessage(i18n: Locale, attendeeReply: AttendeeReply, calendar: Calendar): SMono[MimeMessageWrapper]
+  def getBasedMimeMessage(i18n: Locale, attendeeReply: AttendeeReply, calendar: Calendar): SMono[MimeMessage]
 }
 
 private object I18NCalendarEventReplyMessageGenerator {
@@ -248,17 +249,17 @@ class I18NCalendarEventReplyMessageGenerator(fileSystem: FileSystem, i18nEmlDire
 
   import I18NCalendarEventReplyMessageGenerator._
 
-  override def getBasedMimeMessage(i18n: Locale, attendeeReply: AttendeeReply, requestCalendar: Calendar): SMono[MimeMessageWrapper] =
+  override def getBasedMimeMessage(i18n: Locale, attendeeReply: AttendeeReply, requestCalendar: Calendar): SMono[MimeMessage] =
     getBasedMimeMessage(attendeeReply, requestCalendar, evaluateMailTemplateFileName(attendeeReply.partStat, i18n))
 
-  def getBasedMimeMessage(attendeeReply: AttendeeReply, calendar: Calendar, emlFilename: String): SMono[MimeMessageWrapper] =
+  def getBasedMimeMessage(attendeeReply: AttendeeReply, calendar: Calendar, emlFilename: String): SMono[MimeMessage] =
     SMono.fromCallable(() => URI.create(i18nEmlDirectory).resolve(emlFilename).toString)
       .doOnNext(validateTemplateFile)
       .map(emlLocation => new MimeMessageWrapper(MimeMessageInputStreamSource.create(MailImpl.getId, fileSystem.getResource(emlLocation))))
       .map(mimeMessage => decoratedMimeMessage(mimeMessage, getMustacheDataMap(attendeeReply, calendar)))
       .subscribeOn(Schedulers.boundedElastic())
 
-  private def decoratedMimeMessage(originalMimeMessage: MimeMessageWrapper, mustacheDataMap: JavaMap[String, String]): MimeMessageWrapper = {
+  private def decoratedMimeMessage(originalMimeMessage: MimeMessageWrapper, mustacheDataMap: JavaMap[String, String]): MimeMessage = {
     originalMimeMessage.loadMessage()
     originalMimeMessage.getContent match {
       case textBody: String =>
