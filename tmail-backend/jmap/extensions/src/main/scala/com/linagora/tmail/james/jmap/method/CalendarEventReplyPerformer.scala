@@ -15,7 +15,7 @@ import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField
 import eu.timepit.refined.auto._
 import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Named}
-import jakarta.mail.internet.{InternetAddress, MimeMultipart}
+import jakarta.mail.internet.{InternetAddress, MimeMessage, MimeMultipart}
 import jakarta.mail.{Message, Part}
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.component.VEvent
