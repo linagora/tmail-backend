@@ -1,0 +1,148 @@
+= JMAP TeamMailboxMember Extension
+:navtitle: JMAP TeamMailboxMember
+
+This extension allows users to manage members of team mailboxes (view members, add members, remove members, promote members).
+
+== Additions to the capability object
+
+Servers supporting the JMAP TeamMailboxMember extension need to advertise it through the session capabilities:
+
+....
+com:linagora:params:jmap:team:mailboxes
+....
+
+The associated object is empty.
+
+== TeamMailboxMember object
+
+We introduce the `TeamMailboxMember` object representing the information of members of a team mailbox, which contains these properties:
+
+ * **id**: `Id`. Server-set. Team mailbox name of the mailbox.
+ * **members**: `String[Role]`. A JSON object where the keys are usernames (as strings) and the values are `Role` objects.
+
+The `Role` JSON object has the following properties:
+
+ * **role**: `String`. The role of a member within the team mailbox. Possible values include `manager`, `member`.
+    ** `member` can view members of the team mailboxes that her has access to.
+    ** `manager` can view members of the team mailboxes that her has access to, add members, remove members and promote `member` to `manager`.
+
+== TeamMailboxMember/get
+
+Standard */get* method as described in Section 5.1, RFC8620.
+
+=== Example
+
+Request:
+```json
+{
+    "using": [
+        "urn:ietf:params:jmap:core",
+        "urn:ietf:params:jmap:mail",
+        "com:linagora:params:jmap:team:mailboxes"
+    ],
+    "methodCalls": [
+        [
+            "TeamMailboxMember/get",
+            {
+                "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+                "ids": [
+                    "teammailboxA@domain.tld"
+                ]
+            },
+            "#0"
+        ]
+    ]
+}
+```
+
+Response:
+```json
+{
+    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+    "methodResponses": [
+        [
+            "TeamMailboxMember/get",
+            {
+                "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+                "list": [
+                    {
+                        "id": "teammailboxA@domain.tld",
+                        "members": {
+                            "bob@domain.tld": {
+                                "role": "manager"
+                            },
+                            "alice@domain.tld": {
+                                "role": "member"
+                            }
+                        }
+                    }
+                ]
+            },
+            "#0"
+        ]
+    ]
+}
+```
+
+== TeamMailboxMember/set
+
+This method bases on the update part of the standard */set* method as described in Section 5.3, RFC8620.
+
+This method allows only members with the `manager` role updating the members of a team mailbox by adding, removing and promoting members.
+
+If non `manager` members try to use this method, the update MUST be rejected with a `forbidden` SetError.
+
+=== Example
+
+The following request adds Cedric to the team mailbox, remove Alice from the team mailbox and promote Bob to a manager of the team mailbox.
+
+Request:
+```json
+{
+    "using": [
+        "urn:ietf:params:jmap:core",
+        "urn:ietf:params:jmap:mail",
+        "com:linagora:params:jmap:team:mailboxes"
+    ],
+    "methodCalls": [
+        [
+            "TeamMailboxMember/set",
+            {
+                "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+                "update": {
+                    "teammailboxA@domain.tld": {
+                        "members/cedric@domain.tld": {
+                            "role": "member"
+                        },
+                        "members/bob@domain.tld": {
+                            "role": "manager"
+                        },
+                        "members/alice@domain.tld": null
+                    }
+                }
+            },
+            "#0"
+        ]
+    ]
+}
+```
+
+Response:
+```json
+{
+    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+    "methodResponses": [
+        [
+            "TeamMailboxMember/set",
+            {
+                "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+                "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+                "updated": {
+                    "teammailboxA@domain.tld": null
+                }
+            },
+            "#0"
+        ]
+    ]
+}
+```
