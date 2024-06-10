@@ -23,6 +23,7 @@ import org.apache.james.core.{MailAddress, MaybeSender, Username}
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.mime4j.dom.Message
@@ -36,7 +37,7 @@ import org.apache.mailet.base.MailAddressFixture.{RECIPIENT1, RECIPIENT2, SENDER
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.{AfterEach, BeforeEach, Nested, Test}
+import org.junit.jupiter.api.{AfterEach, BeforeEach, Nested, Tag, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
 import play.api.libs.json.{JsString, Json}
@@ -433,6 +434,7 @@ trait EmailRecoveryActionSetMethodContract {
   }
 
   @Nested
+  @Tag(CategoryTags.BASIC_FEATURE)
   class CreationSetBySubjectQueryContract {
     @Test
     def restoreShouldNotAppendMessageToMailboxWhenSubjectDoesntContains(server: GuiceJamesServer): Unit = {
@@ -1659,6 +1661,7 @@ trait EmailRecoveryActionSetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def updateShouldReturnUpdatedWhenValidRequest(server: GuiceJamesServer): Unit = {
     val taskId: String = newCreationSetRequestAndGetTaskId()
 

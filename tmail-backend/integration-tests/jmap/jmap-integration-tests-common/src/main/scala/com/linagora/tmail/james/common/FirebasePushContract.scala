@@ -19,6 +19,7 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.modules.protocols.SmtpGuiceProbe
@@ -27,7 +28,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
-import org.junit.jupiter.api.{AfterEach, BeforeEach, Test}
+import org.junit.jupiter.api.{AfterEach, BeforeEach, Tag, Test}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{clearInvocations, mock, times, verify, verifyNoMoreInteractions, when}
@@ -202,6 +203,7 @@ trait FirebasePushContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def shouldPushStateChangeWhenExtendedExpireSubscription(server: GuiceJamesServer, clock: UpdatableTickingClock): Unit = {
     // bob creates a firebase subscription
     val subscriptionId: String = createFirebaseSubscription()

@@ -21,6 +21,7 @@ import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.modules.protocols.SmtpGuiceProbe
 import org.apache.james.utils.{DataProbeImpl, SMTPMessageSender, WebAdminGuiceProbe}
 import org.apache.james.webadmin.WebAdminUtils
@@ -29,7 +30,7 @@ import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
 import org.eclipse.jetty.http.HttpStatus.{CREATED_201, NO_CONTENT_204, OK_200}
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object LinagoraContactAutocompleteMethodContract {
   private var webAdminApi: RequestSpecification = _
@@ -370,6 +371,7 @@ trait LinagoraContactAutocompleteMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def contactAutocompleteShouldReturnOnFirstnameSearch(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
       .index(bobAccountId, contactA)

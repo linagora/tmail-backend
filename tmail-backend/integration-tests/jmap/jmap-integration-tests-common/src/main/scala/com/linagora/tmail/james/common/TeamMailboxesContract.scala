@@ -33,6 +33,7 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.asPayload
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.DefaultMailboxes
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath, MessageId}
@@ -45,7 +46,7 @@ import org.apache.james.webadmin.WebAdminUtils
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsArray, Json}
 import sttp.capabilities.WebSockets
 import sttp.client3.monad.IdMonad
@@ -88,6 +89,7 @@ trait TeamMailboxesContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def givenTeamMailboxHasManyMembersThenIdentitySetShouldSucceed(server: GuiceJamesServer): Unit = {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
@@ -1686,6 +1688,7 @@ trait TeamMailboxesContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def emailQueryShouldReturnTeamMailboxEmail(server: GuiceJamesServer): Unit = {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
@@ -3009,6 +3012,7 @@ trait TeamMailboxesContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def teamMailboxShouldBeIndexedAsDomainContactUponCreation(): Unit = {
     `given`
       .spec(webAdminApi)
