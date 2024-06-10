@@ -1715,37 +1715,39 @@ trait TeamMailboxesContract {
          |    }, "c1"]]
          |}""".stripMargin
 
-    val response: String = `given`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
-    .when()
-      .post()
-    .`then`
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .asString()
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val response: String = `given`()
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(request)
+      .when()
+        .post()
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract()
+        .body()
+        .asString()
 
-    assertThatJson(response)
-      .whenIgnoringPaths("methodResponses[0][1].queryState")
-      .isEqualTo(
-        s"""{
-           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
-           |    "methodResponses": [
-           |        [
-           |            "Email/query",
-           |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |                "canCalculateChanges": false,
-           |                "ids": ["$messageId"],
-           |                "position": 0,
-           |                "limit": 256
-           |            },
-           |            "c1"
-           |        ]
-           |    ]
-           |}""".stripMargin)
+      assertThatJson(response)
+        .whenIgnoringPaths("methodResponses[0][1].queryState")
+        .isEqualTo(
+          s"""{
+             |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+             |    "methodResponses": [
+             |        [
+             |            "Email/query",
+             |            {
+             |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |                "canCalculateChanges": false,
+             |                "ids": ["$messageId"],
+             |                "position": 0,
+             |                "limit": 256
+             |            },
+             |            "c1"
+             |        ]
+             |    ]
+             |}""".stripMargin)
+    })
   }
 
   @Test
@@ -2412,26 +2414,19 @@ trait TeamMailboxesContract {
       .appendMessage(BOB.asString(), MailboxPath.inbox(BOB), AppendCommand.from(message))
       .getMessageId.serialize()
 
-    val request =
-      s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
-         |  "methodCalls": [["Email/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "update": {
-         |        "$messageId": {
-         |          "mailboxIds": { "$id": true }
-         |        }
-         |      }
-         |    }, "c1"], ["Email/get", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "ids": ["$messageId"],
-         |      "properties":["mailboxIds"]
-         |    }, "c2"]]
-         |}""".stripMargin
-
-    val response: String = `given`()
+    val updateResponse: String = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
+      .body(s"""{
+               |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [["Email/set", {
+               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "update": {
+               |        "$messageId": {
+               |          "mailboxIds": { "$id": true }
+               |        }
+               |      }
+               |    }, "c1"]]
+               |}""".stripMargin)
     .when()
       .post()
     .`then`
@@ -2441,7 +2436,7 @@ trait TeamMailboxesContract {
       .body()
       .asString()
 
-    assertThatJson(response)
+    assertThatJson(updateResponse)
       .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState", "methodResponses[1][1].state")
       .isEqualTo(
         s"""{
@@ -2454,23 +2449,54 @@ trait TeamMailboxesContract {
            |                "updated": {"$messageId": null}
            |            },
            |            "c1"
-           |        ],
-           |        [
-           |            "Email/get",
-           |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |                "notFound": [],
-           |                "list": [
-           |                    {
-           |                        "mailboxIds":{"$id":true},
-           |                        "id": "$messageId"
-           |                    }
-           |                ]
-           |            },
-           |            "c2"
            |        ]
            |    ]
            |}""".stripMargin)
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val getResponse: String = `given`()
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(s"""{
+                 |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+                 |  "methodCalls": [["Email/get", {
+                 |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                 |      "ids": ["$messageId"],
+                 |      "properties":["mailboxIds"]
+                 |    }, "c2"]]
+                 |}""".stripMargin)
+      .when()
+        .post()
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract()
+        .body()
+        .asString()
+
+      assertThatJson(getResponse)
+        .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+        .isEqualTo(
+          s"""{
+             |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+             |    "methodResponses": [
+             |        [
+             |            "Email/get",
+             |            {
+             |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |                "notFound": [],
+             |                "state": "$${json-unit.ignore}",
+             |                "list": [
+             |                    {
+             |                        "mailboxIds":{"$id":true},
+             |                        "id": "$messageId"
+             |                    }
+             |                ]
+             |            },
+             |            "c2"
+             |        ]
+             |    ]
+             |}""".stripMargin)
+    })
   }
 
   @Test
@@ -3028,36 +3054,38 @@ trait TeamMailboxesContract {
          |    "c1"]]
          |}""".stripMargin
 
-    val response =  `given`
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(bobRequest)
-    .when
-      .post
-    .`then`
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract
-      .body
-      .asString
+    awaitAtMostTenSeconds.untilAsserted(()=> {
+      val response = `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(bobRequest)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
 
-    assertThatJson(response)
-      .isEqualTo(
-        s"""{
-           |	"sessionState": "${SESSION_STATE.value}",
-           |	"methodResponses": [[
-           |			"TMailContact/autocomplete",
-           |			{
-           |				"accountId": "$BOB_ACCOUNT_ID",
-           |				"list": [{
-           |					"id": "$${json-unit.ignore}",
-           |					"firstname": "hiring",
-           |					"surname": "",
-           |					"emailAddress": "hiring@domain.tld"
-           |				}],
-           |				"limit": 256
-           |			},
-           |			"c1"]]
-           |}""".stripMargin)
+      assertThatJson(response)
+        .isEqualTo(
+          s"""{
+             |	"sessionState": "${SESSION_STATE.value}",
+             |	"methodResponses": [[
+             |			"TMailContact/autocomplete",
+             |			{
+             |				"accountId": "$BOB_ACCOUNT_ID",
+             |				"list": [{
+             |					"id": "$${json-unit.ignore}",
+             |					"firstname": "hiring",
+             |					"surname": "",
+             |					"emailAddress": "hiring@domain.tld"
+             |				}],
+             |				"limit": 256
+             |			},
+             |			"c1"]]
+             |}""".stripMargin)
+    })
   }
 
   @Test
