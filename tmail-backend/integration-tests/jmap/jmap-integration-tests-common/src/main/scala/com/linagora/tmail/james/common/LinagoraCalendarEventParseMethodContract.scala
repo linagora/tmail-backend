@@ -16,6 +16,7 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MailboxACL.Right
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath, MessageId}
@@ -24,8 +25,7 @@ import org.apache.james.mime4j.message.{BodyPartBuilder, MultipartBuilder}
 import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
 import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.Json
 
 trait LinagoraCalendarEventParseMethodContract {
@@ -349,6 +349,7 @@ trait LinagoraCalendarEventParseMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def parseShouldSupportSeveralBlobIds(): Unit = {
     val blobId1: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
     val blobId2: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting2.ics"))

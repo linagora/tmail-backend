@@ -18,6 +18,7 @@ import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.{MailboxPath, MessageResult, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.modules.protocols.SmtpGuiceProbe
@@ -27,7 +28,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
@@ -205,6 +206,7 @@ trait LinagoraForwardSetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def updateShouldReturnSuccess(): Unit = {
     val request: String =
       """{
@@ -818,6 +820,7 @@ trait LinagoraForwardSetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def messageShouldBeForwardedToDestinationForwards(server: GuiceJamesServer): Unit = {
     val request: String =
       s"""{

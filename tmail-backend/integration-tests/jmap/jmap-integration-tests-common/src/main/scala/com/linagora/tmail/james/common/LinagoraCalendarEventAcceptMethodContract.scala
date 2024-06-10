@@ -18,11 +18,12 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.Json
 
 trait LinagoraCalendarEventAcceptMethodContract {
@@ -825,6 +826,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def shouldSendReplyMailToInvitor(server: GuiceJamesServer): Unit = {
     val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
     val blobId: String = uploadAndGetBlobId(new ByteArrayInputStream(generateInviteIcs(BOB.asString(), ANDRE.asString()).getBytes))

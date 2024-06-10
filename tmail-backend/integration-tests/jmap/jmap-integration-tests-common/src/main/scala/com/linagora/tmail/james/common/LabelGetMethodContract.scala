@@ -16,9 +16,10 @@ import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers.hasKey
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object LabelGetMethodContract {
   val RED: Color = Color("#FF0000")
@@ -299,6 +300,7 @@ trait LabelGetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
       .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))

@@ -23,9 +23,10 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UTCDate
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import reactor.core.publisher.Mono
@@ -823,6 +824,7 @@ trait FirebaseSubscriptionSetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def setShouldReturnResponseWhenMixCases(): Unit = {
     val response = `given`
       .body(
@@ -1647,6 +1649,7 @@ trait FirebaseSubscriptionSetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def updateRequestShouldReturnCorrectResponseWhenMixCases(server: GuiceJamesServer): Unit = {
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
       .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)

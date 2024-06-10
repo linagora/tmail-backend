@@ -7,9 +7,10 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.JmapGuiceProbe
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import sttp.capabilities.WebSockets
 import sttp.client3.monad.IdMonad
 import sttp.client3.okhttp.OkHttpSyncBackend
@@ -43,6 +44,7 @@ trait LinagoraFilterStateChangeTest {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def pushShouldSupportFilterTypeNameAndFilterStateWhenDataTypesAreFilterTypeName(server: GuiceJamesServer): Unit = {
     val response: Either[String, List[String]] =
       authenticatedRequest(server)

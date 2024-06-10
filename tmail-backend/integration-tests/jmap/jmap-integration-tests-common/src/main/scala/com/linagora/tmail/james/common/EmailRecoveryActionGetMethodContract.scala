@@ -18,6 +18,7 @@ import org.apache.james.core.{MailAddress, MaybeSender, Username}
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.{DataProbeImpl, WebAdminGuiceProbe}
@@ -27,7 +28,7 @@ import org.apache.mailet.base.MailAddressFixture.{RECIPIENT1, RECIPIENT2, SENDER
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 import scala.jdk.CollectionConverters._
 
@@ -205,6 +206,7 @@ trait EmailRecoveryActionGetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
     val bobMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
       .createMailbox(MailboxPath.inbox(BOB))

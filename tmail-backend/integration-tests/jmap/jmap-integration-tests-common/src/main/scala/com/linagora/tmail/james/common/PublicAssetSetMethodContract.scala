@@ -20,12 +20,13 @@ import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HE
 import org.apache.james.jmap.rfc8621.contract.IdentityProbe
 import org.apache.james.jmap.rfc8621.contract.IdentitySetContract.IDENTITY_CREATION_REQUEST
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.ContentType.MimeType
 import org.apache.james.util.Size
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.{containsString, hasItem, hasKey, is}
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsString, Json}
 import reactor.core.scala.publisher.SMono
 
@@ -74,6 +75,7 @@ trait PublicAssetSetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def createValidRequestShouldReturnSuccessResponse(): Unit = {
     val uploadResponse: UploadResponse = uploadAsset()
 
@@ -986,6 +988,7 @@ trait PublicAssetSetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def updateShouldSuccessWhenMixCases(): Unit = {
     val publicAssetId1: String = createPublicAssetId()
     val publicAssetId2: String = createPublicAssetId()

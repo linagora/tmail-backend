@@ -17,10 +17,11 @@ import org.apache.james.jmap.core.UuidState
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.ArgumentCaptor
@@ -134,6 +135,7 @@ trait JmapSettingsSetMethodContract {
            |}""".stripMargin))
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def fullResetShouldInsertNewSettings(): Unit =
     `given`
       .body(
@@ -203,6 +205,7 @@ trait JmapSettingsSetMethodContract {
            |}""".stripMargin))
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def fullResetShouldPerformFullUpdateAndOverrideExistingSettings(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("toBeOverrideKey", "toBeOverrideValue")))

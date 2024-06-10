@@ -18,9 +18,10 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ALICE_ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder, getHeadersWith}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object LinagoraKeystoreSetMethodContract {
   private val PGP_KEY: Array[Byte] = ClassLoader.getSystemClassLoader
@@ -49,6 +50,7 @@ trait LinagoraKeystoreSetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def keystoreSetCreateShouldSucceedWithValidKey(): Unit = {
     val request = s"""{
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],

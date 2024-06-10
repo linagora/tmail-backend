@@ -19,9 +19,10 @@ import org.apache.james.jmap.api.model.{IdentityId, Size}
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.ContentType
 import org.apache.james.utils.DataProbeImpl
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object PublicAssetGetMethodContract {
   val CONTENT_TYPE: ContentType = ContentType.of("image/png")
@@ -125,6 +126,7 @@ trait PublicAssetGetMethodContract {
            |]""".stripMargin))
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def fetchNullIdsShouldReturnAllAssets(server: GuiceJamesServer): Unit = {
     val publicAsset = server.getProbe(classOf[PublicAssetProbe]).create(BOB, CREATION_REQUEST)
     val publicAsset2 = server.getProbe(classOf[PublicAssetProbe]).create(BOB, CREATION_REQUEST)

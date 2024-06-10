@@ -20,6 +20,7 @@ import org.apache.james.jmap.MessageIdProbe
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.DefaultMailboxes
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxId, MailboxPath, MessageId, MessageResult, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.mime4j.dom.Message
@@ -30,7 +31,7 @@ import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsString, JsValue, Json}
 
 import scala.jdk.CollectionConverters._
@@ -74,6 +75,7 @@ trait LinagoraEmailSendMethodContract {
 
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
     mailboxProbe.createMailbox(BOB_INBOX_PATH)
+    mailboxProbe.createMailbox(MailboxPath.inbox(ANDRE))
 
     uploadPublicKey(ACCOUNT_ID, requestSpecification)
   }
@@ -154,8 +156,6 @@ trait LinagoraEmailSendMethodContract {
 
   @Test
   def emailSendShouldReturnSuccess(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-
     val response: String = `given`
       .body(bobSendsAMailToAndre(server))
     .when()
@@ -196,8 +196,6 @@ trait LinagoraEmailSendMethodContract {
 
   @Test
   def emailSendShouldAddAnEmailInTargetMailbox(server: GuiceJamesServer) : Unit = {
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-
     `given`
       .body(bobSendsAMailToAndre(server))
     .when()
@@ -220,8 +218,8 @@ trait LinagoraEmailSendMethodContract {
 
   @Test
   def emailSendShouldSendMailSuccessfully(server: GuiceJamesServer): Unit = {
-    val andreInboxId : MailboxId= server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(ANDRE))
+    val andreInboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(MailboxConstants.USER_NAMESPACE, ANDRE.asString(), MailboxConstants.INBOX)
 
     `given`
       .body(bobSendsAMailToAndre(server))
@@ -247,8 +245,6 @@ trait LinagoraEmailSendMethodContract {
 
   @Test
   def recipientShouldReceiveClearEmailContentWhenTheyDoNotHaveEncryptionEnabled(server: GuiceJamesServer) : Unit = {
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-
     `given`
       .body(bobSendsAMailToAndre(server))
     .when()
@@ -312,8 +308,8 @@ trait LinagoraEmailSendMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def emailSendShouldSuccessWhenMixed(server: GuiceJamesServer) : Unit = {
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
     val request: String =
       s"""{
          |    "using": [
@@ -579,9 +575,6 @@ trait LinagoraEmailSendMethodContract {
 
     val cedricInBoxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
     .createMailbox(MailboxPath.inbox(CEDRIC))
-    val andreInboxId : MailboxId= server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(ANDRE))
-
     val request: String =
       s"""
          |{
@@ -929,9 +922,6 @@ trait LinagoraEmailSendMethodContract {
 
   @Test
   def envelopeShouldBeOptionalWhenEmailCreateAlreadyDeclare(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(ANDRE))
-
     val request: String =
       s"""
        |{
@@ -1019,9 +1009,6 @@ trait LinagoraEmailSendMethodContract {
 
   @Test
   def emailSendShouldNotCreatedWhenEnvelopAbsentAndEmailSetDoNotHaveHeader(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(ANDRE))
-
     val request: String =
       s"""
          |{
@@ -1103,6 +1090,7 @@ trait LinagoraEmailSendMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def emailSendShouldSupportAttachment(server: GuiceJamesServer) : Unit = {
     val payload: Array[Byte] = "123456789\r\n".getBytes(StandardCharsets.UTF_8)
 

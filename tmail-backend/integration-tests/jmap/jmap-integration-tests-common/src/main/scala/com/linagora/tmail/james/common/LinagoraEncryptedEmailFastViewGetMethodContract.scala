@@ -17,6 +17,7 @@ import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
@@ -24,7 +25,7 @@ import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsString, Json}
 
 object LinagoraEncryptedEmailFastViewGetMethodContract {
@@ -361,6 +362,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def methodShouldReturnFastViewWhenEmailIdExits(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(BOB.asString(),
@@ -411,6 +413,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def encryptedPreviewShouldEncrypt(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(BOB.asString(),
