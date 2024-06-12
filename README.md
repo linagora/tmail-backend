@@ -1,4 +1,8 @@
 # Twake Mail Server
+
+
+[![Join the chat at https://gitter.im/linagora/team-mail](https://badges.gitter.im/linagora/team-mail.svg)](https://gitter.im/linagora/team-mail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Images docker](https://img.shields.io/badge/Images-docker-blue.svg)](https://hub.docker.com/r/linagora/tmail-backend)
 [![Contributors](https://img.shields.io/github/contributors/linagora/tmail-backend?label=Contributors
 )](
   https://github.com/linagora/tmail-backend/graphs/contributors
