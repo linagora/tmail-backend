@@ -4,8 +4,9 @@ import java.util.{Set => JavaSet}
 
 import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
-import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_QUERY, TEAM_MAILBOX_RIGHTS_DEFAULT}
+import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_MANAGER_RIGHTS, TEAM_MAILBOX_MEMBER_RIGHTS, TEAM_MAILBOX_QUERY}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
+import com.linagora.tmail.team.TeamMemberRole.{ManagerRole, MemberRole}
 import jakarta.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
@@ -33,11 +34,11 @@ trait TeamMailboxRepository {
 
   def listTeamMailboxes(): Publisher[TeamMailbox]
 
-  def addMember(teamMailbox: TeamMailbox, addUser: Username): Publisher[Void]
+  def addMember(teamMailbox: TeamMailbox, addTeamMailboxMember: TeamMailboxMember): Publisher[Void]
 
   def removeMember(teamMailbox: TeamMailbox, removeUser: Username): Publisher[Void]
 
-  def listMembers(teamMailbox: TeamMailbox): Publisher[Username]
+  def listMembers(teamMailbox: TeamMailbox): Publisher[TeamMailboxMember]
 
   def exists(teamMailbox: TeamMailbox): Publisher[Boolean]
 
@@ -49,7 +50,7 @@ object TeamMailboxRepositoryImpl {
     .matchesAllMailboxNames
     .build
 
-  val TEAM_MAILBOX_RIGHTS_DEFAULT: MailboxACL.Rfc4314Rights =
+  val TEAM_MAILBOX_MEMBER_RIGHTS: MailboxACL.Rfc4314Rights =
     new MailboxACL.Rfc4314Rights(
       Right.Lookup,
       Right.Post,
@@ -59,6 +60,9 @@ object TeamMailboxRepositoryImpl {
       Right.Insert,
       Right.Write
     )
+
+  val TEAM_MAILBOX_MANAGER_RIGHTS: MailboxACL.Rfc4314Rights = TEAM_MAILBOX_MEMBER_RIGHTS
+    .union(new MailboxACL.Rfc4314Rights(Right.Administer))
 }
 
 class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
@@ -137,26 +141,44 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
       .distinct()
 
-  override def addMember(teamMailbox: TeamMailbox, user: Username): Publisher[Void] = {
+  override def addMember(teamMailbox: TeamMailbox, teamMailboxMember: TeamMailboxMember): Publisher[Void] = {
     val session = createSession(teamMailbox)
-    val memberSession = mailboxManager.createSystemSession(user)
+    val memberSession = mailboxManager.createSystemSession(teamMailboxMember.username)
     SMono.fromPublisher(exists(teamMailbox))
       .filter(teamMailboxExist => teamMailboxExist)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .flatMapIterable(_ => teamMailbox.defaultMailboxPaths)
-      .flatMap(mailboxPath => addRightForMember(mailboxPath, user, session)
+      .flatMap(mailboxPath => addRightForMember(mailboxPath, teamMailboxMember.username, session, teamMailboxMember.role)
         .`then`(subscribeForMember(mailboxPath, memberSession)))
       .`then`()
   }
 
-  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession): SMono[Unit] =
+  private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession, teamMailboxRole: TeamMemberRole): SMono[Unit] =
     SMono(mailboxManager.applyRightsCommandReactive(path,
       MailboxACL.command
         .forUser(user)
-        .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
+        .rights(rightsToAdd(teamMailboxRole))
         .asAddition(),
       session))
+      .`then`(removeAdministerRightIfNeeded(path, user, session, teamMailboxRole))
       .`then`()
+
+  private def removeAdministerRightIfNeeded(path: MailboxPath, user: Username, session: MailboxSession, teamMailboxRole: TeamMemberRole): SMono[Void] =
+    teamMailboxRole.value match {
+      case MemberRole => SMono(mailboxManager.applyRightsCommandReactive(path,
+        MailboxACL.command
+          .forUser(user)
+          .rights(Right.Administer)
+          .asRemoval(),
+        session))
+      case ManagerRole => SMono.empty
+    }
+
+  private def rightsToAdd(teamMailboxRole: TeamMemberRole): MailboxACL.Rfc4314Rights =
+    teamMailboxRole.value match {
+      case MemberRole => TEAM_MAILBOX_MEMBER_RIGHTS
+      case ManagerRole => TEAM_MAILBOX_MANAGER_RIGHTS
+    }
 
   private def subscribeForMember(path: MailboxPath, memberSession: MailboxSession): SMono[Unit] =
     SMono(subscriptionManager.subscribeReactive(path, memberSession)).`then`()
@@ -166,7 +188,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       path,
       MailboxACL.command
         .forUser(user)
-        .rights(TEAM_MAILBOX_RIGHTS_DEFAULT)
+        .rights(TEAM_MAILBOX_MANAGER_RIGHTS)
         .asRemoval(),
       session))
       .`then`()
@@ -198,18 +220,25 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .toSeq)
   }
 
-  override def listMembers(teamMailbox: TeamMailbox): Publisher[Username] = {
+  override def listMembers(teamMailbox: TeamMailbox): Publisher[TeamMailboxMember] = {
     val session: MailboxSession = createSession(teamMailbox)
     SMono.fromPublisher(exists(teamMailbox))
       .filter(b => b)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .flatMap(_ => SMono(mailboxManager.listRightsReactive(teamMailbox.mailboxPath, session)))
       .flatMapIterable(mailboxACL => mailboxACL.getEntries.asScala)
-      .map(entryKeyAndRights => entryKeyAndRights._1)
-      .filter(entryKey => NameType.user.equals(entryKey.getNameType))
-      .map(entryKey => Username.of(entryKey.getName))
-      .distinct()
+      .filter(entryKeyAndRights => NameType.user.equals(entryKeyAndRights._1.getNameType))
+      .map(entryKeyAndRights => Username.of(entryKeyAndRights._1.getName) -> entryKeyAndRights._2)
+      .distinct(usernameAndRights => usernameAndRights._1)
+      .map(usernameAndRights => TeamMailboxMember(username = usernameAndRights._1, role = getTeamMemberRole(usernameAndRights._2)))
   }
+
+  private def getTeamMemberRole(rights: MailboxACL.Rfc4314Rights): TeamMemberRole =
+    if (rights.contains(Right.Administer)) {
+      TeamMemberRole(ManagerRole)
+    } else {
+      TeamMemberRole(MemberRole)
+    }
 
   private def isUserInTeamMailbox(teamMailbox: TeamMailbox, checkUser: Username): SMono[Boolean] =
     SFlux.fromPublisher(listTeamMailboxes(checkUser))

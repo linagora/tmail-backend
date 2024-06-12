@@ -34,6 +34,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
+import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxRepository;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
@@ -129,7 +130,7 @@ public class UserTeamMailboxRoutesTest {
     void getTeamMailboxesShouldReturnEntriesWhenHasSingleElement() throws UsersRepositoryException {
         when(usersRepository.contains(BOB)).thenReturn(true);
         Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
-        Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+        Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
 
         String response = given()
             .get()
@@ -153,8 +154,8 @@ public class UserTeamMailboxRoutesTest {
         when(usersRepository.contains(BOB)).thenReturn(true);
         Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
         Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX_2)).block();
-        Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
-        Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX_2, BOB)).block();
+        Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+        Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX_2, TeamMailboxMember.asMember(BOB))).block();
         
         String response = given()
             .get()
@@ -182,7 +183,7 @@ public class UserTeamMailboxRoutesTest {
         when(usersRepository.contains(BOB)).thenReturn(true);
         when(usersRepository.contains(ANDRE)).thenReturn(true);
         Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
-        Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, ANDRE)).block();
+        Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(ANDRE))).block();
         
         String response = given()
             .get()

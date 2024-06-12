@@ -14,6 +14,7 @@ import org.eclipse.jetty.http.HttpStatus;
 
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxName;
 import com.linagora.tmail.team.TeamMailboxNameConflictException;
 import com.linagora.tmail.team.TeamMailboxNotFoundException;
@@ -164,7 +165,7 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
             return Flux.from(teamMailboxRepository.listMembers(teamMailbox))
-                .map(TeamMailboxMemberResponse::new)
+                .map(teamMailboxMember -> new TeamMailboxMemberResponse(teamMailboxMember.username()))
                 .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
                 .collectList()
                 .block();
@@ -175,7 +176,7 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
             Username addUser = extractMemberUser(request);
-            Mono.from(teamMailboxRepository.addMember(teamMailbox, addUser))
+            Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(addUser)))
                 .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
                 .block();
             return Responses.returnNoContent(response);

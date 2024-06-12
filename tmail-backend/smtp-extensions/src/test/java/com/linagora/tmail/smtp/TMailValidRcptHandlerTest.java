@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxCallbackNoop;
+import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
 import reactor.core.publisher.Mono;
@@ -61,7 +62,7 @@ class TMailValidRcptHandlerTest {
 
         TeamMailbox teamMailboxOption = TeamMailbox.asTeamMailbox(new MailAddress("sales@linagora.com")).get();
         Mono.from(teamMailboxRepository.createTeamMailbox(teamMailboxOption)).block();
-        Mono.from(teamMailboxRepository.addMember(teamMailboxOption, BOB)).block();
+        Mono.from(teamMailboxRepository.addMember(teamMailboxOption, TeamMailboxMember.asMember(BOB))).block();
 
         testee = new TMailValidRcptHandler(usersRepository, rrt, domainList, teamMailboxRepository);
     }

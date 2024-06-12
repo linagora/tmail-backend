@@ -68,7 +68,7 @@ class TMailCanSendFromTest extends CanSendFromContract {
   def teamMailboxMemberCanSend(): Unit = {
     val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
-    SMono(teamMailboxRepository.addMember(teamMailbox, Username.of("bob@domain.tld"))).block()
+    SMono(teamMailboxRepository.addMember(teamMailbox,  TeamMailboxMember.asMember(Username.of("bob@domain.tld")))).block()
 
     assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing@domain.tld")))
       .isTrue
@@ -87,7 +87,7 @@ class TMailCanSendFromTest extends CanSendFromContract {
   def allValidFromAddressesForUserShouldListTeamMailboxAlias(): Unit = {
     val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
-    SMono(teamMailboxRepository.addMember(teamMailbox, Username.of("bob@domain.tld"))).block()
+    SMono(teamMailboxRepository.addMember(teamMailbox,  TeamMailboxMember.asMember(Username.of("bob@domain.tld")))) .block()
 
     assertThat(Flux.from(testee.allValidFromAddressesForUser(Username.of("bob@domain.tld")))
       .collectList().block())
