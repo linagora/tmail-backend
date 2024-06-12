@@ -1,8 +1,6 @@
 # Twake Mail Server
 
 
-[![Join the chat at https://gitter.im/linagora/team-mail](https://badges.gitter.im/linagora/team-mail.svg)](https://gitter.im/linagora/team-mail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Images docker](https://img.shields.io/badge/Images-docker-blue.svg)](https://hub.docker.com/r/linagora/tmail-backend)
 [![Contributors](https://img.shields.io/github/contributors/linagora/tmail-backend?label=Contributors
 )](
   https://github.com/linagora/tmail-backend/graphs/contributors
@@ -12,18 +10,18 @@
 [![Documentation](https://img.shields.io/badge/Documentation-green.svg)](docs)
 [![Android application](https://img.shields.io/badge/App-Android-blue.svg)](https://play.google.com/store/apps/dev?id=8845244706987756601)
 [![Ios application](https://img.shields.io/badge/App-iOS-red.svg)](https://apps.apple.com/gr/developer/linagora/id1110867042)
+[![Images docker](https://img.shields.io/badge/Images-docker-blue.svg)](https://hub.docker.com/r/linagora/tmail-backend)
+[![Join the chat at https://gitter.im/linagora/team-mail](https://badges.gitter.im/linagora/team-mail.svg)](https://gitter.im/linagora/team-mail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 <p align="center">
   <a href="https://github.com/linagora/twake-mail">
-   <img src="https://github.com/linagora/tmail-backend/assets/146178981/594cb3ae-cef6-4dbd-b91e-814d4312b967" alt="Logo">
+   <img src="https://github.com/artembru/tmail-backend/assets/146178981/69e619dd-e017-4607-9581-dfc79f084cfe" alt="Logo">
   </a>
 
   <h3 align="center">twake-mail.com</h3>
 
  <p align="center">
     <a href="https://twake-mail.com">Website</a>
-    •
-    <a href="https://beta.twake.app/web/#/rooms">View Demo</a>
     •
     <a href="https://github.com/linagora/tmail-backend/issues">Report Bug</a>
     •
