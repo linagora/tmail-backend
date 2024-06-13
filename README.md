@@ -1,10 +1,37 @@
-# Team-mail backend server
+# Twake Mail Server
 
-[![Join the chat at https://gitter.im/linagora/team-mail](https://badges.gitter.im/linagora/team-mail.svg)](https://gitter.im/linagora/team-mail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Images docker](https://img.shields.io/badge/Images-docker-blue.svg)](https://hub.docker.com/r/linagora/tmail-backend)
+
+[![Contributors](https://img.shields.io/github/contributors/linagora/tmail-backend?label=Contributors
+)](
+  https://github.com/linagora/tmail-backend/graphs/contributors
+)
+[![Issues](https://img.shields.io/github/issues/linagora/tmail-backend?label=Issues
+)](https://github.com/linagora/tmail-backend/issues)
 [![Documentation](https://img.shields.io/badge/Documentation-green.svg)](docs)
+[![Android application](https://img.shields.io/badge/App-Android-blue.svg)](https://play.google.com/store/apps/dev?id=8845244706987756601)
+[![Ios application](https://img.shields.io/badge/App-iOS-red.svg)](https://apps.apple.com/gr/developer/linagora/id1110867042)
+[![Images docker](https://img.shields.io/badge/Images-docker-blue.svg)](https://hub.docker.com/r/linagora/tmail-backend)
+[![Join the chat at https://gitter.im/linagora/team-mail](https://badges.gitter.im/linagora/team-mail.svg)](https://gitter.im/linagora/team-mail?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-![LOGO](https://user-images.githubusercontent.com/6462404/202656316-8b77a7b6-0c1f-4f3e-932b-72bd446b6605.png)
+<p align="center">
+  <a href="https://github.com/linagora/twake-mail">
+   <img src="https://github.com/artembru/tmail-backend/assets/146178981/69e619dd-e017-4607-9581-dfc79f084cfe" alt="Logo">
+  </a>
+
+  <h3 align="center">twake-mail.com</h3>
+
+ <p align="center">
+    <a href="https://twake-mail.com">Website</a>
+    •
+    <a href="https://github.com/linagora/tmail-backend/issues">Report Bug</a>
+    •
+    <a href="https://github.com/linagora/tmail-backend/milestones">Roadmap</a>
+  </p>
+</p>
+
+---
+
+
 
 This project adapts and enhance [Apache James project](https://james.apache.org) with a goal to provide a complete, enterpriseready collaborative email solution adapted to the rest of 
 the [Linagora](https://linagora.com) eco-system.
