@@ -4,7 +4,7 @@ import java.util.{Set => JavaSet}
 
 import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
-import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{TEAM_MAILBOX_MANAGER_RIGHTS, TEAM_MAILBOX_MEMBER_RIGHTS, TEAM_MAILBOX_QUERY}
+import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{BASIC_TEAM_MAILBOX_RIGHTS, TEAM_MAILBOX_MANAGER_RIGHTS, TEAM_MAILBOX_MEMBER_RIGHTS, TEAM_MAILBOX_QUERY}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
 import com.linagora.tmail.team.TeamMemberRole.{ManagerRole, MemberRole}
 import jakarta.inject.Inject
@@ -50,16 +50,17 @@ object TeamMailboxRepositoryImpl {
     .matchesAllMailboxNames
     .build
 
-  val TEAM_MAILBOX_MEMBER_RIGHTS: MailboxACL.Rfc4314Rights =
-    new MailboxACL.Rfc4314Rights(
-      Right.Lookup,
+  val BASIC_TEAM_MAILBOX_RIGHTS: java.util.Collection[Right] =
+    ImmutableSet.of(Right.Lookup,
       Right.Post,
       Right.Read,
       Right.WriteSeenFlag,
       Right.DeleteMessages,
       Right.Insert,
-      Right.Write
-    )
+      Right.Write)
+
+  val TEAM_MAILBOX_MEMBER_RIGHTS: MailboxACL.Rfc4314Rights =
+    new MailboxACL.Rfc4314Rights(BASIC_TEAM_MAILBOX_RIGHTS)
 
   val TEAM_MAILBOX_MANAGER_RIGHTS: MailboxACL.Rfc4314Rights = TEAM_MAILBOX_MEMBER_RIGHTS
     .union(new MailboxACL.Rfc4314Rights(Right.Administer))
@@ -158,9 +159,8 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       MailboxACL.command
         .forUser(user)
         .rights(rightsToAdd(teamMailboxRole))
-        .asAddition(),
+        .asReplacement(),
       session))
-      .`then`(removeAdministerRightIfNeeded(path, user, session, teamMailboxRole))
       .`then`()
 
   private def removeAdministerRightIfNeeded(path: MailboxPath, user: Username, session: MailboxSession, teamMailboxRole: TeamMemberRole): SMono[Void] =
@@ -230,6 +230,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .filter(entryKeyAndRights => NameType.user.equals(entryKeyAndRights._1.getNameType))
       .map(entryKeyAndRights => Username.of(entryKeyAndRights._1.getName) -> entryKeyAndRights._2)
       .distinct(usernameAndRights => usernameAndRights._1)
+      .filter(usernameAndRights => usernameAndRights._2.list().containsAll(BASIC_TEAM_MAILBOX_RIGHTS))
       .map(usernameAndRights => TeamMailboxMember(username = usernameAndRights._1, role = getTeamMemberRole(usernameAndRights._2)))
   }
 

@@ -506,6 +506,36 @@ trait TeamMailboxRepositoryContract {
     assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(TeamMailboxMember.asMember(BOB), TeamMailboxMember.asManager(ANDRE))
   }
+
+  @Test
+  def listMembersShouldNotReturnUserWithEmptyRight(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    mailboxManager.applyRightsCommand(TEAM_MAILBOX_MARKETING.mailboxPath, MailboxACL.command
+      .key(MailboxACL.EntryKey.createUserEntryKey(BOB))
+      .rights(MailboxACL.NO_RIGHTS)
+      .asReplacement(),
+      mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner))
+
+    assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+      .doesNotContain(TeamMailboxMember.asMember(BOB))
+  }
+
+  @Test
+  def listMembersShouldNotReturnUserDoesNotHaveBasicTeamMailboxRights(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    mailboxManager.applyRightsCommand(TEAM_MAILBOX_MARKETING.mailboxPath, MailboxACL.command
+      .key(MailboxACL.EntryKey.createUserEntryKey(BOB))
+      .rights(MailboxACL.Right.Lookup)
+      .asReplacement(),
+      mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner))
+
+    assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+      .doesNotContain(TeamMailboxMember.asMember(BOB))
+  }
 }
 
 object TeamMailboxCallbackNoop {
