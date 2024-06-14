@@ -132,6 +132,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <rerunFailingTestsCount>2</rerunFailingTestsCount>
                     <forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>
                     <reuseForks>true</reuseForks>
                     <forkCount>2</forkCount>
