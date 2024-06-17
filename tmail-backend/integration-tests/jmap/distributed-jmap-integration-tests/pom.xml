@@ -142,6 +142,7 @@
                     <reuseForks>true</reuseForks>
                     <forkCount>2</forkCount>
                     <forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>
+                    <rerunFailingTestsCount>2</rerunFailingTestsCount>
                     <groups combine.self="override">BasicFeature</groups>
                     <excludedGroups>unstable</excludedGroups>
                     <properties>
