@@ -56,7 +56,11 @@ public class DockerCassandraRule implements GuiceModuleTestRule {
     }
 
     public void start() {
-        cassandraContainer.start();
+        try {
+            cassandraContainer.start();
+        } catch (ExceptionInInitializerError error) {
+            throw new RuntimeException("Can not start Cassandra extension properly", error);
+        }
     }
 
     public void stop() {
