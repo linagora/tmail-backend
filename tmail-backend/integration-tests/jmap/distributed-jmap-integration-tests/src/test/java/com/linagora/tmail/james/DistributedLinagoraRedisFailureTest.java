@@ -15,7 +15,6 @@ import java.time.Duration;
 import jakarta.inject.Singleton;
 
 import org.apache.http.HttpStatus;
-import org.apache.james.CassandraExtension;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -44,6 +43,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
+import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
