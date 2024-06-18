@@ -140,7 +140,7 @@
                 <configuration>
                     <argLine>-Xms512m -Xmx2048m</argLine>
                     <reuseForks>true</reuseForks>
-                    <forkCount>2</forkCount>
+                    <forkCount>1</forkCount>
                     <forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>
                     <rerunFailingTestsCount>2</rerunFailingTestsCount>
                     <groups combine.self="override">BasicFeature</groups>
