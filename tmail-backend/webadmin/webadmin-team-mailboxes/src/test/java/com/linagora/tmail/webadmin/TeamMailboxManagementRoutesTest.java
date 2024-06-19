@@ -55,6 +55,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
+import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 
@@ -529,7 +530,7 @@ public class TeamMailboxManagementRoutesTest {
         @Test
         void getTeamMailboxMembersShouldReturnListEntryWhenHasSingleElement() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
             String response  = given()
                 .get()
             .then()
@@ -550,8 +551,8 @@ public class TeamMailboxManagementRoutesTest {
         @Test
         void getTeamMailboxMembersShouldReturnListEntryWhenHasMultipleElement() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, ANDRE)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(ANDRE))).block();
             String response  = given()
                 .get()
             .then()
@@ -577,7 +578,7 @@ public class TeamMailboxManagementRoutesTest {
         void getTeamMailboxMembersShouldNotReturnEntriesOfAnotherTeamMailbox() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX_2)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX_2, BOB)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX_2, TeamMailboxMember.asMember(BOB))).block();
             String response  = given()
                 .get()
             .then()
@@ -650,12 +651,12 @@ public class TeamMailboxManagementRoutesTest {
                 .statusCode(NO_CONTENT_204);
 
             assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
-                .containsExactlyInAnyOrder(BOB);
+                .containsExactlyInAnyOrder(TeamMailboxMember.asMember(BOB));
         }
         @Test
         void addMemberShouldReturn204StatusWhenUserAlreadyInTeamMailbox() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
             given()
                 .put("/" + BOB.asString())
             .then()
@@ -714,14 +715,14 @@ public class TeamMailboxManagementRoutesTest {
         @Test
         void deleteMemberShouldRemoveAssignEntry() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
             given()
                 .delete("/" + BOB.asString())
             .then()
                 .statusCode(NO_CONTENT_204);
 
             assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
-                .doesNotContain(BOB);
+                .doesNotContain(TeamMailboxMember.asMember(BOB));
         }
 
         @Test
@@ -736,16 +737,16 @@ public class TeamMailboxManagementRoutesTest {
         @Test
         void deleteMemberShouldNotRemoveUnAssignEntry() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, BOB)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, ANDRE)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(ANDRE))).block();
             given()
                 .delete("/" + BOB.asString())
             .then()
                 .statusCode(NO_CONTENT_204);
 
             assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
-                .contains(ANDRE)
-                .doesNotContain(BOB);
+                .contains(TeamMailboxMember.asMember(ANDRE))
+                .doesNotContain(TeamMailboxMember.asMember(BOB));
         }
     }
 }

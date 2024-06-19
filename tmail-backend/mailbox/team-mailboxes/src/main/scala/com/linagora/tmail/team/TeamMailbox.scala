@@ -3,6 +3,7 @@ package com.linagora.tmail.team
 import com.google.common.base.CharMatcher
 import com.linagora.tmail.team.TeamMailboxName.TeamMailboxNameType
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
+import com.linagora.tmail.team.TeamMemberRole.{ManagerRole, MemberRole, Role}
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.auto._
@@ -154,3 +155,21 @@ case class TeamMailboxNotFoundException(teamMailbox: TeamMailbox) extends Runtim
 }
 
 case class TeamMailboxNameConflictException(message: String) extends RuntimeException(message)
+
+object TeamMemberRole extends Enumeration {
+  type Role = Value
+  val ManagerRole: Value = Value("manager")
+  val MemberRole: Value = Value("member")
+}
+
+case class TeamMemberRole(value: Role) extends AnyVal
+
+object TeamMailboxMember {
+  def asMember(username: Username): TeamMailboxMember =
+    TeamMailboxMember(username, TeamMemberRole(MemberRole))
+
+  def asManager(username: Username): TeamMailboxMember =
+    TeamMailboxMember(username, TeamMemberRole(ManagerRole))
+}
+
+case class TeamMailboxMember(username: Username, role: TeamMemberRole)

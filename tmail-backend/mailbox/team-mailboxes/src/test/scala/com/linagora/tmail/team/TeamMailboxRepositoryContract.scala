@@ -134,14 +134,14 @@ trait TeamMailboxRepositoryContract {
 
   @Test
   def addMemberShouldThrowWhenTeamMailboxDoesNotExists(): Unit = {
-    assertThatThrownBy(() => SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block())
+    assertThatThrownBy(() => SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block())
       .isInstanceOf(classOf[TeamMailboxNotFoundException])
   }
 
   @Test
   def addMemberShouldAddImplicitRights(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
     val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, bobSession).getEntries
 
@@ -154,9 +154,104 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
+  def addMemberShouldNotAddAdministerRight(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries
+
+    assertThat(entriesRights.asScala.head._2.contains(MailboxACL.Right.Administer))
+      .isFalse
+  }
+
+  @Test
+  def addMemberShouldBeIdempotence(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+        .containsOnly(TeamMailboxMember.asMember(BOB))
+      softly.assertThat(entriesRights.asScala.head._2.toString)
+        .isEqualTo("ilprstw")
+    })
+  }
+
+  @Test
+  def promoteMemberToManagerShouldSucceed(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
+
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+        .containsOnly(TeamMailboxMember.asManager(BOB))
+      softly.assertThat(entriesRights.asScala.head._2.contains(MailboxACL.Right.Administer))
+        .isTrue
+    })
+  }
+
+  @Test
+  def addManagerShouldAddAdministerRight(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, bobSession).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(entriesRights)
+        .hasSize(1)
+      softly.assertThat(entriesRights.asScala.head._2.contains(MailboxACL.Right.Administer))
+        .isTrue
+      softly.assertThat(entriesRights.asScala.head._2.toString)
+        .isEqualTo("ailprstw")
+    })
+  }
+
+  @Test
+  def addManagerShouldBeIdempotence(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
+
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
+
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+        .containsOnly(TeamMailboxMember.asManager(BOB))
+      softly.assertThat(entriesRights.asScala.head._2.toString)
+        .isEqualTo("ailprstw")
+    })
+  }
+
+  @Test
+  def demoteManagerToMemberShouldSucceed(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
+
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+        .containsOnly(TeamMailboxMember.asMember(BOB))
+      softly.assertThat(entriesRights.asScala.head._2.contains(MailboxACL.Right.Administer))
+        .isFalse
+    })
+  }
+
+  @Test
   def addMemberShouldAddImplicitRightsToTeamMailboxSubfolders(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
     val inboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.inboxPath, bobSession).getEntries
     val sentEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.sentPath, bobSession).getEntries
@@ -195,7 +290,7 @@ trait TeamMailboxRepositoryContract {
   @Test
   def addMemberShouldSubscribeTeamMailboxByDefault(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
 
     assertThat(SFlux(subscriptionManager.subscriptionsReactive(bobSession))
@@ -214,7 +309,7 @@ trait TeamMailboxRepositoryContract {
   @Test
   def removeMemberShouldBeIdempotent(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
 
     SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
     assertThatCode(() => SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block())
@@ -224,17 +319,39 @@ trait TeamMailboxRepositoryContract {
   @Test
   def removeMemberShouldRevokeMemberRightsFromTeamMailbox(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
-      .doesNotContain(BOB)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+        .doesNotContain(TeamMailboxMember.asMember(BOB))
+      softly.assertThat(entriesRights)
+        .isEmpty()
+    })
+  }
+
+  @Test
+  def removeManagerShouldRevokeManagerRightsFromTeamMailbox(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
+    SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+        .doesNotContain(TeamMailboxMember.asManager(BOB))
+      softly.assertThat(entriesRights)
+        .isEmpty()
+    })
   }
 
   @Test
   def removeMemberShouldUnSubscribeTeamMailbox(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
 
     assertThat(SFlux(subscriptionManager.subscriptionsReactive(mailboxManager.createSystemSession(BOB)))
@@ -247,12 +364,12 @@ trait TeamMailboxRepositoryContract {
   @Test
   def removeMemberShouldNotRevokeOtherMembers(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, ANDRE)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
     SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
 
     assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
-      .contains(ANDRE)
+      .contains(TeamMailboxMember.asMember(ANDRE))
   }
 
   @Test
@@ -266,20 +383,20 @@ trait TeamMailboxRepositoryContract {
   @Test
   def listMemberShouldReturnListMembersHaveRightsWhenSingleMember(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
 
     assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
-      .containsExactlyInAnyOrder(BOB)
+      .containsExactlyInAnyOrder(TeamMailboxMember.asMember(BOB))
   }
 
   @Test
   def listMemberShouldReturnListMembersHaveRightsWhenSeveralMembers(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, ANDRE)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
 
     assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
-      .containsExactlyInAnyOrder(BOB, ANDRE)
+      .containsExactlyInAnyOrder(TeamMailboxMember.asMember(BOB), TeamMailboxMember.asMember(ANDRE))
   }
 
   @Test
@@ -297,7 +414,7 @@ trait TeamMailboxRepositoryContract {
   @Test
   def listTeamMailboxesByUserShouldReturnTeamMailboxesWhichUserIsMemberOf(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
 
     assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(BOB)).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(TEAM_MAILBOX_MARKETING)
@@ -306,7 +423,7 @@ trait TeamMailboxRepositoryContract {
   @Test
   def listTeamMailboxesByUserShouldNotReturnTeamMailboxesWhichUserIsNotMemberOf(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, ANDRE)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
 
     assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(BOB)).collectSeq().block().asJava)
       .isEmpty()
@@ -315,9 +432,9 @@ trait TeamMailboxRepositoryContract {
   @Test
   def userCanBeMemberOfSeveralTeamMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_SALES)).block()
-    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_SALES, BOB)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_SALES, TeamMailboxMember.asMember(BOB))).block()
 
     assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(BOB)).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(TEAM_MAILBOX_MARKETING, TEAM_MAILBOX_SALES)
@@ -378,6 +495,46 @@ trait TeamMailboxRepositoryContract {
 
     assertThat(SFlux.fromPublisher(testee.listTeamMailboxes()).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(saleTeam, marketingTeam)
+  }
+
+  @Test
+  def listMembersShouldReturnCorrectRole(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(ANDRE))).block()
+
+    assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+      .containsExactlyInAnyOrder(TeamMailboxMember.asMember(BOB), TeamMailboxMember.asManager(ANDRE))
+  }
+
+  @Test
+  def listMembersShouldNotReturnUserWithEmptyRight(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    mailboxManager.applyRightsCommand(TEAM_MAILBOX_MARKETING.mailboxPath, MailboxACL.command
+      .key(MailboxACL.EntryKey.createUserEntryKey(BOB))
+      .rights(MailboxACL.NO_RIGHTS)
+      .asReplacement(),
+      mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner))
+
+    assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+      .doesNotContain(TeamMailboxMember.asMember(BOB))
+  }
+
+  @Test
+  def listMembersShouldNotReturnUserDoesNotHaveBasicTeamMailboxRights(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    mailboxManager.applyRightsCommand(TEAM_MAILBOX_MARKETING.mailboxPath, MailboxACL.command
+      .key(MailboxACL.EntryKey.createUserEntryKey(BOB))
+      .rights(MailboxACL.Right.Lookup)
+      .asReplacement(),
+      mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner))
+
+    assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+      .doesNotContain(TeamMailboxMember.asMember(BOB))
   }
 }
 
