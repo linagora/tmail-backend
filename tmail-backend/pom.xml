@@ -60,6 +60,7 @@
         <module>healthcheck</module>
 
         <module>event-bus-redis</module>
+        <module>event-bus-postgres</module>
     </modules>
 
     <properties>
@@ -201,6 +202,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-event-bus-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-event-bus-postgres</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
