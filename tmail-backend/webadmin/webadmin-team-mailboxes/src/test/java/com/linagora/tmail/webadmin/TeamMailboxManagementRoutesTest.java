@@ -543,7 +543,8 @@ public class TeamMailboxManagementRoutesTest {
             assertThatJson(response)
                 .isEqualTo("[" +
                     "    {" +
-                    "        \"username\": \"bob@linagora.com\"" +
+                    "        \"username\": \"bob@linagora.com\"," +
+                    "        \"role\": \"member\"" +
                     "    }" +
                     "]");
         }
@@ -551,7 +552,7 @@ public class TeamMailboxManagementRoutesTest {
         @Test
         void getTeamMailboxMembersShouldReturnListEntryWhenHasMultipleElement() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
-            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asManager(BOB))).block();
             Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(ANDRE))).block();
             String response  = given()
                 .get()
@@ -566,10 +567,12 @@ public class TeamMailboxManagementRoutesTest {
                 .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
                 .isEqualTo("[" +
                     "    {" +
-                    "        \"username\": \"bob@linagora.com\"" +
+                    "        \"username\": \"bob@linagora.com\"," +
+                    "        \"role\": \"manager\"" +
                     "    }," +
                     "    {" +
-                    "        \"username\": \"andre@linagora.com\"" +
+                    "        \"username\": \"andre@linagora.com\"," +
+                    "        \"role\": \"member\"" +
                     "    }" +
                     "]");
         }
@@ -607,6 +610,7 @@ public class TeamMailboxManagementRoutesTest {
         @Test
         void addMemberShouldReturnErrorWhenTeamMailboxDoesNotExists() {
             Map<String, Object> errors = given()
+                .queryParam("role", "member")
                 .put("/" + BOB.asString())
             .then()
                 .statusCode(NOT_FOUND_404)
@@ -643,7 +647,27 @@ public class TeamMailboxManagementRoutesTest {
         }
 
         @Test
-        void addMemberShouldStoreAssignEntry() {
+        void addMemberShouldReturnErrorWhenRoleIsInvalid() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Map<String, Object> errors = given()
+                .queryParam("role", "invalid")
+                .put("/" + BOB.asString())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Wrong role: invalid");
+        }
+
+        @Test
+        void addMemberShouldCreateNewWithRoleMemberWhenRoleDoesNotExist() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
             given()
                 .put("/" + BOB.asString())
@@ -653,14 +677,56 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
                 .containsExactlyInAnyOrder(TeamMailboxMember.asMember(BOB));
         }
+
+        @Test
+        void addMemberShouldStoreAssignEntry() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            given()
+                .queryParam("role", "member")
+                .put("/" + BOB.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
+                .containsExactlyInAnyOrder(TeamMailboxMember.asMember(BOB));
+        }
+
+        @Test
+        void addMemberShouldStoreAssignEntryWhenRoleIsManager() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            given()
+                .queryParam("role", "manager")
+                .put("/" + BOB.asString())
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
+                .containsExactlyInAnyOrder(TeamMailboxMember.asManager(BOB));
+        }
+
         @Test
         void addMemberShouldReturn204StatusWhenUserAlreadyInTeamMailbox() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
             Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
             given()
+                .queryParam("role", "member")
                 .put("/" + BOB.asString())
             .then()
                 .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void addMemberShouldUpdateRoleWhenUserAlreadyInTeamMailbox() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+            given()
+                .queryParam("role", "manager")
+                .put("/" + BOB.asString())
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
+                .containsExactlyInAnyOrder(TeamMailboxMember.asManager(BOB));
         }
     }
 
@@ -729,7 +795,7 @@ public class TeamMailboxManagementRoutesTest {
         void deleteMemberShouldReturn204StatusWhenUserAlreadyDoesNotInTeamMailbox() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
             given()
-                .put("/" + BOB.asString())
+                .delete("/" + BOB.asString())
             .then()
                 .statusCode(NO_CONTENT_204);
         }

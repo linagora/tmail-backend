@@ -72,6 +72,7 @@ Returns the list of members of the `marketing@domain.tld` team mailbox:
 [
   {
      "username": "bob@domain.tld"
+     "role": "member"
   },
 ...
 ]
@@ -85,10 +86,14 @@ Return codes:
 === Adding a member to a Team Mailbox
 
 ....
-curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/members/bob@domain.tld
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/members/bob@domain.tld?role=member
 ....
 
 Allows creating `bob@domain.tld` user as a member of `marketing@domain.tld` team mailbox.
+
+Query paras:
+
+- `role` Optional. Default to `member`. Value is either `manager` or `member`
 
 Return codes:
 

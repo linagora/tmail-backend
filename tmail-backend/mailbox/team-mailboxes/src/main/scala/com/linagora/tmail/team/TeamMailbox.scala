@@ -160,11 +160,20 @@ object TeamMemberRole extends Enumeration {
   type Role = Value
   val ManagerRole: Value = Value("manager")
   val MemberRole: Value = Value("member")
+
+  def from(value: String): Option[TeamMemberRole] = value match {
+    case "manager" => Some(TeamMemberRole(ManagerRole))
+    case "member" => Some(TeamMemberRole(MemberRole))
+    case _ => None
+  }
 }
 
-case class TeamMemberRole(value: Role) extends AnyVal
+case class TeamMemberRole(value: Role)
 
 object TeamMailboxMember {
+  def of(username: Username, teamMemberRole: TeamMemberRole) =
+    TeamMailboxMember(username, teamMemberRole)
+
   def asMember(username: Username): TeamMailboxMember =
     TeamMailboxMember(username, TeamMemberRole(MemberRole))
 
