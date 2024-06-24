@@ -1,5 +1,7 @@
 package com.linagora.tmail.webadmin;
 
+import java.util.Objects;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
@@ -19,9 +21,11 @@ import com.linagora.tmail.team.TeamMailboxName;
 import com.linagora.tmail.team.TeamMailboxNameConflictException;
 import com.linagora.tmail.team.TeamMailboxNotFoundException;
 import com.linagora.tmail.team.TeamMailboxRepository;
+import com.linagora.tmail.team.TeamMemberRole;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import scala.jdk.javaapi.OptionConverters;
 import spark.HaltException;
 import spark.Request;
 import spark.Route;
@@ -44,19 +48,26 @@ public class TeamMailboxManagementRoutes implements Routes {
 
     static class TeamMailboxMemberResponse {
         private final Username username;
+        private final String role;
 
-        TeamMailboxMemberResponse(Username username) {
+        TeamMailboxMemberResponse(Username username, String role) {
             this.username = username;
+            this.role = role;
         }
 
         public String getUsername() {
             return username.asString();
+        }
+
+        public String getRole() {
+            return role;
         }
     }
 
     private static final String TEAM_MAILBOX_DOMAIN_PARAM = ":dom";
     private static final String TEAM_MAILBOX_NAME_PARAM = ":name";
     private static final String MEMBER_USERNAME_PARAM = ":username";
+    private static final String ROLE_PARAM = "role";
     public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
 
@@ -102,6 +113,18 @@ public class TeamMailboxManagementRoutes implements Routes {
 
     private Username extractMemberUser(Request request) {
         return Username.of(request.params(MEMBER_USERNAME_PARAM));
+    }
+
+    private TeamMemberRole extractRole(Request request) {
+        String role = request.queryParams(ROLE_PARAM);
+        if (Objects.isNull(role)) {
+            return new TeamMemberRole(TeamMemberRole.MemberRole());
+        }
+        return OptionConverters.toJava(TeamMemberRole.from(role)).orElseThrow(() -> ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message("Wrong role: " + role)
+            .haltError());
     }
 
     private HaltException teamMailboxNotFoundException(TeamMailbox teamMailbox, Exception exception) {
@@ -165,7 +188,7 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
             return Flux.from(teamMailboxRepository.listMembers(teamMailbox))
-                .map(teamMailboxMember -> new TeamMailboxMemberResponse(teamMailboxMember.username()))
+                .map(teamMailboxMember -> new TeamMailboxMemberResponse(teamMailboxMember.username(), teamMailboxMember.role().value().toString()))
                 .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
                 .collectList()
                 .block();
@@ -176,7 +199,8 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
             Username addUser = extractMemberUser(request);
-            Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(addUser)))
+            TeamMemberRole role = extractRole(request);
+            Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.of(addUser, role)))
                 .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
                 .block();
             return Responses.returnNoContent(response);
