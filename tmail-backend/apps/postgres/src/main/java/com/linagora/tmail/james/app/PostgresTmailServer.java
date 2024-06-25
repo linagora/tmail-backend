@@ -39,6 +39,7 @@ import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
 import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
 import org.apache.james.modules.mailbox.PostgresDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.PostgresMailboxModule;
+import org.apache.james.modules.mailbox.RLSSupportPostgresMailboxModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
 import org.apache.james.modules.plugins.QuotaMailingModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
@@ -172,6 +173,7 @@ public class PostgresTmailServer {
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
+            .combineWith(chooseRLSSupportPostgresMailboxModule(configuration))
             .overrideWith(chooseSearchModules(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
@@ -411,6 +413,13 @@ public class PostgresTmailServer {
     private static Module chooseMailbox(MailboxConfiguration mailboxConfiguration) {
         if (mailboxConfiguration.isEncryptionEnabled()) {
             return new PostgresEncryptedMailboxModule();
+        }
+        return Modules.EMPTY_MODULE;
+    }
+
+    private static Module chooseRLSSupportPostgresMailboxModule(PostgresTmailConfiguration configuration) {
+        if (configuration.rlsEnabled()) {
+            return new RLSSupportPostgresMailboxModule();
         }
         return Modules.EMPTY_MODULE;
     }

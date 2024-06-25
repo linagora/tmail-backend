@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.PostgresJamesConfiguration;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.backends.postgres.PostgresConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.jmap.JMAPModule;
@@ -34,6 +35,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                          LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
                                          boolean jmapEnabled,
+                                         boolean rlsEnabled,
                                          PropertiesProvider propertiesProvider,
                                          PostgresJamesConfiguration.EventBusImpl eventBusImpl) implements Configuration {
     public static class Builder {
@@ -47,6 +49,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
+        private Optional<Boolean> rlsEnabled;
         private Optional<PostgresJamesConfiguration.EventBusImpl> eventBusImpl;
 
         private Builder() {
@@ -60,6 +63,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
+            rlsEnabled = Optional.empty();
             eventBusImpl = Optional.empty();
         }
 
@@ -131,6 +135,11 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return this;
         }
 
+        public Builder rlsEnabled(Optional<Boolean> rlsEnabled) {
+            this.rlsEnabled = rlsEnabled;
+            return this;
+        }
+
         public Builder eventBusImpl(PostgresJamesConfiguration.EventBusImpl eventBusImpl) {
             this.eventBusImpl = Optional.of(eventBusImpl);
             return this;
@@ -179,6 +188,8 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 }
             });
 
+            boolean rlsEnabled = this.rlsEnabled.orElse(readRLSEnabledFromFile(propertiesProvider));
+
             PostgresJamesConfiguration.EventBusImpl eventBusImpl = this.eventBusImpl.orElseGet(() -> PostgresJamesConfiguration.EventBusImpl.from(propertiesProvider));
 
             return new PostgresTmailConfiguration(
@@ -192,8 +203,17 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
                 jmapEnabled,
+                rlsEnabled,
                 propertiesProvider,
                 eventBusImpl);
+        }
+
+        private boolean readRLSEnabledFromFile(PropertiesProvider propertiesProvider) {
+            try {
+                return PostgresConfiguration.from(propertiesProvider.getConfiguration(PostgresConfiguration.POSTGRES_CONFIGURATION_NAME)).rowLevelSecurityEnabled();
+            } catch (FileNotFoundException | ConfigurationException e) {
+                return false;
+            }
         }
     }
 
