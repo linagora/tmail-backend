@@ -38,7 +38,6 @@ import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 
 import io.restassured.RestAssured;
-import net.javacrumbs.jsonunit.core.internal.Options;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -163,7 +162,7 @@ class EmailAddressContactRoutesTest {
                 .asString();
 
             assertThatJson(response)
-                .withOptions(new Options(IGNORING_ARRAY_ORDER))
+                .withOptions(IGNORING_ARRAY_ORDER)
                 .isEqualTo("""
                     ["%s", "%s"]
                     """.formatted(mailAddressA, mailAddressB));
@@ -229,7 +228,7 @@ class EmailAddressContactRoutesTest {
                 .asString();
 
             assertThatJson(response)
-                .withOptions(new Options(IGNORING_ARRAY_ORDER))
+                .withOptions(IGNORING_ARRAY_ORDER)
                 .isEqualTo("[" +
                     "\"" + mailAddressA + "\"," +
                     "\"" + mailAddressB + "\"" +
@@ -258,7 +257,7 @@ class EmailAddressContactRoutesTest {
                 .asString();
 
             assertThatJson(response)
-                .withOptions(new Options(IGNORING_ARRAY_ORDER))
+                .withOptions(IGNORING_ARRAY_ORDER)
                 .isEqualTo("[" +
                     "\"" + mailAddressA + "\"," +
                     "\"" + mailAddressB + "\"," +

@@ -2,6 +2,7 @@ package com.linagora.tmail.james.common
 
 import java.io.ByteArrayInputStream
 
+import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.common.PublicAssetGetMethodContract.{CREATION_REQUEST, IDENTITY_ID}
 import com.linagora.tmail.james.common.probe.PublicAssetProbe
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
@@ -11,7 +12,6 @@ import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
-import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.api.model.Size.Size
@@ -176,7 +176,7 @@ trait PublicAssetGetMethodContract {
            |        "notFound": []
            |    },
            |    "c1"
-           |]""".stripMargin).withOptions(new Options(IGNORING_ARRAY_ORDER)))
+           |]""".stripMargin).withOptions(ImmutableList.of(IGNORING_ARRAY_ORDER)))
   }
 
   @Test

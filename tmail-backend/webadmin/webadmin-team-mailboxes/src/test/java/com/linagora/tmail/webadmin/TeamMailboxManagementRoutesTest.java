@@ -62,7 +62,6 @@ import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import net.javacrumbs.jsonunit.core.Option;
-import net.javacrumbs.jsonunit.core.internal.Options;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -564,7 +563,7 @@ public class TeamMailboxManagementRoutesTest {
                 .asString();
 
             assertThatJson(response)
-                .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+                .withOptions(Option.IGNORING_ARRAY_ORDER)
                 .isEqualTo("[" +
                     "    {" +
                     "        \"username\": \"bob@linagora.com\"," +
@@ -592,7 +591,7 @@ public class TeamMailboxManagementRoutesTest {
                 .asString();
 
             assertThatJson(response)
-                .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+                .withOptions(Option.IGNORING_ARRAY_ORDER)
                 .isEqualTo("[]");
         }
     }
