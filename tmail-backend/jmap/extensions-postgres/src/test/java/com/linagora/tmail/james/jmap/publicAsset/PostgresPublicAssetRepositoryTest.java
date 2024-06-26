@@ -19,7 +19,7 @@ class PostgresPublicAssetRepositoryTest implements PublicAssetRepositoryContract
             blobIdFactory(),
             new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, blobIdFactory()),
             PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX(),
-            postgresExtension.getNonRLSPostgresExecutor());
+            postgresExtension.getByPassRLSPostgresExecutor());
     }
 
     @Override
