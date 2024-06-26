@@ -2,6 +2,7 @@ package com.linagora.tmail.james.common
 
 import java.util
 
+import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.common.LabelChangesMethodContract.firebasePushClient
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
 import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebasePushRequest}
@@ -13,7 +14,6 @@ import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.JsonMatchers
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.core.Option
-import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
@@ -308,7 +308,7 @@ trait LabelChangesMethodContract {
            | "$labelId4",
            | "$labelId5"
            |]""".stripMargin).
-        withOptions(new Options(Option.IGNORING_ARRAY_ORDER)))
+        withOptions(ImmutableList.of(Option.IGNORING_ARRAY_ORDER)))
   }
 
   @Test

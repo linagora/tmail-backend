@@ -11,7 +11,6 @@ import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
-import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
@@ -129,7 +128,7 @@ trait LinagoraCalendarEventReplyWithAMQPWorkflowContract {
     val aqmpContent: Optional[String] = readAMQPContent
     assertThat(aqmpContent).isPresent
     assertThatJson(aqmpContent.get())
-      .withOptions(new Options(Option.IGNORING_EXTRA_FIELDS))
+      .withOptions(Option.IGNORING_EXTRA_FIELDS)
       .isEqualTo(
         s"""{
            |    "ical": "$${json-unit.ignore}",

@@ -9,7 +9,6 @@ import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
-import net.javacrumbs.jsonunit.core.internal.Options
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
@@ -93,7 +92,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -193,7 +192,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -283,7 +282,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -380,7 +379,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -612,7 +611,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -877,7 +876,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -1022,7 +1021,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(responseOfAndreRequest)
-      .withOptions(new Options(Option.IGNORING_ARRAY_ORDER))
+      .withOptions(Option.IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -1166,7 +1165,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -1243,7 +1242,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -1333,7 +1332,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -1434,7 +1433,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
@@ -1584,7 +1583,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .asString
 
     assertThatJson(response)
-      .withOptions(new Options(IGNORING_ARRAY_ORDER))
+      .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[

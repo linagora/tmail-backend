@@ -2,6 +2,8 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.Callable
+import java.util.function.Consumer
 import java.util.stream
 import java.util.stream.Stream
 
@@ -88,19 +90,24 @@ class PublicAssetRoutes @Inject()(val publicAssetRepository: PublicAssetReposito
   private def downloadAsset(response: HttpServerResponse,
                             contentType: ContentType,
                             content: InputStream,
-                            size: Size): SMono[Unit] =
-    SMono.fromPublisher(Mono.using(() => content,
-        (stream: InputStream) => addContentLengthHeader(size)
-          .apply(response)
-          .header(CONTENT_TYPE, contentType.asString)
-          .header(CACHE_CONTROL, s"immutable, max-age=$ONE_YEAR_AS_SECONDS")
-          .status(OK)
-          .send(ReactorUtils.toChunks(stream, BUFFER_SIZE)
-            .map(Unpooled.wrappedBuffer(_))
-            .subscribeOn(Schedulers.boundedElastic()))
-          .`then`,
-        asJavaConsumer[InputStream]((stream: InputStream) => stream.close())))
+                            size: Size): SMono[Unit] = {
+    val resourceSupplier: Callable[InputStream] = () => content
+    val sourceSupplier: java.util.function.Function[InputStream, Mono[Void]] = stream => SMono(addContentLengthHeader(size)
+      .apply(response)
+      .header(CONTENT_TYPE, contentType.asString)
+      .header(CACHE_CONTROL, s"immutable, max-age=$ONE_YEAR_AS_SECONDS")
+      .status(OK)
+      .send(ReactorUtils.toChunks(stream, BUFFER_SIZE)
+        .map(Unpooled.wrappedBuffer(_))
+        .subscribeOn(Schedulers.boundedElastic()))).asJava()
+    val resourceRelease: Consumer[InputStream] = (stream: InputStream) => stream.close()
+
+    SMono.fromPublisher(Mono.using(
+        resourceSupplier,
+        sourceSupplier,
+        resourceRelease))
       .`then`
+  }
 
   private def addContentLengthHeader(size: Size): HttpServerResponse => HttpServerResponse =
     resp => resp.header(CONTENT_LENGTH, size.value.toString)
