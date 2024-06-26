@@ -14,6 +14,6 @@ public class PostgresRateLimitingPlanRepositoryTest implements RateLimitingPlanR
 
     @Override
     public RateLimitingPlanRepository testee() {
-        return new PostgresRateLimitingPlanRepository(new PostgresRateLimitingPlanDAO(postgresExtension.getPostgresExecutor()));
+        return new PostgresRateLimitingPlanRepository(new PostgresRateLimitingPlanDAO(postgresExtension.getDefaultPostgresExecutor()));
     }
 }

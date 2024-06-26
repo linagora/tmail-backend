@@ -25,7 +25,7 @@ public class PostgresSingleSaveBlobStoreTest implements SingleSaveBlobStoreContr
 
     @BeforeEach
     void setUp() {
-        postgresBlobIdList = new PostgresBlobIdList(new PostgresBlobIdListDAO(postgresExtension.getPostgresExecutor()));
+        postgresBlobIdList = new PostgresBlobIdList(new PostgresBlobIdListDAO(postgresExtension.getDefaultPostgresExecutor()));
         blobStoreDAO = new SingleSaveBlobStoreDAO(new MemoryBlobStoreDAO(), postgresBlobIdList, defaultBucketName());
     }
 

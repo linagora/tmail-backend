@@ -210,7 +210,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
 
         private boolean readRLSEnabledFromFile(PropertiesProvider propertiesProvider) {
             try {
-                return PostgresConfiguration.from(propertiesProvider.getConfiguration(PostgresConfiguration.POSTGRES_CONFIGURATION_NAME)).rowLevelSecurityEnabled();
+                return PostgresConfiguration.from(propertiesProvider.getConfiguration(PostgresConfiguration.POSTGRES_CONFIGURATION_NAME)).getRowLevelSecurity().isRowLevelSecurityEnabled();
             } catch (FileNotFoundException | ConfigurationException e) {
                 return false;
             }

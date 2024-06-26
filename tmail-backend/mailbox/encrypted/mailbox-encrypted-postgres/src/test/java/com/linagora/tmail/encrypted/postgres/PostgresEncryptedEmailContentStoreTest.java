@@ -58,7 +58,7 @@ public class PostgresEncryptedEmailContentStoreTest implements EncryptedEmailCon
             .blobIdFactory(BLOB_ID_FACTORY)
             .defaultBucketName()
             .passthrough());
-        encryptedEmailStoreDAO = new PostgresEncryptedEmailStoreDAO(postgresExtension.getPostgresExecutor(), BLOB_ID_FACTORY);
+        encryptedEmailStoreDAO = new PostgresEncryptedEmailStoreDAO(postgresExtension.getDefaultPostgresExecutor(), BLOB_ID_FACTORY);
         blobReferenceSource = new PostgresEncryptedEmailBlobReferenceSource(encryptedEmailStoreDAO);
     }
 

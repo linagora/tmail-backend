@@ -19,7 +19,7 @@ class PostgresPublicAssetRepository @Inject()(val executorFactory: PostgresExecu
                                               val blobIdFactory: BlobId.Factory,
                                               val blobStore: BlobStore,
                                               @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI,
-                                              @Named(PostgresExecutor.NON_RLS_INJECT) bypassRlsExecutor: PostgresExecutor) extends PublicAssetRepository {
+                                              @Named(PostgresExecutor.BY_PASS_RLS_INJECT) bypassRlsExecutor: PostgresExecutor) extends PublicAssetRepository {
   private val bucketName: BucketName = blobStore.getDefaultBucketName
   private val byPassRlsDao: PostgresPublicAssetDAO = new PostgresPublicAssetDAO(bypassRlsExecutor, blobIdFactory)
 

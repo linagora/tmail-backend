@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 
 class PostgresRateLimitingPlanUserRepository @Inject()(executorFactory: PostgresExecutor.Factory,
-                                                      @Named(PostgresExecutor.NON_RLS_INJECT) bypassRlsExecutor: PostgresExecutor) extends RateLimitingPlanUserRepository {
+                                                      @Named(PostgresExecutor.BY_PASS_RLS_INJECT) bypassRlsExecutor: PostgresExecutor) extends RateLimitingPlanUserRepository {
   private val byPassRlsDao: PostgresRateLimitPlanUserDAO =
     PostgresRateLimitPlanUserDAO(bypassRlsExecutor)
 
