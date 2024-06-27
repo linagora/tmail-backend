@@ -24,7 +24,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 public class PostgresJmapSettingsRepositoryTest implements JmapSettingsRepositoryContract {
     @RegisterExtension
-    static PostgresExtension postgresExtension = PostgresExtension.withRowLevelSecurity(PostgresJmapSettingsModule.MODULE);
+    static PostgresExtension postgresExtension = PostgresExtension.withoutRowLevelSecurity(PostgresJmapSettingsModule.MODULE);
 
     @Override
     public JmapSettingsRepository testee() {
