@@ -4,7 +4,7 @@ import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.method.WithAccountId
 
 case class TeamMailboxMemberGetRequest(accountId: AccountId,
-                                 ids: Option[Set[String]] = None) extends WithAccountId
+                                       ids: Option[Set[String]] = None) extends WithAccountId
 
 case class TeamMailboxMemberGetResponse(accountId: AccountId,
                                         list: Seq[TeamMailboxMemberDTO],

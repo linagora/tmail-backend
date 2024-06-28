@@ -32,7 +32,7 @@ trait TeamMailboxMemberGetMethodContract {
   }
 
   @Test
-  def missingPublicAssetCapabilityShouldFail(): Unit =
+  def missingTeamMailboxesCapabilityShouldFail(): Unit =
     `given`
       .body(
         s"""{
@@ -248,6 +248,47 @@ trait TeamMailboxMemberGetMethodContract {
            |                  }
            |        ],
            |        "notFound": []
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+  }
+
+  @Test
+  def getShouldReturnNotFoundWhenUserIsNotMemberOfTheTeamMailbox(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, ANDRE)
+
+    `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:team:mailboxes"],
+           |  "methodCalls": [
+           |    [
+           |      "TeamMailboxMember/get",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "ids": [
+           |                  "${teamMailbox.mailboxName.asString()}"
+           |        ]
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+      .when
+      .post
+      .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "TeamMailboxMember/get",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "list": [],
+           |        "notFound": [ "${teamMailbox.mailboxName.asString()}" ]
            |    },
            |    "c1"
            |]""".stripMargin))
