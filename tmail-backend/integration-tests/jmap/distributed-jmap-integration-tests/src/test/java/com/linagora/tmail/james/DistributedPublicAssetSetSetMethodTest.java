@@ -26,6 +26,7 @@ public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMet
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .s3()
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()

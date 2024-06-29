@@ -43,6 +43,7 @@ public class DistributedPublicAssetGetMethodTest implements PublicAssetGetMethod
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
+                .s3()
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
