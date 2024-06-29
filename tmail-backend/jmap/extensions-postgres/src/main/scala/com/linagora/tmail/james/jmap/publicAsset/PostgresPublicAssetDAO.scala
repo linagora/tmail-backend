@@ -8,6 +8,7 @@ import org.apache.james.blob.api.BlobId
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.{IdentityId, Size}
 import org.jooq
+import org.jooq.impl.DSL.sum
 import org.jooq.impl.{DSL, SQLDataType}
 import org.jooq.{Field, Record, Table}
 import reactor.core.publisher.{Flux, Mono}
@@ -102,6 +103,12 @@ class PostgresPublicAssetDAO(postgresExecutor: PostgresExecutor, blobIdFactory: 
   def deleteAllAssets(username: Username): SMono[Void] =
     SMono(postgresExecutor.executeVoid(dslContext => Mono.from(dslContext.deleteFrom(TABLE_NAME)
       .where(USER.eq(username.asString())))))
+
+  def selectSumSize(username: Username): SMono[Long] =
+    SMono(postgresExecutor.executeRow(dslContext => Mono.from(dslContext.select(sum(SIZE))
+        .from(TABLE_NAME)
+        .where(USER.eq(username.asString()))))
+      .map(record => record.get(0, classOf[Long])))
 
   private def toMetadata(record: jooq.Record) =
     PublicAssetMetadata(id = PublicAssetId(record.get(ASSET_ID)),

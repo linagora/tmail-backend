@@ -75,6 +75,9 @@ class PostgresPublicAssetRepository @Inject()(val executorFactory: PostgresExecu
   private def getBlobContentAndMapToPublicAssetStorage(metaData: PublicAssetMetadata): SMono[PublicAssetStorage] =
     SMono(blobStore.readReactive(bucketName, metaData.blobId))
       .map(inputStream => metaData.asPublicAssetStorage(inputStream))
+
+  override def getTotalSize(username: Username): Publisher[Long] =
+    dao(username).selectSumSize(username)
 }
 
 class PostgresPublicAssetRepositoryModule extends AbstractModule {
