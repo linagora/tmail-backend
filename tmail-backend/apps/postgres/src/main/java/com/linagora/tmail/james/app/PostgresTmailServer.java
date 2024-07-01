@@ -10,6 +10,8 @@ import java.util.function.Function;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
+import org.apache.james.backends.redis.RedisHealthCheck;
+import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.json.DTO;
@@ -86,6 +88,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.TypeLiteral;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
@@ -346,7 +349,14 @@ public class PostgresTmailServer {
 
     private static Module chooseRedisRateLimiterModule(PostgresTmailConfiguration configuration) {
         if (configuration.hasConfigurationProperties("redis")) {
-            return new RedisRateLimiterModule();
+            return Modules.combine(new RedisRateLimiterModule(), new AbstractModule() {
+                @Override
+                protected void configure() {
+                    Multibinder.newSetBinder(binder(), HealthCheck.class)
+                        .addBinding()
+                        .to(RedisHealthCheck.class);
+                }
+            });
         }
         return Modules.EMPTY_MODULE;
     }
