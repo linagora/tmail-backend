@@ -34,6 +34,7 @@
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
         <authRequired>false</authRequired>
+        <verifyIdentity>false</verifyIdentity>
         <auth>
             <announce>never</announce>
             <requireSSL>false</requireSSL>
