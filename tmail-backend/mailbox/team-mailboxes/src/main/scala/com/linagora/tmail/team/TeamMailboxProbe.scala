@@ -26,4 +26,9 @@ class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) e
       .map(_.username)
       .collectSeq()
       .block()
+
+  def getMembers(teamMailbox: TeamMailbox): Seq[TeamMailboxMember] =
+    SFlux(teamMailboxRepository.listMembers(teamMailbox))
+      .collectSeq()
+      .block()
 }
