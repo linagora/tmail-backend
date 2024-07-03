@@ -9,7 +9,7 @@ import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Invocation, SessionTranslator}
+import org.apache.james.jmap.core.{AccountId, Invocation, SessionTranslator}
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
@@ -43,15 +43,21 @@ class TeamMailboxMemberGetMethod @Inject()(val teamMailboxRepository: TeamMailbo
 
   private def getTeamMailboxMemberResponse(username: Username, request: TeamMailboxMemberGetRequest): SMono[TeamMailboxMemberGetResponse] =
     request.ids match {
-      case None => getMembersTeamMailboxes(username, _ => true)
-        .map(seq => TeamMailboxMemberGetResponse(request.accountId, seq, Seq.empty))
-      case Some(ids) => getMembersTeamMailboxes(username, teamMailbox => ids.contains(teamMailbox.mailboxName.asString()))
-        .map(result => TeamMailboxMemberGetResponse(request.accountId, result, ids.diff(result.map(_.id).toSet).toSeq))
+      case None => getMembersOfAllTeamMailboxes(username, request.accountId)
+      case Some(ids) => getMembersOfSpecificTeamMailboxes(username, request.accountId, ids)
     }
 
-  private def getMembersTeamMailboxes(username: Username, predicate: TeamMailbox => Boolean): SMono[Seq[TeamMailboxMemberDTO]] =
+  private def getMembersOfAllTeamMailboxes(username: Username, accountId: AccountId): SMono[TeamMailboxMemberGetResponse] =
+    getMembersTeamMailboxes(username, _ => true)
+      .map(seq => TeamMailboxMemberGetResponse(accountId, seq, Seq.empty))
+
+  private def getMembersOfSpecificTeamMailboxes(username: Username, accountId: AccountId, mailboxNames: Set[String]): SMono[TeamMailboxMemberGetResponse] =
+    getMembersTeamMailboxes(username, teamMailbox => mailboxNames.contains(teamMailbox.mailboxName.asString()))
+      .map(result => TeamMailboxMemberGetResponse(accountId, result, mailboxNames.diff(result.map(_.id).toSet).toSeq))
+
+  private def getMembersTeamMailboxes(username: Username, filter: TeamMailbox => Boolean): SMono[Seq[TeamMailboxMemberDTO]] =
     SFlux.fromPublisher(teamMailboxRepository.listTeamMailboxes(username))
-      .filter(predicate)
+      .filter(filter)
       .flatMap(getMembersOf)
       .collectSeq()
 
