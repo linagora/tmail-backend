@@ -36,7 +36,7 @@ trait TeamMailboxMemberGetMethodContract {
     `given`
       .body(
         s"""{
-           |	"using": ["urn:ietf:params:jmap:core"],
+           |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
            |	"methodCalls": [
            |		[
            |			"TeamMailboxMember/get",
@@ -74,7 +74,7 @@ trait TeamMailboxMemberGetMethodContract {
     `given`
       .body(
         s"""{
-           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:team:mailboxes"],
+           |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		[
            |			"TeamMailboxMember/get",
@@ -106,7 +106,7 @@ trait TeamMailboxMemberGetMethodContract {
     `given`
       .body(
         s"""{
-           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:team:mailboxes"],
+           |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		[
            |			"TeamMailboxMember/get",
@@ -157,7 +157,7 @@ trait TeamMailboxMemberGetMethodContract {
     `given`
       .body(
         s"""{
-           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:team:mailboxes"],
+           |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		[
            |			"TeamMailboxMember/get",
@@ -217,7 +217,7 @@ trait TeamMailboxMemberGetMethodContract {
     `given`
       .body(
         s"""{
-           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:team:mailboxes"],
+           |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |  "methodCalls": [
            |    [
            |      "TeamMailboxMember/get",
@@ -263,7 +263,7 @@ trait TeamMailboxMemberGetMethodContract {
     `given`
       .body(
         s"""{
-           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:team:mailboxes"],
+           |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |  "methodCalls": [
            |    [
            |      "TeamMailboxMember/get",
@@ -309,7 +309,7 @@ trait TeamMailboxMemberGetMethodContract {
     `given`
       .body(
         s"""{
-           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:team:mailboxes"],
+           |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |  "methodCalls": [
            |    [
            |      "TeamMailboxMember/get",
