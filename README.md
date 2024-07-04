@@ -18,8 +18,6 @@
    <img src="https://github.com/artembru/tmail-backend/assets/146178981/69e619dd-e017-4607-9581-dfc79f084cfe" alt="Logo">
   </a>
 
-  <h3 align="center">twake-mail.com</h3>
-
  <p align="center">
     <a href="https://twake-mail.com">Website</a>
     •
