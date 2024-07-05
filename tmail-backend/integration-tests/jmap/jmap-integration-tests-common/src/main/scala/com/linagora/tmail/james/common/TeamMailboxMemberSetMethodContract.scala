@@ -270,21 +270,21 @@ trait TeamMailboxMemberSetMethodContract {
     `given`
       .body(
         s"""{
-           |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
-           |	"methodCalls": [
-           |		[
-           |			"TeamMailboxMember/set",
-           |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |				"update": {
+           |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
+           |  "methodCalls": [
+           |    [
+           |      "TeamMailboxMember/set",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "update": {
            |            "${teamMailbox.asString()}": {
            |                "${ANDRE.asString()}": null
            |            }
            |        }
-           |			},
-           |			"c1"
-           |		]
-           |	]
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
            |}""".stripMargin)
       .when
       .post
@@ -549,7 +549,7 @@ trait TeamMailboxMemberSetMethodContract {
            |        "notUpdated": {
            |            "${nonExistedTeamMailbox.asString()}": {
            |                "type": "invalidPatch",
-           |                "description": "Team mailbox is not found"
+           |                "description": "Team mailbox is not found or not a member of the mailbox"
            |            }
            |        }
            |    },
@@ -577,7 +577,8 @@ trait TeamMailboxMemberSetMethodContract {
            |        "update": {
            |            "${teamMailbox.asString()}": {
            |                "${CEDRIC.asString()}": {"role": "member"},
-           |                "abc@domain.tld": {"role": "member"}
+           |                "nonexisted1@domain.tld": {"role": "member"},
+           |                "nonexisted2@domain.tld": {"role": "member"}
            |            }
            |        }
            |      },
@@ -599,7 +600,7 @@ trait TeamMailboxMemberSetMethodContract {
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
            |                "type": "invalidPatch",
-           |                "description": "Some users do not exist in the system"
+           |                "description": "Some users do not exist in the system: nonexisted1@domain.tld, nonexisted2@domain.tld"
            |            }
            |        }
            |    },
@@ -648,7 +649,7 @@ trait TeamMailboxMemberSetMethodContract {
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
            |                "type": "invalidPatch",
-           |                "description": "Team mailbox is not found"
+           |                "description": "Team mailbox is not found or not a member of the mailbox"
            |            }
            |        }
            |    },
@@ -854,7 +855,7 @@ trait TeamMailboxMemberSetMethodContract {
            |        "notUpdated": {
            |            "${teamMailbox2.asString()}": {
            |                "type": "invalidPatch",
-           |                "description": "Team mailbox is not found"
+           |                "description": "Team mailbox is not found or not a member of the mailbox"
            |            }
            |        }
            |    },

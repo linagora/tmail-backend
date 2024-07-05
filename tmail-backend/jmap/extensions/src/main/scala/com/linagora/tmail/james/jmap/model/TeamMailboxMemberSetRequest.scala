@@ -9,20 +9,20 @@ import org.apache.james.jmap.method.WithAccountId
 
 import scala.util.Try
 
-trait TMBParseException extends RuntimeException {
+trait ParsingRequestException extends RuntimeException {
   def message: String
 
   override def getMessage: String = message
 }
-case class InvalidTeamMailboxException(teamMailboxNameDTO: TeamMailboxNameDTO) extends TMBParseException {
+case class InvalidTeamMailboxException(teamMailboxNameDTO: TeamMailboxNameDTO) extends ParsingRequestException {
   override def message: String = s"Invalid teamMailboxName"
 }
 
-case class InvalidRoleException(role: TeamMailboxMemberRoleDTO) extends TMBParseException {
+case class InvalidRoleException(role: TeamMailboxMemberRoleDTO) extends ParsingRequestException {
   override def message: String = s"Invalid role: ${role.role}"
 }
 
-case class InvalidTeamMemberNameException(memberName: TeamMailboxMemberName) extends TMBParseException {
+case class InvalidTeamMemberNameException(memberName: TeamMailboxMemberName) extends ParsingRequestException {
   override def message: String = s"Invalid team member name: ${memberName.value}"
 }
 
@@ -31,7 +31,7 @@ trait ParsingRequestResult
 case class ParsingRequestSuccess(teamMailbox: TeamMailbox,
                                  membersUpdateToAdd: List[TeamMailboxMember],
                                  membersUpdateToRemove: Set[Username]) extends ParsingRequestResult
-case class ParsingRequestFailure(tmbNameDto: TeamMailboxNameDTO, exception: TMBParseException) extends ParsingRequestResult
+case class ParsingRequestFailure(tmbNameDto: TeamMailboxNameDTO, exception: ParsingRequestException) extends ParsingRequestResult
 
 case class TeamMailboxMemberSetRequest(accountId: AccountId,
                                        update: Map[TeamMailboxNameDTO, Map[TeamMailboxMemberName, Option[TeamMailboxMemberRoleDTO]]]) extends WithAccountId {
@@ -47,12 +47,12 @@ case class TeamMailboxMemberSetRequest(accountId: AccountId,
           .fold(e => ParsingRequestFailure(teamMailboxNameDTO, e), identity)
     }.toList
 
-  private def validateMemberName(map: Map[TeamMailboxMemberName, Option[TeamMailboxMemberRoleDTO]]): Either[TMBParseException, Map[Username, Option[TeamMailboxMemberRoleDTO]]] =
+  private def validateMemberName(map: Map[TeamMailboxMemberName, Option[TeamMailboxMemberRoleDTO]]): Either[ParsingRequestException, Map[Username, Option[TeamMailboxMemberRoleDTO]]] =
     map.toList.traverse {
       case (memberName, role) => memberName.validate.map(_ -> role)
     }.map(_.toMap)
 
-  private def getAddMembers(map: Map[Username, Option[TeamMailboxMemberRoleDTO]]): Either[TMBParseException, List[TeamMailboxMember]] =
+  private def getAddMembers(map: Map[Username, Option[TeamMailboxMemberRoleDTO]]): Either[ParsingRequestException, List[TeamMailboxMember]] =
     map.collect {
       case (memberName, Some(role)) => role.validate.map(TeamMailboxMember(memberName, _))
     }.toList.sequence

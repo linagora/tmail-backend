@@ -59,23 +59,23 @@ class TeamMailboxMemberSetMethod @Inject()(val teamMailboxRepository: TeamMailbo
       case ParsingRequestFailure(teamMailboxNameDTO, exception) => SMono.just(TeamMailboxMemberSetResult.notUpdated(teamMailboxNameDTO, SetErrorDescription(exception.message)))
       case ParsingRequestSuccess(teamMailbox, membersUpdateToAdd, membersUpdateToRemove) =>
         checkIfAnyUsersDoesNotExist(membersUpdateToAdd, membersUpdateToRemove)
-          .filter(anyUsersNotExist => anyUsersNotExist)
-          .map(_ => TeamMailboxMemberSetResult.notUpdated(teamMailbox, SetErrorDescription("Some users do not exist in the system")))
+          .collectSeq()
+          .filter(usernames => usernames.nonEmpty)
+          .map(usernames => TeamMailboxMemberSetResult.notUpdated(teamMailbox,
+            SetErrorDescription(s"Some users do not exist in the system: ${usernames.map(username => username.asString()).toArray.mkString("", ", ", "")}")))
           .switchIfEmpty(updateTeamMailboxMembers(username, teamMailbox, membersUpdateToAdd, membersUpdateToRemove))
           .onErrorResume {
-            case _: TeamMailboxNotFoundException => SMono.just(TeamMailboxMemberSetResult.notUpdated(teamMailbox, SetErrorDescription("Team mailbox is not found")))
+            case _: TeamMailboxNotFoundException => SMono.just(TeamMailboxMemberSetResult.notUpdated(teamMailbox, SetErrorDescription("Team mailbox is not found or not a member of the mailbox")))
             case _: Throwable => SMono.just(TeamMailboxMemberSetResult.notUpdated(teamMailbox, SetErrorDescription("Internal error")))
           }
     }
 
   private def checkIfAnyUsersDoesNotExist(membersUpdateToAdd: List[TeamMailboxMember],
-                                membersUpdateToRemove: Set[Username]): SMono[Boolean] =
+                                membersUpdateToRemove: Set[Username]): SFlux[Username] =
     SFlux.fromIterable(membersUpdateToRemove.concat(membersUpdateToAdd.map(teamMailboxMember => teamMailboxMember.username)))
-      .flatMap(username => SMono(usersRepository.containsReactive(username)))
-      .filter(userExist => !userExist)
-      .next()
-      .map(_ => true)
-      .switchIfEmpty(SMono.just(false))
+      .flatMap(username => SMono(usersRepository.containsReactive(username))
+        .filter(userExist => !userExist)
+        .map(_ => username))
 
   private def updateTeamMailboxMembers(username: Username,
                                        teamMailbox: TeamMailbox,
@@ -89,7 +89,7 @@ class TeamMailboxMemberSetMethod @Inject()(val teamMailboxRepository: TeamMailbo
             case ManagerRole => updateTeamMailboxMembers(teamMailbox, membersUpdateToAdd, membersUpdateToRemove, presentMembers)
             case _ => SMono.just(TeamMailboxMemberSetResult.notUpdated(teamMailbox, SetErrorDescription(s"Not manager of teamMailbox ${teamMailbox.asString()}")))
           }
-        case None => SMono.just(TeamMailboxMemberSetResult.notUpdated(teamMailbox, SetErrorDescription("Team mailbox is not found")))
+        case None => SMono.just(TeamMailboxMemberSetResult.notUpdated(teamMailbox, SetErrorDescription("Team mailbox is not found or not a member of the mailbox")))
       })
 
   private def updateTeamMailboxMembers(teamMailbox: TeamMailbox,
