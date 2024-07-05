@@ -26,6 +26,7 @@ import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.core.builder.MimeMessageBuilder.BodyPartBuilder
 import org.apache.james.filesystem.api.FileSystem
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
+import org.apache.james.jmap.method.EmailSubmissionSetMethod.MAIL_METADATA_USERNAME_ATTRIBUTE
 import org.apache.james.jmap.routes.{BlobNotFoundException, BlobResolvers}
 import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
 import org.apache.james.mailbox.MailboxSession
@@ -34,7 +35,7 @@ import org.apache.james.queue.api.{MailQueue, MailQueueFactory}
 import org.apache.james.server.core.{MailImpl, MimeMessageInputStreamSource, MimeMessageWrapper, MissingArgumentException}
 import org.apache.james.user.api.UsersRepository
 import org.apache.james.utils.PropertiesProvider
-import org.apache.mailet.Mail
+import org.apache.mailet.{Attribute, AttributeValue, Mail}
 import org.slf4j.{Logger, LoggerFactory}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
@@ -170,6 +171,7 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
             .sender(attendeeReply.attendee.asString())
             .addRecipients(recipient)
             .mimeMessage(mimeMessage)
+            .addAttribute(new Attribute(MAIL_METADATA_USERNAME_ATTRIBUTE, AttributeValue.of(attendeeReply.attendee.asString())))
             .build()
           LifecycleUtil.dispose(mimeMessage)
           mailImpl
