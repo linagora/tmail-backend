@@ -26,16 +26,18 @@ case class InvalidTeamMemberNameException(memberName: TeamMailboxMemberName) ext
   override def message: String = s"Invalid team member name: ${memberName.value}"
 }
 
-trait ParsingRequestResult
+trait TeamMailboxMemberParsingRequestResult
 
 case class ParsingRequestSuccess(teamMailbox: TeamMailbox,
                                  membersUpdateToAdd: List[TeamMailboxMember],
-                                 membersUpdateToRemove: Set[Username]) extends ParsingRequestResult
-case class ParsingRequestFailure(tmbNameDto: TeamMailboxNameDTO, exception: ParsingRequestException) extends ParsingRequestResult
+                                 membersUpdateToRemove: Set[Username]) extends TeamMailboxMemberParsingRequestResult {
+  def impactedUsers: Seq[Username] = membersUpdateToRemove.toSeq.concat(membersUpdateToAdd.map(teamMailboxMember => teamMailboxMember.username))
+}
+case class ParsingRequestFailure(teamMailboxName: TeamMailboxNameDTO, exception: ParsingRequestException) extends TeamMailboxMemberParsingRequestResult
 
 case class TeamMailboxMemberSetRequest(accountId: AccountId,
                                        update: Map[TeamMailboxNameDTO, Map[TeamMailboxMemberName, Option[TeamMailboxMemberRoleDTO]]]) extends WithAccountId {
-  def validatedUpdateRequest(): List[ParsingRequestResult] =
+  def validatedUpdateRequest(): List[TeamMailboxMemberParsingRequestResult] =
     update.map {
       case (teamMailboxNameDTO, membersUpdate) =>
         (for {
