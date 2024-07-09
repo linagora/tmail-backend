@@ -2,7 +2,8 @@ package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.james.jmap.json.{TeamMailboxMemberSerializer => Serializer}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_TEAM_MAILBOXES
-import com.linagora.tmail.james.jmap.model.{ParsingRequestFailure, TeamMailboxMemberParsingRequestResult, ParsingRequestSuccess, TeamMailboxMemberSetRequest, TeamMailboxMemberSetResponse, TeamMailboxMemberSetResult, TeamMailboxNameDTO}
+import com.linagora.tmail.james.jmap.method.TeamMailboxMemberSetMethod.{InvalidSyntax, ManagerAuthorizationChanged, NonExistingUsers, NotAuthorized}
+import com.linagora.tmail.james.jmap.model.{ParsingRequestFailure, ParsingRequestSuccess, TeamMailboxMemberParsingRequestResult, TeamMailboxMemberSetRequest, TeamMailboxMemberSetResponse, TeamMailboxMemberSetResult, TeamMailboxNameDTO}
 import com.linagora.tmail.team.TeamMemberRole.ManagerRole
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxMember, TeamMailboxNotFoundException, TeamMailboxRepository}
 import eu.timepit.refined.auto._
@@ -22,6 +23,14 @@ import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+object TeamMailboxMemberSetMethod {
+  private case class NonExistingUsers(teamMailbox: TeamMailbox, usersNotFound: Seq[Username]) extends RuntimeException
+  private case class InvalidSyntax(failure: ParsingRequestFailure) extends RuntimeException
+  private case class NotAuthorized(teamMailbox: TeamMailbox) extends RuntimeException
+  private case class ManagerAuthorizationChanged(teamMailbox: TeamMailbox, username: Username) extends RuntimeException
+
+}
 
 class TeamMailboxMemberSetMethod @Inject()(val teamMailboxRepository: TeamMailboxRepository,
                                            val usersRepository: UsersRepository,
@@ -61,8 +70,8 @@ class TeamMailboxMemberSetMethod @Inject()(val teamMailboxRepository: TeamMailbo
       requestWithUserExistenceValidation <- validateUsersExist(requestWithValidSyntax)
       presentMembers <- retrievePresentMembers(requestWithUserExistenceValidation)
       requestWithAuthorizationValidation <- validateAuthorizations(username, requestWithUserExistenceValidation, presentMembers)
-      requestWithAuthorizationValidation <- validateNoChangeToManagers(requestWithAuthorizationValidation, presentMembers)
-      result <- updateMembers(requestWithAuthorizationValidation)
+      validatedRequest <- validateNoChangeToManagers(requestWithAuthorizationValidation, presentMembers)
+      result <- updateMembers(validatedRequest)
     } yield {
       result
     }
@@ -78,11 +87,6 @@ class TeamMailboxMemberSetMethod @Inject()(val teamMailboxRepository: TeamMailbo
 
   private def retrievePresentMembers(requestWithUserExistenceValidation: ParsingRequestSuccess): SMono[Map[Username, TeamMailboxMember]] =
     SFlux(teamMailboxRepository.listMembers(requestWithUserExistenceValidation.teamMailbox)).collectMap[Username, TeamMailboxMember](member => member.username, member => member)
-
-  private case class NonExistingUsers(teamMailbox: TeamMailbox, usersNotFound: Seq[Username]) extends RuntimeException
-  private case class InvalidSyntax(failure: ParsingRequestFailure) extends RuntimeException
-  private case class NotAuthorized(teamMailbox: TeamMailbox) extends RuntimeException
-  private case class ManagerAuthorizationChanged(teamMailbox: TeamMailbox, username: Username) extends RuntimeException
 
   private def validateSyntax(request: TeamMailboxMemberParsingRequestResult): SMono[ParsingRequestSuccess] =
     request match {
