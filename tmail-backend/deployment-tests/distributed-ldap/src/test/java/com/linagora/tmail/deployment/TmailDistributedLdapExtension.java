@@ -61,7 +61,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withEnv("LDAP_DOMAIN", "james.org")
             .withEnv("LDAP_ADMIN_PASSWORD", "secret")
             .withCommand("--copy-service --loglevel debug")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-openldap-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("twake-mail-openldap-testing" + UUID.randomUUID()))
             .waitingFor(new LogMessageWaitStrategy().withRegEx(".*slapd starting\\n").withTimes(1)
                 .withStartupTimeout(Duration.ofMinutes(3)))
             .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(10)));
@@ -79,7 +79,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jmxremote.password"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/queue.properties"), "/root/conf/")
-            .withCreateContainerCmdModifier(cmder -> cmder.withName("team-mail-distributed-ldap-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(cmder -> cmder.withName("twake-mail-distributed-ldap-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80, 8000);
     }

@@ -13,7 +13,7 @@
     <artifactId>tmail-webadmin-mailbox</artifactId>
     <packaging>jar</packaging>
 
-    <name>Team-mail :: Web Admin :: Mailbox</name>
+    <name>Twake Mail :: Web Admin :: Mailbox</name>
 
     <dependencies>
         <dependency>

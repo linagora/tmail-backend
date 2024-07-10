@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>distributed-rate-limiter-integration-tests</artifactId>
-    <name>Team-mail :: Integration Tests :: Rate Limiter :: Distributed</name>
+    <name>Twake Mail :: Integration Tests :: Rate Limiter :: Distributed</name>
 
     <dependencies>
         <dependency>

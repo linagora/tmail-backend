@@ -12,7 +12,7 @@
 
     <artifactId>deployment-tests</artifactId>
     <packaging>pom</packaging>
-    <name>Team-mail :: Deployment Tests</name>
+    <name>Twake Mail :: Deployment Tests</name>
 
     <modules>
         <module>common</module>

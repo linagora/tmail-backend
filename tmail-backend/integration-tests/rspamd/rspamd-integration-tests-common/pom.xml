@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>rspamd-integration-tests-common</artifactId>
-    <name>Team-mail :: Integration Tests :: Rspamd :: Common</name>
+    <name>Twake Mail :: Integration Tests :: Rspamd :: Common</name>
 
     <dependencies>
         <dependency>

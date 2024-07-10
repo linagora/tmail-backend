@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>tmail-healthcheck</artifactId>
-    <name>Team-mail :: HealthCheck</name>
+    <name>Twake Mail :: HealthCheck</name>
 
     <dependencies>
         <dependency>

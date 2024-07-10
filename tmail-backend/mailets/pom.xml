@@ -10,8 +10,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>tmail-mailets</artifactId>
-    <name>Team-mail :: Mailet</name>
-    <description>Mailets for Team-mail</description>
+    <name>Twake Mail :: Mailet</name>
+    <description>Mailets for Twake Mail</description>
 
     <dependencies>
         <dependency>

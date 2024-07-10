@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>jmap-extensions</artifactId>
-    <name>Team-mail :: JMAP :: Extensions</name>
+    <name>Twake Mail :: JMAP :: Extensions</name>
 
     <properties>
         <uuid-creator.version>5.3.7</uuid-creator.version>

@@ -11,8 +11,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>tmail-rate-limiter-cassandra</artifactId>
-    <name>Team-mail :: Rate Limiter Cassandra</name>
-    <description>Rate limiter Cassandra Storage for Team-mail</description>
+    <name>Twake Mail :: Rate Limiter Cassandra</name>
+    <description>Rate limiter Cassandra Storage for Twake Mail</description>
 
     <dependencies>
         <dependency>

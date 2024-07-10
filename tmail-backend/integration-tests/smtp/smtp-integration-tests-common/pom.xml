@@ -10,7 +10,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>smtp-integration-tests-common</artifactId>
-    <name>Team-mail :: Integration Tests :: SMTP :: Common</name>
+    <name>Twake Mail :: Integration Tests :: SMTP :: Common</name>
 
     <dependencies>
         <dependency>

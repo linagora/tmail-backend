@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>smtp-extensions</artifactId>
-    <name>Team-mail :: SMTP :: Extensions</name>
+    <name>Twake Mail :: SMTP :: Extensions</name>
     <description>SMTP extensions for TMail</description>
 
     <dependencies>

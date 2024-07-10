@@ -11,7 +11,7 @@
     <packaging>pom</packaging>
 
     <artifactId>integration-tests</artifactId>
-    <name>Team-mail :: Integration Tests</name>
+    <name>Twake Mail :: Integration Tests</name>
 
     <modules>
         <module>jmap/distributed-jmap-integration-tests</module>

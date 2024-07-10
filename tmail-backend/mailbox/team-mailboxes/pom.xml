@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>team-mailboxes</artifactId>
-    <name>Team-mail :: Mailbox :: Team-Mailboxes</name>
+    <name>Twake Mail :: Mailbox :: Team-Mailboxes</name>
 
     <dependencies>
         <dependency>

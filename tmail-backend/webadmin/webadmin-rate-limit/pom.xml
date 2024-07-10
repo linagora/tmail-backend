@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>webadmin-rate-limit</artifactId>
-    <name>Team-mail :: WebAdmin :: Rate Limit</name>
+    <name>Twake Mail :: WebAdmin :: Rate Limit</name>
 
     <dependencies>
         <dependency>
