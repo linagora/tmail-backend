@@ -1,4 +1,4 @@
-# Apisix docker image for Team-Mail
+# Apisix docker image for Twake Mail
 
 Runs Apisix with the TeamMail plugin for OIDC single logout
 

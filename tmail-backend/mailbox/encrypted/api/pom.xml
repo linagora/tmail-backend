@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>mailbox-encrypted-api</artifactId>
-    <name>Team-mail :: Mailbox :: Encrypted :: API</name>
+    <name>Twake Mail :: Mailbox :: Encrypted :: API</name>
     <description>API for encrypted Mailbox using GPG</description>
 
     <dependencies>

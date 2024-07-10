@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>jmap-integration-tests-common</artifactId>
-    <name>Team-mail :: Integration Tests :: JMAP :: Common</name>
+    <name>Twake Mail :: Integration Tests :: JMAP :: Common</name>
 
     <dependencies>
         <dependency>

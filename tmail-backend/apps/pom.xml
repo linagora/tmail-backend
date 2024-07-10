@@ -11,7 +11,7 @@
     <packaging>pom</packaging>
 
     <artifactId>apps</artifactId>
-    <name>Team-mail :: Apps</name>
+    <name>Twake Mail :: Apps</name>
 
     <modules>
         <module>memory</module>

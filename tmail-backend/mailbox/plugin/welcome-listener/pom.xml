@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>welcome-listener</artifactId>
-    <name>Team-mail :: Mailbox :: Plugin :: Welcome listener</name>
+    <name>Twake Mail :: Mailbox :: Plugin :: Welcome listener</name>
 
     <dependencies>
         <dependency>

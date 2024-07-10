@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>distributed-rspamd-integration-tests</artifactId>
-    <name>Team-mail :: Integration Tests :: Rspamd :: Distributed</name>
+    <name>Twake Mail :: Integration Tests :: Rspamd :: Distributed</name>
 
     <dependencies>
         <dependency>

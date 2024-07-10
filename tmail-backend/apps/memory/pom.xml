@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>memory</artifactId>
-    <name>Team-mail :: Apps :: Memory</name>
+    <name>Twake Mail :: Apps :: Memory</name>
 
     <dependencies>
         <!-- Override MIME4J version -->

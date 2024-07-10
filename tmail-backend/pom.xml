@@ -13,8 +13,8 @@
     <artifactId>tmail-backend</artifactId>
     <packaging>pom</packaging>
 
-    <name>Team-mail backend server</name>
-    <description>Apache James extensions for Team-mail backend</description>
+    <name>Twake Mail backend server</name>
+    <description>Apache James extensions for Twake Mail backend</description>
     <inceptionYear>2020</inceptionYear>
 
     <modules>

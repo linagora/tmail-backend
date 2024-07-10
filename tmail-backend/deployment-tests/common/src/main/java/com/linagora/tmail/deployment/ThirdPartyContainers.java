@@ -20,7 +20,7 @@ public class ThirdPartyContainers {
             .withNetwork(network)
             .withEnv("JVM_OPTS", "-Dcassandra.skip_wait_for_gossip_to_settle=0 -Dcassandra.initial_token=1")
             .withExposedPorts(9042)
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-cassandra-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("twake-mail-cassandra-testing" + UUID.randomUUID()))
             .waitingFor(new LogMessageWaitStrategy().withRegEx(".*Startup complete\\n").withTimes(1)
                 .withStartupTimeout(Duration.ofMinutes(5)));
     }
@@ -34,7 +34,7 @@ public class ThirdPartyContainers {
             .withEnv("discovery.type", "single-node")
             .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
             .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-search-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("twake-mail-search-testing" + UUID.randomUUID()))
             .waitingFor(Wait.forHttp("/_cluster/health?pretty=true")
                 .forPort(9200)
                 .forStatusCode(200)
@@ -47,7 +47,7 @@ public class ThirdPartyContainers {
             .withNetworkAliases("rabbitmq")
             .withNetwork(network)
             .withExposedPorts(5672, 15672)
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-rabbitmq-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("twake-mail-rabbitmq-testing" + UUID.randomUUID()))
             .waitingFor(Wait.forHttp("/api/health/checks/alarms")
                 .withBasicCredentials("guest", "guest")
                 .forPort(15672)
@@ -64,7 +64,7 @@ public class ThirdPartyContainers {
             .withEnv("SCALITY_SECRET_ACCESS_KEY", "secretKey1")
             .withEnv("S3BACKEND", "mem")
             .withEnv("REMOTE_MANAGEMENT_DISABLE", "1")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-s3-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("twake-mail-s3-testing" + UUID.randomUUID()))
             .waitingFor(new LogMessageWaitStrategy().withRegEx(".*server started.*").withTimes(1)
                 .withStartupTimeout(Duration.ofMinutes(3)));
     }
@@ -73,7 +73,7 @@ public class ThirdPartyContainers {
     public static GenericContainer<?> createRedis(Network network) {
         return new GenericContainer<>(DockerImageName.parse("redis").withTag("7.0.12"))
             .withExposedPorts(6379)
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-redis-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("twake-mail-redis-testing" + UUID.randomUUID()))
             .withCommand("--loglevel", "debug")
             .withNetworkAliases("redis")
             .withNetwork(network)

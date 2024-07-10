@@ -54,7 +54,7 @@ public class TmailDistributedExtension implements BeforeEachCallback, AfterEachC
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jmxremote.password"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/queue.properties"), "/root/conf/")
-            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("team-mail-distributed-testing" + UUID.randomUUID()))
+            .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("twake-mail-distributed-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80, 8000);
     }

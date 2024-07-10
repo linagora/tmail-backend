@@ -1,6 +1,6 @@
-# Team-mail Healthcheck
+# Twake Mail Healthcheck
 
-This module gathers the custom healthcheck for Team-mail.
+This module gathers the custom healthcheck for Twake Mail.
 
 ## Tasks healthcheck
 

@@ -12,7 +12,7 @@
     <packaging>pom</packaging>
 
     <artifactId>mailbox-encrypted</artifactId>
-    <name>Team-mail :: Mailbox :: Encrypted</name>
+    <name>Twake Mail :: Mailbox :: Encrypted</name>
     <description>Encrypted Mailbox using GPG</description>
 
     <modules>

@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>jmap-extensions-rabbitmq</artifactId>
-    <name>Team-mail :: JMAP :: Extensions :: RabbitMQ</name>
+    <name>Twake Mail :: JMAP :: Extensions :: RabbitMQ</name>
 
     <dependencies>
         <dependency>

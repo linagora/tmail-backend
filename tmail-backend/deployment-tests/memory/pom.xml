@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>memory-deployment-tests</artifactId>
-    <name>Team-mail :: Deployment Tests :: Memory</name>
+    <name>Twake Mail :: Deployment Tests :: Memory</name>
 
     <dependencies>
         <dependency>

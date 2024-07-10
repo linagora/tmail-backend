@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>jmap-extensions-opensearch</artifactId>
-    <name>Team-mail :: JMAP :: Extensions :: Opensearch</name>
+    <name>Twake Mail :: JMAP :: Extensions :: Opensearch</name>
 
     <dependencies>
         <dependency>

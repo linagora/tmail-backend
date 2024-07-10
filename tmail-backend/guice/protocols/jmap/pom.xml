@@ -11,10 +11,10 @@
     </parent>
 
     <artifactId>tmail-guice-jmap</artifactId>
-    <name>Team-mail :: Guice :: JMAP</name>
+    <name>Twake Mail :: Guice :: JMAP</name>
     <packaging>jar</packaging>
 
-    <description>JMAP modules for Guice implementation of Team-mail server</description>
+    <description>JMAP modules for Guice implementation of Twake Mail server</description>
 
     <dependencies>
         <dependency>

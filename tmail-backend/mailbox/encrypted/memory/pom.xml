@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>mailbox-encrypted-memory</artifactId>
-    <name>Team-mail :: Mailbox :: Encrypted :: InMemory</name>
+    <name>Twake Mail :: Mailbox :: Encrypted :: InMemory</name>
     <description>Memory implementation of encrypted mailbox using GPG</description>
 
     <dependencies>

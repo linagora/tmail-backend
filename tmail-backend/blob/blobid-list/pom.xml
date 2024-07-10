@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>blobid-list</artifactId>
-    <name>Team-mail :: Blob :: BlobIdList</name>
+    <name>Twake Mail :: Blob :: BlobIdList</name>
     <description>When deduplication is active, use a Cassandra projection to avoid saving several time the same blob to S3.
         This prevents isolation issues for Swift backed S3 deployments and also  adds a performance boost.
     </description>

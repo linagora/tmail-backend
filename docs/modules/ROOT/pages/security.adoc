@@ -7,7 +7,7 @@ link:https://github.com/apache/james-project/blob/master/server/apps/distributed
 
 link:https://github.com/apache/james-project/blob/master/server/apps/distributed-app/docs/modules/ROOT/pages/operate/security.adoc#best-practices[Best practices] described by the James community fully applies.
 
-Team-Mail allow one user to encrypt his email at REST with PGP keys. xref:tmail-backend/features/encrypted-mailbox.adoc[Read more...]
+Twake Mail allow one user to encrypt his email at REST with PGP keys. xref:tmail-backend/features/encrypted-mailbox.adoc[Read more...]
 
 == Known security vulnerabilities
 
@@ -15,7 +15,7 @@ Team-Mail allow one user to encrypt his email at REST with PGP keys. xref:tmail-
 
 Prior 0.4.3 release an authenticated user could perform server side request forgery by using JMAP PUSH subscriptions.
 
-*Mitigation*: Upgrade to Team-Mail server version 0.4.3. Strict firewalling of your internal network could also be
+*Mitigation*: Upgrade to Twake Mail server version 0.4.3. Strict firewalling of your internal network could also be
 viable.
 
 === CVE-2021-38542 STARTTLS command injection
@@ -23,16 +23,16 @@ viable.
 Prior 0.4.3 release TMail is subject to CVE-2021-38542, allowing man in the middle attacks
 that could result in STARTTLS command injection for the IMAP protocol.
 
-*Mitigation*: Upgrade to Team-Mail server version 0.4.1.
+*Mitigation*: Upgrade to Twake Mail server version 0.4.1.
 
 === CVE-2021-40110: A IMAP vulnerable to a ReDoS
 
 Using Jazzer fuzzer, we identified that an IMAP user can craft IMAP LIST commands to orchestrate
 a Denial Of Service using a vulnerable Regular expression.
 
-This affected Team-Mail prior to 0.4.1.
+This affected Twake Mail prior to 0.4.1.
 
-*Mitigation*: Upgrade to Team-Mail server version 0.4.1.
+*Mitigation*: Upgrade to Twake Mail server version 0.4.1.
 
 === CVE-2021-40111: IMAP parsing Denial Of Service
 
@@ -40,9 +40,9 @@ While fuzzing with Jazzer the IMAP parsing stack we discover that crafted APPEND
 could be used to trigger infinite loops resulting in expensive CPU computations and OutOfMemory exceptions.
 This can be used for a Denial Of Service attack. The IMAP user needs to be authenticated to exploit this vulnerability.
 
-This affected Team-Mail prior to 0.4.1.
+This affected Twake Mail prior to 0.4.1.
 
-*Mitigation*: Upgrade to Team-Mail server version 0.4.1.
+*Mitigation*: Upgrade to Twake Mail server version 0.4.1.
 
 == Active steps we are taking toward improving security
 

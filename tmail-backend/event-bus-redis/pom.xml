@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>tmail-event-bus-redis</artifactId>
-    <name>Team-mail :: Event Bus Redis</name>
+    <name>Twake Mail :: Event Bus Redis</name>
 
     <dependencies>
         <dependency>

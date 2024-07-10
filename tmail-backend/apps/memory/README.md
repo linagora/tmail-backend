@@ -1,9 +1,9 @@
-# Team-mail backend Memory server
+# Twake Mail backend Memory server
 
 This server, intended for testing, relies fully on lightweight memory
 datastructures.
 
-To be able to run Team-mail backend server, you need to generate a JWT key pair first.
+To be able to run Twake Mail backend server, you need to generate a JWT key pair first.
 A really easy way to generate a basic JWT key pair is like this:
 
 ```
@@ -14,7 +14,7 @@ openssl rsa -in jwt_privatekey -pubout > jwt_publickey
 ```
 
 You can copy those two keys into the `src/main/conf` folder of this memory app module if you want to build
-Team-mail server with them in the conf, or you can decide to mount them later when running the server.
+Twake Mail server with them in the conf, or you can decide to mount them later when running the server.
 
 Then to build your server:
 
@@ -29,7 +29,7 @@ Then you can finally start the James distributed server. If you included the JWT
 docker run linagora/tmail-backend-memory
 ```
 
-If not, you need to bind them to the container for Team-mail to start:
+If not, you need to bind them to the container for Twake Mail to start:
 
 ```
 docker run --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
