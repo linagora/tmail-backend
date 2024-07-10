@@ -183,7 +183,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
   }
 
   @Test
-  def acceptAMissingAttendeeIcsShouldReturnNotAccept(): Unit = {
+  def acceptAMissingAttendeeIcsShouldReturnAccepted(): Unit = {
     val missingAttendeeIcsBlobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/missing_attendee.ics"))
 
     val request: String =
@@ -219,12 +219,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "CalendarEvent/accept",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "notAccepted": {
-           |            "$missingAttendeeIcsBlobId": {
-           |                "type": "invalidPatch",
-           |                "description": "Can not reply when not invited to attend"
-           |            }
-           |        }
+           |        "accepted": [ "$missingAttendeeIcsBlobId" ]
            |    },
            |    "c1"
            |]""".stripMargin)

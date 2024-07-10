@@ -55,8 +55,6 @@ object CalendarEventReplyGenerator {
     val attendeeInRequest: Option[Attendee] = requestVEvent.getProperties[Attendee]("ATTENDEE").asScala.toSeq
       .find(attendee => attendeeReply.attendee.asString().equals(attendee.getCalAddress.getSchemeSpecificPart))
 
-    Preconditions.checkArgument(attendeeInRequest.isDefined, "Can not reply when not invited to attend".asInstanceOf[Object])
-
     val calendar = new Calendar()
       .withDefaults()
       .withComponent(new VEvent(replyProperty).getFluentTarget)
