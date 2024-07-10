@@ -52,9 +52,6 @@ object CalendarEventReplyGenerator {
 
     Preconditions.checkArgument(validationResult.isEmpty, s"Invalidate calendar event: ${validationResultAsString(validationResult)}".asInstanceOf[Object])
 
-    val attendeeInRequest: Option[Attendee] = requestVEvent.getProperties[Attendee]("ATTENDEE").asScala.toSeq
-      .find(attendee => attendeeReply.attendee.asString().equals(attendee.getCalAddress.getSchemeSpecificPart))
-
     val calendar = new Calendar()
       .withDefaults()
       .withComponent(new VEvent(replyProperty).getFluentTarget)
