@@ -196,6 +196,15 @@ class CalendarEventReplyGeneratorTest {
   }
 
   @Test
+  def shouldAddTheAttendeeToTheReplyEvenWhenWasNotInvited(): Unit = {
+    val emailWasNotInvited = "not-invited@domain.com";
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress(emailWasNotInvited), PartStat.DECLINED))
+    val replyAttendee: String = replyCalendarEvent.getComponents("VEVENT").asInstanceOf[java.util.List[VEvent]].asScala.head.getProperty("ATTENDEE").asInstanceOf[Attendee]
+      .getCalAddress.toString
+    assertThat(replyAttendee).isEqualTo("mailto:" + emailWasNotInvited)
+  }
+
+  @Test
   def shouldKeepCalScaleFromRequest(): Unit = {
     val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress("bob@domain.com"), PartStat.DECLINED))
 
@@ -320,8 +329,8 @@ class CalendarEventReplyGeneratorTest {
   }
 
   @Test
-  def shouldThrowWhenNotInvitedToAttend(): Unit = {
-    assertThatThrownBy(() => testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress("not-invited@domain.com"), PartStat.DECLINED)))
-      .isInstanceOf(classOf[IllegalArgumentException])
+  def shouldNotThrowWhenNotInvitedToAttend(): Unit = {
+    assertThatCode(() => testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress("not-invited@domain.com"), PartStat.DECLINED)))
+      .doesNotThrowAnyException()
   }
 }
