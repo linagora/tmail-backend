@@ -329,8 +329,8 @@ class CalendarEventReplyGeneratorTest {
   }
 
   @Test
-  def shouldThrowWhenNotInvitedToAttend(): Unit = {
-    assertThatThrownBy(() => testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress("not-invited@domain.com"), PartStat.DECLINED)))
-      .isInstanceOf(classOf[IllegalArgumentException])
+  def shouldNotThrowWhenNotInvitedToAttend(): Unit = {
+    assertThatCode(() => testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress("not-invited@domain.com"), PartStat.DECLINED)))
+      .doesNotThrowAnyException()
   }
 }
