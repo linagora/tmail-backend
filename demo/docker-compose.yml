@@ -31,6 +31,7 @@ services:
       - ./tmail/usersrepository.xml:/root/conf/usersrepository.xml
     networks:
       - tmail
+    restart: on-failure
 
   sso.example.com:
     image: yadd/lemonldap-ng-full

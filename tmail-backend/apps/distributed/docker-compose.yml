@@ -39,6 +39,7 @@ services:
       # Key generation:
       # openssl genrsa -out jwt_privatekey 4096
       # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
+    restart: on-failure
 
   opensearch:
     image: opensearchproject/opensearch:2.1.0
