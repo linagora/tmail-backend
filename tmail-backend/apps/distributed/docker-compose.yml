@@ -1,11 +1,11 @@
-version: '3'
+version: '3.8'
 
 networks:
   emaily:
     driver: bridge
 
 services:
-  james:
+  tmail-backend:
     depends_on:
       cassandra:
         condition: service_healthy
@@ -20,8 +20,8 @@ services:
       s3:
         condition: service_started
     image: linagora/tmail-backend-distributed
-    container_name: james
-    hostname: james.local
+    container_name: tmail-backend
+    hostname: tmail-backend.local
     ports:
       - "80:80"
       - "25:25"
@@ -40,6 +40,22 @@ services:
       # openssl genrsa -out jwt_privatekey 4096
       # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
     restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "wget -O- -S http://localhost:8000/healthcheck/checks/Cassandra%20backend | grep -q 'healthy' || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 2
+      start_period: 60s # require upper Docker v25
+
+  monitor-tmail-backend:
+    image: docker:27-cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./monitor_health.sh:/monitor_health.sh
+    depends_on:
+      tmail-backend:
+        condition: service_healthy
+    entrypoint: [ "sh", "/monitor_health.sh", "tmail-backend"]
 
   opensearch:
     image: opensearchproject/opensearch:2.1.0
