@@ -270,7 +270,7 @@ case class FirebaseSubscriptionPatchObject(value: Map[String, JsValue]) {
     }
 
   private def parseType(jsValue: JsValue, typeStateFactory: TypeStateFactory): Either[FirebasePatchUpdateValidationException, TypeName] = jsValue match {
-    case JsString(aString) => typeStateFactory.parse(aString).left.map(e => FirebasePatchUpdateValidationException(e.getMessage, Some("types")))
+    case JsString(aString) => typeStateFactory.strictParse(aString).left.map(e => FirebasePatchUpdateValidationException(e.getMessage, Some("types")))
     case _ => Left(FirebasePatchUpdateValidationException("Expecting an array of JSON strings as an argument", Some("types")))
   }
 }
