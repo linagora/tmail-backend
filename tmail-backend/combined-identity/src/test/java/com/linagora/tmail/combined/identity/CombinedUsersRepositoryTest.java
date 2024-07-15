@@ -13,6 +13,7 @@ import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.cassandra.CassandraRepositoryConfiguration;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
@@ -60,7 +61,7 @@ public class CombinedUsersRepositoryTest {
         @BeforeEach
         void setUp(CombinedTestSystem testSystem) throws Exception {
             this.testSystem = testSystem;
-            readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO();
+            readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO(new NoopGaugeRegistry());
             readOnlyLDAPUsersDAO.configure(ldapRepositoryConfiguration(ldapContainer, true));
             readOnlyLDAPUsersDAO.init();
 
@@ -99,7 +100,7 @@ public class CombinedUsersRepositoryTest {
         @BeforeEach
         void setUp(CombinedTestSystem testSystem) throws Exception {
             this.testSystem = testSystem;
-            readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO();
+            readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO(new NoopGaugeRegistry());
             readOnlyLDAPUsersDAO.configure(ldapRepositoryConfiguration(ldapContainer, false));
             readOnlyLDAPUsersDAO.init();
 
