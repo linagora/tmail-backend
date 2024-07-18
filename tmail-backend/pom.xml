@@ -65,6 +65,7 @@
         <firebase-admin-sdk.version>9.3.0</firebase-admin-sdk.version>
         <bouncycastle.version>1.78.1</bouncycastle.version>
         <scala.base>2.13</scala.base>
+        <langchain4j.version>0.32.0</langchain4j.version>
     </properties>
 
     <dependencyManagement>
@@ -347,6 +348,16 @@
                 <groupId>com.ibm.icu</groupId>
                 <artifactId>icu4j</artifactId>
                 <version>75.1</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai</artifactId>
+                <version>${langchain4j.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
