@@ -29,6 +29,7 @@ services:
       - ./tmail/jwt_privatekey:/root/conf/jwt_privatekey
       - ./tmail/jmap.properties:/root/conf/jmap.properties
       - ./tmail/usersrepository.xml:/root/conf/usersrepository.xml
+      - ./tmail/mailetcontainer.xml:/root/conf/mailetcontainer.xml
     networks:
       - tmail
     restart: on-failure

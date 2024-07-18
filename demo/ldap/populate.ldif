@@ -29,3 +29,13 @@ sn: user2Surname
 mail: james-user2@tmail.com
 userPassword: secret
 description: James user2
+
+dn: uid=gpt@tmail.com,ou=users,dc=tmail,dc=com
+objectClass: inetOrgPerson
+uid: gpt@tmail.com
+cn: gpt
+givenName: Twake Mail
+sn: Bot
+mail: gpt@tmail.com
+userPassword: secret
+description: GPT account
