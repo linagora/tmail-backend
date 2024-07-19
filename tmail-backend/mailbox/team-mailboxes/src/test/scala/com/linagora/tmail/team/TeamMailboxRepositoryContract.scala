@@ -5,9 +5,11 @@ import java.util.{Map => JavaMap, Set => JavaSet}
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{ANDRE, BOB, DOMAIN_1, DOMAIN_2, TEAM_MAILBOX_DOMAIN_1, TEAM_MAILBOX_DOMAIN_2, TEAM_MAILBOX_MARKETING, TEAM_MAILBOX_SALES}
 import eu.timepit.refined.auto._
+import org.apache.james.adapter.mailbox.{ACLUsernameChangeTaskStep, MailboxUsernameChangeTaskStep}
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
+import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.store.StoreSubscriptionManager
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SubscriptionManager}
@@ -563,5 +565,33 @@ class TeamMailboxRepositoryTest extends TeamMailboxRepositoryContract {
     inMemoryMailboxManager = resource.getMailboxManager
     subscriptionManager = new StoreSubscriptionManager(resource.getMailboxManager.getMapperFactory, resource.getMailboxManager.getMapperFactory, resource.getMailboxManager.getEventBus)
     teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager, subscriptionManager, TeamMailboxCallbackNoop.asSet)
+  }
+
+  @Test
+  def teamMailboxMigrationShouldWork(): Unit = {
+    // GIVEN a team mailbox
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    SMono.fromPublisher(new MailboxUsernameChangeTaskStep(inMemoryMailboxManager, subscriptionManager).changeUsername(BOB, ANDRE)).block()
+    SMono.fromPublisher(new ACLUsernameChangeTaskStep(inMemoryMailboxManager, subscriptionManager).changeUsername(BOB, ANDRE)).block()
+
+    SoftAssertions.assertSoftly(softly => {
+      // Member of the team mailbox is changed
+      softly.assertThat(SFlux(testee.listTeamMailboxes()).collectSeq().block().asJava).containsOnly(TEAM_MAILBOX_MARKETING)
+      softly.assertThat(SFlux(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava).containsOnly(TeamMailboxMember.asMember(ANDRE))
+
+      // Old member no longer see the team mailbox
+      softly.assertThat(inMemoryMailboxManager.search(MailboxQuery.builder().matchesAllMailboxNames().build(),
+            inMemoryMailboxManager.createSystemSession(BOB)).collectList()
+          .block())
+        .noneMatch(mailbox => mailbox.getMailbox.getNamespace.equals(TEAM_MAILBOX_NAMESPACE))
+
+      // new user sees the team mailbox
+      softly.assertThat(inMemoryMailboxManager.search(MailboxQuery.builder().matchesAllMailboxNames().build(),
+            inMemoryMailboxManager.createSystemSession(ANDRE)).collectList()
+          .block())
+        .anyMatch(mailbox => mailbox.getMailbox.getNamespace.equals(TEAM_MAILBOX_NAMESPACE))
+    })
   }
 }
