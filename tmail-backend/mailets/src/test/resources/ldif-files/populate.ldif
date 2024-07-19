@@ -1,0 +1,226 @@
+dn: ou=people, dc=james,dc=org
+ou: people
+objectClass: organizationalUnit
+
+dn: ou=empty, dc=james,dc=org
+ou: empty
+objectClass: organizationalUnit
+
+dn: ou=lists, dc=james,dc=org
+ou: lists
+objectClass: organizationalUnit
+
+dn: uid=james-user, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: james-user
+cn: james-user
+sn: james-user
+mail: james-user@james.org
+userPassword: secret
+description: abcdef
+
+dn: uid=james-user2, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: james-user2
+cn: james-user2
+sn: james-user2
+mail: james-user2@james.org
+userPassword: secret
+description: abcdef
+
+dn: uid=james-user3, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: james-user3
+cn: james-user3
+sn: james-user3
+mail: james-user3@james.org
+userPassword: secret
+description: abcdef
+
+dn: uid=james-user4, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: james-user4
+cn: james-user4
+sn: james-user4
+mail: james-user4@james.org
+userPassword: secret
+description: abcdef
+
+dn: uid=james-user5, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: james-user5
+cn: james-user5
+sn: james-user5
+mail: james-user5@james.org
+userPassword: secret
+description: abcdef
+
+dn: uid=unrelated, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: james-user6
+cn: james-user6
+sn: james-user6
+mail: james-user6@james.org
+userPassword: secret
+description: abcdef
+
+dn: uid=bob, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: bob
+cn: bob
+sn: bob
+mail: bob@james.org
+userPassword: secret
+description: Extra user
+
+dn: cn=mygroup, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+cn: mygroup
+ou: lists
+description: mygroup@lists.james.org
+member: uid=james-user,ou=people,dc=james,dc=org
+member: uid=james-user2,ou=people,dc=james,dc=org
+
+dn: cn=group2, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: openList
+cn: group2
+ou: lists
+description: group2@lists.james.org
+member: uid=james-user3,ou=people,dc=james,dc=org
+member: uid=james-user2,ou=people,dc=james,dc=org
+
+dn: cn=group3, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: internalList
+cn: group3
+ou: lists
+description: group3@lists.james.org
+member: uid=james-user4,ou=people,dc=james,dc=org
+member: uid=james-user2,ou=people,dc=james,dc=org
+
+dn: cn=group4, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: memberRestrictedList
+cn: group4
+ou: lists
+description: group4@lists.james.org
+member: uid=james-user4,ou=people,dc=james,dc=org
+member: uid=james-user,ou=people,dc=james,dc=org
+
+dn: cn=group5, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: ownerRestrictedList
+cn: group5
+ou: lists
+description: group5@lists.james.org
+owner: uid=james-user4,ou=people,dc=james,dc=org
+owner: uid=james-user2,ou=people,dc=james,dc=org
+member: uid=james-user,ou=people,dc=james,dc=org
+member: uid=james-user2,ou=people,dc=james,dc=org
+member: uid=james-user3,ou=people,dc=james,dc=org
+member: uid=james-user4,ou=people,dc=james,dc=org
+
+dn: cn=group5bis, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: memberRestrictedList
+cn: group5bis
+ou: lists
+description: group5bis@lists.james.org
+member: uid=unrelated,ou=people,dc=james,dc=org
+member: uid=james-user4,ou=people,dc=james,dc=org
+
+dn: cn=group5tier, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: memberRestrictedList
+cn: group5tier
+ou: lists
+description: group5tier@lists.james.org
+owner: uid=unrelated,ou=people,dc=james,dc=org
+member: uid=unrelated,ou=people,dc=james,dc=org
+member: uid=james-user4,ou=people,dc=james,dc=org
+
+dn: cn=noowner, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: ownerRestrictedList
+cn: noowner
+ou: lists
+description: noowner@lists.james.org
+member: uid=james-user,ou=people,dc=james,dc=org
+member: uid=james-user2,ou=people,dc=james,dc=org
+member: uid=james-user3,ou=people,dc=james,dc=org
+member: uid=james-user4,ou=people,dc=james,dc=org
+
+dn: cn=group6, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: domainRestrictedList
+cn: group6
+ou: lists
+description: group6@lists.james.org
+member: uid=james-user5,ou=people,dc=james,dc=org
+member: uid=james-user4,ou=people,dc=james,dc=org
+
+dn: cn=group7, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+cn: group7
+ou: lists
+description: group7@localhost
+member: uid=james-user5,ou=people,dc=james,dc=org
+member: uid=james-user2,ou=people,dc=james,dc=org
+
+dn: cn=group8, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+cn: group8
+ou: lists
+description: group8@lists.james.org
+member: uid=not-found,ou=people,dc=james,dc=org
+member: uid=james-user,ou=people,dc=james,dc=org
+
+dn: cn=nested, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+cn: nested
+ou: lists
+description: nested@lists.james.org
+member: cn=mygroup,ou=lists,dc=james,dc=org
+member: uid=james-user5,ou=people,dc=james,dc=org
+
+dn: cn=nestedOwner, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+cn: nestedOwner
+ou: lists
+description: nestedOwner@lists.james.org
+owner: cn=mygroup,ou=lists,dc=james,dc=org
+member: uid=james-user3,ou=people,dc=james,dc=org
+member: uid=james-user5,ou=people,dc=james,dc=org
+
+dn: cn=loop1,ou=lists, dc=james,dc=org
+objectclass: groupofnames
+cn: loop1
+ou: lists
+description: loop1@lists.james.org
+member: cn=loop2,ou=lists, dc=james,dc=org
+
+dn: cn=loop2,ou=lists, dc=james,dc=org
+objectclass: groupofnames
+cn: loop2
+ou: lists
+description: loop2@lists.james.org
+member: cn=loop1,ou=lists, dc=james,dc=org
+
+dn: cn=unknown-category, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: unknown
+cn: unknown-category
+ou: lists
+description: unknown-category@lists.james.org
+member: uid=james-user3,ou=people,dc=james,dc=org
+member: uid=james-user5,ou=people,dc=james,dc=org
+
+dn: cn=format, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory:        memberrestrictedlist
+cn: format
+ou: lists
+description: format@lists.james.org
+member: uid=james-user3,ou=people,dc=james,dc=org
+member: uid=james-user5,ou=people,dc=james,dc=org
