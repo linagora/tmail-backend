@@ -17,7 +17,6 @@ import jakarta.mail.internet.MimeMessage;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
-import org.apache.james.jmap.mime4j.AvoidBinaryBodyBufferingBodyFactory;
 import org.apache.james.mime4j.codec.DecodeMonitor;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
@@ -79,7 +78,7 @@ public class OpenAIMailet extends GenericMailet {
     }
 
     @Override
-    public void service(Mail mail) throws MessagingException {
+    public void service(Mail mail) {
         if (gptLoopDetected(mail)) {
             return;
         }
@@ -170,7 +169,6 @@ public class OpenAIMailet extends GenericMailet {
         this.defaultMessageBuilder = new DefaultMessageBuilder();
         defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
         defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
-        defaultMessageBuilder.setBodyFactory(new AvoidBinaryBodyBufferingBodyFactory());
     }
 
     @Override

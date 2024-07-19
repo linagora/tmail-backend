@@ -21,7 +21,6 @@ import org.apache.james.mailets.configuration.MailetContainer;
 import org.apache.james.mailets.configuration.ProcessorConfiguration;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
-import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 import org.apache.james.transport.mailets.ToRepository;
 import org.apache.james.transport.matchers.All;
 import org.apache.james.util.MimeMessageUtil;
@@ -71,7 +70,6 @@ class OpenAiMailetIntegrationTest {
 
         jamesServer = TemporaryJamesServer.builder()
             .withMailetContainer(mailetContainer)
-            .withOverrides(new MemoryRateLimiterModule())
             .build(temporaryFolder);
         jamesServer.start();
 
