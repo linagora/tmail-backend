@@ -1,10 +1,6 @@
 package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 import jakarta.mail.internet.AddressException;
 
@@ -19,6 +15,8 @@ import org.apache.mailet.base.MailAddressFixture;
 import org.apache.mailet.base.test.FakeMailetConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 class OpenAIMailetTest {
     public static MailAddress createMailAddress(String mailAddress) {
@@ -38,7 +36,7 @@ class OpenAIMailetTest {
     @BeforeEach
     void setUp() {
         testee = new OpenAIMailet(new JsoupHtmlTextExtractor());
-        mailetContext = mock(MailetContext.class);
+        mailetContext = Mockito.mock(MailetContext.class);
     }
 
     @Test
@@ -82,6 +80,6 @@ class OpenAIMailetTest {
 
         testee.service(mail);
 
-        verify(mailetContext).sendMail(eq(GPT_ADDRESS), any(), any());
+        Mockito.verify(mailetContext).sendMail(ArgumentMatchers.eq(GPT_ADDRESS), ArgumentMatchers.any(), ArgumentMatchers.any());
     }
 }
