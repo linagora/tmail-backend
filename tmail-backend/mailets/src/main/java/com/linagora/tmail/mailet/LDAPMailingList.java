@@ -21,6 +21,7 @@ import org.apache.james.lifecycle.api.LifecycleUtil;
 import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 import org.apache.james.util.DurationParser;
+import org.apache.mailet.LoopPrevention;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailetContext;
 import org.apache.mailet.PerRecipientHeaders;
@@ -142,9 +143,23 @@ public class LDAPMailingList extends GenericMailet {
             return mail;
         };
         MailTransformation NOOP = mail -> mail;
+        Function<MailAddress, MailTransformation> recordListInLoopDetection = listAddress -> mail -> {
+            LoopPrevention.RecordedRecipients recordedRecipients = LoopPrevention.RecordedRecipients.fromMail(mail);
+            recordedRecipients.merge(listAddress).recordOn(mail);
+            return mail;
+        };
 
         default MailTransformation doCompose(MailTransformation other) {
             return mail -> apply(other.apply(mail));
+        }
+
+        default MailTransformation doComposeIf(MailTransformation other, Predicate<Mail> condition) {
+            return mail -> {
+                if (condition.apply(mail)) {
+                    return apply(other.apply(mail));
+                }
+                return apply(mail);
+            };
         }
     }
 
@@ -294,9 +309,12 @@ public class LDAPMailingList extends GenericMailet {
                 .flatMap(Collection::stream)
                 .collect(ImmutableList.toImmutableList());
 
-            return MailTransformation.addRecipients.apply(memberAddresses)
-                .doCompose(addListHeaders(memberAddresses, listAddress))
-                .doCompose(MailTransformation.removeRecipient.apply(listAddress));
+            return MailTransformation.removeRecipient.apply(listAddress)
+                .doComposeIf(
+                    MailTransformation.recordListInLoopDetection.apply(listAddress)
+                        .doCompose(MailTransformation.addRecipients.apply(memberAddresses))
+                        .doCompose(addListHeaders(memberAddresses, listAddress)),
+                    mail -> !LoopPrevention.RecordedRecipients.fromMail(mail).getRecipients().contains(listAddress));
         } catch (AddressException e) {
             throw new RuntimeException(e);
         }
