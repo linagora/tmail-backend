@@ -14,6 +14,7 @@ import org.apache.james.core.Username;
 import org.apache.james.user.ldap.DockerLdapSingleton;
 import org.apache.james.user.ldap.LdapGenericContainer;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
+import org.apache.mailet.LoopPrevention;
 import org.apache.mailet.PerRecipientHeaders;
 import org.apache.mailet.ProcessingState;
 import org.apache.mailet.base.test.FakeMail;
@@ -88,6 +89,33 @@ class LDAPMailingListTest {
         assertThat(mail.getRecipients())
             .containsOnly(new MailAddress("james-user3@james.org"),
                 new MailAddress("james-user2@james.org"));
+    }
+
+    @Test
+    void shouldAvoidLoopUsingRecordedRecipients() throws Exception {
+        LDAPMailingList testee = new LDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
+        FakeMailContext mailetContext = FakeMailContext.defaultContext();
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .mailetName("LDAPMailingList")
+            .setProperty("baseDN", "ou=lists,dc=james,dc=org")
+            .setProperty("rejectedSenderProcessor", "rejectedSender")
+            .setProperty("mailingListPredicate", "lists-prefix")
+            .setProperty("mailAttributeForGroups", "description")
+            .mailetContext(mailetContext)
+            .build();
+        testee.init(config);
+
+        FakeMail mail = FakeMail.builder()
+            .name("test-mail")
+            .state(FakeMail.DEFAULT)
+            .sender("bob@james.org")
+            .recipient("group2@lists.james.org")
+            .build();
+        LoopPrevention.RecordedRecipients recordedRecipients = LoopPrevention.RecordedRecipients.fromMail(mail);
+        recordedRecipients.merge(new MailAddress("group2@lists.james.org")).recordOn(mail);
+        testee.service(mail);
+
+        assertThat(mail.getRecipients()).isEmpty();
     }
 
     @Test
