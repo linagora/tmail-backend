@@ -124,6 +124,7 @@ public class LDAPMailingList extends GenericMailet {
 
     interface MailingListPredicate extends Predicate<MailAddress> {
         MailingListPredicate LISTS_PREFIX = mailAddress -> mailAddress.getDomain().asString().startsWith("lists.");
+        MailingListPredicate ALL = mailAddress -> true;
         Function<MailetContext, MailingListPredicate> ANY_LOCAL = mailetContext -> mailAddress -> mailetContext.isLocalServer(mailAddress.getDomain());
     }
 
@@ -264,6 +265,7 @@ public class LDAPMailingList extends GenericMailet {
         return switch (value) {
             case "lists-prefix" -> MailingListPredicate.LISTS_PREFIX;
             case "any-local" -> MailingListPredicate.ANY_LOCAL.apply(getMailetContext());
+            case "all" -> MailingListPredicate.ALL;
             default -> throw new RuntimeException("Unsupported MailingListPredicate " + value);
         };
     }
