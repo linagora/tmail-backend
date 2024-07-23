@@ -3,6 +3,7 @@ package com.linagora.tmail.mailet;
 import java.util.Collection;
 import java.util.Optional;
 
+import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 
 import org.apache.james.core.MailAddress;
@@ -12,6 +13,7 @@ import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMatcher;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.unboundid.ldap.sdk.Filter;
@@ -26,16 +28,20 @@ import com.unboundid.ldap.sdk.SearchScope;
 public class IsALDAPMailingList extends GenericMatcher {
     private final LDAPConnectionPool ldapConnectionPool;
     private final Optional<Filter> userExtraFilter;
-    private final LdapRepositoryConfiguration configuration;
     private String baseDN;
     private String groupObjectClass;
     private String mailAttribute;
 
-    public IsALDAPMailingList(LdapRepositoryConfiguration configuration) throws LDAPException {
-        this.configuration = configuration;
-        this.ldapConnectionPool = new LDAPConnectionFactory(this.configuration).getLdapConnectionPool();
+    @Inject
+    public IsALDAPMailingList(LDAPConnectionPool ldapConnectionPool, LdapRepositoryConfiguration configuration) {
+        this.ldapConnectionPool = ldapConnectionPool;
         this.userExtraFilter = Optional.ofNullable(configuration.getFilter())
             .map(Throwing.function(Filter::create).sneakyThrow());
+    }
+
+    @VisibleForTesting
+    public IsALDAPMailingList(LdapRepositoryConfiguration configuration) throws LDAPException {
+        this(new LDAPConnectionFactory(configuration).getLdapConnectionPool(), configuration);
     }
 
     @Override

@@ -18,6 +18,7 @@ import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.annotations.VisibleForTesting;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepository;
 import com.unboundid.ldap.sdk.Filter;
@@ -40,6 +41,20 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
     private String mailAttributeForGroups;
 
     @Inject
+    public TMailWithMailingListValidRcptHandler(UsersRepository users,
+                                                RecipientRewriteTable recipientRewriteTable,
+                                                DomainList domains,
+                                                TeamMailboxRepository teamMailboxRepository,
+                                                LDAPConnectionPool ldapConnectionPool,
+                                                LdapRepositoryConfiguration configuration) {
+        super(users, recipientRewriteTable, domains);
+        this.teamMailboxRepository = teamMailboxRepository;
+        this.ldapConnectionPool = ldapConnectionPool;
+        this.userExtraFilter = Optional.ofNullable(configuration.getFilter())
+            .map(Throwing.function(Filter::create).sneakyThrow());
+    }
+
+    @VisibleForTesting
     public TMailWithMailingListValidRcptHandler(UsersRepository users,
                                                 RecipientRewriteTable recipientRewriteTable,
                                                 DomainList domains,
