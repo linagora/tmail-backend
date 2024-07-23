@@ -39,3 +39,17 @@ sn: Bot
 mail: gpt@tmail.com
 userPassword: secret
 description: GPT account
+
+dn: ou=lists,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: lists
+
+dn: cn=group, ou=lists, dc=tmail,dc=com
+objectclass: groupofnames
+businessCategory: openList
+cn: group
+ou: lists
+description: group@lists.tmail.com
+member: uid=james-user@tmail.com,ou=users,dc=tmail,dc=com
+member: uid=james-user2@tmail.com,ou=users,dc=tmail,dc=com
+>>>>>>> 7a647dfe (ISSUE-1134 Integrate mailing lists with demo setup)
