@@ -56,10 +56,10 @@ import com.unboundid.ldap.sdk.SearchScope;
  *
  * <ul>Configuration:
  *  <li>mailingListPredicate: an heuristic to determine if a given mail address is likely to be a list
- *    Specify `lists-prefix` for only mailAdress `abc@lists.domain.tld` to be considered lists and expended
+ *    Specify `lists-prefix` for only mailAddress `abc@lists.domain.tld` to be considered lists and expended
  *    Specify `any-local` to try to expend all local addresses which had a cost!</li>
  *  <li>baseDN: the base DN to use within group search. EG: ou=lists,dc=linagora,dc=com</li>
- *  <li>rejectedSenderProcessor: processor to handle rejected sender. Generally this is comprised of a bounce mailet expleining the
+ *  <li>rejectedSenderProcessor: processor to handle rejected sender. Generally this is comprised of a bounce mailet explaining the
  *  rejection.</li>
  *  <li>userMailCacheSize: Number of users DN to keep in the cache. This saves DN lookups on member to retrieve their mail address.</li>
  *  <li>userMailCacheDuration: Time during which one should keep entries into the user DN => mailAddress cache.</li>

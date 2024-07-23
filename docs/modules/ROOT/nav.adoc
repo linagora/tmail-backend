@@ -7,6 +7,7 @@
 *** xref:tmail-backend/features/contactAutocomplete.adoc[]
 *** xref:tmail-backend/features/teamMailboxes.adoc[]
 *** xref:tmail-backend/features/tmailRateLimiting.adoc[]
+*** xref:tmail-backend/features/ldapMailingLists.adoc[]
 ** xref:tmail-backend/extra-components/index.adoc[]
 ** xref:tmail-backend/jmap-extensions/index.adoc[]
 *** xref:tmail-backend/jmap-extensions/calendarEventParsing.adoc[]
