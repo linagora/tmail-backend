@@ -65,6 +65,11 @@
                 <name>bcc</name>
                 <onMailetException>ignore</onMailetException>
             </mailet>
+            <mailet match="All" class="com.linagora.tmail.mailet.LDAPMailingList">
+                <baseDN>ou=lists,dc=tmail,dc=com</baseDN>
+                <mailAttributeForGroups>description</mailAttributeForGroups>
+                <rejectedSenderProcessor>rejectedSender</rejectedSenderProcessor>
+            </mailet>
             <mailet match="All" class="RecipientRewriteTable">
                 <errorProcessor>rrt-error</errorProcessor>
             </mailet>
@@ -112,6 +117,9 @@
         </processor>
 
         <processor state="local-address-error" enableJmx="true">
+            <mailet match="com.linagora.tmail.mailet.IsALDAPMailingList=ou=lists,dc=tmail,dc=com#groupofnames#description" class="ToProcessor">
+                <processor>transport</processor>
+            </mailet>
             <mailet match="All" class="MetricsMailet">
                 <metricName>mailetContainerLocalAddressError</metricName>
             </mailet>
@@ -142,6 +150,13 @@
             </mailet>
             <mailet match="All" class="DSNBounce">
                 <passThrough>false</passThrough>
+            </mailet>
+        </processor>
+
+        <processor state="rejectedSender" enableJmx="true">
+            <mailet match="All" class="DSNBounce">
+                <passThrough>false</passThrough>
+                <messageString>You are forbidden to send email to this list...</messageString>
             </mailet>
         </processor>
 
