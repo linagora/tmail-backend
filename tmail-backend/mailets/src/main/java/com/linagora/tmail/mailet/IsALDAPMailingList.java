@@ -25,6 +25,21 @@ import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
 
+/**
+ * Matcher matching mailing lists defined by the LDAP.
+ *
+ * Useful for integrating LDAP lists with Recipient Rewrite Tables: it can be used to re-process lists generated as
+ * an output of RRTs.
+ *
+ * Matcher argument needs to be in the form baseDN#groupObjectClass#mailAttribute
+ *
+ * Sample usage:
+ *
+ * <mailet match="com.linagora.tmail.mailet.IsALDAPMailingList=ou=lists,dc=tmail,dc=com#groupofnames#description" class="ToProcessor">
+ *   <processor>transport</processor>
+ * </mailet>
+ *
+ */
 public class IsALDAPMailingList extends GenericMatcher {
     private final LDAPConnectionPool ldapConnectionPool;
     private final Optional<Filter> userExtraFilter;
