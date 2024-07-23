@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
+import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.AddressException;
 
@@ -31,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -184,11 +186,17 @@ public class LDAPMailingList extends GenericMailet {
     private MailingListPredicate mailingListPredicate;
     private String mailAttributeForGroups;
 
-    public LDAPMailingList(LdapRepositoryConfiguration configuration) throws LDAPException {
+    @Inject
+    public LDAPMailingList(LDAPConnectionPool ldapConnectionPool, LdapRepositoryConfiguration configuration) {
         this.configuration = configuration;
-        this.ldapConnectionPool = new LDAPConnectionFactory(this.configuration).getLdapConnectionPool();
+        this.ldapConnectionPool = ldapConnectionPool;
         this.userExtraFilter = Optional.ofNullable(configuration.getFilter())
             .map(Throwing.function(Filter::create).sneakyThrow());
+    }
+
+    @VisibleForTesting
+    public LDAPMailingList(LdapRepositoryConfiguration configuration) throws LDAPException {
+        this(new LDAPConnectionFactory(configuration).getLdapConnectionPool(), configuration);
     }
 
     @Override

@@ -19,7 +19,9 @@ import org.apache.james.user.cassandra.CassandraRepositoryConfiguration;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.user.cassandra.CassandraUsersRepositoryModule;
 import org.apache.james.user.ldap.DockerLdapSingleton;
+import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapGenericContainer;
+import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 import org.apache.james.user.ldap.ReadOnlyLDAPUsersDAO;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -61,8 +63,11 @@ public class CombinedUsersRepositoryTest {
         @BeforeEach
         void setUp(CombinedTestSystem testSystem) throws Exception {
             this.testSystem = testSystem;
-            readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO(new NoopGaugeRegistry());
-            readOnlyLDAPUsersDAO.configure(ldapRepositoryConfiguration(ldapContainer, true));
+            HierarchicalConfiguration<ImmutableNode> config = ldapRepositoryConfiguration(ldapContainer, true);
+            LdapRepositoryConfiguration ldapConfiguration = LdapRepositoryConfiguration.from(config);
+            readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO(new NoopGaugeRegistry(), new LDAPConnectionFactory(ldapConfiguration).getLdapConnectionPool(),
+                ldapConfiguration);
+            readOnlyLDAPUsersDAO.configure(config);
             readOnlyLDAPUsersDAO.init();
 
             cassandraUsersDAO = new CassandraUsersDAO(cassandraCluster.getCassandraCluster().getConf(), CassandraRepositoryConfiguration.DEFAULT);
@@ -100,8 +105,11 @@ public class CombinedUsersRepositoryTest {
         @BeforeEach
         void setUp(CombinedTestSystem testSystem) throws Exception {
             this.testSystem = testSystem;
-            readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO(new NoopGaugeRegistry());
-            readOnlyLDAPUsersDAO.configure(ldapRepositoryConfiguration(ldapContainer, false));
+            HierarchicalConfiguration<ImmutableNode> config = ldapRepositoryConfiguration(ldapContainer, false);
+            LdapRepositoryConfiguration ldapConfiguration = LdapRepositoryConfiguration.from(config);
+            readOnlyLDAPUsersDAO = new ReadOnlyLDAPUsersDAO(new NoopGaugeRegistry(), new LDAPConnectionFactory(ldapConfiguration).getLdapConnectionPool(),
+                ldapConfiguration);
+            readOnlyLDAPUsersDAO.configure(config);
             readOnlyLDAPUsersDAO.init();
 
             cassandraUsersDAO = new CassandraUsersDAO(cassandraCluster.getCassandraCluster().getConf(), CassandraRepositoryConfiguration.DEFAULT);
