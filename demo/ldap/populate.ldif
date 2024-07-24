@@ -52,4 +52,3 @@ ou: lists
 description: group@lists.tmail.com
 member: uid=james-user@tmail.com,ou=users,dc=tmail,dc=com
 member: uid=james-user2@tmail.com,ou=users,dc=tmail,dc=com
->>>>>>> 7a647dfe (ISSUE-1134 Integrate mailing lists with demo setup)
