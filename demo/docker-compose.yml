@@ -17,7 +17,7 @@ services:
       - tmail
 
   tmail-backend:
-    image: chibenwa/tmail-backend:23072024-1
+    image: linagora/tmail-backend:memory-branch-master
     container_name: tmail-backend
     ports:
       - "8000:8000"

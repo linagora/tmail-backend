@@ -11,10 +11,10 @@ the list of members of the group.
 Twake mail define some sender controls, defined by the business category of the LDAP group:
 
  - *openList(default) every body can send mails to the list
- - *internalListonly james users can send mail to the list
- - *memberRestrictedListonly members of the list can send mail to the list
- - *ownerRestrictedListonly owners of the list can send mail to the list
- - *domainRestrictedListonly members of the domain can send mail to the list
+ - *internalList only james users can send mail to the list
+ - *memberRestrictedList only members of the list can send mail to the list
+ - *ownerRestrictedList only owners of the list can send mail to the list
+ - *domainRestrictedList only members of the domain can send mail to the list
 
 Note that member and owner resolution is recursive: LDAP groups will be expended to their members.
 
