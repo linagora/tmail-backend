@@ -35,7 +35,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             boolean jmapEnabled,
                                             PropertiesProvider propertiesProvider,
                                             boolean quotaCompatibilityMode,
-                                            EventBusKeysChoice eventBusKeysChoice) implements Configuration {
+                                            EventBusKeysChoice eventBusKeysChoice,
+                                            boolean dropListEnabled) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -49,6 +50,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<Boolean> jmapEnabled;
         private Optional<EventBusKeysChoice> eventBusKeysChoice;
         private Optional<Boolean> quotaCompatibilityMode;
+        private Optional<Boolean> dropListsEnabled;
 
         private Builder() {
             searchConfiguration = Optional.empty();
@@ -63,6 +65,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             jmapEnabled = Optional.empty();
             quotaCompatibilityMode = Optional.empty();
             eventBusKeysChoice = Optional.empty();
+            dropListsEnabled = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -143,6 +146,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder enableDropLists() {
+            this.dropListsEnabled = Optional.of(true);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -198,6 +206,16 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             EventBusKeysChoice eventBusKeysChoice = this.eventBusKeysChoice.orElseGet(Throwing.supplier(
                 () -> EventBusKeysChoice.parse(propertiesProvider)));
 
+            boolean dropListsEnabled = this.dropListsEnabled.orElseGet(() -> {
+                try {
+                    return propertiesProvider.getConfiguration("droplists").getBoolean("enabled", false);
+                } catch (FileNotFoundException e) {
+                    return false;
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -211,7 +229,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 jmapEnabled,
                 propertiesProvider,
                 quotaCompatibilityMode,
-                eventBusKeysChoice);
+                eventBusKeysChoice,
+                dropListsEnabled);
         }
     }
 
