@@ -8,7 +8,7 @@ correctly in other mail clients in this case.
 == Additions to the capability object
 
 Servers supporting the JMAP public assets extension need to advertise it via the
-`com:linagora:params:public:assets` capability.
+`com:linagora:params:jmap:public:assets` capability.
 
 The value of this property in the JMAP session capabilities property is an object with the following field:
 
@@ -80,7 +80,7 @@ Request:
 ....
 {
   "using": [
-      "urn:ietf:params:jmap:core", "com:linagora:params:public:assets"
+      "urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"
   ],
   "methodCalls": [
       [
@@ -135,7 +135,7 @@ Response:
 Request:
 ....
 {
-  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:public:assets"],
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
   "methodCalls": [
     [
       "PublicAsset/set", {
@@ -181,7 +181,7 @@ Response:
 Request:
 ....
 {
-  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:public:assets"],
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
   "methodCalls": [
     [
       "PublicAsset/set", {
@@ -212,7 +212,7 @@ Response:
 Full reset update request:
 ....
 {
-  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:public:assets"],
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
   "methodCalls": [
     [
       "PublicAsset/set", {
@@ -239,7 +239,7 @@ Partial update request:
 {
     "using": [
         "urn:ietf:params:jmap:core",
-        "com:linagora:params:public:assets"
+        "com:linagora:params:jmap:public:assets"
     ],
     "methodCalls": [
         [
