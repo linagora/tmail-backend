@@ -36,6 +36,7 @@ import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
 import org.apache.james.modules.data.CassandraDelegationStoreModule;
 import org.apache.james.modules.data.CassandraDomainListModule;
+import org.apache.james.modules.data.CassandraDropListsModule;
 import org.apache.james.modules.data.CassandraJmapModule;
 import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
 import org.apache.james.modules.data.CassandraSieveQuotaLegacyModule;
@@ -70,6 +71,7 @@ import org.apache.james.modules.queue.rabbitmq.RabbitMQModule;
 import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.DLPRoutesModule;
 import org.apache.james.modules.server.DataRoutesModules;
+import org.apache.james.modules.server.DropListsRoutesModule;
 import org.apache.james.modules.server.InconsistencyQuotasSolvingRoutesModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.JmapTasksModule;
@@ -339,7 +341,8 @@ public class DistributedServer {
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
-            .overrideWith(overrideEventBusModule(configuration));
+            .overrideWith(overrideEventBusModule(configuration))
+            .overrideWith(chooseDropListsModule(configuration));
     }
 
     public static List<Module> chooseModules(SearchConfiguration searchConfiguration) {
@@ -466,5 +469,14 @@ public class DistributedServer {
             }
             default -> throw new NotImplementedException();
         }
+    }
+
+    private static Module chooseDropListsModule(DistributedJamesConfiguration configuration) {
+        if (configuration.dropListEnabled()) {
+            return Modules.combine(new CassandraDropListsModule(), new DropListsRoutesModule());
+        }
+        return binder -> {
+
+        };
     }
 }

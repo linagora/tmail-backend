@@ -20,6 +20,7 @@ import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.MemoryDataModule;
 import org.apache.james.modules.data.MemoryDelegationStoreModule;
+import org.apache.james.modules.data.MemoryDropListsModule;
 import org.apache.james.modules.data.MemoryUsersRepositoryModule;
 import org.apache.james.modules.eventstore.MemoryEventStoreModule;
 import org.apache.james.modules.mailbox.MemoryMailboxModule;
@@ -29,6 +30,7 @@ import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.memory.MemoryMailQueueModule;
 import org.apache.james.modules.server.DKIMMailetModule;
+import org.apache.james.modules.server.DropListsRoutesModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.TaskManagerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultModule;
@@ -176,7 +178,8 @@ public class MemoryServer {
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
-            .overrideWith(chooseJmapModule(configuration));
+            .overrideWith(chooseJmapModule(configuration))
+            .combineWith(chooseDropListsModule(configuration));
     }
 
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
@@ -216,5 +219,14 @@ public class MemoryServer {
             return List.of(new LinagoraServicesDiscoveryModule());
         }
         return List.of();
+    }
+
+    private static Module chooseDropListsModule(MemoryConfiguration configuration) {
+        if (configuration.dropListEnabled()) {
+            return Modules.combine(new MemoryDropListsModule(), new DropListsRoutesModule());
+        }
+        return binder -> {
+
+        };
     }
 }

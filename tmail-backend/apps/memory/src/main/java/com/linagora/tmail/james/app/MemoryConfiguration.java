@@ -26,7 +26,8 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
                                   FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                   LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
-                                  boolean jmapEnabled) implements Configuration {
+                                  boolean jmapEnabled,
+                                  boolean dropListEnabled) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<String> rootDirectory;
@@ -35,6 +36,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
+        private Optional<Boolean> dropListsEnabled;
 
         private Builder() {
             mailboxConfiguration = Optional.empty();
@@ -44,6 +46,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
+            dropListsEnabled = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -99,6 +102,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return this;
         }
 
+        public Builder enableDropLists() {
+            this.dropListsEnabled = Optional.of(true);
+            return this;
+        }
+
         public MemoryConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -135,6 +143,17 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 }
             });
 
+            boolean dropListsEnabled = this.dropListsEnabled.orElseGet(() -> {
+                PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
+                try {
+                    return propertiesProvider.getConfiguration("droplists").getBoolean("enabled", false);
+                } catch (FileNotFoundException e) {
+                    return false;
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             return new MemoryConfiguration(
                 configurationPath,
                 directories,
@@ -142,7 +161,8 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 usersRepositoryChoice,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
-                jmapEnabled);
+                jmapEnabled,
+                dropListsEnabled);
         }
     }
 
