@@ -17,7 +17,7 @@ socket:
 redis:
   url: ${REDIS_URL:localhost:6379}
   password: ${REDIS_PASSWORD:}
-  cluster.enable: ${REDIS_CLUSTER_ENABLE:false}
+  topology: ${REDIS_TOPOLOGY:standalone}
   ignoreErrors: ${REDIS_IGNORE_ERRORS:true}
   timeout: ${REDIS_TIMEOUT:5000}
 
