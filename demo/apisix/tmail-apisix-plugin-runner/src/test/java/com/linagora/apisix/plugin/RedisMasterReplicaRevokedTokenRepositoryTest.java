@@ -23,7 +23,7 @@ import org.testcontainers.utility.DockerImageName;
 import io.lettuce.core.RedisException;
 import io.lettuce.core.api.sync.RedisStringCommands;
 
-class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
+class RedisMasterReplicaRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
     private static final String REDIS_PASSWORD = "my_password";
 
     static Network dockernetwork = Network.newNetwork();
