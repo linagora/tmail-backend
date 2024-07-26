@@ -39,28 +39,49 @@ ext-plugin:
 - Be default the plugin use in-memory for storage. 
 ### Redis
 - Provide the properties
-    - `redis.url` (or environment `REDIS_URL`): [String] the redis url. For several url, use `,` character for separate
+    - `redis.topology` (or environment `REDIS_TOPOLOGY`): [String] the redis topology. Default to `standalone`. Available values: `standalone`, `cluster`, `sentinel`, `master_replica`
+    - `redis.url` (or environment `REDIS_URL`): [String] the redis url. 
+        - For standalone topology, it is the format `host:port`. 
+        - For cluster topology, it is the format `host1:port1,host2:port2,...`. 
+        - For master-replica topology, it is the format `masterHost:masterPort,replicaHost1:replicaPort1,replicaHost2:replicaPort2,...`
+        - For sentinel topology, it is the format `redis-sentinel://secret1@sentinel-1:26379,sentinel-2:26379,sentinel-3:26379?sentinelMasterId=mymaster`. Ref: https://github.com/redis/lettuce/wiki/Redis-URI-and-connection-details#uri-syntax
     - `redis.password` (or environment `REDIS_PASSWORD`): [String] the redis password (Optional).
-    - `redis.cluster.enabled` (or environment `REDIS_CLUSTER_ENABLE`): [Boolean]. `true` for redis master-replicas topology, 
-    `false` for standalone topology
     - `redis.timeout` (or environment `REDIS_TIMEOUT`): [Integer] the timeout for redis command when client send to Redis server. Default to 5000 (5 seconds)
     - `redis.ignoreErrors` (or environment `REDIS_IGNORE_ERRORS`): [Boolean]. This configuration determines whether errors from Redis should be ignored or not. If set to `true`, when the application is unable to connect to Redis, the revoked token will not be checked. Default to true
 
-Eg: 
+Eg:
+- For standalone redis
 ```yaml
 redis:
   url: redis.example.com:6379
   password: secret1
-  cluster.enable: false 
+  topology: standalone 
   timeout: 5000
   ignoreErrors: true
 ```
-or
+- For cluster redis
 ```yaml
 redis:
   url: redis-master.example.com:6379,redis-replica1.example.com:6379
   password: secret1
-  cluster.enable: true
+  topology: cluster
+  timeout: 5000
+  ignoreErrors: true
+```
+- For master-replica redis
+```yaml
+redis:
+  url: redis-master.example.com:6379,redis-replica1.example.com:6379
+  password: secret1
+  topology: master_replica
+  timeout: 5000
+  ignoreErrors: true
+```
+- For sentinel redis
+```yaml
+redis:
+  url: redis-sentinel://secret1@sentinel-1:26379,sentinel-2:26379,sentinel-3:26379?sentinelMasterId=mymaster
+  topology: sentinel
   timeout: 5000
   ignoreErrors: true
 ```
