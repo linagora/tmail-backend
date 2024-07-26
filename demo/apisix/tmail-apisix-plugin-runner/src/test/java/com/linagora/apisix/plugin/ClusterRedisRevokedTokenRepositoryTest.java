@@ -75,10 +75,10 @@ class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryCo
 
     @BeforeEach
     void setup() {
-        RedisStringCommands<String, String> stringStringRedisStringCommands = AppConfiguration.initRedisCommand(
+        RedisStringCommands<String, String> stringStringRedisStringCommands = AppConfiguration.initRedisCommandCluster(
             String.format("localhost:%d,localhost:%d",
                 REDIS_MASTER.getMappedPort(6379), REDIS_REPLICA.getMappedPort(6379)),
-            REDIS_PASSWORD, true, Duration.ofSeconds(3));
+            REDIS_PASSWORD,  Duration.ofSeconds(3));
 
         revokedTokenRepository = new RedisRevokedTokenRepository(stringStringRedisStringCommands, IGNORE_REDIS_ERRORS);
     }
@@ -121,10 +121,10 @@ class ClusterRedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryCo
     @Test
     void existsShouldThrowWhenIgnoreWasNotConfiguredAndRedisError() throws InterruptedException {
         boolean ignoreRedisErrors = false;
-        RedisRevokedTokenRepository testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommand(
+        RedisRevokedTokenRepository testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommandCluster(
             String.format("localhost:%d,localhost:%d",
                 REDIS_MASTER.getMappedPort(6379), REDIS_REPLICA.getMappedPort(6379)),
-            REDIS_PASSWORD, true, Duration.ofSeconds(3)), ignoreRedisErrors);
+            REDIS_PASSWORD,  Duration.ofSeconds(3)), ignoreRedisErrors);
 
         ContainerHelper.pause(REDIS_MASTER);
         TimeUnit.SECONDS.sleep(1);

@@ -18,6 +18,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import io.lettuce.core.RedisException;
+import io.lettuce.core.api.sync.RedisStringCommands;
 
 class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
     static final String REDIS_PASSWORD = "redisSecret1";
@@ -39,8 +40,10 @@ class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract 
 
     @BeforeEach
     void beforeEach() {
-        testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommand(String.format("localhost:%d", REDIS_CONTAINER.getMappedPort(6379)),
-            REDIS_PASSWORD, false, Duration.ofSeconds(3)), IGNORE_REDIS_ERRORS);
+        RedisStringCommands<String, String> redisStringCommands = AppConfiguration.initRedisCommandStandalone(
+            String.format("%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(6379)),
+            REDIS_PASSWORD, Duration.ofSeconds(3));
+        testee = new RedisRevokedTokenRepository(redisStringCommands, IGNORE_REDIS_ERRORS);
     }
 
     @AfterEach
@@ -83,8 +86,9 @@ class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract 
     @Test
     void existsShouldThrowWhenIgnoreWasNotConfiguredAndRedisError() throws InterruptedException {
         boolean ignoreRedisErrors = false;
-        testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommand(String.format("localhost:%d", REDIS_CONTAINER.getMappedPort(6379)),
-            REDIS_PASSWORD, false, Duration.ofSeconds(3)), ignoreRedisErrors);
+        testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommandStandalone(
+            String.format("%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(6379)),
+            REDIS_PASSWORD, Duration.ofSeconds(3)), ignoreRedisErrors);
         ContainerHelper.pause(REDIS_CONTAINER);
         TimeUnit.SECONDS.sleep(1);
         assertThatThrownBy(() -> testee().exist("sid1")).isInstanceOf(RedisException.class);
