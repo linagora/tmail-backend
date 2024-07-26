@@ -75,7 +75,7 @@ class RedisMasterReplicaRevokedTokenRepositoryTest implements RevokedTokenReposi
 
     @BeforeEach
     void setup() {
-        RedisStringCommands<String, String> stringStringRedisStringCommands = AppConfiguration.initRedisCommandCluster(
+        RedisStringCommands<String, String> stringStringRedisStringCommands = AppConfiguration.initRedisCommandMasterReplica(
             String.format("localhost:%d,localhost:%d",
                 REDIS_MASTER.getMappedPort(6379), REDIS_REPLICA.getMappedPort(6379)),
             REDIS_PASSWORD,  Duration.ofSeconds(3));
@@ -121,7 +121,7 @@ class RedisMasterReplicaRevokedTokenRepositoryTest implements RevokedTokenReposi
     @Test
     void existsShouldThrowWhenIgnoreWasNotConfiguredAndRedisError() throws InterruptedException {
         boolean ignoreRedisErrors = false;
-        RedisRevokedTokenRepository testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommandCluster(
+        RedisRevokedTokenRepository testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommandMasterReplica(
             String.format("localhost:%d,localhost:%d",
                 REDIS_MASTER.getMappedPort(6379), REDIS_REPLICA.getMappedPort(6379)),
             REDIS_PASSWORD,  Duration.ofSeconds(3)), ignoreRedisErrors);
