@@ -74,7 +74,7 @@ services:
 
   apisix:
     container_name: apisix.example.com
-    image: linagora/apisix:3.2.0-debian-javaplugin-0.2
+    image: linagora/apisix:3.9.1-debian-javaplugin
     volumes:
       - ./apisix/conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml
       - ./apisix/conf/config.yaml:/usr/local/apisix/conf/config.yaml

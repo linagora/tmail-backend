@@ -13,7 +13,7 @@ mvn clean package
 ```
 
 ## How to use it
-- Build Apisix docker image that support Java plugin runner : `docker build -t linagora/apisix:3.2.0-debian-javaplugin-0.2 .`
+- Build Apisix docker image that support Java plugin runner : `docker build -t linagora/apisix:3.9.1-debian-javaplugin .`
 - Configuration the plugin in `/usr/local/apisix/conf/config.yaml` of apisix container
     - Append: 
 ```yaml
