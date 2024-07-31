@@ -40,6 +40,8 @@
 
         <module>mailets</module>
 
+        <module>imap-extensions</module>
+
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
         <module>jmap/extensions-opensearch</module>
@@ -111,6 +113,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>encrypted-mailbox-guice</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>imap-extensions</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<smtpservers>
+    <smtpserver enabled="true">
+        <jmxName>smtpserver-authenticated</jmxName>
+        <bind>0.0.0.0:587</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="false" startTLS="true">
+            <keystore>file://conf/keystore</keystore>
+            <secret>james72laBalle</secret>
+            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+            <algorithm>SunX509</algorithm>
+        </tls>
+        <connectiontimeout>360</connectiontimeout>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
+        <authRequired>true</authRequired>
+        <verifyIdentity>true</verifyIdentity>
+        <maxmessagesize>0</maxmessagesize>
+        <addressBracketsEnforcement>true</addressBracketsEnforcement>
+        <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
+        <handlerchain coreHandlersPackage="com.linagora.tmail.smtp.TMailCmdHandlerLoader">
+            <handler class="com.linagora.tmail.smtp.TMailValidRcptHandler"/>
+        </handlerchain>
+    </smtpserver>
+</smtpservers>

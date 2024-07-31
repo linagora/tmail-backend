@@ -14,6 +14,8 @@
     <name>Twake Mail :: Integration Tests</name>
 
     <modules>
+        <module>imap/memory-imap-integration-tests</module>
+
         <module>jmap/distributed-jmap-integration-tests</module>
         <module>jmap/jmap-integration-tests-common</module>
         <module>jmap/memory-jmap-integration-tests</module>
