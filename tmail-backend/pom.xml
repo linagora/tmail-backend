@@ -40,6 +40,8 @@
 
         <module>mailets</module>
 
+        <module>imap-extensions</module>
+
         <module>jmap/extensions</module>
         <module>jmap/extensions-cassandra</module>
         <module>jmap/extensions-opensearch</module>
