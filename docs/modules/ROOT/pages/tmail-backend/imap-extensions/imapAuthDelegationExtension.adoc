@@ -1,0 +1,56 @@
+= IMAP Auth Delegation extension
+
+Allows delegated login through the IMAP Command.
+Authentication with delegation is similar to the IMAP `AUTHENTICATE PLAIN` command.
+
+== Why is this extension needed ?
+
+Impersonation of PLAIN AUTH (`minister\0secretary\0secret`) is not supported by MUA (Mail User Agent).
+
+This extensions will extend the IMAP LOGIN and PLAIN AUTH command to support the delegation.
+Please note that this extension is not change any existing current logic.
+Only when the user authenticateId contains the "+" character, the delegate logic will be executed.
+
+== IMAP LOGIN Command
+
+The syntax will be:
+```
+LOGIN "authentication_id+authorize_id" "password"
+```
+
+Example:
+```
+a001 LOGIN secretary+minister@domain.tld secretary_password
+```
+
+It will similar with AUTHENTICATE PLAIN command:
+
+```
+AUTHENTICATE PLAIN base64_encoded_string(authorize_id\0authentication_id\0password)
+```
+
+Example:
+```
+a002 AUTHENTICATE PLAIN base64_encoded_string(minister@domain.tld\0secretary@domain.tld\0secretary_password)
+```
+
+== IMAP AUTHENTICATE PLAIN Command
+
+The syntax will be:
+```
+a002 AUTHENTICATE PLAIN base64_encoded_string([authorize-id+authenticate-id]\0password)
+```
+
+Example:
+```
+a002 AUTHENTICATE PLAIN base64_encoded_string(secretary+minister@domain.tld\0secretary_password)
+```
+
+== How to deploy this extension
+
+This extension is deployed as an `imap-extension`.
+
+1. Mount the extension jar file created in `tmail-backend/imap-extensions/target` (using the `mvn package` command) to the path `/root/extensions-jars/` of tmail container.
+2. Configure `<imapPackages>com.linagora.tmail.imap.TMailImapPackage</imapPackages>` in the `imapserver.xml` file.
+
+

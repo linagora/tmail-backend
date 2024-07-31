@@ -1,0 +1,43 @@
+= SMTP Auth Delegation Extension
+
+Allows delegated authentication through the `AUTH PLAIN` SMTP Command with two tokens.
+This extension is similar to the SMTP `AUTH PLAIN` with three tokens (RFC 2595).
+
+== Why is this extension needed?
+
+According to RFC 2595, the client must send:
+```
+AUTH PLAIN base64_encoded_string([authorize-id]\0authenticate-id\0password)
+```
+
+However, impersonation of this is not supported by MUA (Mail User Agent).
+
+== SMTP Command
+
+The syntax will be:
+```
+AUTH PLAIN base64_encoded_string([authorize-id+authenticate-id]\0password)
+```
+
+Example:
+```
+AUTH PLAIN base64_encoded_string(secretary+minister@domain.tld\0secretary_password)
+```
+
+It is similar to the AUTH PLAIN command:
+```
+AUTH PLAIN base64_encoded_string(minister@domain.tld\0secretary@domain.tld\0secretary_password)
+```
+
+== How to deploy this extension
+
+1. Enable `verifyIdentity` and `authRequired` in the `smtpserver.xml` file.
+```
+<authRequired>true</authRequired>
+<verifyIdentity>true</verifyIdentity>
+```
+
+2. Define the `coreHandlerPackage` in the `smtpserver.xml` file.
+```
+<handlerchain coreHandlersPackage="com.linagora.tmail.smtp.TMailCmdHandlerLoader">
+```

@@ -1,0 +1,5 @@
+= TMail IMAP extensions
+
+These extensions include:
+
+- link:imapAuthDelegationExtension.adoc[IMAP Auth Delegation extension]
