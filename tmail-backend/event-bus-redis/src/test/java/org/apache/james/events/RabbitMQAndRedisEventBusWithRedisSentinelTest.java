@@ -45,8 +45,8 @@ import org.apache.james.backends.rabbitmq.RabbitMQFixture;
 import org.apache.james.backends.rabbitmq.RabbitMQManagementAPI;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.backends.redis.MasterReplicaRedisConfiguration;
-import org.apache.james.backends.redis.RedisConfiguration;
 import org.apache.james.backends.redis.RedisSentinelExtension;
+import org.apache.james.backends.redis.RedisSentinelExtension.RedisSentinelCluster;
 import org.apache.james.events.EventBusTestFixture.EventListenerCountingSuccessfulExecution;
 import org.apache.james.events.EventBusTestFixture.GroupA;
 import org.apache.james.events.EventBusTestFixture.TestEventSerializer;
@@ -75,9 +75,7 @@ import reactor.rabbitmq.OutboundMessage;
 import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
-import org.apache.james.backends.redis.RedisSentinelExtension.RedisSentinelCluster;
 
-@Disabled("unstable test")
 class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.SingleEventBusGroupContract,
     GroupContract.MultipleEventBusGroupContract,
     KeyContract.SingleEventBusKeyContract, KeyContract.MultipleEventBusKeyContract,
@@ -94,6 +92,7 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
     @RegisterExtension
     static RedisSentinelExtension redisExtension = new RedisSentinelExtension();
 
+    private RedisEventBusClientFactory redisEventBusClientFactory;
     private RabbitMQAndRedisEventBus eventBus;
     private RabbitMQAndRedisEventBus eventBus2;
     private RabbitMQAndRedisEventBus eventBus3;
@@ -114,10 +113,11 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
         eventSerializer = new TestEventSerializer();
         routingKeyConverter = RoutingKeyConverter.forFactories(new TestRegistrationKeyFactory());
         MasterReplicaRedisConfiguration redisConfiguration = redisSentinelCluster.redisSentinelContainerList().getRedisConfiguration();
-        eventBus = newEventBus(redisConfiguration);
-        eventBus2 = newEventBus(redisConfiguration);
-        eventBus3 = newEventBus(redisConfiguration);
-        eventBusWithKeyHandlerNotStarted = newEventBus(redisConfiguration);
+        redisEventBusClientFactory = new RedisEventBusClientFactory(redisConfiguration);
+        eventBus = newEventBus();
+        eventBus2 = newEventBus();
+        eventBus3 = newEventBus();
+        eventBusWithKeyHandlerNotStarted = newEventBus();
 
         eventBus.start();
         eventBus2.start();
@@ -142,19 +142,19 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
         rabbitMQExtension.getSender()
             .delete(TEST_NAMING_STRATEGY.deadLetterQueue())
             .block();
+        redisEventBusClientFactory.close();
     }
 
-    private RabbitMQAndRedisEventBus newEventBus(RedisConfiguration redisConfiguration) throws Exception {
-        return newEventBus(TEST_NAMING_STRATEGY, rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider(), redisConfiguration);
+    private RabbitMQAndRedisEventBus newEventBus() throws Exception {
+        return newEventBus(TEST_NAMING_STRATEGY, rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider());
     }
 
-    private RabbitMQAndRedisEventBus newEventBus(NamingStrategy namingStrategy, Sender sender, ReceiverProvider receiverProvider, RedisConfiguration redisConfiguration) throws Exception {
+    private RabbitMQAndRedisEventBus newEventBus(NamingStrategy namingStrategy, Sender sender, ReceiverProvider receiverProvider) throws Exception {
         return new RabbitMQAndRedisEventBus(namingStrategy, sender, receiverProvider, eventSerializer,
             EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, routingKeyConverter,
             memoryEventDeadLetters, new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-
-            new RedisEventBusClientFactory(redisConfiguration),
+            redisEventBusClientFactory,
             RedisEventBusConfiguration.DEFAULT);
     }
 
@@ -452,11 +452,10 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
                 private RabbitMQAndRedisEventBus rabbitMQAndRedisEventBusWithNetWorkIssue;
 
                 @BeforeEach
-                void beforeEach(RedisSentinelCluster redisSentinelCluster) throws Exception {
+                void beforeEach() throws Exception {
                     rabbitMQAndRedisEventBusWithNetWorkIssue = newEventBus(TEST_NAMING_STRATEGY,
                         rabbitMQNetWorkIssueExtension.getSender(),
-                        rabbitMQNetWorkIssueExtension.getReceiverProvider(),
-                        redisSentinelCluster.redisSentinelContainerList().getRedisConfiguration());
+                        rabbitMQNetWorkIssueExtension.getReceiverProvider());
                 }
 
                 @Test
@@ -824,10 +823,9 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
         private RabbitMQAndRedisEventBus otherEventBus;
 
         @BeforeEach
-        void beforeEach(RedisSentinelCluster redisSentinelCluster) throws Exception {
+        void beforeEach() throws Exception {
             otherEventBus = newEventBus(new NamingStrategy(new EventBusName("other")),
-                rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider(),
-                redisSentinelCluster.redisSentinelContainerList().getRedisConfiguration());
+                rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider());
             otherEventBus.start();
         }
 
