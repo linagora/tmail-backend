@@ -4,6 +4,7 @@ import io.lettuce.core.api.reactive.{RedisKeyReactiveCommands, RedisSetReactiveC
 import io.lettuce.core.cluster.RedisClusterClient
 import io.lettuce.core.pubsub.api.reactive.RedisPubSubReactiveCommands
 import io.lettuce.core.{AbstractRedisClient, RedisClient}
+import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Singleton}
 import org.apache.james.backends.redis.{ClusterRedisConfiguration, MasterReplicaRedisConfiguration, RedisConfiguration, StandaloneRedisConfiguration}
 
@@ -30,5 +31,10 @@ class RedisEventBusClientFactory @Singleton() @Inject()
   def createRedisKeyCommand(): RedisKeyReactiveCommands[String, String] = rawRedisClient match {
     case client: RedisClient => client.connect().reactive()
     case clusterClient: RedisClusterClient => clusterClient.connect().reactive()
+  }
+
+  @PreDestroy
+  def close(): Unit = {
+    rawRedisClient.close()
   }
 }
