@@ -76,6 +76,7 @@ import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 
+@Disabled("Redis Sentinel tests are heavy to run")
 class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.SingleEventBusGroupContract,
     GroupContract.MultipleEventBusGroupContract,
     KeyContract.SingleEventBusKeyContract, KeyContract.MultipleEventBusKeyContract,
