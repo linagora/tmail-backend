@@ -79,6 +79,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jmxremote.password"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/queue.properties"), "/root/conf/")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/redis.properties"), "/root/conf/")
             .withCreateContainerCmdModifier(cmder -> cmder.withName("twake-mail-distributed-ldap-testing" + UUID.randomUUID()))
             .waitingFor(TestContainerWaitStrategy.WAIT_STRATEGY)
             .withExposedPorts(25, 143, 80, 8000);
