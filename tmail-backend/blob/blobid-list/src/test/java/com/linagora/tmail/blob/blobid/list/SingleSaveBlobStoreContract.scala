@@ -1,6 +1,7 @@
 package com.linagora.tmail.blob.blobid.list
 
 import java.io.ByteArrayInputStream
+import java.util.UUID
 
 import com.google.common.io.ByteSource
 import org.apache.james.blob.api.BlobStoreDAOFixture.{SHORT_BYTEARRAY, TEST_BUCKET_NAME}
@@ -20,7 +21,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveBytesShouldSuccessIfBlobIdDoesNotExist(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
 
     assertThat(SMono.fromPublisher(blobIdList.isStored(blobId)).block()).isTrue
@@ -28,7 +29,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveBytesShouldNoopIfBlobExists(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
 
     assertThatCode(() => SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block())
@@ -37,7 +38,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveInputStreamShouldSuccessIfBlobIdDoesNotExist(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
 
     assertThat(SMono.fromPublisher(blobIdList.isStored(blobId)).block()).isTrue
@@ -45,7 +46,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveInputStreamShouldNoopIfBlobExists(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
 
     assertThatCode(() => SMono.fromPublisher(testee.save(defaultBucketName, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block())
@@ -54,7 +55,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveByteSourceShouldSuccessIfBlobIdDoesNotExist(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
 
     assertThat(SMono.fromPublisher(blobIdList.isStored(blobId)).block()).isTrue
@@ -62,7 +63,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveByteSourceShouldNoopIfBlobExists(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
 
     assertThatCode(() => SMono.fromPublisher(testee.save(defaultBucketName, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block())
@@ -71,7 +72,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveBytesShouldSucceedInOtherBucketWhenBlobAlreadyInDefaultOne(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
 
     SMono.fromPublisher(testee.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
@@ -82,7 +83,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveInputStreamShouldSucceedInOtherBucketWhenBlobAlreadyInDefaultOne(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
 
     SMono.fromPublisher(testee.save(TEST_BUCKET_NAME, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
@@ -93,7 +94,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveByteSourceShouldSucceedInOtherBucketWhenBlobAlreadyInDefaultOne(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
 
     SMono.fromPublisher(testee.save(TEST_BUCKET_NAME, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
@@ -104,7 +105,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveBytesShouldSucceedInDefaultBucketWhenBlobAlreadyInOtherOne(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID().toString())
     SMono.fromPublisher(testee.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
 
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
@@ -115,7 +116,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveInputStreamShouldSucceedInDefaultBucketWhenBlobAlreadyInOtherOne(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID().toString())
     SMono.fromPublisher(testee.save(TEST_BUCKET_NAME, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
 
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block()
@@ -126,7 +127,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveByteSourceShouldSucceedInDefaultBucketWhenBlobAlreadyInOtherOne(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID().toString())
     SMono.fromPublisher(testee.save(TEST_BUCKET_NAME, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
 
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, ByteSource.wrap(SHORT_BYTEARRAY))).block()
@@ -137,7 +138,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def deleteShouldSuccessWithNotDefaultBucket(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID().toString())
     SMono.fromPublisher(testee.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
 
     assertThat(SMono.fromPublisher(testee.delete(TEST_BUCKET_NAME, blobId)).block())
@@ -145,7 +146,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def deleteBucketShouldFailWithDefaultBucket(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID().toString())
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
 
     val deleteBlobThrowingCallable: ThrowingCallable = () =>
@@ -159,7 +160,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def deleteBucketShouldSuccessWithNotDefaultBucket(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID().toString())
     SMono.fromPublisher(testee.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block()
 
     assertThat(SMono.fromPublisher(testee.deleteBucket(TEST_BUCKET_NAME)).block())

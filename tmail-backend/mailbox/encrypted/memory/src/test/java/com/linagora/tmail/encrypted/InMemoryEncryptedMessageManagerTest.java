@@ -12,7 +12,7 @@ import java.security.Security;
 
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BucketName;
-import org.apache.james.blob.api.HashBlobId;
+import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreDAO;
 import org.apache.james.jmap.api.model.Preview;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
@@ -70,7 +70,7 @@ public class InMemoryEncryptedMessageManagerTest {
 
         keystoreManager = new InMemoryKeystoreManager();
         MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
-        blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, new HashBlobId.Factory());
+        blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, new PlainBlobId.Factory());
         emailContentStore = new InMemoryEncryptedEmailContentStore(blobStore);
         testee = new EncryptedMessageManager(messageManager, keystoreManager,
             new ClearEmailContentFactory(new MessageParser(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
