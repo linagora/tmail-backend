@@ -74,7 +74,7 @@ class CassandraEncryptedEmailDAO @Inject()(session: CqlSession, blobIdFactory: B
   def getBlobId(cassandraMessageId: CassandraMessageId, position: Int): SMono[BlobId] =
     getMapOfPositionBlobId(cassandraMessageId)
       .map(positionBlobIdMapping => positionBlobIdMapping.get(position))
-      .map(blobIdRaw => blobIdFactory.from(blobIdRaw))
+      .map(blobIdFactory.parse)
 
   def getBlobIds(cassandraMessageId: CassandraMessageId): SFlux[BlobId] =
     getMapOfPositionBlobId(cassandraMessageId)
@@ -82,11 +82,11 @@ class CassandraEncryptedEmailDAO @Inject()(session: CqlSession, blobIdFactory: B
         .values
         .asScala)
       .flatMapMany(blobIds => SFlux.fromIterable(blobIds))
-      .map(blobIdRow => blobIdFactory.from(blobIdRow))
+      .map(blobIdFactory.parse)
 
   def listBlobIds(): SFlux[BlobId] = SFlux(executor.executeRows(listBlobIdsStatement.bind()))
     .flatMapIterable(row => row.getMap(POSITION_BLOB_ID_MAPPING, classOf[Integer], classOf[String]).asScala.toMap.values)
-    .map(blobIdFactory.from)
+    .map(blobIdFactory.parse)
 
   private def readRow(cassandraMessageId: CassandraMessageId, row: Row): EncryptedEmailDetailedView =
     EncryptedEmailDetailedView(
