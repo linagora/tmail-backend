@@ -12,6 +12,7 @@ import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.JsonMatchers
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus
+import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.{IdentityId, IdentityName}
@@ -25,7 +26,7 @@ import org.apache.james.mailbox.model.ContentType.MimeType
 import org.apache.james.util.Size
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.hamcrest.Matchers.{containsString, hasItem, hasKey, is}
+import org.hamcrest.Matchers.{contains, containsString, hasItem, hasKey, is, notNullValue}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsString, Json}
 import reactor.core.scala.publisher.SMono
@@ -2009,11 +2010,14 @@ trait PublicAssetSetMethodContract {
   }
 
   @Test
-  def createShouldReturnFailWhenPublicAssetQuotaLimitIsExceeded(): Unit = {
+  def createShouldReturnFailWhenPublicAssetQuotaLimitIsExceededAndCanNotCleanUp(): Unit = {
     val content = "Your asset content here".repeat(20).getBytes
     val uploadResponse: UploadResponse = uploadAsset(content)
     val uploadResponse2: UploadResponse = uploadAsset(content)
 
+    val identityIds: Seq[String] = getIdentityIds()
+    val identityIdMap: Map[String, Boolean] = identityIds.map(identityId => identityId -> true).toMap
+    val identityIdMapAsJson: String = Json.stringify(Json.toJson(identityIdMap))
     val request: String =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
@@ -2023,7 +2027,8 @@ trait PublicAssetSetMethodContract {
          |        "accountId": "$ACCOUNT_ID",
          |        "create": {
          |          "4f29": {
-         |            "blobId": "${uploadResponse.blobId}"
+         |            "blobId": "${uploadResponse.blobId}",
+         |            "identityIds": $identityIdMapAsJson
          |          }
          |        }
          |      }, "0"
@@ -2051,7 +2056,8 @@ trait PublicAssetSetMethodContract {
          |        "accountId": "$ACCOUNT_ID",
          |        "create": {
          |          "4f29": {
-         |            "blobId": "${uploadResponse2.blobId}"
+         |            "blobId": "${uploadResponse2.blobId}",
+         |            "identityIds": $identityIdMapAsJson
          |          }
          |        }
          |      }, "0"
@@ -2080,4 +2086,84 @@ trait PublicAssetSetMethodContract {
            |    }
            |}""".stripMargin)
   }
+
+  @Test
+  def createShouldSuccessWhenPublicAssetQuotaLimitIsExceededAndCleanUpSucceed(): Unit = {
+    val content = "Your asset content here".repeat(20).getBytes
+    val uploadResponse: UploadResponse = uploadAsset(content)
+    val uploadResponse2: UploadResponse = uploadAsset(content)
+
+    // Given Create a public asset A, with no identityIds
+    val publicAssetIdA: String = `given`()
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/set", {
+           |        "accountId": "$ACCOUNT_ID",
+           |        "create": {
+           |          "4f29": {
+           |            "blobId": "${uploadResponse.blobId}"
+           |          }
+           |        }
+           |      }, "0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .extract()
+      .jsonPath()
+      .get("methodResponses[0][1].created.4f29.id").toString
+
+    // When Create a public asset B has PublicAssetQuota limit exceeded
+    // Then the request should return created successfully
+    `given`()
+      .body( s"""{
+                |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+                |  "methodCalls": [
+                |    [
+                |      "PublicAsset/set", {
+                |        "accountId": "$ACCOUNT_ID",
+                |        "create": {
+                |          "4f29": {
+                |            "blobId": "${uploadResponse2.blobId}"
+                |          }
+                |        }
+                |      }, "0"
+                |    ]
+                |  ]
+                |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .body("methodResponses[0][1].created.4f29.id", is(notNullValue()))
+
+    // And the public asset A should be deleted
+    `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:public:assets"],
+           |  "methodCalls": [
+           |    [
+           |      "PublicAsset/get",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "ids": ["$publicAssetIdA"]
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].notFound", is(contains(publicAssetIdA)))
+  }
+
 }

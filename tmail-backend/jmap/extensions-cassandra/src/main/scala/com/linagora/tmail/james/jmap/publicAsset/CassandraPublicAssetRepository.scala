@@ -76,6 +76,9 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
 
   override def getTotalSize(username: Username): Publisher[Long] =
     dao.selectSize(username).collectSeq().map(sizes => sizes.sum)
+
+  override def listPublicAssetMetaData(username: Username): Publisher[PublicAssetMetadata] =
+    dao.selectAllAssets(username)
 }
 
 case class CassandraPublicAssetRepositoryModule() extends AbstractModule {

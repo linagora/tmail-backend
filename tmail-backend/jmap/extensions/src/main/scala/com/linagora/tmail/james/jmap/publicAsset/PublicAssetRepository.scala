@@ -30,6 +30,8 @@ trait PublicAssetRepository {
 
   def list(username: Username): Publisher[PublicAssetStorage]
 
+  def listPublicAssetMetaData(username: Username): Publisher[PublicAssetMetadata]
+
   def listAllBlobIds(): Publisher[BlobId]
 
   def updateIdentityIds(username: Username, id: PublicAssetId, identityIdsToAdd: Seq[IdentityId], identityIdsToRemove: Seq[IdentityId]): Publisher[Void] =
@@ -106,4 +108,9 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
       .asScala
       .map(publicAssetMetadata => publicAssetMetadata.size.value)
       .sum)
+
+  override def listPublicAssetMetaData(username: Username): Publisher[PublicAssetMetadata] =
+    SFlux.fromIterable(tableStore.row(username).values().asScala)
+      .collectSeq()
+      .flatMapMany(SFlux.fromIterable)  // to avoid java.util.ConcurrentModificationException
 }
