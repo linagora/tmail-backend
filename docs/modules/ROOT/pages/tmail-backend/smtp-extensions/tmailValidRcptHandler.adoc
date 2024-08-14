@@ -1,3 +1,14 @@
 = TMail validate reception handler
 
-TODO
+The current `ValidRcptHandler` is used to verify whether a recipient exists on james server.
+However, it does not support the validation of teamMailbox's addresses xref:tmail-backend/features/teamMailboxes.adoc[Read more].
+Hence, we introduce a new `TMailValidRcptHandler` to resolve this issue.
+
+== How to Use `TMailValidRcptHandler`
+To use `TMailValidRcptHandler`, you need to declare it in the `smtpserver.xml` configuration file as follows:
+
+```xml
+<handlerchain coreHandlersPackage="com.linagora.tmail.smtp.TMailCmdHandlerLoader">
+    <handler class="com.linagora.tmail.smtp.TMailValidRcptHandler"/>
+</handlerchain>
+```
