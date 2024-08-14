@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.ByteArrayInputStream
 import java.net.URI
+import java.time.Clock
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
@@ -18,7 +19,8 @@ import reactor.core.scala.publisher.SMono
 class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
                                                val blobStore: BlobStore,
                                                val configuration: JMAPExtensionConfiguration,
-                                               @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
+                                               @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI,
+                                               clock: Clock) extends PublicAssetRepository {
   private val bucketName: BucketName = blobStore.getDefaultBucketName
 
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
@@ -38,7 +40,8 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
               size = creationRequest.size,
               contentType = creationRequest.contentType,
               blobId = blobId,
-              identityIds = creationRequest.identityIds))
+              identityIds = creationRequest.identityIds,
+              createdDate = clock.instant()))
         })
       .map(metadata => metadata.asPublicAssetStorage(new ByteArrayInputStream(dataAsByte))))
       .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)

@@ -1,10 +1,14 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT
-import com.linagora.tmail.james.jmap.publicAsset.PublicAssetServiceContract.{IDENTITY1, IDENTITY_ID1, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED, identityRepository}
+import com.linagora.tmail.james.jmap.publicAsset.PublicAssetServiceContract.{CLOCK, IDENTITY1, IDENTITY_ID1, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED, identityRepository}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.identity.IdentityRepository
 import org.apache.james.jmap.api.model.{HtmlSignature, Identity, IdentityId, IdentityName, MayDeleteIdentity, Size, TextSignature}
+import org.apache.james.utils.UpdatableTickingClock
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -27,6 +31,8 @@ object PublicAssetServiceContract {
   val identityRepository: IdentityRepository = mock(classOf[IdentityRepository])
 
   val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED: Long = PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT.asLong()
+
+  val CLOCK = new UpdatableTickingClock(Instant.now())
 }
 
 trait PublicAssetServiceContract {
@@ -51,7 +57,7 @@ trait PublicAssetServiceContract {
       CREATION_REQUEST.copy(identityIds = Seq.empty))).block()
 
     // When cleanUpPublicAsset is called
-    testee.cleanUpPublicAsset(USERNAME).block()
+    testee.cleanUpPublicAsset(USERNAME, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED).block()
 
     // Then publicAsset should be removed
     assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset.id)).block()).isNull()
@@ -65,7 +71,7 @@ trait PublicAssetServiceContract {
       .copy(identityIds = Seq(notExistIdentityId)))).block()
 
     // When cleanUpPublicAsset is called
-    testee.cleanUpPublicAsset(USERNAME).block()
+    testee.cleanUpPublicAsset(USERNAME, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED).block()
 
     // Then publicAsset should be removed
     assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset.id)).block()).isNull()
@@ -80,7 +86,7 @@ trait PublicAssetServiceContract {
       CREATION_REQUEST.copy(identityIds = Seq(existIdentityId, notExistIdentityId)))).block()
 
     // When cleanUpPublicAsset is called
-    val totalSize: Long = testee.cleanUpPublicAsset(USERNAME).block()
+    val totalSize: Long = testee.cleanUpPublicAsset(USERNAME, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED).block()
 
     // Then publicAsset should not be removed
     assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset.id)).block()).isNotNull()
@@ -96,7 +102,7 @@ trait PublicAssetServiceContract {
       .copy(identityIds = Seq(IDENTITY_ID1, identityId2)))).block()
 
     // When cleanUpPublicAsset is called
-    val totalSize: Long = testee.cleanUpPublicAsset(USERNAME).block()
+    val totalSize: Long = testee.cleanUpPublicAsset(USERNAME, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED).block()
 
     assertThat(totalSize).isEqualTo(0)
 
@@ -113,8 +119,80 @@ trait PublicAssetServiceContract {
     SMono(publicAssetRepository.create(USERNAME, creationRequest1)).block()
     SMono(publicAssetRepository.create(USERNAME, creationRequest2)).block()
 
-    assertThat(testee.cleanUpPublicAsset(USERNAME).block())
+    assertThat(testee.cleanUpPublicAsset(USERNAME, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED).block())
       .isEqualTo(15)
+  }
+
+  @Test
+  def cleanUpShouldRemovePublicAssetUntilMinimumThresholdIsSatisfied(): Unit = {
+    val creationRequest1 = CREATION_REQUEST.copy(size = Size.sanitizeSize(7),
+      identityIds = Seq())
+    val creationRequest2 = CREATION_REQUEST.copy(size = Size.sanitizeSize(7),
+      identityIds = Seq(IdentityId.generate))
+
+    SMono(publicAssetRepository.create(USERNAME, creationRequest1)).block()
+    SMono(publicAssetRepository.create(USERNAME, creationRequest2)).block()
+
+    assertThat(testee.cleanUpPublicAsset(USERNAME, 7).block())
+      .isEqualTo(7)
+  }
+
+  @Test
+  def cleanUpShouldRemoveOldestPublicAssetFirst(): Unit = {
+    // Given publicAsset1, publicAsset2, publicAsset3, with publicAsset3 is the oldest create date
+    val creationRequest1 = CREATION_REQUEST.copy(size = Size.sanitizeSize(7), identityIds = Seq())
+    val creationRequest2 = CREATION_REQUEST.copy(size = Size.sanitizeSize(7), identityIds = Seq(IdentityId.generate))
+    val creationRequest3 = CREATION_REQUEST.copy(size = Size.sanitizeSize(7), identityIds = Seq(IdentityId.generate))
+
+    CLOCK.setInstant(Instant.now().minus(10, ChronoUnit.MINUTES))
+    val publicAsset1: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest1)).block()
+    CLOCK.setInstant(Instant.now().minus(20, ChronoUnit.MINUTES))
+    val publicAsset2: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest2)).block()
+    CLOCK.setInstant(Instant.now().minus(30, ChronoUnit.MINUTES))
+    val publicAsset3: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest3)).block()
+
+    // when cleanUpPublicAsset is called
+    assertThat(testee.cleanUpPublicAsset(USERNAME, 7).block())
+      .isEqualTo(7)
+
+    // then publicAsset3 should be removed, because it is the oldest
+    assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset3.id)).block()).isNull()
+
+    // and publicAsset1 and publicAsset2 should not be removed, because they are newer and cleanup size is satisfied
+    assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset1.id)).block()).isNotNull
+    assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset2.id)).block()).isNotNull
+  }
+
+  @Test
+  def cleanUpShouldWorkCorrectWhenMixCase(): Unit = {
+    // Given publicAsset1,2,3,4
+    // with publicAsset4 is the oldest create date, but it has exists identityIds
+    val creationRequest1 = CREATION_REQUEST.copy(size = Size.sanitizeSize(7), identityIds = Seq())
+    val creationRequest2 = CREATION_REQUEST.copy(size = Size.sanitizeSize(8), identityIds = Seq(IdentityId.generate))
+    val creationRequest3 = CREATION_REQUEST.copy(size = Size.sanitizeSize(9), identityIds = Seq(IdentityId.generate))
+    val creationRequest4 = CREATION_REQUEST.copy(size = Size.sanitizeSize(10), identityIds = Seq(IDENTITY_ID1))
+
+    CLOCK.setInstant(Instant.now().minus(10, ChronoUnit.MINUTES))
+    val publicAsset1: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest1)).block()
+    CLOCK.setInstant(Instant.now().minus(20, ChronoUnit.MINUTES))
+    val publicAsset2: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest2)).block()
+    CLOCK.setInstant(Instant.now().minus(30, ChronoUnit.MINUTES))
+    val publicAsset3: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest3)).block()
+    CLOCK.setInstant(Instant.now().minus(40, ChronoUnit.MINUTES))
+    val publicAsset4: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest4)).block()
+
+    // when cleanUpPublicAsset is called
+    assertThat(testee.cleanUpPublicAsset(USERNAME, 10).block())
+      .isEqualTo(8 + 9)
+
+    // then publicAsset4 should not be removed, because it has exists identityIds
+    assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset4.id)).block()).isNotNull
+
+    // and publicAsset2, 3 should be removed, because they are the older than publicAsset1, and cleanup size is satisfied
+    assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset2.id)).block()).isNull()
+    assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset3.id)).block()).isNull()
+    // and publicAsset1 should not be removed, because it is the newest and cleanup size is satisfied
+    assertThat(SMono(publicAssetRepository.get(USERNAME, publicAsset1.id)).block()).isNotNull
   }
 
   @Test

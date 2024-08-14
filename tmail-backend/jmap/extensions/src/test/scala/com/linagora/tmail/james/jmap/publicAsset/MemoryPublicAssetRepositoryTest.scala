@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
+import java.time.Clock
+
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX
 import org.apache.james.blob.api.BucketName
@@ -14,7 +16,7 @@ class MemoryPublicAssetRepositoryTest extends PublicAssetRepositoryContract {
   @BeforeEach
   def setup(): Unit = {
     val blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO, BucketName.DEFAULT, blobIdFactory)
-    memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, JMAPExtensionConfiguration(), PUBLIC_ASSET_URI_PREFIX)
+    memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, JMAPExtensionConfiguration(), PUBLIC_ASSET_URI_PREFIX, Clock.systemUTC())
   }
 
   override def teste: PublicAssetRepository = memoryPublicAssetRepository

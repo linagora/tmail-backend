@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.InputStream
 import java.net.URI
+import java.time.Instant
 import java.util.UUID
 
 import com.github.f4b6a3.uuid.UuidCreator
@@ -137,7 +138,8 @@ case class PublicAssetMetadata(id: PublicAssetId,
                                size: Size,
                                contentType: ImageContentType,
                                blobId: BlobId,
-                               identityIds: Seq[IdentityId]) {
+                               identityIds: Seq[IdentityId],
+                               createdDate: Instant = Instant.now()) {
 
   def asPublicAssetStorage(content: InputStream): PublicAssetStorage =
     PublicAssetStorage(id = id,

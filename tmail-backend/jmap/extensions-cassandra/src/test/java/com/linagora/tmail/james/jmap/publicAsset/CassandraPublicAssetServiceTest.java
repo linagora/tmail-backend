@@ -25,7 +25,8 @@ class CassandraPublicAssetServiceTest implements PublicAssetServiceContract {
             new CassandraPublicAssetDAO(cassandra.getConf(), blobIdFactory()),
             new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, blobIdFactory()),
             new JMAPExtensionConfiguration(JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT()),
-            PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX());
+            PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX(),
+            PublicAssetServiceContract.CLOCK());
 
         publicAssetSetService = new PublicAssetSetService(PublicAssetServiceContract.identityRepository(), publicAssetRepository);
     }

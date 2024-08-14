@@ -2,8 +2,9 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.ByteArrayInputStream
 import java.net.URI
+import java.time.Clock
 
-import com.google.common.collect.{HashBasedTable, Table, Tables}
+import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import jakarta.inject.{Inject, Named}
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
@@ -44,7 +45,8 @@ trait PublicAssetRepository {
 
 class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
                                             val configuration: JMAPExtensionConfiguration,
-                                            @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
+                                            @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI,
+                                            clock: Clock) extends PublicAssetRepository {
   private val tableStore: Table[Username, PublicAssetId, PublicAssetMetadata] = Tables.synchronizedTable(HashBasedTable.create())
 
   private val bucketName: BucketName = blobStore.getDefaultBucketName
@@ -67,7 +69,8 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
             blobId = blobId,
             identityIds = creationRequest.identityIds,
             content = () => new ByteArrayInputStream(dataAsByte))
-          tableStore.put(username, publicAssetId, PublicAssetMetadata.from(publicAsset))
+          tableStore.put(username, publicAssetId, PublicAssetMetadata.from(publicAsset)
+          .copy(createdDate = clock.instant()))
           publicAsset
         })).subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
 
@@ -110,7 +113,5 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
       .sum)
 
   override def listPublicAssetMetaData(username: Username): Publisher[PublicAssetMetadata] =
-    SFlux.fromIterable(tableStore.row(username).values().asScala)
-      .collectSeq()
-      .flatMapMany(SFlux.fromIterable)  // to avoid java.util.ConcurrentModificationException
+    SFlux.fromIterable(ImmutableList.copyOf(tableStore.row(username).values()).asScala)
 }
