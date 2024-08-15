@@ -138,8 +138,7 @@ case class PublicAssetMetadata(id: PublicAssetId,
                                size: Size,
                                contentType: ImageContentType,
                                blobId: BlobId,
-                               identityIds: Seq[IdentityId],
-                               createdDate: Instant = Instant.now()) {
+                               identityIds: Seq[IdentityId]) {
 
   def asPublicAssetStorage(content: InputStream): PublicAssetStorage =
     PublicAssetStorage(id = id,

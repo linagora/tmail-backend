@@ -19,8 +19,7 @@ import reactor.core.scala.publisher.SMono
 class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
                                                val blobStore: BlobStore,
                                                val configuration: JMAPExtensionConfiguration,
-                                               @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI,
-                                               clock: Clock) extends PublicAssetRepository {
+                                               @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
   private val bucketName: BucketName = blobStore.getDefaultBucketName
 
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
@@ -40,8 +39,7 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
               size = creationRequest.size,
               contentType = creationRequest.contentType,
               blobId = blobId,
-              identityIds = creationRequest.identityIds,
-              createdDate = clock.instant()))
+              identityIds = creationRequest.identityIds))
         })
       .map(metadata => metadata.asPublicAssetStorage(new ByteArrayInputStream(dataAsByte))))
       .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
@@ -80,8 +78,8 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
   override def getTotalSize(username: Username): Publisher[Long] =
     dao.selectSize(username).collectSeq().map(sizes => sizes.sum)
 
-  override def listPublicAssetMetaData(username: Username): Publisher[PublicAssetMetadata] =
-    dao.selectAllAssets(username)
+  override def listPublicAssetMetaDataOrderByIdAsc(username: Username): Publisher[PublicAssetMetadata] =
+    dao.selectAllAssetsOrderByIdAsc(username)
 }
 
 case class CassandraPublicAssetRepositoryModule() extends AbstractModule {

@@ -1,7 +1,6 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
 import java.net.URI
-import java.time.Clock
 
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetRepositoryContract.{CREATION_REQUEST, USERNAME}
@@ -28,7 +27,7 @@ class PublicAssetDeletionTaskStepTest {
         BucketName.DEFAULT,
         new PlainBlobId.Factory()),
       JMAPExtensionConfiguration(),
-      PUBLIC_ASSET_URI_PREFIX, Clock.systemUTC())
+      PUBLIC_ASSET_URI_PREFIX)
     publicAssetDeletionTaskStep = new PublicAssetDeletionTaskStep(publicAssetRepository);
   }
 

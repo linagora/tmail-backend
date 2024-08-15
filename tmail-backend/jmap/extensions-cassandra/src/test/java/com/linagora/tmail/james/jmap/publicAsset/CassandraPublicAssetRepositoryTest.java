@@ -1,7 +1,5 @@
 package com.linagora.tmail.james.jmap.publicAsset;
 
-import java.time.Clock;
-
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.blob.api.BucketName;
@@ -24,7 +22,7 @@ class CassandraPublicAssetRepositoryTest implements PublicAssetRepositoryContrac
             new CassandraPublicAssetDAO(cassandra.getConf(), blobIdFactory()),
             new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, blobIdFactory()),
             new JMAPExtensionConfiguration(JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT()),
-            PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX(), Clock.systemUTC());
+            PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX());
     }
 
     @Override

@@ -41,25 +41,12 @@ class PublicAssetSetService @Inject()(val identityRepository: IdentityRepository
       .collectSeq().map(_.sum)
 
   def listPublicAssetNeedToDelete(username: Username, existIdentityIds: Seq[IdentityId], sizeReleaseAsLeast: Long): SMono[Seq[PublicAssetMetadata]] =
-    SFlux(publicAssetRepository.listPublicAssetMetaData(username))
+    SFlux(publicAssetRepository.listPublicAssetMetaDataOrderByIdAsc(username))
       .filter(publicAssetMetadata => !publicAssetMetadata.identityIds.exists(identityId => existIdentityIds.contains(identityId)))
-      .collectSortedSeq(PublicAssetCleanupOrdering)
-      .map(takeUntilSizeReached(_, sizeReleaseAsLeast))
-
-  private def takeUntilSizeReached(assets: Seq[PublicAssetMetadata], sizeReleaseAsLeast: Long): Seq[PublicAssetMetadata] =
-    assets.foldLeft((Seq.empty[PublicAssetMetadata], 0L)) {
-      case ((selectedAssets, accumulatedSize), asset) =>
-        if (accumulatedSize >= sizeReleaseAsLeast) {
-          (selectedAssets, accumulatedSize)
-        } else {
-          (selectedAssets :+ asset, accumulatedSize + asset.size.value)
-        }
-    }._1
-
-}
-
-object PublicAssetCleanupOrdering extends Ordering[PublicAssetMetadata] {
-  // order by created date in descending
-  override def compare(x: PublicAssetMetadata, y: PublicAssetMetadata): Int =
-    x.createdDate.compareTo(y.createdDate)
+      .scan((0L, Seq.empty[PublicAssetMetadata])) { case ((totalSize, acc), metadata) =>
+        (totalSize + metadata.size.value, acc :+ metadata)
+      }
+      .takeUntil { case (totalSize, _) => totalSize >= sizeReleaseAsLeast }
+      .map { case (_, assetMetadataList) => assetMetadataList }
+      .last()
 }

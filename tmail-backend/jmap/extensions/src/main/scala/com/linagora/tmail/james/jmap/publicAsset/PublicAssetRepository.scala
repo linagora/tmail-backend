@@ -31,7 +31,7 @@ trait PublicAssetRepository {
 
   def list(username: Username): Publisher[PublicAssetStorage]
 
-  def listPublicAssetMetaData(username: Username): Publisher[PublicAssetMetadata]
+  def listPublicAssetMetaDataOrderByIdAsc(username: Username): Publisher[PublicAssetMetadata]
 
   def listAllBlobIds(): Publisher[BlobId]
 
@@ -45,8 +45,7 @@ trait PublicAssetRepository {
 
 class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
                                             val configuration: JMAPExtensionConfiguration,
-                                            @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI,
-                                            clock: Clock) extends PublicAssetRepository {
+                                            @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
   private val tableStore: Table[Username, PublicAssetId, PublicAssetMetadata] = Tables.synchronizedTable(HashBasedTable.create())
 
   private val bucketName: BucketName = blobStore.getDefaultBucketName
@@ -69,8 +68,7 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
             blobId = blobId,
             identityIds = creationRequest.identityIds,
             content = () => new ByteArrayInputStream(dataAsByte))
-          tableStore.put(username, publicAssetId, PublicAssetMetadata.from(publicAsset)
-          .copy(createdDate = clock.instant()))
+          tableStore.put(username, publicAssetId, PublicAssetMetadata.from(publicAsset))
           publicAsset
         })).subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
 
@@ -112,6 +110,7 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
       .map(publicAssetMetadata => publicAssetMetadata.size.value)
       .sum)
 
-  override def listPublicAssetMetaData(username: Username): Publisher[PublicAssetMetadata] =
+  override def listPublicAssetMetaDataOrderByIdAsc(username: Username): Publisher[PublicAssetMetadata] =
     SFlux.fromIterable(ImmutableList.copyOf(tableStore.row(username).values()).asScala)
+      .sort((a, b) => a.id.value.compareTo(b.id.value))
 }

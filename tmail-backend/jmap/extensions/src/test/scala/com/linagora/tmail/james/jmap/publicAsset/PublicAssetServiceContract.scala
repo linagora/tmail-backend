@@ -144,12 +144,11 @@ trait PublicAssetServiceContract {
     val creationRequest2 = CREATION_REQUEST.copy(size = Size.sanitizeSize(7), identityIds = Seq(IdentityId.generate))
     val creationRequest3 = CREATION_REQUEST.copy(size = Size.sanitizeSize(7), identityIds = Seq(IdentityId.generate))
 
-    CLOCK.setInstant(Instant.now().minus(10, ChronoUnit.MINUTES))
-    val publicAsset1: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest1)).block()
-    CLOCK.setInstant(Instant.now().minus(20, ChronoUnit.MINUTES))
-    val publicAsset2: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest2)).block()
-    CLOCK.setInstant(Instant.now().minus(30, ChronoUnit.MINUTES))
     val publicAsset3: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest3)).block()
+    Thread.sleep(100)
+    val publicAsset2: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest2)).block()
+    Thread.sleep(100)
+    val publicAsset1: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest1)).block()
 
     // when cleanUpPublicAsset is called
     assertThat(testee.cleanUpPublicAsset(USERNAME, 7).block())
@@ -172,14 +171,13 @@ trait PublicAssetServiceContract {
     val creationRequest3 = CREATION_REQUEST.copy(size = Size.sanitizeSize(9), identityIds = Seq(IdentityId.generate))
     val creationRequest4 = CREATION_REQUEST.copy(size = Size.sanitizeSize(10), identityIds = Seq(IDENTITY_ID1))
 
+    val publicAsset4: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest4)).block()
     CLOCK.setInstant(Instant.now().minus(10, ChronoUnit.MINUTES))
-    val publicAsset1: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest1)).block()
-    CLOCK.setInstant(Instant.now().minus(20, ChronoUnit.MINUTES))
-    val publicAsset2: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest2)).block()
-    CLOCK.setInstant(Instant.now().minus(30, ChronoUnit.MINUTES))
     val publicAsset3: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest3)).block()
     CLOCK.setInstant(Instant.now().minus(40, ChronoUnit.MINUTES))
-    val publicAsset4: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest4)).block()
+    val publicAsset2: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest2)).block()
+    CLOCK.setInstant(Instant.now().minus(30, ChronoUnit.MINUTES))
+    val publicAsset1: PublicAssetStorage = SMono(publicAssetRepository.create(USERNAME, creationRequest1)).block()
 
     // when cleanUpPublicAsset is called
     assertThat(testee.cleanUpPublicAsset(USERNAME, 10).block())

@@ -8,9 +8,10 @@ import com.datastax.oss.driver.api.core.`type`.DataTypes.{BIGINT, TEXT, frozenSe
 import com.datastax.oss.driver.api.core.`type`.codec.registry.CodecRegistry
 import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
 import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
+import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder
 import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
-import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetTable.{ASSET_ID, BLOB_ID, CONTENT_TYPE, CREATE_DATE, FROZEN_OF_UUIDS_CODEC, IDENTITY_IDS, LIST_OF_TIME_UUIDS_CODEC, PUBLIC_URI, SIZE, TABLE_NAME, USER}
+import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetTable.{ASSET_ID, BLOB_ID, CONTENT_TYPE, FROZEN_OF_UUIDS_CODEC, IDENTITY_IDS, LIST_OF_TIME_UUIDS_CODEC, PUBLIC_URI, SIZE, TABLE_NAME, USER}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
@@ -31,7 +32,6 @@ object CassandraPublicAssetTable {
   val SIZE: CqlIdentifier = CqlIdentifier.fromCql("size")
   val CONTENT_TYPE: CqlIdentifier = CqlIdentifier.fromCql("content_type")
   val IDENTITY_IDS: CqlIdentifier = CqlIdentifier.fromCql("identity_ids")
-  val CREATE_DATE: CqlIdentifier = CqlIdentifier.fromCql("create_date")
 
   val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
     .comment("Hold user public assets metadata")
@@ -42,8 +42,7 @@ object CassandraPublicAssetTable {
       .withColumn(BLOB_ID, TEXT)
       .withColumn(SIZE, BIGINT)
       .withColumn(CONTENT_TYPE, TEXT)
-      .withColumn(IDENTITY_IDS, frozenSetOf(DataTypes.UUID))
-      .withColumn(CREATE_DATE, DataTypes.TIMESTAMP))
+      .withColumn(IDENTITY_IDS, frozenSetOf(DataTypes.UUID)))
     .build
 
   val FROZEN_OF_UUIDS_CODEC: TypeCodec[java.util.Set[UUID]] = CodecRegistry.DEFAULT.codecFor(frozenSetOf(DataTypes.UUID))
@@ -52,7 +51,6 @@ object CassandraPublicAssetTable {
 
 class CassandraPublicAssetDAO @Inject()(session: CqlSession,
                                         val blobIdFactory: BlobId.Factory) {
-  val CREATE_DATE_FALLBACK: Instant = Instant.EPOCH // 1970-01-01T00:00:00Z
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
 
   private val insert: PreparedStatement = session.prepare(insertInto(TABLE_NAME)
@@ -63,12 +61,17 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
     .value(SIZE, bindMarker(SIZE))
     .value(CONTENT_TYPE, bindMarker(CONTENT_TYPE))
     .value(IDENTITY_IDS, bindMarker(IDENTITY_IDS))
-    .value(CREATE_DATE, bindMarker(CREATE_DATE))
     .build())
 
   private val selectAll: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
     .all()
     .whereColumn(USER).isEqualTo(bindMarker(USER))
+    .build())
+
+  private val selectOrderByIdAsc: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
+    .all()
+    .whereColumn(USER).isEqualTo(bindMarker(USER))
+    .orderBy(ASSET_ID, ClusteringOrder.ASC)
     .build())
 
   private val selectOne: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
@@ -109,12 +112,16 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
         .set(BLOB_ID, publicAssetMetadata.blobId.asString(), TypeCodecs.TEXT)
         .set(SIZE, publicAssetMetadata.sizeAsLong(), TypeCodecs.BIGINT)
         .set(CONTENT_TYPE, publicAssetMetadata.contentType.value, TypeCodecs.TEXT)
-        .set(IDENTITY_IDS, CollectionConverters.asJava(publicAssetMetadata.identityIds.map(_.id).toSet), FROZEN_OF_UUIDS_CODEC)
-        .set(CREATE_DATE, publicAssetMetadata.createdDate, TypeCodecs.TIMESTAMP))
+        .set(IDENTITY_IDS, CollectionConverters.asJava(publicAssetMetadata.identityIds.map(_.id).toSet), FROZEN_OF_UUIDS_CODEC))
       .thenReturn(publicAssetMetadata))
 
   def selectAllAssets(username: Username): SFlux[PublicAssetMetadata] =
     SFlux(executor.executeRows(selectAll.bind()
+        .set(USER, username.asString, TypeCodecs.TEXT))
+      .map(toPublicAssetMetadata))
+
+  def selectAllAssetsOrderByIdAsc(username: Username): SFlux[PublicAssetMetadata] =
+    SFlux(executor.executeRows(selectOrderByIdAsc.bind()
         .set(USER, username.asString, TypeCodecs.TEXT))
       .map(toPublicAssetMetadata))
 
@@ -165,6 +172,5 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
       blobId = blobIdFactory.parse(row.get(BLOB_ID, TypeCodecs.TEXT)),
       identityIds = CollectionConverters.asScala(row.get(IDENTITY_IDS, FROZEN_OF_UUIDS_CODEC))
         .map(IdentityId(_))
-        .toSeq,
-      createdDate = Optional.ofNullable(row.get(CREATE_DATE, TypeCodecs.TIMESTAMP)).orElse(CREATE_DATE_FALLBACK))
+        .toSeq)
 }
