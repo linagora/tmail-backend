@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.ByteArrayInputStream
 import java.net.URI
+import java.time.Clock
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
@@ -76,6 +77,9 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
 
   override def getTotalSize(username: Username): Publisher[Long] =
     dao.selectSize(username).collectSeq().map(sizes => sizes.sum)
+
+  override def listPublicAssetMetaDataOrderByIdAsc(username: Username): Publisher[PublicAssetMetadata] =
+    dao.selectAllAssetsOrderByIdAsc(username)
 }
 
 case class CassandraPublicAssetRepositoryModule() extends AbstractModule {

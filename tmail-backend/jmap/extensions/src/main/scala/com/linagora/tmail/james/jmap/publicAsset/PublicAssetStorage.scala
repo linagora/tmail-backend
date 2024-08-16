@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.InputStream
 import java.net.URI
+import java.time.Instant
 import java.util.UUID
 
 import com.github.f4b6a3.uuid.UuidCreator

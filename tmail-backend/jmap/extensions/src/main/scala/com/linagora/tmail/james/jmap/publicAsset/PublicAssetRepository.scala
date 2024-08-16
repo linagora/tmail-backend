@@ -2,8 +2,9 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.ByteArrayInputStream
 import java.net.URI
+import java.time.Clock
 
-import com.google.common.collect.{HashBasedTable, Table, Tables}
+import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import jakarta.inject.{Inject, Named}
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
@@ -29,6 +30,8 @@ trait PublicAssetRepository {
   def get(username: Username, id: PublicAssetId): Publisher[PublicAssetStorage] = get(username, Set(id))
 
   def list(username: Username): Publisher[PublicAssetStorage]
+
+  def listPublicAssetMetaDataOrderByIdAsc(username: Username): Publisher[PublicAssetMetadata]
 
   def listAllBlobIds(): Publisher[BlobId]
 
@@ -106,4 +109,8 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
       .asScala
       .map(publicAssetMetadata => publicAssetMetadata.size.value)
       .sum)
+
+  override def listPublicAssetMetaDataOrderByIdAsc(username: Username): Publisher[PublicAssetMetadata] =
+    SFlux.fromIterable(ImmutableList.copyOf(tableStore.row(username).values()).asScala)
+      .sort((a, b) => a.id.value.compareTo(b.id.value))
 }

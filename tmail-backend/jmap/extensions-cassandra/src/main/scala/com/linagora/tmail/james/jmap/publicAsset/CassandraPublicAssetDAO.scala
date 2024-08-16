@@ -1,14 +1,15 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
-import java.util.UUID
+import java.time.Instant
+import java.util.{Optional, UUID}
 
 import com.datastax.oss.driver.api.core.`type`.DataTypes
 import com.datastax.oss.driver.api.core.`type`.DataTypes.{BIGINT, TEXT, frozenSetOf, listOf}
 import com.datastax.oss.driver.api.core.`type`.codec.registry.CodecRegistry
 import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
 import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
+import com.datastax.oss.driver.api.core.metadata.schema.ClusteringOrder
 import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
-import com.datastax.oss.driver.api.querybuilder.QueryBuilder
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetTable.{ASSET_ID, BLOB_ID, CONTENT_TYPE, FROZEN_OF_UUIDS_CODEC, IDENTITY_IDS, LIST_OF_TIME_UUIDS_CODEC, PUBLIC_URI, SIZE, TABLE_NAME, USER}
 import jakarta.inject.Inject
@@ -67,6 +68,12 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
     .whereColumn(USER).isEqualTo(bindMarker(USER))
     .build())
 
+  private val selectOrderByIdAsc: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
+    .all()
+    .whereColumn(USER).isEqualTo(bindMarker(USER))
+    .orderBy(ASSET_ID, ClusteringOrder.ASC)
+    .build())
+
   private val selectOne: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
     .all()
     .whereColumn(USER).isEqualTo(bindMarker(USER))
@@ -110,6 +117,11 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
 
   def selectAllAssets(username: Username): SFlux[PublicAssetMetadata] =
     SFlux(executor.executeRows(selectAll.bind()
+        .set(USER, username.asString, TypeCodecs.TEXT))
+      .map(toPublicAssetMetadata))
+
+  def selectAllAssetsOrderByIdAsc(username: Username): SFlux[PublicAssetMetadata] =
+    SFlux(executor.executeRows(selectOrderByIdAsc.bind()
         .set(USER, username.asString, TypeCodecs.TEXT))
       .map(toPublicAssetMetadata))
 
