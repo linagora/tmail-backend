@@ -229,7 +229,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 try {
                     return VaultConfiguration.from(propertiesProvider.getConfiguration("deletedMessageVault"));
                 } catch (FileNotFoundException e) {
-                    return VaultConfiguration.DEFAULT;
+                    return VaultConfiguration.ENABLED_DEFAULT;
                 } catch (ConfigurationException e) {
                     throw new RuntimeException(e);
                 }
