@@ -235,7 +235,6 @@ public class DistributedServer {
         new KeystoreSetMethodModule(),
         new TicketRoutesModule(),
         new WebFingerModule(),
-        new EmailRecoveryActionMethodModule(),
         new LabelMethodModule(),
         new JmapSettingsMethodModule())
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
@@ -485,12 +484,14 @@ public class DistributedServer {
         if (vaultConfiguration.isEnabled() && vaultConfiguration.isWorkQueueEnabled()) {
             return Modules.combine(
                 new DistributedDeletedMessageVaultModule(),
-                new DeletedMessageVaultRoutesModule());
+                new DeletedMessageVaultRoutesModule(),
+                new EmailRecoveryActionMethodModule());
         }
         if (vaultConfiguration.isEnabled()) {
             return Modules.combine(
                 new CassandraDeletedMessageVaultModule(),
-                new DeletedMessageVaultRoutesModule());
+                new DeletedMessageVaultRoutesModule(),
+                new EmailRecoveryActionMethodModule());
         }
         return binder -> {
 
