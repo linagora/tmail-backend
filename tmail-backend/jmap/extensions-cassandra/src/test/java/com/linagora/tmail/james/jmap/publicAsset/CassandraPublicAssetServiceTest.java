@@ -21,13 +21,14 @@ class CassandraPublicAssetServiceTest implements PublicAssetServiceContract {
 
     @BeforeEach
     void setup(CassandraCluster cassandra) {
+        JMAPExtensionConfiguration jmapExtensionConfiguration = new JMAPExtensionConfiguration(JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT());
         publicAssetRepository = new CassandraPublicAssetRepository(
             new CassandraPublicAssetDAO(cassandra.getConf(), blobIdFactory()),
             new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, blobIdFactory()),
-            new JMAPExtensionConfiguration(JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT()),
+            jmapExtensionConfiguration,
             PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX());
 
-        publicAssetSetService = new PublicAssetSetService(PublicAssetServiceContract.identityRepository(), publicAssetRepository);
+        publicAssetSetService = new PublicAssetSetService(PublicAssetServiceContract.identityRepository(), publicAssetRepository, jmapExtensionConfiguration);
     }
 
     @Override

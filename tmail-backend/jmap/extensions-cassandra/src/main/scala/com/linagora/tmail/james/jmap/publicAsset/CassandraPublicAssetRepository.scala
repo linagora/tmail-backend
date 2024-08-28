@@ -26,7 +26,7 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
     SMono(getTotalSize(username))
       .filter(totalSize => (totalSize + creationRequest.size.value) <= configuration.publicAssetTotalSizeLimit.asLong())
       .flatMap(_ => SMono(createAsset(username, creationRequest)))
-      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException()))
+      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException(configuration.publicAssetTotalSizeLimit.asLong())))
 
   private def createAsset(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())

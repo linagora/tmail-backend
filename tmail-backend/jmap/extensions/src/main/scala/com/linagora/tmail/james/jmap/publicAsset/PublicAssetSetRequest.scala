@@ -115,6 +115,7 @@ case class PublicAssetCreationSuccess(publicAssetCreationId: PublicAssetCreation
 case class PublicAssetCreationFailure(publicAssetCreationId: PublicAssetCreationId, exception: Throwable) extends PublicAssetCreationResult {
   def asPublicAssetSetError: SetError = exception match {
     case e: PublicAssetCreationParseException => e.setError
+    case e: PublicAssetQuotaLimitExceededException => SetError.overQuota(SetError.SetErrorDescription(e.getMessage))
     case e: PublicAssetException => SetError.invalidArguments(SetError.SetErrorDescription(e.getMessage))
     case e: BlobNotFoundException => SetError.invalidArguments(SetError.SetErrorDescription(e.getMessage))
     case e: IllegalArgumentException => SetError.invalidArguments(SetError.SetErrorDescription(e.getMessage))
