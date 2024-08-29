@@ -2081,8 +2081,8 @@ trait PublicAssetSetMethodContract {
       .isEqualTo(
         s"""{
            |    "4f29": {
-           |        "type": "invalidArguments",
-           |        "description": "Exceeding public asset quota limit"
+           |        "type": "overQuota",
+           |        "description": "Exceeding public asset quota limit of 500 bytes"
            |    }
            |}""".stripMargin)
   }
