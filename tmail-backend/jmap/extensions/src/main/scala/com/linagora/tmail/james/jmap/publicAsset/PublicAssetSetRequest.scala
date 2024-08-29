@@ -113,17 +113,22 @@ sealed trait PublicAssetCreationResult {
 case class PublicAssetCreationSuccess(publicAssetCreationId: PublicAssetCreationId, publicAssetCreationResponse: PublicAssetCreationResponse) extends PublicAssetCreationResult
 
 case class PublicAssetCreationFailure(publicAssetCreationId: PublicAssetCreationId, exception: Throwable) extends PublicAssetCreationResult {
-  def asPublicAssetSetError: SetError = exception match {
-    case e: PublicAssetCreationParseException => e.setError
-    case e: PublicAssetQuotaLimitExceededException =>
-      LOGGER.info("Has an quota limit exceed when create public asset {}", publicAssetCreationId.id.value, e)
-      SetError.overQuota(SetError.SetErrorDescription(e.getMessage))
-    case e: PublicAssetException => SetError.invalidArguments(SetError.SetErrorDescription(e.getMessage))
-    case e: BlobNotFoundException => SetError.invalidArguments(SetError.SetErrorDescription(e.getMessage))
-    case e: IllegalArgumentException => SetError.invalidArguments(SetError.SetErrorDescription(e.getMessage))
-    case _ =>
-      LOGGER.warn("Unexpected exception when create public asset {}", publicAssetCreationId.id.value, exception)
-      SetError.serverFail(SetError.SetErrorDescription(exception.getMessage))
+  def asPublicAssetSetError: SetError = {
+    val errorDescription = SetError.SetErrorDescription(exception.getMessage)
+    exception match {
+      case e: PublicAssetCreationParseException =>
+        LOGGER.debug("Error parsing public creation asset request {}", publicAssetCreationId.id.value, exception)
+        e.setError
+      case _: PublicAssetQuotaLimitExceededException =>
+        LOGGER.info("Quota limit exceeded when creating public asset {}", publicAssetCreationId.id.value, exception)
+        SetError.overQuota(errorDescription)
+      case _: PublicAssetException | _: BlobNotFoundException | _: IllegalArgumentException =>
+        LOGGER.debug("Error creating public asset {}", publicAssetCreationId.id.value, exception)
+        SetError.invalidArguments(errorDescription)
+      case _ =>
+        LOGGER.warn("Unexpected exception when creating public asset {}", publicAssetCreationId.id.value, exception)
+        SetError.serverFail(errorDescription)
+    }
   }
 }
 
