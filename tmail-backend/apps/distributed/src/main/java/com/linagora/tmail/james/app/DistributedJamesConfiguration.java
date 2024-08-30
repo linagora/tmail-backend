@@ -16,6 +16,7 @@ import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
 import org.apache.james.utils.PropertiesProvider;
+import org.apache.james.vault.VaultConfiguration;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
@@ -36,7 +37,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             PropertiesProvider propertiesProvider,
                                             boolean quotaCompatibilityMode,
                                             EventBusKeysChoice eventBusKeysChoice,
-                                            boolean dropListEnabled) implements Configuration {
+                                            boolean dropListEnabled,
+                                            VaultConfiguration vaultConfiguration) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -51,6 +53,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<EventBusKeysChoice> eventBusKeysChoice;
         private Optional<Boolean> quotaCompatibilityMode;
         private Optional<Boolean> dropListsEnabled;
+        private Optional<VaultConfiguration> vaultConfiguration;
 
         private Builder() {
             searchConfiguration = Optional.empty();
@@ -66,6 +69,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             quotaCompatibilityMode = Optional.empty();
             eventBusKeysChoice = Optional.empty();
             dropListsEnabled = Optional.empty();
+            vaultConfiguration = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -151,6 +155,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder vaultConfiguration(VaultConfiguration vaultConfiguration) {
+            this.vaultConfiguration = Optional.of(vaultConfiguration);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -216,6 +225,16 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 }
             });
 
+            VaultConfiguration vaultConfiguration = this.vaultConfiguration.orElseGet(() -> {
+                try {
+                    return VaultConfiguration.from(propertiesProvider.getConfiguration("deletedMessageVault"));
+                } catch (FileNotFoundException e) {
+                    return VaultConfiguration.ENABLED_DEFAULT;
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -230,7 +249,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 propertiesProvider,
                 quotaCompatibilityMode,
                 eventBusKeysChoice,
-                dropListsEnabled);
+                dropListsEnabled,
+                vaultConfiguration);
         }
     }
 

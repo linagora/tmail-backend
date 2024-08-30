@@ -62,3 +62,13 @@ Default to 20MB. Supported units are B (bytes) K (KB) M (MB) G (GB).
 
 Example: `public.asset.total.size=20MB`.
 |===
+
+== Deleted message vault configuration
+
+By default on Tmail backend, the deleted message vault is enabled (contrary to James server where it is disabled).
+
+It is still possible to disable it by modifying the following property on `deletedMessageVault.properties`:
+
+....
+enabled=false
+....

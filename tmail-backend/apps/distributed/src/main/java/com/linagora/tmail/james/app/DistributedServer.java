@@ -53,6 +53,7 @@ import org.apache.james.modules.mailbox.CassandraMailboxQuotaLegacyModule;
 import org.apache.james.modules.mailbox.CassandraMailboxQuotaModule;
 import org.apache.james.modules.mailbox.CassandraQuotaMailingModule;
 import org.apache.james.modules.mailbox.CassandraSessionModule;
+import org.apache.james.modules.mailbox.DistributedDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.OpenSearchClientModule;
 import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
 import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
@@ -96,6 +97,7 @@ import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
+import org.apache.james.vault.VaultConfiguration;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -189,7 +191,6 @@ public class DistributedServer {
     public static final Module WEBADMIN = Modules.combine(
         new CassandraRoutesModule(),
         new DataRoutesModules(),
-        new DeletedMessageVaultRoutesModule(),
         new DLPRoutesModule(),
         new InconsistencyQuotasSolvingRoutesModule(),
         new InconsistencySolvingRoutesModule(),
@@ -234,7 +235,6 @@ public class DistributedServer {
         new KeystoreSetMethodModule(),
         new TicketRoutesModule(),
         new WebFingerModule(),
-        new EmailRecoveryActionMethodModule(),
         new LabelMethodModule(),
         new JmapSettingsMethodModule())
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
@@ -272,7 +272,6 @@ public class DistributedServer {
     public static final Module CASSANDRA_MAILBOX_MODULE = Modules.combine(
         new CassandraConsistencyTaskSerializationModule(),
         new CassandraMailboxModule(),
-        new CassandraDeletedMessageVaultModule(),
         new MailboxModule(),
         new TikaMailboxModule());
 
@@ -338,6 +337,7 @@ public class DistributedServer {
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseQuotaModule(configuration))
+            .combineWith(chooseDeletedMessageVault(configuration.vaultConfiguration()))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
@@ -474,6 +474,24 @@ public class DistributedServer {
     private static Module chooseDropListsModule(DistributedJamesConfiguration configuration) {
         if (configuration.dropListEnabled()) {
             return Modules.combine(new CassandraDropListsModule(), new DropListsRoutesModule());
+        }
+        return binder -> {
+
+        };
+    }
+
+    private static Module chooseDeletedMessageVault(VaultConfiguration vaultConfiguration) {
+        if (vaultConfiguration.isEnabled() && vaultConfiguration.isWorkQueueEnabled()) {
+            return Modules.combine(
+                new DistributedDeletedMessageVaultModule(),
+                new DeletedMessageVaultRoutesModule(),
+                new EmailRecoveryActionMethodModule());
+        }
+        if (vaultConfiguration.isEnabled()) {
+            return Modules.combine(
+                new CassandraDeletedMessageVaultModule(),
+                new DeletedMessageVaultRoutesModule(),
+                new EmailRecoveryActionMethodModule());
         }
         return binder -> {
 

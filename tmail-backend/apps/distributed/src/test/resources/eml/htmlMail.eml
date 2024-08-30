@@ -1,0 +1,34 @@
+Delivered-To: mister@james.org
+Date: Thu, 04 Jun 2015 07:36:08 +0000
+From: Airbnb <discover@airbnb.com>
+To: mister@james.org
+Message-ID: <556fffe8cac78_7ed0e0fe204457be@i-dee0850e.mail>
+Subject: Text and Html not similar
+Mime-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="--==_mimepart_556fffe8c7e84_7ed0e0fe20445637";
+ charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+----==_mimepart_556fffe8c7e84_7ed0e0fe20445637
+Content-Type: text/plain;
+ charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+The text/plain part is not matching the html one.
+
+----==_mimepart_556fffe8c7e84_7ed0e0fe20445637
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 7bit
+
+<html>
+  <head>
+
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  </head>
+  <body bgcolor="#FFFFFF" text="#000000">
+    <i>This is a mail with <b>beautifull</b> html content which contains a banana.</i><br>
+  </body>
+</html>
+
+----==_mimepart_556fffe8c7e84_7ed0e0fe20445637--
