@@ -17,6 +17,7 @@ Sample `mailetcontainer.xml` configuration:
         <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@tmail.com" class="com.linagora.tmail.mailet.OpenAIMailet">
             <apiKey>demo</apiKey>
             <gptAddress>gpt@tmail.com</gptAddress>
+            <model>gpt-4o-mini</model>
         </mailet>
     </processor>
 ```
