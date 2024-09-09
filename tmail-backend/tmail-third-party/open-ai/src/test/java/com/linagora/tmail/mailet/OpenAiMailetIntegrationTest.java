@@ -1,5 +1,6 @@
 package com.linagora.tmail.mailet;
 
+import static com.linagora.tmail.mailet.OpenAIMailetTest.DEMO_MODEL;
 import static org.apache.james.mailets.configuration.CommonProcessors.ERROR_REPOSITORY;
 import static org.apache.james.mailets.configuration.Constants.DEFAULT_DOMAIN;
 import static org.apache.james.mailets.configuration.Constants.LOCALHOST_IP;
@@ -65,6 +66,7 @@ class OpenAiMailetIntegrationTest {
                     .mailet(OpenAIMailet.class)
                     .addProperty("apiKey", "demo")
                     .addProperty("gptAddress", CHAT_GPT_ADDRESS)
+                    .addProperty("model", DEMO_MODEL)
                     .build())
                 .addMailetsFrom(CommonProcessors.transport()));
 
