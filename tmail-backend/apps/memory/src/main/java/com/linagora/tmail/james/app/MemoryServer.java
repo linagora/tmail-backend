@@ -26,6 +26,7 @@ import org.apache.james.modules.eventstore.MemoryEventStoreModule;
 import org.apache.james.modules.mailbox.MemoryMailboxModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.ManageSieveServerModule;
+import org.apache.james.modules.protocols.POP3ServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.memory.MemoryMailQueueModule;
@@ -105,6 +106,7 @@ public class MemoryServer {
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
         new ManageSieveServerModule(),
+        new POP3ServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule());
 
