@@ -26,6 +26,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
                                   FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                   LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
+                                  FileConfigurationProvider fileConfigurationProvider,
                                   boolean jmapEnabled,
                                   boolean dropListEnabled) implements Configuration {
     public static class Builder {
@@ -161,6 +162,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 usersRepositoryChoice,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
+                configurationProvider,
                 jmapEnabled,
                 dropListsEnabled);
         }
