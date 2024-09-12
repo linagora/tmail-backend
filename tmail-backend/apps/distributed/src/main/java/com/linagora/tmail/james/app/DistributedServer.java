@@ -8,6 +8,7 @@ import java.util.Set;
 
 import jakarta.inject.Named;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.ExtraProperties;
@@ -64,6 +65,7 @@ import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.JMAPServerModule;
 import org.apache.james.modules.protocols.JmapEventBusModule;
 import org.apache.james.modules.protocols.ManageSieveServerModule;
+import org.apache.james.modules.protocols.POP3ServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
@@ -244,6 +246,7 @@ public class DistributedServer {
         new IMAPServerModule(),
         JMAP,
         new ManageSieveServerModule(),
+        new POP3ServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
         WEBADMIN);
@@ -338,6 +341,7 @@ public class DistributedServer {
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseQuotaModule(configuration))
             .combineWith(chooseDeletedMessageVault(configuration.vaultConfiguration()))
+            .combineWith(choosePop3ServerModule(configuration))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
@@ -496,5 +500,16 @@ public class DistributedServer {
         return binder -> {
 
         };
+    }
+
+    private static Module choosePop3ServerModule(DistributedJamesConfiguration configuration) {
+        try {
+            if (CollectionUtils.isNotEmpty(configuration.fileConfigurationProvider().getConfiguration("pop3server").configurationsAt("pop3server"))) {
+                return new POP3ServerModule();
+            }
+            return Modules.EMPTY_MODULE;
+        } catch (ConfigurationException exception) {
+            return Modules.EMPTY_MODULE;
+        }
     }
 }

@@ -6,6 +6,8 @@ import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
 import java.util.List;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.FakeSearchMailboxModule;
 import org.apache.james.GuiceJamesServer;
@@ -26,6 +28,7 @@ import org.apache.james.modules.eventstore.MemoryEventStoreModule;
 import org.apache.james.modules.mailbox.MemoryMailboxModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
 import org.apache.james.modules.protocols.ManageSieveServerModule;
+import org.apache.james.modules.protocols.POP3ServerModule;
 import org.apache.james.modules.protocols.ProtocolHandlerModule;
 import org.apache.james.modules.protocols.SMTPServerModule;
 import org.apache.james.modules.queue.memory.MemoryMailQueueModule;
@@ -177,6 +180,7 @@ public class MemoryServer {
                 .chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
+            .combineWith(choosePop3ServerModule(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .combineWith(chooseDropListsModule(configuration));
@@ -228,5 +232,16 @@ public class MemoryServer {
         return binder -> {
 
         };
+    }
+
+    private static Module choosePop3ServerModule(MemoryConfiguration configuration) {
+        try {
+            if (CollectionUtils.isNotEmpty(configuration.fileConfigurationProvider().getConfiguration("pop3server").configurationsAt("pop3server"))) {
+                return new POP3ServerModule();
+            }
+            return Modules.EMPTY_MODULE;
+        } catch (ConfigurationException exception) {
+            return Modules.EMPTY_MODULE;
+        }
     }
 }
