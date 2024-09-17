@@ -22,6 +22,11 @@ Then to build your server:
 mvn clean install
 mvn compile com.google.cloud.tools:jib-maven-plugin:2.7.0:dockerBuild
 ```
+**Tip**: In case you are in a hurry and want the build to run faster by choosing not to run tests, you can add `-DskipTests`, like this:
+
+```
+mvn clean install -DskipTests
+```
 
 Then you can finally start the James distributed server. If you included the JWT keys in the build:
 
