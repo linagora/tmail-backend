@@ -84,3 +84,12 @@ Password: bobSecret
 User: empty@localhost
 Password: emptrySecret
 ```
+
+## Troubleshooting
+### How to get around 'maven error: release version 21 not supported'.
+
+This error commonly occurs due to a mismatch between the Java version used to compile your Maven project and the target Java version specified in the project configuration.
+
+Maven uses the Java version set in the JAVA_HOME environment variable by default. Ensure that this version matches the target version specified in your project. The target version [is set to JDK 21](https://github.com/linagora/tmail-backend/blame/b28597e4e3028d1c2e79e988d20f80854932cb14/pom.xml#L14) as of the current configuration.
+
+To resolve the issue, verify that JAVA_HOME is pointing to JDK 21.
