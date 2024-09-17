@@ -246,7 +246,6 @@ public class DistributedServer {
         new IMAPServerModule(),
         JMAP,
         new ManageSieveServerModule(),
-        new POP3ServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
         WEBADMIN);
