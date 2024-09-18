@@ -29,7 +29,7 @@ You can add the -DskipTests flag as well if you don't want to run the tests.
 mvn clean install -DskipTests
 ```
 
-Then you can finally start the James distributed server. If you included the JWT keys in the build:
+Then you can finally start the James memory server. If you included the JWT keys in the build:
 
 ```
 docker run linagora/tmail-backend-memory
