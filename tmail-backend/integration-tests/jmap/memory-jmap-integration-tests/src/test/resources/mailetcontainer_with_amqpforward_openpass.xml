@@ -59,6 +59,7 @@
             <mailet match="SenderIsLocal" class="AmqpForwardAttribute">
                 <uri>{{AmqpForwardAttribute_uri}}</uri>
                 <exchange>james:events</exchange>
+                <exchange_type>fanout</exchange_type>
                 <attribute>icalendarAsJson2</attribute>
                 <routing_key>icalendar_routing_key2</routing_key>
                 <onMailetException>ignore</onMailetException>
