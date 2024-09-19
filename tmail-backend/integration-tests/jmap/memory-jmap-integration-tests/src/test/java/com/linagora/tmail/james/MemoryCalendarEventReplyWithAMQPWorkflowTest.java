@@ -20,13 +20,14 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraCalendarEventReplyWithAMQPWorkflowContract;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+import com.rabbitmq.client.BuiltinExchangeType;
 
 public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCalendarEventReplyWithAMQPWorkflowContract {
     static final String AMQP_EXCHANGE_NAME = "james:events";
     static final String AMQP_ROUTING_KEY = "icalendar_routing_key2";
 
     @RegisterExtension
-    public static AmqpExtension amqpExtension = new AmqpExtension(AMQP_EXCHANGE_NAME, AMQP_ROUTING_KEY);
+    public static AmqpExtension amqpExtension = new AmqpExtension(AMQP_EXCHANGE_NAME, AMQP_ROUTING_KEY, BuiltinExchangeType.FANOUT);
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(
