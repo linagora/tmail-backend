@@ -23,7 +23,13 @@ mvn clean install
 mvn compile com.google.cloud.tools:jib-maven-plugin:2.7.0:dockerBuild
 ```
 
-Then you can finally start the James distributed server. If you included the JWT keys in the build:
+You can add the -DskipTests flag as well if you don't want to run the tests.
+
+```
+mvn clean install -DskipTests
+```
+
+Then you can finally start the James memory server. If you included the JWT keys in the build:
 
 ```
 docker run linagora/tmail-backend-memory
@@ -79,3 +85,12 @@ Password: bobSecret
 User: empty@localhost
 Password: emptrySecret
 ```
+
+## Troubleshooting
+### How to get around 'maven error: release version 21 not supported'.
+
+This error commonly occurs due to a mismatch between the Java version used to compile your Maven project and the target Java version specified in the project configuration.
+
+Maven uses the Java version set in the JAVA_HOME environment variable by default. Ensure that this version matches the target version specified in your project. The target version [is set to JDK 21](https://github.com/linagora/tmail-backend/blame/b28597e4e3028d1c2e79e988d20f80854932cb14/pom.xml#L14) as of the current configuration.
+
+To resolve the issue, verify that JAVA_HOME is pointing to JDK 21.
