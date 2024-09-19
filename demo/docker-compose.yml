@@ -32,6 +32,7 @@ services:
       - ./tmail/mailetcontainer.xml:/root/conf/mailetcontainer.xml
       - ./tmail/domainlist.xml:/root/conf/domainlist.xml
       - ./tmail/smtpserver.xml:/root/conf/smtpserver.xml
+      - ./tmail/extensions-jars:/root/extensions-jars
     networks:
       - tmail
     restart: on-failure
