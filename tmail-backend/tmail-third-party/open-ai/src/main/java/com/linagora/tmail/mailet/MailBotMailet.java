@@ -34,10 +34,9 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 
 /**
- * OpenAIMailet is a mailet designed to automatically reply to emails
+ * MailBotMailet is a mailet designed to automatically reply to emails
  * sent to a specific recipient (e.g., gpt@linagora.com). It uses the OpenAI
  * API to generate responses.
  *
@@ -46,7 +45,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
  *
  * <pre>
  * {@code
- * <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@linagora.com" class="com.linagora.tmail.mailet.OpenAIMailet">
+ * <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@linagora.com" class="com.linagora.tmail.mailet.MailBotMailet">
  *     <apiKey>demo</apiKey>
  *     <gptAddress>gpt@tmail.com</gptAddress>
  *     <model>gpt-4o-mini</model>
@@ -64,20 +63,16 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
  * <li><b>model</b>: The OpenAI model to be used. Optional. Defaults to <b>gpt-3.5-turbo</b> by langchain4j. You can use the <b>gpt-4o-mini</b> model and <b>demo</b> API key for testing purpose.</li>
  * </ul>
  */
-public class OpenAIMailet extends GenericMailet {
-    public static final String API_KEY_PARAMETER_NAME = "apiKey";
-    public static final String GPT_ADDRESS_PARAMETER_NAME = "gptAddress";
-    public static final String MODEL_PARAMETER_NAME = "model";
-
+public class MailBotMailet extends GenericMailet {
     private final HtmlTextExtractor htmlTextExtractor;
-
-    private ChatLanguageModel openAiModel;
-    private MailAddress gptAddress;
-    private Optional<String> openAiChatModelName;
     private DefaultMessageBuilder defaultMessageBuilder;
+    private MailBotConfig config;
+    private ChatLanguageModel chatLanguageModel;
+    private final ChatLanguageModelFactory chatLanguageModelFactory;
 
     @Inject
-    public OpenAIMailet(HtmlTextExtractor htmlTextExtractor) {
+    public MailBotMailet(ChatLanguageModelFactory chatLanguageModelFactory, HtmlTextExtractor htmlTextExtractor) {
+        this.chatLanguageModelFactory = chatLanguageModelFactory;
         this.htmlTextExtractor = htmlTextExtractor;
     }
 
@@ -88,25 +83,25 @@ public class OpenAIMailet extends GenericMailet {
         }
 
         try {
-            String gptAnswer = askOpenAiModel(mail);
+            String gptAnswer = askChatLanguageModel(mail);
             MimeMessage replyMimeMessage = evaluateReplyMimeMessage(mail, gptAnswer);
 
             getMailetContext()
-                .sendMail(gptAddress, evaluateRecipients(mail), replyMimeMessage);
+                .sendMail(config.getGptAddress(), evaluateRecipients(mail), replyMimeMessage);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     private boolean gptLoopDetected(Mail mail) {
-        return mail.getMaybeSender().equals(MaybeSender.of(gptAddress));
+        return mail.getMaybeSender().equals(MaybeSender.of(config.getGptAddress()));
     }
 
-    private String askOpenAiModel(Mail mail) throws IOException, MessagingException {
+    private String askChatLanguageModel(Mail mail) throws IOException, MessagingException {
         ChatMessage systemMessage = new SystemMessage("You are a helpful mailing chatbot. Respond to the following email as a chatbot, not as the recipient. ");
         ChatMessage userMessage = new UserMessage(evaluatePrompt(mail));
 
-        return openAiModel.generate(systemMessage, userMessage)
+        return chatLanguageModel.generate(systemMessage, userMessage)
             .content()
             .text();
     }
@@ -132,7 +127,7 @@ public class OpenAIMailet extends GenericMailet {
         stripGptFromRecipients(reply, Message.RecipientType.BCC);
 
         reply.setSentDate(new Date());
-        reply.setFrom(gptAddress.asString());
+        reply.setFrom(config.getGptAddress().asString());
         reply.setText(answer);
 
         return reply;
@@ -141,7 +136,7 @@ public class OpenAIMailet extends GenericMailet {
     private void stripGptFromRecipients(MimeMessage reply, Message.RecipientType recipientType) throws MessagingException {
         Address[] toAddresses = Arrays.stream(Optional.ofNullable(reply.getRecipients(recipientType))
                 .orElse(new InternetAddress[0]))
-            .filter(Throwing.predicate(address -> !address.equals(new InternetAddress(gptAddress.asString()))))
+            .filter(Throwing.predicate(address -> !address.equals(new InternetAddress(config.getGptAddress().asString()))))
             .toArray(Address[]::new);
         reply.setRecipients(recipientType, toAddresses);
     }
@@ -149,43 +144,26 @@ public class OpenAIMailet extends GenericMailet {
     private List<MailAddress> evaluateRecipients(Mail mail) {
         return Stream.of(mail.getMaybeSender().asList(), mail.getRecipients())
             .flatMap(Collection::stream)
-            .filter(recipient -> !recipient.equals(gptAddress))
+            .filter(recipient -> !recipient.equals(config.getGptAddress()))
             .toList();
     }
 
     @Override
-    public void init() throws MessagingException {
-        String openAiApiKey = getMailetConfig().getInitParameter(API_KEY_PARAMETER_NAME);
-        if (Strings.isNullOrEmpty(openAiApiKey)) {
-            throw new MailetException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided.");
-        }
+    public void init() throws MailetException {
+        this.config = MailBotConfig.fromMailetConfig(getMailetConfig());
+        this.chatLanguageModel = createChatLanguageModelModel(config);
 
-        String gptAddressString = getMailetConfig().getInitParameter(GPT_ADDRESS_PARAMETER_NAME);
-        if (Strings.isNullOrEmpty(gptAddressString)) {
-            throw new MailetException("No value for " + GPT_ADDRESS_PARAMETER_NAME + " parameter was provided.");
-        }
-        gptAddress = new MailAddress(gptAddressString);
-
-        openAiChatModelName = Optional.ofNullable(getMailetConfig().getInitParameter(MODEL_PARAMETER_NAME));
-
-        this.openAiModel = initOpenAiModel(openAiApiKey);
         this.defaultMessageBuilder = new DefaultMessageBuilder();
         defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
         defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
     }
 
-    private ChatLanguageModel initOpenAiModel(String openAiApiKey) {
-        return openAiChatModelName.map(model ->  OpenAiChatModel.builder()
-                .apiKey(openAiApiKey)
-                .modelName(model)
-                .build())
-            .orElse(OpenAiChatModel.builder()
-                .apiKey(openAiApiKey)
-                .build());
+    private ChatLanguageModel createChatLanguageModelModel(MailBotConfig mailBotConfig) {
+        return chatLanguageModelFactory.createChatLanguageModel(mailBotConfig);
     }
 
     @Override
     public String getMailetName() {
-        return "OpenAIMailet";
+        return "MailBotMailet";
     }
 }

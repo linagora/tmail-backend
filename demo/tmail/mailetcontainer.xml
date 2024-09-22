@@ -98,9 +98,10 @@
             </mailet>
 
             <!-- Put the OpenAIMailet after LocalDelivery so the GPT reply would come after the asking question -->
-            <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@tmail.com" class="com.linagora.tmail.mailet.OpenAIMailet">
+            <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@tmail.com" class="com.linagora.tmail.mailet.MailBotMailet">
                 <apiKey>demo</apiKey>
                 <gptAddress>gpt@tmail.com</gptAddress>
+                <model>openai,gpt-4o-mini</model>
             </mailet>
         </processor>
 

@@ -1,12 +1,12 @@
-= OpenAIMailet
+= MailBotMailet
 
-`OpenAIMailet` is a mailet designed to automatically reply to emails sent to a specific recipient (e.g., gpt@linagora.com). It uses the OpenAI API to generate responses.
+`MailBotMailet` is a mailet designed to automatically reply to emails sent to a specific recipient (e.g., gpt@linagora.com). It uses the OpenAI API to generate responses.
 
 == Configuration Example
 
 [source,xml]
 ----
-<mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@linagora.com" class="com.linagora.tmail.mailet.OpenAIMailet">
+<mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@linagora.com" class="com.linagora.tmail.mailet.MailBotMailet">
     <apiKey>demo</apiKey>
     <gptAddress>gpt@tmail.com</gptAddress>
     <model>gpt-4o-mini</model>
