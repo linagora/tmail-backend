@@ -24,6 +24,17 @@ routes:
       proxy-rewrite:
         uri: /jmap/ws
   -
+    id: jmap_websocket_ticket
+    uri: /oidc/jmap/ws/ticket
+    service_id: jmap_service_oidc
+    methods:
+      - POST
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+    plugins:
+      proxy-rewrite:
+        uri: /jmap/ws/ticket
+  -
     id: jmap_session_oidc
     uri: /oidc/jmap/session
     service_id: jmap_service_oidc
@@ -190,6 +201,13 @@ routes:
     enable_websocket: true
     methods:
       - GET
+      - OPTIONS
+    plugin_config_id: jmap-plugin
+  - id: jmap_websocket_ticket_basic_auth
+    uri: /jmap/ws/ticket
+    service_id: jmap_service_basic_auth
+    methods:
+      - POST
       - OPTIONS
     plugin_config_id: jmap-plugin
 
