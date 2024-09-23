@@ -24,10 +24,11 @@ Will return :
 
 ----
 {
-    "ticket":"WHATEVER",
+    "value":"WHATEVER",
     "clientAddress": "1.234.458.56",
     "generatedOn": "UTCDate",
-    "validUntil": "UTCDate"
+    "validUntil": "UTCDate",
+    "username": "james-user@tmail.com"
 }
 
 ----
@@ -44,7 +45,7 @@ curl -XDELETE https://james/jmap/websocket/ticket/WHATEVER
 During the next 60s this ticket can be used a single time via query parameters as an authentication mechanism. Thus web-browser clients can use it to open a secure connection:
 
 ----
-wss://james/jmap/js?ticket=UUID
+wss://james/jmap/ws?ticket=WHATEVER
 
 ----
 
