@@ -8,7 +8,7 @@ import play.api.libs.json.{JsString, JsValue, Json, Writes}
 
 object TicketSerializer {
   implicit val ticketValueWrites: Writes[TicketValue] = ticketValue => JsString(ticketValue.value.toString)
-  implicit val addressWrites: Writes[InetAddress] = address => JsString(address.toString)
+  implicit val addressWrites: Writes[InetAddress] = address => JsString(address.getHostAddress)
   implicit val usernameWrites: Writes[Username] = username => JsString(username.asString())
   implicit val ticketWrites: Writes[Ticket] = Json.writes[Ticket]
 
