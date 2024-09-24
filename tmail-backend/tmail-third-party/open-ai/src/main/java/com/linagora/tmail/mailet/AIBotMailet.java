@@ -36,7 +36,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
 /**
- * MailBotMailet is a mailet designed to automatically reply to emails
+ * AIBotMailet is a mailet designed to automatically reply to emails
  * sent to a specific recipient (e.g., gpt@linagora.com). It uses the OpenAI
  * API to generate responses.
  *
@@ -45,7 +45,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
  *
  * <pre>
  * {@code
- * <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@linagora.com" class="com.linagora.tmail.mailet.MailBotMailet">
+ * <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@linagora.com" class="com.linagora.tmail.mailet.AIBotMailet">
  *     <apiKey>demo</apiKey>
  *     <gptAddress>gpt@tmail.com</gptAddress>
  *     <model>gpt-4o-mini</model>
@@ -63,15 +63,15 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
  * <li><b>model</b>: The OpenAI model to be used. Optional. Defaults to <b>gpt-3.5-turbo</b> by langchain4j. You can use the <b>gpt-4o-mini</b> model and <b>demo</b> API key for testing purpose.</li>
  * </ul>
  */
-public class MailBotMailet extends GenericMailet {
+public class AIBotMailet extends GenericMailet {
     private final HtmlTextExtractor htmlTextExtractor;
     private DefaultMessageBuilder defaultMessageBuilder;
-    private MailBotConfig config;
+    private AIBotConfig config;
     private ChatLanguageModel chatLanguageModel;
     private final ChatLanguageModelFactory chatLanguageModelFactory;
 
     @Inject
-    public MailBotMailet(ChatLanguageModelFactory chatLanguageModelFactory, HtmlTextExtractor htmlTextExtractor) {
+    public AIBotMailet(ChatLanguageModelFactory chatLanguageModelFactory, HtmlTextExtractor htmlTextExtractor) {
         this.chatLanguageModelFactory = chatLanguageModelFactory;
         this.htmlTextExtractor = htmlTextExtractor;
     }
@@ -150,7 +150,7 @@ public class MailBotMailet extends GenericMailet {
 
     @Override
     public void init() throws MailetException {
-        this.config = MailBotConfig.fromMailetConfig(getMailetConfig());
+        this.config = AIBotConfig.fromMailetConfig(getMailetConfig());
         this.chatLanguageModel = createChatLanguageModelModel(config);
 
         this.defaultMessageBuilder = new DefaultMessageBuilder();
@@ -158,12 +158,12 @@ public class MailBotMailet extends GenericMailet {
         defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
     }
 
-    private ChatLanguageModel createChatLanguageModelModel(MailBotConfig mailBotConfig) {
-        return chatLanguageModelFactory.createChatLanguageModel(mailBotConfig);
+    private ChatLanguageModel createChatLanguageModelModel(AIBotConfig AIBotConfig) {
+        return chatLanguageModelFactory.createChatLanguageModel(AIBotConfig);
     }
 
     @Override
     public String getMailetName() {
-        return "MailBotMailet";
+        return "AIBotMailet";
     }
 }

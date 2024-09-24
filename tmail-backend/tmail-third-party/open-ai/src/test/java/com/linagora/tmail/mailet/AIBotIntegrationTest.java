@@ -1,6 +1,6 @@
 package com.linagora.tmail.mailet;
 
-import static com.linagora.tmail.mailet.MailBotMailetTest.DEMO_MODEL;
+import static com.linagora.tmail.mailet.AIBotMailetTest.DEMO_MODEL;
 import static org.apache.james.mailets.configuration.CommonProcessors.ERROR_REPOSITORY;
 import static org.apache.james.mailets.configuration.Constants.DEFAULT_DOMAIN;
 import static org.apache.james.mailets.configuration.Constants.LOCALHOST_IP;
@@ -35,7 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
-class MailBotIntegrationTest {
+class AIBotIntegrationTest {
     private static final String BOB = "bob@" + DEFAULT_DOMAIN;
     private static final String ALICE = "alice@" + DEFAULT_DOMAIN;
     private static final String ANDRE = "andre@" + DEFAULT_DOMAIN;
@@ -63,7 +63,7 @@ class MailBotIntegrationTest {
                 .addMailet(MailetConfiguration.builder()
                     .matcher(RecipientsContain.class)
                     .matcherCondition(CHAT_GPT_ADDRESS)
-                    .mailet(MailBotMailet.class)
+                    .mailet(AIBotMailet.class)
                     .addProperty("apiKey", "demo")
                     .addProperty("gptAddress", CHAT_GPT_ADDRESS)
                     .addProperty("model", DEMO_MODEL)

@@ -14,9 +14,9 @@ Sample `mailetcontainer.xml` configuration:
         <consume>false</consume>
     </mailet>
 
-    <!-- Put the MailBotMailet after LocalDelivery so the GPT reply would come after the asking question -->
+    <!-- Put the AIBotMailet after LocalDelivery so the GPT reply would come after the asking question -->
     <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@tmail.com"
-            class="com.linagora.tmail.mailet.MailBotMailet">
+            class="com.linagora.tmail.mailet.AIBotMailet">
         <apiKey>demo</apiKey>
         <gptAddress>gpt@tmail.com</gptAddress>
         <model>gpt-4o-mini</model>

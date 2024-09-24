@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-class MailBotMailetTest {
+class AIBotMailetTest {
     public static MailAddress createMailAddress(String mailAddress) {
         try {
             return new MailAddress(mailAddress);
@@ -31,12 +31,12 @@ class MailBotMailetTest {
     private static final MailAddress ASKING_SENDER = createMailAddress("sender@example.com");
     private static final MailAddress GPT_ADDRESS = createMailAddress("gpt@example.com");
 
-    private MailBotMailet testee;
+    private AIBotMailet testee;
     private MailetContext mailetContext;
 
     @BeforeEach
     void setUp() {
-        testee = new MailBotMailet(new ChatLanguageModelFactory(), new JsoupHtmlTextExtractor());
+        testee = new AIBotMailet(new ChatLanguageModelFactory(), new JsoupHtmlTextExtractor());
         mailetContext = Mockito.mock(MailetContext.class);
     }
 

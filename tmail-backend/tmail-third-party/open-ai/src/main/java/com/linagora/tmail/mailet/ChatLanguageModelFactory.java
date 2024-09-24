@@ -7,7 +7,7 @@ public class ChatLanguageModelFactory {
     private static final String OPEN_AI_BASE_URL = "https://api.openai.com/v1";
     private static final String LINAGORA_AI_BASE_URL = "https://ai.linagora.com/api/";
 
-    public ChatLanguageModel createChatLanguageModel(MailBotConfig config) {
+    public ChatLanguageModel createChatLanguageModel(AIBotConfig config) {
         String apiKey = config.getApiKey();
         LlmModel llmModel = config.getLlmModel();
 

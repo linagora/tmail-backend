@@ -12,7 +12,7 @@ import org.apache.mailet.MailetException;
 
 import com.google.common.base.Strings;
 
-public class MailBotConfig {
+public class AIBotConfig {
     public static String API_KEY_PARAMETER_NAME = "apiKey";
     public static String GPT_ADDRESS_PARAMETER_NAME = "gptAddress";
     public static String MODEL_PARAMETER_NAME = "model";
@@ -24,7 +24,7 @@ public class MailBotConfig {
     private final MailAddress gptAddress;
     private final LlmModel llmModel;
 
-    public MailBotConfig(String apiKey, MailAddress gptAddress, LlmModel llmModel) {
+    public AIBotConfig(String apiKey, MailAddress gptAddress, LlmModel llmModel) {
         Objects.requireNonNull(apiKey);
         Objects.requireNonNull(gptAddress);
         Objects.requireNonNull(llmModel);
@@ -34,7 +34,7 @@ public class MailBotConfig {
         this.llmModel = llmModel;
     }
 
-    public static MailBotConfig fromMailetConfig(MailetConfig mailetConfig) throws MailetException {
+    public static AIBotConfig fromMailetConfig(MailetConfig mailetConfig) throws MailetException {
         String apiKeyParam = mailetConfig.getInitParameter(API_KEY_PARAMETER_NAME);
         String gptAddressParam = mailetConfig.getInitParameter(GPT_ADDRESS_PARAMETER_NAME);
         String llmModelParam = mailetConfig.getInitParameter(MODEL_PARAMETER_NAME);
@@ -61,7 +61,7 @@ public class MailBotConfig {
             llmModel = parseLlmModelParamOrThrow(llmModelParam);
         }
 
-        return new MailBotConfig(apiKeyParam, mailAddress, llmModel);
+        return new AIBotConfig(apiKeyParam, mailAddress, llmModel);
     }
 
     private static LlmModel parseLlmModelParamOrThrow(String llmModelParam) throws MailetException {
