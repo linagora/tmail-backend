@@ -154,7 +154,7 @@ public class EmailAddressContactRoutes implements Routes {
             Domain domain = extractDomain(request);
 
             try {
-                MailAddress mailAddress = new MailAddress(extractAddressLocalPart(request), domain);
+                MailAddress mailAddress = MailAddress.of(extractAddressLocalPart(request), domain);
 
                 return Mono.from(emailAddressContactSearchEngine.delete(domain, mailAddress))
                     .then(Mono.just(Responses.returnNoContent(response)))
@@ -171,7 +171,7 @@ public class EmailAddressContactRoutes implements Routes {
             verifyDomain(domain);
 
             try {
-                MailAddress mailAddress = new MailAddress(extractAddressLocalPart(request), domain);
+                MailAddress mailAddress = MailAddress.of(extractAddressLocalPart(request), domain);
                 ContactNameUpdateDTO contactNameUpdateDTO = jsonExtractorName.parse(request.body());
 
                 return fillUpMissingNameFields(domain, mailAddress, contactNameUpdateDTO)
@@ -212,7 +212,7 @@ public class EmailAddressContactRoutes implements Routes {
             Domain domain = extractDomain(request);
 
             try {
-                MailAddress mailAddress = new MailAddress(extractAddressLocalPart(request), domain);
+                MailAddress mailAddress = MailAddress.of(extractAddressLocalPart(request), domain);
 
                 return Mono.from(emailAddressContactSearchEngine.get(domain, mailAddress))
                     .map(EmailAddressContactResponse::from)
