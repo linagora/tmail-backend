@@ -1,19 +1,19 @@
 package com.linagora.tmail.mailet;
 
+import java.util.Optional;
+
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 
 public class ChatLanguageModelFactory {
-    private static final String OPEN_AI_BASE_URL = "https://api.openai.com/v1";
-    private static final String LINAGORA_AI_BASE_URL = "https://ai.linagora.com/api/";
 
     public ChatLanguageModel createChatLanguageModel(AIBotConfig config) {
         String apiKey = config.getApiKey();
         LlmModel llmModel = config.getLlmModel();
+        Optional<String> baseURLOpt = config.getBaseURL();
 
         return switch (llmModel.llm()) {
-            case OPEN_AI -> createOpenAILanguageModel(apiKey, llmModel.modelName(), OPEN_AI_BASE_URL);
-            case LINAGORA_AI -> createOpenAILanguageModel(apiKey, llmModel.modelName(), LINAGORA_AI_BASE_URL);
+            case OPEN_AI -> createOpenAILanguageModel(apiKey, llmModel.modelName(), baseURLOpt.orElse(null));
         };
     }
 

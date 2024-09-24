@@ -16,20 +16,23 @@ public class AIBotConfig {
     public static String API_KEY_PARAMETER_NAME = "apiKey";
     public static String GPT_ADDRESS_PARAMETER_NAME = "gptAddress";
     public static String MODEL_PARAMETER_NAME = "model";
+    public static String BASE_URL_PARAMETER_NAME = "baseURL";
 
     public static final LlmModel DEFAULT_LLM_MODEL =
             new LlmModel(Llm.OPEN_AI, "gpt-4o-mini");
 
     private final String apiKey;
+    private final String baseURL;
     private final MailAddress gptAddress;
     private final LlmModel llmModel;
 
-    public AIBotConfig(String apiKey, MailAddress gptAddress, LlmModel llmModel) {
+    public AIBotConfig(String apiKey, String baseURL, MailAddress gptAddress, LlmModel llmModel) {
         Objects.requireNonNull(apiKey);
         Objects.requireNonNull(gptAddress);
         Objects.requireNonNull(llmModel);
-        
+
         this.apiKey = apiKey;
+        this.baseURL = baseURL;
         this.gptAddress = gptAddress;
         this.llmModel = llmModel;
     }
@@ -38,6 +41,7 @@ public class AIBotConfig {
         String apiKeyParam = mailetConfig.getInitParameter(API_KEY_PARAMETER_NAME);
         String gptAddressParam = mailetConfig.getInitParameter(GPT_ADDRESS_PARAMETER_NAME);
         String llmModelParam = mailetConfig.getInitParameter(MODEL_PARAMETER_NAME);
+        String baseUrlParam = mailetConfig.getInitParameter(BASE_URL_PARAMETER_NAME);
 
         if (Strings.isNullOrEmpty(apiKeyParam)) {
             throw new MailetException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided.");
@@ -61,7 +65,7 @@ public class AIBotConfig {
             llmModel = parseLlmModelParamOrThrow(llmModelParam);
         }
 
-        return new AIBotConfig(apiKeyParam, mailAddress, llmModel);
+        return new AIBotConfig(apiKeyParam, baseUrlParam, mailAddress, llmModel);
     }
 
     private static LlmModel parseLlmModelParamOrThrow(String llmModelParam) throws MailetException {
@@ -98,5 +102,13 @@ public class AIBotConfig {
 
     public LlmModel getLlmModel() {
         return llmModel;
+    }
+
+    public Optional<String> getBaseURL() {
+        if (Strings.isNullOrEmpty(baseURL)) {
+            return Optional.empty();
+        } else {
+            return Optional.of(baseURL);
+        }
     }
 }

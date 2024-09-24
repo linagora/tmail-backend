@@ -6,8 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 public enum Llm {
-    OPEN_AI("openai"),
-    LINAGORA_AI("linagoraai");
+    OPEN_AI("openai");
 
     private String name;
 
