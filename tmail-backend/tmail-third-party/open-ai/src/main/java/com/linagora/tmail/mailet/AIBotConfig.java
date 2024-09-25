@@ -78,7 +78,9 @@ public class AIBotConfig {
 
         URL baseURL = null;
         try {
-            baseURL = URI.create(baseUrlParam).toURL();
+            if (!Strings.isNullOrEmpty(baseUrlParam)) {
+                baseURL = URI.create(baseUrlParam).toURL();
+            }
         } catch (MalformedURLException e) {
             LOGGER.warn("Invalid LLM API base URL", e);
         }
