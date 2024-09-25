@@ -9,12 +9,10 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
-import jakarta.mail.internet.AddressException;
-
-
 import org.apache.james.core.MailAddress;
 import org.apache.mailet.MailetConfig;
 import org.apache.mailet.MailetException;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +35,7 @@ public class AIBotConfig {
     private final MailAddress gptAddress;
     private final LlmModel llmModel;
 
-    public AIBotConfig(String apiKey, @Nullable URL baseURL, MailAddress gptAddress, LlmModel llmModel) {
+    public AIBotConfig(String apiKey, MailAddress gptAddress, LlmModel llmModel, @Nullable URL baseURL) {
         Objects.requireNonNull(apiKey);
         Objects.requireNonNull(gptAddress);
         Objects.requireNonNull(llmModel);
@@ -61,31 +59,30 @@ public class AIBotConfig {
         if (Strings.isNullOrEmpty(gptAddressParam)) {
             throw new MailetException("No value for " + GPT_ADDRESS_PARAMETER_NAME + " parameter was provided.");
         }
-        
-        MailAddress mailAddress;
+
+        Optional<URL> baseURLOpt = toOptionalIfNotEmpty(baseUrlParam)
+                .flatMap(AIBotConfig::baseURLStringToURL);
+
+        LlmModel llmModel = !Strings.isNullOrEmpty(llmModelParam)
+                            ? parseLlmModelParamOrThrow(llmModelParam)
+                            : DEFAULT_LLM_MODEL;
+
         try {
-            mailAddress = new MailAddress(gptAddressParam);
-        } catch (AddressException e) {
+            return new AIBotConfig(apiKeyParam, new MailAddress(gptAddressParam), llmModel, baseURLOpt.orElse(null));
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
-        LlmModel llmModel;
-        if (Strings.isNullOrEmpty(llmModelParam)) {
-            llmModel = DEFAULT_LLM_MODEL;
-        } else {
-            llmModel = parseLlmModelParamOrThrow(llmModelParam);
-        }
+    }
 
-        URL baseURL = null;
+    private static @NotNull Optional<URL> baseURLStringToURL(String baseUrlString) {
         try {
-            if (!Strings.isNullOrEmpty(baseUrlParam)) {
-                baseURL = URI.create(baseUrlParam).toURL();
-            }
+            return Optional.of(URI.create(baseUrlString).toURL());
         } catch (MalformedURLException e) {
             LOGGER.warn("Invalid LLM API base URL", e);
         }
 
-        return new AIBotConfig(apiKeyParam, baseURL, mailAddress, llmModel);
+        return Optional.empty();
     }
 
     private static LlmModel parseLlmModelParamOrThrow(String llmModelParam) throws MailetException {
@@ -129,6 +126,14 @@ public class AIBotConfig {
             return Optional.empty();
         } else {
             return Optional.of(baseURL);
+        }
+    }
+
+    private static Optional<String> toOptionalIfNotEmpty(String s) {
+        if (Strings.isNullOrEmpty(s)) {
+            return Optional.empty();
+        } else {
+            return Optional.of(s);
         }
     }
 }
