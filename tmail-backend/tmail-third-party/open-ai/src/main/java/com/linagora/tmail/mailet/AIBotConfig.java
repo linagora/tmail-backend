@@ -5,8 +5,6 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Optional;
 
-import javax.annotation.Nullable;
-
 import org.apache.james.core.MailAddress;
 import org.apache.mailet.MailetConfig;
 import org.apache.mailet.MailetException;
@@ -29,17 +27,18 @@ public class AIBotConfig {
             new LlmModel("gpt-4o-mini");
 
     private final String apiKey;
-    private final URL baseURL;
+    private final Optional<URL> baseURLOpt;
     private final MailAddress gptAddress;
     private final LlmModel llmModel;
 
-    public AIBotConfig(String apiKey, MailAddress gptAddress, LlmModel llmModel, @Nullable URL baseURL) {
+    public AIBotConfig(String apiKey, MailAddress gptAddress, LlmModel llmModel, Optional<URL> baseURLOpt) {
         Preconditions.checkNotNull(apiKey);
         Preconditions.checkNotNull(gptAddress);
         Preconditions.checkNotNull(llmModel);
+        Preconditions.checkNotNull(baseURLOpt);
 
         this.apiKey = apiKey;
-        this.baseURL = baseURL;
+        this.baseURLOpt = baseURLOpt;
         this.gptAddress = gptAddress;
         this.llmModel = llmModel;
     }
@@ -67,7 +66,7 @@ public class AIBotConfig {
                 .map(LlmModel::new).orElse(DEFAULT_LLM_MODEL);
 
         try {
-            return new AIBotConfig(apiKeyParam, new MailAddress(gptAddressParam), llmModel, baseURLOpt.orElse(null));
+            return new AIBotConfig(apiKeyParam, new MailAddress(gptAddressParam), llmModel, baseURLOpt);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -97,10 +96,6 @@ public class AIBotConfig {
     }
 
     public Optional<URL> getBaseURL() {
-        if (baseURL == null) {
-            return Optional.empty();
-        } else {
-            return Optional.of(baseURL);
-        }
+        return baseURLOpt;
     }
 }
