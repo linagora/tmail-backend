@@ -27,7 +27,7 @@ class AIBotMailetTest {
         }
     }
 
-    public static final String DEMO_MODEL = "openai,gpt-4o-mini";
+    public static final String DEMO_MODEL = "gpt-4o-mini";
     private static final MailAddress ASKING_SENDER = createMailAddress("sender@example.com");
     private static final MailAddress GPT_ADDRESS = createMailAddress("gpt@example.com");
 

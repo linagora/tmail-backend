@@ -5,7 +5,6 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
@@ -28,7 +27,7 @@ public class AIBotConfig {
     public static String BASE_URL_PARAMETER_NAME = "baseURL";
 
     public static final LlmModel DEFAULT_LLM_MODEL =
-            new LlmModel(Llm.OPEN_AI, "gpt-4o-mini");
+            new LlmModel("gpt-4o-mini");
 
     private final String apiKey;
     private final URL baseURL;
@@ -63,9 +62,9 @@ public class AIBotConfig {
         Optional<URL> baseURLOpt = toOptionalIfNotEmpty(baseUrlParam)
                 .flatMap(AIBotConfig::baseURLStringToURL);
 
-        LlmModel llmModel = !Strings.isNullOrEmpty(llmModelParam)
-                            ? parseLlmModelParamOrThrow(llmModelParam)
-                            : DEFAULT_LLM_MODEL;
+        LlmModel llmModel = Optional.ofNullable(llmModelParam)
+                .filter(modelString -> !Strings.isNullOrEmpty(modelString))
+                .map(LlmModel::new).orElse(DEFAULT_LLM_MODEL);
 
         try {
             return new AIBotConfig(apiKeyParam, new MailAddress(gptAddressParam), llmModel, baseURLOpt.orElse(null));
@@ -83,30 +82,6 @@ public class AIBotConfig {
         }
 
         return Optional.empty();
-    }
-
-    private static LlmModel parseLlmModelParamOrThrow(String llmModelParam) throws MailetException {
-        String[] tokens = llmModelParam.split(",");
-
-        if (tokens.length != 2) {
-            throw new MailetException("""
-                    Invalid LLM model parameter. Please add the LLM along with the specific model to use.
-                    Example: openai,gpt-4-mini
-                    Provided value: %s""".formatted(llmModelParam));
-        }
-
-        String llm = tokens[0];
-        String model = tokens[1];
-
-        Optional<Llm> llmOpt = Llm.fromName(llm);
-        if (llmOpt.isEmpty()) {
-            String supportedLLms = Llm.getSupportedLlmNames().stream()
-                    .collect(Collectors.joining(", ", "[", "]"));
-
-            throw new MailetException("Unsupported LLM provided '%s'. Supported LLMs: %s".formatted(llm, supportedLLms));
-        }
-
-        return new LlmModel(llmOpt.get(), model);
     }
 
     public String getApiKey() {
