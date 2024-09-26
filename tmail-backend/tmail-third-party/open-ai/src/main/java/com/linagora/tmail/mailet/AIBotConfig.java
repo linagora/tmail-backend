@@ -10,7 +10,6 @@ import javax.annotation.Nullable;
 import org.apache.james.core.MailAddress;
 import org.apache.mailet.MailetConfig;
 import org.apache.mailet.MailetException;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +58,8 @@ public class AIBotConfig {
             throw new MailetException("No value for " + GPT_ADDRESS_PARAMETER_NAME + " parameter was provided.");
         }
 
-        Optional<URL> baseURLOpt = toOptionalIfNotEmpty(baseUrlParam)
+        Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
+                .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
                 .flatMap(AIBotConfig::baseURLStringToURL);
 
         LlmModel llmModel = Optional.ofNullable(llmModelParam)
@@ -74,7 +74,7 @@ public class AIBotConfig {
 
     }
 
-    private static @NotNull Optional<URL> baseURLStringToURL(String baseUrlString) {
+    private static Optional<URL> baseURLStringToURL(String baseUrlString) {
         try {
             return Optional.of(URI.create(baseUrlString).toURL());
         } catch (MalformedURLException e) {
@@ -101,14 +101,6 @@ public class AIBotConfig {
             return Optional.empty();
         } else {
             return Optional.of(baseURL);
-        }
-    }
-
-    private static Optional<String> toOptionalIfNotEmpty(String s) {
-        if (Strings.isNullOrEmpty(s)) {
-            return Optional.empty();
-        } else {
-            return Optional.of(s);
         }
     }
 }
