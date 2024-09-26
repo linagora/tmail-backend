@@ -3,7 +3,6 @@ package com.linagora.tmail.mailet;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.util.Objects;
 import java.util.Optional;
 
 import javax.annotation.Nullable;
@@ -15,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
 
@@ -35,9 +35,9 @@ public class AIBotConfig {
     private final LlmModel llmModel;
 
     public AIBotConfig(String apiKey, MailAddress gptAddress, LlmModel llmModel, @Nullable URL baseURL) {
-        Objects.requireNonNull(apiKey);
-        Objects.requireNonNull(gptAddress);
-        Objects.requireNonNull(llmModel);
+        Preconditions.checkNotNull(apiKey);
+        Preconditions.checkNotNull(gptAddress);
+        Preconditions.checkNotNull(llmModel);
 
         this.apiKey = apiKey;
         this.baseURL = baseURL;
