@@ -24,7 +24,7 @@ public class AIBotConfig {
     public static String BASE_URL_PARAMETER_NAME = "baseURL";
 
     public static final LlmModel DEFAULT_LLM_MODEL =
-            new LlmModel("gpt-4o-mini");
+        new LlmModel("gpt-4o-mini");
 
     private final String apiKey;
     private final Optional<URL> baseURLOpt;
@@ -58,12 +58,12 @@ public class AIBotConfig {
         }
 
         Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
-                .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
-                .flatMap(AIBotConfig::baseURLStringToURL);
+            .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
+            .flatMap(AIBotConfig::baseURLStringToURL);
 
         LlmModel llmModel = Optional.ofNullable(llmModelParam)
-                .filter(modelString -> !Strings.isNullOrEmpty(modelString))
-                .map(LlmModel::new).orElse(DEFAULT_LLM_MODEL);
+            .filter(modelString -> !Strings.isNullOrEmpty(modelString))
+            .map(LlmModel::new).orElse(DEFAULT_LLM_MODEL);
 
         try {
             return new AIBotConfig(apiKeyParam, new MailAddress(gptAddressParam), llmModel, baseURLOpt);

@@ -104,16 +104,15 @@ public class AIBotMailet extends GenericMailet {
         ChatMessage userMessage = new UserMessage(evaluatePrompt(mail));
 
         return chatLanguageModel.generate(systemMessage, userMessage)
-                .content()
-                .text();
+            .content()
+            .text();
     }
 
     private String evaluatePrompt(Mail mail) throws IOException, MessagingException {
         MessageContentExtractor.MessageContent askingMessageContent = extractMessageContent(mail);
         Optional<String> content = askingMessageContent.extractMainTextContent(htmlTextExtractor);
 
-        return Strings.nullToEmpty(mail.getMessage().getSubject()) + "\n" +
-               content.orElse("");
+        return Strings.nullToEmpty(mail.getMessage().getSubject()) + "\n" + content.orElse("");
     }
 
     private MessageContentExtractor.MessageContent extractMessageContent(Mail mail) throws IOException, MessagingException {
@@ -122,7 +121,7 @@ public class AIBotMailet extends GenericMailet {
 
     private MimeMessage evaluateReplyMimeMessage(Mail mail, String answer) throws MessagingException {
         MimeMessage reply = (MimeMessage) mail.getMessage()
-                .reply(true);
+            .reply(true);
 
         stripGptFromRecipients(reply, Message.RecipientType.TO);
         stripGptFromRecipients(reply, Message.RecipientType.CC);
@@ -136,18 +135,20 @@ public class AIBotMailet extends GenericMailet {
     }
 
     private void stripGptFromRecipients(MimeMessage reply, Message.RecipientType recipientType) throws MessagingException {
-        Address[] toAddresses = Arrays.stream(Optional.ofNullable(reply.getRecipients(recipientType))
-                        .orElse(new InternetAddress[0]))
-                .filter(Throwing.predicate(address -> !address.equals(new InternetAddress(config.getGptAddress().asString()))))
+        Address[] toAddresses =
+            Arrays.stream(Optional.ofNullable(reply.getRecipients(recipientType))
+                    .orElse(new InternetAddress[0]))
+                .filter(Throwing.predicate(address -> !address.equals(
+                    new InternetAddress(config.getGptAddress().asString()))))
                 .toArray(Address[]::new);
         reply.setRecipients(recipientType, toAddresses);
     }
 
     private List<MailAddress> evaluateRecipients(Mail mail) {
         return Stream.of(mail.getMaybeSender().asList(), mail.getRecipients())
-                .flatMap(Collection::stream)
-                .filter(recipient -> !recipient.equals(config.getGptAddress()))
-                .toList();
+            .flatMap(Collection::stream)
+            .filter(recipient -> !recipient.equals(config.getGptAddress()))
+            .toList();
     }
 
     @Override
