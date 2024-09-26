@@ -8,16 +8,12 @@ import java.util.Optional;
 import org.apache.james.core.MailAddress;
 import org.apache.mailet.MailetConfig;
 import org.apache.mailet.MailetException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
 
 public class AIBotConfig {
-    private static final Logger LOGGER = LoggerFactory.getLogger(AIBotConfig.class);
-
     public static String API_KEY_PARAMETER_NAME = "apiKey";
     public static String GPT_ADDRESS_PARAMETER_NAME = "gptAddress";
     public static String MODEL_PARAMETER_NAME = "model";
@@ -77,10 +73,8 @@ public class AIBotConfig {
         try {
             return Optional.of(URI.create(baseUrlString).toURL());
         } catch (MalformedURLException e) {
-            LOGGER.warn("Invalid LLM API base URL", e);
+            throw new RuntimeException("Invalid LLM API base URL", e);
         }
-
-        return Optional.empty();
     }
 
     public String getApiKey() {
