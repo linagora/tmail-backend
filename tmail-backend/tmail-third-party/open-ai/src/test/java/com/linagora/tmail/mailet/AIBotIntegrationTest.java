@@ -40,7 +40,7 @@ class AIBotIntegrationTest {
     private static final String ALICE = "alice@" + DEFAULT_DOMAIN;
     private static final String ANDRE = "andre@" + DEFAULT_DOMAIN;
     private static final String MARIA = "maria@" + DEFAULT_DOMAIN;
-    private static final String CHAT_GPT_ADDRESS = "gpt@" + DEFAULT_DOMAIN;
+    private static final String BOT_ADDRESS = "gpt@" + DEFAULT_DOMAIN;
 
     private TemporaryJamesServer jamesServer;
 
@@ -62,10 +62,10 @@ class AIBotIntegrationTest {
             .putProcessor(ProcessorConfiguration.transport()
                 .addMailet(MailetConfiguration.builder()
                     .matcher(RecipientsContain.class)
-                    .matcherCondition(CHAT_GPT_ADDRESS)
+                    .matcherCondition(BOT_ADDRESS)
                     .mailet(AIBotMailet.class)
                     .addProperty("apiKey", "demo")
-                    .addProperty("gptAddress", CHAT_GPT_ADDRESS)
+                    .addProperty("botAddress", BOT_ADDRESS)
                     .addProperty("model", DEMO_MODEL)
                     .build())
                 .addMailetsFrom(CommonProcessors.transport()));
@@ -81,7 +81,7 @@ class AIBotIntegrationTest {
             .addUser(ALICE, PASSWORD)
             .addUser(ANDRE, PASSWORD)
             .addUser(MARIA, PASSWORD)
-            .addUser(CHAT_GPT_ADDRESS, PASSWORD);
+            .addUser(BOT_ADDRESS, PASSWORD);
     }
 
     @AfterEach
@@ -108,16 +108,16 @@ class AIBotIntegrationTest {
                 .name("name")
                 .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
                     .setSender(BOB)
-                    .addToRecipient(CHAT_GPT_ADDRESS)
+                    .addToRecipient(BOT_ADDRESS)
                     .setSubject("How can I cook an egg?")
                     .setText("I do not know how to cook an egg. Please help me."))
                 .sender(BOB)
-                .recipient(CHAT_GPT_ADDRESS));
+                .recipient(BOT_ADDRESS));
 
         awaitFirstMessage(BOB);
 
         MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(imapClient.readFirstMessage());
-        assertThat(mimeMessage.getHeader("From")).containsOnly(CHAT_GPT_ADDRESS);
+        assertThat(mimeMessage.getHeader("From")).containsOnly(BOT_ADDRESS);
         assertThat(mimeMessage.getHeader("To")).containsOnly(BOB);
         assertThat(mimeMessage.getHeader("Subject")[0]).isEqualTo("Re: How can I cook an egg?");
     }
@@ -130,7 +130,7 @@ class AIBotIntegrationTest {
                 .name("name")
                 .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
                     .setSender(BOB)
-                    .addToRecipient(CHAT_GPT_ADDRESS)
+                    .addToRecipient(BOT_ADDRESS)
                     .setSubject("How can I cook an egg?")
                     .setContent(MimeMessageBuilder.multipartBuilder()
                         .subType("alternative")
@@ -138,12 +138,12 @@ class AIBotIntegrationTest {
                             .data("I do not know how to cook an egg. Please help me.")))
                     .build())
                 .sender(BOB)
-                .recipient(CHAT_GPT_ADDRESS));
+                .recipient(BOT_ADDRESS));
 
         awaitFirstMessage(BOB);
 
         MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(imapClient.readFirstMessage());
-        assertThat(mimeMessage.getHeader("From")).containsOnly(CHAT_GPT_ADDRESS);
+        assertThat(mimeMessage.getHeader("From")).containsOnly(BOT_ADDRESS);
         assertThat(mimeMessage.getHeader("To")).containsOnly(BOB);
         assertThat(mimeMessage.getHeader("Subject")[0]).isEqualTo("Re: How can I cook an egg?");
     }
@@ -156,7 +156,7 @@ class AIBotIntegrationTest {
                 .name("name")
                 .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
                     .setSender(BOB)
-                    .addToRecipient(CHAT_GPT_ADDRESS)
+                    .addToRecipient(BOT_ADDRESS)
                     .setSubject("How can I cook an egg?")
                     .setContent(MimeMessageBuilder.multipartBuilder()
                         .subType("alternative")
@@ -170,12 +170,12 @@ class AIBotIntegrationTest {
                             .addHeader("Content-Type", "text/html")))
                     .build())
                 .sender(BOB)
-                .recipient(CHAT_GPT_ADDRESS));
+                .recipient(BOT_ADDRESS));
 
         awaitFirstMessage(BOB);
 
         MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(imapClient.readFirstMessage());
-        assertThat(mimeMessage.getHeader("From")).containsOnly(CHAT_GPT_ADDRESS);
+        assertThat(mimeMessage.getHeader("From")).containsOnly(BOT_ADDRESS);
         assertThat(mimeMessage.getHeader("To")).containsOnly(BOB);
         assertThat(mimeMessage.getHeader("Subject")[0]).isEqualTo("Re: How can I cook an egg?");
     }
@@ -189,17 +189,17 @@ class AIBotIntegrationTest {
                 .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
                     .setSender(BOB)
                     .addToRecipient(ALICE)
-                    .addToRecipient(CHAT_GPT_ADDRESS)
+                    .addToRecipient(BOT_ADDRESS)
                     .setSubject("How can I cook an egg?")
                     .setText("I do not know how to cook an egg. Please help me."))
                 .sender(BOB)
-                .recipients(ALICE, CHAT_GPT_ADDRESS));
+                .recipients(ALICE, BOT_ADDRESS));
 
         awaitMessages(ALICE, 2);
 
         String aliceRepliedMessage = imapClient.sendCommand("FETCH 2:2 (BODY[])");
         MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(aliceRepliedMessage);
-        assertThat(mimeMessage.getHeader("From")).containsOnly(CHAT_GPT_ADDRESS);
+        assertThat(mimeMessage.getHeader("From")).containsOnly(BOT_ADDRESS);
         assertThat(mimeMessage.getHeader("To")).containsOnly(BOB + ", " + ALICE);
         assertThat(mimeMessage.getHeader("Subject")[0]).isEqualTo("Re: How can I cook an egg?");
     }
@@ -212,18 +212,18 @@ class AIBotIntegrationTest {
                 .name("name")
                 .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
                     .setSender(BOB)
-                    .addToRecipient(CHAT_GPT_ADDRESS)
+                    .addToRecipient(BOT_ADDRESS)
                     .addCcRecipient(ALICE)
                     .setSubject("How can I cook an egg?")
                     .setText("I do not know how to cook an egg. Please help me."))
                 .sender(BOB)
-                .recipients(ALICE, CHAT_GPT_ADDRESS));
+                .recipients(ALICE, BOT_ADDRESS));
 
         awaitMessages(ALICE, 2);
 
         String aliceRepliedMessage = imapClient.sendCommand("FETCH 2:2 (BODY[])");
         MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(aliceRepliedMessage);
-        assertThat(mimeMessage.getHeader("From")).containsOnly(CHAT_GPT_ADDRESS);
+        assertThat(mimeMessage.getHeader("From")).containsOnly(BOT_ADDRESS);
         assertThat(mimeMessage.getHeader("Cc")).containsOnly(ALICE);
         assertThat(mimeMessage.getHeader("Subject")[0]).isEqualTo("Re: How can I cook an egg?");
     }
@@ -236,18 +236,18 @@ class AIBotIntegrationTest {
                 .name("name")
                 .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
                     .setSender(BOB)
-                    .addToRecipient(CHAT_GPT_ADDRESS)
+                    .addToRecipient(BOT_ADDRESS)
                     .addBccRecipient(ALICE)
                     .setSubject("How can I cook an egg?")
                     .setText("I do not know how to cook an egg. Please help me."))
                 .sender(BOB)
-                .recipients(ALICE, CHAT_GPT_ADDRESS));
+                .recipients(ALICE, BOT_ADDRESS));
 
         awaitMessages(ALICE, 2);
 
         String aliceRepliedMessage = imapClient.sendCommand("FETCH 2:2 (BODY[])");
         MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(aliceRepliedMessage);
-        assertThat(mimeMessage.getHeader("From")).containsOnly(CHAT_GPT_ADDRESS);
+        assertThat(mimeMessage.getHeader("From")).containsOnly(BOT_ADDRESS);
         assertThat(mimeMessage.getHeader("Subject")[0]).isEqualTo("Re: How can I cook an egg?");
     }
 
@@ -259,13 +259,13 @@ class AIBotIntegrationTest {
                 .name("name")
                 .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
                     .setSender(BOB)
-                    .addToRecipient(ALICE, CHAT_GPT_ADDRESS)
+                    .addToRecipient(ALICE, BOT_ADDRESS)
                     .addCcRecipient(ANDRE)
                     .addBccRecipient(MARIA)
                     .setSubject("How can I cook an egg?")
                     .setText("I do not know how to cook an egg. Please help me."))
                 .sender(BOB)
-                .recipients(ALICE, ANDRE, MARIA, CHAT_GPT_ADDRESS));
+                .recipients(ALICE, ANDRE, MARIA, BOT_ADDRESS));
 
         awaitMessages(BOB, 1);
         awaitMessages(ALICE, 2);
@@ -274,26 +274,26 @@ class AIBotIntegrationTest {
     }
 
     @Test
-    void shouldReplyOnlyWhenGptAddressIsInToHeader() throws Exception {
+    void shouldReplyOnlyWhenBotAddressIsInToHeader() throws Exception {
         messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
             .authenticate(BOB, PASSWORD)
             .sendMessage(FakeMail.builder()
                 .name("name")
                 .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
                     .setSender(BOB)
-                    .addToRecipient(CHAT_GPT_ADDRESS)
+                    .addToRecipient(BOT_ADDRESS)
                     .setSubject("How can I cook an egg?")
                     .setText("I do not know how to cook an egg. Please help me."))
                 .sender(BOB)
-                .recipient(CHAT_GPT_ADDRESS));
+                .recipient(BOT_ADDRESS));
 
         awaitFirstMessage(BOB);
         MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(imapClient.readFirstMessage());
-        assertThat(mimeMessage.getAllRecipients()).doesNotContain(new InternetAddress(CHAT_GPT_ADDRESS));
+        assertThat(mimeMessage.getAllRecipients()).doesNotContain(new InternetAddress(BOT_ADDRESS));
     }
 
     @Test
-    void gptShouldNotReplyWhenNotSentToGptAddress() throws Exception {
+    void botShouldNotReplyWhenNotSentToBotAddress() throws Exception {
         messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
             .authenticate(BOB, PASSWORD)
             .sendMessage(FakeMail.builder()

@@ -15,7 +15,7 @@ import com.google.common.base.Strings;
 
 public class AIBotConfig {
     public static String API_KEY_PARAMETER_NAME = "apiKey";
-    public static String GPT_ADDRESS_PARAMETER_NAME = "gptAddress";
+    public static String BOT_ADDRESS_PARAMETER_NAME = "botAddress";
     public static String MODEL_PARAMETER_NAME = "model";
     public static String BASE_URL_PARAMETER_NAME = "baseURL";
 
@@ -24,24 +24,24 @@ public class AIBotConfig {
 
     private final String apiKey;
     private final Optional<URL> baseURLOpt;
-    private final MailAddress gptAddress;
+    private final MailAddress botAddress;
     private final LlmModel llmModel;
 
-    public AIBotConfig(String apiKey, MailAddress gptAddress, LlmModel llmModel, Optional<URL> baseURLOpt) {
+    public AIBotConfig(String apiKey, MailAddress botAddress, LlmModel llmModel, Optional<URL> baseURLOpt) {
         Preconditions.checkNotNull(apiKey);
-        Preconditions.checkNotNull(gptAddress);
+        Preconditions.checkNotNull(botAddress);
         Preconditions.checkNotNull(llmModel);
         Preconditions.checkNotNull(baseURLOpt);
 
         this.apiKey = apiKey;
         this.baseURLOpt = baseURLOpt;
-        this.gptAddress = gptAddress;
+        this.botAddress = botAddress;
         this.llmModel = llmModel;
     }
 
     public static AIBotConfig fromMailetConfig(MailetConfig mailetConfig) throws MailetException {
         String apiKeyParam = mailetConfig.getInitParameter(API_KEY_PARAMETER_NAME);
-        String gptAddressParam = mailetConfig.getInitParameter(GPT_ADDRESS_PARAMETER_NAME);
+        String gptAddressParam = mailetConfig.getInitParameter(BOT_ADDRESS_PARAMETER_NAME);
         String llmModelParam = mailetConfig.getInitParameter(MODEL_PARAMETER_NAME);
         String baseUrlParam = mailetConfig.getInitParameter(BASE_URL_PARAMETER_NAME);
 
@@ -50,7 +50,7 @@ public class AIBotConfig {
         }
 
         if (Strings.isNullOrEmpty(gptAddressParam)) {
-            throw new MailetException("No value for " + GPT_ADDRESS_PARAMETER_NAME + " parameter was provided.");
+            throw new MailetException("No value for " + BOT_ADDRESS_PARAMETER_NAME + " parameter was provided.");
         }
 
         Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
@@ -81,8 +81,8 @@ public class AIBotConfig {
         return apiKey;
     }
 
-    public MailAddress getGptAddress() {
-        return gptAddress;
+    public MailAddress getBotAddress() {
+        return botAddress;
     }
 
     public LlmModel getLlmModel() {

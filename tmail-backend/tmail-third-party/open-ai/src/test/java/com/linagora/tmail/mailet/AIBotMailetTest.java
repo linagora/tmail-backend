@@ -29,7 +29,7 @@ class AIBotMailetTest {
 
     public static final String DEMO_MODEL = "gpt-4o-mini";
     private static final MailAddress ASKING_SENDER = createMailAddress("sender@example.com");
-    private static final MailAddress GPT_ADDRESS = createMailAddress("gpt@example.com");
+    private static final MailAddress BOT_ADDRESS = createMailAddress("gpt@example.com");
 
     private AIBotMailet testee;
     private MailetContext mailetContext;
@@ -44,14 +44,14 @@ class AIBotMailetTest {
     void initShouldThrowWhenMissingApiKeyProperty() {
         assertThatThrownBy(() -> testee.init(FakeMailetConfig
             .builder()
-            .setProperty("gptAddress", GPT_ADDRESS.asString())
+            .setProperty("botAddress", BOT_ADDRESS.asString())
             .mailetContext(mailetContext)
             .build()))
             .isInstanceOf(MailetException.class);
     }
 
     @Test
-    void initShouldThrowWhenMissingGptAddressProperty() {
+    void initShouldThrowWhenMissingBotAddressProperty() {
         assertThatThrownBy(() -> testee.init(FakeMailetConfig
             .builder()
             .setProperty("apiKey", "demo")
@@ -65,7 +65,7 @@ class AIBotMailetTest {
         testee.init(FakeMailetConfig
             .builder()
             .setProperty("apiKey", "demo")
-            .setProperty("gptAddress", GPT_ADDRESS.asString())
+            .setProperty("botAddress", BOT_ADDRESS.asString())
             .setProperty("model", DEMO_MODEL)
             .mailetContext(mailetContext)
             .build());
@@ -82,6 +82,6 @@ class AIBotMailetTest {
 
         testee.service(mail);
 
-        Mockito.verify(mailetContext).sendMail(ArgumentMatchers.eq(GPT_ADDRESS), ArgumentMatchers.any(), ArgumentMatchers.any());
+        Mockito.verify(mailetContext).sendMail(ArgumentMatchers.eq(BOT_ADDRESS), ArgumentMatchers.any(), ArgumentMatchers.any());
     }
 }
