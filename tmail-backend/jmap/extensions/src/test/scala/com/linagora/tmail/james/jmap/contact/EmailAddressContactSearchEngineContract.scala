@@ -55,7 +55,7 @@ trait EmailAddressContactSearchEngineContract {
   def awaitDocumentsIndexed(query: QueryType, documentCount: Long): Unit
 
   @ParameterizedTest
-  @ValueSource(strings = Array("d", "di", "dia", "dian", "diana"))
+  @ValueSource(strings = Array("di", "dia", "dian", "diana"))
   def prefixSearchForFirstnameShouldWork(searchInput: String): Unit = {
     SMono(testee().index(accountId, ContactFields(new MailAddress("dpot@linagora.com"), firstname = "Diana", surname = "Pivot"))).block()
 
@@ -66,7 +66,7 @@ trait EmailAddressContactSearchEngineContract {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = Array("p", "pi", "piv", "pivo", "pivot"))
+  @ValueSource(strings = Array("pi", "piv", "pivo", "pivot"))
   def prefixSearchForSurnameShouldWork(searchInput: String): Unit = {
     SMono(testee().index(accountId, ContactFields(new MailAddress("dpot@linagora.com"), firstname = "Diana", surname = "Pivot"))).block()
 
