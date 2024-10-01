@@ -104,7 +104,7 @@ public class OpenSearchContactConfiguration {
     public static final WriteAliasName DEFAULT_ALIAS_WRITE_DOMAIN_CONTACT_NAME = new WriteAliasName("domain_contact_write_alias");
     public static final ReadAliasName DEFAULT_ALIAS_READ_DOMAIN_CONTACT_NAME = new ReadAliasName("domain_contact_read_alias");
     public static final Integer DEFAULT_MAX_NGRAM_DIFF = 27;
-    public static final Integer DEFAULT_MIN_NGRAM = 3;
+    public static final Integer DEFAULT_MIN_NGRAM = 2;
 
     public static final OpenSearchContactConfiguration DEFAULT_CONFIGURATION = builder().build();
 

@@ -8,6 +8,8 @@ import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -51,6 +53,28 @@ trait EmailAddressContactSearchEngineContract {
   def testee(): EmailAddressContactSearchEngine
 
   def awaitDocumentsIndexed(query: QueryType, documentCount: Long): Unit
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("di", "dia", "dian", "diana"))
+  def prefixSearchForFirstnameShouldWork(searchInput: String): Unit = {
+    SMono(testee().index(accountId, ContactFields(new MailAddress("dpot@linagora.com"), firstname = "Diana", surname = "Pivot"))).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, searchInput)).asJava().map(_.fields.address).collectList().block())
+      .containsExactlyInAnyOrder(new MailAddress("dpot@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("pi", "piv", "pivo", "pivot"))
+  def prefixSearchForSurnameShouldWork(searchInput: String): Unit = {
+    SMono(testee().index(accountId, ContactFields(new MailAddress("dpot@linagora.com"), firstname = "Diana", surname = "Pivot"))).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, searchInput)).asJava().map(_.fields.address).collectList().block())
+      .containsExactlyInAnyOrder(new MailAddress("dpot@linagora.com"))
+  }
 
   @Test
   def shouldNotReturnDuplicatedContactAtReadTime(): Unit = {
