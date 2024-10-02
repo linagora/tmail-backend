@@ -63,6 +63,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQExtension.DockerRestartPolicy;
 import org.apache.james.backends.rabbitmq.RabbitMQFixture;
 import org.apache.james.backends.rabbitmq.RabbitMQManagementAPI;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
+import org.apache.james.backends.redis.RedisClientFactory;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.backends.redis.StandaloneRedisConfiguration;
 import org.apache.james.events.EventBusTestFixture.EventListenerCountingSuccessfulExecution;
@@ -71,6 +72,7 @@ import org.apache.james.events.EventBusTestFixture.TestEventSerializer;
 import org.apache.james.events.EventBusTestFixture.TestRegistrationKeyFactory;
 import org.apache.james.events.RoutingKeyConverter.RoutingKey;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.server.core.filesystem.FileSystemImpl;
 import org.apache.james.util.concurrency.ConcurrentTestRunner;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.data.Percentage;
@@ -125,7 +127,7 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
 
     @BeforeEach
     void setUp() throws Exception {
-        redisEventBusClientFactory = new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()));
+        redisEventBusClientFactory = new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting()));
         memoryEventDeadLetters = new MemoryEventDeadLetters();
 
         eventSerializer = new TestEventSerializer();
