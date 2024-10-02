@@ -12,23 +12,325 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
-- [Set up TTL on the mailbox_change and email_change tables](#set-up-ttl-on-the-mailboxchange-and-emailchange-tables)
+## 0.11.0
 
-### Set up TTL on the label_change table
-Date: 15/09/2023
+- [Change default minimum ngram settings for contact indices](#change-default-minimum-ngram-settings-for-contact-indices)
 
-JIRA: https://issues.apache.org/jira/browse/JAMES-3940
+### Change default minimum ngram settings for contact indices
+Date: 01/10/2024
 
-Concerned products: Distributed James, Distributed James ESv6
+Issue: https://github.com/linagora/tmail-backend/issues/1204
 
-From now on, we set a default 60 days (configurable) Cassandra time-to-live on the `label_change` table
-to reduce considered outdated changes' storage usage.
+Optional to adapt as the effection is minor.
 
-If one want to keep the old behavior which is not using Cassandra time-to-live on those JMAP change tables, please set the
-following configurations in `cassandra.properties`:
+Minimum ngram (minimum characters to autocomplete) now defaults to 2 (previously was 3).
 
+To adapt the change, we need to migrate contact indices to a new version with the new indices settings.
+
+#### Migrate Domain contact index
+
+- Step 1: create a v2 index
+
+```curl
+PUT /domain_contact_v2
+{
+  "settings": {
+    "index": {
+      "max_ngram_diff": "27",
+      "number_of_shards": "5",
+      "number_of_replicas": "1",
+      "analysis": {
+        "filter": {
+          "ngram_filter": {
+            "type": "ngram",
+            "min_gram": "2",
+            "max_gram": "29"
+          },
+          "edge_ngram_filter": {
+            "type": "edge_ngram",
+            "min_gram": "2",
+            "max_gram": "29"
+          },
+          "preserved_ascii_folding_filter": {
+            "type": "asciifolding",
+            "preserve_original": "true"
+          }
+        },
+        "analyzer": {
+          "email_ngram_filter_analyzer": {
+            "filter": [
+              "ngram_filter",
+              "lowercase"
+            ],
+            "type": "custom",
+            "tokenizer": "uax_url_email"
+          },
+          "rebuilt_keyword": {
+            "filter": [
+              "lowercase"
+            ],
+            "type": "custom",
+            "tokenizer": "keyword"
+          },
+          "name_edge_ngram_filter_analyzer": {
+            "filter": [
+              "edge_ngram_filter",
+              "lowercase",
+              "preserved_ascii_folding_filter"
+            ],
+            "type": "custom",
+            "tokenizer": "standard"
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "contactId": {
+        "type": "keyword"
+      },
+      "domain": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "text",
+        "analyzer": "email_ngram_filter_analyzer",
+        "search_analyzer": "rebuilt_keyword"
+      },
+      "firstname": {
+        "type": "text",
+        "analyzer": "name_edge_ngram_filter_analyzer",
+        "search_analyzer": "standard"
+      },
+      "surname": {
+        "type": "text",
+        "analyzer": "name_edge_ngram_filter_analyzer",
+        "search_analyzer": "standard"
+      }
+    }
+  }
+}
 ```
-label.change.ttl=0 second
+
+Notes: We may need to change `number_of_shards` and `number_of_replicas` values if needed (have a look at `opensearch.properties`).
+
+- Step 2: Expose the new index under the write alias
+
+```curl
+POST /_aliases
+{
+  "actions": [
+    {
+      "remove": {
+        "index": "domain_contact",
+        "alias": "domain_contact_write_alias"
+      }
+    },
+    {
+      "add": {
+        "index": "domain_contact_v2",
+        "alias": "domain_contact_write_alias",
+        "is_write_index": true
+      }
+    }
+  ]
+}
+```
+
+- Step 3: Reindex v2 from v1 index
+
+```curl
+POST /_reindex?slices=auto
+{
+  "source": {
+    "index": "domain_contact"
+  },
+  "dest": {
+    "index": "domain_contact_v2"
+  }
+}
+```
+
+- Step 4: Expose the new index under the read alias
+
+```curl
+POST /_aliases
+{
+  "actions": [
+    {
+      "remove": {
+        "index": "domain_contact",
+        "alias": "domain_contact_read_alias"
+      }
+    },
+    {
+      "add": {
+        "index": "domain_contact_v2",
+        "alias": "domain_contact_read_alias"
+      }
+    }
+  ]
+}
+```
+
+- Step 5: Delete v1 index
+
+```curl
+DELETE /domain_contact
+```
+
+#### Migrate User contact index
+
+- Step 1: create a v2 index
+
+```curl
+PUT /user_contact_v2
+{
+  "settings": {
+    "index": {
+      "max_ngram_diff": "27",
+      "number_of_shards": "5",
+      "analysis": {
+        "filter": {
+          "ngram_filter": {
+            "type": "ngram",
+            "min_gram": "2",
+            "max_gram": "29"
+          },
+          "edge_ngram_filter": {
+            "type": "edge_ngram",
+            "min_gram": "2",
+            "max_gram": "29"
+          },
+          "preserved_ascii_folding_filter": {
+            "type": "asciifolding",
+            "preserve_original": "true"
+          }
+        },
+        "analyzer": {
+          "email_ngram_filter_analyzer": {
+            "filter": [
+              "ngram_filter",
+              "lowercase"
+            ],
+            "type": "custom",
+            "tokenizer": "uax_url_email"
+          },
+          "rebuilt_keyword": {
+            "filter": [
+              "lowercase"
+            ],
+            "type": "custom",
+            "tokenizer": "keyword"
+          },
+          "name_edge_ngram_filter_analyzer": {
+            "filter": [
+              "edge_ngram_filter",
+              "lowercase",
+              "preserved_ascii_folding_filter"
+            ],
+            "type": "custom",
+            "tokenizer": "standard"
+          }
+        }
+      },
+      "number_of_replicas": "1"
+    }
+  },
+  "mappings": {
+    "properties": {
+      "accountId": {
+        "type": "keyword"
+      },
+      "contactId": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "text",
+        "analyzer": "email_ngram_filter_analyzer",
+        "search_analyzer": "rebuilt_keyword"
+      },
+      "firstname": {
+        "type": "text",
+        "analyzer": "name_edge_ngram_filter_analyzer",
+        "search_analyzer": "standard"
+      },
+      "surname": {
+        "type": "text",
+        "analyzer": "name_edge_ngram_filter_analyzer",
+        "search_analyzer": "standard"
+      }
+    }
+  }
+}
+```
+
+Notes: We may need to change `number_of_shards` and `number_of_replicas` values if needed (have a look at `opensearch.properties`).
+
+- Step 2: Expose the new index under the write alias
+
+```curl
+POST /_aliases
+{
+  "actions": [
+    {
+      "add": {
+        "index": "user_contact_v2",
+        "alias": "user_contact_read_alias"
+      }
+    },
+    {
+      "add": {
+        "index": "user_contact_v2",
+        "alias": "user_contact_write_alias",
+        "is_write_index": true
+      }
+    }
+  ]
+}
+```
+
+- Step 3: Reindex v2 from v1 index
+
+```curl
+POST /_reindex?slices=auto
+{
+  "source": {
+    "index": "user_contact"
+  },
+  "dest": {
+    "index": "user_contact_v2"
+  }
+}
+```
+
+- Step 4: Expose the new index under the read alias
+
+```curl
+POST /_aliases
+{
+  "actions": [
+    {
+      "remove": {
+        "index": "user_contact",
+        "alias": "user_contact_read_alias"
+      }
+    },
+    {
+      "add": {
+        "index": "user_contact_v2",
+        "alias": "user_contact_read_alias"
+      }
+    }
+  ]
+}
+```
+
+- Step 5: Delete v1 index
+
+```curl
+DELETE /user_contact
 ```
 
 ## 0.6.5-rc2 version
