@@ -9,9 +9,11 @@ import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
+import org.apache.james.backends.redis.RedisClientFactory;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.backends.redis.StandaloneRedisConfiguration;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.server.core.filesystem.FileSystemImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -50,7 +52,7 @@ class RedisEventBusServiceTest {
             EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString())),
+            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
             redisEventBusConfiguration);
         eventBus.start();
 
@@ -76,7 +78,7 @@ class RedisEventBusServiceTest {
             EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString())),
+            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
             redisEventBusConfiguration);
         eventBus.start();
 
@@ -103,7 +105,7 @@ class RedisEventBusServiceTest {
             EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString())),
+            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
             redisEventBusConfiguration);
         eventBus.start();
 
@@ -129,7 +131,7 @@ class RedisEventBusServiceTest {
             EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString())),
+            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
             redisEventBusConfiguration);
         eventBus.start();
 

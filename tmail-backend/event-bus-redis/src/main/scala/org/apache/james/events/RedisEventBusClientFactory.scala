@@ -6,16 +6,19 @@ import io.lettuce.core.pubsub.api.reactive.RedisPubSubReactiveCommands
 import io.lettuce.core.{AbstractRedisClient, RedisClient}
 import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Singleton}
-import org.apache.james.backends.redis.{ClusterRedisConfiguration, MasterReplicaRedisConfiguration, RedisConfiguration, StandaloneRedisConfiguration}
-
-import scala.jdk.CollectionConverters._
+import org.apache.james.backends.redis.{ClusterRedisConfiguration, MasterReplicaRedisConfiguration, RedisClientFactory, RedisConfiguration, SentinelRedisConfiguration, StandaloneRedisConfiguration}
 
 class RedisEventBusClientFactory @Singleton() @Inject()
-(redisConfiguration: RedisConfiguration) {
+(redisConfiguration: RedisConfiguration, redisClientFactory: RedisClientFactory) {
   val rawRedisClient: AbstractRedisClient = redisConfiguration match {
-    case standaloneConfiguration: StandaloneRedisConfiguration => RedisClient.create(standaloneConfiguration.redisURI)
-    case masterReplicaRedisConfiguration: MasterReplicaRedisConfiguration => RedisClient.create(masterReplicaRedisConfiguration.redisURI.value.last)
-    case clusterRedisConfiguration: ClusterRedisConfiguration => RedisClusterClient.create(clusterRedisConfiguration.redisURI.value.asJava)
+    case standaloneConfiguration: StandaloneRedisConfiguration => redisClientFactory.createStandaloneClient(standaloneConfiguration)
+    case masterReplicaRedisConfiguration: MasterReplicaRedisConfiguration =>
+      redisClientFactory.createStandaloneClient(new StandaloneRedisConfiguration(masterReplicaRedisConfiguration.redisURI.value.last,
+        masterReplicaRedisConfiguration.useSSL, masterReplicaRedisConfiguration.mayBeSSLConfiguration, masterReplicaRedisConfiguration.ioThreads, masterReplicaRedisConfiguration.workerThreads))
+    case clusterRedisConfiguration: ClusterRedisConfiguration => redisClientFactory.createClusterClient(clusterRedisConfiguration)
+    case sentinelRedisConfiguration: SentinelRedisConfiguration =>
+      redisClientFactory.createStandaloneClient(new StandaloneRedisConfiguration(sentinelRedisConfiguration.redisURI,
+        sentinelRedisConfiguration.useSSL, sentinelRedisConfiguration.mayBeSSLConfiguration, sentinelRedisConfiguration.ioThreads, sentinelRedisConfiguration.workerThreads))
   }
 
   def createRedisPubSubCommand(): RedisPubSubReactiveCommands[String, String] = rawRedisClient match {
