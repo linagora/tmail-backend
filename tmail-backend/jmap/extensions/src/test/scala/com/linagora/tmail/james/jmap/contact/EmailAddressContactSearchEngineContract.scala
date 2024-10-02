@@ -76,6 +76,17 @@ trait EmailAddressContactSearchEngineContract {
       .containsExactlyInAnyOrder(new MailAddress("dpot@linagora.com"))
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = Array("an", "and", "the", "then"))
+  def prefixSearchWithStopWordShouldWork(searchInput: String): Unit = {
+    SMono(testee().index(accountId, ContactFields(new MailAddress("dpot@linagora.com"), firstname = "Andre", surname = "Thena"))).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, searchInput)).asJava().map(_.fields.address).collectList().block())
+      .containsExactlyInAnyOrder(new MailAddress("dpot@linagora.com"))
+  }
+
   @Test
   def shouldNotReturnDuplicatedContactAtReadTime(): Unit = {
     val mailAddress: MailAddress = new MailAddress("nobita@linagora.com")
