@@ -38,8 +38,6 @@ rejection.
  - userMailCacheDuration: Time during which one should keep entries into the user DN => mailAddress cache.
  - mailAttributeForGroups: Attribute holding the mail address of a group. For easy testing this can be set to description
 but for production use a special LDAP schema needs to be crafted for using the mail attribute.
-- businessCategoryExtractAttribute: Optional string. Default to none. If configured, businessCategory would be extracted from the configured attribute.
-Example: With `businessCategory: cn=memberRestrictedList,ou=twakeListType,ou=nomenclature,o=gov,c=mu` and `businessCategoryExtractAttribute` configured to `cn`, the extracted value for businessCategory would be `memberRestrictedList`
 
 Performance considerations:
 
