@@ -44,9 +44,9 @@ import org.apache.james.backends.rabbitmq.RabbitMQExtension.DockerRestartPolicy;
 import org.apache.james.backends.rabbitmq.RabbitMQFixture;
 import org.apache.james.backends.rabbitmq.RabbitMQManagementAPI;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
-import org.apache.james.backends.redis.MasterReplicaRedisConfiguration;
 import org.apache.james.backends.redis.RedisSentinelExtension;
 import org.apache.james.backends.redis.RedisSentinelExtension.RedisSentinelCluster;
+import org.apache.james.backends.redis.SentinelRedisConfiguration;
 import org.apache.james.events.EventBusTestFixture.EventListenerCountingSuccessfulExecution;
 import org.apache.james.events.EventBusTestFixture.GroupA;
 import org.apache.james.events.EventBusTestFixture.TestEventSerializer;
@@ -113,7 +113,7 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
 
         eventSerializer = new TestEventSerializer();
         routingKeyConverter = RoutingKeyConverter.forFactories(new TestRegistrationKeyFactory());
-        MasterReplicaRedisConfiguration redisConfiguration = redisSentinelCluster.redisSentinelContainerList().getRedisConfiguration();
+        SentinelRedisConfiguration redisConfiguration = redisSentinelCluster.redisSentinelContainerList().getRedisConfiguration();
         redisEventBusClientFactory = new RedisEventBusClientFactory(redisConfiguration);
         eventBus = newEventBus();
         eventBus2 = newEventBus();
