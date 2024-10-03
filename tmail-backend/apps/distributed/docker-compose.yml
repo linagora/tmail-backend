@@ -42,7 +42,7 @@ services:
       # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
     restart: on-failure
     healthcheck:
-      test: [ "CMD-SHELL", "wget --server-response 'http://localhost:8000/healthcheck?check=IMAPHealthCheck&check=Cassandra%20backend&strict' 2>&1 | grep 'HTTP/1.1 200 OK' || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f -s -o /dev/null 'http://localhost:8000/healthcheck?check=IMAPHealthCheck&check=Cassandra%20backend&strict'" ]
       interval: 60s
       timeout: 30s
       retries: 2

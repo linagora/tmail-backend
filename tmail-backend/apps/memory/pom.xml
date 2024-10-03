@@ -192,6 +192,19 @@
                             <md5>29127cee36b7acf069d31603b4558361</md5>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>curl-for-healthcheck</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://github.com/stunnel/static-curl/releases/download/8.10.1/curl-linux-x86_64-8.10.1.tar.xz</url>
+                            <unpack>true</unpack>
+                            <outputDirectory>${project.build.directory}/curl</outputDirectory>
+                            <md5>e421095b552dfdabde77fa2137b15515</md5>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
@@ -273,6 +286,10 @@
                                 <into>/root/async-profiler</into>
                             </path>
                             <path>
+                                <from>target/curl</from>
+                                <into>/usr/local/bin</into>
+                            </path>
+                            <path>
                                 <from>src/main/extensions-jars</from>
                                 <into>/root/extensions-jars</into>
                             </path>
@@ -304,6 +321,10 @@
                             </permission>
                             <permission>
                                 <file>/root/provisioning/provisioning.sh</file>
+                                <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                            </permission>
+                            <permission>
+                                <file>/usr/local/bin/curl</file>
                                 <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                             </permission>
                         </permissions>
@@ -387,6 +408,10 @@
                                         <into>/root/async-profiler</into>
                                     </path>
                                     <path>
+                                        <from>target/curl</from>
+                                        <into>/usr/local/bin</into>
+                                    </path>
+                                    <path>
                                         <from>src/main/extensions-jars</from>
                                         <into>/root/extensions-jars</into>
                                     </path>
@@ -418,6 +443,10 @@
                                     </permission>
                                     <permission>
                                         <file>/root/provisioning/provisioning.sh</file>
+                                        <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
+                                    </permission>
+                                    <permission>
+                                        <file>/usr/local/bin/curl</file>
                                         <mode>755</mode> <!-- Read/write/execute for owner, read/execute for group/other -->
                                     </permission>
                                 </permissions>
