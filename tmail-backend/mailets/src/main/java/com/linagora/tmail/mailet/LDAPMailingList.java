@@ -34,10 +34,12 @@ import org.slf4j.LoggerFactory;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
+import com.google.common.base.Splitter;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.Filter;
@@ -65,6 +67,10 @@ import com.unboundid.ldap.sdk.SearchScope;
  *  <li>userMailCacheDuration: Time during which one should keep entries into the user DN => mailAddress cache.</li>
  *  <li>mailAttributeForGroups: Attribute holding the mail address of a group. For easy testing this can be set to description
  *  but for production use a special LDAP schema needs to be crafted for using the mail attribute.</li>
+ *  <li>businessCategoryExtractAttribute: Optional string. Default to none. If configured, businessCategory would be
+ *  extracted from the configured attribute.
+ *  Example: With `businessCategory: cn=memberRestrictedList,ou=twakeListType,ou=nomenclature,o=gov,c=mu` and `businessCategoryExtractAttribute` configured to `cn`,
+ *  the extracted value for businessCategory would be `memberRestrictedList`</li>
  *  </ul>
  *
  *  <ul>Performance considerations:
@@ -185,6 +191,7 @@ public class LDAPMailingList extends GenericMailet {
     private String rejectedSenderProcessor;
     private MailingListPredicate mailingListPredicate;
     private String mailAttributeForGroups;
+    private Optional<String> businessCategoryExtractAttribute;
 
     @Inject
     public LDAPMailingList(LDAPConnectionPool ldapConnectionPool, LdapRepositoryConfiguration configuration) {
@@ -214,6 +221,7 @@ public class LDAPMailingList extends GenericMailet {
     public void init() throws MessagingException {
         baseDN = getInitParameter("baseDN");
         mailAttributeForGroups = getInitParameter("mailAttributeForGroups", "mail");
+        businessCategoryExtractAttribute = Optional.ofNullable(getInitParameter("businessCategoryExtractAttribute"));
         String groupObjectClass = getInitParameter("groupObjectClass", "groupofnames");
         objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
         rejectedSenderProcessor = getInitParameter("rejectedSenderProcessor");
@@ -449,18 +457,41 @@ public class LDAPMailingList extends GenericMailet {
        };
    }
 
-   SenderValidationPolicy chooseSenderValidationPolicy(SearchResultEntry list) {
-       Attribute businessCategory = list.getAttribute("businessCategory");
-       if (businessCategory == null) {
-           return SenderValidationPolicy.OPEN;
-       }
-       return switch (businessCategory.getValue().toLowerCase().trim()) {
-           case "openlist" -> SenderValidationPolicy.OPEN;
-           case "internallist" -> SenderValidationPolicy.INTERNAL.apply(getMailetContext());
-           case "memberrestrictedlist" -> memberSenderValidationPolicy();
-           case "ownerrestrictedlist" -> ownerSenderValidationPolicy();
-           case "domainrestrictedlist" -> domainRestrictedValidationPolicy();
-           default -> SenderValidationPolicy.OPEN;
-       };
-   }
+    SenderValidationPolicy chooseSenderValidationPolicy(SearchResultEntry list) {
+        Attribute businessCategory = list.getAttribute("businessCategory");
+        if (businessCategory == null) {
+            return SenderValidationPolicy.OPEN;
+        }
+        return switch (extractBusinessCategory(businessCategory.getValue().toLowerCase().trim())) {
+            case "openlist" -> SenderValidationPolicy.OPEN;
+            case "internallist" -> SenderValidationPolicy.INTERNAL.apply(getMailetContext());
+            case "memberrestrictedlist" -> memberSenderValidationPolicy();
+            case "ownerrestrictedlist" -> ownerSenderValidationPolicy();
+            case "domainrestrictedlist" -> domainRestrictedValidationPolicy();
+            default -> SenderValidationPolicy.OPEN;
+        };
+    }
+
+    private String extractBusinessCategory(String ldapValue) {
+        return businessCategoryExtractAttribute
+            .map(extractAttribute -> santinizeBusinessCategory(ldapValue, extractAttribute))
+            .orElse(ldapValue);
+    }
+
+    private String santinizeBusinessCategory(String ldapValue, String extractAttribute) {
+        if (ldapValue != null && !ldapValue.isEmpty()) {
+            // Split the businessCategory string by comma, map to key-value pairs, and collect to a MultiMap<String, String>
+            ImmutableListMultimap<String, String> businessAttributeMap = Splitter.on(',')
+                .trimResults()
+                .splitToStream(ldapValue)
+                .map(part -> part.trim().split("=", 2))
+                .filter(keyValue -> keyValue.length == 2) // Ensure valid key-ldapValue pairs
+                .collect(ImmutableListMultimap.toImmutableListMultimap(keyValue -> keyValue[0].trim(), keyValue -> keyValue[1].trim()));
+
+            if (!businessAttributeMap.get(extractAttribute).isEmpty()) {
+                return businessAttributeMap.get(extractAttribute).getFirst();
+            }
+        }
+        return "";
+    }
 }

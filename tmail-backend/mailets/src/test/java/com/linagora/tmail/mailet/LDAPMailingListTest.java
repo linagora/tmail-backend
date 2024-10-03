@@ -207,6 +207,38 @@ class LDAPMailingListTest {
     }
 
     @Test
+    void shouldRejectNonLocalSendersWithInternalListWhenCustomBusinessCategorySchema() throws Exception {
+        LDAPMailingList testee = new LDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
+        FakeMailContext mailetContext = FakeMailContext.defaultContext();
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .mailetName("LDAPMailingList")
+            .setProperty("baseDN", "ou=lists,dc=james,dc=org")
+            .setProperty("rejectedSenderProcessor", "rejectedSender")
+            .setProperty("mailingListPredicate", "lists-prefix")
+            .setProperty("mailAttributeForGroups", "description")
+            .setProperty("businessCategoryExtractAttribute", "cn")
+            .mailetContext(mailetContext)
+            .build();
+        testee.init(config);
+
+        FakeMail mail = FakeMail.builder()
+            .name("test-mail")
+            .state(FakeMail.DEFAULT)
+            .sender("bob@james.org")
+            .recipient("group30@lists.james.org")
+            .build();
+        testee.service(mail);
+
+        assertThat(mail.getRecipients()).isEmpty();
+        assertThat(mailetContext.getSentMails()).hasSize(1);
+        FakeMailContext.SentMail sentMail = mailetContext.getSentMails().get(0);
+        assertThat(sentMail.getState()).isEqualTo("rejectedSender");
+        assertThat(sentMail.getSender()).isEqualTo(new MailAddress("bob@james.org"));
+        assertThat(sentMail.getRecipients()).containsOnly(new MailAddress("group30@lists.james.org"));
+    }
+
+    @Test
     void shouldSupportInternalList() throws Exception {
         LDAPMailingList testee = new LDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
         FakeMailContext mailetContext = FakeMailContext.defaultContext();
@@ -226,6 +258,35 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@localhost") // local server for FakeMailContext
             .recipient("group3@lists.james.org")
+            .build();
+        testee.service(mail);
+
+        assertThat(mail.getRecipients())
+            .containsOnly(new MailAddress("james-user4@james.org"),
+                new MailAddress("james-user2@james.org"));
+    }
+
+    @Test
+    void shouldSupportInternalListWhenCustomBusinessCategorySchema() throws Exception {
+        LDAPMailingList testee = new LDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
+        FakeMailContext mailetContext = FakeMailContext.defaultContext();
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .mailetName("LDAPMailingList")
+            .setProperty("baseDN", "ou=lists,dc=james,dc=org")
+            .setProperty("rejectedSenderProcessor", "rejectedSender")
+            .setProperty("mailingListPredicate", "lists-prefix")
+            .setProperty("mailAttributeForGroups", "description")
+            .setProperty("businessCategoryExtractAttribute", "cn")
+            .mailetContext(mailetContext)
+            .build();
+        testee.init(config);
+
+        FakeMail mail = FakeMail.builder()
+            .name("test-mail")
+            .state(FakeMail.DEFAULT)
+            .sender("bob@localhost") // local server for FakeMailContext
+            .recipient("group30@lists.james.org")
             .build();
         testee.service(mail);
 

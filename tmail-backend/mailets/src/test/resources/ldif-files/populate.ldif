@@ -99,6 +99,15 @@ description: group3@lists.james.org
 member: uid=james-user4,ou=people,dc=james,dc=org
 member: uid=james-user2,ou=people,dc=james,dc=org
 
+dn: cn=group30, ou=lists, dc=james,dc=org
+objectclass: groupofnames
+businessCategory: cn=internalList,ou=twakeListType,ou=nomenclature,o=gov,c=mu
+cn: group30
+ou: lists
+description: group30@lists.james.org
+member: uid=james-user4,ou=people,dc=james,dc=org
+member: uid=james-user2,ou=people,dc=james,dc=org
+
 dn: cn=group4, ou=lists, dc=james,dc=org
 objectclass: groupofnames
 businessCategory: memberRestrictedList
