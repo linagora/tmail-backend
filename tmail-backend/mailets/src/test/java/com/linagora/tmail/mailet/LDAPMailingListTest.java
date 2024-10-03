@@ -217,7 +217,6 @@ class LDAPMailingListTest {
             .setProperty("rejectedSenderProcessor", "rejectedSender")
             .setProperty("mailingListPredicate", "lists-prefix")
             .setProperty("mailAttributeForGroups", "description")
-            .setProperty("businessCategoryExtractAttribute", "cn")
             .mailetContext(mailetContext)
             .build();
         testee.init(config);
@@ -277,7 +276,6 @@ class LDAPMailingListTest {
             .setProperty("rejectedSenderProcessor", "rejectedSender")
             .setProperty("mailingListPredicate", "lists-prefix")
             .setProperty("mailAttributeForGroups", "description")
-            .setProperty("businessCategoryExtractAttribute", "cn")
             .mailetContext(mailetContext)
             .build();
         testee.init(config);
