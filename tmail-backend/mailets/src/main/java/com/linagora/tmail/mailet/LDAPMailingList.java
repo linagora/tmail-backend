@@ -40,10 +40,12 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.unboundid.ldap.sdk.Attribute;
+import com.unboundid.ldap.sdk.DN;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.LDAPSearchException;
+import com.unboundid.ldap.sdk.RDNNameValuePair;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
@@ -449,18 +451,35 @@ public class LDAPMailingList extends GenericMailet {
        };
    }
 
-   SenderValidationPolicy chooseSenderValidationPolicy(SearchResultEntry list) {
-       Attribute businessCategory = list.getAttribute("businessCategory");
-       if (businessCategory == null) {
-           return SenderValidationPolicy.OPEN;
-       }
-       return switch (businessCategory.getValue().toLowerCase().trim()) {
-           case "openlist" -> SenderValidationPolicy.OPEN;
-           case "internallist" -> SenderValidationPolicy.INTERNAL.apply(getMailetContext());
-           case "memberrestrictedlist" -> memberSenderValidationPolicy();
-           case "ownerrestrictedlist" -> ownerSenderValidationPolicy();
-           case "domainrestrictedlist" -> domainRestrictedValidationPolicy();
-           default -> SenderValidationPolicy.OPEN;
-       };
-   }
+    SenderValidationPolicy chooseSenderValidationPolicy(SearchResultEntry list) {
+        Attribute businessCategory = list.getAttribute("businessCategory");
+        if (businessCategory == null) {
+            return SenderValidationPolicy.OPEN;
+        }
+        return switch (extractBusinessCategory(businessCategory.getValue().toLowerCase().trim())) {
+            case "openlist" -> SenderValidationPolicy.OPEN;
+            case "internallist" -> SenderValidationPolicy.INTERNAL.apply(getMailetContext());
+            case "memberrestrictedlist" -> memberSenderValidationPolicy();
+            case "ownerrestrictedlist" -> ownerSenderValidationPolicy();
+            case "domainrestrictedlist" -> domainRestrictedValidationPolicy();
+            default -> SenderValidationPolicy.OPEN;
+        };
+    }
+
+    private String extractBusinessCategory(String ldapValue) {
+        if (ldapValue.contains(",")) {
+            try {
+                return Arrays.stream(new DN(ldapValue).getRDNs())
+                    .flatMap(rdn -> rdn.getNameValuePairs().stream())
+                    .filter(pair -> pair.getAttributeName().equals("cn"))
+                    .findFirst()
+                    .map(RDNNameValuePair::getAttributeValue)
+                    .orElse(ldapValue);
+            } catch (LDAPException e) {
+                LOGGER.info("Non DN value '{}' for businessCategory contains coma", ldapValue);
+                return ldapValue;
+            }
+        }
+        return ldapValue;
+    }
 }
