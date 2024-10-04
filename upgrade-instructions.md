@@ -275,9 +275,9 @@ POST /_aliases
 {
   "actions": [
     {
-      "add": {
-        "index": "user_contact_v2",
-        "alias": "user_contact_read_alias"
+      "remove": {
+        "index": "user_contact",
+        "alias": "user_contact_write_alias"
       }
     },
     {
