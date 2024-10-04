@@ -205,6 +205,61 @@ trait LinagoraContactAutocompleteMethodContract {
   }
 
   @Test
+  def contactAutocompleteShouldReturnLowercaseEmail(server: GuiceJamesServer): Unit = {
+    val contactCreated = server.getProbe(classOf[JmapGuiceContactAutocompleteProbe])
+      .index(bobAccountId, ContactFields(new MailAddress("NoBiTA@linagora.com"), firstnameA, surnameA))
+
+    awaitDocumentsIndexed(1)
+
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
+         |  "methodCalls": [[
+         |    "TMailContact/autocomplete",
+         |    {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "filter": {"text":"obi"}
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response =  `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(IGNORING_ARRAY_ORDER)
+      .isEqualTo(s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [
+         |    [
+         |      "TMailContact/autocomplete",
+         |		  {
+         |			  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |			  "list": [{
+         |          "id": "${contactCreated.id.toString}",
+         |				  "firstname": "$firstnameA",
+         |				  "surname": "$surnameA",
+         |				  "emailAddress": "nobita@linagora.com"
+         |			  }],
+         |        "limit": 256
+         |		  },
+         |		  "c1"
+         |    ]
+         |  ]
+         |}""".stripMargin)
+  }
+
+  @Test
   def contactAutocompleteShouldReturnEmptyListWhenNoContactFound(): Unit = {
     val request =
       s"""{
