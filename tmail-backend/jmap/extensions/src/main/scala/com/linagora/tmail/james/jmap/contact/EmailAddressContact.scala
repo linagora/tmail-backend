@@ -132,11 +132,16 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
       .distinct(_.id)
       .take(limit)
+      .map(lowerCaseEmailAddress)
   }
 
   private def lowerCaseContact(contact: EmailAddressContact): EmailAddressContact =
     EmailAddressContact(contact.id, ContactFields(address = new MailAddress(contact.fields.address.asString().toLowerCase),
       firstname = contact.fields.firstname.toLowerCase, surname = contact.fields.surname.toLowerCase))
+
+  private def lowerCaseEmailAddress(contact: EmailAddressContact): EmailAddressContact =
+    EmailAddressContact(contact.id, ContactFields(address = new MailAddress(contact.fields.address.asString().toLowerCase),
+      firstname = contact.fields.firstname, surname = contact.fields.surname))
 
   override def list(accountId: AccountId): Publisher[EmailAddressContact] =
     SFlux.fromIterable(ImmutableList.copyOf(userContactList.row(accountId).values()).asScala)

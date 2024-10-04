@@ -8,6 +8,7 @@ import static com.linagora.tmail.james.jmap.ContactMappingFactory.FIRSTNAME;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.SURNAME;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -264,7 +265,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     private EmailAddressContact extractContentFromHit(Hit<ObjectNode> hit) throws AddressException {
         ObjectNode source = hit.source();
         return new EmailAddressContact(UUID.fromString(source.get(CONTACT_ID).asText()),
-            new ContactFields(new MailAddress((source.get(EMAIL).asText())),
+            new ContactFields(new MailAddress((source.get(EMAIL).asText().toLowerCase(Locale.US))),
                 source.get(FIRSTNAME).asText(),
                 source.get(SURNAME).asText()));
     }
