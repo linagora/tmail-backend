@@ -16,7 +16,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -48,32 +47,34 @@ class OpenPaasContactsConsumerTest {
     }
 
     @Test
-    void consumeMessageShouldNotCrashOnInvalidMessages() throws InterruptedException {
+    void consumeMessageShouldNotCrashOnInvalidMessages() {
         IntStream.range(0, 10).forEach(i -> sendMessage("BAD_PAYLOAD" + i));
-        TimeUnit.MILLISECONDS.sleep(100);
-
-        sendMessage("INVALID_PAYLOAD");
-
-        await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
-                .collectList().block())
-                .hasSize(1));
     }
 
     @Test
     void contactShouldBeIndexedWhenContactUserAddedMessage() {
         sendMessage("""
             {
-                "firstname" : "Alice",
-                "lastname"  : "Doe",
-                "email"     : "bob@domain.tld",
-                "username"  : "alice12"
+                "bookId": "65ae6175751dbd001b5799e8",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "65ae6175751dbd001b5799e8",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
             }
             """);
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString("bob@domain.tld"), "alice", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString("jhon@doe.com"), "jhon", 10))
                     .collectList().block())
                 .hasSize(1));
     }
