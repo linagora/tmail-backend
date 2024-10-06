@@ -18,8 +18,11 @@ import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
 import org.apache.james.lifecycle.api.Startable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 
 import reactor.core.Disposable;
@@ -36,6 +39,8 @@ import reactor.rabbitmq.Sender;
 
 
 public class OpenPaasContactsConsumer implements Startable, Closeable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumer.class);
+
     public static final String TOPIC = "contacts:contact:add";
     public static final String QUEUE_NAME = "ConsumeOpenPaasContactsQueue";
     private Disposable consumeContactsDisposable;
@@ -44,22 +49,21 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private final Sender sender;
     private final RabbitMQConfiguration commonRabbitMQConfiguration;
     private final EmailAddressContactSearchEngine contactSearchEngine;
-    private final Gson gson = new Gson();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     // TODO: Create a separate RabbitMQ module for OpenPaaS communication so the injected channel pool
     //  would be custom configured
     @Inject
     public OpenPaasContactsConsumer(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) ReceiverProvider receiverProvider,
-                                                 @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) Sender sender,
-                                                 RabbitMQConfiguration commonRabbitMQConfiguration,
-                                                 EmailAddressContactSearchEngine contactSearchEngine) {
+                                    @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) Sender sender,
+                                    RabbitMQConfiguration commonRabbitMQConfiguration,
+                                    EmailAddressContactSearchEngine contactSearchEngine) {
         this.receiverProvider = receiverProvider;
         this.sender = sender;
         this.commonRabbitMQConfiguration = commonRabbitMQConfiguration;
         this.contactSearchEngine = contactSearchEngine;
     }
 
-    @Override
     public void start() {
         Flux.concat(
                 sender.declareExchange(ExchangeSpecification.exchange(TOPIC)
@@ -92,29 +96,43 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     private void messageConsume(AcknowledgableDelivery ackDelivery, String messagePayload) {
         Mono.just(messagePayload)
-            .map(message -> gson.fromJson(message, OpenPaasContactMessage.class))
+            .<ContactAddedRabbitMqMessage>handle((message, sink) -> {
+                try {
+                    sink.next(objectMapper.readValue(message, ContactAddedRabbitMqMessage.class));
+                } catch (JsonProcessingException e) {
+                    sink.error(new RuntimeException(e));
+                }
+            })
             .handle((msg, sink) -> {
                 handleMessage(msg, sink);
                 ackDelivery.ack();
-            });
+            })
+            .onErrorResume(e -> {
+                LOGGER.error("Failed to consume OpenPaaS added contact message", e);
+                return Mono.empty();
+            }).subscribe();
     }
 
-    private void handleMessage(OpenPaasContactMessage message, SynchronousSink<Object> sink) {
+    private void handleMessage(ContactAddedRabbitMqMessage contactAddedMessage, SynchronousSink<Object> sink) {
+        LOGGER.info("Consumed jCard object message: {}", contactAddedMessage);
         try {
-            String firstname = message.getFirstname();
-            Username username = Username.of(message.getUsername());
-            String lastname = message.getLastname();
-            MailAddress mailAddress = new MailAddress(message.getEmail());
-            Mono.from(contactSearchEngine.index(AccountId.fromUsername(username),
-                new ContactFields(mailAddress, firstname, lastname))).block();
+            jCardObject jCardObject = contactAddedMessage.vcard();
+            String fullname = jCardObject.fn();
+            MailAddress mailAddress = new MailAddress(jCardObject.email());
+            Username emailAsUsername = Username.fromMailAddress(mailAddress);
+
+            Mono.from(contactSearchEngine.index(AccountId.fromUsername(emailAsUsername),
+                new ContactFields(mailAddress, fullname, ""))).block();
 
         } catch (AddressException e) {
-            throw new RuntimeException(e);
+            sink.error(e);
         }
     }
 
     @Override
     public void close() throws IOException {
-        consumeContactsDisposable.dispose();
+        if (consumeContactsDisposable != null) {
+            consumeContactsDisposable.dispose();
+        }
     }
 }
