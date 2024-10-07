@@ -1,10 +1,10 @@
-package com.linagora.tmail.blob.blobid.list;
+package com.linagora.tmail.blob.blobguice;
 
-import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.parse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.ex.ConversionException;
 import org.apache.james.FakePropertiesProvider;
 import org.apache.james.blob.aes.CryptoConfig;
@@ -33,7 +33,7 @@ public class BlobStoreConfigurationTest {
             .register(ConfigurationComponent.NAME, configuration)
             .build();
 
-        assertThatThrownBy(() -> parse(propertyProvider))
+        assertThatThrownBy(() -> BlobStoreConfiguration.parse(propertyProvider))
             .isInstanceOf(IllegalStateException.class);
     }
 
@@ -47,7 +47,7 @@ public class BlobStoreConfigurationTest {
             .register(ConfigurationComponent.NAME, configuration)
             .build();
 
-        assertThatThrownBy(() -> parse(propertyProvider))
+        assertThatThrownBy(() -> BlobStoreConfiguration.parse(propertyProvider))
             .isInstanceOf(IllegalStateException.class);
     }
 
@@ -59,12 +59,13 @@ public class BlobStoreConfigurationTest {
             .register(ConfigurationComponent.NAME, configuration)
             .build();
 
-        assertThat(parse(propertyProvider))
+        assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
-                .disableSingleSave());
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig());
     }
 
     @Test
@@ -76,12 +77,13 @@ public class BlobStoreConfigurationTest {
             .register(ConfigurationComponent.NAME, configuration)
             .build();
 
-        assertThat(parse(propertyProvider))
+        assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
-                .disableSingleSave());
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig());
     }
 
     @Test
@@ -96,7 +98,7 @@ public class BlobStoreConfigurationTest {
             .register(ConfigurationComponent.NAME, configuration)
             .build();
 
-        assertThat(parse(propertyProvider))
+        assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
                 .disableCache()
                 .passthrough()
@@ -104,11 +106,12 @@ public class BlobStoreConfigurationTest {
                     .password("myPass".toCharArray())
                     .salt("73616c7479")
                     .build())
-                .disableSingleSave());
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig());
     }
 
     @Test
-    void cacheEnabledShouldBeTrueWhenSpecified() {
+    void cacheEnabledShouldBeTrueWhenSpecified() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("cache.enable", true);
         configuration.addProperty("deduplication.enable", "true");
@@ -118,7 +121,7 @@ public class BlobStoreConfigurationTest {
     }
 
     @Test
-    void cacheEnabledShouldBeFalseWhenSpecified() {
+    void cacheEnabledShouldBeFalseWhenSpecified() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("cache.enable", false);
         configuration.addProperty("deduplication.enable", "true");
@@ -128,7 +131,7 @@ public class BlobStoreConfigurationTest {
     }
 
     @Test
-    void cacheEnabledShouldDefaultToFalse() {
+    void cacheEnabledShouldDefaultToFalse() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", "true");
 
@@ -137,7 +140,7 @@ public class BlobStoreConfigurationTest {
     }
 
     @Test
-    void storageStrategyShouldBePassthroughWhenDeduplicationDisabled() {
+    void storageStrategyShouldBePassthroughWhenDeduplicationDisabled() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", "false");
 
@@ -146,7 +149,7 @@ public class BlobStoreConfigurationTest {
     }
 
     @Test
-    void storageStrategyShouldBeDeduplicationWhenDeduplicationEnabled() {
+    void storageStrategyShouldBeDeduplicationWhenDeduplicationEnabled() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", "true");
 
@@ -168,7 +171,7 @@ public class BlobStoreConfigurationTest {
     }
 
     @Test
-    void singleSaveEnabledShouldDefaultToFalse() {
+    void singleSaveEnabledShouldDefaultToFalse() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", "true");
 
@@ -177,7 +180,7 @@ public class BlobStoreConfigurationTest {
     }
 
     @Test
-    void singleSaveEnabledShouldBeTrueWhenSpecified() {
+    void singleSaveEnabledShouldBeTrueWhenSpecified() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", "true");
         configuration.addProperty("single.save.enable", "true");
@@ -187,7 +190,7 @@ public class BlobStoreConfigurationTest {
     }
 
     @Test
-    void singleSaveEnabledShouldBeFalseWhenSpecified() {
+    void singleSaveEnabledShouldBeFalseWhenSpecified() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", "true");
         configuration.addProperty("single.save.enable", "false");

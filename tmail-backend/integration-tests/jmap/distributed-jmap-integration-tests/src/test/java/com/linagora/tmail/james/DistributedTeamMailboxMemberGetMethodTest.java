@@ -9,7 +9,7 @@ import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -31,7 +31,8 @@ public class DistributedTeamMailboxMemberGetMethodTest implements TeamMailboxMem
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
-                .disableSingleSave())
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig())
             .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
             .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)

@@ -8,7 +8,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
 import com.linagora.tmail.integration.RateLimitingPlanIntegrationContract;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -35,7 +35,8 @@ public class DistributedRateLimitingPlanIntegrationTest implements RateLimitingP
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
-                .disableSingleSave())
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .extension(new DockerOpenSearchExtension())

@@ -21,6 +21,10 @@
 
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>blob-guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>blobid-list</artifactId>
         </dependency>
         <dependency>

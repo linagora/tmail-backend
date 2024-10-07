@@ -11,7 +11,7 @@ import org.apache.james.webadmin.WebAdminConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -30,10 +30,11 @@ public class DistributedTeamMailboxesQuotaExtensionsTest extends TeamMailboxesQu
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                    .disableCache()
-                    .deduplication()
-                    .noCryptoConfig()
-                    .disableSingleSave())
+                .disableCache()
+                .deduplication()
+                .noCryptoConfig()
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)

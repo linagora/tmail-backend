@@ -1,27 +1,4 @@
-/****************************************************************
- * Licensed to the Apache Software Foundation (ASF) under one   *
- * or more contributor license agreements.  See the NOTICE file *
- * distributed with this work for additional information        *
- * regarding copyright ownership.  The ASF licenses this file   *
- * to you under the Apache License, Version 2.0 (the            *
- * "License"); you may not use this file except in compliance   *
- * with the License.  You may obtain a copy of the License at   *
- *                                                              *
- *   http://www.apache.org/licenses/LICENSE-2.0                 *
- *                                                              *
- * Unless required by applicable law or agreed to in writing,   *
- * software distributed under the License is distributed on an  *
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
- * KIND, either express or implied.  See the License for the    *
- * specific language governing permissions and limitations      *
- * under the License.                                           *
- ****************************************************************/
-
-/**
- * This class is copied & adapted from {@link org.apache.james.modules.blobstore.BlobStoreModulesChooser}
- */
-
-package com.linagora.tmail.blob.blobid.list;
+package com.linagora.tmail.blob.blobguice;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +9,7 @@ import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
+import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTO;
@@ -58,11 +36,57 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import com.linagora.tmail.blob.blobid.list.BlobIdList;
+import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
+import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreModule;
 
 public class BlobStoreModulesChooser {
-    private static final String TOP_NAMED = "top";
-    private static final String PRE_LAST_NAMED = "pre_last";
-    private static final String LAST_NAMED = "last";
+    private static final String FIRST_LEVEL = "first_level_blob_store_dao";
+    private static final String SECOND_LEVEL = "second_level_blob_store_dao";
+    private static final String THIRD_LEVEL = "third_level_blob_store_dao";
+    private static final String FOURTH_LEVEL = "fourth_level_blob_store_dao";
+    private static final String SECONDARY_BLOB_STORE_DAO = "secondary_blob_store_dao";
+    private static final String SECONDARY_S3_CLIENT_FACTORY = "secondary_s3_client_factory";
+
+    static class BaseObjectStorageModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            install(new S3BucketModule());
+            install(new S3BlobStoreModule());
+            bind(BlobStoreDAO.class).annotatedWith(Names.named(FIRST_LEVEL))
+                .to(S3BlobStoreDAO.class);
+        }
+
+        @Provides
+        @Singleton
+        BlobStoreDAO provdePrimaryBlobStoreDAO(@Named(FOURTH_LEVEL) BlobStoreDAO blobStoreDAO) {
+            return blobStoreDAO;
+        }
+    }
+
+    static class NoSecondaryObjectStorageModule extends AbstractModule {
+        @Provides
+        @Singleton
+        @Named(SECOND_LEVEL)
+        BlobStoreDAO provdeBlobStoreDAO(@Named(FIRST_LEVEL) BlobStoreDAO blobStoreDAO) {
+            return blobStoreDAO;
+        }
+    }
+
+    static class SecondaryObjectStorageModule extends AbstractModule {
+        private S3BlobStoreConfiguration secondaryS3BlobStoreConfiguration;
+
+        public SecondaryObjectStorageModule(S3BlobStoreConfiguration secondaryS3BlobStoreConfiguration) {
+            this.secondaryS3BlobStoreConfiguration = secondaryS3BlobStoreConfiguration;
+        }
+
+        @Provides
+        @Singleton
+        @Named(SECOND_LEVEL)
+        BlobStoreDAO provdeBlobStoreDAO(@Named(FIRST_LEVEL) BlobStoreDAO blobStoreDAO) {
+            return blobStoreDAO;
+        }
+    }
 
     static class EncryptionModule extends AbstractModule {
         private final CryptoConfig cryptoConfig;
@@ -78,8 +102,8 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        @Named(PRE_LAST_NAMED)
-        BlobStoreDAO providePrelastBlobStoreDAO(@Named(TOP_NAMED) BlobStoreDAO blobStoreDAO) {
+        @Named(THIRD_LEVEL)
+        BlobStoreDAO providePrelastBlobStoreDAO(@Named(SECOND_LEVEL) BlobStoreDAO blobStoreDAO) {
             return new AESBlobStoreDAO(blobStoreDAO, cryptoConfig);
         }
 
@@ -88,17 +112,10 @@ public class BlobStoreModulesChooser {
     static class NoEncryptionModule extends AbstractModule {
         @Provides
         @Singleton
-        @Named(PRE_LAST_NAMED)
-        BlobStoreDAO providePrelastBlobStoreDAO(@Named(TOP_NAMED) BlobStoreDAO blobStoreDAO) {
+        @Named(THIRD_LEVEL)
+        BlobStoreDAO providePrelastBlobStoreDAO(@Named(SECOND_LEVEL) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
-    }
-
-    public static Module chooseEncryptionModule(Optional<CryptoConfig> cryptoConfig) {
-        if (cryptoConfig.isPresent()) {
-            return new EncryptionModule(cryptoConfig.get());
-        }
-        return new NoEncryptionModule();
     }
 
     static class SingleSaveDeclarationModule extends AbstractModule {
@@ -109,7 +126,7 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        SingleSaveBlobStoreDAO singleSaveBlobStoreDAO(@Named(PRE_LAST_NAMED) BlobStoreDAO blobStoreDAO,
+        SingleSaveBlobStoreDAO singleSaveBlobStoreDAO(@Named(THIRD_LEVEL) BlobStoreDAO blobStoreDAO,
                                                       BlobIdList blobIdList,
                                                       BucketName defaultBucketName) {
             return new SingleSaveBlobStoreDAO(blobStoreDAO, blobIdList, defaultBucketName);
@@ -117,7 +134,7 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        @Named(LAST_NAMED)
+        @Named(FOURTH_LEVEL)
         public BlobStoreDAO provideLast(SingleSaveBlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
@@ -127,36 +144,32 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        @Named(LAST_NAMED)
-        public BlobStoreDAO provideLastBlobStoreDAO(@Named(PRE_LAST_NAMED) BlobStoreDAO blobStoreDAO) {
+        @Named(FOURTH_LEVEL)
+        public BlobStoreDAO provideLastBlobStoreDAO(@Named(THIRD_LEVEL) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
     }
 
-    static class BaseDeclarationModule extends AbstractModule {
-        @Override
-        protected void configure() {
-            install(new S3BucketModule());
-            install(new S3BlobStoreModule());
-            bind(BlobStoreDAO.class).annotatedWith(Names.named(TOP_NAMED))
-                .to(S3BlobStoreDAO.class)
-                .in(Scopes.SINGLETON);
-        }
-
-        @Provides
-        @Singleton
-        BlobStoreDAO provdePrimaryBlobStoreDAO(@Named(LAST_NAMED) BlobStoreDAO blobStoreDAO) {
-            return blobStoreDAO;
+    public static Module chooseSecondaryObjectStorageModule(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration) {
+        if (maybeS3BlobStoreConfiguration.isPresent()) {
+            return new SecondaryObjectStorageModule(maybeS3BlobStoreConfiguration.get());
+        } else {
+            return new NoSecondaryObjectStorageModule();
         }
     }
 
-    public static ImmutableList<Module> chooseObjectStorageModule(boolean singleSaveEnabled) {
-        ImmutableList.Builder<Module> modulesBuilder = ImmutableList.<Module>builder()
-            .add(new BaseDeclarationModule());
+    public static Module chooseEncryptionModule(Optional<CryptoConfig> cryptoConfig) {
+        if (cryptoConfig.isPresent()) {
+            return new EncryptionModule(cryptoConfig.get());
+        }
+        return new NoEncryptionModule();
+    }
+
+    public static Module chooseSaveDeclarationModule(boolean singleSaveEnabled) {
         if (singleSaveEnabled) {
-            return modulesBuilder.add(new SingleSaveDeclarationModule()).build();
+            return new SingleSaveDeclarationModule();
         }
-        return modulesBuilder.add(new MultiSaveDeclarationModule()).build();
+        return new MultiSaveDeclarationModule();
     }
 
     private static ImmutableList<Module> chooseStoragePolicyModule(StorageStrategy storageStrategy) {
@@ -196,12 +209,14 @@ public class BlobStoreModulesChooser {
     }
 
     @VisibleForTesting
-    public static List<Module> chooseModules(BlobStoreConfiguration choosingConfiguration) {
+    public static List<Module> chooseModules(BlobStoreConfiguration blobStoreConfiguration) {
         return ImmutableList.<Module>builder()
-            .add(chooseEncryptionModule(choosingConfiguration.cryptoConfig()))
-            .addAll(chooseObjectStorageModule(choosingConfiguration.singleSaveEnabled()))
-            .addAll(chooseStoragePolicyModule(choosingConfiguration.storageStrategy()))
-            .add(new StoragePolicyConfigurationSanityEnforcementModule(choosingConfiguration))
+            .add(new BaseObjectStorageModule())
+            .add(chooseSecondaryObjectStorageModule(blobStoreConfiguration.maybeSecondaryS3BlobStoreConfiguration()))
+            .add(chooseEncryptionModule(blobStoreConfiguration.cryptoConfig()))
+            .add(chooseSaveDeclarationModule(blobStoreConfiguration.singleSaveEnabled()))
+            .addAll(chooseStoragePolicyModule(blobStoreConfiguration.storageStrategy()))
+            .add(new StoragePolicyConfigurationSanityEnforcementModule(blobStoreConfiguration))
             .build();
     }
 }
