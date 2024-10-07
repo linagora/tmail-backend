@@ -1,4 +1,4 @@
-package com.linagora.tmail.blob.blobid.list;
+package com.linagora.tmail.blob.blobguice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,17 +43,19 @@ public class BlobStoreConfigurationValidationStartUpCheckTest {
             JsonEventSerializer.forModules(EVENT_DTO_MODULES).withoutNestedType());
 
     private static BlobStoreConfiguration DEDUPLICATION_STRATEGY = BlobStoreConfiguration
-            .builder()
-            .disableCache()
-            .deduplication()
-            .noCryptoConfig()
-            .disableSingleSave();
+        .builder()
+        .disableCache()
+        .deduplication()
+        .noCryptoConfig()
+        .disableSingleSave()
+        .noSecondaryS3BlobStoreConfig();
     private static BlobStoreConfiguration PASSTHROUGH_STRATEGY = BlobStoreConfiguration
-            .builder()
-            .disableCache()
-            .passthrough()
-            .noCryptoConfig()
-            .disableSingleSave();
+        .builder()
+        .disableCache()
+        .passthrough()
+        .noCryptoConfig()
+        .disableSingleSave()
+        .noSecondaryS3BlobStoreConfig();
 
     private EventsourcingStorageStrategy eventsourcingStorageStrategy;
 

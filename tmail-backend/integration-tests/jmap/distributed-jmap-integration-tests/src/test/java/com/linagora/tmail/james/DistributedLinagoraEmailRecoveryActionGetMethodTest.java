@@ -10,7 +10,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -34,7 +34,8 @@ public class DistributedLinagoraEmailRecoveryActionGetMethodTest implements Emai
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
-                .disableSingleSave())
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .mailbox(new MailboxConfiguration(true))

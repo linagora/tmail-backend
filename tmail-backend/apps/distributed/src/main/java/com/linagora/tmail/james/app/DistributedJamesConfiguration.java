@@ -19,7 +19,7 @@ import org.apache.james.utils.PropertiesProvider;
 import org.apache.james.vault.VaultConfiguration;
 
 import com.github.fge.lambdas.Throwing;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;

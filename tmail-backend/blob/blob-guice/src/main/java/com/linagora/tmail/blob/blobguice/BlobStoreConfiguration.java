@@ -1,27 +1,4 @@
-/****************************************************************
- * Licensed to the Apache Software Foundation (ASF) under one   *
- * or more contributor license agreements.  See the NOTICE file *
- * distributed with this work for additional information        *
- * regarding copyright ownership.  The ASF licenses this file   *
- * to you under the Apache License, Version 2.0 (the            *
- * "License"); you may not use this file except in compliance   *
- * with the License.  You may obtain a copy of the License at   *
- *                                                              *
- *   http://www.apache.org/licenses/LICENSE-2.0                 *
- *                                                              *
- * Unless required by applicable law or agreed to in writing,   *
- * software distributed under the License is distributed on an  *
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
- * KIND, either express or implied.  See the License for the    *
- * specific language governing permissions and limitations      *
- * under the License.                                           *
- ****************************************************************/
-
-/**
- * This class is copied & adapted from {@link org.apache.james.modules.blobstore.BlobStoreConfiguration}
- */
-
-package com.linagora.tmail.blob.blobid.list;
+package com.linagora.tmail.blob.blobguice;
 
 import java.io.FileNotFoundException;
 import java.util.Optional;
@@ -29,6 +6,7 @@ import java.util.Optional;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.blob.aes.CryptoConfig;
+import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.modules.mailbox.ConfigurationComponent;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
@@ -41,7 +19,8 @@ import io.vavr.control.Try;
 public record BlobStoreConfiguration(boolean cacheEnabled,
                                      StorageStrategy storageStrategy,
                                      Optional<CryptoConfig> cryptoConfig,
-                                     boolean singleSaveEnabled) {
+                                     boolean singleSaveEnabled,
+                                     Optional<S3BlobStoreConfiguration> maybeSecondaryS3BlobStoreConfiguration) {
     private static final Logger LOGGER = LoggerFactory.getLogger(BlobStoreConfiguration.class);
 
     @FunctionalInterface
@@ -85,20 +64,33 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
     
     @FunctionalInterface
     public interface RequireSingleSave {
-        BlobStoreConfiguration enableSingleSave(boolean enable);
+        RequireSecondaryS3BlobStoreConfig enableSingleSave(boolean enable);
 
-        default BlobStoreConfiguration disableSingleSave() {
+        default RequireSecondaryS3BlobStoreConfig disableSingleSave() {
             return enableSingleSave(false);
         }
 
-        default BlobStoreConfiguration enableSingleSave() {
+        default RequireSecondaryS3BlobStoreConfig enableSingleSave() {
             return enableSingleSave(true);
         }
     }
 
+    @FunctionalInterface
+    public interface RequireSecondaryS3BlobStoreConfig {
+        BlobStoreConfiguration secondaryS3BlobStoreConfig(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration);
+
+        default BlobStoreConfiguration noSecondaryS3BlobStoreConfig() {
+            return secondaryS3BlobStoreConfig(Optional.empty());
+        }
+
+        default BlobStoreConfiguration secondaryS3BlobStoreConfig(S3BlobStoreConfiguration s3BlobStoreConfiguration) {
+            return secondaryS3BlobStoreConfig(Optional.of(s3BlobStoreConfiguration));
+        }
+    }
+
     public static RequireCache builder() {
-        return enableCache -> storageStrategy -> cryptoConfig -> enableSingleSave ->
-            new BlobStoreConfiguration(enableCache, storageStrategy, cryptoConfig, enableSingleSave);
+        return enableCache -> storageStrategy -> cryptoConfig -> enableSingleSave -> secondaryS3BlobStoreConfig ->
+            new BlobStoreConfiguration(enableCache, storageStrategy, cryptoConfig, enableSingleSave, secondaryS3BlobStoreConfig);
     }
 
     static final String CACHE_ENABLE_PROPERTY = "cache.enable";
@@ -108,6 +100,7 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
     static final boolean CACHE_ENABLED = true;
     static final String DEDUPLICATION_ENABLE_PROPERTY = "deduplication.enable";
     static final String SINGLE_SAVE_ENABLE_PROPERTY = "single.save.enable";
+    private static final String OBJECT_STORAGE_S3_SECONDARY_ENABLED = "objectstorage.s3.secondary.enabled";
 
     public static BlobStoreConfiguration parse(org.apache.james.server.core.configuration.Configuration configuration) throws ConfigurationException {
         PropertiesProvider propertiesProvider = new PropertiesProvider(new FileSystemImpl(configuration.directories()),
@@ -126,11 +119,12 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
-                .disableSingleSave();
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig();
         }
     }
 
-    static BlobStoreConfiguration from(Configuration configuration) {
+    static BlobStoreConfiguration from(Configuration configuration) throws ConfigurationException {
         boolean cacheEnabled = configuration.getBoolean(CACHE_ENABLE_PROPERTY, false);
         boolean deduplicationEnabled = Try.ofCallable(() -> configuration.getBoolean(DEDUPLICATION_ENABLE_PROPERTY))
                 .getOrElseThrow(() -> new IllegalStateException("""
@@ -148,13 +142,15 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
                 .enableCache(cacheEnabled)
                 .deduplication()
                 .cryptoConfig(cryptoConfig)
-                .enableSingleSave(singleSaveEnabled);
+                .enableSingleSave(singleSaveEnabled)
+                .secondaryS3BlobStoreConfig(parseS3BlobStoreConfiguration(configuration));
         } else {
             return builder()
                 .enableCache(cacheEnabled)
                 .passthrough()
                 .cryptoConfig(cryptoConfig)
-                .enableSingleSave(singleSaveEnabled);
+                .enableSingleSave(singleSaveEnabled)
+                .secondaryS3BlobStoreConfig(parseS3BlobStoreConfiguration(configuration));
         }
     }
 
@@ -167,5 +163,14 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
                 .build());
         }
         return Optional.empty();
+    }
+
+    private static Optional<S3BlobStoreConfiguration> parseS3BlobStoreConfiguration(Configuration configuration) throws ConfigurationException {
+        final boolean enabled = configuration.getBoolean(OBJECT_STORAGE_S3_SECONDARY_ENABLED, false);
+        if (enabled) {
+            return Optional.of(SecondaryS3BlobStoreConfigurationReader.from(configuration));
+        } else {
+            return Optional.empty();
+        }
     }
 }

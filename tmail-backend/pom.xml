@@ -20,6 +20,7 @@
     <modules>
         <module>apps</module>
 
+        <module>blob/blob-guice</module>
         <module>blob/blobid-list</module>
 
         <module>combined-identity</module>
@@ -82,6 +83,11 @@
                 <artifactId>backends-opensearch</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>blob-guice</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>

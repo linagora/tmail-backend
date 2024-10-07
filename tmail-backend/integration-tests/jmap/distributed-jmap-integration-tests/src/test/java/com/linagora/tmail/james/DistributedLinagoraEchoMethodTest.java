@@ -7,7 +7,7 @@ import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -26,10 +26,11 @@ public class DistributedLinagoraEchoMethodTest implements LinagoraEchoMethodCont
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                    .disableCache()
-                    .deduplication()
-                    .noCryptoConfig()
-                    .disableSingleSave())
+                .disableCache()
+                .deduplication()
+                .noCryptoConfig()
+                .disableSingleSave()
+                .noSecondaryS3BlobStoreConfig())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)

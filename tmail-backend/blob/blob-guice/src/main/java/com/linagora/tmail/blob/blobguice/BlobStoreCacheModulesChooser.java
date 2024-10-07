@@ -21,7 +21,7 @@
  * This class is copied & adapted from {@link org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser}
  */
 
-package com.linagora.tmail.blob.blobid.list;
+package com.linagora.tmail.blob.blobguice;
 
 import java.io.FileNotFoundException;
 import java.util.List;

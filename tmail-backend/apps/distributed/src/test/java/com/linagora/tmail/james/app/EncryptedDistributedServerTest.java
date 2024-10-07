@@ -19,7 +19,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.Inject;
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
@@ -54,7 +54,8 @@ class EncryptedDistributedServerTest implements JamesServerConcreteContract, Jma
                     .password("myPass".toCharArray())
                     .salt("73616c7479")
                     .build())
-                .enableSingleSave())
+                .enableSingleSave()
+                .noSecondaryS3BlobStoreConfig())
             .searchConfiguration(SearchConfiguration.openSearch())
             .mailbox(new MailboxConfiguration(true))
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)

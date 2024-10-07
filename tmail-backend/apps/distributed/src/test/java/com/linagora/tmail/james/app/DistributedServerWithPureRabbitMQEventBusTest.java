@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
@@ -32,7 +32,8 @@ class DistributedServerWithPureRabbitMQEventBusTest implements JamesServerConcre
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
-                .enableSingleSave())
+                .enableSingleSave()
+                .noSecondaryS3BlobStoreConfig())
             .searchConfiguration(SearchConfiguration.openSearch())
             .mailbox(new MailboxConfiguration(false))
             .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
