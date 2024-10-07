@@ -37,6 +37,18 @@ Documentation to generate a private key file for service account: https://fireba
 Example: `privatekey.url=/root/conf/firebase_push_privatekey.json`.
 |===
 
+=== FCM proxy setting
+
+FCM driver can easily be configured via system properties for pushing data through a proxy. To do so one can edit `jvm.properties`:
+
+....
+# com.google.api.client.http.javanet.NetHttpTransport L 82
+com.google.api.client.should_use_proxy=true
+# com.google.api.client.http.javanet.NetHttpTransport::defaultProxy
+https.proxyHost=192.168.12.45
+https.proxyPort=443
+....
+
 == Additional Queue configurations
 Specified to TMail backend, we can configure the following configurations in the *queue.properties* file.
 
