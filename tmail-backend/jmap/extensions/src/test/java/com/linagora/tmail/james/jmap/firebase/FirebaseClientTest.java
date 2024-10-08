@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,9 @@ class FirebaseClientTest {
 
     @BeforeAll
     static void setup() {
-        firebasePushClient = new FirebasePushClient(new FirebaseConfiguration(VALID_KEY_URL));
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("privatekey.url", VALID_KEY_URL);
+        firebasePushClient = new FirebasePushClient(FirebaseConfiguration.from(configuration));
     }
 
     @Test
@@ -74,7 +77,9 @@ class FirebaseClientTest {
 
     @Test
     void notFoundFirebasePrivateKeyShouldThrowError() {
-        FirebaseConfiguration firebaseConfiguration = new FirebaseConfiguration(NOT_FOUND_KEY_URL);
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("privatekey.url", NOT_FOUND_KEY_URL);
+        FirebaseConfiguration firebaseConfiguration = FirebaseConfiguration.from(configuration);
 
         assertThatCode(() -> new FirebasePushClient(firebaseConfiguration))
             .isInstanceOf(MissingOrInvalidFirebaseCredentialException.class);
@@ -82,7 +87,9 @@ class FirebaseClientTest {
 
     @Test
     void invalidFirebasePrivateKeyShouldThrowError() {
-        FirebaseConfiguration firebaseConfiguration = new FirebaseConfiguration(INVALID_KEY_URL);
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("privatekey.url", INVALID_KEY_URL);
+        FirebaseConfiguration firebaseConfiguration = FirebaseConfiguration.from(configuration);
 
         assertThatCode(() -> new FirebasePushClient(firebaseConfiguration))
             .isInstanceOf(MissingOrInvalidFirebaseCredentialException.class);

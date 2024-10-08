@@ -245,7 +245,7 @@ trait LinagoraEchoMethodContract {
       .body()
       .asString()
 
-    assertThat(response).contains("\"com:linagora:params:jmap:firebase:push\":{}")
+    assertThat(response).contains("\"com:linagora:params:jmap:firebase:push\":{\"apiKey\":\"key123\",\"appId\":\"firebase123\",\"messagingSenderId\":\"sender123\",\"projectId\":\"project123\",\"databaseUrl\":\"http://database.com\",\"storageBucket\":\"bucket123\",\"authDomain\":\"domain123\",\"vapidPublicKey\":\"vapidkey123\"}")
   }
 
   @Test

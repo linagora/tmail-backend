@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.method.{ApiKey, AppId, AuthDomain, DatabaseUrl, FirebaseCapabilityProperties, MessagingSenderId, ProjectId, StorageBucket, VapidPublicKey}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, FirebaseSubscriptionUpdateResponse, FirebaseToken, UnparsedFirebaseSubscriptionId}
 import jakarta.inject.Inject
 import org.apache.james.jmap.api.change.TypeStateFactory
@@ -7,6 +8,18 @@ import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json._
+
+object FirebaseSubscriptionSerializer {
+  private implicit val apiKeyWrites: Writes[ApiKey] = Json.valueWrites[ApiKey]
+  private implicit val apiIdWrites: Writes[AppId] = Json.valueWrites[AppId]
+  private implicit val messagingSenderIdWrites: Writes[MessagingSenderId] = Json.valueWrites[MessagingSenderId]
+  private implicit val projectIdWrites: Writes[ProjectId] = Json.valueWrites[ProjectId]
+  private implicit val databaseUrlWrites: Writes[DatabaseUrl] = Json.valueWrites[DatabaseUrl]
+  private implicit val storageBucketWrites: Writes[StorageBucket] = Json.valueWrites[StorageBucket]
+  private implicit val authDomainWrites: Writes[AuthDomain] = Json.valueWrites[AuthDomain]
+  private implicit val vapidPublicKeyWrites: Writes[VapidPublicKey] = Json.valueWrites[VapidPublicKey]
+  val firebaseCapabilityWrites: OWrites[FirebaseCapabilityProperties] = Json.writes[FirebaseCapabilityProperties]
+}
 
 class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactory) {
   private implicit val unparsedFirebaseSubscriptionIdReads: Reads[UnparsedFirebaseSubscriptionId] = Json.valueReads[UnparsedFirebaseSubscriptionId]
