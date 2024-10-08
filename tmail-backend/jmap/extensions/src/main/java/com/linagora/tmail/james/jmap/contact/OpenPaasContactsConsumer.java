@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 
+import java.util.Optional;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -104,7 +105,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
                 }
             })
             .handle((msg, sink) -> {
-                handleMessage(msg, sink);
+                handleMessage(msg).block();
                 ackDelivery.ack();
             })
             .onErrorResume(e -> {
@@ -113,19 +114,25 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             }).subscribe();
     }
 
-    private void handleMessage(ContactAddedRabbitMqMessage contactAddedMessage, SynchronousSink<Object> sink) {
+    private Mono<Void> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
         LOGGER.info("Consumed jCard object message: {}", contactAddedMessage);
         try {
             jCardObject jCardObject = contactAddedMessage.vcard();
             String fullname = jCardObject.fn();
-            MailAddress mailAddress = new MailAddress(jCardObject.email());
+            Optional<String> emailOpt = jCardObject.emailOpt();
+
+            if (emailOpt.isEmpty()) {
+                return Mono.empty();
+            }
+
+            MailAddress mailAddress = new MailAddress(emailOpt.get());
             Username emailAsUsername = Username.fromMailAddress(mailAddress);
 
-            Mono.from(contactSearchEngine.index(AccountId.fromUsername(emailAsUsername),
-                new ContactFields(mailAddress, fullname, ""))).block();
+            return Mono.from(contactSearchEngine.index(AccountId.fromUsername(emailAsUsername),
+                new ContactFields(mailAddress, fullname, ""))).then();
 
         } catch (AddressException e) {
-            sink.error(e);
+            return Mono.error(e);
         }
     }
 
