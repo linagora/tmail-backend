@@ -22,6 +22,7 @@ import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNotFoundException}
 import org.apache.james.util.ReactorUtils
 import org.apache.james.utils.PropertiesProvider
+import org.apache.james.vault.search.{CriterionFactory, Query}
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultRestoreTask.{AdditionalInformation => DeletedMessagesVaultRestoreTaskAdditionalInformation}
 import org.apache.james.webadmin.vault.routes.{DeletedMessagesVaultRestoreTask, RestoreService}
 import org.reactivestreams.Publisher
@@ -29,6 +30,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsError, JsObject}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import java.time.{Clock, ZonedDateTime}
 import scala.jdk.OptionConverters._
 import scala.util.Try
 
@@ -132,7 +134,8 @@ object EmailRecoveryActionSetCreatePerformer {
 
 class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManager,
                                                       val restoreService: RestoreService,
-                                                      val configuration: EmailRecoveryActionConfiguration) {
+                                                      val configuration: EmailRecoveryActionConfiguration,
+                                                      val clock: Clock = Clock.systemDefaultZone()) {
 
   import EmailRecoveryActionSetCreatePerformer._
 
@@ -152,12 +155,18 @@ class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManag
         .left.map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
     } yield parsedRequest
 
-  private def submitTask(clientId: EmailRecoveryActionCreationId, userToRestore: Username, creationRequest: EmailRecoveryActionCreationRequest): SMono[CreationResult] =
-    SMono.fromCallable(() => taskManager.submit(new DeletedMessagesVaultRestoreTask(restoreService, userToRestore,
-      creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest))))
+  private def submitTask(clientId: EmailRecoveryActionCreationId, userToRestore: Username, creationRequest: EmailRecoveryActionCreationRequest): SMono[CreationResult] = {
+    val fifteenDaysAgo = ZonedDateTime.now(clock).minusDays(15)
+    val deletionDateLessThanFifteenDaysOldCriterion = CriterionFactory.deletionDate().afterOrEquals(fifteenDaysAgo)
+
+    val requestCriteria = creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria
+    requestCriteria.add(deletionDateLessThanFifteenDaysOldCriterion)
+    val modifiedQuery = Query.and(requestCriteria)
+
+    SMono.fromCallable(() => taskManager.submit(new DeletedMessagesVaultRestoreTask(restoreService, userToRestore, modifiedQuery)))
     .map(taskId => CreationSuccess(clientId, EmailRecoveryActionCreationResponse(taskId)))
     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-
+  }
 }
 
 object EmailRecoveryActionSetUpdatePerformer {
