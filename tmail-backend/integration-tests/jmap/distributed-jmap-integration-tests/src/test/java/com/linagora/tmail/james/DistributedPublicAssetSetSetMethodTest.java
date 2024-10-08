@@ -17,6 +17,7 @@ import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.PublicAssetSetMethodContract;
 import com.linagora.tmail.james.common.probe.PublicAssetProbeModule;
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMethodContract {
@@ -32,6 +33,7 @@ public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMet
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
             .searchConfiguration(SearchConfiguration.scanning())
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())

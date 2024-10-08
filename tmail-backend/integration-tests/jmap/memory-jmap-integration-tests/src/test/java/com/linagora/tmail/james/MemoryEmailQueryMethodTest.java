@@ -33,6 +33,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryEmailQueryMethodTest implements EmailQueryMethodContract {
@@ -42,6 +43,7 @@ public class MemoryEmailQueryMethodTest implements EmailQueryMethodContract {
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))

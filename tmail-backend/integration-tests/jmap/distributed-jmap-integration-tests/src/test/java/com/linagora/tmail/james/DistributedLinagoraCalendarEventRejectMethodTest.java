@@ -16,6 +16,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraCalendarEventRejectMethodContract;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraCalendarEventRejectMethodTest implements LinagoraCalendarEventRejectMethodContract {
@@ -30,6 +31,7 @@ public class DistributedLinagoraCalendarEventRejectMethodTest implements Linagor
                 .noCryptoConfig()
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())

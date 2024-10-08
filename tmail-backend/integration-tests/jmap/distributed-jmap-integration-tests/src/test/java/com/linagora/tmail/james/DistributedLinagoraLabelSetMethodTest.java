@@ -17,6 +17,7 @@ import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LabelSetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceLabelModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraLabelSetMethodTest implements LabelSetMethodContract {
@@ -32,6 +33,7 @@ public class DistributedLinagoraLabelSetMethodTest implements LabelSetMethodCont
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .searchConfiguration(SearchConfiguration.openSearch())
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())

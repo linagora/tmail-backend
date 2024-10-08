@@ -4,6 +4,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LabelSetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceLabelModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -19,6 +20,7 @@ public class MemoryLabelSetMethodTest implements LabelSetMethodContract {
                     .workingDirectory(tmpDir)
                     .configurationFromClasspath()
                     .usersRepository(DEFAULT)
+                    .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                     .build())
             .server(configuration -> MemoryServer.createServer(configuration)
                     .overrideWith(new LinagoraTestJMAPServerModule())

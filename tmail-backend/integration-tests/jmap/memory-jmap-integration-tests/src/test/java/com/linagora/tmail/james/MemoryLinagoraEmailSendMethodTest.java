@@ -14,6 +14,7 @@ import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryLinagoraEmailSendMethodTest implements LinagoraEmailSendMethodContract {
@@ -26,6 +27,7 @@ public class MemoryLinagoraEmailSendMethodTest implements LinagoraEmailSendMetho
             .configurationFromClasspath()
             .mailbox(new MailboxConfiguration(true))
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraServicesDiscoveryRoutesContract;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryLinagoraServicesDiscoveryTest implements LinagoraServicesDiscoveryRoutesContract {
@@ -18,6 +19,7 @@ public class MemoryLinagoraServicesDiscoveryTest implements LinagoraServicesDisc
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))

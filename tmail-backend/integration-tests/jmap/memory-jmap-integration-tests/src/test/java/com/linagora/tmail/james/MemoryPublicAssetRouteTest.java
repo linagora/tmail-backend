@@ -10,6 +10,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.PublicAssetRouteContract;
 import com.linagora.tmail.james.common.module.JmapGuicePublicAssetModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryPublicAssetRouteTest implements PublicAssetRouteContract {
@@ -19,6 +20,7 @@ public class MemoryPublicAssetRouteTest implements PublicAssetRouteContract {
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

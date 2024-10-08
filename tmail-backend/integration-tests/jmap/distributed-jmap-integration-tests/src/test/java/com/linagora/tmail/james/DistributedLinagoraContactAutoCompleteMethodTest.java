@@ -33,6 +33,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceContactAutocompleteModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import reactor.core.publisher.Mono;
@@ -64,6 +65,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
                 .noCryptoConfig()
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())

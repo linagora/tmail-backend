@@ -18,6 +18,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryLinagoraEncryptedEmailDetailedViewGetMethodTest implements LinagoraEncryptedEmailDetailedViewGetMethodContract {
@@ -30,6 +31,7 @@ public class MemoryLinagoraEncryptedEmailDetailedViewGetMethodTest implements Li
             .configurationFromClasspath()
             .mailbox(new MailboxConfiguration(true))
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

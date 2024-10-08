@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
@@ -23,6 +24,7 @@ public class MemoryLinagoraCalendarEventAcceptMethodTest implements LinagoraCale
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule()))

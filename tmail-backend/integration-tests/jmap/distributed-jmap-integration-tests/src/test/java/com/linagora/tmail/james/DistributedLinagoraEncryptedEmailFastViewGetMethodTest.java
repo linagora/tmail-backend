@@ -24,6 +24,7 @@ import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailFastViewGetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraEncryptedEmailFastViewGetMethodTest implements LinagoraEncryptedEmailFastViewGetMethodContract {
@@ -41,6 +42,7 @@ public class DistributedLinagoraEncryptedEmailFastViewGetMethodTest implements L
                 .noCryptoConfig()
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .mailbox(new MailboxConfiguration(true))
             .build())
         .extension(new DockerOpenSearchExtension())

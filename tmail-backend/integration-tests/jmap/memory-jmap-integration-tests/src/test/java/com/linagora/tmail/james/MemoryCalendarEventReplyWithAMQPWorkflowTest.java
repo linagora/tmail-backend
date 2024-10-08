@@ -19,6 +19,7 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraCalendarEventReplyWithAMQPWorkflowContract;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.rabbitmq.client.BuiltinExchangeType;
 
@@ -48,6 +49,7 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
             return MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
                 .usersRepository(DEFAULT)
+                .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .build();
         })
         .server(configuration -> MemoryServer.createServer(configuration)

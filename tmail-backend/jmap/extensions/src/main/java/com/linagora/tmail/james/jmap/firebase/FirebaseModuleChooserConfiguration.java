@@ -8,6 +8,7 @@ import org.apache.james.utils.PropertiesProvider;
 
 public record FirebaseModuleChooserConfiguration(boolean enable) {
     public static final FirebaseModuleChooserConfiguration ENABLED = new FirebaseModuleChooserConfiguration(true);
+    public static final FirebaseModuleChooserConfiguration DISABLED = new FirebaseModuleChooserConfiguration(false);
 
     public static FirebaseModuleChooserConfiguration parse(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
