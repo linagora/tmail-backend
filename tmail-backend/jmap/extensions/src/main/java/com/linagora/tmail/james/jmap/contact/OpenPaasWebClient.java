@@ -2,9 +2,11 @@ package com.linagora.tmail.james.jmap.contact;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Base64;
-import java.util.List;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
@@ -13,6 +15,7 @@ public class OpenPaasWebClient {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private final OpenPaasConfiguration openPaasConfiguration;
     private final HttpClient client;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public OpenPaasWebClient(OpenPaasConfiguration openPaasConfiguration) {
         this.openPaasConfiguration = openPaasConfiguration;
@@ -22,12 +25,19 @@ public class OpenPaasWebClient {
             .responseTimeout(RESPONSE_TIMEOUT);
     }
 
-    public Mono<List<OpenPaasUserResponse>> getUserById(String openPaasUserId) {
+    public Mono<OpenPaasUserResponse> getUserById(String openPaasUserId) {
         return client.get()
             .uri(String.format("/users/%s", openPaasUserId))
-            .response()
-            .cast(OpenPaasUserResponse[].class)
-            .map(userResponseArray -> Arrays.stream(userResponseArray).toList());
+            .responseContent()
+            .aggregate()
+            .asString(StandardCharsets.UTF_8)
+            .handle((content, sink) -> {
+                try {
+                    sink.next(objectMapper.readValue(content, OpenPaasUserResponse.class));
+                } catch (JsonProcessingException e) {
+                    sink.error(new RuntimeException(e));
+                }
+            });
     }
 
     private String basicAuthenticationHeaderValue() {

@@ -8,21 +8,27 @@ import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.TEN_SECONDS;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
-import org.apache.james.jmap.api.model.AccountId;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+
+import org.apache.james.jmap.api.model.AccountId;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
 class OpenPaasContactsConsumerTest {
+
+    @RegisterExtension
+    static OpenPaasServerExtension openPaasServerExtension = new OpenPaasServerExtension();
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
@@ -45,6 +51,23 @@ class OpenPaasContactsConsumerTest {
     @AfterEach
     void afterEach() throws IOException {
         consumer.close();
+    }
+
+    @Test
+    @Disabled
+    void doTest() {
+        OpenPaasWebClient openPaasWebClient = new OpenPaasWebClient(
+            new OpenPaasConfiguration(
+                openPaasServerExtension.getBaseUrl(),
+                "admin",
+                "admin"
+            )
+        );
+
+        OpenPaasUserResponse block = openPaasWebClient.getUserById(OpenPaasServerExtension.ALICE_USER_ID())
+            .block();
+
+        System.out.println(block);
     }
 
     @Test
