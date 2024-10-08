@@ -70,7 +70,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
                     .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
                 sender.declareQueue(QueueSpecification
                     .queue(QUEUE_NAME)
-                    .durable(evaluateDurable(DURABLE, commonRabbitMQConfiguration.isQuorumQueuesUsed()))),
+                    .durable(DURABLE)),
                 sender.bind(BindingSpecification.binding()
                     .exchange(EXCHANGE_NAME)
                     .queue(QUEUE_NAME)
