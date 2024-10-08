@@ -1755,26 +1755,26 @@ trait LinagoraEmailSendMethodContract {
     .when()
       .post()
     .`then`
-      .statusCode(HttpStatus.SC_OK)
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
       .contentType(JSON)
       .extract()
       .body()
       .asString()
 
     assertThatJson(response)
-      .whenIgnoringPaths("methodResponses[0][1].notCreated.K87.description")
-      .inPath("methodResponses[0][1].notCreated.K87")
+      .whenIgnoringPaths("detail")
       .isEqualTo(
         s"""{
-           |    "type": "tooLarge"
+           |    "type": "urn:ietf:params:jmap:error:limit",
+           |    "status": 400,
+           |    "limit": "maxSizeRequest"
            |}""".stripMargin)
 
     val description = assertThatJson(response)
-      .withIgnorePlaceholder("@")
-      .inPath("methodResponses[0][1].notCreated.K87.description")
+      .inPath("detail")
       .asString()
-    description.endsWith(" bytes while the maximum allowed is 10485760")
-    description.startsWith("Attempt to create a message of ")
+    description.endsWith("but maximum allowed is 10000000")
+    description.startsWith("Request size is exceeded.")
   }
 
   //endregion
