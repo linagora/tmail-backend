@@ -126,6 +126,10 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
+            <artifactId>jmap-rfc-8621-integration-tests-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-backends-redis</artifactId>
             <scope>test</scope>
             <type>test-jar</type>

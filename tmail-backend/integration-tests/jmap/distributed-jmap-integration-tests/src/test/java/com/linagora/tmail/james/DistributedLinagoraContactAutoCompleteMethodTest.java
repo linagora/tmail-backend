@@ -25,7 +25,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
 import org.opensearch.client.opensearch.core.SearchRequest;
 
-import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -64,7 +64,7 @@ public class DistributedLinagoraContactAutoCompleteMethodTest implements Linagor
                 .deduplication()
                 .noCryptoConfig()
                 .disableSingleSave()
-                .noSecondaryS3BlobStoreConfig())
+                .noSecondaryS3BlobStore())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())

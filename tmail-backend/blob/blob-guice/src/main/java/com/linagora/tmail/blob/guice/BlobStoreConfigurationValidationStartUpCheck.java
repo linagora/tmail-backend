@@ -1,4 +1,4 @@
-package com.linagora.tmail.blob.blobguice;
+package com.linagora.tmail.blob.guice;
 
 import jakarta.inject.Inject;
 

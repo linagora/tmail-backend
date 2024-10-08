@@ -1,4 +1,4 @@
-package com.linagora.tmail.blob.blobguice;
+package com.linagora.tmail.blob.guice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,7 +14,7 @@ public class BlobStoreCacheModulesChooserTest {
             .deduplication()
             .noCryptoConfig()
             .disableSingleSave()
-            .noSecondaryS3BlobStoreConfig()))
+            .noSecondaryS3BlobStore()))
             .hasSize(1)
             .first()
             .isInstanceOf(BlobStoreCacheModulesChooser.CacheDisabledModule.class);
@@ -27,7 +27,7 @@ public class BlobStoreCacheModulesChooserTest {
             .deduplication()
             .noCryptoConfig()
             .disableSingleSave()
-            .noSecondaryS3BlobStoreConfig()))
+            .noSecondaryS3BlobStore()))
             .hasSize(2)
             .allSatisfy(module ->
                 assertThat(module).isOfAnyClassIn(

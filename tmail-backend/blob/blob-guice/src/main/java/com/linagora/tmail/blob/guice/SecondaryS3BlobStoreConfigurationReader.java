@@ -1,4 +1,4 @@
-package com.linagora.tmail.blob.blobguice;
+package com.linagora.tmail.blob.guice;
 
 import static org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration.UPLOAD_RETRY_BACKOFF_DURATION_DEFAULT;
 import static org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration.UPLOAD_RETRY_BACKOFF_JETTY_DEFAULT;

@@ -1,4 +1,4 @@
-package com.linagora.tmail.blob.blobguice;
+package com.linagora.tmail.blob.guice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,7 +14,7 @@ public class BlobStoreModulesChooserTest {
             .deduplication()
             .noCryptoConfig()
             .disableSingleSave()
-            .noSecondaryS3BlobStoreConfig()))
+            .noSecondaryS3BlobStore()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.NoEncryptionModule)
             .hasSize(1);
     }
@@ -30,7 +30,7 @@ public class BlobStoreModulesChooserTest {
                 .salt("73616c7479")
                 .build())
             .disableSingleSave()
-            .noSecondaryS3BlobStoreConfig()))
+            .noSecondaryS3BlobStore()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.EncryptionModule)
             .hasSize(1);
     }
@@ -42,7 +42,7 @@ public class BlobStoreModulesChooserTest {
             .deduplication()
             .noCryptoConfig()
             .enableSingleSave()
-            .noSecondaryS3BlobStoreConfig()))
+            .noSecondaryS3BlobStore()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.SingleSaveDeclarationModule)
             .hasSize(1);
     }
@@ -54,7 +54,7 @@ public class BlobStoreModulesChooserTest {
             .deduplication()
             .noCryptoConfig()
             .disableSingleSave()
-            .noSecondaryS3BlobStoreConfig()))
+            .noSecondaryS3BlobStore()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.MultiSaveDeclarationModule)
             .hasSize(1);
     }

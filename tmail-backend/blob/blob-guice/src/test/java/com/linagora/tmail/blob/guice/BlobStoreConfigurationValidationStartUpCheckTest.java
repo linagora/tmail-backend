@@ -1,4 +1,4 @@
-package com.linagora.tmail.blob.blobguice;
+package com.linagora.tmail.blob.guice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,14 +48,14 @@ public class BlobStoreConfigurationValidationStartUpCheckTest {
         .deduplication()
         .noCryptoConfig()
         .disableSingleSave()
-        .noSecondaryS3BlobStoreConfig();
+        .noSecondaryS3BlobStore();
     private static BlobStoreConfiguration PASSTHROUGH_STRATEGY = BlobStoreConfiguration
         .builder()
         .disableCache()
         .passthrough()
         .noCryptoConfig()
         .disableSingleSave()
-        .noSecondaryS3BlobStoreConfig();
+        .noSecondaryS3BlobStore();
 
     private EventsourcingStorageStrategy eventsourcingStorageStrategy;
 

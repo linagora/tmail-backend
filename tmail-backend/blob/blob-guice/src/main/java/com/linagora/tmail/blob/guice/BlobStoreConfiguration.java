@@ -1,4 +1,4 @@
-package com.linagora.tmail.blob.blobguice;
+package com.linagora.tmail.blob.guice;
 
 import java.io.FileNotFoundException;
 import java.util.Optional;
@@ -77,14 +77,14 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
 
     @FunctionalInterface
     public interface RequireSecondaryS3BlobStoreConfig {
-        BlobStoreConfiguration secondaryS3BlobStoreConfig(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration);
+        BlobStoreConfiguration secondaryS3BlobStore(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration);
 
-        default BlobStoreConfiguration noSecondaryS3BlobStoreConfig() {
-            return secondaryS3BlobStoreConfig(Optional.empty());
+        default BlobStoreConfiguration noSecondaryS3BlobStore() {
+            return secondaryS3BlobStore(Optional.empty());
         }
 
-        default BlobStoreConfiguration secondaryS3BlobStoreConfig(S3BlobStoreConfiguration s3BlobStoreConfiguration) {
-            return secondaryS3BlobStoreConfig(Optional.of(s3BlobStoreConfiguration));
+        default BlobStoreConfiguration secondaryS3BlobStore(S3BlobStoreConfiguration s3BlobStoreConfiguration) {
+            return secondaryS3BlobStore(Optional.of(s3BlobStoreConfiguration));
         }
     }
 
@@ -120,7 +120,7 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
                 .passthrough()
                 .noCryptoConfig()
                 .disableSingleSave()
-                .noSecondaryS3BlobStoreConfig();
+                .noSecondaryS3BlobStore();
         }
     }
 
@@ -143,14 +143,14 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
                 .deduplication()
                 .cryptoConfig(cryptoConfig)
                 .enableSingleSave(singleSaveEnabled)
-                .secondaryS3BlobStoreConfig(parseS3BlobStoreConfiguration(configuration));
+                .secondaryS3BlobStore(parseS3BlobStoreConfiguration(configuration));
         } else {
             return builder()
                 .enableCache(cacheEnabled)
                 .passthrough()
                 .cryptoConfig(cryptoConfig)
                 .enableSingleSave(singleSaveEnabled)
-                .secondaryS3BlobStoreConfig(parseS3BlobStoreConfiguration(configuration));
+                .secondaryS3BlobStore(parseS3BlobStoreConfiguration(configuration));
         }
     }
 
@@ -166,8 +166,7 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
     }
 
     private static Optional<S3BlobStoreConfiguration> parseS3BlobStoreConfiguration(Configuration configuration) throws ConfigurationException {
-        final boolean enabled = configuration.getBoolean(OBJECT_STORAGE_S3_SECONDARY_ENABLED, false);
-        if (enabled) {
+        if (configuration.getBoolean(OBJECT_STORAGE_S3_SECONDARY_ENABLED, false)) {
             return Optional.of(SecondaryS3BlobStoreConfigurationReader.from(configuration));
         } else {
             return Optional.empty();

@@ -8,7 +8,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.vault.TestDeleteMessageVaultPreDeletionHookModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -34,7 +34,7 @@ public class DistributedLinagoraEmailRecoveryActionIntegrationTest implements Em
                 .deduplication()
                 .noCryptoConfig()
                 .disableSingleSave()
-                .noSecondaryS3BlobStoreConfig())
+                .noSecondaryS3BlobStore())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .mailbox(new MailboxConfiguration(true))

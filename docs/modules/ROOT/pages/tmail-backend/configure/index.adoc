@@ -117,3 +117,21 @@ It is still possible to disable it by modifying the following property on `delet
 ....
 enabled=false
 ....
+
+== Secondary blob store configurations
+Specified to TMail backend, we can configure the following configurations in the *blob.properties* file for the second blob store.
+
+.blob.properties additional content
+|===
+| Property name | explanation
+| objectstorage.s3.secondary.enabled
+| Optional. Default to the false Supported values: `true` / `false`.
+| objectstorage.s3.secondary.endPoint
+| S3 service endpoint
+| objectstorage.s3.secondary.region
+| S3 region
+| objectstorage.s3.secondary.accessKeyId
+| https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys[S3 access key id]
+| objectstorage.s3.secondary.secretKey
+| https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys[S3 access key secret]
+|===

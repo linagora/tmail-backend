@@ -8,7 +8,7 @@ import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -32,7 +32,7 @@ public class DistributedFirebaseSubscriptionGetMethodTest implements FirebaseSub
                 .deduplication()
                 .noCryptoConfig()
                 .disableSingleSave()
-                .noSecondaryS3BlobStoreConfig())
+                .noSecondaryS3BlobStore())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
