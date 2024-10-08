@@ -4,10 +4,6 @@ import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.mail.internet.AddressException;
@@ -24,12 +20,15 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
+import com.rabbitmq.client.BuiltinExchangeType;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.SynchronousSink;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.BindingSpecification;
@@ -42,7 +41,7 @@ import reactor.rabbitmq.Sender;
 public class OpenPaasContactsConsumer implements Startable, Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumer.class);
 
-    public static final String TOPIC = "contacts:contact:add";
+    public static final String EXCHANGE_NAME = "contacts:contact:add";
     public static final String QUEUE_NAME = "ConsumeOpenPaasContactsQueue";
     private Disposable consumeContactsDisposable;
 
@@ -67,13 +66,13 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     public void start() {
         Flux.concat(
-                sender.declareExchange(ExchangeSpecification.exchange(TOPIC)
-                    .durable(DURABLE)),
+                sender.declareExchange(ExchangeSpecification.exchange(EXCHANGE_NAME)
+                    .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
                 sender.declareQueue(QueueSpecification
                     .queue(QUEUE_NAME)
                     .durable(evaluateDurable(DURABLE, commonRabbitMQConfiguration.isQuorumQueuesUsed()))),
                 sender.bind(BindingSpecification.binding()
-                    .exchange(TOPIC)
+                    .exchange(EXCHANGE_NAME)
                     .queue(QUEUE_NAME)
                     .routingKey(EMPTY_ROUTING_KEY)))
             .then()
