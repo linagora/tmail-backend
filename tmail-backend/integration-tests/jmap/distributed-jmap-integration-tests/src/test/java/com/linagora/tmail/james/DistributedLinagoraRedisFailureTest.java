@@ -41,7 +41,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.linagora.tmail.blob.blobguice.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -73,7 +73,7 @@ public class DistributedLinagoraRedisFailureTest {
                     .deduplication()
                     .noCryptoConfig()
                     .disableSingleSave()
-                    .noSecondaryS3BlobStoreConfig())
+                    .noSecondaryS3BlobStore())
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
                 .mailbox(new MailboxConfiguration(true))
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
@@ -245,7 +245,7 @@ public class DistributedLinagoraRedisFailureTest {
                     .deduplication()
                     .noCryptoConfig()
                     .disableSingleSave()
-                    .noSecondaryS3BlobStoreConfig())
+                    .noSecondaryS3BlobStore())
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
                 .mailbox(new MailboxConfiguration(true))
                 .build())

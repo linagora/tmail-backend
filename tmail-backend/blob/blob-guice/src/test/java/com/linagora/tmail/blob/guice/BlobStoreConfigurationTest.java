@@ -1,4 +1,4 @@
-package com.linagora.tmail.blob.blobguice;
+package com.linagora.tmail.blob.guice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,7 +65,7 @@ public class BlobStoreConfigurationTest {
                 .passthrough()
                 .noCryptoConfig()
                 .disableSingleSave()
-                .noSecondaryS3BlobStoreConfig());
+                .noSecondaryS3BlobStore());
     }
 
     @Test
@@ -83,7 +83,7 @@ public class BlobStoreConfigurationTest {
                 .passthrough()
                 .noCryptoConfig()
                 .disableSingleSave()
-                .noSecondaryS3BlobStoreConfig());
+                .noSecondaryS3BlobStore());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class BlobStoreConfigurationTest {
                     .salt("73616c7479")
                     .build())
                 .disableSingleSave()
-                .noSecondaryS3BlobStoreConfig());
+                .noSecondaryS3BlobStore());
     }
 
     @Test

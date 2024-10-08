@@ -1,20 +1,24 @@
-package com.linagora.tmail.blob.blobguice;
+package com.linagora.tmail.blob.guice;
 
 import java.util.List;
 import java.util.Optional;
 
 import org.apache.james.blob.aes.AESBlobStoreDAO;
 import org.apache.james.blob.aes.CryptoConfig;
+import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
+import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTO;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTOModule;
 import org.apache.james.lifecycle.api.StartUpCheck;
+import org.apache.james.metrics.api.GaugeRegistry;
+import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.modules.blobstore.BlobDeduplicationGCModule;
 import org.apache.james.modules.blobstore.validation.EventsourcingStorageStrategy;
 import org.apache.james.modules.blobstore.validation.StorageStrategyModule;
@@ -39,27 +43,26 @@ import com.google.inject.name.Names;
 import com.linagora.tmail.blob.blobid.list.BlobIdList;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreModule;
+import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
 
 public class BlobStoreModulesChooser {
-    private static final String FIRST_LEVEL = "first_level_blob_store_dao";
-    private static final String SECOND_LEVEL = "second_level_blob_store_dao";
-    private static final String THIRD_LEVEL = "third_level_blob_store_dao";
-    private static final String FOURTH_LEVEL = "fourth_level_blob_store_dao";
-    private static final String SECONDARY_BLOB_STORE_DAO = "secondary_blob_store_dao";
-    private static final String SECONDARY_S3_CLIENT_FACTORY = "secondary_s3_client_factory";
+    public static final String INITIAL = "initial";
+    public static final String MAYBE_SECONDARY_BLOBSTORE = "maybe_secondary_blob_store_dao";
+    public static final String MAYBE_ENCRYPTION_BLOBSTORE = "maybe_encryption_blob_store_dao";
+    public static final String MAYBE_SINGLE_SAVE_BLOBSTORE = "maybe_single_save_blob_store_dao";
 
     static class BaseObjectStorageModule extends AbstractModule {
         @Override
         protected void configure() {
             install(new S3BucketModule());
             install(new S3BlobStoreModule());
-            bind(BlobStoreDAO.class).annotatedWith(Names.named(FIRST_LEVEL))
+            bind(BlobStoreDAO.class).annotatedWith(Names.named(INITIAL))
                 .to(S3BlobStoreDAO.class);
         }
 
         @Provides
         @Singleton
-        BlobStoreDAO provdePrimaryBlobStoreDAO(@Named(FOURTH_LEVEL) BlobStoreDAO blobStoreDAO) {
+        BlobStoreDAO provideFinalBlobStoreDAO(@Named(MAYBE_SINGLE_SAVE_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
     }
@@ -67,14 +70,14 @@ public class BlobStoreModulesChooser {
     static class NoSecondaryObjectStorageModule extends AbstractModule {
         @Provides
         @Singleton
-        @Named(SECOND_LEVEL)
-        BlobStoreDAO provdeBlobStoreDAO(@Named(FIRST_LEVEL) BlobStoreDAO blobStoreDAO) {
+        @Named(MAYBE_SECONDARY_BLOBSTORE)
+        BlobStoreDAO provideNoSecondaryBlobStoreDAO(@Named(INITIAL) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
     }
 
     static class SecondaryObjectStorageModule extends AbstractModule {
-        private S3BlobStoreConfiguration secondaryS3BlobStoreConfiguration;
+        private final S3BlobStoreConfiguration secondaryS3BlobStoreConfiguration;
 
         public SecondaryObjectStorageModule(S3BlobStoreConfiguration secondaryS3BlobStoreConfiguration) {
             this.secondaryS3BlobStoreConfiguration = secondaryS3BlobStoreConfiguration;
@@ -82,16 +85,21 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        @Named(SECOND_LEVEL)
-        BlobStoreDAO provdeBlobStoreDAO(@Named(FIRST_LEVEL) BlobStoreDAO blobStoreDAO) {
-            return blobStoreDAO;
+        @Named(MAYBE_SECONDARY_BLOBSTORE)
+        BlobStoreDAO provideSecondaryBlobStoreDAO(@Named(INITIAL) BlobStoreDAO firstBlobStoreDAO,
+                                                  BlobId.Factory blobIdFactory,
+                                                  MetricFactory metricFactory,
+                                                  GaugeRegistry gaugeRegistry) {
+            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration, metricFactory, gaugeRegistry);
+            S3BlobStoreDAO secondaryBlobStoreDAO = new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration, blobIdFactory);
+            return new SecondaryBlobStoreDAO(firstBlobStoreDAO, secondaryBlobStoreDAO);
         }
     }
 
     static class EncryptionModule extends AbstractModule {
         private final CryptoConfig cryptoConfig;
 
-        EncryptionModule(CryptoConfig cryptoConfig) {
+        public EncryptionModule(CryptoConfig cryptoConfig) {
             this.cryptoConfig = cryptoConfig;
         }
 
@@ -102,18 +110,17 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        @Named(THIRD_LEVEL)
-        BlobStoreDAO providePrelastBlobStoreDAO(@Named(SECOND_LEVEL) BlobStoreDAO blobStoreDAO) {
+        @Named(MAYBE_ENCRYPTION_BLOBSTORE)
+        BlobStoreDAO provideEncryptionBlobStoreDAO(@Named(MAYBE_SECONDARY_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
             return new AESBlobStoreDAO(blobStoreDAO, cryptoConfig);
         }
-
     }
 
     static class NoEncryptionModule extends AbstractModule {
         @Provides
         @Singleton
-        @Named(THIRD_LEVEL)
-        BlobStoreDAO providePrelastBlobStoreDAO(@Named(SECOND_LEVEL) BlobStoreDAO blobStoreDAO) {
+        @Named(MAYBE_ENCRYPTION_BLOBSTORE)
+        BlobStoreDAO provideNoEncryptBlobStoreDAO(@Named(MAYBE_SECONDARY_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
     }
@@ -126,17 +133,11 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        SingleSaveBlobStoreDAO singleSaveBlobStoreDAO(@Named(THIRD_LEVEL) BlobStoreDAO blobStoreDAO,
-                                                      BlobIdList blobIdList,
-                                                      BucketName defaultBucketName) {
+        @Named(MAYBE_SINGLE_SAVE_BLOBSTORE)
+        public BlobStoreDAO provideSingleSaveBlobStoreDAO(@Named(MAYBE_ENCRYPTION_BLOBSTORE) BlobStoreDAO blobStoreDAO,
+                                                          BlobIdList blobIdList,
+                                                          BucketName defaultBucketName) {
             return new SingleSaveBlobStoreDAO(blobStoreDAO, blobIdList, defaultBucketName);
-        }
-
-        @Provides
-        @Singleton
-        @Named(FOURTH_LEVEL)
-        public BlobStoreDAO provideLast(SingleSaveBlobStoreDAO blobStoreDAO) {
-            return blobStoreDAO;
         }
     }
 
@@ -144,25 +145,22 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        @Named(FOURTH_LEVEL)
-        public BlobStoreDAO provideLastBlobStoreDAO(@Named(THIRD_LEVEL) BlobStoreDAO blobStoreDAO) {
+        @Named(MAYBE_SINGLE_SAVE_BLOBSTORE)
+        public BlobStoreDAO provideMultiSaveblobStoreDAO(@Named(MAYBE_ENCRYPTION_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
     }
 
     public static Module chooseSecondaryObjectStorageModule(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration) {
-        if (maybeS3BlobStoreConfiguration.isPresent()) {
-            return new SecondaryObjectStorageModule(maybeS3BlobStoreConfiguration.get());
-        } else {
-            return new NoSecondaryObjectStorageModule();
-        }
+        return maybeS3BlobStoreConfiguration
+            .map(configuration -> (Module) new SecondaryObjectStorageModule(configuration))
+            .orElse(new NoSecondaryObjectStorageModule());
     }
 
     public static Module chooseEncryptionModule(Optional<CryptoConfig> cryptoConfig) {
-        if (cryptoConfig.isPresent()) {
-            return new EncryptionModule(cryptoConfig.get());
-        }
-        return new NoEncryptionModule();
+        return cryptoConfig
+            .map(configuration -> (Module) new EncryptionModule(configuration))
+            .orElse(new NoEncryptionModule());
     }
 
     public static Module chooseSaveDeclarationModule(boolean singleSaveEnabled) {
