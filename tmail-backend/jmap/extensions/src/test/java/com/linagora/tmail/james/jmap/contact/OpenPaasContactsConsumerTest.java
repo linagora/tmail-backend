@@ -133,7 +133,7 @@ class OpenPaasContactsConsumerTest {
     private void sendMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                OpenPaasContactsConsumer.TOPIC,
+                OpenPaasContactsConsumer.EXCHANGE_NAME,
                 EMPTY_ROUTING_KEY,
                 message.getBytes(UTF_8))))
             .block();
