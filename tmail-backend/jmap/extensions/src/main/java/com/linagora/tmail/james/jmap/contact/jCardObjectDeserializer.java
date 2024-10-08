@@ -2,17 +2,24 @@ package com.linagora.tmail.james.jmap.contact;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.core.JacksonException;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.james.util.streams.Iterators;
+
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import com.google.common.base.Strings;
 
 public class jCardObjectDeserializer extends StdDeserializer<jCardObject> {
     private static final String FN = "fn";
     private static final String EMAIL = "email";
+    private static final Set<String> SUPPORTED_PROPERTY_NAMES = Set.of(FN, EMAIL);
     private static final int PROPERTY_NAME_INDEX = 0;
     private static final int PROPERTIES_ARRAY_INDEX = 1;
     private static final int TEXT_PROPERTY_VALUE_INDEX = 3;
@@ -27,31 +34,38 @@ public class jCardObjectDeserializer extends StdDeserializer<jCardObject> {
 
     @Override
     public jCardObject deserialize(JsonParser p, DeserializationContext ctxt)
-        throws IOException, JacksonException {
+        throws IOException {
         JsonNode node = p.getCodec().readTree(p);
 
         JsonNode jCardPropertiesArray = node.get(PROPERTIES_ARRAY_INDEX);
-        Iterator<JsonNode> propertiesIterator = jCardPropertiesArray.iterator();
+        Map<String, String> jCardProperties =
+            collectJCardProperties(jCardPropertiesArray.iterator());
 
-        String fn = "";
-        String email = "";
-        while (propertiesIterator.hasNext()) {
-            JsonNode propertyNode = propertiesIterator.next();
-            String propertyName = propertyNode.get(PROPERTY_NAME_INDEX).asText();
-
-            if (FN.equals(propertyName)) {
-                fn = propertyNode.get(TEXT_PROPERTY_VALUE_INDEX).asText();
-            } else if (EMAIL.equals(propertyName)) {
-                email = propertyNode.get(TEXT_PROPERTY_VALUE_INDEX).asText();
-            }
+        if (!jCardProperties.containsKey(FN)) {
+            throw new RuntimeException("The FN field is required according to specification.");
         }
 
-        if (Strings.isNullOrEmpty(fn)) {
-            throw new RuntimeException("The fn property is required for a valid jCard object.");
-        } else if (Strings.isNullOrEmpty(email)) {
-            throw new RuntimeException("The email property is required for a valid jCard object.");
-        }
+        return new jCardObject(jCardProperties.get(FN), getOptionalFromMap(jCardProperties, EMAIL));
+    }
 
-        return new jCardObject(fn, email);
+    private static Map<String, String> collectJCardProperties(Iterator<JsonNode> propertiesIterator) {
+        return Iterators.toStream(propertiesIterator)
+            .map(jCardObjectDeserializer::getPropertyKeyValuePair)
+            .filter(pair -> pair != ImmutablePair.<String, String>nullPair())
+            .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+    }
+
+    private static ImmutablePair<String, String> getPropertyKeyValuePair(JsonNode propertyNode) {
+        String propertyName = propertyNode.get(PROPERTY_NAME_INDEX).asText();
+        if (SUPPORTED_PROPERTY_NAMES.contains(propertyName)) {
+            String propertyValue = propertyNode.get(TEXT_PROPERTY_VALUE_INDEX).asText();
+            return ImmutablePair.of(propertyName, propertyValue);
+        } else {
+            return ImmutablePair.nullPair();
+        }
+    }
+
+    private Optional<String> getOptionalFromMap(Map<String, String> map, String key) {
+        return Optional.ofNullable(map.getOrDefault(key, null));
     }
 }

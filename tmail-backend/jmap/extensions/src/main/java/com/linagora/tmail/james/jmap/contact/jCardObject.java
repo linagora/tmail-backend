@@ -1,9 +1,17 @@
 package com.linagora.tmail.james.jmap.contact;
 
+import java.util.Optional;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.common.base.Preconditions;
 
 @JsonDeserialize(using = jCardObjectDeserializer.class)
-public record jCardObject(String fn, String email) {
+public record jCardObject(String fn, Optional<String> emailOpt) {
+
+    public jCardObject {
+        Preconditions.checkNotNull(fn);
+        Preconditions.checkNotNull(emailOpt);
+    }
 
     /**
      * Purpose: To specify the formatted text corresponding to the name of
@@ -23,7 +31,7 @@ public record jCardObject(String fn, String email) {
      * Example: jane_doe@example.com
      */
     @Override
-    public String email() {
-        return email;
+    public Optional<String> emailOpt() {
+        return emailOpt;
     }
 }
