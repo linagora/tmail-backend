@@ -2,8 +2,8 @@ package com.linagora.tmail.james.common
 
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.ZonedDateTime
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.stream.Stream
@@ -741,6 +741,102 @@ trait EmailRecoveryActionSetMethodContract {
       awaitRestoreTaskCompleted(taskId)
 
       assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+    }
+
+    @Test
+    def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsMoreThan15DaysOld(server: GuiceJamesServer): Unit = {
+      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
+        .createMailbox(MailboxPath.inbox(BOB))
+
+      val deletionDateMoreThan15DaysOld = ZonedDateTime.now().minusDays(16)
+
+      val deletedMessage: DeletedMessage = templateDeletedMessage(
+        messageId = randomMessageId,
+        mailboxId = mailboxId,
+        deletionDate = deletionDateMoreThan15DaysOld)
+
+      server.getProbe(classOf[DeletedMessageVaultProbe])
+        .append(deletedMessage, new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
+
+      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+
+      val taskId: String = `given`
+        .body(
+          s"""{
+             |	"using": [
+             |		"urn:ietf:params:jmap:core",
+             |		"com:linagora:params:jmap:messages:vault"
+             |	],
+             |	"methodCalls": [
+             |		[
+             |			"EmailRecoveryAction/set",
+             |			{
+             |				"create": {
+             |					"clientId1": {}
+             |				}
+             |			},
+             |			"c1"
+             |		]
+             |	]
+             |}""".stripMargin)
+        .when
+        .post
+        .`then`
+        .extract()
+        .jsonPath()
+        .get("methodResponses[0][1].created.clientId1.id").toString
+
+      awaitRestoreTaskCompleted(taskId)
+
+      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+    }
+
+    @Test
+    def restoreShouldAppendMessageToMailboxWhenDeletionDateIsLessThan15DaysOld(server: GuiceJamesServer): Unit = {
+      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
+        .createMailbox(MailboxPath.inbox(BOB))
+
+      val deletionDateLessThan15DaysOld = ZonedDateTime.now().minusDays(16)
+
+      val deletedMessage: DeletedMessage = templateDeletedMessage(
+        messageId = randomMessageId,
+        mailboxId = mailboxId,
+        deletionDate = deletionDateLessThan15DaysOld)
+
+      server.getProbe(classOf[DeletedMessageVaultProbe])
+        .append(deletedMessage, new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
+
+      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+
+      val taskId: String = `given`
+        .body(
+          s"""{
+             |	"using": [
+             |		"urn:ietf:params:jmap:core",
+             |		"com:linagora:params:jmap:messages:vault"
+             |	],
+             |	"methodCalls": [
+             |		[
+             |			"EmailRecoveryAction/set",
+             |			{
+             |				"create": {
+             |					"clientId1": {}
+             |				}
+             |			},
+             |			"c1"
+             |		]
+             |	]
+             |}""".stripMargin)
+        .when
+        .post
+        .`then`
+        .extract()
+        .jsonPath()
+        .get("methodResponses[0][1].created.clientId1.id").toString
+
+      awaitRestoreTaskCompleted(taskId)
+
+      assertListAllMessageHasSize(server, BOB, 1)
     }
   }
 
