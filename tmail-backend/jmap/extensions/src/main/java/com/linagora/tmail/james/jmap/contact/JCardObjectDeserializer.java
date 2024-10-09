@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
-public class jCardObjectDeserializer extends StdDeserializer<jCardObject> {
+public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
     private static final String FN = "fn";
     private static final String EMAIL = "email";
     private static final Set<String> SUPPORTED_PROPERTY_NAMES = Set.of(FN, EMAIL);
@@ -24,16 +24,16 @@ public class jCardObjectDeserializer extends StdDeserializer<jCardObject> {
     private static final int PROPERTIES_ARRAY_INDEX = 1;
     private static final int TEXT_PROPERTY_VALUE_INDEX = 3;
 
-    public jCardObjectDeserializer() {
+    public JCardObjectDeserializer() {
         this(null);
     }
 
-    protected jCardObjectDeserializer(Class<?> vc) {
+    protected JCardObjectDeserializer(Class<?> vc) {
         super(vc);
     }
 
     @Override
-    public jCardObject deserialize(JsonParser p, DeserializationContext ctxt)
+    public JCardObject deserialize(JsonParser p, DeserializationContext ctxt)
         throws IOException {
         JsonNode node = p.getCodec().readTree(p);
 
@@ -45,12 +45,12 @@ public class jCardObjectDeserializer extends StdDeserializer<jCardObject> {
             throw new RuntimeException("The FN field is required according to specification.");
         }
 
-        return new jCardObject(jCardProperties.get(FN), getOptionalFromMap(jCardProperties, EMAIL));
+        return new JCardObject(jCardProperties.get(FN), getOptionalFromMap(jCardProperties, EMAIL));
     }
 
     private static Map<String, String> collectJCardProperties(Iterator<JsonNode> propertiesIterator) {
         return Iterators.toStream(propertiesIterator)
-            .map(jCardObjectDeserializer::getPropertyKeyValuePair)
+            .map(JCardObjectDeserializer::getPropertyKeyValuePair)
             .filter(pair -> pair != ImmutablePair.<String, String>nullPair())
             .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
     }

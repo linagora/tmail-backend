@@ -5,10 +5,10 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 
-@JsonDeserialize(using = jCardObjectDeserializer.class)
-public record jCardObject(String fn, Optional<String> emailOpt) {
+@JsonDeserialize(using = JCardObjectDeserializer.class)
+public record JCardObject(String fn, Optional<String> emailOpt) {
 
-    public jCardObject {
+    public JCardObject {
         Preconditions.checkNotNull(fn);
         Preconditions.checkNotNull(emailOpt);
     }
