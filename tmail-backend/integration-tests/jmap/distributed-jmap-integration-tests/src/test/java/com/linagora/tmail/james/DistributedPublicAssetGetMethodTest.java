@@ -34,6 +34,7 @@ import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.PublicAssetGetMethodContract;
 import com.linagora.tmail.james.common.probe.PublicAssetProbeModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedPublicAssetGetMethodTest implements PublicAssetGetMethodContract {
@@ -49,6 +50,7 @@ public class DistributedPublicAssetGetMethodTest implements PublicAssetGetMethod
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .searchConfiguration(SearchConfiguration.openSearchDisabled())
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())

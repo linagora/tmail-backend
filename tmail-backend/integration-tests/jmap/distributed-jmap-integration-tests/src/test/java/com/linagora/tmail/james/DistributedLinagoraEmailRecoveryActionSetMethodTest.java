@@ -23,6 +23,7 @@ import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.DeletedMessageVaultProbeModule;
 import com.linagora.tmail.james.common.EmailRecoveryActionSetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraEmailRecoveryActionSetMethodTest implements EmailRecoveryActionSetMethodContract {
@@ -41,6 +42,7 @@ public class DistributedLinagoraEmailRecoveryActionSetMethodTest implements Emai
                 .noCryptoConfig()
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .mailbox(new MailboxConfiguration(true))
             .build())
         .extension(new DockerOpenSearchExtension())

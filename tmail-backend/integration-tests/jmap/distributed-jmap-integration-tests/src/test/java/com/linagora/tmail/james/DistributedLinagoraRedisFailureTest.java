@@ -50,6 +50,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraRedisFailureTest {
@@ -74,6 +75,7 @@ public class DistributedLinagoraRedisFailureTest {
                     .disableSingleSave())
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
                 .mailbox(new MailboxConfiguration(true))
+                .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .build())
             .extension(new DockerOpenSearchExtension())
             .extension(new CassandraExtension())

@@ -17,6 +17,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.TeamMailboxMemberGetMethodContract;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.team.TeamMailboxProbe;
 
@@ -33,6 +34,7 @@ public class DistributedTeamMailboxMemberGetMethodTest implements TeamMailboxMem
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
             .searchConfiguration(SearchConfiguration.openSearch())
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())

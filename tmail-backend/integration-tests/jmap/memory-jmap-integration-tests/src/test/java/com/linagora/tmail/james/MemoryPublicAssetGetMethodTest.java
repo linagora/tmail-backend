@@ -10,6 +10,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.PublicAssetGetMethodContract;
 import com.linagora.tmail.james.common.probe.PublicAssetProbeModule;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryPublicAssetGetMethodTest implements PublicAssetGetMethodContract {
@@ -19,6 +20,7 @@ public class MemoryPublicAssetGetMethodTest implements PublicAssetGetMethodContr
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
