@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap.method
 
 import java.time.ZonedDateTime
 
+import com.google.common.collect.ImmutableList
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
@@ -157,11 +158,12 @@ class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManag
 
   private def submitTask(clientId: EmailRecoveryActionCreationId, userToRestore: Username, creationRequest: EmailRecoveryActionCreationRequest): SMono[CreationResult] = {
     val fifteenDaysAgo = ZonedDateTime.now().minusDays(15)
-    val deletionDateLessThanFifteenDaysOldCriterion = CriterionFactory.deletionDate().afterOrEquals(fifteenDaysAgo)
+    val horizonCriterion = CriterionFactory.deletionDate().afterOrEquals(fifteenDaysAgo)
 
-    val requestCriteria = creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria
-    requestCriteria.add(deletionDateLessThanFifteenDaysOldCriterion)
-    val modifiedQuery = Query.and(requestCriteria)
+    val modifiedQuery = Query.and(ImmutableList.builder()
+      .addAll(creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria)
+      .add(horizonCriterion)
+      .build())
 
     SMono.fromCallable(() => taskManager.submit(new DeletedMessagesVaultRestoreTask(restoreService, userToRestore, modifiedQuery)))
     .map(taskId => CreationSuccess(clientId, EmailRecoveryActionCreationResponse(taskId)))
