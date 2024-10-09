@@ -3,6 +3,11 @@ package com.linagora.tmail.james.jmap.contact;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.mail.internet.AddressException;
@@ -20,11 +25,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.rabbitmq.client.BuiltinExchangeType;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -123,7 +123,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
         return openPaasRestClient.getUserById(openPaasOwnerId)
             .map(OpenPaasUserResponse::preferredEmail)
             .mapNotNull(ownerEmail -> {
-                jCardObject jCardObject = contactAddedMessage.vcard();
+                JCardObject jCardObject = contactAddedMessage.vcard();
 
                 String contactFullname = jCardObject.fn();
                 Optional<MailAddress> contactMailAddressOpt = jCardObject.emailOpt()
