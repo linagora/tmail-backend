@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.OpenPaasServerExtension.ALICE_USER_ID
+import com.linagora.tmail.james.jmap.contact.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID}
 
 import java.net.{URI, URL}
 import org.junit.jupiter.api.extension.{AfterEachCallback, BeforeEachCallback, ExtensionContext, ParameterContext, ParameterResolver}
@@ -13,6 +13,7 @@ import org.mockserver.model.NottableString.string
 
 object OpenPaasServerExtension {
   val ALICE_USER_ID: String = "abc0a663bdaffe0026290xyz"
+  val ALICE_EMAIL: String = "adoe@linagora.com"
 }
 
 class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback with ParameterResolver{
@@ -21,7 +22,7 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
 
   override def beforeEach(context: ExtensionContext): Unit = {
     mockServer = startClientAndServer(0)
-    ConfigurationProperties.logLevel("WARN")
+    ConfigurationProperties.logLevel("INFO")
 
     mockServer.when(
       request.withPath(s"/users/$ALICE_USER_ID")
@@ -32,9 +33,9 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
                 |  "_id":  "$ALICE_USER_ID",
                 |  "firstname": "Alice",
                 |  "lastname": "DOE",
-                |  "preferredEmail": "adoe@linagora.com",
+                |  "preferredEmail": "$ALICE_EMAIL",
                 |  "emails": [
-                |    "jdoe@linagora.com"
+                |    "$ALICE_EMAIL"
                 |  ],
                 |  "domains": [
                 |    {

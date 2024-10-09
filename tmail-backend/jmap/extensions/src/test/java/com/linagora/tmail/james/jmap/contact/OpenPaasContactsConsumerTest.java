@@ -7,13 +7,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.TEN_SECONDS;
 
-import org.apache.james.backends.rabbitmq.RabbitMQExtension;
-
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
+import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.api.model.AccountId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,15 +34,22 @@ class OpenPaasContactsConsumerTest {
         .isolationPolicy(WEAK);
 
     private EmailAddressContactSearchEngine searchEngine;
+    private OpenPaasRestClient restClient;
     private OpenPaasContactsConsumer consumer;
 
     @BeforeEach
     void setup() throws URISyntaxException {
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
+        restClient = new OpenPaasRestClient(
+            new OpenPaasConfiguration(
+                openPaasServerExtension.getBaseUrl(),
+                "admin",
+                "admin")
+        );
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getReceiverProvider(),
             rabbitMQExtension.getSender(),
             rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),
-            searchEngine);
+            searchEngine, restClient);
 
         consumer.start();
     }
@@ -54,23 +60,6 @@ class OpenPaasContactsConsumerTest {
     }
 
     @Test
-    @Disabled
-    void doTest() {
-        OpenPaasWebClient openPaasWebClient = new OpenPaasWebClient(
-            new OpenPaasConfiguration(
-                openPaasServerExtension.getBaseUrl(),
-                "admin",
-                "admin"
-            )
-        );
-
-        OpenPaasUserResponse block = openPaasWebClient.getUserById(OpenPaasServerExtension.ALICE_USER_ID())
-            .block();
-
-        System.out.println(block);
-    }
-
-    @Test
     void consumeMessageShouldNotCrashOnInvalidMessages() throws InterruptedException {
         IntStream.range(0, 10).forEach(i -> sendMessage("BAD_PAYLOAD" + i));
 
@@ -78,10 +67,10 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage("""
             {
-                "bookId": "65ae6175751dbd001b5799e8",
+                "bookId": "abc0a663bdaffe0026290xyz",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "65ae6175751dbd001b5799e8",
+                "userId": "abc0a663bdaffe0026290xyz",
                 "vcard": [
                 "vcard",
                   [
@@ -97,7 +86,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString("jhon@doe.com"), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
                     .collectList().block())
                 .hasSize(1));
     }
@@ -106,10 +95,10 @@ class OpenPaasContactsConsumerTest {
     void contactShouldBeIndexedWhenContactUserAddedMessage() {
         sendMessage("""
             {
-                "bookId": "65ae6175751dbd001b5799e8",
+                "bookId": "abc0a663bdaffe0026290xyz",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "65ae6175751dbd001b5799e8",
+                "userId": "abc0a663bdaffe0026290xyz",
                 "vcard": [
                 "vcard",
                   [
@@ -125,7 +114,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString("jhon@doe.com"), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
                     .collectList().block())
                 .hasSize(1));
     }
