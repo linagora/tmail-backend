@@ -18,5 +18,6 @@
 
     <modules>
         <module>open-ai</module>
+        <module>openpaas</module>
     </modules>
 </project>
