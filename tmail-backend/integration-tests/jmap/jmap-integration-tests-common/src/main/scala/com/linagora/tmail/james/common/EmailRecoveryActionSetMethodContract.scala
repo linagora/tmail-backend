@@ -2,8 +2,8 @@ package com.linagora.tmail.james.common
 
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets
-import java.time.format.DateTimeFormatter
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.stream.Stream
