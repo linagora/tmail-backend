@@ -539,7 +539,7 @@ trait EmailRecoveryActionSetMethodContract {
 
   @Nested
   class CreationSetByDeletedDateQueryContract {
-    final val USER_TIME_LIMIT_IN_DAYS: Int = 15 // TODO: put that value in `DeletedMessageVault.properties` and fetch it from there
+    val USER_TIME_LIMIT_IN_DAYS: Int = 15 // TODO: put that value in `DeletedMessageVault.properties` and fetch it from there
 
     @Test
     def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsOutOfUserLimitAndNoDeletionDateIsRequired(server: GuiceJamesServer): Unit = {
