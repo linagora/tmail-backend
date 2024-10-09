@@ -20,7 +20,6 @@
     <modules>
         <module>apps</module>
 
-        <module>blob/blob-guice</module>
         <module>blob/blobid-list</module>
         <module>blob/secondary-blob-store</module>
 
@@ -28,6 +27,7 @@
 
         <module>deployment-tests</module>
 
+        <module>guice/blob-guice</module>
         <module>guice/distributed</module>
         <module>guice/encrypted-mailbox</module>
         <module>guice/protocols/jmap</module>
