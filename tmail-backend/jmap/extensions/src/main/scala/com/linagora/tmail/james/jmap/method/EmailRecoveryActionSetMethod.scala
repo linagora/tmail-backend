@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap.method
 
+import java.time.ZonedDateTime
+
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
@@ -30,7 +32,6 @@ import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsError, JsObject}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import java.time.{Clock, ZonedDateTime}
 import scala.jdk.OptionConverters._
 import scala.util.Try
 
@@ -134,8 +135,7 @@ object EmailRecoveryActionSetCreatePerformer {
 
 class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManager,
                                                       val restoreService: RestoreService,
-                                                      val configuration: EmailRecoveryActionConfiguration,
-                                                      val clock: Clock = Clock.systemDefaultZone()) {
+                                                      val configuration: EmailRecoveryActionConfiguration) {
 
   import EmailRecoveryActionSetCreatePerformer._
 
@@ -156,7 +156,7 @@ class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManag
     } yield parsedRequest
 
   private def submitTask(clientId: EmailRecoveryActionCreationId, userToRestore: Username, creationRequest: EmailRecoveryActionCreationRequest): SMono[CreationResult] = {
-    val fifteenDaysAgo = ZonedDateTime.now(clock).minusDays(15)
+    val fifteenDaysAgo = ZonedDateTime.now().minusDays(15)
     val deletionDateLessThanFifteenDaysOldCriterion = CriterionFactory.deletionDate().afterOrEquals(fifteenDaysAgo)
 
     val requestCriteria = creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria
