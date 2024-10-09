@@ -2,7 +2,6 @@ package com.linagora.tmail.james.jmap.contact;
 
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
-import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -26,6 +25,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -50,6 +50,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private final RabbitMQConfiguration commonRabbitMQConfiguration;
     private final EmailAddressContactSearchEngine contactSearchEngine;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final OpenPaasRestClient openPaasRestClient;
 
     // TODO: Create a separate RabbitMQ module for OpenPaaS communication so the injected channel pool
     //  would be custom configured
@@ -57,11 +58,13 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     public OpenPaasContactsConsumer(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) ReceiverProvider receiverProvider,
                                     @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) Sender sender,
                                     RabbitMQConfiguration commonRabbitMQConfiguration,
-                                    EmailAddressContactSearchEngine contactSearchEngine) {
+                                    EmailAddressContactSearchEngine contactSearchEngine,
+                                    OpenPaasRestClient openPaasRestClient) {
         this.receiverProvider = receiverProvider;
         this.sender = sender;
         this.commonRabbitMQConfiguration = commonRabbitMQConfiguration;
         this.contactSearchEngine = contactSearchEngine;
+        this.openPaasRestClient = openPaasRestClient;
     }
 
     public void start() {
@@ -115,24 +118,41 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     private Mono<Void> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
         LOGGER.info("Consumed jCard object message: {}", contactAddedMessage);
-        try {
-            jCardObject jCardObject = contactAddedMessage.vcard();
-            String fullname = jCardObject.fn();
-            Optional<String> emailOpt = jCardObject.emailOpt();
 
-            if (emailOpt.isEmpty()) {
-                return Mono.empty();
-            }
+        String openPaasOwnerId = contactAddedMessage.userId();
+        return openPaasRestClient.getUserById(openPaasOwnerId)
+            .map(OpenPaasUserResponse::preferredEmail)
+            .mapNotNull(ownerEmail -> {
+                jCardObject jCardObject = contactAddedMessage.vcard();
 
-            MailAddress mailAddress = new MailAddress(emailOpt.get());
-            Username emailAsUsername = Username.fromMailAddress(mailAddress);
+                String contactFullname = jCardObject.fn();
+                Optional<MailAddress> contactMailAddressOpt = jCardObject.emailOpt()
+                    .flatMap(contactEmail -> {
+                        try {
+                            return Optional.of(new MailAddress(contactEmail));
+                        } catch (AddressException e) {
+                            return Optional.empty();
+                        }
+                    });
 
-            return Mono.from(contactSearchEngine.index(AccountId.fromUsername(emailAsUsername),
-                new ContactFields(mailAddress, fullname, ""))).then();
+                if (contactMailAddressOpt.isEmpty()) {
+                    return Mono.empty();
+                }
 
-        } catch (AddressException e) {
-            return Mono.error(e);
-        }
+                try {
+                    MailAddress ownerMailAddress = new MailAddress(ownerEmail);
+                    AccountId ownerAccountId =
+                        AccountId.fromUsername(Username.fromMailAddress(ownerMailAddress));
+
+                    return Mono.from(contactSearchEngine.index(ownerAccountId,
+                            new ContactFields(contactMailAddressOpt.get(), contactFullname, "")
+                        )).block();
+
+                } catch (AddressException e) {
+                    return Mono.error(new RuntimeException(
+                        "The user mail address fetched from OpenPaas is invalid", e));
+                }
+            }).then();
     }
 
     @Override

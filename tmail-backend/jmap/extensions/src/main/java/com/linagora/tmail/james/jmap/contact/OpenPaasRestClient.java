@@ -10,14 +10,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
-public class OpenPaasWebClient {
+public class OpenPaasRestClient {
     private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private final OpenPaasConfiguration openPaasConfiguration;
     private final HttpClient client;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public OpenPaasWebClient(OpenPaasConfiguration openPaasConfiguration) {
+    public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
         this.openPaasConfiguration = openPaasConfiguration;
         this.client = HttpClient.create()
             .baseUrl(openPaasConfiguration.getWebClientBaseUrl().toString())
