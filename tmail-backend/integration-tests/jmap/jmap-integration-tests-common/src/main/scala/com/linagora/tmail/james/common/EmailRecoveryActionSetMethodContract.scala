@@ -541,41 +541,94 @@ trait EmailRecoveryActionSetMethodContract {
   class CreationSetByDeletedDateQueryContract {
     val USER_TIME_LIMIT_IN_DAYS: Int = 15 // TODO: put that value in `DeletedMessageVault.properties` and fetch it from there
 
-    @Test
-    def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsOutOfUserLimitAndNoDeletionDateIsRequired(server: GuiceJamesServer): Unit = {
+    def requestWithoutRequirements(): String = {
+      s"""{
+         |	"using": [
+         |		"urn:ietf:params:jmap:core",
+         |		"com:linagora:params:jmap:messages:vault"
+         |	],
+         |	"methodCalls": [
+         |		[
+         |			"EmailRecoveryAction/set",
+         |			{
+         |				"create": {
+         |					"clientId1": {}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin
+    }
+
+    def requestWithDeletedBefore(deletedBefore: String): String = {
+      s"""{
+         |	"using": [
+         |		"urn:ietf:params:jmap:core",
+         |		"com:linagora:params:jmap:messages:vault"
+         |	],
+         |	"methodCalls": [
+         |		[
+         |			"EmailRecoveryAction/set",
+         |			{
+         |				"create": {
+         |					"clientId1": {
+         |						"deletedBefore": "$deletedBefore"
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin
+    }
+
+    def requestWithDeletedAfter(deletedAfter: String): String = {
+      s"""{
+         |	"using": [
+         |		"urn:ietf:params:jmap:core",
+         |		"com:linagora:params:jmap:messages:vault"
+         |	],
+         |	"methodCalls": [
+         |		[
+         |			"EmailRecoveryAction/set",
+         |			{
+         |				"create": {
+         |					"clientId1": {
+         |						"deletedAfter": "$deletedAfter"
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin
+    }
+
+    private def restoreAndListAllMessageResult(server: GuiceJamesServer,
+                                               username: Username,
+                                               deletionDate: ZonedDateTime,
+                                               deletedBefore: Option[String] = None,
+                                               deletedAfter: Option[String] = None): util.Collection[MessageId] = {
+
       val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
         .createMailbox(MailboxPath.inbox(BOB))
 
-      val deletionDateOutOfUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS + 1)
       val deletedMessage: DeletedMessage = templateDeletedMessage(
         messageId = randomMessageId,
         mailboxId = mailboxId,
-        deletionDate = deletionDateOutOfUserLimit)
+        deletionDate = deletionDate)
 
       server.getProbe(classOf[DeletedMessageVaultProbe])
         .append(deletedMessage, new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
       val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
+        .body(if (deletedBefore.isDefined) {
+            requestWithDeletedBefore(deletedBefore.get)
+          } else if (deletedAfter.isDefined) {
+            requestWithDeletedAfter(deletedAfter.get)
+          } else {
+            requestWithoutRequirements()})
         .when
         .post
         .`then`
@@ -585,266 +638,53 @@ trait EmailRecoveryActionSetMethodContract {
 
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      listAllMessageResult(server, username)
+    }
+
+    @Test
+    def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsOutOfUserLimitAndNoDeletionDateIsRequired(server: GuiceJamesServer): Unit = {
+      val deletionDateOutOfUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS + 1)
+      assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateOutOfUserLimit))
+        .hasSize(0)
     }
 
     @Test
     def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNoDeletionDateIsRequired(server: GuiceJamesServer): Unit = {
-      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-        .createMailbox(MailboxPath.inbox(BOB))
-
       val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
-      val deletedMessage: DeletedMessage = templateDeletedMessage(
-        messageId = randomMessageId,
-        mailboxId = mailboxId,
-        deletionDate = deletionDateWithinUserLimit)
-
-      server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage, new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
-        .when
-        .post
-        .`then`
-        .extract()
-        .jsonPath()
-        .get("methodResponses[0][1].created.clientId1.id").toString
-
-      awaitRestoreTaskCompleted(taskId)
-
-      assertListAllMessageHasSize(server, BOB, 1)
+      assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit))
+        .hasSize(1)
     }
 
     @Test
     def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndMatchingDeletionDateBeforeOrEquals(server: GuiceJamesServer): Unit = {
-      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-        .createMailbox(MailboxPath.inbox(BOB))
-
       val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
-      val deletedMessage: DeletedMessage = templateDeletedMessage(
-        messageId = randomMessageId,
-        mailboxId = mailboxId,
-        deletionDate = deletionDateWithinUserLimit)
-
-      server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage,
-          new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val deletedBefore = deletedMessage.getDeletionDate.plusHours(1)
-        .format(TIME_FORMATTER)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {
-             |						"deletedBefore": "$deletedBefore"
-             |					}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
-      .when
-        .post
-      .`then`
-        .extract()
-        .jsonPath()
-        .get("methodResponses[0][1].created.clientId1.id").toString
-
-      awaitRestoreTaskCompleted(taskId)
-
-      assertListAllMessageHasSize(server, BOB, 1)
+      val deletedBeforeMatching = deletionDateWithinUserLimit.plusHours(1).format(TIME_FORMATTER)
+      assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit, deletedBefore = Some(deletedBeforeMatching)))
+        .hasSize(1)
     }
 
     @Test
     def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNotMatchingDeletionDateBeforeOrEquals(server: GuiceJamesServer): Unit = {
-      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-        .createMailbox(MailboxPath.inbox(BOB))
-
       val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
-      val deletedMessage: DeletedMessage = templateDeletedMessage(
-        messageId = randomMessageId,
-        mailboxId = mailboxId,
-        deletionDate = deletionDateWithinUserLimit)
-
-      server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage,
-          new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val deletedBefore = deletedMessage.getDeletionDate.minusHours(1)
-        .format(TIME_FORMATTER)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {
-             |						"deletedBefore": "$deletedBefore"
-             |					}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
-      .when
-        .post
-      .`then`
-        .extract()
-        .jsonPath()
-        .get("methodResponses[0][1].created.clientId1.id").toString
-
-      awaitRestoreTaskCompleted(taskId)
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      val deletedBeforeNotMatching = deletionDateWithinUserLimit.minusHours(1).format(TIME_FORMATTER)
+      assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit, deletedBefore = Some(deletedBeforeNotMatching)))
+        .hasSize(0)
     }
 
     @Test
     def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndMatchingDeletionDateAfterOrEquals(server: GuiceJamesServer): Unit = {
-      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-        .createMailbox(MailboxPath.inbox(BOB))
-
       val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
-      val deletedMessage: DeletedMessage = templateDeletedMessage(
-        messageId = randomMessageId,
-        mailboxId = mailboxId,
-        deletionDate = deletionDateWithinUserLimit)
-
-      server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage,
-          new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val deletedAfter = deletedMessage.getDeletionDate.minusHours(1)
-        .format(TIME_FORMATTER)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {
-             |						"deletedAfter": "$deletedAfter"
-             |					}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
-      .when
-        .post
-      .`then`
-        .extract()
-        .jsonPath()
-        .get("methodResponses[0][1].created.clientId1.id").toString
-
-      awaitRestoreTaskCompleted(taskId)
-
-      assertListAllMessageHasSize(server, BOB, 1)
+      val deletedAfterMatching = deletionDateWithinUserLimit.minusHours(1).format(TIME_FORMATTER)
+      assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit, deletedAfter = Some(deletedAfterMatching)))
+        .hasSize(1)
     }
 
     @Test
     def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNotMatchingDeletionDateAfterOrEquals(server: GuiceJamesServer): Unit = {
-      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-        .createMailbox(MailboxPath.inbox(BOB))
-
       val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
-      val deletedMessage: DeletedMessage = templateDeletedMessage(
-        messageId = randomMessageId,
-        mailboxId = mailboxId,
-        deletionDate = deletionDateWithinUserLimit)
-
-      server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage,
-          new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val deletedAfter = deletedMessage.getDeletionDate.plusHours(1)
-        .format(TIME_FORMATTER)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {
-             |						"deletedAfter": "$deletedAfter"
-             |					}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
-      .when
-        .post
-      .`then`
-        .extract()
-        .jsonPath()
-        .get("methodResponses[0][1].created.clientId1.id").toString
-
-      awaitRestoreTaskCompleted(taskId)
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      val deletedAfterNotMatching = deletionDateWithinUserLimit.plusHours(1).format(TIME_FORMATTER)
+      assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit, deletedAfter = Some(deletedAfterNotMatching)))
+        .hasSize(0)
     }
   }
 
