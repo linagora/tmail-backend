@@ -570,11 +570,12 @@ trait EmailRecoveryActionGetMethodContract {
     taskId
   }
 
+  val USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS: Int = 15 // TODO: put that value in `DeletedMessageVault.properties` and fetch it from there
   def templateDeletedMessage(messageId: MessageId = randomMessageId,
                              mailboxId: MailboxId,
                              user: Username = BOB,
                              deliveryDate: ZonedDateTime = ZonedDateTime.parse("2014-10-30T14:12:00Z"),
-                             deletionDate: ZonedDateTime = ZonedDateTime.parse("2015-10-30T14:12:00Z"),
+                             deletionDate: ZonedDateTime = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS - 1),
                              sender: MaybeSender = MaybeSender.of(SENDER),
                              recipients: Seq[MailAddress] = Seq(RECIPIENT1, RECIPIENT2),
                              hasAttachment: Boolean = false,

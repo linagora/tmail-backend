@@ -125,6 +125,7 @@ object EmailRecoveryActionSetMethodContract {
 }
 
 trait EmailRecoveryActionSetMethodContract {
+  val USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS: Int = 15 // TODO: put that value in `DeletedMessageVault.properties` and fetch it from there
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -539,8 +540,6 @@ trait EmailRecoveryActionSetMethodContract {
 
   @Nested
   class CreationSetByDeletedDateQueryContract {
-    val USER_TIME_LIMIT_IN_DAYS: Int = 15 // TODO: put that value in `DeletedMessageVault.properties` and fetch it from there
-
     def requestWithoutRequirements(): String = {
       s"""{
          |	"using": [
@@ -643,21 +642,21 @@ trait EmailRecoveryActionSetMethodContract {
 
     @Test
     def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsOutOfUserLimitAndNoDeletionDateIsRequired(server: GuiceJamesServer): Unit = {
-      val deletionDateOutOfUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS + 1)
+      val deletionDateOutOfUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS + 1)
       assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateOutOfUserLimit))
         .hasSize(0)
     }
 
     @Test
     def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNoDeletionDateIsRequired(server: GuiceJamesServer): Unit = {
-      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
+      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS - 1)
       assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit))
         .hasSize(1)
     }
 
     @Test
     def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndMatchingDeletionDateBeforeOrEquals(server: GuiceJamesServer): Unit = {
-      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
+      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS - 1)
       val deletedBeforeMatching = deletionDateWithinUserLimit.plusHours(1).format(TIME_FORMATTER)
       assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit, deletedBefore = Some(deletedBeforeMatching)))
         .hasSize(1)
@@ -665,7 +664,7 @@ trait EmailRecoveryActionSetMethodContract {
 
     @Test
     def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNotMatchingDeletionDateBeforeOrEquals(server: GuiceJamesServer): Unit = {
-      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
+      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS - 1)
       val deletedBeforeNotMatching = deletionDateWithinUserLimit.minusHours(1).format(TIME_FORMATTER)
       assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit, deletedBefore = Some(deletedBeforeNotMatching)))
         .hasSize(0)
@@ -673,7 +672,7 @@ trait EmailRecoveryActionSetMethodContract {
 
     @Test
     def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndMatchingDeletionDateAfterOrEquals(server: GuiceJamesServer): Unit = {
-      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
+      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS - 1)
       val deletedAfterMatching = deletionDateWithinUserLimit.minusHours(1).format(TIME_FORMATTER)
       assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit, deletedAfter = Some(deletedAfterMatching)))
         .hasSize(1)
@@ -681,7 +680,7 @@ trait EmailRecoveryActionSetMethodContract {
 
     @Test
     def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNotMatchingDeletionDateAfterOrEquals(server: GuiceJamesServer): Unit = {
-      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_IN_DAYS - 1)
+      val deletionDateWithinUserLimit = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS - 1)
       val deletedAfterNotMatching = deletionDateWithinUserLimit.plusHours(1).format(TIME_FORMATTER)
       assertThat(restoreAndListAllMessageResult(server, BOB, deletionDateWithinUserLimit, deletedAfter = Some(deletedAfterNotMatching)))
         .hasSize(0)
@@ -2037,7 +2036,7 @@ trait EmailRecoveryActionSetMethodContract {
                              mailboxId: MailboxId,
                              user: Username = BOB,
                              deliveryDate: ZonedDateTime = ZonedDateTime.parse("2014-10-30T14:12:00Z"),
-                             deletionDate: ZonedDateTime = ZonedDateTime.parse("2015-10-30T14:12:00Z"),
+                             deletionDate: ZonedDateTime = ZonedDateTime.now().minusDays(USER_TIME_LIMIT_FOR_EMAIL_RESTORATION_IN_DAYS - 1),
                              sender: MaybeSender = MaybeSender.of(SENDER),
                              recipients: Seq[MailAddress] = Seq(RECIPIENT1, RECIPIENT2),
                              hasAttachment: Boolean = false,
