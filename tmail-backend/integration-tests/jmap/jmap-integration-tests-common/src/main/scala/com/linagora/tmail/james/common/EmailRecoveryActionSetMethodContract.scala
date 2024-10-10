@@ -542,7 +542,7 @@ trait EmailRecoveryActionSetMethodContract {
 
   @Nested
   class CreationSetByDeletedDateQueryContract {
-    def createRequest(): String = {
+    def createDefaultRequest(): String = {
       s"""{
          |	"using": [
          |		"urn:ietf:params:jmap:core",
@@ -636,7 +636,7 @@ trait EmailRecoveryActionSetMethodContract {
       val deletionDateOutOfHorizon = ZonedDateTime.now().minusDays(HORIZON_SPAN_IN_DAYS + 1)
       createDeletedMail(server, deletionDateOutOfHorizon)
       
-      val request: String = createRequest()
+      val request: String = createDefaultRequest()
 
       val taskId: String = sendRequestAndGetResponse(request)
       awaitRestoreTaskCompleted(taskId)
@@ -650,7 +650,7 @@ trait EmailRecoveryActionSetMethodContract {
       val deletionDateWithinHorizon = ZonedDateTime.now().minusDays(HORIZON_SPAN_IN_DAYS - 1)
       createDeletedMail(server, deletionDateWithinHorizon)
       
-      val request: String = createRequest()
+      val request: String = createDefaultRequest()
 
       val taskId: String = sendRequestAndGetResponse(request)
       awaitRestoreTaskCompleted(taskId)
@@ -716,7 +716,7 @@ trait EmailRecoveryActionSetMethodContract {
       awaitRestoreTaskCompleted(taskId)
 
       assertThat(listAllMessageResult(server, BOB))
-        .hasSize(1)
+        .hasSize(0)
     }
   }
 
@@ -1559,11 +1559,12 @@ trait EmailRecoveryActionSetMethodContract {
       .jsonPath()
       .get("methodResponses[0][1].created.clientId1.id").toString
 
+    val jmapMaxEmailRecoveryPerRequest: Int = 6
     `given`()
       .spec(webAdminApi)
       .get(taskId + "/await")
     .`then`()
-      .body("additionalInformation.successfulRestoreCount", Matchers.is(6))
+      .body("additionalInformation.successfulRestoreCount", Matchers.is(jmapMaxEmailRecoveryPerRequest))
       .body("additionalInformation.errorRestoreCount", Matchers.is(0))
   }
 

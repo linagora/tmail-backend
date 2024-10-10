@@ -160,10 +160,11 @@ class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManag
     val fifteenDaysAgo = ZonedDateTime.now().minusDays(15)
     val horizonCriterion = CriterionFactory.deletionDate().afterOrEquals(fifteenDaysAgo)
 
-    val modifiedQuery = Query.and(ImmutableList.builder()
-      .addAll(creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria)
-      .add(horizonCriterion)
-      .build())
+    val modifiedQuery = new Query(ImmutableList.builder()
+        .addAll(creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria)
+        .add(horizonCriterion)
+        .build(),
+      configuration.maxEmailRecoveryPerRequest)
 
     SMono.fromCallable(() => taskManager.submit(new DeletedMessagesVaultRestoreTask(restoreService, userToRestore, modifiedQuery)))
     .map(taskId => CreationSuccess(clientId, EmailRecoveryActionCreationResponse(taskId)))
