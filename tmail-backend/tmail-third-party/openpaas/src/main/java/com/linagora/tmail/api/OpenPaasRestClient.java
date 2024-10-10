@@ -1,5 +1,6 @@
 package com.linagora.tmail.api;
 
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
@@ -22,10 +23,11 @@ public class OpenPaasRestClient {
     private final ObjectMapper deserializer = new ObjectMapper();
 
     public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
-        String user = openPaasConfiguration.getWebClientUser();
-        String password = openPaasConfiguration.getWebClientPassword();
+        URL apiUrl = openPaasConfiguration.restClientUrl();
+        String user = openPaasConfiguration.restClientUser();
+        String password = openPaasConfiguration.restClientPassword();
         this.client = HttpClient.create()
-            .baseUrl(openPaasConfiguration.getWebClientBaseUrl().toString())
+            .baseUrl(apiUrl.toString())
             .headers(headers -> headers.add(AUTHORIZATION_HEADER, HttpUtils.createBasicAuthenticationToken(user, password)))
             .responseTimeout(RESPONSE_TIMEOUT);
     }
