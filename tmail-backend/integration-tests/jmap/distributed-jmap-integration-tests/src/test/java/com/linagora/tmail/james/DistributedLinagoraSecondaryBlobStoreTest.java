@@ -31,6 +31,7 @@ import org.apache.james.core.Username;
 import org.apache.james.jmap.JMAPUrls;
 import org.apache.james.jmap.JmapGuiceProbe;
 import org.apache.james.jmap.http.UserCredential;
+import org.apache.james.junit.categories.BasicFeature;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
@@ -40,6 +41,7 @@ import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -66,6 +68,7 @@ import io.restassured.config.RestAssuredConfig;
 import reactor.core.publisher.Flux;
 import reactor.util.retry.Retry;
 
+@Tag(BasicFeature.TAG)
 public class DistributedLinagoraSecondaryBlobStoreTest {
     static class BlobStoreProbe implements GuiceProbe {
         private final BlobStoreDAO firstBlobStoreDAO;
@@ -76,10 +79,10 @@ public class DistributedLinagoraSecondaryBlobStoreTest {
                               BlobId.Factory blobIdFactory,
                               MetricFactory metricFactory,
                               GaugeRegistry gaugeRegistry,
-                              S3BlobStoreConfiguration secondaryS3BlobStoreConfiguration) {
+                              BlobStoreConfiguration blobStoreConfiguration) {
             this.firstBlobStoreDAO = firstBlobStoreDAO;
-            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration, metricFactory, gaugeRegistry);
-            this.secondBlobStoreDAO = new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration, blobIdFactory);;
+            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(blobStoreConfiguration.maybeSecondaryS3BlobStoreConfiguration().get(), metricFactory, gaugeRegistry);
+            this.secondBlobStoreDAO = new S3BlobStoreDAO(s3SecondaryClientFactory, blobStoreConfiguration.maybeSecondaryS3BlobStoreConfiguration().get(), blobIdFactory);;
         }
 
         public BlobStoreDAO getFirstBlobStoreDAO() {
@@ -199,6 +202,7 @@ public class DistributedLinagoraSecondaryBlobStoreTest {
         BucketName bucketName = Flux.from(blobStoreProbe.getFirstBlobStoreDAO().listBuckets()).collectList().block().getFirst();
         List<BlobId> blobIds = Flux.from(blobStoreProbe.getFirstBlobStoreDAO().listBlobs(bucketName)).collectList().block();
         List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondBlobStoreDAO().listBlobs(bucketName)).collectList().block();
-        assertThat(blobIds).isEqualTo(blobIds2);
+        assertThat(blobIds).hasSameSizeAs(blobIds2);
+        assertThat(blobIds).hasSameElementsAs(blobIds2);
     }
 }
