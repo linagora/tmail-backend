@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap.method
 
-import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
+import java.time.{Duration, ZonedDateTime}
 
 import com.google.common.collect.ImmutableList
 import com.google.inject.multibindings.Multibinder
@@ -23,7 +24,7 @@ import org.apache.james.lifecycle.api.Startable
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNotFoundException}
-import org.apache.james.util.ReactorUtils
+import org.apache.james.util.{DurationParser, ReactorUtils}
 import org.apache.james.utils.PropertiesProvider
 import org.apache.james.vault.search.{CriterionFactory, Query}
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultRestoreTask.{AdditionalInformation => DeletedMessagesVaultRestoreTaskAdditionalInformation}
@@ -56,16 +57,23 @@ class EmailRecoveryActionMethodModule extends AbstractModule {
 object EmailRecoveryActionConfiguration {
 
   val DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST: Long = 5
+  val DEFAULT_USER_HORIZON: Duration = DurationParser.parse("15", ChronoUnit.DAYS)
 
   def from(propertiesProvider: PropertiesProvider): EmailRecoveryActionConfiguration = {
     val maxEmailRecoveryPerRequest: Option[Long] = Try(propertiesProvider.getConfiguration("jmap"))
       .map(configuration => configuration.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest"))
       .toOption
-    EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest = maxEmailRecoveryPerRequest.getOrElse(DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST))
+    val userHorizon: Option[Duration] = Try(propertiesProvider.getConfiguration("jmap"))
+      .map(configuration => configuration.getDuration("emailRecoveryAction.userHorizon"))
+      .toOption
+
+    EmailRecoveryActionConfiguration(
+      maxEmailRecoveryPerRequest = maxEmailRecoveryPerRequest.getOrElse(DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST),
+      userHorizon = userHorizon.getOrElse(DEFAULT_USER_HORIZON))
   }
 }
 
-case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long)
+case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long, userHorizon: Duration)
 
 class EmailRecoveryActionSetMethod @Inject()(val createPerformer: EmailRecoveryActionSetCreatePerformer,
                                              val updatePerformer: EmailRecoveryActionSetUpdatePerformer,
@@ -157,8 +165,13 @@ class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManag
     } yield parsedRequest
 
   private def submitTask(clientId: EmailRecoveryActionCreationId, userToRestore: Username, creationRequest: EmailRecoveryActionCreationRequest): SMono[CreationResult] = {
-    val fifteenDaysAgo = ZonedDateTime.now().minusDays(15)
-    val horizonCriterion = CriterionFactory.deletionDate().afterOrEquals(fifteenDaysAgo)
+    val horizonCriterion = LazyList(configuration)
+      .map(_.userHorizon.toDays)
+      .map(ZonedDateTime.now().minusDays)
+      .map(CriterionFactory.deletionDate().afterOrEquals)
+      .head
+
+    print(configuration.userHorizon.toDays)
 
     val modifiedQuery = new Query(ImmutableList.builder()
         .addAll(creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria)
