@@ -34,9 +34,12 @@ import scala.jdk.CollectionConverters._
 
 object EmailRecoveryActionGetMethodContract {
   private var webAdminApi: RequestSpecification = _
+  val HORIZON_SPAN_IN_DAYS: Int = 15
 }
 
 trait EmailRecoveryActionGetMethodContract {
+  import EmailRecoveryActionSetMethodContract.HORIZON_SPAN_IN_DAYS
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
@@ -574,7 +577,7 @@ trait EmailRecoveryActionGetMethodContract {
                              mailboxId: MailboxId,
                              user: Username = BOB,
                              deliveryDate: ZonedDateTime = ZonedDateTime.parse("2014-10-30T14:12:00Z"),
-                             deletionDate: ZonedDateTime = ZonedDateTime.parse("2015-10-30T14:12:00Z"),
+                             deletionDate: ZonedDateTime = ZonedDateTime.now().minusDays(HORIZON_SPAN_IN_DAYS - 1),
                              sender: MaybeSender = MaybeSender.of(SENDER),
                              recipients: Seq[MailAddress] = Seq(RECIPIENT1, RECIPIENT2),
                              hasAttachment: Boolean = false,
