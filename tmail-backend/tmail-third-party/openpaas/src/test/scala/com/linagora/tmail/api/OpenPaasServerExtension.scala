@@ -1,6 +1,7 @@
 package com.linagora.tmail.api
 
-import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID}
+import com.linagora.tmail.HttpUtils
+import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, REST_CLIENT_PASSWORD, REST_CLIENT_USER}
 import org.junit.jupiter.api.extension.{AfterEachCallback, BeforeEachCallback, ExtensionContext, ParameterContext, ParameterResolver}
 import org.mockserver.configuration.ConfigurationProperties
 import org.mockserver.integration.ClientAndServer
@@ -14,6 +15,8 @@ import java.net.{URI, URL}
 object OpenPaasServerExtension {
   val ALICE_USER_ID: String = "abc0a663bdaffe0026290xyz"
   val ALICE_EMAIL: String = "adoe@linagora.com"
+  val REST_CLIENT_USER = "admin"
+  val REST_CLIENT_PASSWORD = "admin"
 }
 
 class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback with ParameterResolver{
@@ -22,12 +25,12 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
 
   override def beforeEach(context: ExtensionContext): Unit = {
     mockServer = startClientAndServer(0)
-    ConfigurationProperties.logLevel("INFO")
+    ConfigurationProperties.logLevel("DEBUG")
 
     mockServer.when(
       request.withPath(s"/users/$ALICE_USER_ID")
         .withMethod("GET")
-        .withHeader(string("Authorization"), string("Basic YWRtaW46YWRtaW4="))
+        .withHeader(string("Authorization"), string(HttpUtils.createBasicAuthenticationToken(REST_CLIENT_USER, REST_CLIENT_PASSWORD)))
     ).respond(response.withStatusCode(200)
     .withBody(s"""{
                 |  "_id":  "$ALICE_USER_ID",

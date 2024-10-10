@@ -1,50 +1,57 @@
 package com.linagora.tmail.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.linagora.tmail.OpenPaasConfiguration;
-
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
+import java.util.Optional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.linagora.tmail.HttpUtils;
+import com.linagora.tmail.OpenPaasConfiguration;
+
+import io.netty.handler.codec.http.HttpResponseStatus;
 import reactor.core.publisher.Mono;
+import reactor.netty.ByteBufMono;
 import reactor.netty.http.client.HttpClient;
+import reactor.netty.http.client.HttpClientResponse;
 
 public class OpenPaasRestClient {
     private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String AUTHORIZATION_HEADER = "Authorization";
-    private final OpenPaasConfiguration openPaasConfiguration;
     private final HttpClient client;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper deserializer = new ObjectMapper();
 
     public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
-        this.openPaasConfiguration = openPaasConfiguration;
+        String user = openPaasConfiguration.getWebClientUser();
+        String password = openPaasConfiguration.getWebClientPassword();
         this.client = HttpClient.create()
             .baseUrl(openPaasConfiguration.getWebClientBaseUrl().toString())
-            .headers(headers -> headers.add(AUTHORIZATION_HEADER, basicAuthenticationHeaderValue()))
+            .headers(headers -> headers.add(AUTHORIZATION_HEADER, HttpUtils.createBasicAuthenticationToken(user, password)))
             .responseTimeout(RESPONSE_TIMEOUT);
     }
 
-    public Mono<OpenPaasUserResponse> getUserById(String openPaasUserId) {
+    public Mono<Optional<OpenPaasUserResponse>> getUserById(String openPaasUserId) {
         return client.get()
             .uri(String.format("/users/%s", openPaasUserId))
-            .responseContent()
-            .aggregate()
-            .asString(StandardCharsets.UTF_8)
-            .handle((content, sink) -> {
-                try {
-                    sink.next(objectMapper.readValue(content, OpenPaasUserResponse.class));
-                } catch (JsonProcessingException e) {
-                    sink.error(new RuntimeException(e));
-                }
-            });
+            .responseSingle(this::afterHTTPResponseGetUserByIdHandler);
     }
 
-    private String basicAuthenticationHeaderValue() {
-        String userPassword = openPaasConfiguration.getWebClientUser() + ":" + openPaasConfiguration.getWebClientPassword();
-        byte[] base64UserPassword = Base64.getEncoder().encode(userPassword.getBytes(StandardCharsets.UTF_8));
-
-        return "Basic " + new String(base64UserPassword, StandardCharsets.UTF_8);
+    private Mono<Optional<OpenPaasUserResponse>> afterHTTPResponseGetUserByIdHandler(HttpClientResponse httpClientResponse, ByteBufMono dataBuf) {
+        return Mono.just(httpClientResponse.status())
+            .filter(httpStatus -> httpStatus.equals(HttpResponseStatus.OK))
+            .flatMap(httpStatus -> dataBuf.asByteArray())
+            .map(content -> Optional.of(parseUserResponseContent(content)))
+            .onErrorResume(e -> Mono.error(new OpenPaasRestClientException("Bad response body format", e)))
+            .switchIfEmpty(Mono.just(httpClientResponse.status())
+                .filter(HttpResponseStatus.NOT_FOUND::equals)
+                .flatMap(httpNotFound -> Mono.just(Optional.empty())));
     }
 
+    private OpenPaasUserResponse parseUserResponseContent(byte[] contentBytes) {
+        try {
+            return deserializer.readValue(new String(contentBytes, StandardCharsets.UTF_8), OpenPaasUserResponse.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
