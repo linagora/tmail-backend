@@ -60,11 +60,13 @@ object EmailRecoveryActionConfiguration {
   val DEFAULT_USER_HORIZON: Duration = DurationParser.parse("15", ChronoUnit.DAYS)
 
   def from(propertiesProvider: PropertiesProvider): EmailRecoveryActionConfiguration = {
-    val maxEmailRecoveryPerRequest: Option[Long] = Try(propertiesProvider.getConfiguration("jmap"))
-      .map(configuration => configuration.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest"))
+    val config = Try(propertiesProvider.getConfiguration("jmap"))
+
+    val maxEmailRecoveryPerRequest: Option[Long] = config
+      .map(_.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest"))
       .toOption
     val userHorizon: Option[Duration] = Try(propertiesProvider.getConfiguration("jmap"))
-      .map(configuration => configuration.getDuration("emailRecoveryAction.userHorizon"))
+      .map(_.getDuration("emailRecoveryAction.userHorizon"))
       .toOption
 
     EmailRecoveryActionConfiguration(
