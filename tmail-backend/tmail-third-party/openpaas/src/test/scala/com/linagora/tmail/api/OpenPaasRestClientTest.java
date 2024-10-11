@@ -46,8 +46,7 @@ public class OpenPaasRestClientTest {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
             OpenPaasServerExtension.BAD_USER(),
-            OpenPaasServerExtension.BAD_PASSWORD()
-        );
+            OpenPaasServerExtension.BAD_PASSWORD());
 
         restClient = new OpenPaasRestClient(openPaasConfig);
 
