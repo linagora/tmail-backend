@@ -39,7 +39,7 @@ public class OpenPaasRestClientTest {
 
     @Test
     void shouldReturnEmptyMonoWhenUserWithIdNotFound() {
-        assertThat(restClient.retrieveMailAddress(BAD_USER_ID).hasElement().block()).isFalse();
+        assertThat(restClient.retrieveMailAddress(BAD_USER_ID).blockOptional()).isEmpty();
     }
 
     @Test
