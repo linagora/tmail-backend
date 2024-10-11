@@ -23,11 +23,11 @@ object OpenPaasServerExtension {
   val BAD_AUTHENTICATION_TOKEN: String = HttpUtils.createBasicAuthenticationToken(BAD_USER, BAD_PASSWORD)
 }
 
-class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback with ParameterResolver{
+class OpenPaasServerExtension extends BeforeAllCallback with AfterAllCallback with ParameterResolver{
 
   var mockServer: ClientAndServer = _
 
-  override def beforeEach(context: ExtensionContext): Unit = {
+  override def beforeAll(context: ExtensionContext): Unit = {
     mockServer = startClientAndServer(0)
     ConfigurationProperties.logLevel("DEBUG")
 
@@ -86,7 +86,7 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
                 |}""".stripMargin))
   }
 
-  override def afterEach(context: ExtensionContext): Unit = mockServer.close()
+  override def afterAll(context: ExtensionContext): Unit = mockServer.close()
 
   override def supportsParameter(parameterContext: ParameterContext, extensionContext: ExtensionContext): Boolean =
     parameterContext.getParameter.getType eq classOf[ClientAndServer]
