@@ -15,6 +15,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.mock-server</groupId>
             <artifactId>mockserver-netty</artifactId>
             <scope>test</scope>

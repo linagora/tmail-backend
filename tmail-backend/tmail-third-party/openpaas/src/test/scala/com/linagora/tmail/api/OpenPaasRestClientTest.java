@@ -1,7 +1,11 @@
 package com.linagora.tmail.api;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import jakarta.mail.internet.AddressException;
+
+import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -19,25 +23,36 @@ public class OpenPaasRestClientTest {
     void setup() {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
-            OpenPaasServerExtension.REST_CLIENT_USER(),
-            OpenPaasServerExtension.REST_CLIENT_PASSWORD()
+            OpenPaasServerExtension.GOOD_USER(),
+            OpenPaasServerExtension.GOOD_PASSWORD()
         );
 
         restClient = new OpenPaasRestClient(openPaasConfig);
     }
 
     @Test
-    void shouldReturnUserResponseWhenUserIdAndAuthenticationTokenIsCorrect() {
-        assertThat(restClient.getUserById(OpenPaasServerExtension.ALICE_USER_ID()).block()).isPresent();
+    void shouldReturnUserMailAddressWhenUserIdAndAuthenticationTokenIsCorrect()
+        throws AddressException {
+        assertThat(restClient.retrieveMailAddress(OpenPaasServerExtension.ALICE_USER_ID()).block())
+            .isEqualTo(new MailAddress(OpenPaasServerExtension.ALICE_EMAIL()));
     }
 
     @Test
-    void shouldReturnOptionalEmptyUserWithIdNotFound() {
-        assertThat(restClient.getUserById(BAD_USER_ID).block()).isEmpty();
+    void shouldReturnEmptyMonoWhenUserWithIdNotFound() {
+        assertThat(restClient.retrieveMailAddress(BAD_USER_ID).hasElement().block()).isFalse();
     }
 
     @Test
-    void shouldReturnStatusCode401WhenAuthenticationTokenWasInvalid() {
+    void shouldThrowExceptionOnErrorStatusCode() {
+        OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
+            openPaasServerExtension.getBaseUrl(),
+            OpenPaasServerExtension.BAD_USER(),
+            OpenPaasServerExtension.BAD_PASSWORD()
+        );
 
+        restClient = new OpenPaasRestClient(openPaasConfig);
+
+        assertThatThrownBy(() -> restClient.retrieveMailAddress(OpenPaasServerExtension.ALICE_USER_ID()).block())
+            .isInstanceOf(OpenPaasRestClientException.class);
     }
 }

@@ -1,8 +1,8 @@
 package com.linagora.tmail.api
 
 import com.linagora.tmail.HttpUtils
-import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, REST_CLIENT_PASSWORD, REST_CLIENT_USER}
-import org.junit.jupiter.api.extension.{AfterEachCallback, BeforeEachCallback, ExtensionContext, ParameterContext, ParameterResolver}
+import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, GOOD_AUTHENTICATION_TOKEN}
+import org.junit.jupiter.api.extension._
 import org.mockserver.configuration.ConfigurationProperties
 import org.mockserver.integration.ClientAndServer
 import org.mockserver.integration.ClientAndServer.startClientAndServer
@@ -15,8 +15,12 @@ import java.net.{URI, URL}
 object OpenPaasServerExtension {
   val ALICE_USER_ID: String = "abc0a663bdaffe0026290xyz"
   val ALICE_EMAIL: String = "adoe@linagora.com"
-  val REST_CLIENT_USER = "admin"
-  val REST_CLIENT_PASSWORD = "admin"
+  val GOOD_USER = "admin"
+  val GOOD_PASSWORD = "admin"
+  val BAD_USER = "BAD_USER"
+  val BAD_PASSWORD = "BAD_PASSWORD"
+  val GOOD_AUTHENTICATION_TOKEN: String = HttpUtils.createBasicAuthenticationToken(GOOD_USER, GOOD_PASSWORD)
+  val BAD_AUTHENTICATION_TOKEN: String = HttpUtils.createBasicAuthenticationToken(BAD_USER, BAD_PASSWORD)
 }
 
 class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback with ParameterResolver{
@@ -30,7 +34,13 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
     mockServer.when(
       request.withPath(s"/users/$ALICE_USER_ID")
         .withMethod("GET")
-        .withHeader(string("Authorization"), string(HttpUtils.createBasicAuthenticationToken(REST_CLIENT_USER, REST_CLIENT_PASSWORD)))
+        .withHeader(string("Authorization"), string(BAD_AUTHENTICATION_TOKEN))
+    ).respond(response.withStatusCode(401))
+
+    mockServer.when(
+      request.withPath(s"/users/$ALICE_USER_ID")
+        .withMethod("GET")
+        .withHeader(string("Authorization"), string(GOOD_AUTHENTICATION_TOKEN))
     ).respond(response.withStatusCode(200)
     .withBody(s"""{
                 |  "_id":  "$ALICE_USER_ID",
