@@ -34,8 +34,8 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
     mockServer.when(
       request.withPath(s"/users/$ALICE_USER_ID")
         .withMethod("GET")
-        .withHeader(string("Authorization"), string(BAD_AUTHENTICATION_TOKEN))
-    ).respond(response.withStatusCode(401))
+        .withHeader(string("Authorization"), string(BAD_AUTHENTICATION_TOKEN)))
+        .respond(response.withStatusCode(401))
 
     mockServer.when(
       request.withPath(s"/users/$ALICE_USER_ID")
