@@ -57,7 +57,7 @@ class EmailRecoveryActionMethodModule extends AbstractModule {
 object EmailRecoveryActionConfiguration {
 
   val DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST: Long = 5
-  val DEFAULT_USER_HORIZON: Duration = DurationParser.parse("15", ChronoUnit.DAYS)
+  val DEFAULT_RESTORATION_HORIZON: Duration = DurationParser.parse("15", ChronoUnit.DAYS)
 
   def from(propertiesProvider: PropertiesProvider): EmailRecoveryActionConfiguration = {
     val config = Try(propertiesProvider.getConfiguration("jmap"))
@@ -65,17 +65,18 @@ object EmailRecoveryActionConfiguration {
     val maxEmailRecoveryPerRequest: Option[Long] = config
       .map(_.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest"))
       .toOption
-    val userHorizon: Option[Duration] = Try(propertiesProvider.getConfiguration("jmap"))
-      .map(_.getDuration("emailRecoveryAction.userHorizon"))
+    val restorationHorizon: Option[Duration] = config
+      .map(_.getString("emailRecoveryAction.restorationHorizon"))
+      .map(DurationParser.parse)
       .toOption
 
     EmailRecoveryActionConfiguration(
       maxEmailRecoveryPerRequest = maxEmailRecoveryPerRequest.getOrElse(DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST),
-      userHorizon = userHorizon.getOrElse(DEFAULT_USER_HORIZON))
+      restorationHorizon = restorationHorizon.getOrElse(DEFAULT_RESTORATION_HORIZON))
   }
 }
 
-case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long, userHorizon: Duration)
+case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long, restorationHorizon: Duration)
 
 class EmailRecoveryActionSetMethod @Inject()(val createPerformer: EmailRecoveryActionSetCreatePerformer,
                                              val updatePerformer: EmailRecoveryActionSetUpdatePerformer,
@@ -167,13 +168,8 @@ class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManag
     } yield parsedRequest
 
   private def submitTask(clientId: EmailRecoveryActionCreationId, userToRestore: Username, creationRequest: EmailRecoveryActionCreationRequest): SMono[CreationResult] = {
-    val horizonCriterion = LazyList(configuration)
-      .map(_.userHorizon.toDays)
-      .map(ZonedDateTime.now().minusDays)
-      .map(CriterionFactory.deletionDate().afterOrEquals)
-      .head
-
-    print(configuration.userHorizon.toDays)
+    val horizon: ZonedDateTime = ZonedDateTime.now().minus(configuration.restorationHorizon)
+    val horizonCriterion = CriterionFactory.deletionDate().afterOrEquals(horizon)
 
     val modifiedQuery = new Query(ImmutableList.builder()
         .addAll(creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria)
