@@ -37,6 +37,7 @@
                                 <jvmFlag>-XX:+ExitOnOutOfMemoryError</jvmFlag>
                                 <jvmFlag>-Dlogback.configurationFile=/root/conf/logback.xml</jvmFlag>
                                 <jvmFlag>-Dworking.directory=/root/</jvmFlag>
+                                <jvmFlag>-Dextra.props=/root/conf/jvm.properties</jvmFlag>
                             </jvmFlags>
                         </container>
                     </configuration>
