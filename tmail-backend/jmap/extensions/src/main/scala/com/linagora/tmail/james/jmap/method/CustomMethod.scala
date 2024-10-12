@@ -26,6 +26,7 @@ object CapabilityIdentifier {
   val LINAGORA_LABEL: CapabilityIdentifier = "com:linagora:params:jmap:labels"
   val LINAGORA_SETTINGS: CapabilityIdentifier = "com:linagora:params:jmap:settings"
   val LINAGORA_PUBLIC_ASSETS: CapabilityIdentifier = "com:linagora:params:jmap:public:assets"
+  val LINAGORA_CONTACT_SUPPORT: CapabilityIdentifier = "com:linagora:params:jmap:support"
 }
 
 case object CustomCapabilityProperties extends CapabilityProperties {
