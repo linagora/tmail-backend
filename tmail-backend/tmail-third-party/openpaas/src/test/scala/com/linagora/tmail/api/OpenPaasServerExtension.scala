@@ -1,5 +1,7 @@
 package com.linagora.tmail.api
 
+import java.net.{URI, URL}
+
 import com.linagora.tmail.HttpUtils
 import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, GOOD_AUTHENTICATION_TOKEN}
 import org.junit.jupiter.api.extension._
@@ -10,7 +12,6 @@ import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import org.mockserver.model.NottableString.string
 
-import java.net.{URI, URL}
 
 object OpenPaasServerExtension {
   val ALICE_USER_ID: String = "abc0a663bdaffe0026290xyz"
