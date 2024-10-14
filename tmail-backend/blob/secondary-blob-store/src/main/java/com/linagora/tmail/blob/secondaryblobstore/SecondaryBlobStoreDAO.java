@@ -53,7 +53,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     public InputStream read(BucketName bucketName, BlobId blobId) throws ObjectStoreIOException, ObjectNotFoundException {
         try {
             return firstBlobStoreDAO.read(bucketName, blobId);
-        } catch (ObjectStoreException ex) {
+        } catch (Exception ex) {
             LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
             return secondBlobStoreDAO.read(bucketName, blobId);
         }
@@ -62,7 +62,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Mono<InputStream> readReactive(BucketName bucketName, BlobId blobId) {
         return Mono.from(firstBlobStoreDAO.readReactive(bucketName, blobId))
-            .onErrorResume(ObjectStoreException.class, ex -> {
+            .onErrorResume(ex -> {
                 LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
                 return Mono.from(secondBlobStoreDAO.readReactive(bucketName, blobId));
             });
@@ -71,7 +71,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Mono<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
         return Mono.from(firstBlobStoreDAO.readBytes(bucketName, blobId))
-            .onErrorResume(ObjectStoreException.class, ex -> {
+            .onErrorResume(ex -> {
                 LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
                 return Mono.from(secondBlobStoreDAO.readBytes(bucketName, blobId));
             });

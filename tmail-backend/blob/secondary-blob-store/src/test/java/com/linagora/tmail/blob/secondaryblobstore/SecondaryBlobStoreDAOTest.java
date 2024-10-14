@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Optional;
 
 import org.apache.james.blob.api.BlobStoreDAO;
@@ -66,6 +67,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
             .region(s3Container.dockerAwsS3().region())
             .uploadRetrySpec(Optional.of(Retry.backoff(3, java.time.Duration.ofSeconds(1))
                 .filter(UPLOAD_RETRY_EXCEPTION_PREDICATE)))
+            .readTimeout(Optional.of(Duration.ofMillis(500)))
             .build();
 
         return new S3BlobStoreDAO(new S3ClientFactory(s3Configuration, new RecordingMetricFactory(), new NoopGaugeRegistry()), s3Configuration, new TestBlobId.Factory());
@@ -73,6 +75,13 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
     @AfterEach
     void tearDown() {
+        if (primaryS3.isPaused()) {
+            primaryS3.unpause();
+        }
+        if (secondaryS3.isPaused()) {
+            secondaryS3.unpause();
+        }
+
         firstBlobStoreDAO.deleteAllBuckets().block();
         secondBlobStoreDAO.deleteAllBuckets().block();
     }
@@ -104,6 +113,17 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     @Test
     public void readReactiveShouldReturnDataWhenBlobDoesNotExistInTheFirstBlobStore() {
         Mono.from(secondBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+
+        assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+            .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
+    }
+
+    @Test
+    public void readReactiveShouldReturnDataWhenFirstBlobStoreIsDown() {
+        Mono.from(firstBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(secondBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+
+        primaryS3.pause();
 
         assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
