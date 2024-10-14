@@ -25,7 +25,7 @@ public class MemoryLinagoraContactSupportCapabilityTest implements MemoryLinagor
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 
 }
