@@ -623,9 +623,9 @@ trait EmailRecoveryActionSetMethodContract {
     private def sendRequestAndGetResponse(request: String): String = {
       `given`
         .body(request)
-        .when
+      .when
         .post
-        .`then`
+      .`then`
         .extract()
         .jsonPath()
         .get("methodResponses[0][1].created.clientId1.id").toString
