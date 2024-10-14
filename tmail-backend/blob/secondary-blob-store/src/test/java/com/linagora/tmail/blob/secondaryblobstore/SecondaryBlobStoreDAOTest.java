@@ -94,7 +94,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     }
 
     @Test
-    public void readShouldReturnInputStreamWhenFailToReadFromFirstBlobStore() {
+    public void readShouldReturnInputStreamWhenBlobDoesNotExistInTheFirstBlobStore() {
         Mono.from(secondBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
         assertThat(testee.read(TEST_BUCKET_NAME, TEST_BLOB_ID))
@@ -102,7 +102,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     }
 
     @Test
-    public void readReactiveShouldReturnDataWhenFailToReadFromFirstBlobStore() {
+    public void readReactiveShouldReturnDataWhenBlobDoesNotExistInTheFirstBlobStore() {
         Mono.from(secondBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
         assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
@@ -110,7 +110,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     }
 
     @Test
-    public void readBytesShouldReturnDataWhenFailToReadFromFirstBlobStore() {
+    public void readBytesShouldReturnDataWhenBlobDoesNotExistInTheFirstBlobStore() {
         Mono.from(secondBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
         assertThat(Mono.from(testee.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
