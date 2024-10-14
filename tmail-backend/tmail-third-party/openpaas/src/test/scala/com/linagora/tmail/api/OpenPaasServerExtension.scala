@@ -1,9 +1,8 @@
 package com.linagora.tmail.api
 
 import java.net.{URI, URL}
-
 import com.linagora.tmail.HttpUtils
-import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, GOOD_AUTHENTICATION_TOKEN}
+import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, GOOD_AUTHENTICATION_TOKEN, LOGGER}
 import org.junit.jupiter.api.extension._
 import org.mockserver.configuration.ConfigurationProperties
 import org.mockserver.integration.ClientAndServer
@@ -11,6 +10,7 @@ import org.mockserver.integration.ClientAndServer.startClientAndServer
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import org.mockserver.model.NottableString.string
+import org.slf4j.{Logger, LoggerFactory}
 
 
 object OpenPaasServerExtension {
@@ -22,10 +22,10 @@ object OpenPaasServerExtension {
   val BAD_PASSWORD = "BAD_PASSWORD"
   val GOOD_AUTHENTICATION_TOKEN: String = HttpUtils.createBasicAuthenticationToken(GOOD_USER, GOOD_PASSWORD)
   val BAD_AUTHENTICATION_TOKEN: String = HttpUtils.createBasicAuthenticationToken(BAD_USER, BAD_PASSWORD)
+  private val LOGGER: Logger = LoggerFactory.getLogger(OpenPaasServerExtension.getClass)
 }
 
 class OpenPaasServerExtension extends BeforeAllCallback with AfterAllCallback with ParameterResolver{
-
   var mockServer: ClientAndServer = _
 
   override def beforeAll(context: ExtensionContext): Unit = {
@@ -87,7 +87,13 @@ class OpenPaasServerExtension extends BeforeAllCallback with AfterAllCallback wi
                 |}""".stripMargin))
   }
 
-  override def afterAll(context: ExtensionContext): Unit = mockServer.close()
+  override def afterAll(context: ExtensionContext): Unit = {
+    if (mockServer == null) {
+      LOGGER.warn("Mock server is null")
+    } else {
+      mockServer.close()
+    }
+  }
 
   override def supportsParameter(parameterContext: ParameterContext, extensionContext: ExtensionContext): Boolean =
     parameterContext.getParameter.getType eq classOf[ClientAndServer]
