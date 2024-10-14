@@ -128,6 +128,7 @@ import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandr
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
+import com.linagora.tmail.event.TmailEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
@@ -310,7 +311,9 @@ public class DistributedServer {
             new ScheduledReconnectionHandler.Module(),
             new TasksHeathCheckModule(),
             new TeamMailboxModule(),
-            new TMailMailboxSortOrderProviderModule());
+            new TMailMailboxSortOrderProviderModule(),
+            new TmailEventModule(),
+            new TmailEventDeadLettersModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
