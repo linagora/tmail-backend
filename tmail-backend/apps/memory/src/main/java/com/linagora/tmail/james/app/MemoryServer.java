@@ -75,7 +75,6 @@ import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
-import com.linagora.tmail.james.jmap.method.SupportEmailGetMethodModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsMemoryModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;

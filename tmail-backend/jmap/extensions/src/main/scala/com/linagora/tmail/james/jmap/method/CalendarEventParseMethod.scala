@@ -46,7 +46,6 @@ class CalendarCapabilitiesModule extends AbstractModule {
 class CalendarEventMethodModule extends AbstractModule {
   override def configure(): Unit = {
     install(new CalendarCapabilitiesModule())
-    install(new SupportEmailGetMethodModule())
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[CalendarEventParseMethod])
@@ -56,9 +55,6 @@ class CalendarEventMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[CalendarEventRejectMethod])
-    Multibinder.newSetBinder(binder(), classOf[Method])
-      .addBinding()
-      .to(classOf[SupportEmailGetMethod])
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[CalendarEventMaybeMethod])
