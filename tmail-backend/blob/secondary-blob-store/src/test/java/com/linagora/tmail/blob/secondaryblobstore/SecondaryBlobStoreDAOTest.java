@@ -36,6 +36,7 @@ import com.google.common.io.ByteSource;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
+import software.amazon.awssdk.core.exception.SdkClientException;
 
 public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     static DockerAwsS3Container primaryS3 = new DockerAwsS3Container();
@@ -127,6 +128,30 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
         assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
+    }
+
+    @Test
+    public void readReactiveShouldReturnDataWhenSecondBlobStoreIsDown() {
+        Mono.from(firstBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(secondBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+
+        secondaryS3.pause();
+
+        assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+            .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
+    }
+
+    @Test
+    public void readReactiveShouldThrowExceptionWhenBothBlobStoreIsDown() {
+        Mono.from(firstBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(secondBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+
+        primaryS3.pause();
+        secondaryS3.pause();
+
+        assertThatThrownBy(() -> Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+            .isInstanceOf(SdkClientException.class)
+            .hasMessage("Unable to execute HTTP request: Read timed out");
     }
 
     @Test
