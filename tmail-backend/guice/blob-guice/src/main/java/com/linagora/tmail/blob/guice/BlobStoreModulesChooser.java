@@ -14,6 +14,7 @@ import org.apache.james.blob.objectstorage.aws.JamesS3MetricPublisher;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
+import org.apache.james.events.EventBus;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTO;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTOModule;
@@ -39,25 +40,30 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
+import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import com.linagora.tmail.blob.blobid.list.BlobIdList;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreModule;
+import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
+import com.linagora.tmail.common.event.TmailInjectNameConstants;
+import com.linagora.tmail.common.event.TmailReactiveGroupEventListener;
 
 public class BlobStoreModulesChooser {
-    public static final String INITIAL = "initial";
+    public static final String INITIAL_BLOBSTORE_DAO = "initial_blobstore_dao";
     public static final String MAYBE_SECONDARY_BLOBSTORE = "maybe_secondary_blob_store_dao";
     public static final String MAYBE_ENCRYPTION_BLOBSTORE = "maybe_encryption_blob_store_dao";
     public static final String MAYBE_SINGLE_SAVE_BLOBSTORE = "maybe_single_save_blob_store_dao";
+    public static final String SECOND_BLOB_STORE_DAO = "second_blob_store_dao";
 
     static class BaseObjectStorageModule extends AbstractModule {
         @Override
         protected void configure() {
             install(new S3BucketModule());
             install(new S3BlobStoreModule());
-            bind(BlobStoreDAO.class).annotatedWith(Names.named(INITIAL))
+            bind(BlobStoreDAO.class).annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
                 .to(S3BlobStoreDAO.class);
         }
 
@@ -72,7 +78,7 @@ public class BlobStoreModulesChooser {
         @Provides
         @Singleton
         @Named(MAYBE_SECONDARY_BLOBSTORE)
-        BlobStoreDAO provideNoSecondaryBlobStoreDAO(@Named(INITIAL) BlobStoreDAO blobStoreDAO) {
+        BlobStoreDAO provideNoSecondaryBlobStoreDAO(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
     }
@@ -86,15 +92,28 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
-        @Named(MAYBE_SECONDARY_BLOBSTORE)
-        BlobStoreDAO provideSecondaryBlobStoreDAO(@Named(INITIAL) BlobStoreDAO firstBlobStoreDAO,
-                                                  BlobId.Factory blobIdFactory,
-                                                  MetricFactory metricFactory,
-                                                  GaugeRegistry gaugeRegistry) {
+        @Named(SECOND_BLOB_STORE_DAO)
+        BlobStoreDAO getSecondaryS3BlobStoreDAO(BlobId.Factory blobIdFactory,
+                                                MetricFactory metricFactory,
+                                                GaugeRegistry gaugeRegistry) {
             S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration,
                 () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
-            S3BlobStoreDAO secondaryBlobStoreDAO = new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration, blobIdFactory);
-            return new SecondaryBlobStoreDAO(firstBlobStoreDAO, secondaryBlobStoreDAO);
+            return new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration, blobIdFactory);
+        }
+
+        @ProvidesIntoSet
+        TmailReactiveGroupEventListener provideFailedBlobOperationListener(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO firstBlobStoreDAO,
+                                                                           @Named(SECOND_BLOB_STORE_DAO) BlobStoreDAO secondBlobStoreDAO) {
+            return new FailedBlobOperationListener(firstBlobStoreDAO, secondBlobStoreDAO);
+        }
+
+        @Provides
+        @Singleton
+        @Named(MAYBE_SECONDARY_BLOBSTORE)
+        BlobStoreDAO provideSecondaryBlobStoreDAO(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO firstBlobStoreDAO,
+                                                  @Named(SECOND_BLOB_STORE_DAO) BlobStoreDAO secondBlobStoreDAO,
+                                                  @Named(TmailInjectNameConstants.TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus) {
+            return new SecondaryBlobStoreDAO(firstBlobStoreDAO, secondBlobStoreDAO, eventBus);
         }
     }
 
