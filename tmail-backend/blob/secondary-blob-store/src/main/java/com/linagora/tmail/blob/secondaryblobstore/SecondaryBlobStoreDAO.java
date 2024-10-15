@@ -16,6 +16,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.io.ByteSource;
 
@@ -161,5 +162,15 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
             LOGGER.warn("Failure to save in primary blobStore", savingStatuses.get(0).e.get());
         }
         sink.complete();
+    }
+
+    @VisibleForTesting
+    public BlobStoreDAO getFirstBlobStoreDAO() {
+        return firstBlobStoreDAO;
+    }
+
+    @VisibleForTesting
+    public BlobStoreDAO getSecondBlobStoreDAO() {
+        return secondBlobStoreDAO;
     }
 }
