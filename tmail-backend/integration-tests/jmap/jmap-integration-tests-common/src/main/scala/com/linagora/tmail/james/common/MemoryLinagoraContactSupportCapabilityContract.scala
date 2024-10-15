@@ -30,8 +30,8 @@ trait MemoryLinagoraContactSupportCapabilityContract {
       .when()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .get("/session")
+      .prettyPeek()
       .`then`
-      .log().all()
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("capabilities", hasKey("com:linagora:params:jmap:contact:support"))

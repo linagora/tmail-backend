@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap
 
 import com.google.inject.AbstractModule
-import com.google.inject.multibindings.ProvidesIntoSet
+import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT_SUPPORT
 import jakarta.inject.Inject
 import org.apache.james.core.MailAddress
@@ -20,13 +20,15 @@ case class ContactSupportCapability(contactSupportProperties: ContactSupportProp
 
 case class ContactSupportCapabilityFactory @Inject()(jmapConfig: JMAPExtensionConfiguration) extends CapabilityFactory {
   override def create(urlPrefixes: UrlPrefixes): Capability =
-    ContactSupportCapability(ContactSupportProperties(new MailAddress(s"hnasri-${jmapConfig.publicAssetTotalSizeLimit}@linagora.com")))
+    ContactSupportCapability(ContactSupportProperties(new MailAddress(s"hnasri-${jmapConfig.publicAssetTotalSizeLimit.asLong()}@linagora.com")))
 
   override def id(): CapabilityIdentifier = LINAGORA_CONTACT_SUPPORT
 }
 
 class ContactSupportCapabilitiesModule() extends AbstractModule {
-
-  @ProvidesIntoSet
-  private def capability(jmapConfig: JMAPExtensionConfiguration) = ContactSupportCapabilityFactory(jmapConfig)
+  override def configure(): Unit = {
+    Multibinder.newSetBinder(binder(), classOf[CapabilityFactory])
+      .addBinding()
+      .to(classOf[ContactSupportCapabilityFactory])
+  }
 }
