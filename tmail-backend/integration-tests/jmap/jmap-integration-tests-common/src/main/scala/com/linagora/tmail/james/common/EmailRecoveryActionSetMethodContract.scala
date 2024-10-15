@@ -77,6 +77,8 @@ object EmailRecoveryActionSetMethodContract {
 
   val DELETED_MESSAGE_CONTENT: Array[Byte] = "header: value\r\n\r\ncontent".getBytes(StandardCharsets.UTF_8)
   val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
+  val RESTORATION_HORIZON_SPAN_IN_DAYS: Int = 15
+
   def creationSetInvalidRequestList: Stream[Arguments] = {
     val template: String =
       """{
@@ -125,6 +127,7 @@ object EmailRecoveryActionSetMethodContract {
 }
 
 trait EmailRecoveryActionSetMethodContract {
+  import EmailRecoveryActionSetMethodContract.RESTORATION_HORIZON_SPAN_IN_DAYS
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -450,7 +453,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val subjectQuery: String = "apache james"
       val taskId: String = `given`
@@ -483,7 +486,7 @@ trait EmailRecoveryActionSetMethodContract {
 
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
     }
 
     @Test
@@ -500,7 +503,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val subjectQuery: String = "subject contains"
       val taskId: String = `given`
@@ -539,208 +542,181 @@ trait EmailRecoveryActionSetMethodContract {
 
   @Nested
   class CreationSetByDeletedDateQueryContract {
-    @Test
-    def restoreShouldAppendMessageToMailboxWhenMatchingDeletionDateBeforeOrEquals(server: GuiceJamesServer): Unit = {
+    def createDefaultRequest(): String = {
+      s"""{
+         |	"using": [
+         |		"urn:ietf:params:jmap:core",
+         |		"com:linagora:params:jmap:messages:vault"
+         |	],
+         |	"methodCalls": [
+         |		[
+         |			"EmailRecoveryAction/set",
+         |			{
+         |				"create": {
+         |					"clientId1": {}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin
+    }
+
+    def createRequestWithCriterionDeletedBefore(deletedBefore: String): String = {
+      s"""{
+         |	"using": [
+         |		"urn:ietf:params:jmap:core",
+         |		"com:linagora:params:jmap:messages:vault"
+         |	],
+         |	"methodCalls": [
+         |		[
+         |			"EmailRecoveryAction/set",
+         |			{
+         |				"create": {
+         |					"clientId1": {
+         |						"deletedBefore": "$deletedBefore"
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin
+    }
+
+    def createRequestWithCriterionDeletedAfter(deletedAfter: String): String = {
+      s"""{
+         |	"using": [
+         |		"urn:ietf:params:jmap:core",
+         |		"com:linagora:params:jmap:messages:vault"
+         |	],
+         |	"methodCalls": [
+         |		[
+         |			"EmailRecoveryAction/set",
+         |			{
+         |				"create": {
+         |					"clientId1": {
+         |						"deletedAfter": "$deletedAfter"
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		]
+         |	]
+         |}""".stripMargin
+    }
+
+    def createDeletedMail(server: GuiceJamesServer, deletionDate: ZonedDateTime) = {
+
       val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
         .createMailbox(MailboxPath.inbox(BOB))
 
       val deletedMessage: DeletedMessage = templateDeletedMessage(
         messageId = randomMessageId,
-        mailboxId = mailboxId)
+        mailboxId = mailboxId,
+        deletionDate = deletionDate)
 
       server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage,
-          new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
+        .append(deletedMessage, new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
+    }
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val deletedBefore = deletedMessage.getDeletionDate.plusHours(1)
-        .format(TIME_FORMATTER)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {
-             |						"deletedBefore": "$deletedBefore"
-             |					}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
+    private def sendRequestAndGetResponse(request: String): String = {
+      `given`
+        .body(request)
       .when
         .post
       .`then`
         .extract()
         .jsonPath()
         .get("methodResponses[0][1].created.clientId1.id").toString
-
-      awaitRestoreTaskCompleted(taskId)
-
-      assertListAllMessageHasSize(server, BOB, 1)
     }
 
     @Test
-    def restoreShouldNotAppendMessageToMailboxWhenNotMatchingDeletionDateBeforeOrEquals(server: GuiceJamesServer): Unit = {
-      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-        .createMailbox(MailboxPath.inbox(BOB))
+    def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsOutOfUserLimitAndNoDeletionDateIsRequired(server: GuiceJamesServer): Unit = {
+      val deletionDateOutOfHorizon = ZonedDateTime.now().minusDays(RESTORATION_HORIZON_SPAN_IN_DAYS + 1)
+      createDeletedMail(server, deletionDateOutOfHorizon)
+      
+      val request: String = createDefaultRequest()
 
-      val deletedMessage: DeletedMessage = templateDeletedMessage(
-        messageId = randomMessageId,
-        mailboxId = mailboxId)
-
-      server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage,
-          new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val deletedBefore = deletedMessage.getDeletionDate.minusHours(1)
-        .format(TIME_FORMATTER)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {
-             |						"deletedBefore": "$deletedBefore"
-             |					}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
-      .when
-        .post
-      .`then`
-        .extract()
-        .jsonPath()
-        .get("methodResponses[0][1].created.clientId1.id").toString
-
+      val taskId: String = sendRequestAndGetResponse(request)
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB))
+        .isEmpty()
     }
 
     @Test
-    def restoreShouldAppendMessageToMailboxWhenMatchingDeletionDateAfterOrEquals(server: GuiceJamesServer): Unit = {
-      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-        .createMailbox(MailboxPath.inbox(BOB))
+    def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNoDeletionDateIsRequired(server: GuiceJamesServer): Unit = {
+      val deletionDateWithinHorizon = ZonedDateTime.now().minusDays(RESTORATION_HORIZON_SPAN_IN_DAYS - 1)
+      createDeletedMail(server, deletionDateWithinHorizon)
+      
+      val request: String = createDefaultRequest()
 
-      val deletedMessage: DeletedMessage = templateDeletedMessage(
-        messageId = randomMessageId,
-        mailboxId = mailboxId)
-
-      server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage,
-          new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val deletedAfter = deletedMessage.getDeletionDate.minusHours(1)
-        .format(TIME_FORMATTER)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {
-             |						"deletedAfter": "$deletedAfter"
-             |					}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
-      .when
-        .post
-      .`then`
-        .extract()
-        .jsonPath()
-        .get("methodResponses[0][1].created.clientId1.id").toString
-
+      val taskId: String = sendRequestAndGetResponse(request)
       awaitRestoreTaskCompleted(taskId)
 
-      assertListAllMessageHasSize(server, BOB, 1)
+      assertThat(listAllMessageResult(server, BOB))
+        .hasSize(1)
     }
 
     @Test
-    def restoreShouldNotAppendMessageToMailboxWhenNotMatchingDeletionDateAfterOrEquals(server: GuiceJamesServer): Unit = {
-      val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-        .createMailbox(MailboxPath.inbox(BOB))
+    def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndMatchingDeletionDateBeforeOrEquals(server: GuiceJamesServer): Unit = {
+      val deletionDateWithinHorizon = ZonedDateTime.now().minusDays(RESTORATION_HORIZON_SPAN_IN_DAYS - 1)
+      createDeletedMail(server, deletionDateWithinHorizon)
 
-      val deletedMessage: DeletedMessage = templateDeletedMessage(
-        messageId = randomMessageId,
-        mailboxId = mailboxId)
+      val matchingDate = deletionDateWithinHorizon.plusHours(1).format(TIME_FORMATTER)
+      val request: String = createRequestWithCriterionDeletedBefore(matchingDate)
 
-      server.getProbe(classOf[DeletedMessageVaultProbe])
-        .append(deletedMessage,
-          new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-
-      val deletedAfter = deletedMessage.getDeletionDate.plusHours(1)
-        .format(TIME_FORMATTER)
-
-      val taskId: String = `given`
-        .body(
-          s"""{
-             |	"using": [
-             |		"urn:ietf:params:jmap:core",
-             |		"com:linagora:params:jmap:messages:vault"
-             |	],
-             |	"methodCalls": [
-             |		[
-             |			"EmailRecoveryAction/set",
-             |			{
-             |				"create": {
-             |					"clientId1": {
-             |						"deletedAfter": "$deletedAfter"
-             |					}
-             |				}
-             |			},
-             |			"c1"
-             |		]
-             |	]
-             |}""".stripMargin)
-      .when
-        .post
-      .`then`
-        .extract()
-        .jsonPath()
-        .get("methodResponses[0][1].created.clientId1.id").toString
-
+      val taskId: String = sendRequestAndGetResponse(request)
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB))
+        .hasSize(1)
+    }
+
+    @Test
+    def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNotMatchingDeletionDateBeforeOrEquals(server: GuiceJamesServer): Unit = {
+      val deletionDateWithinHorizon = ZonedDateTime.now().minusDays(RESTORATION_HORIZON_SPAN_IN_DAYS - 1)
+      createDeletedMail(server, deletionDateWithinHorizon)
+
+      val nonMatchingDate = deletionDateWithinHorizon.minusHours(1).format(TIME_FORMATTER)
+      val request: String = createRequestWithCriterionDeletedBefore(nonMatchingDate)
+
+      val taskId: String = sendRequestAndGetResponse(request)
+      awaitRestoreTaskCompleted(taskId)
+
+      assertThat(listAllMessageResult(server, BOB))
+        .isEmpty()
+    }
+
+    @Test
+    def restoreShouldAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndMatchingDeletionDateAfterOrEquals(server: GuiceJamesServer): Unit = {
+      val deletionDateWithinHorizon = ZonedDateTime.now().minusDays(RESTORATION_HORIZON_SPAN_IN_DAYS - 1)
+      createDeletedMail(server, deletionDateWithinHorizon)
+
+      val matchingDate = deletionDateWithinHorizon.minusHours(1).format(TIME_FORMATTER)
+      val request: String = createRequestWithCriterionDeletedAfter(matchingDate)
+
+      val taskId: String = sendRequestAndGetResponse(request)
+      awaitRestoreTaskCompleted(taskId)
+
+      assertThat(listAllMessageResult(server, BOB))
+        .hasSize(1)
+    }
+
+    @Test
+    def restoreShouldNotAppendMessageToMailboxWhenDeletionDateIsWithinUserLimitAndNotMatchingDeletionDateAfterOrEquals(server: GuiceJamesServer): Unit = {
+      val deletionDateWithinHorizon = ZonedDateTime.now().minusDays(RESTORATION_HORIZON_SPAN_IN_DAYS - 1)
+      createDeletedMail(server, deletionDateWithinHorizon)
+
+      val nonMatchingDate = deletionDateWithinHorizon.plusHours(1).format(TIME_FORMATTER)
+      val request: String = createRequestWithCriterionDeletedAfter(nonMatchingDate)
+
+      val taskId: String = sendRequestAndGetResponse(request)
+      awaitRestoreTaskCompleted(taskId)
+
+      assertThat(listAllMessageResult(server, BOB))
+        .isEmpty()
     }
   }
 
@@ -759,7 +735,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val receivedBefore = deletedMessage.getDeliveryDate.plusHours(1)
         .format(TIME_FORMATTER)
@@ -810,7 +786,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val receivedBefore = deletedMessage.getDeliveryDate.minusHours(1)
         .format(TIME_FORMATTER)
@@ -845,7 +821,7 @@ trait EmailRecoveryActionSetMethodContract {
 
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
     }
 
     @Test
@@ -861,7 +837,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val receivedAfter = deletedMessage.getDeliveryDate.plusHours(1)
         .format(TIME_FORMATTER)
@@ -896,7 +872,7 @@ trait EmailRecoveryActionSetMethodContract {
 
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
     }
 
     @Test
@@ -912,7 +888,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val receivedAfter = deletedMessage.getDeliveryDate.minusHours(1)
         .format(TIME_FORMATTER)
@@ -967,7 +943,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val recipient = RECIPIENT1.asString()
 
@@ -1018,7 +994,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val recipient = RECIPIENT2.asString()
 
@@ -1052,7 +1028,7 @@ trait EmailRecoveryActionSetMethodContract {
 
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
     }
   }
 
@@ -1072,7 +1048,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val senderQuery = SENDER.asString()
 
@@ -1123,7 +1099,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val senderQuery = SENDER2.asString()
 
@@ -1157,7 +1133,7 @@ trait EmailRecoveryActionSetMethodContract {
 
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
     }
   }
 
@@ -1178,7 +1154,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val hasAttachmentQuery = false
 
@@ -1229,7 +1205,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val hasAttachmentQuery = true
 
@@ -1280,7 +1256,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val hasAttachmentQuery = true
 
@@ -1314,7 +1290,7 @@ trait EmailRecoveryActionSetMethodContract {
 
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
     }
   }
 
@@ -1336,7 +1312,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val taskId: String = `given`
         .body(
@@ -1390,7 +1366,7 @@ trait EmailRecoveryActionSetMethodContract {
         .append(deletedMessage,
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
       val taskId: String = `given`
         .body(
@@ -1425,7 +1401,7 @@ trait EmailRecoveryActionSetMethodContract {
 
       awaitRestoreTaskCompleted(taskId)
 
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, BOB)).isEmpty()
     }
   }
 
@@ -1501,8 +1477,8 @@ trait EmailRecoveryActionSetMethodContract {
       .append(deletedMessage,
         new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
 
-    assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-    assertThat(listAllMessageResult(server, ANDRE)).hasSize(0)
+    assertThat(listAllMessageResult(server, BOB)).isEmpty()
+    assertThat(listAllMessageResult(server, ANDRE)).isEmpty()
 
     val subjectQuery: String = "subject contains"
     val taskId: String = `given`
@@ -1536,7 +1512,7 @@ trait EmailRecoveryActionSetMethodContract {
     awaitRestoreTaskCompleted(taskId)
 
     assertListAllMessageHasSize(server, BOB, 1)
-    assertThat(listAllMessageResult(server, ANDRE)).hasSize(0)
+    assertThat(listAllMessageResult(server, ANDRE)).isEmpty()
   }
 
   @Test
@@ -1552,7 +1528,7 @@ trait EmailRecoveryActionSetMethodContract {
           new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
     })
 
-    assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+    assertThat(listAllMessageResult(server, BOB)).isEmpty()
 
     val subjectQuery: String = "subject contains"
     val taskId: String = `given`
@@ -1583,11 +1559,12 @@ trait EmailRecoveryActionSetMethodContract {
       .jsonPath()
       .get("methodResponses[0][1].created.clientId1.id").toString
 
+    val jmapMaxEmailRecoveryPerRequest: Int = 6
     `given`()
       .spec(webAdminApi)
       .get(taskId + "/await")
     .`then`()
-      .body("additionalInformation.successfulRestoreCount", Matchers.is(6))
+      .body("additionalInformation.successfulRestoreCount", Matchers.is(jmapMaxEmailRecoveryPerRequest))
       .body("additionalInformation.errorRestoreCount", Matchers.is(0))
   }
 
@@ -2093,7 +2070,7 @@ trait EmailRecoveryActionSetMethodContract {
                              mailboxId: MailboxId,
                              user: Username = BOB,
                              deliveryDate: ZonedDateTime = ZonedDateTime.parse("2014-10-30T14:12:00Z"),
-                             deletionDate: ZonedDateTime = ZonedDateTime.parse("2015-10-30T14:12:00Z"),
+                             deletionDate: ZonedDateTime = ZonedDateTime.now().minusDays(RESTORATION_HORIZON_SPAN_IN_DAYS - 1),
                              sender: MaybeSender = MaybeSender.of(SENDER),
                              recipients: Seq[MailAddress] = Seq(RECIPIENT1, RECIPIENT2),
                              hasAttachment: Boolean = false,

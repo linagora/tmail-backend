@@ -1,5 +1,9 @@
 package com.linagora.tmail.james.jmap.method
 
+import java.time.temporal.ChronoUnit
+import java.time.{Duration, ZonedDateTime}
+
+import com.google.common.collect.ImmutableList
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
@@ -20,8 +24,9 @@ import org.apache.james.lifecycle.api.Startable
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNotFoundException}
-import org.apache.james.util.ReactorUtils
+import org.apache.james.util.{DurationParser, ReactorUtils}
 import org.apache.james.utils.PropertiesProvider
+import org.apache.james.vault.search.{CriterionFactory, Query}
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultRestoreTask.{AdditionalInformation => DeletedMessagesVaultRestoreTaskAdditionalInformation}
 import org.apache.james.webadmin.vault.routes.{DeletedMessagesVaultRestoreTask, RestoreService}
 import org.reactivestreams.Publisher
@@ -52,16 +57,26 @@ class EmailRecoveryActionMethodModule extends AbstractModule {
 object EmailRecoveryActionConfiguration {
 
   val DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST: Long = 5
+  val DEFAULT_RESTORATION_HORIZON: Duration = DurationParser.parse("15", ChronoUnit.DAYS)
 
   def from(propertiesProvider: PropertiesProvider): EmailRecoveryActionConfiguration = {
-    val maxEmailRecoveryPerRequest: Option[Long] = Try(propertiesProvider.getConfiguration("jmap"))
-      .map(configuration => configuration.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest"))
+    val config = Try(propertiesProvider.getConfiguration("jmap"))
+
+    val maxEmailRecoveryPerRequest: Option[Long] = config
+      .map(_.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest"))
       .toOption
-    EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest = maxEmailRecoveryPerRequest.getOrElse(DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST))
+    val restorationHorizon: Option[Duration] = config
+      .map(_.getString("emailRecoveryAction.restorationHorizon"))
+      .map(DurationParser.parse)
+      .toOption
+
+    EmailRecoveryActionConfiguration(
+      maxEmailRecoveryPerRequest = maxEmailRecoveryPerRequest.getOrElse(DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST),
+      restorationHorizon = restorationHorizon.getOrElse(DEFAULT_RESTORATION_HORIZON))
   }
 }
 
-case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long)
+case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long, restorationHorizon: Duration)
 
 class EmailRecoveryActionSetMethod @Inject()(val createPerformer: EmailRecoveryActionSetCreatePerformer,
                                              val updatePerformer: EmailRecoveryActionSetUpdatePerformer,
@@ -152,12 +167,20 @@ class EmailRecoveryActionSetCreatePerformer @Inject()(val taskManager: TaskManag
         .left.map(errors => new IllegalArgumentException(ResponseSerializer.serialize(JsError(errors)).toString))
     } yield parsedRequest
 
-  private def submitTask(clientId: EmailRecoveryActionCreationId, userToRestore: Username, creationRequest: EmailRecoveryActionCreationRequest): SMono[CreationResult] =
-    SMono.fromCallable(() => taskManager.submit(new DeletedMessagesVaultRestoreTask(restoreService, userToRestore,
-      creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest))))
+  private def submitTask(clientId: EmailRecoveryActionCreationId, userToRestore: Username, creationRequest: EmailRecoveryActionCreationRequest): SMono[CreationResult] = {
+    val horizon: ZonedDateTime = ZonedDateTime.now().minus(configuration.restorationHorizon)
+    val horizonCriterion = CriterionFactory.deletionDate().afterOrEquals(horizon)
+
+    val modifiedQuery = new Query(ImmutableList.builder()
+        .addAll(creationRequest.asQuery(configuration.maxEmailRecoveryPerRequest).getCriteria)
+        .add(horizonCriterion)
+        .build(),
+      configuration.maxEmailRecoveryPerRequest)
+
+    SMono.fromCallable(() => taskManager.submit(new DeletedMessagesVaultRestoreTask(restoreService, userToRestore, modifiedQuery)))
     .map(taskId => CreationSuccess(clientId, EmailRecoveryActionCreationResponse(taskId)))
     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-
+  }
 }
 
 object EmailRecoveryActionSetUpdatePerformer {
