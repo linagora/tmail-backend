@@ -1,6 +1,6 @@
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.blob.guice.BlobStoreModulesChooser.INITIAL;
+import static com.linagora.tmail.blob.guice.BlobStoreModulesChooser.MAYBE_SECONDARY_BLOBSTORE;
 import static io.netty.handler.codec.http.HttpHeaderNames.ACCEPT;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
@@ -24,8 +24,6 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.objectstorage.aws.AwsS3AuthConfiguration;
 import org.apache.james.blob.objectstorage.aws.DockerAwsS3Container;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
-import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
-import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.JMAPUrls;
@@ -33,8 +31,6 @@ import org.apache.james.jmap.JmapGuiceProbe;
 import org.apache.james.jmap.http.UserCredential;
 import org.apache.james.junit.categories.BasicFeature;
 import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.metrics.api.GaugeRegistry;
-import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.utils.DataProbeImpl;
@@ -49,6 +45,7 @@ import com.google.inject.Inject;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -69,20 +66,16 @@ import reactor.core.publisher.Flux;
 import reactor.util.retry.Retry;
 
 @Tag(BasicFeature.TAG)
-public class DistributedLinagoraSecondaryBlobStoreTest {
+class DistributedLinagoraSecondaryBlobStoreTest {
     static class BlobStoreProbe implements GuiceProbe {
         private final BlobStoreDAO firstBlobStoreDAO;
         private final BlobStoreDAO secondBlobStoreDAO;
 
         @Inject
-        public BlobStoreProbe(@Named(INITIAL) BlobStoreDAO firstBlobStoreDAO,
-                              BlobId.Factory blobIdFactory,
-                              MetricFactory metricFactory,
-                              GaugeRegistry gaugeRegistry,
-                              BlobStoreConfiguration blobStoreConfiguration) {
-            this.firstBlobStoreDAO = firstBlobStoreDAO;
-            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(blobStoreConfiguration.maybeSecondaryS3BlobStoreConfiguration().get(), metricFactory, gaugeRegistry);
-            this.secondBlobStoreDAO = new S3BlobStoreDAO(s3SecondaryClientFactory, blobStoreConfiguration.maybeSecondaryS3BlobStoreConfiguration().get(), blobIdFactory);;
+        public BlobStoreProbe(@Named(MAYBE_SECONDARY_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
+            SecondaryBlobStoreDAO secondaryBlobStoreDAO = (SecondaryBlobStoreDAO) blobStoreDAO;
+            this.firstBlobStoreDAO = secondaryBlobStoreDAO.getFirstBlobStoreDAO();
+            this.secondBlobStoreDAO = secondaryBlobStoreDAO.getSecondBlobStoreDAO();
         }
 
         public BlobStoreDAO getFirstBlobStoreDAO() {
