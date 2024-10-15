@@ -48,7 +48,7 @@ trait LabelGetMethodContract {
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
-      .body("capabilities", hasKey("com:linagora:params:jmap:messages:vault"))
+      .body("capabilities", hasKey("com:linagora:params:jmap:labels"))
   }
 
   @Test
