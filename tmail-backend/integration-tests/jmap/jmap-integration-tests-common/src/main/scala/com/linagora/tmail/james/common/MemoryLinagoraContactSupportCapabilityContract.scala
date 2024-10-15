@@ -26,17 +26,16 @@ trait MemoryLinagoraContactSupportCapabilityContract {
 
   @Test
   def shouldReturnCorrectInfoInContactSupportCapability(): Unit = {
-    `given`()
-      .when()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .get("/session")
-      .prettyPeek()
-      .`then`
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .body("capabilities", hasKey("com:linagora:params:jmap:contact:support"))
-      .body("capabilities.'com:linagora:params:jmap:contact:support'", hasKey("supportMailAddress"))
-      .body("capabilities.'com:linagora:params:jmap:contact:support'.supportMailAddress", equalTo("support@linagora.com"))
+     `given`()
+     .when()
+       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+       .get("/session")
+     .`then`
+       .statusCode(SC_OK)
+       .contentType(JSON)
+       .body("capabilities", hasKey("com:linagora:params:jmap:contact:support"))
+       .body("capabilities.'com:linagora:params:jmap:contact:support'", hasKey("supportMailAddress"))
+       .body("capabilities.'com:linagora:params:jmap:contact:support'.supportMailAddress", equalTo("support@linagora.com"))
   }
 
   @Test
