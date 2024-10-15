@@ -10,6 +10,7 @@ import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
+import org.apache.james.blob.objectstorage.aws.JamesS3MetricPublisher;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
@@ -90,7 +91,8 @@ public class BlobStoreModulesChooser {
                                                   BlobId.Factory blobIdFactory,
                                                   MetricFactory metricFactory,
                                                   GaugeRegistry gaugeRegistry) {
-            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration, metricFactory, gaugeRegistry);
+            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration,
+                () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
             S3BlobStoreDAO secondaryBlobStoreDAO = new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration, blobIdFactory);
             return new SecondaryBlobStoreDAO(firstBlobStoreDAO, secondaryBlobStoreDAO);
         }
