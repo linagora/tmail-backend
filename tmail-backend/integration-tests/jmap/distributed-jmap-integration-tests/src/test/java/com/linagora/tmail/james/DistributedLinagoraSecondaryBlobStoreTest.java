@@ -99,8 +99,6 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     static S3BlobStoreConfiguration secondaryS3Configuration;
 
     static {
-        System.setProperty(S3_METRICS_ENABLED_PROPERTY_KEY, "false");
-
         dockerAwsS3Container.start();
         AwsS3AuthConfiguration authConfiguration = AwsS3AuthConfiguration.builder()
             .endpoint(dockerAwsS3Container.getEndpoint())
