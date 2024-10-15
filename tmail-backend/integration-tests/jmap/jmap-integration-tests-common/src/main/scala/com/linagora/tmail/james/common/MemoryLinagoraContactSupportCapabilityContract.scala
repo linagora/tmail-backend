@@ -8,7 +8,7 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.utils.DataProbeImpl
-import org.hamcrest.Matchers.hasKey
+import org.hamcrest.Matchers.{equalTo, hasKey}
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 trait MemoryLinagoraContactSupportCapabilityContract {
@@ -25,7 +25,7 @@ trait MemoryLinagoraContactSupportCapabilityContract {
   }
 
   @Test
-  def shouldReturnContactSupportCapability(): Unit = {
+  def shouldReturnCorrectInfoInContactSupportCapability(): Unit = {
     `given`()
       .when()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -35,11 +35,8 @@ trait MemoryLinagoraContactSupportCapabilityContract {
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("capabilities", hasKey("com:linagora:params:jmap:contact:support"))
-  }
-
-  @Test
-  def shouldReturnConfiguredSupportMailAddress(): Unit = {
-
+      .body("capabilities.'com:linagora:params:jmap:contact:support'", hasKey("supportMailAddress"))
+      .body("capabilities.'com:linagora:params:jmap:contact:support'.supportMailAddress", equalTo("support@linagora.com"))
   }
 
   @Test
