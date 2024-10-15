@@ -1,0 +1,17 @@
+= Contact Support
+:navtitle: contact support
+
+Reaching out to support is how most users resolve issues when encountering bugs, thus this action should be as accessible and reliable as possible.
+
+This extension adds a new capability that wraps the configured support mail address and returns it as a property. This allows the frontend to dynamically present users with the most up-to-date support email whenever they need assistance.
+
+== Additions to the capabilities object
+
+Servers supporting the JMAP contact support extension need to advertise it through the session capabilities:
+....
+com:linagora:params:jmap:contact:support
+....
+
+The associated object have the following fields:
+
+- `supportMailAddress`: *MailAddress*. The support mail address.
