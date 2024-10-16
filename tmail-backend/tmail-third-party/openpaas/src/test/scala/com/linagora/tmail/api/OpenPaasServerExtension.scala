@@ -26,10 +26,10 @@ object OpenPaasServerExtension {
   private val LOGGER: Logger = LoggerFactory.getLogger(OpenPaasServerExtension.getClass)
 }
 
-class OpenPaasServerExtension extends BeforeAllCallback with AfterAllCallback with ParameterResolver{
+class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback with ParameterResolver{
   var mockServer: ClientAndServer = _
 
-  override def beforeAll(context: ExtensionContext): Unit = {
+  override def beforeEach(context: ExtensionContext): Unit = {
     mockServer = startClientAndServer(0)
     ConfigurationProperties.logLevel("DEBUG")
 
@@ -88,7 +88,7 @@ class OpenPaasServerExtension extends BeforeAllCallback with AfterAllCallback wi
                 |}""".stripMargin))
   }
 
-  override def afterAll(context: ExtensionContext): Unit = {
+  override def afterEach(context: ExtensionContext): Unit = {
     if (mockServer == null) {
       LOGGER.warn("Mock server is null")
     } else {
