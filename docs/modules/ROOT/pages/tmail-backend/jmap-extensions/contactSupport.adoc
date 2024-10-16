@@ -14,7 +14,7 @@ com:linagora:params:jmap:contact:support
 
 The associated object have the following fields:
 
-- `supportMailAddress`: *MailAddress*. The support mail address.
+- `supportMailAddress`: *String|null*. The support mail address. Need to match addr-spec [@!RFC5322].
 
 == Configuration
 
