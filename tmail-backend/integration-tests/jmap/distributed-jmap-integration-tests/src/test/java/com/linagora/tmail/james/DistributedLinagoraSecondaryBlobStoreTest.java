@@ -6,8 +6,9 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
 import static io.restassured.http.ContentType.JSON;
 import static org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration.UPLOAD_RETRY_EXCEPTION_PREDICATE;
-import static org.apache.james.blob.objectstorage.aws.S3ClientFactory.S3_METRICS_ENABLED_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
+import static org.awaitility.Durations.TEN_SECONDS;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -35,6 +36,8 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -67,6 +70,13 @@ import reactor.util.retry.Retry;
 
 @Tag(BasicFeature.TAG)
 class DistributedLinagoraSecondaryBlobStoreTest {
+    public static final ConditionFactory calmlyAwait = Awaitility.with()
+        .pollInterval(ONE_HUNDRED_MILLISECONDS)
+        .and()
+        .with()
+        .pollDelay(ONE_HUNDRED_MILLISECONDS)
+        .await();
+
     static class BlobStoreProbe implements GuiceProbe {
         private final BlobStoreDAO firstBlobStoreDAO;
         private final BlobStoreDAO secondBlobStoreDAO;
@@ -190,10 +200,14 @@ class DistributedLinagoraSecondaryBlobStoreTest {
             .asString();
 
         BlobStoreProbe blobStoreProbe = server.getProbe(BlobStoreProbe.class);
-        BucketName bucketName = Flux.from(blobStoreProbe.getFirstBlobStoreDAO().listBuckets()).collectList().block().getFirst();
-        List<BlobId> blobIds = Flux.from(blobStoreProbe.getFirstBlobStoreDAO().listBlobs(bucketName)).collectList().block();
-        List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondBlobStoreDAO().listBlobs(bucketName)).collectList().block();
-        assertThat(blobIds).hasSameSizeAs(blobIds2);
-        assertThat(blobIds).hasSameElementsAs(blobIds2);
+
+        calmlyAwait.atMost(TEN_SECONDS)
+            .untilAsserted(() -> {
+                BucketName bucketName = Flux.from(blobStoreProbe.getFirstBlobStoreDAO().listBuckets()).collectList().block().getFirst();
+                List<BlobId> blobIds = Flux.from(blobStoreProbe.getFirstBlobStoreDAO().listBlobs(bucketName)).collectList().block();
+                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondBlobStoreDAO().listBlobs(bucketName)).collectList().block();
+                assertThat(blobIds).hasSameSizeAs(blobIds2);
+                assertThat(blobIds).hasSameElementsAs(blobIds2);
+            });
     }
 }
