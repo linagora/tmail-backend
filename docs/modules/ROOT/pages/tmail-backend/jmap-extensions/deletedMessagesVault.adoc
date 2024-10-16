@@ -8,15 +8,16 @@ mailboxes.
 
 == Additions to the capability object
 
-Servers supporting the deleted message vaul extension need to advertise it through the session capabilities:
+Servers supporting the deleted message vault extension need to advertise it through the session capabilities:
 ....
-com:linagora:params:messages:vault
+com:linagora:params:jmap:messages:vault
 ....
 
 The associated object have the following fields:
 
- - `maxRestoredEmails`: *Number | null*, defaulting to 5. Maximum number of emails a given `EmailRecoveryAction` would
+- `maxEmailRecoveryPerRequest`: *Number | null*, defaulting to `5`. Maximum number of emails a given `EmailRecoveryAction` would
 allow to recover.
+- `restorationHorizon`: *String | null*, defaulting to `15 days`. Horizon past which users can no longer recover emails on their own, formatted into a plurialization correct String, like `1 day 12 hours`.
 
 == EmailRecoveryAction object
 
@@ -32,7 +33,7 @@ It has the following properties:
  - `hasAttachment`: *Boolean | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `hasAttachment` property matches this field.
  - `subject`: *String | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `subject` property contains this field.
  - `sender`: *String | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `from` property matches this field. Needs to be a valid email address.
- - `recipients`: *String[] | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `to`, `cc` or `bcc` properties matches all of the mentionned email addresses.
+ - `recipients`: *String[] | null*. Immutable. If set this EmailRecoveryAction would restore only email whose `to`, `cc` or `bcc` properties matches all of the mentioned email addresses.
  Needs to be a valid email addresses.
  - `successfulRestoreCount`: *UnsignedInt* (server-set). Number of successful restored messages.
  - `errorRestoreCount`: *UnsignedInt* (server-set). Number of failed restored messages.
