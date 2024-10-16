@@ -48,6 +48,20 @@ Specified to TMail backend, we can configure the following configurations in the
 
 |===
 
+== Additional Redis configurations
+Specified to TMail backend, we can configure the following configurations in the *redis.properties* file.
+
+.redis.properties additional content
+|===
+| Property name | explanation
+| eventBus.redis.failure.ignore
+| Whether TMail should ignore failures when pub/sub events to Redis. Optional. Boolean. Default to `false`.
+
+| eventBus.redis.timeout
+| Timeout for Redis event bus operations. Optional. Duration. Default to `10seconds`.
+
+|===
+
 == Firebase Cloud Messaging configurations
 
 If you wish you to configure pushing notifications via FCM, please configure the `firebase.properties` file.
