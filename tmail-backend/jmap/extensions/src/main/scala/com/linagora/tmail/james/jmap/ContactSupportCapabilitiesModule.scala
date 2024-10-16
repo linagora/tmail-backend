@@ -9,8 +9,25 @@ import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
 import play.api.libs.json.{JsObject, Json}
 
-case class ContactSupportProperties(mailAddress: MailAddress) extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj("supportMailAddress" -> mailAddress.asString())
+case class ContactSupportProperties(mailAddress: Option[MailAddress]) extends CapabilityProperties {
+
+  override def jsonify(): JsObject = {
+    val mailAddressOpt = mailAddress.map(_.asString())
+
+    val json = if (mailAddressOpt.isEmpty) {
+      """
+        {
+          "supportMailAddress": null
+        }"""
+    } else {
+      s"""
+        {
+          "supportMailAddress": "${mailAddressOpt.get}"
+        }"""
+    }
+
+    Json.parse(json).as[JsObject]
+  }
 }
 
 case class ContactSupportCapability(contactSupportProperties: ContactSupportProperties) extends Capability {
