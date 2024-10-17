@@ -9,6 +9,7 @@ import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusName;
 import org.apache.james.events.EventDeadLetters;
+import org.apache.james.events.EventSerializer;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.events.RetryBackoffConfiguration;
@@ -22,6 +23,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
@@ -36,6 +38,10 @@ public class DistributedEmailAddressContactEventModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(EventBusId.class).annotatedWith(Names.named(EmailAddressContactInjectKeys.AUTOCOMPLETE)).toInstance(EventBusId.random());
+
+        Multibinder.newSetBinder(binder(), EventSerializer.class)
+            .addBinding()
+            .to(TmailJmapEventSerializer.class);
     }
 
     @ProvidesIntoSet
