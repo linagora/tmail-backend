@@ -16,10 +16,10 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Map;
 
-import ch.qos.logback.contrib.json.JsonFormatter;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import ch.qos.logback.contrib.json.JsonFormatter;
 
 /**
  * Jackson-specific implementation of the {@link JsonFormatter}.

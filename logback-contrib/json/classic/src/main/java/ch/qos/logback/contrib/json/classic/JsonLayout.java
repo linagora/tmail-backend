@@ -12,14 +12,14 @@
  */
 package ch.qos.logback.contrib.json.classic;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import ch.qos.logback.classic.pattern.ThrowableHandlingConverter;
 import ch.qos.logback.classic.pattern.ThrowableProxyConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.contrib.json.JsonLayoutBase;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * A JsonLayout builds its {@link #toJsonMap(ch.qos.logback.classic.spi.ILoggingEvent) jsonMap} from a
