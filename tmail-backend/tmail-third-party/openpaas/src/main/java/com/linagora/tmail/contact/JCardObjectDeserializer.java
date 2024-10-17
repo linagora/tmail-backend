@@ -1,4 +1,4 @@
-package com.linagora.tmail.james.jmap.contact;
+package com.linagora.tmail.contact;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -15,6 +15,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+
 
 public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
     private static final String FN = "fn";
