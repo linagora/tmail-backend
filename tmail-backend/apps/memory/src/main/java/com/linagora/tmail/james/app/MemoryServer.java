@@ -52,6 +52,7 @@ import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
+import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
@@ -136,7 +137,8 @@ public class MemoryServer {
         new PublicAssetsModule(),
         new PublicAssetsMemoryModule(),
         new MailboxesCleanupModule(),
-        new InboxArchivalTaskModule())
+        new InboxArchivalTaskModule(),
+        new ContactSupportCapabilitiesModule())
         .with(new TeamMailboxJmapModule());
 
     public static final Module MODULES = Modules.override(

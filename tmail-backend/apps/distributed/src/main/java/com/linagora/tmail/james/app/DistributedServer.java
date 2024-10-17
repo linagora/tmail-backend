@@ -129,6 +129,7 @@ import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
+import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
@@ -238,7 +239,8 @@ public class DistributedServer {
         new TicketRoutesModule(),
         new WebFingerModule(),
         new LabelMethodModule(),
-        new JmapSettingsMethodModule())
+        new JmapSettingsMethodModule(),
+        new ContactSupportCapabilitiesModule())
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
