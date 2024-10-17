@@ -6,10 +6,10 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.base.Preconditions;
 
 @JsonDeserialize(using = JCardObjectDeserializer.class)
-public record JCardObject(String fn, Optional<String> emailOpt) {
+public record JCardObject(Optional<String> fnOpt, Optional<String> emailOpt) {
 
     public JCardObject {
-        Preconditions.checkNotNull(fn);
+        Preconditions.checkNotNull(fnOpt);
         Preconditions.checkNotNull(emailOpt);
     }
 
@@ -20,8 +20,8 @@ public record JCardObject(String fn, Optional<String> emailOpt) {
      * Example: Mr. John Q. Public\, Esq.
      */
     @Override
-    public String fn() {
-        return fn;
+    public Optional<String> fnOpt() {
+        return fnOpt;
     }
 
     /**

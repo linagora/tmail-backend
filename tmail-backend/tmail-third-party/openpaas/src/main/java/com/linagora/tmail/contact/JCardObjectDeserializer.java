@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.util.streams.Iterators;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -18,6 +20,8 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 
 public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(JCardObjectDeserializer.class);
+
     private static final String FN = "fn";
     private static final String EMAIL = "email";
     private static final Set<String> SUPPORTED_PROPERTY_NAMES = Set.of(FN, EMAIL);
@@ -43,26 +47,30 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
             collectJCardProperties(jCardPropertiesArray.iterator());
 
         if (!jCardProperties.containsKey(FN)) {
-            throw new RuntimeException("The FN field is required according to specification.");
+            String json = node.toString();
+            LOGGER.warn("""
+                Missing 'fn' property in the provided JCard object. 'fn' is required according to the specifications.
+                Received data: {}.
+                Ensure the 'fn' property is present and correctly formatted.""", json);
         }
 
-        return new JCardObject(jCardProperties.get(FN), getOptionalFromMap(jCardProperties, EMAIL));
+        return new JCardObject(getOptionalFromMap(jCardProperties, FN), getOptionalFromMap(jCardProperties, EMAIL));
     }
 
     private static Map<String, String> collectJCardProperties(Iterator<JsonNode> propertiesIterator) {
         return Iterators.toStream(propertiesIterator)
             .map(JCardObjectDeserializer::getPropertyKeyValuePair)
-            .filter(pair -> pair != ImmutablePair.<String, String>nullPair())
+            .flatMap(Optional::stream)
             .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
     }
 
-    private static ImmutablePair<String, String> getPropertyKeyValuePair(JsonNode propertyNode) {
+    private static Optional<ImmutablePair<String, String>> getPropertyKeyValuePair(JsonNode propertyNode) {
         String propertyName = propertyNode.get(PROPERTY_NAME_INDEX).asText();
         if (SUPPORTED_PROPERTY_NAMES.contains(propertyName)) {
             String propertyValue = propertyNode.get(TEXT_PROPERTY_VALUE_INDEX).asText();
-            return ImmutablePair.of(propertyName, propertyValue);
+            return Optional.of(ImmutablePair.of(propertyName, propertyValue));
         } else {
-            return ImmutablePair.nullPair();
+            return Optional.empty();
         }
     }
 
