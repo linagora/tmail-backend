@@ -7,6 +7,7 @@ import static io.restassured.RestAssured.requestSpecification;
 import static io.restassured.http.ContentType.JSON;
 import static org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration.UPLOAD_RETRY_EXCEPTION_PREDICATE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Durations.FIVE_SECONDS;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.awaitility.Durations.TEN_SECONDS;
@@ -30,6 +31,8 @@ import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
+import org.apache.james.events.EventDeadLetters;
+import org.apache.james.events.Group;
 import org.apache.james.jmap.JMAPUrls;
 import org.apache.james.jmap.JmapGuiceProbe;
 import org.apache.james.jmap.http.UserCredential;
@@ -51,7 +54,10 @@ import com.google.inject.Inject;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.blob.secondaryblobstore.FailedBlobEvents;
+import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
+import com.linagora.tmail.common.event.TmailInjectNameConstants;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -73,8 +79,6 @@ import reactor.util.retry.Retry;
 
 @Tag(BasicFeature.TAG)
 class DistributedLinagoraSecondaryBlobStoreTest {
-    public static final int FIVE_SECONDS = 5000;
-
     public static final ConditionFactory calmlyAwait = Awaitility.with()
         .pollInterval(ONE_HUNDRED_MILLISECONDS)
         .and()
@@ -85,12 +89,15 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     static class BlobStoreProbe implements GuiceProbe {
         private final S3BlobStoreDAO primaryBlobStoreDAO;
         private final S3BlobStoreDAO secondaryBlobStoreDAO;
+        private final EventDeadLetters eventDeadLetters;
 
         @Inject
-        public BlobStoreProbe(@Named(MAYBE_SECONDARY_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
+        public BlobStoreProbe(@Named(MAYBE_SECONDARY_BLOBSTORE) BlobStoreDAO blobStoreDAO,
+                              @Named(TmailInjectNameConstants.TMAIL_EVENT_BUS_INJECT_NAME) EventDeadLetters eventDeadLetters) {
             SecondaryBlobStoreDAO secondaryBlobStoreDAO = (SecondaryBlobStoreDAO) blobStoreDAO;
             this.primaryBlobStoreDAO = (S3BlobStoreDAO) secondaryBlobStoreDAO.getFirstBlobStoreDAO();
             this.secondaryBlobStoreDAO = (S3BlobStoreDAO) secondaryBlobStoreDAO.getSecondBlobStoreDAO();
+            this.eventDeadLetters = eventDeadLetters;
         }
 
         public S3BlobStoreDAO getPrimaryBlobStoreDAO() {
@@ -99,6 +106,10 @@ class DistributedLinagoraSecondaryBlobStoreTest {
 
         public S3BlobStoreDAO getSecondaryBlobStoreDAO() {
             return secondaryBlobStoreDAO;
+        }
+
+        public EventDeadLetters getEventDeadLetters() {
+            return eventDeadLetters;
         }
     }
 
@@ -162,7 +173,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     }
 
     @BeforeEach
-    void setUp(GuiceJamesServer server) throws Exception {
+    void beforeEach(GuiceJamesServer server) throws Exception {
         prepareBlobStore(server);
 
         server.getProbe(DataProbeImpl.class)
@@ -229,7 +240,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     }
 
     @Test
-    void sendEmailShouldResultingInEventuallySavingDataToBothObjectStoragesWhenSecondStorageIsDown(GuiceJamesServer server) throws Exception {
+    void sendEmailShouldResultingInEventuallySavingDataToBothObjectStoragesWhenSecondStorageIsDownForShortTime(GuiceJamesServer server) throws Exception {
         secondaryS3.pause();
 
         given()
@@ -254,6 +265,41 @@ class DistributedLinagoraSecondaryBlobStoreTest {
                 List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
                 assertThat(blobIds2).hasSameSizeAs(blobIds);
                 assertThat(blobIds2).hasSameElementsAs(blobIds);
+            });
+    }
+
+    @Test
+    void sendEmailShouldResultingInEventDeadLettersWhenSecondStorageIsDownForLongTime(GuiceJamesServer server) throws Exception {
+        secondaryS3.pause();
+
+        given()
+            .body(LinagoraEmailSendMethodContract$.MODULE$.bobSendsAMailToAndre(server))
+        .when()
+            .post()
+        .then()
+            .statusCode(HttpStatus.SC_OK)
+            .contentType(JSON)
+            .extract()
+            .body()
+            .asString();
+
+        Thread.sleep(ONE_MINUTE);
+
+        BlobStoreProbe blobStoreProbe = server.getProbe(BlobStoreProbe.class);
+        BucketName bucketName = Flux.from(blobStoreProbe.getPrimaryBlobStoreDAO().listBuckets()).collectList().block().getFirst();
+        Group group = new FailedBlobOperationListener.FailedBlobOperationListenerGroup();
+
+        calmlyAwait.atMost(TEN_SECONDS)
+            .untilAsserted(() -> {
+                List<BlobId> expectedBlobIds = Flux.from(blobStoreProbe.getPrimaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
+                List<EventDeadLetters.InsertionId> insertionIds = blobStoreProbe.getEventDeadLetters().failedIds(group)
+                    .collectList().block();
+                List<FailedBlobEvents.BlobAddition> events = insertionIds.stream()
+                    .map(insertionId -> blobStoreProbe.getEventDeadLetters().failedEvent(group, insertionId).block())
+                    .map(FailedBlobEvents.BlobAddition.class::cast)
+                    .toList();
+                assertThat(bucketName).isEqualTo(events.getFirst().bucketName());
+                assertThat(events.stream().map(FailedBlobEvents.BlobAddition::blobId)).hasSameElementsAs(expectedBlobIds);
             });
     }
 }
