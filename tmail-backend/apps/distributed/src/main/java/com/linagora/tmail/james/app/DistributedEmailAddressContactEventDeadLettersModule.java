@@ -22,7 +22,8 @@ public class DistributedEmailAddressContactEventDeadLettersModule extends Abstra
     EventDeadLetters provideEventDeadLetters(CassandraEventDeadLettersGroupDAO cassandraEventDeadLettersGroupDAO,
                                              CqlSession session,
                                              TmailJmapEventSerializer tmailJmapEventSerializer) {
-        return new CassandraEventDeadLetters(new CassandraEventDeadLettersDAO(session, tmailJmapEventSerializer),
-            cassandraEventDeadLettersGroupDAO);
+        return new CassandraEventDeadLetters(new CassandraEventDeadLettersDAO(session),
+            cassandraEventDeadLettersGroupDAO,
+            tmailJmapEventSerializer);
     }
 }

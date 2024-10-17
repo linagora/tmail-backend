@@ -177,4 +177,9 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
     public Collection<Group> listRegisteredGroups() {
         return groupRegistrationHandler.registeredGroups();
     }
+
+    @Override
+    public EventSerializer getEventSerializer() {
+        return eventSerializer;
+    }
 }
