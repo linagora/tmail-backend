@@ -12,12 +12,12 @@
  */
 package ch.qos.logback.contrib.json.access;
 
-import ch.qos.logback.access.spi.IAccessEvent;
-import ch.qos.logback.contrib.json.JsonLayoutBase;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import ch.qos.logback.access.spi.IAccessEvent;
+import ch.qos.logback.contrib.json.JsonLayoutBase;
 
 /**
  * A JsonLayout builds its {@link #toJsonMap(ch.qos.logback.access.spi.IAccessEvent) jsonMap} from a

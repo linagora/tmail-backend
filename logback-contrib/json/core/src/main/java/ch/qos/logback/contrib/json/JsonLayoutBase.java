@@ -12,14 +12,14 @@
  */
 package ch.qos.logback.contrib.json;
 
-import ch.qos.logback.core.CoreConstants;
-import ch.qos.logback.core.LayoutBase;
-
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.TimeZone;
+
+import ch.qos.logback.core.CoreConstants;
+import ch.qos.logback.core.LayoutBase;
 
 /**
  * @author Les Hazlewood
@@ -29,7 +29,7 @@ import java.util.TimeZone;
  */
 public abstract class JsonLayoutBase<E> extends LayoutBase<E> {
 
-    public final static String CONTENT_TYPE = "application/json";
+    public static final String CONTENT_TYPE = "application/json";
 
     protected boolean includeTimestamp;
     protected String timestampFormat;
@@ -90,7 +90,7 @@ public abstract class JsonLayoutBase<E> extends LayoutBase<E> {
     }
 
     public void addTimestamp(String key, boolean field, long timeStamp, Map<String, Object> map) {
-        if(field){
+        if (field) {
             String formatted = formatTimestamp(timeStamp);
             if (formatted != null) {
                 map.put(key, formatted);

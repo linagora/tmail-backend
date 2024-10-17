@@ -351,11 +351,11 @@
             <artifactId>logback-classic</artifactId>
         </dependency>
         <dependency>
-            <groupId>ch.qos.logback.contrib</groupId>
+            <groupId>com.linagora.tmail</groupId>
             <artifactId>logback-jackson</artifactId>
         </dependency>
         <dependency>
-            <groupId>ch.qos.logback.contrib</groupId>
+            <groupId>com.linagora.tmail</groupId>
             <artifactId>logback-json-classic</artifactId>
         </dependency>
         <dependency>

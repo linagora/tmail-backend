@@ -145,7 +145,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>ch.qos.logback.contrib</groupId>
+            <groupId>com.linagora.tmail</groupId>
             <artifactId>logback-json-classic</artifactId>
         </dependency>
     </dependencies>

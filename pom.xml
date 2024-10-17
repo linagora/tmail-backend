@@ -22,7 +22,19 @@
     </modules>
 
     <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.linagora.tmail</groupId>
+                <artifactId>logback-json-classic</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
+            <dependency>
+                <groupId>com.linagora.tmail</groupId>
+                <artifactId>logback-jackson</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
     </dependencyManagement>
 
     <build>

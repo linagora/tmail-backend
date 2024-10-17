@@ -23,10 +23,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>org.apache.james</groupId>
+    <groupId>com.linagora.tmail</groupId>
     <artifactId>logback-contrib-parent</artifactId>
     <packaging>pom</packaging>
-    <version>3.9.0-SNAPSHOT</version>
 
     <name>Logback Contrib</name>
     <url>https://github.com/qos-ch/logback-contrib/wiki</url>
@@ -37,30 +36,12 @@
     </description>
     <inceptionYear>2012</inceptionYear>
 
-    <!--
    <licenses>
      <license>
        <name>Eclipse Public License - v 1.0</name>
        <url>http://www.eclipse.org/legal/epl-v10.html</url>
      </license>
-
-     <license>
-       <name>GNU Lesser General Public License</name>
-       <url>http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html</url>
-     </license>
    </licenses>
-   -->
-
-    <scm>
-      <connection>scm:git:git://github.com/qos-ch/logback-contrib.git</connection>
-      <developerConnection>scm:git:git@github.com:qos-ch/logback-contrib.git</developerConnection>
-      <url>https://github.com/qos-ch/logback-contrib</url>
-      <tag>HEAD</tag>
-    </scm>
-    <issueManagement>
-      <system>GitHub</system>
-      <url>https://github.com/qos-ch/logback-contrib/issues</url>
-    </issueManagement>
 
     <developers>
         <developer>
@@ -105,13 +86,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Compile Dependencies: -->
-        <logback.version>1.1.8</logback.version>
-        <jackson.version>2.8.5</jackson.version>
-        <mongo-java-driver.version>2.10.1</mongo-java-driver.version>
+        <logback.version>1.4.14</logback.version>
         <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
 
         <!-- Test Dependencies: -->
-        <mockito.version>2.0.44-beta</mockito.version>
+        <mockito.version>5.10.0</mockito.version>
         <groovy.version>1.8.6</groovy.version>
         <junit.version>4.8.2</junit.version>
         <hamcrest.version>2.0.0.0</hamcrest.version>
@@ -121,18 +100,6 @@
     <dependencies>
         <!-- Test Dependencies for _all_ children modules: -->
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>${mockito.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-junit</artifactId>
             <version>${hamcrest.version}</version>
@@ -141,227 +108,33 @@
     </dependencies>
 
     <dependencyManagement>
-
         <dependencies>
 
-
-           <!-- Pool of dependencies available to any sub-module, but not included automatically.
+            <!-- Pool of dependencies available to any sub-module, but not included automatically.
                 They must be explicitly referenced in the children POMs, but _don't_ include
                 version numbers in the child POMs.  Define them here only to guarantee version
                 compatibility across children modules! -->
 
+            <dependency>
+                <groupId>org.apache.james</groupId>
+                <artifactId>james-project</artifactId>
+                <version>3.9.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- Logback Extensions sub-modules dependency .jars (alphabetized based on artifactId for easy scanning please!): -->
-          <dependency>
-               <groupId>ch.qos.logback</groupId>
-               <artifactId>logback-access</artifactId>
-               <version>${logback.version}</version>
-           </dependency>
-
-          <dependency>
-               <groupId>ch.qos.logback</groupId>
-               <artifactId>logback-classic</artifactId>
-               <version>${logback.version}</version>
-           </dependency>
-
-          <dependency>
-               <groupId>ch.qos.logback</groupId>
-               <artifactId>logback-core</artifactId>
-               <version>${logback.version}</version>
-           </dependency>
-
-            <!-- 3rd party dependencies: -->
             <dependency>
-                <groupId>javax.servlet</groupId>
-                <artifactId>servlet-api</artifactId>
-                <version>2.5</version>
-                <scope>provided</scope>
-                <optional>true</optional>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.mongodb</groupId>
-                <artifactId>mongo-java-driver</artifactId>
-                <version>${mongo-java-driver.version}</version>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-access</artifactId>
+                <version>${logback.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-core</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
         </dependencies>
-
     </dependencyManagement>
-
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.5.1</version>
-                    <configuration>
-                        <source>1.6</source>
-                        <target>1.6</target>
-                        <encoding>UTF-8</encoding>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-
-        <plugins>
-            <!-- Allow tests to be written in Groovy: -->
-            <plugin>
-                <groupId>org.codehaus.gmaven</groupId>
-                <artifactId>gmaven-plugin</artifactId>
-                <version>1.5</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <!--suppress MavenModelInspection -->
-                            <goal>testCompile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <version>2.5.3</version>
-                <configuration>
-                    <preparationGoals>clean install</preparationGoals>
-                    <autoVersionSubmodules>true</autoVersionSubmodules>
-                    <useReleaseProfile>false</useReleaseProfile>
-                    <!-- <goals>deploy site-deploy</goals> -->
-                    <goals>deploy</goals>
-                    <arguments>-Prelease</arguments>
-                    <mavenExecutorId>forked-path</mavenExecutorId>
-                    <tagNameFormat>v_@{project.version}</tagNameFormat>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <configuration>
-                    <skip>false</skip>
-                    <archive>
-                        <manifest>
-                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
-                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                        </manifest>
-                    </archive>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                        <phase>package</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.10.3</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-bundle-plugin</artifactId>
-                <version>2.3.7</version>
-                <executions>
-                    <execution>
-                        <id>bundle-manifest</id>
-                        <phase>process-classes</phase>
-                        <goals>
-                            <goal>manifest</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>2.4</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>jar</goal>
-                            <goal>test-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            -->
-        </plugins>
-    </build>
-
-    <profiles>
-        <profile>
-            <id>release-sign-artifacts</id>
-            <activation>
-                <property>
-                    <name>performRelease</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>release</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <!--
-                    To disable debug compilation, debug must be "true" AND
-                    debuglevel must be "none".
-                    http://jira.codehaus.org/browse/MCOMPILER-114
-                -->
-                <maven.compiler.debug>true</maven.compiler.debug>
-                <maven.compiler.debuglevel>none</maven.compiler.debuglevel>
-            </properties>
-        </profile>
-    </profiles>
 </project>
