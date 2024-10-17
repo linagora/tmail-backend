@@ -21,6 +21,7 @@ import org.apache.james.lifecycle.api.Startable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
@@ -46,8 +47,8 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     public static final String EXCHANGE_NAME = "contacts:contact:add";
     public static final String QUEUE_NAME = "ConsumeOpenPaasContactsQueue";
-    private Disposable consumeContactsDisposable;
 
+    private Disposable consumeContactsDisposable;
     private final ReceiverProvider receiverProvider;
     private final Sender sender;
     private final RabbitMQConfiguration commonRabbitMQConfiguration;
@@ -55,8 +56,6 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OpenPaasRestClient openPaasRestClient;
 
-    // TODO: Create a separate RabbitMQ module for OpenPaaS communication so the injected channel pool
-    //  would be custom configured
     @Inject
     public OpenPaasContactsConsumer(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) ReceiverProvider receiverProvider,
                                     @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) Sender sender,
@@ -127,7 +126,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             .mapNotNull(ownerMailAddress -> {
                 JCardObject jCardObject = contactAddedMessage.vcard();
 
-                String contactFullname = jCardObject.fn();
+                Optional<String> contactFullnameOpt = jCardObject.fnOpt();
                 Optional<MailAddress> contactMailAddressOpt = jCardObject.emailOpt()
                     .flatMap(contactEmail -> {
                         try {
@@ -137,16 +136,20 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
                         }
                     });
 
-                if (contactMailAddressOpt.isEmpty()) {
+                if (contactFullnameOpt.isEmpty() || contactMailAddressOpt.isEmpty()) {
                     return Mono.empty();
                 }
+
+                ContactFields contactFields = new ContactFields(
+                    contactMailAddressOpt.get(),
+                    contactFullnameOpt.get(),
+                    contactFullnameOpt.get()
+                );
 
                 AccountId ownerAccountId =
                     AccountId.fromUsername(Username.fromMailAddress(ownerMailAddress));
 
-                return Mono.from(contactSearchEngine.index(ownerAccountId,
-                        new ContactFields(contactMailAddressOpt.get(), contactFullname, "")
-                    )).block();
+                return Mono.from(contactSearchEngine.index(ownerAccountId, contactFields)).block();
             }).then();
     }
 
