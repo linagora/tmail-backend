@@ -42,10 +42,6 @@
             <artifactId>logback-json-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
-        </dependency>
     </dependencies>
 
 </project>
