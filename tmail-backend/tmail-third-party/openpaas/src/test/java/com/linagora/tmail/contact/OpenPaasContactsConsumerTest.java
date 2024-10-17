@@ -1,4 +1,4 @@
-package com.linagora.tmail.james.jmap.contact;
+package com.linagora.tmail.contact;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
@@ -7,22 +7,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.TEN_SECONDS;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
-
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.api.model.AccountId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
+
+import com.linagora.tmail.OpenPaasConfiguration;
+import com.linagora.tmail.api.OpenPaasRestClient;
+import com.linagora.tmail.api.OpenPaasServerExtension;
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 
 class OpenPaasContactsConsumerTest {
 
