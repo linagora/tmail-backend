@@ -1,0 +1,40 @@
+<!--
+
+    Copyright (C) 2024, LINAGORA. All rights reserved.
+
+    This program and the accompanying materials are licensed under
+    the terms of the Eclipse Public License v1.0 as published by
+    the Eclipse Foundation.
+
+    This work is based on the work found at
+    https://github.com/qos-ch/logback-contrib
+    authored by the logback-contrib developers.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <parent>
+        <groupId>com.linagora.tmail</groupId>
+        <artifactId>logback-contrib-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>logback-jackson</artifactId>
+    <name>Logback Contrib :: Jackson</name>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>logback-json-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>
