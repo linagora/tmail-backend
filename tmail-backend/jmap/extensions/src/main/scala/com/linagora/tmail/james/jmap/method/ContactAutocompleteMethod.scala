@@ -1,8 +1,8 @@
 package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.AbstractModule
-import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine
+import com.google.inject.multibindings.Multibinder
+import com.linagora.tmail.james.jmap.contact.{EmailAddressContactSearchEngine, MinAutoCompleteInputLength}
 import com.linagora.tmail.james.jmap.json.ContactSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT
 import com.linagora.tmail.james.jmap.model.{Contact, ContactAutocompleteRequest, ContactAutocompleteResponse, ContactFirstname, ContactId, ContactSurname}
@@ -20,22 +20,24 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-case object ContactCapabilityProperties extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj()
+case class ContactCapabilityProperties(minAutoCompleteInputLength: MinAutoCompleteInputLength) extends CapabilityProperties {
+  override def jsonify(): JsObject = Json.obj("minInputLength" -> minAutoCompleteInputLength.value)
 }
 
-case object ContactCapability extends Capability {
-  val properties: CapabilityProperties = ContactCapabilityProperties
-  val identifier: CapabilityIdentifier = LINAGORA_CONTACT
-}
+final case class ContactCapability(properties: ContactCapabilityProperties,
+                                   identifier: CapabilityIdentifier = LINAGORA_CONTACT) extends Capability
 
 class ContactCapabilitiesModule extends AbstractModule {
-  @ProvidesIntoSet
-  private def capability(): CapabilityFactory = ContactCapabilityFactory
+  override def configure(): Unit = {
+    Multibinder.newSetBinder(binder(), classOf[CapabilityFactory])
+      .addBinding()
+      .to(classOf[ContactCapabilityFactory])
+  }
 }
 
-case object ContactCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = ContactCapability
+class ContactCapabilityFactory @Inject()(val minAutoCompleteInputLength: MinAutoCompleteInputLength) extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability =
+    ContactCapability(ContactCapabilityProperties(minAutoCompleteInputLength))
 
   override def id(): CapabilityIdentifier = LINAGORA_CONTACT
 }

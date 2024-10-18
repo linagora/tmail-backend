@@ -286,4 +286,16 @@ trait LinagoraEchoMethodContract {
       .contentType(JSON)
       .body("capabilities", hasKey("com:linagora:params:jmap:public:assets"))
       .body("capabilities.'com:linagora:params:jmap:public:assets'", hasKey("publicAssetTotalSize"))
+
+  @Test
+  def shouldReturnAutoCompleteCapability(): Unit =
+      `given`()
+    .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities", hasKey("com:linagora:params:jmap:contact:autocomplete"))
+      .body("capabilities.'com:linagora:params:jmap:contact:autocomplete'", hasKey("minInputLength"))
 }

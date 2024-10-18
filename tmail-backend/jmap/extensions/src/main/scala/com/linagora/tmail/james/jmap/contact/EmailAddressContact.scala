@@ -29,6 +29,9 @@ case class InMemoryEmailAddressContactSearchEngineModule() extends AbstractModul
     Multibinder.newSetBinder(binder(), classOf[DeleteUserDataTaskStep])
       .addBinding()
       .to(classOf[ContactUserDeletionTaskStep])
+
+    bind(classOf[MinAutoCompleteInputLength])
+      .toInstance(MinAutoCompleteInputLength.ONE)
   }
 }
 
@@ -48,6 +51,12 @@ case class ContactFields(address: MailAddress, firstname: String = "", surname: 
 case class ContactNotFoundException(mailAddress: MailAddress) extends RuntimeException {
   override def getMessage: String = s"The contact ${mailAddress.asString()} can not be found"
 }
+
+object MinAutoCompleteInputLength {
+  val ONE: MinAutoCompleteInputLength = MinAutoCompleteInputLength(1)
+}
+
+case class MinAutoCompleteInputLength(value: Int)
 
 trait EmailAddressContactSearchEngine {
   def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact]
