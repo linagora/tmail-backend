@@ -28,6 +28,7 @@ import com.linagora.tmail.james.jmap.OpenSearchContactConfiguration;
 import com.linagora.tmail.james.jmap.contact.ContactUserDeletionTaskStep;
 import com.linagora.tmail.james.jmap.contact.ContactUsernameChangeTaskStep;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.contact.MinAutoCompleteInputLength;
 
 public class OSContactAutoCompleteModule extends AbstractModule {
     public static final String OPENSEARCH_CONFIGURATION_NAME = "opensearch";
@@ -78,6 +79,12 @@ public class OSContactAutoCompleteModule extends AbstractModule {
             LOGGER.warn("Could not find " + OPENSEARCH_CONFIGURATION_NAME + " configuration file. Using default contact configuration");
             return OpenSearchContactConfiguration.DEFAULT_CONFIGURATION;
         }
+    }
+
+    @Provides
+    @Singleton
+    private MinAutoCompleteInputLength provideMinInputLength(OpenSearchContactConfiguration openSearchContactConfiguration) {
+        return MinAutoCompleteInputLength.apply(openSearchContactConfiguration.getMinNgram());
     }
 
     @ProvidesIntoSet
