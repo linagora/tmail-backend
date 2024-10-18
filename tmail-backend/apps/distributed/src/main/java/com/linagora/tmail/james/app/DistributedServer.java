@@ -132,7 +132,6 @@ import com.linagora.tmail.event.TmailEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -363,12 +362,12 @@ public class DistributedServer {
                     new ReIndexingModule());
             case Scanning:
                 return ImmutableList.of(
-                    binder -> binder.bind(EmailAddressContactSearchEngine.class).to(DisabledEmailAddressContactSearchEngine.class),
+                    new DisabledEmailAddressContactSearchEngineModule(),
                     new ScanningQuotaSearchModule(),
                     new ScanningSearchModule());
             case OpenSearchDisabled:
                 return ImmutableList.of(
-                    binder -> binder.bind(EmailAddressContactSearchEngine.class).to(DisabledEmailAddressContactSearchEngine.class),
+                    new DisabledEmailAddressContactSearchEngineModule(),
                     new OpenSearchDisabledModule(),
                     new ScanningQuotaSearchModule());
             default:
