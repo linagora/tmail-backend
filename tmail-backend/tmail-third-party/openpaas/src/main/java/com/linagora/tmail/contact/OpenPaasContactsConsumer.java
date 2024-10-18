@@ -7,6 +7,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -21,19 +22,19 @@ import org.apache.james.lifecycle.api.Startable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
+import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.rabbitmq.client.BuiltinExchangeType;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
+import reactor.core.publisher.SignalType;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.BindingSpecification;
 import reactor.rabbitmq.ExchangeSpecification;
@@ -84,13 +85,14 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             .block();
 
         consumeContactsDisposable = doConsumeContactMessages();
+        System.out.println("Hello, World");
     }
 
     private Disposable doConsumeContactMessages() {
         return delivery()
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(delivery ->
-                messageConsume(delivery, new String(delivery.getBody(), StandardCharsets.UTF_8)));
+            .flatMap(delivery -> messageConsume(delivery, new String(delivery.getBody(), StandardCharsets.UTF_8)))
+            .doOnError(e -> LOGGER.error("Failed to consume contact message", e))
+            .subscribe();
     }
 
     public Flux<AcknowledgableDelivery> delivery() {
@@ -99,58 +101,61 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             Receiver::close);
     }
 
-    private void messageConsume(AcknowledgableDelivery ackDelivery, String messagePayload) {
-        Mono.just(messagePayload)
-            .<ContactAddedRabbitMqMessage>handle((message, sink) -> {
-                try {
-                    sink.next(objectMapper.readValue(message, ContactAddedRabbitMqMessage.class));
-                } catch (JsonProcessingException e) {
-                    sink.error(new RuntimeException(e));
+    private Mono<EmailAddressContact> messageConsume(AcknowledgableDelivery ackDelivery, String messagePayload) {
+        return Mono.just(messagePayload)
+            .map(this::parseContactAddedRabbitMqMessage)
+            .flatMap(this::handleMessage)
+            .doFinally(signal -> {
+                if (signal == SignalType.ON_COMPLETE) {
+                    ackDelivery.ack();
+                } else if (signal == SignalType.ON_ERROR) {
+                    ackDelivery.nack(false);
                 }
             })
-            .handle((msg, sink) -> {
-                handleMessage(msg).block();
-                ackDelivery.ack();
-            })
-            .onErrorResume(e -> {
-                LOGGER.error("Failed to consume OpenPaaS added contact message", e);
-                return Mono.empty();
-            }).subscribe();
+            .onErrorResume(e -> Mono.error(new RuntimeException("Failed to consume OpenPaaS added contact message", e)));
     }
 
-    private Mono<Void> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
+    private ContactAddedRabbitMqMessage parseContactAddedRabbitMqMessage(String message) {
+        try {
+            return objectMapper.readValue(message, ContactAddedRabbitMqMessage.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to parse ContactAddedRabbitMqMessage", e);
+        }
+    }
+
+    private Mono<EmailAddressContact> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
         LOGGER.info("Consumed jCard object message: {}", contactAddedMessage);
 
-        String openPaasOwnerId = contactAddedMessage.userId();
-        return openPaasRestClient.retrieveMailAddress(openPaasOwnerId)
-            .mapNotNull(ownerMailAddress -> {
-                JCardObject jCardObject = contactAddedMessage.vcard();
+        return openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
+            .map(ownerMailAddress -> AccountId.fromUsername(Username.fromMailAddress(ownerMailAddress)))
+            .flatMap(ownerAccountId ->
+                Mono.justOrEmpty(toContactFields(contactAddedMessage.vcard()))
+                    .flatMap(contactFields -> doAddContact(ownerAccountId, contactFields)));
+    }
 
-                Optional<String> contactFullnameOpt = jCardObject.fnOpt();
-                Optional<MailAddress> contactMailAddressOpt = jCardObject.emailOpt()
-                    .flatMap(contactEmail -> {
-                        try {
-                            return Optional.of(new MailAddress(contactEmail));
-                        } catch (AddressException e) {
-                            return Optional.empty();
-                        }
-                    });
+    private Mono<EmailAddressContact> doAddContact(AccountId ownerAccountId, ContactFields contactFields) {
+        return Mono.from(contactSearchEngine.index(ownerAccountId, contactFields));
+    }
 
-                if (contactFullnameOpt.isEmpty() || contactMailAddressOpt.isEmpty()) {
-                    return Mono.empty();
+    private Optional<ContactFields> toContactFields(JCardObject jCardObject) {
+        Optional<String> contactFullnameOpt = jCardObject.fnOpt();
+        Optional<MailAddress> contactMailAddressOpt = jCardObject.emailOpt()
+            .flatMap(contactEmail -> {
+                try {
+                    return Optional.of(new MailAddress(contactEmail));
+                } catch (AddressException e) {
+                    LOGGER.warn("Invalid contact email address: {}", contactEmail, e);
+                    return Optional.empty();
                 }
+            });
 
-                ContactFields contactFields = new ContactFields(
-                    contactMailAddressOpt.get(),
-                    contactFullnameOpt.get(),
-                    contactFullnameOpt.get()
-                );
+        return combineOptionals(contactFullnameOpt, contactMailAddressOpt,
+            (contactFullname, contactMailAddress) ->
+                new ContactFields(contactMailAddress, contactFullname, contactFullname));
+    }
 
-                AccountId ownerAccountId =
-                    AccountId.fromUsername(Username.fromMailAddress(ownerMailAddress));
-
-                return Mono.from(contactSearchEngine.index(ownerAccountId, contactFields)).block();
-            }).then();
+    private static <T,K,V> Optional<V> combineOptionals(Optional<T> opt1, Optional<K> opt2, BiFunction<T, K, V> f) {
+        return opt1.flatMap(t1 -> opt2.map(t2 -> f.apply(t1, t2)));
     }
 
     @Override
