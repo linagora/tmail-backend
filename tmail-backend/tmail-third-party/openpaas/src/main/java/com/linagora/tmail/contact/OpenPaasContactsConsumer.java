@@ -34,7 +34,6 @@ import com.rabbitmq.client.BuiltinExchangeType;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.SignalType;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.BindingSpecification;
 import reactor.rabbitmq.ExchangeSpecification;
@@ -46,8 +45,11 @@ import reactor.rabbitmq.Sender;
 public class OpenPaasContactsConsumer implements Startable, Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumer.class);
 
+    private static final boolean REQUEUE_ON_NACK = false;
     public static final String EXCHANGE_NAME = "contacts:contact:add";
     public static final String QUEUE_NAME = "ConsumeOpenPaasContactsQueue";
+    public static final String DEAD_LETTER_EXCHANGE = "contacts:contact:add:dead:letter";
+    public static final String DEAD_LETTER_QUEUE = "ConsumeOpenPaasContactsQueue-dead-letter";
 
     private Disposable consumeContactsDisposable;
     private final ReceiverProvider receiverProvider;
@@ -74,18 +76,37 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
         Flux.concat(
                 sender.declareExchange(ExchangeSpecification.exchange(EXCHANGE_NAME)
                     .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
+                sender.declareExchange(ExchangeSpecification.exchange(DEAD_LETTER_EXCHANGE)
+                    .durable(DURABLE)),
+                sender.declareExchange(ExchangeSpecification.exchange(DEAD_LETTER_EXCHANGE)
+                    .durable(DURABLE)),
+                sender.declareQueue(QueueSpecification
+                    .queue(DEAD_LETTER_QUEUE)
+                    .durable(DURABLE)
+                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder().build())),
+                sender.declareQueue(QueueSpecification
+                    .queue(DEAD_LETTER_QUEUE)
+                    .durable(DURABLE)
+                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder().build())),
                 sender.declareQueue(QueueSpecification
                     .queue(QUEUE_NAME)
-                    .durable(DURABLE)),
+                    .durable(DURABLE)
+                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder()
+                    .put("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE)
+                    .put("x-dead-letter-routing-key", EMPTY_ROUTING_KEY)
+                    .build())),
                 sender.bind(BindingSpecification.binding()
                     .exchange(EXCHANGE_NAME)
                     .queue(QUEUE_NAME)
+                    .routingKey(EMPTY_ROUTING_KEY)),
+                sender.bind(BindingSpecification.binding()
+                    .exchange(DEAD_LETTER_EXCHANGE)
+                    .queue(DEAD_LETTER_QUEUE)
                     .routingKey(EMPTY_ROUTING_KEY)))
             .then()
             .block();
 
         consumeContactsDisposable = doConsumeContactMessages();
-        System.out.println("Hello, World");
     }
 
     private Disposable doConsumeContactMessages() {
@@ -104,14 +125,10 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private Mono<EmailAddressContact> messageConsume(AcknowledgableDelivery ackDelivery, String messagePayload) {
         return Mono.just(messagePayload)
             .map(this::parseContactAddedRabbitMqMessage)
+            .log()
             .flatMap(this::handleMessage)
-            .doFinally(signal -> {
-                if (signal == SignalType.ON_COMPLETE) {
-                    ackDelivery.ack();
-                } else if (signal == SignalType.ON_ERROR) {
-                    ackDelivery.nack(false);
-                }
-            })
+            .doOnSuccess(input -> ackDelivery.ack())
+            .doOnError(e -> ackDelivery.nack(REQUEUE_ON_NACK))
             .onErrorResume(e -> Mono.error(new RuntimeException("Failed to consume OpenPaaS added contact message", e)));
     }
 

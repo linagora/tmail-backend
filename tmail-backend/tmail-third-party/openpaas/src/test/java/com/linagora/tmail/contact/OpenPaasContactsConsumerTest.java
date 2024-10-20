@@ -9,7 +9,6 @@ import static org.awaitility.Durations.TEN_SECONDS;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.api.model.AccountId;
-import org.bouncycastle.oer.its.ieee1609dot2.basetypes.UINT16;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +16,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import reactor.core.publisher.Flux;
