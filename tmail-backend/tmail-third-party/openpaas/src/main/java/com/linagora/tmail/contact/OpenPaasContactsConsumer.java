@@ -135,11 +135,11 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     private Mono<EmailAddressContact> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
         LOGGER.info("Consumed jCard object message: {}", contactAddedMessage);
-
+        Optional<ContactFields> contactFieldsOpt = toContactFields(contactAddedMessage.vcard());
         return openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
             .map(ownerMailAddress -> AccountId.fromUsername(Username.fromMailAddress(ownerMailAddress)))
             .flatMap(ownerAccountId ->
-                Mono.justOrEmpty(toContactFields(contactAddedMessage.vcard()))
+                Mono.justOrEmpty(contactFieldsOpt)
                     .flatMap(contactFields -> doAddContact(ownerAccountId, contactFields)));
     }
 
