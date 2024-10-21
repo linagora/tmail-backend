@@ -1,0 +1,38 @@
+name: Create PR from Fork to Upstream
+
+on:
+  push:
+    branches:
+      - main  # Hoặc nhánh mà bạn muốn theo dõi
+
+jobs:
+  createPullRequest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true  # Lấy cả submodule
+
+      # Cập nhật submodule hoặc các thay đổi khác
+      - name: Update submodule
+        run: |
+          git submodule update --remote
+          git add james-project
+          git commit -m "Update submodule james-project" || echo "No changes to commit"
+
+      # Đẩy thay đổi lên fork (repo cá nhân)
+      - name: Push changes to fork
+        run: |
+          git push origin main
+
+      # Tạo pull request từ fork tới upstream
+      - name: Create Pull Request to Upstream
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.PAT_TOKEN }}  # Dùng token để có quyền tạo PR
+          base: main  # Nhánh của repo tổ chức (linagora/tmail-backend)
+          head: vttranlina:main  # Nhánh của repo cá nhân
+          title: "Update James submodule to latest version"
+          body: "This pull request updates the submodule to the latest version."
+          repository: linagora/tmail-backend  # Repo mục tiêu
