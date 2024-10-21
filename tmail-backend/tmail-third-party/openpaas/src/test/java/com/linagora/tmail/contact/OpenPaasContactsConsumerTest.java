@@ -122,6 +122,27 @@ class OpenPaasContactsConsumerTest {
                 .hasSize(1));
     }
 
+    @Test
+    void contactDisplayNameShouldBeSetFromTheReceivedOpenPaasContactObject() {
+
+    }
+
+    @Test
+    void givenDisplayNameFromOpenPaasNotEmptyThenStoredDisplayNameShouldBeOverridden() {
+
+    }
+
+    @Test
+    void givenDisplayNameFromOpenPaasIsEmptyThenStoredDisplayNameShouldPersist() {
+
+    }
+
+    @Test
+    void automaticContactIndexingShouldNotOverrideContactInfoFromOpenPaas() {
+        // The automatic contact indexing is triggered when you send or receive a message
+        // from someone, then their contact info be automatically indexed in the contacts' search engine.
+    }
+
     private void sendMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
