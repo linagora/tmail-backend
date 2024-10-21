@@ -78,12 +78,6 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
                     .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
                 sender.declareExchange(ExchangeSpecification.exchange(DEAD_LETTER_EXCHANGE)
                     .durable(DURABLE)),
-                sender.declareExchange(ExchangeSpecification.exchange(DEAD_LETTER_EXCHANGE)
-                    .durable(DURABLE)),
-                sender.declareQueue(QueueSpecification
-                    .queue(DEAD_LETTER_QUEUE)
-                    .durable(DURABLE)
-                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder().build())),
                 sender.declareQueue(QueueSpecification
                     .queue(DEAD_LETTER_QUEUE)
                     .durable(DURABLE)
@@ -125,7 +119,6 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private Mono<EmailAddressContact> messageConsume(AcknowledgableDelivery ackDelivery, String messagePayload) {
         return Mono.just(messagePayload)
             .map(this::parseContactAddedRabbitMqMessage)
-            .log()
             .flatMap(this::handleMessage)
             .doOnSuccess(input -> ackDelivery.ack())
             .doOnError(e -> ackDelivery.nack(REQUEUE_ON_NACK))
