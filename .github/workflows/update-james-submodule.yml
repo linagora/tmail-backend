@@ -5,7 +5,7 @@ on:
     - cron: '*/5 * * * *'  # Chạy mỗi 5 phút
   push:
     branches:
-      - wip  # Hoặc nhánh mà bạn muốn theo dõi
+      - master  # Hoặc nhánh mà bạn muốn theo dõi
 
 jobs:
   createPullRequest:
