@@ -24,12 +24,6 @@ jobs:
           date +%s > report.txt
           git add -A
           git commit -m "Update submodule james-project" || echo "No changes to commit"
-          git checkout -b upgradeSha
-
-      # Đẩy thay đổi lên fork (repo cá nhân)
-      - name: Push changes to fork
-        run: |
-          git push origin upgradeSha
 
       # Tạo pull request từ fork tới upstream
       - name: Create Pull Request to Upstream
