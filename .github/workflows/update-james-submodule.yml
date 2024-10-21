@@ -19,14 +19,17 @@ jobs:
       # Cập nhật submodule hoặc các thay đổi khác
       - name: Update submodule
         run: |
-          git submodule update --remote
-          git add james-project
+          git config user.name 'Tung TV-bot'
+          git config user.email 'vttran@linagora.com'
+          date +%s > report.txt
+          git add -A
           git commit -m "Update submodule james-project" || echo "No changes to commit"
+          git co -b upgradeSha
 
       # Đẩy thay đổi lên fork (repo cá nhân)
       - name: Push changes to fork
         run: |
-          git push origin master
+          git push origin upgradeSha
 
       # Tạo pull request từ fork tới upstream
       - name: Create Pull Request to Upstream
@@ -34,7 +37,9 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}  # Dùng token để có quyền tạo PR
           base: master  # Nhánh của repo tổ chức (linagora/tmail-backend)
-          head: vttranlina:master  # Nhánh của repo cá nhân
+          branch: upgradeSha  # Nhánh của repo cá nhân
+          delete-branch: true
           title: "Update James submodule to latest version"
           body: "This pull request updates the submodule to the latest version."
-          repository: linagora/tmail-backend  # Repo mục tiêu
+          commit-message: "Update James submodule to latest version"
+          push-to-fork: "linagora/tmail-backend"  # Fork của repo tổ chức
