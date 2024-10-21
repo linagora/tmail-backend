@@ -22,7 +22,7 @@ jobs:
           git config user.name 'Tung TV-bot'
           git config user.email 'vttran@linagora.com'
           date +%s > report.txt
-          git add -A
+          git add .
           git commit -m "Update submodule james-project" || echo "No changes to commit"
 
       # Tạo pull request từ fork tới upstream
