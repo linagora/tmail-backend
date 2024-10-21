@@ -1,6 +1,8 @@
 name: Create PR from Fork to Upstream
 
 on:
+  schedule:
+    - cron: '*/5 * * * *'  # Chạy mỗi 5 phút
   push:
     branches:
       - main  # Hoặc nhánh mà bạn muốn theo dõi
