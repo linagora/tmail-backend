@@ -26,7 +26,7 @@ jobs:
       # Đẩy thay đổi lên fork (repo cá nhân)
       - name: Push changes to fork
         run: |
-          git push origin main
+          git push origin master
 
       # Tạo pull request từ fork tới upstream
       - name: Create Pull Request to Upstream
