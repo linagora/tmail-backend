@@ -31,7 +31,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}  # Dùng token để có quyền tạo PR
           base: master  # Nhánh của repo tổ chức (linagora/tmail-backend)
-          branch: upgradeSha  # Nhánh của repo cá nhân
+          branch: upgradeSha1  # Nhánh của repo cá nhân
           delete-branch: true
           title: "Update James submodule to latest version"
           body: "This pull request updates the submodule to the latest version."
