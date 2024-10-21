@@ -42,4 +42,4 @@ jobs:
           title: "Update James submodule to latest version"
           body: "This pull request updates the submodule to the latest version."
           commit-message: "Update James submodule to latest version"
-          push-to-fork: "linagora/tmail-backend"  # Fork của repo tổ chức
+          push-to-fork: linagora/tmail-backend  # Fork của repo tổ chức
