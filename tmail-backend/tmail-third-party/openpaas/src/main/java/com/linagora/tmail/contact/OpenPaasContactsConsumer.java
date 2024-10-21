@@ -106,7 +106,6 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private Disposable doConsumeContactMessages() {
         return delivery()
             .flatMap(delivery -> messageConsume(delivery, new String(delivery.getBody(), StandardCharsets.UTF_8)))
-            .doOnError(e -> LOGGER.error("Failed to consume contact message", e))
             .subscribe();
     }
 
@@ -120,9 +119,15 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
         return Mono.just(messagePayload)
             .map(this::parseContactAddedRabbitMqMessage)
             .flatMap(this::handleMessage)
-            .doOnSuccess(input -> ackDelivery.ack())
-            .doOnError(e -> ackDelivery.nack(REQUEUE_ON_NACK))
-            .onErrorResume(e -> Mono.error(new RuntimeException("Failed to consume OpenPaaS added contact message", e)));
+            .doOnSuccess(result -> {
+                LOGGER.warn("Consumed contact successfully '{}'", result);
+                ackDelivery.ack();
+            })
+            .onErrorResume(error -> {
+                LOGGER.error("Error when consume message '{}'", messagePayload, error);
+                ackDelivery.nack(REQUEUE_ON_NACK);
+                return Mono.empty();
+            });
     }
 
     private ContactAddedRabbitMqMessage parseContactAddedRabbitMqMessage(String message) {
