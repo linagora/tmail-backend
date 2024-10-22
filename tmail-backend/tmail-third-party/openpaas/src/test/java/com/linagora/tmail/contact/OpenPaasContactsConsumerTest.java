@@ -211,6 +211,7 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashOnInvalidOwnerMailAddress() {
+        // Note: Bob has an invalid mail address.
         sendMessage("""
             {
                 "bookId": "BOB_USER_ID",
