@@ -49,8 +49,7 @@ class OpenPaasContactsConsumerTest {
                 "admin")
         );
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
-        consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getReceiverProvider(),
-            rabbitMQExtension.getSender(),
+        consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),
             searchEngine, restClient);
 

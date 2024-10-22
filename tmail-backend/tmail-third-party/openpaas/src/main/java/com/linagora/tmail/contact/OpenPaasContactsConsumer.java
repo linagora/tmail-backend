@@ -7,9 +7,9 @@ import java.io.Closeable;
 import java.util.Optional;
 
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
+import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
-import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
@@ -54,12 +53,12 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private final OpenPaasRestClient openPaasRestClient;
 
     @Inject
-    public OpenPaasContactsConsumer(RabbitMQChannelPool channelPool, 
+    public OpenPaasContactsConsumer(ReactorRabbitMQChannelPool channelPool,
                                     RabbitMQConfiguration commonRabbitMQConfiguration,
                                     EmailAddressContactSearchEngine contactSearchEngine,
                                     OpenPaasRestClient openPaasRestClient) {
-        this.receiverProvider = receiverProvider;
-        this.sender = sender;
+        this.receiverProvider = channelPool::createReceiver;
+        this.sender = channelPool.getSender();
         this.commonRabbitMQConfiguration = commonRabbitMQConfiguration;
         this.contactSearchEngine = contactSearchEngine;
         this.openPaasRestClient = openPaasRestClient;
