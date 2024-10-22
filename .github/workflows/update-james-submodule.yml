@@ -2,7 +2,7 @@ name: Create PR from Fork to Upstream
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Chạy mỗi 5 phút
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -27,20 +27,17 @@ jobs:
       - name: Commit and push if submodule updated
         if: ${{ steps.check-submodule.outputs.changed == 'yes' }}
         run: |
-          git config user.name 'TungTV-auto'
-          git config user.email 'vttran@linagora.com'
+          git config user.name 'github[bot]'
+          git config user.email 'github-bot@linagora.com'
           git add .
-          git commit -m "Update submodule james-project"
+          git commit -m "Update James SHA-1"
 
-      # Tạo pull request từ fork tới upstream
       - name: Create Pull Request to Upstream
+        if: ${{ steps.check-submodule.outputs.changed == 'yes' }}
         uses: peter-evans/create-pull-request@v7
         with:
-#          token: ${{ secrets.PAT_TOKEN }}
           base: master
           branch: upgradeSha1
           delete-branch: true
           title: "Update James submodule to latest version"
           body: "This pull request updates the submodule to the latest version."
-#          commit-message: "Update James SHA-1"
-#          push-to-fork: linagora/tmail-backend  # Fork của repo tổ chức
