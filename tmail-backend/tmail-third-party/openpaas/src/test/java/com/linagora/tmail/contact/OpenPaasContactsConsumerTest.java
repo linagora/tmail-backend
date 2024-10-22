@@ -53,8 +53,7 @@ class OpenPaasContactsConsumerTest {
             new OpenPaasConfiguration(
                 openPaasServerExtension.getBaseUrl(),
                 OpenPaasServerExtension.GOOD_USER(),
-                OpenPaasServerExtension.GOOD_PASSWORD())
-        );
+                OpenPaasServerExtension.GOOD_PASSWORD()));
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),
