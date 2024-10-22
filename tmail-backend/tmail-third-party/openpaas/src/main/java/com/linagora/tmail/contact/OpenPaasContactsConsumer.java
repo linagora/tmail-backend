@@ -121,18 +121,22 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
         return maybeContactFields.map(
                 openPaasContact -> openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
                     .map(this::getAccountIdFromMailAddress)
-                    .flatMap(ownerAccountId -> Mono.from(contactSearchEngine.get(ownerAccountId, openPaasContact.address()))
-                        .onErrorResume(e -> Mono.empty())
-                        .switchIfEmpty(
-                            Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact)))
-                        .flatMap(existingContact -> {
-                            if (!openPaasContact.firstname().isBlank()) {
-                                return Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact));
-                            } else {
-                                return Mono.empty();
-                            }
-                        })))
+                    .flatMap(ownerAccountId -> indexContactIfNeeded(ownerAccountId, openPaasContact)))
             .orElse(Mono.empty());
+    }
+
+    private Mono<EmailAddressContact> indexContactIfNeeded(AccountId ownerAccountId, ContactFields openPaasContact) {
+        return Mono.from(contactSearchEngine.get(ownerAccountId, openPaasContact.address()))
+            .onErrorResume(e -> Mono.empty())
+            .switchIfEmpty(
+                Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact)))
+            .flatMap(existingContact -> {
+                if (!openPaasContact.firstname().isBlank()) {
+                    return Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact));
+                } else {
+                    return Mono.empty();
+                }
+            });
     }
 
     private AccountId getAccountIdFromMailAddress(MailAddress mailAddress) {
