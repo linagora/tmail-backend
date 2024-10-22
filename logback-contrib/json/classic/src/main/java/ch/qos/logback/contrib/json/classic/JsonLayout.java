@@ -35,8 +35,9 @@ import ch.qos.logback.contrib.json.JsonLayoutBase;
  *         <td nowrap="nowrap">{@code timestamp}</td>
  *         <td nowrap="nowrap">String value of <code>ILoggingEvent.{@link ch.qos.logback.classic.spi.ILoggingEvent#getTimeStamp() getTimeStamp()}</code></td>
  *         <td>By default, the value is not formatted; it is simply {@code String.valueOf(timestamp)}.  To format
- *         the string using a SimpleDateFormat, set the {@link #setTimestampFormat(String) timestampFormat}
- *         property with the corresponding SimpleDateFormat string, for example, {@code yyyy-MM-dd HH:mm:ss.SSS}</td>
+ *         the string using a DateTimeFormatter, set the {@link #setTimestampFormat(String) timestampFormat}
+ *         property with the corresponding DateTimeFormatter pattern, for example, {@code yyyy-MM-dd HH:mm:ss.SSS}
+ *         You can also specify a timezone using the {@link #setTimestampFormatTimezoneId(String) timestampFormatTimezoneId} property.</td>
  *         <td>true</td>
  *     </tr>
  *     <tr>
