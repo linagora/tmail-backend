@@ -57,8 +57,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private final OpenPaasRestClient openPaasRestClient;
 
     @Inject
-    public OpenPaasContactsConsumer(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) ReceiverProvider receiverProvider,
-                                    @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) Sender sender,
+    public OpenPaasContactsConsumer(RabbitMQChannelPool channelPool, 
                                     RabbitMQConfiguration commonRabbitMQConfiguration,
                                     EmailAddressContactSearchEngine contactSearchEngine,
                                     OpenPaasRestClient openPaasRestClient) {
