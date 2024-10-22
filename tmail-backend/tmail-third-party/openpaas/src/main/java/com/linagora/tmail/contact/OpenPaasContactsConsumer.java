@@ -119,15 +119,15 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
         LOGGER.debug("Consumed jCard object message: {}", contactAddedMessage);
         Optional<ContactFields> maybeContactFields = contactAddedMessage.vcard().asContactFields();
         return maybeContactFields.map(
-                contactFields -> openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
+                openPaasContact -> openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
                     .map(this::getAccountIdFromMailAddress)
-                    .flatMap(ownerAccountId -> Mono.from(contactSearchEngine.get(ownerAccountId, contactFields.address()))
+                    .flatMap(ownerAccountId -> Mono.from(contactSearchEngine.get(ownerAccountId, openPaasContact.address()))
                         .onErrorResume(e -> Mono.empty())
                         .switchIfEmpty(
-                            Mono.from(contactSearchEngine.index(ownerAccountId, contactFields)))
+                            Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact)))
                         .flatMap(existingContact -> {
-                            if (!contactFields.firstname().isBlank()) {
-                                return Mono.from(contactSearchEngine.index(ownerAccountId, contactFields));
+                            if (!openPaasContact.firstname().isBlank()) {
+                                return Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact));
                             } else {
                                 return Mono.empty();
                             }
