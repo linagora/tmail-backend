@@ -4,7 +4,6 @@ import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 
 import java.io.Closeable;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import jakarta.inject.Inject;
@@ -19,7 +18,6 @@ import org.apache.james.lifecycle.api.Startable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
@@ -44,9 +42,8 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     private static final boolean REQUEUE_ON_NACK = true;
     public static final String EXCHANGE_NAME = "contacts:contact:add";
-    public static final String QUEUE_NAME = "ConsumeOpenPaasContactsQueue";
-    public static final String DEAD_LETTER_EXCHANGE = "contacts:contact:add:dead:letter";
-    public static final String DEAD_LETTER_QUEUE = "ConsumeOpenPaasContactsQueue-dead-letter";
+    public static final String QUEUE_NAME = "openpaas-contacts-queue";
+    public static final String DEAD_LETTER = QUEUE_NAME + "-dead-letter";
 
     private Disposable consumeContactsDisposable;
     private final ReceiverProvider receiverProvider;
@@ -72,26 +69,19 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
         Flux.concat(
                 sender.declareExchange(ExchangeSpecification.exchange(EXCHANGE_NAME)
                     .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
-                sender.declareExchange(ExchangeSpecification.exchange(DEAD_LETTER_EXCHANGE)
-                    .durable(DURABLE)),
                 sender.declareQueue(QueueSpecification
-                    .queue(DEAD_LETTER_QUEUE)
+                    .queue(DEAD_LETTER)
                     .durable(DURABLE)
                     .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder().build())),
                 sender.declareQueue(QueueSpecification
                     .queue(QUEUE_NAME)
                     .durable(DURABLE)
                     .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder()
-                    .put("x-dead-letter-exchange", DEAD_LETTER_EXCHANGE)
-                    .put("x-dead-letter-routing-key", EMPTY_ROUTING_KEY)
-                    .build())),
+                        .deadLetter(DEAD_LETTER)
+                        .build())),
                 sender.bind(BindingSpecification.binding()
                     .exchange(EXCHANGE_NAME)
                     .queue(QUEUE_NAME)
-                    .routingKey(EMPTY_ROUTING_KEY)),
-                sender.bind(BindingSpecification.binding()
-                    .exchange(DEAD_LETTER_EXCHANGE)
-                    .queue(DEAD_LETTER_QUEUE)
                     .routingKey(EMPTY_ROUTING_KEY)))
             .then()
             .block();
@@ -101,7 +91,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     private Disposable doConsumeContactMessages() {
         return delivery()
-            .flatMap(delivery -> messageConsume(delivery, new String(delivery.getBody(), StandardCharsets.UTF_8)))
+            .flatMap(delivery -> messageConsume(delivery, delivery.getBody()))
             .subscribe();
     }
 
@@ -111,9 +101,9 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             Receiver::close);
     }
 
-    private Mono<EmailAddressContact> messageConsume(AcknowledgableDelivery ackDelivery, String messagePayload) {
+    private Mono<EmailAddressContact> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
         return Mono.just(messagePayload)
-            .map(this::parseContactAddedRabbitMqMessage)
+            .map(ContactAddedRabbitMqMessage::fromJSON)
             .flatMap(this::handleMessage)
             .doOnSuccess(result -> {
                 LOGGER.info("Consumed contact successfully '{}'", result);
@@ -124,14 +114,6 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
                 ackDelivery.nack(!REQUEUE_ON_NACK);
                 return Mono.empty();
             });
-    }
-
-    private ContactAddedRabbitMqMessage parseContactAddedRabbitMqMessage(String message) {
-        try {
-            return objectMapper.readValue(message, ContactAddedRabbitMqMessage.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to parse ContactAddedRabbitMqMessage", e);
-        }
     }
 
     private Mono<EmailAddressContact> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
