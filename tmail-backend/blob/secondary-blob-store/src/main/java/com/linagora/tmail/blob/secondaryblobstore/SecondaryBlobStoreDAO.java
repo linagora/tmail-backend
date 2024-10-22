@@ -1,5 +1,6 @@
 package com.linagora.tmail.blob.secondaryblobstore;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
@@ -20,18 +21,47 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.ByteSource;
+import com.google.common.io.FileBackedOutputStream;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class SecondaryBlobStoreDAO implements BlobStoreDAO {
+
+    private static class FileBackedOutputStreamByteSource extends ByteSource {
+        private final FileBackedOutputStream stream;
+        private final long size;
+
+        private FileBackedOutputStreamByteSource(FileBackedOutputStream stream, long size) {
+            Preconditions.checkArgument(size >= 0, "'size' must be positive");
+            this.stream = stream;
+            this.size = size;
+        }
+
+        @Override
+        public InputStream openStream() throws IOException {
+            return stream.asByteSource().openStream();
+        }
+
+        @Override
+        public com.google.common.base.Optional<Long> sizeIfKnown() {
+            return com.google.common.base.Optional.of(size);
+        }
+
+        @Override
+        public long size() {
+            return size;
+        }
+    }
+
     record SavingStatus(Optional<Throwable> e, ObjectStorageIdentity objectStorageIdentity) {
         public static SavingStatus success(ObjectStorageIdentity objectStorageIdentity) {
             return new SavingStatus(Optional.empty(), objectStorageIdentity);
@@ -48,6 +78,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecondaryBlobStoreDAO.class);
     private static final Set<RegistrationKey> NO_REGISTRATION_KEYS = ImmutableSet.of();
+    private static final int FILE_THRESHOLD = 100 * 1024 * 1024;
 
     private final BlobStoreDAO primaryBlobStoreDAO;
     private final BlobStoreDAO secondaryBlobStoreDAO;
@@ -99,15 +130,20 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
-    // TODO Could be optimized with FileBackedOutputStream
     public Mono<Void> save(BucketName bucketName, BlobId blobId, InputStream inputStream) {
-        return Mono.fromCallable(() -> IOUtils.toByteArray(inputStream))
-            .subscribeOn(Schedulers.boundedElastic())
-            .flatMap(data -> Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, data), ObjectStorageIdentity.PRIMARY),
-                    asSavingStatus(secondaryBlobStoreDAO.save(bucketName, blobId, data), ObjectStorageIdentity.SECONDARY))
-                .collectList()
-                .flatMap(savingStatuses -> merge(savingStatuses,
-                    failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage), NO_REGISTRATION_KEYS))));
+        return Mono.using(
+                () -> new FileBackedOutputStream(FILE_THRESHOLD),
+                fileBackedOutputStream -> Mono.fromCallable(() -> IOUtils.copy(inputStream, fileBackedOutputStream))
+                    .flatMap(size -> Flux.merge(
+                            asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.PRIMARY),
+                            asSavingStatus(secondaryBlobStoreDAO.save(bucketName, blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.SECONDARY))
+                        .collectList()
+                        .flatMap(savingStatuses -> merge(savingStatuses,
+                            failedObjectStorage -> eventBus.dispatch(
+                                new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage),
+                                NO_REGISTRATION_KEYS)))),
+                Throwing.consumer(FileBackedOutputStream::reset))
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     @Override
