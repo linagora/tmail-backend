@@ -42,5 +42,5 @@ jobs:
           delete-branch: true
           title: "Update James submodule to latest version"
           body: "This pull request updates the submodule to the latest version."
-          commit-message: "Update James SHA-1"
+#          commit-message: "Update James SHA-1"
 #          push-to-fork: linagora/tmail-backend  # Fork của repo tổ chức
