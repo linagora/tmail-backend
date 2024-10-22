@@ -1,6 +1,7 @@
 package com.linagora.tmail.api
 
 import java.net.{URI, URL}
+
 import com.linagora.tmail.HttpUtils
 import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, BOB_INVALID_EMAIL, BOB_USER_ID, GOOD_AUTHENTICATION_TOKEN, LOGGER}
 import org.junit.jupiter.api.extension._
