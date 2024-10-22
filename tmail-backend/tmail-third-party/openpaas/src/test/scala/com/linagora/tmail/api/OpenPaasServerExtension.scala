@@ -14,9 +14,9 @@ import org.slf4j.{Logger, LoggerFactory}
 
 
 object OpenPaasServerExtension {
-  val ALICE_USER_ID: String = "abc0a663bdaffe0026290xyz"
+  val ALICE_USER_ID: String = "ALICE_USER_ID"
   val ALICE_EMAIL: String = "adoe@linagora.com"
-  val BOB_USER_ID: String = "booooooooooooooooooooooob"
+  val BOB_USER_ID: String = "BOB_USER_ID"
   val BOB_INVALID_EMAIL: String = "BOB_EMAIL_IS_INVALID"
   val GOOD_USER = "admin"
   val GOOD_PASSWORD = "admin"

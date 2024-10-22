@@ -72,10 +72,10 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage("""
             {
-                "bookId": "abc0a663bdaffe0026290xyz",
+                "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "abc0a663bdaffe0026290xyz",
+                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -100,10 +100,10 @@ class OpenPaasContactsConsumerTest {
     void contactShouldBeIndexedWhenContactUserAddedMessage() {
         sendMessage("""
             {
-                "bookId": "abc0a663bdaffe0026290xyz",
+                "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "abc0a663bdaffe0026290xyz",
+                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -128,10 +128,10 @@ class OpenPaasContactsConsumerTest {
     void consumeMessageShouldNotCrashOnInvalidContactMailAddress() {
         sendMessage("""
             {
-                "bookId": "abc0a663bdaffe0026290xyz",
+                "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "abc0a663bdaffe0026290xyz",
+                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -152,10 +152,10 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage("""
             {
-                "bookId": "abc0a663bdaffe0026290xyz",
+                "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "abc0a663bdaffe0026290xyz",
+                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -180,10 +180,10 @@ class OpenPaasContactsConsumerTest {
     void consumeMessageShouldNotCrashWhenFnPropertyIsNotProvided() {
         sendMessage("""
             {
-                "bookId": "abc0a663bdaffe0026290xyz",
+                "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "abc0a663bdaffe0026290xyz",
+                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -213,10 +213,10 @@ class OpenPaasContactsConsumerTest {
     void consumeMessageShouldNotCrashOnInvalidOwnerMailAddress() {
         sendMessage("""
             {
-                "bookId": "%s",
+                "bookId": "BOB_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "%s",
+                "userId": "BOB_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -228,7 +228,7 @@ class OpenPaasContactsConsumerTest {
                   ]
                ]
             }
-            """.formatted(OpenPaasServerExtension.BOB_USER_ID(), OpenPaasServerExtension.BOB_USER_ID()));
+            """);
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
@@ -238,10 +238,10 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage("""
             {
-                "bookId": "abc0a663bdaffe0026290xyz",
+                "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "abc0a663bdaffe0026290xyz",
+                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
