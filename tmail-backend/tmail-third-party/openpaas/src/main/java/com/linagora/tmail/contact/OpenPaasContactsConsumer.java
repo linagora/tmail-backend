@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
+import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.rabbitmq.client.BuiltinExchangeType;
