@@ -17,20 +17,16 @@ jobs:
         id: check-submodule
         run: |
           git submodule update --remote -- james-project
+          git config user.name 'github[bot]'
+          git config user.email 'github-bot@linagora.com'
           if [ "$(git diff --submodule=log)" != "" ]; then
             echo "Submodule has changes"
+            git add james-project
             echo "changed=yes" >> $GITHUB_OUTPUT
           else
             echo "No changes in submodule"
             echo "changed=no" >> $GITHUB_OUTPUT
           fi
-      - name: Commit and push if submodule updated
-        if: ${{ steps.check-submodule.outputs.changed == 'yes' }}
-        run: |
-          git config user.name 'github[bot]'
-          git config user.email 'github-bot@linagora.com'
-          git add .
-          git commit -m "Update James SHA-1"
 
       - name: Create Pull Request to Upstream if submodule updated
         if: ${{ steps.check-submodule.outputs.changed == 'yes' }}
@@ -40,12 +36,11 @@ jobs:
           title: "Update James submodule to latest version"
           body: |
             This pull request updates the James SHA-1 submodule to the latest version.
-          branch: update-james-sha1
+          branch: upgradeSha1
           base: master
           labels: bot
           assignees: vttranlina
           reviewers: vttranlina
-          draft: false
           delete-branch: true
 
 
