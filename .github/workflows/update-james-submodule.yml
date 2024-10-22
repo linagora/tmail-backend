@@ -1,0 +1,42 @@
+name: Create PR to update James submodule
+
+on:
+  schedule:
+    - cron: '1 */4 * * *'
+  workflow_dispatch:
+
+jobs:
+  createPullRequest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Check if submodule is updated
+        id: check-submodule
+        run: |
+          git submodule update --remote -- james-project
+          git config user.name 'github[bot]'
+          git config user.email 'github-bot@linagora.com'
+          if [ "$(git diff --submodule=log)" != "" ]; then
+            echo "Submodule has changes"
+            git add james-project
+            echo "changed=yes" >> $GITHUB_OUTPUT
+          else
+            echo "No changes in submodule"
+            echo "changed=no" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request to Upstream if submodule updated
+        if: ${{ steps.check-submodule.outputs.changed == 'yes' }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: Update James SHA-1
+          title: "Update James submodule to latest version"
+          body: |
+            This pull request updates the James SHA-1 submodule to the latest version.
+          branch: upgradeSha1
+          base: master
+          labels: bot
+          delete-branch: true
