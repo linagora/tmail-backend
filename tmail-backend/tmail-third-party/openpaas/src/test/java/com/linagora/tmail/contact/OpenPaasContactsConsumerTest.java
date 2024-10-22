@@ -9,6 +9,7 @@ import static org.awaitility.Durations.TEN_SECONDS;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,10 +24,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
+import jakarta.mail.internet.AddressException;
+
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
+import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
@@ -270,24 +274,82 @@ class OpenPaasContactsConsumerTest {
     }
 
     @Test
-    void contactDisplayNameShouldBeSetFromTheReceivedOpenPaasContactObject() {
+    void givenDisplayNameFromOpenPaasNotEmptyThenStoredDisplayNameShouldBeOverridden()
+        throws AddressException {
+        indexJhonDoe(OpenPaasServerExtension.ALICE_EMAIL());
 
-    }
+        sendMessage("""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jhon Dont" ],
+                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
 
-    @Test
-    void givenDisplayNameFromOpenPaasNotEmptyThenStoredDisplayNameShouldBeOverridden() {
+        ContactFields expectedContact =
+            new ContactFields(new MailAddress("jhon@doe.com"), "Jhon Dont", "");
 
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                    .collectList().block())
+                .hasSize(1)
+                .map(EmailAddressContact::fields)
+                .first()
+                .isEqualTo(expectedContact));
     }
 
     @Test
     void givenDisplayNameFromOpenPaasIsEmptyThenStoredDisplayNameShouldPersist() {
+        ContactFields indexedContact = indexJhonDoe(OpenPaasServerExtension.ALICE_EMAIL());
 
+        sendMessage("""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "  " ],
+                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                    .collectList().block())
+                .hasSize(1)
+                .map(EmailAddressContact::fields)
+                .first()
+                .isEqualTo(indexedContact));
     }
 
+    /*
+    * The automatic contact indexing is triggered when you send or receive a message
+    * from someone, then their contact info be automatically indexed in the contacts' search engine.
+    * */
     @Test
     void automaticContactIndexingShouldNotOverrideContactInfoFromOpenPaas() {
-        // The automatic contact indexing is triggered when you send or receive a message
-        // from someone, then their contact info be automatically indexed in the contacts' search engine.
+        //
     }
 
     private void sendMessage(String message) {
@@ -297,5 +359,20 @@ class OpenPaasContactsConsumerTest {
                 EMPTY_ROUTING_KEY,
                 message.getBytes(UTF_8))))
             .block();
+    }
+
+    private ContactFields indexJhonDoe(String ownerMailAddressString) {
+        try {
+            MailAddress ownerMailAddress = new MailAddress(ownerMailAddressString);
+            MailAddress jhonDoeMailAddress = new MailAddress("jhon@doe.com");
+            AccountId aliceAccountId =
+                AccountId.fromUsername(Username.fromMailAddress(ownerMailAddress));
+
+            return Mono.from(searchEngine.index(aliceAccountId,
+                new ContactFields(jhonDoeMailAddress, "Jhon", "Doe"))).block().fields();
+        }
+        catch (AddressException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
