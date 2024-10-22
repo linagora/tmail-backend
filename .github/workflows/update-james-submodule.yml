@@ -3,9 +3,7 @@ name: Create PR from Fork to Upstream
 on:
   schedule:
     - cron: '*/5 * * * *'  # Chạy mỗi 5 phút
-  push:
-    branches:
-      - master  # Hoặc nhánh mà bạn muốn theo dõi
+  workflow_dispatch:
 
 jobs:
   createPullRequest:
@@ -14,26 +12,36 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          submodules: true  # Lấy cả submodule
-
-      # Cập nhật submodule hoặc các thay đổi khác
-      - name: Update submodule
+          submodules: true
+      - name: Check if submodule is updated
+        id: check-submodule
         run: |
-          git config user.name 'Tung TV-bot'
+          git submodule update --remote -- james-project
+          if [ "$(git diff --submodule=log)" != "" ]; then
+            echo "Submodule has changes"
+            echo "changed=yes" >> $GITHUB_OUTPUT
+          else
+            echo "No changes in submodule"
+            echo "changed=no" >> $GITHUB_OUTPUT
+          fi
+      - name: Commit and push if submodule updated
+        if: ${{ steps.check-submodule.outputs.changed == 'yes' }}
+        run: |
+          git config user.name 'TungTV-auto'
           git config user.email 'vttran@linagora.com'
-          date +%s > report.txt
+          git checkout -b upgradeSha2
           git add .
-          git commit -m "Update submodule james-project" || echo "No changes to commit"
+          git commit -m "Update submodule james-project"
 
       # Tạo pull request từ fork tới upstream
       - name: Create Pull Request to Upstream
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.PAT_TOKEN }}  # Dùng token để có quyền tạo PR
-          base: master  # Nhánh của repo tổ chức (linagora/tmail-backend)
-          branch: upgradeSha1  # Nhánh của repo cá nhân
+#          token: ${{ secrets.PAT_TOKEN }}
+          base: master
+          branch: upgradeSha1
           delete-branch: true
           title: "Update James submodule to latest version"
           body: "This pull request updates the submodule to the latest version."
-          commit-message: "Update James submodule to latest version"
+          commit-message: "Update James SHA-1"
 #          push-to-fork: linagora/tmail-backend  # Fork của repo tổ chức
