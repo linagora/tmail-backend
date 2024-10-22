@@ -45,13 +45,13 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     public static final String QUEUE_NAME = "openpaas-contacts-queue";
     public static final String DEAD_LETTER = QUEUE_NAME + "-dead-letter";
 
-    private Disposable consumeContactsDisposable;
     private final ReceiverProvider receiverProvider;
     private final Sender sender;
     private final RabbitMQConfiguration commonRabbitMQConfiguration;
     private final EmailAddressContactSearchEngine contactSearchEngine;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OpenPaasRestClient openPaasRestClient;
+    private Disposable consumeContactsDisposable;
 
     @Inject
     public OpenPaasContactsConsumer(ReactorRabbitMQChannelPool channelPool,
