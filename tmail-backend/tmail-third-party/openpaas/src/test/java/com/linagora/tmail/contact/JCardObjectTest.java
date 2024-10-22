@@ -32,12 +32,10 @@ public class JCardObjectTest {
 
     @Test
     void shouldThrowIfFnOrEmailOptionalIsNull() {
-        assertThatThrownBy(
-            () -> new JCardObject(null, Optional.of("jhon@doe.com"))
-        ).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new JCardObject(null, Optional.of("jhon@doe.com")))
+            .isInstanceOf(NullPointerException.class);
 
-        assertThatThrownBy(
-            () -> new JCardObject(Optional.of("Jhon Doe"), null)
-        ).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new JCardObject(Optional.of("Jhon Doe"), null))
+            .isInstanceOf(NullPointerException.class);
     }
 }
