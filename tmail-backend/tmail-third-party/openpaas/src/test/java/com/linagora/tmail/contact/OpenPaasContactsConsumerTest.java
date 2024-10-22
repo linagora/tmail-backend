@@ -48,8 +48,8 @@ class OpenPaasContactsConsumerTest {
         OpenPaasRestClient restClient = new OpenPaasRestClient(
             new OpenPaasConfiguration(
                 openPaasServerExtension.getBaseUrl(),
-                "admin",
-                "admin")
+                OpenPaasServerExtension.GOOD_USER(),
+                OpenPaasServerExtension.GOOD_PASSWORD())
         );
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
@@ -121,7 +121,13 @@ class OpenPaasContactsConsumerTest {
             assertThat(
                 Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
                     .collectList().block())
-                .hasSize(1));
+                .hasSize(1)
+                .map(EmailAddressContact::fields)
+                .allSatisfy(Throwing.consumer(contact -> {
+                    assertThat(contact.address()).isEqualTo(new MailAddress("jhon@doe.com"));
+                    assertThat(contact.firstname()).isEqualTo("Jane Doe");
+                    assertThat(contact.surname()).isEqualTo("");
+                })));
     }
 
     @Test
