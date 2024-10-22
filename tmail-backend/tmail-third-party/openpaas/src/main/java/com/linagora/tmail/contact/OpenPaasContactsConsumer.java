@@ -106,7 +106,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             .map(ContactAddedRabbitMqMessage::fromJSON)
             .flatMap(this::handleMessage)
             .doOnSuccess(result -> {
-                LOGGER.info("Consumed contact successfully '{}'", result);
+                LOGGER.debug("Consumed contact successfully '{}'", result);
                 ackDelivery.ack();
             })
             .onErrorResume(error -> {
@@ -117,7 +117,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     }
 
     private Mono<EmailAddressContact> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
-        LOGGER.debug("Consumed jCard object message: {}", contactAddedMessage);
+        LOGGER.trace("Consumed jCard object message: {}", contactAddedMessage);
         Optional<ContactFields> maybeContactFields = contactAddedMessage.vcard().asContactFields();
         return maybeContactFields.map(
                 openPaasContact -> openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
