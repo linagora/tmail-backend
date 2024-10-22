@@ -4,18 +4,17 @@
  * This file is licensed under the terms of the
  * Eclipse Public License v1.0 as published by
  * the Eclipse Foundation.
- * 
+ *
  * This work is based on the work found at
  * https://github.com/qos-ch/logback-contrib
  * authored by the logback-contrib developers.
  */
 package ch.qos.logback.contrib.json;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.TimeZone;
 
 import ch.qos.logback.core.CoreConstants;
 import ch.qos.logback.core.LayoutBase;
@@ -37,9 +36,24 @@ public abstract class JsonLayoutBase<E> extends LayoutBase<E> {
 
     protected JsonFormatter jsonFormatter;
 
+    private DateTimeFormatter dateTimeFormatter;
+
     public JsonLayoutBase() {
         this.includeTimestamp = true;
         this.appendLineSeparator = false;
+        updateDateTimeFormatter();
+    }
+
+    private void updateDateTimeFormatter() {
+        if (this.timestampFormat != null) {
+            if (this.timestampFormatTimezoneId != null) {
+                this.dateTimeFormatter = DateTimeFormatter.ofPattern(this.timestampFormat)
+                        .withZone(ZoneId.of(this.timestampFormatTimezoneId));
+            } else {
+                this.dateTimeFormatter = DateTimeFormatter.ofPattern(this.timestampFormat)
+                        .withZone(ZoneId.systemDefault());
+            }
+        }
     }
 
     @Override
@@ -71,15 +85,9 @@ public abstract class JsonLayoutBase<E> extends LayoutBase<E> {
         if (this.timestampFormat == null || timestamp < 0) {
             return String.valueOf(timestamp);
         }
-        Date date = new Date(timestamp);
-        DateFormat format = createDateFormat(this.timestampFormat);
+        Instant instant = Instant.ofEpochMilli(timestamp);
 
-        if (this.timestampFormatTimezoneId != null) {
-            TimeZone tz = TimeZone.getTimeZone(this.timestampFormatTimezoneId);
-            format.setTimeZone(tz);
-        }
-
-        return format(date, format);
+        return dateTimeFormatter.format(instant);
     }
 
     public void addMap(String key, boolean field, Map<String, ?> mapValue, Map<String, Object> map) {
@@ -101,14 +109,6 @@ public abstract class JsonLayoutBase<E> extends LayoutBase<E> {
         if (field && value != null) {
             map.put(fieldName, value);
         }
-    }
-
-    protected DateFormat createDateFormat(String timestampFormat) {
-        return new SimpleDateFormat(timestampFormat);
-    }
-
-    protected String format(Date date, DateFormat format) {
-        return format.format(date);
     }
 
     protected abstract Map toJsonMap(E e);
@@ -140,6 +140,7 @@ public abstract class JsonLayoutBase<E> extends LayoutBase<E> {
 
     public void setTimestampFormat(String timestampFormat) {
         this.timestampFormat = timestampFormat;
+        updateDateTimeFormatter();
     }
 
     public String getTimestampFormatTimezoneId() {
@@ -148,6 +149,7 @@ public abstract class JsonLayoutBase<E> extends LayoutBase<E> {
 
     public void setTimestampFormatTimezoneId(String timestampFormatTimezoneId) {
         this.timestampFormatTimezoneId = timestampFormatTimezoneId;
+        updateDateTimeFormatter();
     }
 
     public boolean isAppendLineSeparator() {

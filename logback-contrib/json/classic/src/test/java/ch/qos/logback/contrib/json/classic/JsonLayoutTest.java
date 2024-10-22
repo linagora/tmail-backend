@@ -21,12 +21,17 @@ import ch.qos.logback.core.joran.spi.JoranException;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.junit.matchers.JUnitMatchers.containsString;
 
 /**
@@ -139,7 +144,7 @@ public class JsonLayoutTest {
 
     private void assertTimestamp(String log) {
         int timestamp = log.indexOf(JsonLayout.TIMESTAMP_ATTR_NAME);
-        if(timestamp == -1){
+        if (timestamp == -1) {
             fail(String.format("No instance of %s found in log, there should be one.", JsonLayout.TIMESTAMP_ATTR_NAME));
         }
 
@@ -147,10 +152,9 @@ public class JsonLayoutTest {
         int timestampEnd = log.indexOf(",", timestampStart);
         String timestampValue = log.substring(timestampStart, timestampEnd);
         try {
-            new Date(Long.parseLong(timestampValue));
-        } catch (NumberFormatException e) {
-            fail(String.format("Value of attribute %s could not be converted to a valid Date", JsonLayout.TIMESTAMP_ATTR_NAME));
+            Instant.parse(timestampValue);
+        } catch (Exception e) {
+            fail(String.format("Value of attribute %s could not be converted to a valid Instant", JsonLayout.TIMESTAMP_ATTR_NAME));
         }
     }
-
 }

@@ -29,7 +29,8 @@ import static ch.qos.logback.contrib.json.access.JsonLayout.REQUESTTIME_ATTR_NAM
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.matchers.JUnitMatchers.containsString;
 
 /**
