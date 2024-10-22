@@ -4,14 +4,11 @@ import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import java.util.function.BiFunction;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import jakarta.mail.internet.AddressException;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
@@ -45,7 +42,7 @@ import reactor.rabbitmq.Sender;
 public class OpenPaasContactsConsumer implements Startable, Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumer.class);
 
-    private static final boolean REQUEUE_ON_NACK = false;
+    private static final boolean REQUEUE_ON_NACK = true;
     public static final String EXCHANGE_NAME = "contacts:contact:add";
     public static final String QUEUE_NAME = "ConsumeOpenPaasContactsQueue";
     public static final String DEAD_LETTER_EXCHANGE = "contacts:contact:add:dead:letter";
@@ -120,12 +117,12 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             .map(this::parseContactAddedRabbitMqMessage)
             .flatMap(this::handleMessage)
             .doOnSuccess(result -> {
-                LOGGER.warn("Consumed contact successfully '{}'", result);
+                LOGGER.info("Consumed contact successfully '{}'", result);
                 ackDelivery.ack();
             })
             .onErrorResume(error -> {
-                LOGGER.error("Error when consume message '{}'", messagePayload, error);
-                ackDelivery.nack(REQUEUE_ON_NACK);
+                LOGGER.error("Error when consume message", error);
+                ackDelivery.nack(!REQUEUE_ON_NACK);
                 return Mono.empty();
             });
     }
@@ -139,44 +136,22 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     }
 
     private Mono<EmailAddressContact> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
-        LOGGER.info("Consumed jCard object message: {}", contactAddedMessage);
-        Optional<ContactFields> contactFieldsOpt = toContactFields(contactAddedMessage.vcard());
-        return openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
-            .map(ownerMailAddress -> AccountId.fromUsername(Username.fromMailAddress(ownerMailAddress)))
-            .flatMap(ownerAccountId ->
-                Mono.justOrEmpty(contactFieldsOpt)
-                    .flatMap(contactFields -> doAddContact(ownerAccountId, contactFields)));
+        LOGGER.debug("Consumed jCard object message: {}", contactAddedMessage);
+        Optional<ContactFields> maybeContactFields = contactAddedMessage.vcard().asContactFields();
+        return maybeContactFields.map(
+                contactFields -> openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
+                    .map(this::getAccountIdFromMailAddress)
+                    .flatMap(ownerAccountId -> Mono.from(contactSearchEngine.index(ownerAccountId, contactFields))))
+            .orElse(Mono.empty());
     }
 
-    private Mono<EmailAddressContact> doAddContact(AccountId ownerAccountId, ContactFields contactFields) {
-        return Mono.from(contactSearchEngine.index(ownerAccountId, contactFields));
-    }
-
-    private Optional<ContactFields> toContactFields(JCardObject jCardObject) {
-        Optional<String> contactFullnameOpt = jCardObject.fnOpt();
-        Optional<MailAddress> contactMailAddressOpt = jCardObject.emailOpt()
-            .flatMap(contactEmail -> {
-                try {
-                    return Optional.of(new MailAddress(contactEmail));
-                } catch (AddressException e) {
-                    LOGGER.warn("Invalid contact email address: {}", contactEmail, e);
-                    return Optional.empty();
-                }
-            });
-
-        return combineOptionals(contactFullnameOpt, contactMailAddressOpt,
-            (contactFullname, contactMailAddress) ->
-                new ContactFields(contactMailAddress, contactFullname, contactFullname));
-    }
-
-    private static <T,K,V> Optional<V> combineOptionals(Optional<T> opt1, Optional<K> opt2, BiFunction<T, K, V> f) {
-        return opt1.flatMap(t1 -> opt2.map(t2 -> f.apply(t1, t2)));
+    private AccountId getAccountIdFromMailAddress(MailAddress mailAddress) {
+        return AccountId.fromUsername(Username.fromMailAddress(mailAddress));
     }
 
     @Override
-    public void close() throws IOException {
-        if (consumeContactsDisposable != null) {
-            consumeContactsDisposable.dispose();
-        }
+    public void close() {
+        Optional.ofNullable(consumeContactsDisposable)
+            .ifPresent(Disposable::dispose);
     }
 }
