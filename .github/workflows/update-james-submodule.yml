@@ -29,7 +29,6 @@ jobs:
         run: |
           git config user.name 'TungTV-auto'
           git config user.email 'vttran@linagora.com'
-          git checkout -b upgradeSha2
           git add .
           git commit -m "Update submodule james-project"
 
