@@ -78,7 +78,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecondaryBlobStoreDAO.class);
     private static final Set<RegistrationKey> NO_REGISTRATION_KEYS = ImmutableSet.of();
-    private static final int FILE_THRESHOLD = 1024 * 100;
+    private static final int FILE_THRESHOLD = 100 * 1024 * 1024;
 
     private final BlobStoreDAO primaryBlobStoreDAO;
     private final BlobStoreDAO secondaryBlobStoreDAO;
