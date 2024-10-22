@@ -1,15 +1,16 @@
 package com.linagora.tmail.james.jmap.method
 
-import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
+import java.time.{Duration, ZonedDateTime}
 
 import com.google.common.collect.ImmutableList
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MESSAGE_VAULT
+import com.linagora.tmail.james.jmap.method.EmailRecoveryActionConfiguration.{DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST, DEFAULT_RESTORATION_HORIZON}
 import com.linagora.tmail.james.jmap.method.EmailRecoveryActionSetCreatePerformer.CreationResults
 import com.linagora.tmail.james.jmap.model.{EmailRecoveryActionCreation, EmailRecoveryActionCreationId, EmailRecoveryActionCreationParseException, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdateException, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, UnparsedEmailRecoveryActionId}
-import com.linagora.tmail.james.jmap.{EmailRecoveryActionConfiguration, JMAPExtensionConfiguration}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.core.Username
@@ -24,7 +25,8 @@ import org.apache.james.lifecycle.api.Startable
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNotFoundException}
-import org.apache.james.util.ReactorUtils
+import org.apache.james.util.{DurationParser, ReactorUtils}
+import org.apache.james.utils.PropertiesProvider
 import org.apache.james.vault.search.{CriterionFactory, Query}
 import org.apache.james.webadmin.vault.routes.DeletedMessagesVaultRestoreTask.{AdditionalInformation => DeletedMessagesVaultRestoreTaskAdditionalInformation}
 import org.apache.james.webadmin.vault.routes.{DeletedMessagesVaultRestoreTask, RestoreService}
@@ -34,6 +36,7 @@ import play.api.libs.json.{JsError, JsObject}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.OptionConverters._
+import scala.util.Try
 
 class EmailRecoveryActionMethodModule extends AbstractModule {
   override def configure(): Unit = {
@@ -48,8 +51,36 @@ class EmailRecoveryActionMethodModule extends AbstractModule {
 
   @Singleton
   @Provides
-  def provideEmailRecoveryActionConfiguration(jmapExtensionConfiguration: JMAPExtensionConfiguration): EmailRecoveryActionConfiguration =
-    jmapExtensionConfiguration.emailRecoveryActionConfiguration
+  def provideEmailRecoveryActionConfiguration(propertiesProvider: PropertiesProvider): EmailRecoveryActionConfiguration =
+    EmailRecoveryActionConfiguration.from(propertiesProvider)
+}
+
+object EmailRecoveryActionConfiguration {
+
+  val DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST: Long = 5
+  val DEFAULT_RESTORATION_HORIZON: Duration = DurationParser.parse("15", ChronoUnit.DAYS)
+
+  def from(propertiesProvider: PropertiesProvider): EmailRecoveryActionConfiguration = {
+    val config = Try(propertiesProvider.getConfiguration("jmap"))
+
+    val maxEmailRecoveryPerRequest: Option[Long] = config
+      .map(_.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest"))
+      .toOption
+    val restorationHorizon: Option[Duration] = config
+      .map(_.getString("emailRecoveryAction.restorationHorizon"))
+      .map(DurationParser.parse)
+      .toOption
+
+    EmailRecoveryActionConfiguration(
+      maxEmailRecoveryPerRequest = maxEmailRecoveryPerRequest.getOrElse(DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST),
+      restorationHorizon = restorationHorizon.getOrElse(DEFAULT_RESTORATION_HORIZON))
+  }
+}
+
+case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long, restorationHorizon: Duration) {
+  def this() = {
+    this(DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST, DEFAULT_RESTORATION_HORIZON)
+  }
 }
 
 class EmailRecoveryActionSetMethod @Inject()(val createPerformer: EmailRecoveryActionSetCreatePerformer,
