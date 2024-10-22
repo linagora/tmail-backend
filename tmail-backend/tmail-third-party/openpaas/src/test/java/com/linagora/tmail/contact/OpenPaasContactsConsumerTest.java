@@ -342,14 +342,6 @@ class OpenPaasContactsConsumerTest {
                 .isEqualTo(indexedContact));
     }
 
-    /*
-    * The automatic contact indexing is triggered when you send or receive a message
-    * from someone, then their contact info be automatically indexed in the contacts' search engine.
-    * */
-    @Test
-    void automaticContactIndexingShouldNotOverrideContactInfoFromOpenPaas() {
-        //
-    }
 
     private void sendMessage(String message) {
         rabbitMQExtension.getSender()
