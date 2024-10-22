@@ -127,7 +127,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     private Mono<EmailAddressContact> indexContactIfNeeded(AccountId ownerAccountId, ContactFields openPaasContact) {
         return Mono.from(contactSearchEngine.get(ownerAccountId, openPaasContact.address()))
-            .onErrorResume(e -> Mono.empty())
+            .onErrorResume(ContactNotFoundException.class, e -> Mono.empty())
             .switchIfEmpty(
                 Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact)))
             .flatMap(existingContact -> {
