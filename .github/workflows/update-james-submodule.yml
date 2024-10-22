@@ -1,4 +1,4 @@
-name: Create PR from Fork to Upstream
+name: Create PR to update James submodule
 
 on:
   schedule:
@@ -32,12 +32,21 @@ jobs:
           git add .
           git commit -m "Update James SHA-1"
 
-      - name: Create Pull Request to Upstream
+      - name: Create Pull Request to Upstream if submodule updated
         if: ${{ steps.check-submodule.outputs.changed == 'yes' }}
         uses: peter-evans/create-pull-request@v7
         with:
-          base: master
-          branch: upgradeSha1
-          delete-branch: true
+          commit-message: Update James SHA-1
           title: "Update James submodule to latest version"
-          body: "This pull request updates the submodule to the latest version."
+          body: |
+            This pull request updates the James SHA-1 submodule to the latest version.
+          branch: update-james-sha1
+          base: master
+          labels: bot
+          assignees: vttranlina
+          reviewers: vttranlina
+          draft: false
+          delete-branch: true
+
+
+
