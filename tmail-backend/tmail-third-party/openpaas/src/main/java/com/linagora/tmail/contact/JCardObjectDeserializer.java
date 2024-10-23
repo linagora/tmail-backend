@@ -7,8 +7,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jakarta.mail.internet.AddressException;
+
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.james.core.MailAddress;
 import org.apache.james.util.streams.Iterators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +57,17 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
                 Ensure the 'fn' property is present and correctly formatted.""", json);
         }
 
-        return new JCardObject(getOptionalFromMap(jCardProperties, FN), getOptionalFromMap(jCardProperties, EMAIL));
+        Optional<MailAddress> maybeMailAddress = getOptionalFromMap(jCardProperties, EMAIL)
+            .flatMap(email -> {
+                try {
+                    return Optional.of(new MailAddress(email));
+                } catch (AddressException e) {
+                    LOGGER.error("Invalid contact mail address '{}' found in JCard Object", email, e);
+                    return Optional.empty();
+                }
+            });
+
+        return new JCardObject(getOptionalFromMap(jCardProperties, FN), maybeMailAddress);
     }
 
     private static Map<String, String> collectJCardProperties(Iterator<JsonNode> propertiesIterator) {

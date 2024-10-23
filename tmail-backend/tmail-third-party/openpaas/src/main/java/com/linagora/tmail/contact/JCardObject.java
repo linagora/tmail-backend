@@ -2,8 +2,6 @@ package com.linagora.tmail.contact;
 
 import java.util.Optional;
 
-import jakarta.mail.internet.AddressException;
-
 import org.apache.james.core.MailAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +11,7 @@ import com.google.common.base.Preconditions;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 
 @JsonDeserialize(using = JCardObjectDeserializer.class)
-public record JCardObject(Optional<String> fnOpt, Optional<String> emailOpt) {
+public record JCardObject(Optional<String> fnOpt, Optional<MailAddress> emailOpt) {
     public static final Logger LOGGER = LoggerFactory.getLogger(JCardObject.class);
 
     public JCardObject {
@@ -39,21 +37,13 @@ public record JCardObject(Optional<String> fnOpt, Optional<String> emailOpt) {
      * Example: jane_doe@example.com
      */
     @Override
-    public Optional<String> emailOpt() {
+    public Optional<MailAddress> emailOpt() {
         return emailOpt;
     }
 
     public Optional<ContactFields> asContactFields() {
         Optional<String> contactFullnameOpt = fnOpt();
-        Optional<MailAddress> contactMailAddressOpt = emailOpt()
-            .flatMap(contactEmail -> {
-                try {
-                    return Optional.of(new MailAddress(contactEmail));
-                } catch (AddressException e) {
-                    LOGGER.warn("Invalid contact email address: {}", contactEmail, e);
-                    return Optional.empty();
-                }
-            });
+        Optional<MailAddress> contactMailAddressOpt = emailOpt();
 
         if (contactMailAddressOpt.isEmpty()) {
             return Optional.empty();

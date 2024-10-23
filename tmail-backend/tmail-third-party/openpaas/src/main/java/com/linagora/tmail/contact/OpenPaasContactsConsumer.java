@@ -39,7 +39,6 @@ import reactor.rabbitmq.Sender;
 
 public class OpenPaasContactsConsumer implements Startable, Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumer.class);
-
     private static final boolean REQUEUE_ON_NACK = true;
     public static final String EXCHANGE_NAME = "contacts:contact:add";
     public static final String QUEUE_NAME = "openpaas-contacts-queue";
