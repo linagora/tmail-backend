@@ -24,13 +24,13 @@ jobs:
           git submodule update --remote
           git config user.name 'github[bot]'
           git config user.email 'github-bot@linagora.com'
-          if [ "$(git diff --submodule=log)" != "" ]; then
+          if git diff --quiet --submodule=log; then
+            echo "No changes in submodule"
+            echo "changed=no" >> $GITHUB_OUTPUT
+          else
             echo "Submodule has changes"
             git add james-project
             echo "changed=yes" >> $GITHUB_OUTPUT
-          else
-            echo "No changes in submodule"
-            echo "changed=no" >> $GITHUB_OUTPUT
           fi
 
       - name: Create Pull Request to Upstream if submodule updated
