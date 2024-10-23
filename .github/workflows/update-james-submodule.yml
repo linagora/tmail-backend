@@ -19,8 +19,7 @@ jobs:
         id: check-submodule
         run: |
           git fetch origin master
-          git checkout origin/master
-          git reset --hard
+          git reset --hard origin/master
           git submodule update
           echo $(git status)
           echo $(git log)
