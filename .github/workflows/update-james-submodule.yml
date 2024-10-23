@@ -12,15 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
           clean: true
           ref: master
       - name: Check if submodule is updated
         id: check-submodule
         run: |
+          git fetch origin master
+          git checkout origin/master
+          git reset --hard
+          git submodule update
           echo $(git status)
           echo $(git log)
-          git reset --hard origin/master 
           git submodule update --remote
           git config user.name 'github[bot]'
           git config user.email 'github-bot@linagora.com'
