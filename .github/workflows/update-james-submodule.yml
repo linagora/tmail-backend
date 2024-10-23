@@ -10,9 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
+          clean: true
+          ref: master
       - name: Check if submodule is updated
         id: check-submodule
         run: |
