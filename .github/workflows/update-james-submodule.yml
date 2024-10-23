@@ -18,7 +18,10 @@ jobs:
       - name: Check if submodule is updated
         id: check-submodule
         run: |
-          git submodule update --remote -- james-project
+          echo $(git status)
+          echo $(git log)
+          git reset --hard origin/master 
+          git submodule update --remote
           git config user.name 'github[bot]'
           git config user.email 'github-bot@linagora.com'
           if [ "$(git diff --submodule=log)" != "" ]; then
