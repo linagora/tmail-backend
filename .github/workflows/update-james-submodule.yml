@@ -10,13 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
+          ref: master
       - name: Check if submodule is updated
         id: check-submodule
         run: |
-          git submodule update --remote -- james-project
+          git fetch origin master
+          git reset --hard origin/master
+          git submodule update --remote
           git config user.name 'github[bot]'
           git config user.email 'github-bot@linagora.com'
           if [ "$(git diff --submodule=log)" != "" ]; then
