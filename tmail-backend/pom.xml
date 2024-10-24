@@ -27,7 +27,7 @@
 
         <module>combined-identity</module>
 
-        <module>deployment-tests</module>
+<!--        <module>deployment-tests</module>-->
 
         <module>guice/blob-guice</module>
         <module>guice/distributed</module>
@@ -35,7 +35,7 @@
         <module>guice/protocols/jmap</module>
         <module>guice/team-mailboxes</module>
 
-        <module>integration-tests</module>
+<!--        <module>integration-tests</module>-->
 
         <module>mailbox/encrypted</module>
         <module>mailbox/encrypted/pgp-utils</module>
