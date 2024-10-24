@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import reactor.core.publisher.Flux;
@@ -51,9 +52,11 @@ class OpenPaasContactsConsumerTest {
     void setup() throws URISyntaxException {
         OpenPaasRestClient restClient = new OpenPaasRestClient(
             new OpenPaasConfiguration(
-                openPaasServerExtension.getBaseUrl(),
-                OpenPaasServerExtension.GOOD_USER(),
-                OpenPaasServerExtension.GOOD_PASSWORD()));
+                // Providing an empty RabbitMQ URI will fall back to config in rabbitmq.properties
+                Optional.empty(),
+                Optional.of(openPaasServerExtension.getBaseUrl().toURI()),
+                Optional.of(OpenPaasServerExtension.GOOD_USER()),
+                Optional.of(OpenPaasServerExtension.GOOD_PASSWORD())));
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),

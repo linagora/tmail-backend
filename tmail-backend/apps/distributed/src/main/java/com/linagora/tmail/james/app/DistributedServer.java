@@ -113,6 +113,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
+import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
@@ -312,7 +313,8 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TmailEventModule(),
-            new TmailEventDeadLettersModule());
+            new TmailEventDeadLettersModule(),
+            new OpenPaasModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
