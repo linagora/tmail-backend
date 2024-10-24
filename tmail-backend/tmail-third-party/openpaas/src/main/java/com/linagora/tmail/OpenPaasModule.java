@@ -38,7 +38,7 @@ public class OpenPaasModule extends AbstractModule {
     }
 
     @Provides
-    @Named(OPENPAAS_INJECTION_KEY)
+    @Named(OPENPAAS_CONFIGURATION_NAME)
     @Singleton
     private Configuration providePropertiesConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
@@ -56,8 +56,8 @@ public class OpenPaasModule extends AbstractModule {
         return OpenPaasConfiguration.from(propertiesConfiguration);
     }
 
-    @Named(OPENPAAS_INJECTION_KEY)
     @Provides
+    @Named(OPENPAAS_INJECTION_KEY)
     @Singleton
     public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration, RabbitMQConfiguration fallbackRabbitMQConfiguration) {
         return openPaasConfiguration.maybeRabbitMqUri()
