@@ -1,5 +1,7 @@
 package com.linagora.tmail.api;
 
+import java.net.URISyntaxException;
+import java.util.Optional;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
@@ -20,11 +22,12 @@ public class OpenPaasRestClientTest {
     OpenPaasRestClient restClient;
 
     @BeforeEach
-    void setup() {
+    void setup() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
-            openPaasServerExtension.getBaseUrl(),
-            OpenPaasServerExtension.GOOD_USER(),
-            OpenPaasServerExtension.GOOD_PASSWORD());
+            Optional.empty(),
+            Optional.of(openPaasServerExtension.getBaseUrl().toURI()),
+            Optional.of(OpenPaasServerExtension.GOOD_USER()),
+            Optional.of(OpenPaasServerExtension.GOOD_PASSWORD()));
 
         restClient = new OpenPaasRestClient(openPaasConfig);
     }
@@ -42,11 +45,12 @@ public class OpenPaasRestClientTest {
     }
 
     @Test
-    void shouldThrowExceptionOnErrorStatusCode() {
+    void shouldThrowExceptionOnErrorStatusCode() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
-            openPaasServerExtension.getBaseUrl(),
-            OpenPaasServerExtension.BAD_USER(),
-            OpenPaasServerExtension.BAD_PASSWORD());
+            Optional.empty(),
+            Optional.of(openPaasServerExtension.getBaseUrl().toURI()),
+            Optional.of(OpenPaasServerExtension.BAD_USER()),
+            Optional.of(OpenPaasServerExtension.BAD_PASSWORD()));
 
         restClient = new OpenPaasRestClient(openPaasConfig);
 

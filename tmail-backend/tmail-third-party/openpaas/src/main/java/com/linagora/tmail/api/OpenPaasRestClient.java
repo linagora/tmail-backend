@@ -1,6 +1,6 @@
 package com.linagora.tmail.api;
 
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
@@ -21,6 +21,7 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientResponse;
 
 public class OpenPaasRestClient {
+    private static final String EMPTY_STRING = "";
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasRestClient.class);
 
     private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(10);
@@ -29,9 +30,19 @@ public class OpenPaasRestClient {
     private final ObjectMapper deserializer = new ObjectMapper();
 
     public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
-        URL apiUrl = openPaasConfiguration.restClientUrl();
-        String user = openPaasConfiguration.restClientUser();
-        String password = openPaasConfiguration.restClientPassword();
+        URI apiUrl = openPaasConfiguration.openpaasApiUri()
+            .orElseThrow(() -> new OpenPaasRestClientException("OpenPaas API URL not configured."));
+
+        String user = openPaasConfiguration.maybeAdminUser().orElseGet(() -> {
+            LOGGER.warn("OpenPaas admin user not configured.");
+            return EMPTY_STRING;
+        });
+
+        String password = openPaasConfiguration.maybeAdminPassword().orElseGet(() -> {
+            LOGGER.warn("OpenPaas admin password not configured.");
+            return EMPTY_STRING;
+        });
+
         this.client = HttpClient.create()
             .baseUrl(apiUrl.toString())
             .headers(headers -> headers.add(AUTHORIZATION_HEADER, HttpUtils.createBasicAuthenticationToken(user, password)))
