@@ -11,6 +11,7 @@ import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusName;
 import org.apache.james.events.EventDeadLetters;
+import org.apache.james.events.EventSerializer;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.events.RetryBackoffConfiguration;
@@ -41,6 +42,9 @@ public class TmailEventModule extends AbstractModule {
         bind(TmailEventSerializer.class).in(Scopes.SINGLETON);
         bind(EventBusId.class).annotatedWith(Names.named(TmailInjectNameConstants.TMAIL_EVENT_BUS_INJECT_NAME)).toInstance(EventBusId.random());
 
+        Multibinder.newSetBinder(binder(), EventSerializer.class)
+            .addBinding()
+            .to(TmailEventSerializer.class);
         Multibinder.newSetBinder(binder(), TmailReactiveGroupEventListener.class);
     }
 
