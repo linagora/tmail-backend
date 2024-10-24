@@ -22,7 +22,8 @@ public class TmailEventDeadLettersModule extends AbstractModule {
     EventDeadLetters provideEventDeadLetters(CassandraEventDeadLettersGroupDAO cassandraEventDeadLettersGroupDAO,
                                              CqlSession session,
                                              TmailEventSerializer tmailEventSerializer) {
-        return new CassandraEventDeadLetters(new CassandraEventDeadLettersDAO(session, tmailEventSerializer),
-            cassandraEventDeadLettersGroupDAO);
+        return new CassandraEventDeadLetters(new CassandraEventDeadLettersDAO(session),
+            cassandraEventDeadLettersGroupDAO,
+            tmailEventSerializer);
     }
 }
