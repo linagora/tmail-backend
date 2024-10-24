@@ -11,7 +11,7 @@ import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers.{equalTo, hasKey}
 import org.junit.jupiter.api.{BeforeEach, Test}
 
-object MemoryLinagoraContactSupportCapabilityContract {
+object LinagoraContactSupportCapabilityContract {
   trait MailAddressConfigured {
     @BeforeEach
     def setUp(server: GuiceJamesServer): Unit = {

@@ -4,18 +4,20 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.james.common.MemoryLinagoraContactSupportCapabilityContract;
+import com.linagora.tmail.james.common.LinagoraContactSupportCapabilityContract;
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryLinagoraContactSupportCapabilityTest {
-    public static class MailAddressConfiguredTest
-        implements MemoryLinagoraContactSupportCapabilityContract.MailAddressConfigured {
+    @Nested
+    class MailAddressConfiguredTest
+        implements LinagoraContactSupportCapabilityContract.MailAddressConfigured {
         @RegisterExtension
         static JamesServerExtension
             jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
@@ -30,8 +32,9 @@ public class MemoryLinagoraContactSupportCapabilityTest {
             .build();
     }
 
-    public static class MailAddressNotConfiguredTest
-        implements MemoryLinagoraContactSupportCapabilityContract.MailAddressNotConfigured {
+    @Nested
+    class MailAddressNotConfiguredTest
+        implements LinagoraContactSupportCapabilityContract.MailAddressNotConfigured {
         @RegisterExtension
         static JamesServerExtension
             jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
