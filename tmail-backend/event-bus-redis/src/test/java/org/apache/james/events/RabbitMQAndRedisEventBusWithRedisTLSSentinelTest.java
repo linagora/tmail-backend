@@ -20,7 +20,6 @@ import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Sender;
 
-@Disabled("ISSUE-1195 CI cant find certificates for some reason when starting redis sentinel with tls enabled")
 public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupContract.SingleEventBusGroupContract, KeyContract.SingleEventBusKeyContract {
     static EventBusName TEST_EVENT_BUS = new EventBusName("test");
     static NamingStrategy TEST_NAMING_STRATEGY = new NamingStrategy(TEST_EVENT_BUS);
