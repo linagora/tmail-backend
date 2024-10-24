@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright (C) 2024, LINAGORA. All rights reserved.
+
+    This file is licensed under the terms of the
+    Eclipse Public License v1.0 as published by
+    the Eclipse Foundation.
+
+    This work is based on the work found at
+    https://github.com/qos-ch/logback-contrib
+    authored by the logback-contrib developers.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.linagora.tmail</groupId>
+        <artifactId>tmail-backend-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <groupId>com.linagora.tmail</groupId>
+    <artifactId>logback-contrib-parent</artifactId>
+    <packaging>pom</packaging>
+
+    <name>Logback Contrib</name>
+    <url>https://github.com/qos-ch/logback-contrib/wiki</url>
+    <description>
+        Logback Contrib provides community-driven and supported
+        extensions to the Logback logging framework. All contributions
+        are made by contributors with CLA on file.
+    </description>
+    <inceptionYear>2012</inceptionYear>
+
+   <licenses>
+     <license>
+       <name>Eclipse Public License - v 1.0</name>
+       <url>http://www.eclipse.org/legal/epl-v10.html</url>
+     </license>
+   </licenses>
+
+    <developers>
+        <developer>
+            <id>lhazlewood</id>
+            <name>Les Hazlewood</name>
+            <email>les@hazlewood.com</email>
+            <url>http://www.leshazlewood.com</url>
+            <timezone>-8</timezone>
+        </developer>
+        <developer>
+            <id>belaso</id>
+            <name>Christian Trutz</name>
+            <email>christian.trutz@belaso.de</email>
+            <url>http://www.belaso.de</url>
+            <timezone>+2</timezone>
+        </developer>
+        <developer>
+            <id>tony19</id>
+            <name>Tony Trinh</name>
+            <email>tony19@gmail.com</email>
+            <url>http://tony19.github.com</url>
+            <timezone>-5</timezone>
+        </developer>
+    </developers>
+    <contributors>
+        <contributor>
+            <name>David J. M. Karlsen</name>
+            <email>david@davidkarlsen.com</email>
+        </contributor>
+        <contributor>
+            <name>Espen A. Fossen</name>
+            <email>espenaf@junta.no</email>
+        </contributor>
+    </contributors>
+
+    <modules>
+        <module>json</module>
+        <module>jackson</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Compile Dependencies: -->
+        <logback.version>1.4.14</logback.version>
+        <maven.javadoc.failOnError>false</maven.javadoc.failOnError>
+
+        <!-- Test Dependencies: -->
+        <mockito.version>5.10.0</mockito.version>
+        <groovy.version>1.8.6</groovy.version>
+        <junit.version>4.8.2</junit.version>
+        <hamcrest.version>2.0.0.0</hamcrest.version>
+
+    </properties>
+
+    <dependencies>
+        <!-- Test Dependencies for _all_ children modules: -->
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-junit</artifactId>
+            <version>${hamcrest.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- Pool of dependencies available to any sub-module, but not included automatically.
+                They must be explicitly referenced in the children POMs, but _don't_ include
+                version numbers in the child POMs.  Define them here only to guarantee version
+                compatibility across children modules! -->
+
+            <dependency>
+                <groupId>org.apache.james</groupId>
+                <artifactId>james-project</artifactId>
+                <version>3.9.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Logback Extensions sub-modules dependency .jars (alphabetized based on artifactId for easy scanning please!): -->
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-access</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-core</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

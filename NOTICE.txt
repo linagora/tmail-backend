@@ -1,0 +1,11 @@
+NOTICE
+
+This product is a software developed by LINAGORA for use in Twake Mail,
+licensed under the terms of the GNU Affero General Public License (AGPL) v3.0.
+
+In addition, this product contains a fork of the Logback Contrib project,
+located in the `logback-contrib` folder taken from
+https://github.com/qos-ch/logback-contrib
+and based on the original work of the logback-contrib developers. This fork is
+licensed under the terms of the Eclipse Public License v1.0 as published by
+the Eclipse Foundation.
