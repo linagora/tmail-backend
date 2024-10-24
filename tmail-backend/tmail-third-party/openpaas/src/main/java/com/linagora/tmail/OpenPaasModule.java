@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.contact.OpenPaasContactsConsumer;
 
 public class OpenPaasModule extends AbstractModule {
@@ -40,7 +41,7 @@ public class OpenPaasModule extends AbstractModule {
     @Provides
     @Named(OPENPAAS_CONFIGURATION_NAME)
     @Singleton
-    private Configuration providePropertiesConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+    public Configuration providePropertiesConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
             return propertiesProvider.getConfiguration(OPENPAAS_CONFIGURATION_NAME);
         } catch (FileNotFoundException e) {
@@ -52,8 +53,13 @@ public class OpenPaasModule extends AbstractModule {
 
     @Provides
     @Singleton
-    protected OpenPaasConfiguration provideOpenPaasConfiguration(@Named(OPENPAAS_CONFIGURATION_NAME) Configuration propertiesConfiguration) {
+    public OpenPaasConfiguration provideOpenPaasConfiguration(@Named(OPENPAAS_CONFIGURATION_NAME) Configuration propertiesConfiguration) {
         return OpenPaasConfiguration.from(propertiesConfiguration);
+    }
+
+    @Provides
+    public OpenPaasRestClient provideOpenPaasRestCLient(OpenPaasConfiguration openPaasConfiguration) {
+        return new OpenPaasRestClient(openPaasConfiguration);
     }
 
     @Provides
@@ -69,7 +75,7 @@ public class OpenPaasModule extends AbstractModule {
     @Named(OPENPAAS_INJECTION_KEY)
     @Singleton
     public SimpleConnectionPool provideSimpleConnectionPool(@Named(OPENPAAS_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
-                                                     Provider<Configuration> configuration) {
+                                                            @Named(OPENPAAS_CONFIGURATION_NAME) Provider<Configuration> configuration) {
         RabbitMQConnectionFactory rabbitMQConnectionFactory = new RabbitMQConnectionFactory(rabbitMQConfiguration);
         try {
             return new SimpleConnectionPool(rabbitMQConnectionFactory, SimpleConnectionPool.Configuration.from(configuration.get()));
@@ -82,7 +88,7 @@ public class OpenPaasModule extends AbstractModule {
     @Provides
     @Named(OPENPAAS_INJECTION_KEY)
     @Singleton
-    ReactorRabbitMQChannelPool provideReactorRabbitMQChannelPool(
+    public ReactorRabbitMQChannelPool provideReactorRabbitMQChannelPool(
         OpenPaasConfiguration openPaasConfiguration,
         @Named(OPENPAAS_INJECTION_KEY) SimpleConnectionPool simpleConnectionPool,
         ReactorRabbitMQChannelPool.Configuration configuration,
