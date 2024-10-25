@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.HttpUtils;
-import com.linagora.tmail.OpenPaasConfiguration;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
@@ -21,7 +21,6 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientResponse;
 
 public class OpenPaasRestClient {
-    private static final String EMPTY_STRING = "";
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasRestClient.class);
 
     private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(10);
@@ -30,18 +29,9 @@ public class OpenPaasRestClient {
     private final ObjectMapper deserializer = new ObjectMapper();
 
     public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
-        URI apiUrl = openPaasConfiguration.openpaasApiUri()
-            .orElseThrow(() -> new OpenPaasRestClientException("OpenPaas API URL not configured."));
-
-        String user = openPaasConfiguration.maybeAdminUser().orElseGet(() -> {
-            LOGGER.warn("OpenPaas admin user not configured.");
-            return EMPTY_STRING;
-        });
-
-        String password = openPaasConfiguration.maybeAdminPassword().orElseGet(() -> {
-            LOGGER.warn("OpenPaas admin password not configured.");
-            return EMPTY_STRING;
-        });
+        URI apiUrl = openPaasConfiguration.openpaasApiUri();
+        String user = openPaasConfiguration.adminUser();
+        String password = openPaasConfiguration.adminPassword();
 
         this.client = HttpClient.create()
             .baseUrl(apiUrl.toString())

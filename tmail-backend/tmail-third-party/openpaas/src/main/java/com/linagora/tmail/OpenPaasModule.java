@@ -24,6 +24,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.api.OpenPaasRestClient;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.contact.OpenPaasContactsConsumer;
 
 public class OpenPaasModule extends AbstractModule {
@@ -68,7 +69,10 @@ public class OpenPaasModule extends AbstractModule {
     public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration, RabbitMQConfiguration fallbackRabbitMQConfiguration) {
         return openPaasConfiguration.maybeRabbitMqUri()
             .map(AmqpUri::toRabbitMqConfiguration)
-            .orElse(fallbackRabbitMQConfiguration);
+            .orElseGet(() -> {
+                LOGGER.debug("RabbitMQ URI not configured correctly in openpaas.properties, falling back to rabbitmq.properties.");
+                return fallbackRabbitMQConfiguration;
+            });
     }
 
     @Provides

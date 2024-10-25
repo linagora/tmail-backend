@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.OpenPaasConfiguration;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 public class OpenPaasRestClientTest {
     public static final String BAD_USER_ID = "BAD_ID";
@@ -25,9 +25,9 @@ public class OpenPaasRestClientTest {
     void setup() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             Optional.empty(),
-            Optional.of(openPaasServerExtension.getBaseUrl().toURI()),
-            Optional.of(OpenPaasServerExtension.GOOD_USER()),
-            Optional.of(OpenPaasServerExtension.GOOD_PASSWORD()));
+            openPaasServerExtension.getBaseUrl().toURI(),
+            OpenPaasServerExtension.GOOD_USER(),
+            OpenPaasServerExtension.GOOD_PASSWORD());
 
         restClient = new OpenPaasRestClient(openPaasConfig);
     }
@@ -48,9 +48,9 @@ public class OpenPaasRestClientTest {
     void shouldThrowExceptionOnErrorStatusCode() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             Optional.empty(),
-            Optional.of(openPaasServerExtension.getBaseUrl().toURI()),
-            Optional.of(OpenPaasServerExtension.BAD_USER()),
-            Optional.of(OpenPaasServerExtension.BAD_PASSWORD()));
+            openPaasServerExtension.getBaseUrl().toURI(),
+            OpenPaasServerExtension.BAD_USER(),
+            OpenPaasServerExtension.BAD_PASSWORD());
 
         restClient = new OpenPaasRestClient(openPaasConfig);
 

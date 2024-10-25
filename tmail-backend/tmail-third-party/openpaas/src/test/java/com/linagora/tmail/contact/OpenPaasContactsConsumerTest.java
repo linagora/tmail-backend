@@ -28,7 +28,7 @@ import reactor.rabbitmq.OutboundMessage;
 import jakarta.mail.internet.AddressException;
 
 import com.github.fge.lambdas.Throwing;
-import com.linagora.tmail.OpenPaasConfiguration;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
@@ -54,9 +54,9 @@ class OpenPaasContactsConsumerTest {
             new OpenPaasConfiguration(
                 // Providing an empty RabbitMQ URI will fall back to config in rabbitmq.properties
                 Optional.empty(),
-                Optional.of(openPaasServerExtension.getBaseUrl().toURI()),
-                Optional.of(OpenPaasServerExtension.GOOD_USER()),
-                Optional.of(OpenPaasServerExtension.GOOD_PASSWORD())));
+                openPaasServerExtension.getBaseUrl().toURI(),
+                OpenPaasServerExtension.GOOD_USER(),
+                OpenPaasServerExtension.GOOD_PASSWORD()));
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),
