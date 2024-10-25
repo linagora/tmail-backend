@@ -64,6 +64,11 @@
             <artifactId>tmail-mailets</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>tmail-openpaas</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>tmail-webadmin-mailbox</artifactId>
         </dependency>

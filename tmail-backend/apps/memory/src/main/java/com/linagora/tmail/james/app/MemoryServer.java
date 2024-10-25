@@ -45,6 +45,8 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
+import com.linagora.tmail.OpenPaasModule;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore;
@@ -182,6 +184,7 @@ public class MemoryServer {
                 .chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
+            .combineWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .combineWith(choosePop3ServerModule(configuration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
@@ -223,6 +226,13 @@ public class MemoryServer {
     private static List<Module> chooseLinagoraServiceDiscovery(LinagoraServicesDiscoveryModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enable()) {
             return List.of(new LinagoraServicesDiscoveryModule());
+        }
+        return List.of();
+    }
+
+    private static List<Module> chooseOpenPaas(OpenPaasModuleChooserConfiguration moduleChooserConfiguration) {
+        if (moduleChooserConfiguration.enabled()) {
+            return List.of(new OpenPaasModule());
         }
         return List.of();
     }
