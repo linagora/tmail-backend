@@ -114,6 +114,7 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.OpenPaasModule;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
@@ -313,8 +314,7 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TmailEventModule(),
-            new TmailEventDeadLettersModule(),
-            new OpenPaasModule());
+            new TmailEventDeadLettersModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
@@ -342,6 +342,7 @@ public class DistributedServer {
             .combineWith(UsersRepositoryModuleChooser.chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
+            .combineWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseQuotaModule(configuration))
@@ -421,6 +422,13 @@ public class DistributedServer {
     private static List<Module> chooseLinagoraServicesDiscovery(LinagoraServicesDiscoveryModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enable()) {
             return List.of(new LinagoraServicesDiscoveryModule());
+        }
+        return List.of();
+    }
+
+    private static List<Module> chooseOpenPaasModule(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {
+        if (openPaasModuleChooserConfiguration.enabled()) {
+            return List.of(new OpenPaasModule());
         }
         return List.of();
     }

@@ -19,6 +19,7 @@ import org.apache.james.utils.PropertiesProvider;
 import org.apache.james.vault.VaultConfiguration;
 
 import com.github.fge.lambdas.Throwing;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
@@ -33,6 +34,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             MailQueueViewChoice mailQueueViewChoice,
                                             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                             LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
+                                            OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration,
                                             boolean jmapEnabled,
                                             PropertiesProvider propertiesProvider,
                                             FileConfigurationProvider fileConfigurationProvider,
@@ -50,6 +52,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<MailQueueViewChoice> mailQueueViewChoice;
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
+        private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<EventBusKeysChoice> eventBusKeysChoice;
         private Optional<Boolean> quotaCompatibilityMode;
@@ -66,6 +69,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             mailQueueViewChoice = Optional.empty();
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
+            openPaasModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             quotaCompatibilityMode = Optional.empty();
             eventBusKeysChoice = Optional.empty();
@@ -136,6 +140,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder openPassModuleChooserConfiguration(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {
+            this.openPaasModuleChooserConfiguration = Optional.of(openPaasModuleChooserConfiguration);
+            return this;
+        }
+
         public Builder jmapEnabled(boolean enable) {
             this.jmapEnabled = Optional.of(enable);
             return this;
@@ -193,6 +202,9 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration
                 .orElseGet(Throwing.supplier(() -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(propertiesProvider)));
 
+            OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration = this.openPaasModuleChooserConfiguration
+                .orElseGet(Throwing.supplier(() -> OpenPaasModuleChooserConfiguration.parse(propertiesProvider)));
+
             boolean jmapEnabled = this.jmapEnabled.orElseGet(() -> {
                 try {
                     return JMAPModule.parseConfiguration(propertiesProvider).isEnabled();
@@ -246,6 +258,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 mailQueueViewChoice,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
+                openPaasModuleChooserConfiguration,
                 jmapEnabled,
                 propertiesProvider,
                 configurationProvider,
