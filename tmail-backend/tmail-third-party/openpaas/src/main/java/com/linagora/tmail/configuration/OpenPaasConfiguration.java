@@ -36,8 +36,7 @@ public record OpenPaasConfiguration(Optional<AmqpUri> maybeRabbitMqUri, URI open
         try {
             return AmqpUri.from(URI.create(rabbitMqUri)).asOptional();
         } catch (IllegalArgumentException e) {
-            LOGGER.error("Invalid RabbitMQ URI in openpaas.properties.", e);
-            return Optional.empty();
+            throw new IllegalStateException("Invalid RabbitMQ URI in openpaas.properties.");
         }
     }
 
