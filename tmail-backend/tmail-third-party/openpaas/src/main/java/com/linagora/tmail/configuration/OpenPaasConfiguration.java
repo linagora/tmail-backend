@@ -1,5 +1,6 @@
 package com.linagora.tmail.configuration;
 
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.Optional;
 
@@ -9,6 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Strings;
 import com.linagora.tmail.AmqpUri;
+
+import spark.utils.StringUtils;
 
 public record OpenPaasConfiguration(Optional<AmqpUri> maybeRabbitMqUri, URI openpaasApiUri, String adminUser, String adminPassword) {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasConfiguration.class);
@@ -42,20 +45,31 @@ public record OpenPaasConfiguration(Optional<AmqpUri> maybeRabbitMqUri, URI open
 
     private static URI readOpenPaasApiUri(Configuration configuration) {
         String openPaasApiUri = configuration.getString(OPENPAAS_API_URI);
-        if (Strings.isNullOrEmpty(openPaasApiUri)) {
+        if (StringUtils.isBlank(openPaasApiUri)) {
             throw new IllegalStateException("OpenPaas API URI not specified.");
         }
 
         try {
-            return URI.create(openPaasApiUri);
-        } catch (IllegalArgumentException e) {
+            return validateURI(URI.create(openPaasApiUri));
+        } catch (Exception e) {
             throw new IllegalStateException("Invalid OpenPaas API URI in openpaas.properties.");
+        }
+    }
+
+    private static URI validateURI(URI uri) {
+        try {
+            // Otherwise, BAD_URI would be considered a valid URI.
+            uri.toURL();
+            return uri;
+        } catch (MalformedURLException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("Bad URI!", e);
         }
     }
 
     private static String readAdminUser(Configuration configuration) {
         String openPaasAdminUser = configuration.getString(OPENPAAS_ADMIN_USER_PROPERTY);
-        if (Strings.isNullOrEmpty(openPaasAdminUser)) {
+
+        if (StringUtils.isBlank(openPaasAdminUser)) {
             throw new IllegalStateException("OpenPaas admin user not specified.");
         }
 
@@ -64,7 +78,7 @@ public record OpenPaasConfiguration(Optional<AmqpUri> maybeRabbitMqUri, URI open
 
     private static String readAdminPassword(Configuration configuration) {
         String openPaasAdminPassword = configuration.getString(OPENPAAS_ADMIN_PASSWORD_PROPERTY);
-        if (Strings.isNullOrEmpty(openPaasAdminPassword)) {
+        if (StringUtils.isBlank(openPaasAdminPassword)) {
             throw new IllegalStateException("OpenPaas admin password not specified.");
         }
 

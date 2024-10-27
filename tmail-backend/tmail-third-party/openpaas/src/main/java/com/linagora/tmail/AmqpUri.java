@@ -17,7 +17,6 @@ public class AmqpUri {
     private static final String DEFAULT_PASSWORD_STRING = "guest";
     private static final char[] DEFAULT_PASSWORD = DEFAULT_PASSWORD_STRING.toCharArray();
     private static final RabbitMQConfiguration.ManagementCredentials DEFAULT_MANAGEMENT_CREDENTIAL = new RabbitMQConfiguration.ManagementCredentials(DEFAULT_USER, DEFAULT_PASSWORD);
-    private static final String AMQP_SCHEME = "amqp";
 
     private final URI uri;
     private final RabbitMQConfiguration.ManagementCredentials managementCredentials;
@@ -25,7 +24,7 @@ public class AmqpUri {
 
     public AmqpUri(URI uri) {
         Preconditions.checkNotNull(uri);
-        Preconditions.checkArgument(AMQP_SCHEME.equals(uri.getScheme()));
+        Preconditions.checkArgument("amqp".equals(uri.getScheme()) || "amqps".equals(uri.getScheme()));
         this.uri = uri;
         managementCredentials = Optional.ofNullable(uri.getUserInfo())
             .map(this::parseUserInfo)
