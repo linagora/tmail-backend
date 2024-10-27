@@ -29,8 +29,8 @@ public class OpenPaasRestClient {
     private final ObjectMapper deserializer = new ObjectMapper();
 
     public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
-        URI apiUrl = openPaasConfiguration.openpaasApiUri();
-        String user = openPaasConfiguration.adminUser();
+        URI apiUrl = openPaasConfiguration.apirUri();
+        String user = openPaasConfiguration.adminUsername();
         String password = openPaasConfiguration.adminPassword();
 
         this.client = HttpClient.create()

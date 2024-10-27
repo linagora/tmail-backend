@@ -13,7 +13,12 @@ import com.linagora.tmail.AmqpUri;
 
 import spark.utils.StringUtils;
 
-public record OpenPaasConfiguration(Optional<AmqpUri> maybeRabbitMqUri, URI openpaasApiUri, String adminUser, String adminPassword) {
+public record OpenPaasConfiguration(
+    Optional<AmqpUri> maybeRabbitMqUri,
+    URI apirUri,
+    String adminUsername,
+    String adminPassword
+) {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasConfiguration.class);
     private static final String RABBITMQ_URI_PROPERTY = "rabbitmq.uri";
     private static final String OPENPAAS_API_URI = "openpaas.api.uri";
@@ -22,8 +27,8 @@ public record OpenPaasConfiguration(Optional<AmqpUri> maybeRabbitMqUri, URI open
 
     public static OpenPaasConfiguration from(Configuration configuration) {
         Optional<AmqpUri> maybeRabbitMqUri = readRabbitMqUri(configuration);
-        URI openPaasApiUri = readOpenPaasApiUri(configuration);
-        String adminUser = readAdminUser(configuration);
+        URI openPaasApiUri = readApiUri(configuration);
+        String adminUser = readAdminUsername(configuration);
         String adminPassword = readAdminPassword(configuration);
 
         return new OpenPaasConfiguration(maybeRabbitMqUri, openPaasApiUri, adminUser, adminPassword);
@@ -43,7 +48,7 @@ public record OpenPaasConfiguration(Optional<AmqpUri> maybeRabbitMqUri, URI open
         }
     }
 
-    private static URI readOpenPaasApiUri(Configuration configuration) {
+    private static URI readApiUri(Configuration configuration) {
         String openPaasApiUri = configuration.getString(OPENPAAS_API_URI);
         if (StringUtils.isBlank(openPaasApiUri)) {
             throw new IllegalStateException("OpenPaas API URI not specified.");
@@ -66,7 +71,7 @@ public record OpenPaasConfiguration(Optional<AmqpUri> maybeRabbitMqUri, URI open
         }
     }
 
-    private static String readAdminUser(Configuration configuration) {
+    private static String readAdminUsername(Configuration configuration) {
         String openPaasAdminUser = configuration.getString(OPENPAAS_ADMIN_USER_PROPERTY);
 
         if (StringUtils.isBlank(openPaasAdminUser)) {
