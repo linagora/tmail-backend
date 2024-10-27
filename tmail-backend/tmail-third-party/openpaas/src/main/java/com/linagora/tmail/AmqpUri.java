@@ -2,6 +2,7 @@ package com.linagora.tmail;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
@@ -36,12 +37,12 @@ public class AmqpUri {
         return new AmqpUri(uri);
     }
 
-    public Optional<AmqpUri> asOptional() {
-        return Optional.of(this);
+    public static AmqpUri from(String uri) {
+        return new AmqpUri(URI.create(uri));
     }
 
-    public URI getUri() {
-        return uri;
+    public Optional<AmqpUri> asOptional() {
+        return Optional.of(this);
     }
 
     public RabbitMQConfiguration.ManagementCredentials getManagementCredentials() {
@@ -85,5 +86,23 @@ public class AmqpUri {
             Joiner.on(':')
                 .join(passwordParts)
                 .toCharArray());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof AmqpUri amqpUri)) {
+            return false;
+        }
+        return Objects.equals(uri, amqpUri.uri) &&
+               Objects.equals(managementCredentials, amqpUri.managementCredentials) &&
+               Objects.equals(vhost, amqpUri.vhost);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(uri, managementCredentials, vhost);
     }
 }
