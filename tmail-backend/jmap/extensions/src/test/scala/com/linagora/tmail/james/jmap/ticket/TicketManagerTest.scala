@@ -3,6 +3,8 @@ package com.linagora.tmail.james.jmap.ticket
 import java.net.InetAddress
 import java.time.ZonedDateTime
 
+import org.apache.commons.configuration2.PropertiesConfiguration
+import org.apache.james.FakePropertiesProvider
 import org.apache.james.core.Username
 import org.apache.james.utils.UpdatableTickingClock
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
@@ -13,20 +15,54 @@ class TicketManagerTest {
   private val username = Username.of("bob")
   private val address = InetAddress.getByName("127.0.0.1")
   var clock: UpdatableTickingClock = null
+  var propertiesProvider: FakePropertiesProvider = null
   var testee: TicketManager = null
 
   @BeforeEach
   def setUp(): Unit = {
     clock = new UpdatableTickingClock(initialDate.toInstant)
-    testee = new TicketManager(clock, new MemoryTicketStore())
+    propertiesProvider = FakePropertiesProvider.builder()
+      .register("jmap", new PropertiesConfiguration)
+      .build()
+    testee = new TicketManager(clock, new MemoryTicketStore(), propertiesProvider)
   }
 
   @Test
-  def ticketShouldBeScopedBySourceIp(): Unit = {
+  def ticketShouldBeScopedBySourceIpByDefault(): Unit = {
     val ticket = testee.generate(username, address).block()
 
     assertThatThrownBy(() => testee.validate(ticket.value, InetAddress.getByName("127.0.0.2")).block())
       .isInstanceOf(classOf[ForbiddenException])
+  }
+
+  @Test
+  def ticketShouldBeScopedBySourceIpWhenIpValidationEnabledExplicitly(): Unit = {
+    val jmapConfiguration: PropertiesConfiguration = new PropertiesConfiguration
+    jmapConfiguration.addProperty("authentication.strategy.rfc8621.tickets.ip.validation.enabled", "true")
+    propertiesProvider =  FakePropertiesProvider.builder()
+      .register("jmap", jmapConfiguration)
+      .build()
+    testee = new TicketManager(clock, new MemoryTicketStore(), propertiesProvider)
+
+    val ticket = testee.generate(username, address).block()
+
+    assertThatThrownBy(() => testee.validate(ticket.value, InetAddress.getByName("127.0.0.2")).block())
+      .isInstanceOf(classOf[ForbiddenException])
+  }
+
+  @Test
+  def ticketShouldNotBeScopedBySourceIpWhenIpValidationDisabled(): Unit = {
+    val jmapConfiguration: PropertiesConfiguration = new PropertiesConfiguration
+    jmapConfiguration.addProperty("authentication.strategy.rfc8621.tickets.ip.validation.enabled", "false")
+    propertiesProvider =  FakePropertiesProvider.builder()
+      .register("jmap", jmapConfiguration)
+      .build()
+    testee = new TicketManager(clock, new MemoryTicketStore(), propertiesProvider)
+
+    val ticket = testee.generate(username, address).block()
+
+    assertThat(testee.validate(ticket.value, InetAddress.getByName("127.0.0.2")).block())
+      .isEqualTo(username)
   }
 
   @Test
