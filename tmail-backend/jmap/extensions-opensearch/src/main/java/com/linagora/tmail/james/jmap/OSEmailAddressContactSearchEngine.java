@@ -227,7 +227,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .filter(GetResponse::found)
             .mapNotNull(GetResponse::source)
             .map(Throwing.function(this::extractContactFromSource).sneakyThrow())
-            .switchIfEmpty(Mono.error(new ContactNotFoundException(mailAddress)));
+            .switchIfEmpty(Mono.error(() -> new ContactNotFoundException(mailAddress)));
     }
 
     @Override
@@ -241,7 +241,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .filter(GetResponse::found)
             .mapNotNull(GetResponse::source)
             .map(Throwing.function(this::extractContactFromSource).sneakyThrow())
-            .switchIfEmpty(Mono.error(new ContactNotFoundException(mailAddress)));
+            .switchIfEmpty(Mono.error(() -> new ContactNotFoundException(mailAddress)));
     }
 
     private EmailAddressContact extractContactFromSource(ObjectNode source) throws AddressException {
