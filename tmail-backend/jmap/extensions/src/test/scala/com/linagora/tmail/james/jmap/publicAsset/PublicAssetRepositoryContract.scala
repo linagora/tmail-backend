@@ -5,7 +5,7 @@ import java.net.URI
 import java.util.UUID
 
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
-import org.apache.james.blob.api.HashBlobId
+import org.apache.james.blob.api.PlainBlobId
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.Size.{Size, sanitizeSize}
 import org.apache.james.jmap.api.model.{IdentityId, Size}
@@ -25,7 +25,7 @@ object PublicAssetRepositoryContract {
   val IDENTITY_IDS: Seq[IdentityId] = Seq(IdentityId.generate, IdentityId.generate)
   val ASSET_CONTENT: Array[Byte] = Array[Byte](1, 2, 3)
   val SIZE: Size = Size.sanitizeSize(ASSET_CONTENT.length)
-  val BLOBID_FACTORY = new HashBlobId.Factory()
+  val BLOBID_FACTORY = new PlainBlobId.Factory()
 
   val CREATION_REQUEST: PublicAssetCreationRequest = PublicAssetCreationRequest(
     size = SIZE,

@@ -7,8 +7,8 @@ import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BucketName;
-import org.apache.james.blob.api.HashBlobId;
 import org.apache.james.blob.api.MetricableBlobStore;
+import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreFactory;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.model.MessageId;
@@ -29,7 +29,7 @@ import reactor.core.publisher.Mono;
 
 public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailContentStoreContract {
     private final CassandraMessageId.Factory messageIdFactory = new CassandraMessageId.Factory();
-    private static final HashBlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
+    private static final PlainBlobId.Factory BLOB_ID_FACTORY = new PlainBlobId.Factory();
     private BlobStore blobStore;
     private CassandraEncryptedEmailDAO cassandraEncryptedEmailDAO;
     private CassandraEncryptedEmailContentStore cassandraEncryptedEmailContentStore;

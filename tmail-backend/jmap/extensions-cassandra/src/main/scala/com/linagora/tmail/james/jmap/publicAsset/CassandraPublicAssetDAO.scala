@@ -134,7 +134,7 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
 
   def selectAllBlobIds(): SFlux[BlobId] =
     SFlux(executor.executeRows(selectAllBlobIdsStatement.bind())
-      .map(row => blobIdFactory.from(row.get(BLOB_ID, TypeCodecs.TEXT))))
+      .map(row => blobIdFactory.parse(row.get(BLOB_ID, TypeCodecs.TEXT))))
 
   def selectSize(username: Username): SFlux[Long] =
     SFlux(executor.executeRows(selectSize.bind()
@@ -157,7 +157,7 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
       publicURI = PublicURI.fromString(row.get(PUBLIC_URI, TypeCodecs.TEXT)).toOption.get,
       size = Size.sanitizeSize(row.get(SIZE, TypeCodecs.BIGINT)),
       contentType = ImageContentType.from(row.get(CONTENT_TYPE, TypeCodecs.TEXT)).toOption.get,
-      blobId = blobIdFactory.from(row.get(BLOB_ID, TypeCodecs.TEXT)),
+      blobId = blobIdFactory.parse(row.get(BLOB_ID, TypeCodecs.TEXT)),
       identityIds = CollectionConverters.asScala(row.get(IDENTITY_IDS, FROZEN_OF_UUIDS_CODEC))
         .map(IdentityId(_))
         .toSeq)
