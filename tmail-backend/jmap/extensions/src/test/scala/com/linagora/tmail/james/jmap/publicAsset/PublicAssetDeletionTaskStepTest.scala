@@ -4,7 +4,7 @@ import java.net.URI
 
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetRepositoryContract.{CREATION_REQUEST, USERNAME}
-import org.apache.james.blob.api.{BucketName, HashBlobId}
+import org.apache.james.blob.api.{BucketName, PlainBlobId}
 import org.apache.james.blob.memory.MemoryBlobStoreDAO
 import org.apache.james.core.Username
 import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore
@@ -25,7 +25,7 @@ class PublicAssetDeletionTaskStepTest {
   def beforeEach(): Unit = {
     publicAssetRepository = new MemoryPublicAssetRepository(new DeDuplicationBlobStore(new MemoryBlobStoreDAO,
         BucketName.DEFAULT,
-        new HashBlobId.Factory()),
+        new PlainBlobId.Factory()),
       JMAPExtensionConfiguration(),
       PUBLIC_ASSET_URI_PREFIX)
     publicAssetDeletionTaskStep = new PublicAssetDeletionTaskStep(publicAssetRepository);
