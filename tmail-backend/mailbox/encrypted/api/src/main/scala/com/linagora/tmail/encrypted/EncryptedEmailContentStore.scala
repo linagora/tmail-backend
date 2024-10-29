@@ -48,6 +48,17 @@ object EncryptedEmailDetailedView {
       hasAttachment = encryptedEmailContent.hasAttachment,
       encryptedAttachmentMetadata = encryptedEmailContent.encryptedAttachmentMetadata
         .map(value => EncryptedAttachmentMetadata(value)))
+
+  def of(id: MessageId,
+         encryptedPreview: String,
+         encryptedHtml: String,
+         hasAttachment: Boolean,
+         encryptedAttachmentMetadata: Option[String]): EncryptedEmailDetailedView =
+    EncryptedEmailDetailedView(id = id,
+      encryptedPreview = EncryptedPreview(encryptedPreview),
+      encryptedHtml = EncryptedHtml(encryptedHtml),
+      hasAttachment = hasAttachment,
+      encryptedAttachmentMetadata = encryptedAttachmentMetadata.map(value => EncryptedAttachmentMetadata(value)))
 }
 
 case class EncryptedAttachmentMetadata(value: String) extends AnyVal

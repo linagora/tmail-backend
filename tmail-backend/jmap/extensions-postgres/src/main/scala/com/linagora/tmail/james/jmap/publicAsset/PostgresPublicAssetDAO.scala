@@ -93,7 +93,7 @@ class PostgresPublicAssetDAO(postgresExecutor: PostgresExecutor, blobIdFactory: 
   def selectAllBlobIds(): SFlux[BlobId] =
     SFlux(postgresExecutor.executeRows(dslContext => Flux.from(dslContext.select(BLOB_ID)
         .from(TABLE_NAME)))
-      .map(record => blobIdFactory.from(record.get(BLOB_ID))))
+      .map(record => blobIdFactory.parse(record.get(BLOB_ID))))
 
   def deleteAsset(username: Username, assetId: PublicAssetId): SMono[Void] =
     SMono(postgresExecutor.executeVoid(dslContext => Mono.from(dslContext.deleteFrom(TABLE_NAME)
@@ -115,7 +115,7 @@ class PostgresPublicAssetDAO(postgresExecutor: PostgresExecutor, blobIdFactory: 
       publicURI = PublicURI.fromString(record.get(PUBLIC_URI)).toOption.get,
       size = Size.sanitizeSize(record.get(SIZE)),
       contentType = ImageContentType.from(record.get(CONTENT_TYPE)).toOption.get,
-      blobId = blobIdFactory.from(record.get(BLOB_ID)),
+      blobId = blobIdFactory.parse(record.get(BLOB_ID)),
       identityIds = record.get(IDENTITIES_IDS)
         .map(IdentityId(_))
         .toSeq)
