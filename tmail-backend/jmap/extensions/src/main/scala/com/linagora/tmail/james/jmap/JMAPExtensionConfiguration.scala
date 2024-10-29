@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap
 
+import java.net.{URI, URL}
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -50,8 +51,10 @@ object JMAPExtensionConfiguration {
 
     val emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.from(configuration)
 
+    val webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.parse(configuration)
+
     JMAPExtensionConfiguration(publicAssetTotalSizeLimit, supportMailAddressOpt, ticketIpValidationEnable,
-      calendarEventReplySupportedLanguagesConfig, emailRecoveryActionConfiguration)
+      calendarEventReplySupportedLanguagesConfig, emailRecoveryActionConfiguration, webFingerConfiguration)
   }
 }
 
@@ -66,7 +69,8 @@ case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTota
                                       supportMailAddress: Option[MailAddress] = Option.empty,
                                       ticketIpValidationEnable: TicketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED,
                                       calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT,
-                                      emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.DEFAULT) {
+                                      emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.DEFAULT,
+                                      webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.DEFAULT) {
   def this(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit) = {
     this(publicAssetTotalSizeLimit, Option.empty)
   }
@@ -105,3 +109,12 @@ object EmailRecoveryActionConfiguration {
 }
 
 case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long, restorationHorizon: Duration)
+
+object WebFingerConfiguration {
+  val DEFAULT: WebFingerConfiguration = WebFingerConfiguration(None)
+
+  def parse(configuration: Configuration): WebFingerConfiguration =
+    WebFingerConfiguration(Option(configuration.getString("oidc.provider.url", null)).map(new URI(_).toURL))
+}
+
+case class WebFingerConfiguration(openIdUrl: Option[URL])
