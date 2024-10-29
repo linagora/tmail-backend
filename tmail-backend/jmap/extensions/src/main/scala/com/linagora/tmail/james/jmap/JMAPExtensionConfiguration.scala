@@ -1,10 +1,15 @@
 package com.linagora.tmail.james.jmap
 
-import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.{PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, TICKET_IP_VALIDATION_ENABLED}
+import java.util.Locale
+
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.{CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, TICKET_IP_VALIDATION_ENABLED}
+import com.linagora.tmail.james.jmap.method.CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT
+import com.linagora.tmail.james.jmap.model.LanguageLocation
 import eu.timepit.refined
 import org.apache.commons.configuration2.Configuration
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.UnsignedInt.{UnsignedInt, UnsignedIntConstraint}
+import org.apache.james.server.core.MissingArgumentException
 import org.apache.james.util.Size
 
 import scala.util.{Failure, Success, Try}
@@ -14,6 +19,8 @@ object JMAPExtensionConfiguration {
   val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT: PublicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.of(Size.of(20L, Size.Unit.M)).get
   val TICKET_IP_VALIDATION_PROPERTY: String = "authentication.strategy.rfc8621.tickets.ip.validation.enabled"
   val TICKET_IP_VALIDATION_ENABLED: TicketIpValidationEnable = TicketIpValidationEnable(true)
+  val CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_PROPERTY: String = "calendarEvent.reply.supportedLanguages"
+  val CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT: CalendarEventReplySupportedLanguagesConfig = CalendarEventReplySupportedLanguagesConfig(Set(LANGUAGE_DEFAULT))
 
   val SUPPORT_MAIL_ADDRESS_PROPERTY: String = "support.mail.address"
 
@@ -31,7 +38,16 @@ object JMAPExtensionConfiguration {
       .map(TicketIpValidationEnable(_))
       .getOrElse(TICKET_IP_VALIDATION_ENABLED)
 
-    JMAPExtensionConfiguration(publicAssetTotalSizeLimit, supportMailAddressOpt, ticketIpValidationEnable)
+    val calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CalendarEventReplySupportedLanguagesConfig(
+      Try(configuration.getStringArray(CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_PROPERTY).toSet)
+        .map(_.map(lgTag => LanguageLocation.detectLocale(lgTag) match {
+          case Success(value) => value
+          case Failure(error) => throw new MissingArgumentException("Invalid language tag in the configuration file." + error.getMessage)
+        }))
+        .fold(_ => Set.empty, identity))
+
+    JMAPExtensionConfiguration(publicAssetTotalSizeLimit, supportMailAddressOpt, ticketIpValidationEnable,
+      calendarEventReplySupportedLanguagesConfig)
   }
 }
 
@@ -44,7 +60,8 @@ object PublicAssetTotalSizeLimit {
 
 case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit = PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT,
                                       supportMailAddress: Option[MailAddress] = Option.empty,
-                                      ticketIpValidationEnable: TicketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED) {
+                                      ticketIpValidationEnable: TicketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED,
+                                      calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT) {
   def this(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit) = {
     this(publicAssetTotalSizeLimit, Option.empty)
   }
@@ -63,3 +80,5 @@ case class PublicAssetTotalSizeLimit(value: UnsignedInt) {
 }
 
 case class TicketIpValidationEnable(value: Boolean)
+
+case class CalendarEventReplySupportedLanguagesConfig(supportedLanguages: Set[Locale])

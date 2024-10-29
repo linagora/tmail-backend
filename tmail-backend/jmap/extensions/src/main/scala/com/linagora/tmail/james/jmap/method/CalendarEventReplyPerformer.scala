@@ -9,9 +9,10 @@ import java.util.{Locale, UUID, Map => JavaMap}
 import com.github.mustachejava.{DefaultMustacheFactory, MustacheFactory}
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, LOGGER}
-import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarParticipantsField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException, LanguageLocation}
+import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarParticipantsField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException}
 import eu.timepit.refined.auto._
 import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Named}
@@ -32,9 +33,8 @@ import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.queue.api.MailQueueFactory.SPOOL
 import org.apache.james.queue.api.{MailQueue, MailQueueFactory}
-import org.apache.james.server.core.{MailImpl, MimeMessageInputStreamSource, MimeMessageWrapper, MissingArgumentException}
+import org.apache.james.server.core.{MailImpl, MimeMessageInputStreamSource, MimeMessageWrapper}
 import org.apache.james.user.api.UsersRepository
-import org.apache.james.utils.PropertiesProvider
 import org.apache.mailet.{Attribute, AttributeValue, Mail}
 import org.slf4j.{Logger, LoggerFactory}
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -46,7 +46,6 @@ import scala.util.{Failure, Success, Try, Using}
 object CalendarEventReplyPerformer {
   val I18N_MAIL_TEMPLATE_LOCATION_PROPERTY: String = "calendarEvent.reply.mailTemplateLocation"
   val I18N_MAIL_TEMPLATE_LOCATION_DEFAULT: String = "file://eml-template/"
-  val SUPPORTED_LANGUAGES_PROPERTY: String = "calendarEvent.reply.supportedLanguages"
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[CalendarEventReplyPerformer])
 }
 
@@ -129,24 +128,16 @@ class BlobCalendarResolver @Inject()(blobResolvers: BlobResolvers) {
     }
 }
 
-private object CalendarEventReplySupportedLanguage {
+object CalendarEventReplySupportedLanguage {
   val LANGUAGE_DEFAULT: Locale = Locale.ENGLISH
 }
 
-class CalendarEventReplySupportedLanguage @Inject()(propertiesProvider: PropertiesProvider) {
+class CalendarEventReplySupportedLanguage @Inject()(jmapExtensionConfiguration: JMAPExtensionConfiguration) {
 
-  private val supportedLanguages: Set[Locale] = getSupportedLanguagesConfiguration match {
+  private val supportedLanguages: Set[Locale] = jmapExtensionConfiguration.calendarEventReplySupportedLanguagesConfig.supportedLanguages match {
     case supportedLanguages if supportedLanguages.isEmpty => Set(CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT)
     case supportedLanguages => supportedLanguages
   }
-
-  private def getSupportedLanguagesConfiguration: Set[Locale] =
-    Try(propertiesProvider.getConfiguration("jmap"))
-      .map(configuration => configuration.getStringArray(CalendarEventReplyPerformer.SUPPORTED_LANGUAGES_PROPERTY).toSet)
-      .map(_.map(lgTag => LanguageLocation.detectLocale(lgTag) match {
-        case Success(value) => value
-        case Failure(error) => throw new MissingArgumentException("Invalid language tag in the configuration file." + error.getMessage)
-      })).fold(_ => Set.empty, identity)
 
   def value: Set[Locale] = supportedLanguages
 
