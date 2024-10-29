@@ -142,7 +142,7 @@ public class PostgresFirebaseSubscriptionDAO {
 
     private Set<TypeName> extractTypes(Record record) {
         return Arrays.stream(record.get(TYPES))
-            .map(string -> typeStateFactory.parse(string).right().get())
+            .map(string -> typeStateFactory.strictParse(string).right().get())
             .collect(Collectors.toSet());
     }
 }
