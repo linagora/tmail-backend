@@ -1,15 +1,13 @@
 package com.linagora.tmail.james.jmap.ticket
 
-import java.io.FileNotFoundException
 import java.net.InetAddress
 import java.time.{Clock, ZonedDateTime}
 import java.util.UUID
 
-import com.linagora.tmail.james.jmap.ticket.TicketManager.extractIpValidationEnableConfig
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UTCDate
-import org.apache.james.utils.PropertiesProvider
 import reactor.core.scala.publisher.SMono
 
 import scala.collection.mutable
@@ -33,21 +31,9 @@ case class Ticket(clientAddress: InetAddress,
 
 object TicketManager {
   private val validity: java.time.Duration = java.time.Duration.ofMinutes(1)
-  private val ipValidationEnableProperty: String = "authentication.strategy.rfc8621.tickets.ip.validation.enabled"
-  private val ipValidationEnabled: Boolean = true
-
-  def extractIpValidationEnableConfig(propertiesProvider: PropertiesProvider): Boolean =
-    try {
-      Option(propertiesProvider.getConfiguration("jmap"))
-        .map(config => config.getBoolean(ipValidationEnableProperty, ipValidationEnabled))
-        .getOrElse(ipValidationEnabled)
-    } catch {
-      case _: FileNotFoundException => ipValidationEnabled
-    }
 }
 
-class TicketManager @Inject() (clock: Clock, ticketStore: TicketStore, propertiesProvider: PropertiesProvider) {
-  private val ipValidationEnabled: Boolean = extractIpValidationEnableConfig(propertiesProvider)
+class TicketManager @Inject() (clock: Clock, ticketStore: TicketStore, jmapExtensionConfiguration: JMAPExtensionConfiguration) {
 
   def generate(username: Username, remoteAddress: InetAddress): SMono[Ticket] = {
     val now = ZonedDateTime.now(clock)
@@ -73,7 +59,7 @@ class TicketManager @Inject() (clock: Clock, ticketStore: TicketStore, propertie
       .switchIfEmpty(SMono.error(ForbiddenException()))
 
   private def validateIpIfNeeded(ip: InetAddress, ticket: Ticket): Boolean =
-    if (ipValidationEnabled) {
+    if (jmapExtensionConfiguration.ticketIpValidationEnable.value) {
       ticket.clientAddress.equals(ip)
     } else {
       true

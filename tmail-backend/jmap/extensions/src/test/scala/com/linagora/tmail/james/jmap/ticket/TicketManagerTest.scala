@@ -3,8 +3,8 @@ package com.linagora.tmail.james.jmap.ticket
 import java.net.InetAddress
 import java.time.ZonedDateTime
 
-import org.apache.commons.configuration2.PropertiesConfiguration
-import org.apache.james.FakePropertiesProvider
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.TICKET_IP_VALIDATION_ENABLED
+import com.linagora.tmail.james.jmap.{JMAPExtensionConfiguration, TicketIpValidationEnable}
 import org.apache.james.core.Username
 import org.apache.james.utils.UpdatableTickingClock
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
@@ -15,16 +15,14 @@ class TicketManagerTest {
   private val username = Username.of("bob")
   private val address = InetAddress.getByName("127.0.0.1")
   var clock: UpdatableTickingClock = null
-  var propertiesProvider: FakePropertiesProvider = null
+  var jmapExtensionConfig: JMAPExtensionConfiguration = null
   var testee: TicketManager = null
 
   @BeforeEach
   def setUp(): Unit = {
     clock = new UpdatableTickingClock(initialDate.toInstant)
-    propertiesProvider = FakePropertiesProvider.builder()
-      .register("jmap", new PropertiesConfiguration)
-      .build()
-    testee = new TicketManager(clock, new MemoryTicketStore(), propertiesProvider)
+    jmapExtensionConfig = JMAPExtensionConfiguration()
+    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig)
   }
 
   @Test
@@ -37,12 +35,8 @@ class TicketManagerTest {
 
   @Test
   def ticketShouldBeScopedBySourceIpWhenIpValidationEnabledExplicitly(): Unit = {
-    val jmapConfiguration: PropertiesConfiguration = new PropertiesConfiguration
-    jmapConfiguration.addProperty("authentication.strategy.rfc8621.tickets.ip.validation.enabled", "true")
-    propertiesProvider =  FakePropertiesProvider.builder()
-      .register("jmap", jmapConfiguration)
-      .build()
-    testee = new TicketManager(clock, new MemoryTicketStore(), propertiesProvider)
+    jmapExtensionConfig = JMAPExtensionConfiguration(ticketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED)
+    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig)
 
     val ticket = testee.generate(username, address).block()
 
@@ -52,12 +46,8 @@ class TicketManagerTest {
 
   @Test
   def ticketShouldNotBeScopedBySourceIpWhenIpValidationDisabled(): Unit = {
-    val jmapConfiguration: PropertiesConfiguration = new PropertiesConfiguration
-    jmapConfiguration.addProperty("authentication.strategy.rfc8621.tickets.ip.validation.enabled", "false")
-    propertiesProvider =  FakePropertiesProvider.builder()
-      .register("jmap", jmapConfiguration)
-      .build()
-    testee = new TicketManager(clock, new MemoryTicketStore(), propertiesProvider)
+    jmapExtensionConfig = JMAPExtensionConfiguration(ticketIpValidationEnable = TicketIpValidationEnable(false))
+    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig)
 
     val ticket = testee.generate(username, address).block()
 
