@@ -6,8 +6,8 @@ import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BucketName;
-import org.apache.james.blob.api.HashBlobId;
 import org.apache.james.blob.api.MetricableBlobStore;
+import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreFactory;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.postgres.PostgresMessageId;
@@ -27,7 +27,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class PostgresEncryptedEmailContentStoreTest implements EncryptedEmailContentStoreContract {
-    private static final BlobId.Factory BLOB_ID_FACTORY = new HashBlobId.Factory();
+    private static final BlobId.Factory BLOB_ID_FACTORY = new PlainBlobId.Factory();
     private final PostgresMessageId.Factory messageIdFactory = new PostgresMessageId.Factory();
     private BlobStore blobStore;
     private PostgresEncryptedEmailBlobReferenceSource blobReferenceSource;
