@@ -113,6 +113,6 @@ class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateF
 
   private def toTypes(row: Row): Seq[TypeName] =
     CollectionConverters.asScala(row.get(TYPES, FROZEN_OF_STRINGS_CODEC))
-      .flatMap(string => typeStateFactory.parse(string).toSeq)
+      .flatMap(string => typeStateFactory.strictParse(string).toSeq)
       .toSeq
 }
