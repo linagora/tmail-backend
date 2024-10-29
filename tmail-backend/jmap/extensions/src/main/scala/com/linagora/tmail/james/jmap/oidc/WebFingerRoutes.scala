@@ -7,16 +7,15 @@ import java.util.stream
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides}
 import com.linagora.tmail.james.jmap.oidc.WebFingerRoutes.LOGGER
+import com.linagora.tmail.james.jmap.{JMAPExtensionConfiguration, WebFingerConfiguration}
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, INTERNAL_SERVER_ERROR}
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus, QueryStringDecoder}
 import jakarta.inject.Inject
-import org.apache.commons.configuration2.Configuration
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.ProblemDetails
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
-import org.apache.james.utils.PropertiesProvider
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsString, Json, Writes}
 import reactor.core.publisher.Mono
@@ -37,14 +36,7 @@ private[oidc] object Serializers {
   def serialise(response: WebFingerResponse): String = Json.stringify(Json.toJson(response))
 }
 
-object WebFingerConfiguration {
-  def parse(configuration: Configuration): WebFingerConfiguration =
-    WebFingerConfiguration(Option(configuration.getString("oidc.provider.url", null)).map(new URL(_)))
-}
-
 case class WebFingerRequest(resource: URL)
-
-case class WebFingerConfiguration(openIdUrl: Option[URL])
 
 case class WebFingerModule() extends AbstractModule {
   override def configure(): Unit = {
@@ -53,9 +45,8 @@ case class WebFingerModule() extends AbstractModule {
   }
 
   @Provides
-  def configuration(propertiesProvider: PropertiesProvider): WebFingerConfiguration =
-    Try(propertiesProvider.getConfiguration("jmap"))
-      .fold(_ => WebFingerConfiguration(None), WebFingerConfiguration.parse)
+  def configuration(jmapExtensionConfiguration: JMAPExtensionConfiguration): WebFingerConfiguration =
+    jmapExtensionConfiguration.webFingerConfiguration
 }
 
 object WebFingerRoutes {

@@ -3,7 +3,7 @@ package com.linagora.tmail.james.common
 import java.net.URL
 
 import com.google.inject.Module
-import com.linagora.tmail.james.jmap.oidc.WebFingerConfiguration
+import com.linagora.tmail.james.jmap.WebFingerConfiguration
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.authentication.NoAuthScheme
