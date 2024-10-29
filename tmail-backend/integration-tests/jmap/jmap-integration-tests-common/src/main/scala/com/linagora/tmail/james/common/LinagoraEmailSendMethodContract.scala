@@ -5,7 +5,7 @@ import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
-import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract.{BOB_INBOX_PATH, HTML_BODY}
+import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract.{BOB_INBOX_PATH, HTML_BODY, bobSendsAMailToAndre, getBobInboxId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -50,52 +50,7 @@ object LinagoraEmailSendMethodContract {
   val BOB_INBOX_PATH: MailboxPath = MailboxPath.inbox(BOB)
   val HTML_BODY: String = "<!DOCTYPE html><html><head><title></title></head><body><div>I have the most <b>brilliant</b> plan. Let me tell you all about it. What we do is, we</div></body></html>"
 
-}
-
-trait LinagoraEmailSendMethodContract {
-  private lazy val slowPacedPollInterval: Duration = ONE_HUNDRED_MILLISECONDS
-  private lazy val calmlyAwait: ConditionFactory = Awaitility.`with`
-    .pollInterval(slowPacedPollInterval)
-    .and.`with`.pollDelay(slowPacedPollInterval)
-    .await
-  private lazy val awaitAtMostTenSeconds: ConditionFactory = calmlyAwait.atMost(10, TimeUnit.SECONDS)
-
-  @BeforeEach
-  def setUp(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[DataProbeImpl])
-      .fluent()
-      .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString, ANDRE_PASSWORD)
-
-    requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
-      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .build()
-
-    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    mailboxProbe.createMailbox(BOB_INBOX_PATH)
-    mailboxProbe.createMailbox(MailboxPath.inbox(ANDRE))
-
-    uploadPublicKey(ACCOUNT_ID, requestSpecification)
-  }
-
-  def randomMessageId: MessageId
-
-  private def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
-    baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
-      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .build
-
-  private def listAllMessageResult(guiceJamesServer: GuiceJamesServer, username: Username): List[MessageResult] =
-    guiceJamesServer.getProbe(classOf[MailboxProbeImpl])
-      .searchMessage(MultimailboxesSearchQuery.from(SearchQuery.of(SearchQuery.all())).build, username.asString(), 100)
-      .asScala
-      .flatMap(messageId => guiceJamesServer.getProbe(classOf[MessageIdProbe]).getMessages(messageId, username).asScala.headOption)
-      .toList
-
-  private def bobSendsAMailToAndre(server: GuiceJamesServer): String =
+  def bobSendsAMailToAndre(server: GuiceJamesServer): String =
     s"""
        |{
        |  "using": [
@@ -150,9 +105,53 @@ trait LinagoraEmailSendMethodContract {
        |  ]
        |}""".stripMargin
 
-  private def getBobInboxId(server: GuiceJamesServer): MailboxId =
+  def getBobInboxId(server: GuiceJamesServer): MailboxId =
     server.getProbe(classOf[MailboxProbeImpl])
       .getMailboxId(MailboxConstants.USER_NAMESPACE, BOB.asString, MailboxConstants.INBOX)
+}
+
+trait LinagoraEmailSendMethodContract {
+  private lazy val slowPacedPollInterval: Duration = ONE_HUNDRED_MILLISECONDS
+  private lazy val calmlyAwait: ConditionFactory = Awaitility.`with`
+    .pollInterval(slowPacedPollInterval)
+    .and.`with`.pollDelay(slowPacedPollInterval)
+    .await
+  private lazy val awaitAtMostTenSeconds: ConditionFactory = calmlyAwait.atMost(10, TimeUnit.SECONDS)
+
+  @BeforeEach
+  def setUp(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[DataProbeImpl])
+      .fluent()
+      .addDomain(DOMAIN.asString)
+      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(ANDRE.asString, ANDRE_PASSWORD)
+
+    requestSpecification = baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build()
+
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    mailboxProbe.createMailbox(BOB_INBOX_PATH)
+    mailboxProbe.createMailbox(MailboxPath.inbox(ANDRE))
+
+    uploadPublicKey(ACCOUNT_ID, requestSpecification)
+  }
+
+  def randomMessageId: MessageId
+
+  private def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
+    baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build
+
+  private def listAllMessageResult(guiceJamesServer: GuiceJamesServer, username: Username): List[MessageResult] =
+    guiceJamesServer.getProbe(classOf[MailboxProbeImpl])
+      .searchMessage(MultimailboxesSearchQuery.from(SearchQuery.of(SearchQuery.all())).build, username.asString(), 100)
+      .asScala
+      .flatMap(messageId => guiceJamesServer.getProbe(classOf[MessageIdProbe]).getMessages(messageId, username).asScala.headOption)
+      .toList
 
   @Test
   def emailSendShouldReturnSuccess(server: GuiceJamesServer): Unit = {
@@ -1755,26 +1754,26 @@ trait LinagoraEmailSendMethodContract {
     .when()
       .post()
     .`then`
-      .statusCode(HttpStatus.SC_OK)
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
       .contentType(JSON)
       .extract()
       .body()
       .asString()
 
     assertThatJson(response)
-      .whenIgnoringPaths("methodResponses[0][1].notCreated.K87.description")
-      .inPath("methodResponses[0][1].notCreated.K87")
+      .whenIgnoringPaths("detail")
       .isEqualTo(
         s"""{
-           |    "type": "tooLarge"
+           |    "type": "urn:ietf:params:jmap:error:limit",
+           |    "status": 400,
+           |    "limit": "maxSizeRequest"
            |}""".stripMargin)
 
     val description = assertThatJson(response)
-      .withIgnorePlaceholder("@")
-      .inPath("methodResponses[0][1].notCreated.K87.description")
+      .inPath("detail")
       .asString()
-    description.endsWith(" bytes while the maximum allowed is 10485760")
-    description.startsWith("Attempt to create a message of ")
+    description.endsWith("but maximum allowed is 10000000")
+    description.startsWith("Request size is exceeded.")
   }
 
   //endregion
