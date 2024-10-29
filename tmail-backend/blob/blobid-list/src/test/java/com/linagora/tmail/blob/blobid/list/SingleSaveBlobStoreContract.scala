@@ -57,7 +57,7 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
   @Test
   def saveInputStreamConcurrentlyWithTheSameBlobShouldNoop(): Unit = {
-    val blobId: BlobId = blobIdFactory.randomId()
+    val blobId: BlobId = blobIdFactory.of(UUID.randomUUID.toString)
 
     ConcurrentTestRunner.builder
       .operation((a: Int, b: Int) => SMono.fromPublisher(testee.save(defaultBucketName, blobId, new ByteArrayInputStream(SHORT_BYTEARRAY))).block())
