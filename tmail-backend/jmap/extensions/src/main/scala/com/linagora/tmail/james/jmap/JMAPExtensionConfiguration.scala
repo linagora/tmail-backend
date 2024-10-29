@@ -1,5 +1,7 @@
 package com.linagora.tmail.james.jmap
 
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.{CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, TICKET_IP_VALIDATION_ENABLED}
@@ -10,7 +12,7 @@ import org.apache.commons.configuration2.Configuration
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.UnsignedInt.{UnsignedInt, UnsignedIntConstraint}
 import org.apache.james.server.core.MissingArgumentException
-import org.apache.james.util.Size
+import org.apache.james.util.{DurationParser, Size}
 
 import scala.util.{Failure, Success, Try}
 
@@ -46,8 +48,10 @@ object JMAPExtensionConfiguration {
         }))
         .fold(_ => Set.empty, identity))
 
+    val emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.from(configuration)
+
     JMAPExtensionConfiguration(publicAssetTotalSizeLimit, supportMailAddressOpt, ticketIpValidationEnable,
-      calendarEventReplySupportedLanguagesConfig)
+      calendarEventReplySupportedLanguagesConfig, emailRecoveryActionConfiguration)
   }
 }
 
@@ -61,7 +65,8 @@ object PublicAssetTotalSizeLimit {
 case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit = PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT,
                                       supportMailAddress: Option[MailAddress] = Option.empty,
                                       ticketIpValidationEnable: TicketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED,
-                                      calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT) {
+                                      calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT,
+                                      emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.DEFAULT) {
   def this(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit) = {
     this(publicAssetTotalSizeLimit, Option.empty)
   }
@@ -82,3 +87,21 @@ case class PublicAssetTotalSizeLimit(value: UnsignedInt) {
 case class TicketIpValidationEnable(value: Boolean)
 
 case class CalendarEventReplySupportedLanguagesConfig(supportedLanguages: Set[Locale])
+
+object EmailRecoveryActionConfiguration {
+  val DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST: Long = 5
+  val DEFAULT_RESTORATION_HORIZON: Duration = DurationParser.parse("15", ChronoUnit.DAYS)
+  val DEFAULT: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration(DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST, DEFAULT_RESTORATION_HORIZON)
+
+  def from(jmapConfiguration: Configuration): EmailRecoveryActionConfiguration = {
+    val maxEmailRecoveryPerRequest: Long = jmapConfiguration.getLong("emailRecoveryAction.maxEmailRecoveryPerRequest", DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST)
+
+    val restorationHorizon: Duration = Option(jmapConfiguration.getString("emailRecoveryAction.restorationHorizon", null))
+      .map(DurationParser.parse)
+      .getOrElse(DEFAULT_RESTORATION_HORIZON)
+
+    EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest, restorationHorizon)
+  }
+}
+
+case class EmailRecoveryActionConfiguration(maxEmailRecoveryPerRequest: Long, restorationHorizon: Duration)
