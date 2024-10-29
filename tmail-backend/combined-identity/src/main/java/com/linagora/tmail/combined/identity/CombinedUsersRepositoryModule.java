@@ -3,6 +3,7 @@ package com.linagora.tmail.combined.identity;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 import org.apache.james.user.ldap.ReadOnlyLDAPUsersDAO;
 import org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository;
@@ -15,6 +16,8 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.unboundid.ldap.sdk.LDAPConnectionPool;
+import com.unboundid.ldap.sdk.LDAPException;
 
 public class CombinedUsersRepositoryModule extends AbstractModule {
     @Override
@@ -34,6 +37,12 @@ public class CombinedUsersRepositoryModule extends AbstractModule {
             configurationProvider.getConfiguration("usersrepository"));
     }
 
+    @Provides
+    @Singleton
+    public LDAPConnectionPool provideConfiguration(LdapRepositoryConfiguration configuration) throws LDAPException {
+        return new LDAPConnectionFactory(configuration).getLdapConnectionPool();
+    }
+
     @ProvidesIntoSet
     InitializationOperation configureUsersRepository(ConfigurationProvider configurationProvider, CombinedUsersRepository usersRepository) {
         return InitilizationOperationBuilder
@@ -42,11 +51,11 @@ public class CombinedUsersRepositoryModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    InitializationOperation configureLdap(LdapRepositoryConfiguration configuration, ReadOnlyLDAPUsersDAO readOnlyLDAPUsersDAO) {
+    InitializationOperation configureLdap(ConfigurationProvider configurationProvider, ReadOnlyLDAPUsersDAO readOnlyLDAPUsersDAO) {
         return InitilizationOperationBuilder
             .forClass(ReadOnlyUsersLDAPRepository.class)
             .init(() -> {
-                readOnlyLDAPUsersDAO.configure(configuration);
+                readOnlyLDAPUsersDAO.configure(configurationProvider.getConfiguration("usersrepository"));
                 readOnlyLDAPUsersDAO.init();
             });
     }

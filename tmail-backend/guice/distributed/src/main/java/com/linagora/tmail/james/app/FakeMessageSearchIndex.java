@@ -81,4 +81,9 @@ public class FakeMessageSearchIndex extends ListeningMessageSearchIndex {
     public ExecutionMode getExecutionMode() {
         throw new NotImplementedException("not implemented");
     }
+
+    @Override
+    public void postReindexing() {
+        throw new NotImplementedException("not implemented");
+    }
 }
