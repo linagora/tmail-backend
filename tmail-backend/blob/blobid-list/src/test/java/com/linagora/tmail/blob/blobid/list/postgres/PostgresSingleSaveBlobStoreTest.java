@@ -5,7 +5,7 @@ import org.apache.james.backends.postgres.PostgresModule;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
-import org.apache.james.blob.api.HashBlobId;
+import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreDAO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -41,7 +41,7 @@ public class PostgresSingleSaveBlobStoreTest implements SingleSaveBlobStoreContr
 
     @Override
     public BlobId.Factory blobIdFactory() {
-        return new HashBlobId.Factory();
+        return new PlainBlobId.Factory();
     }
 
     @Override

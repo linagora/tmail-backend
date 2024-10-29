@@ -21,7 +21,6 @@ import org.jooq.impl.DSL;
 import org.jooq.postgres.extensions.types.Hstore;
 
 import com.google.common.collect.ImmutableMap;
-import com.linagora.tmail.encrypted.EncryptedAttachmentMetadata;
 import com.linagora.tmail.encrypted.EncryptedEmailContent;
 import com.linagora.tmail.encrypted.EncryptedEmailDetailedView;
 
@@ -64,7 +63,7 @@ public class PostgresEncryptedEmailStoreDAO {
                 .from(TABLE_NAME)
                 .where(MESSAGE_ID.eq(messageId.asUuid()))))
             .flatMap(record -> Optional.ofNullable(record.get(0, String.class)).map(Mono::just).orElse(Mono.empty()))
-            .map(blobIdFactory::from);
+            .map(blobIdFactory::parse);
     }
 
     public Flux<BlobId> getBlobIds(PostgresMessageId messageId) {
@@ -73,7 +72,7 @@ public class PostgresEncryptedEmailStoreDAO {
             .where(MESSAGE_ID.eq(messageId.asUuid()))))
             .map(record -> record.get(POSITION_BLOB_ID_MAPPING, Hstore.class).data())
             .flatMapMany(positionBlobIdMapping -> Flux.fromIterable(positionBlobIdMapping.values()))
-            .map(blobIdFactory::from);
+            .map(blobIdFactory::parse);
     }
 
     public Flux<BlobId> getAllBlobIds() {
@@ -81,7 +80,7 @@ public class PostgresEncryptedEmailStoreDAO {
                 .from(TABLE_NAME)))
             .map(record -> record.get(POSITION_BLOB_ID_MAPPING, Hstore.class).data())
             .flatMap(positionBlobIdMapping -> Flux.fromIterable(positionBlobIdMapping.values()))
-            .map(blobIdFactory::from);
+            .map(blobIdFactory::parse);
     }
 
     public Mono<Void> delete(PostgresMessageId messageId) {
@@ -96,11 +95,10 @@ public class PostgresEncryptedEmailStoreDAO {
     }
 
     private EncryptedEmailDetailedView readRecord(Record record) {
-        return new EncryptedEmailDetailedView(PostgresMessageId.Factory.of(record.get(MESSAGE_ID)),
+        return EncryptedEmailDetailedView.of(PostgresMessageId.Factory.of(record.get(MESSAGE_ID)),
             record.get(ENCRYPTED_PREVIEW),
             record.get(ENCRYPTED_HTML),
             record.get(HAS_ATTACHMENT),
-            OptionConverters.toScala(Optional.ofNullable(record.get(ENCRYPTED_ATTACHMENT_METADATA))
-                .map(EncryptedAttachmentMetadata::new)));
+            OptionConverters.toScala(Optional.ofNullable(record.get(ENCRYPTED_ATTACHMENT_METADATA))));
     }
 }
