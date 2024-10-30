@@ -134,6 +134,7 @@ import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscovery
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.PostgresJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
+import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
@@ -276,6 +277,7 @@ public class PostgresTmailServer {
             new PostgresLabelRepositoryModule(),
             new PostgresJmapSettingsRepositoryModule(),
             new PostgresPublicAssetRepositoryModule(),
+            new PostgresTicketStoreModule(),
             new TasksHeathCheckModule(),
             chooseEventBusModules(configuration));
 
