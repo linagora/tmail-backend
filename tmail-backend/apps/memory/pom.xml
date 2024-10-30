@@ -69,6 +69,23 @@
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>tmail-openpaas</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <scope>test</scope>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-backends-rabbitmq</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-backends-rabbitmq</artifactId>
+            <scope>test</scope>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>tmail-webadmin-mailbox</artifactId>
         </dependency>

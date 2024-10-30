@@ -66,23 +66,21 @@ public class OpenPaasModule extends AbstractModule {
     @Provides
     @Named(OPENPAAS_INJECTION_KEY)
     @Singleton
-    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration, RabbitMQConfiguration fallbackRabbitMQConfiguration) {
+    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
         return openPaasConfiguration.maybeRabbitMqUri()
             .map(AmqpUri::toRabbitMqConfiguration)
-            .orElseGet(() -> {
-                LOGGER.debug("RabbitMQ URI not configured correctly in openpaas.properties, falling back to rabbitmq.properties.");
-                return fallbackRabbitMQConfiguration;
-            });
+            .orElseThrow((() -> {
+                throw new IllegalStateException("RabbitMQ URI not configured correctly in openpaas.properties.");
+            }));
     }
 
     @Provides
     @Named(OPENPAAS_INJECTION_KEY)
     @Singleton
-    public SimpleConnectionPool provideSimpleConnectionPool(@Named(OPENPAAS_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
-                                                            @Named(OPENPAAS_CONFIGURATION_NAME) Provider<Configuration> configuration) {
+    public SimpleConnectionPool provideSimpleConnectionPool(@Named(OPENPAAS_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration) {
         RabbitMQConnectionFactory rabbitMQConnectionFactory = new RabbitMQConnectionFactory(rabbitMQConfiguration);
         try {
-            return new SimpleConnectionPool(rabbitMQConnectionFactory, SimpleConnectionPool.Configuration.from(configuration.get()));
+            return new SimpleConnectionPool(rabbitMQConnectionFactory, SimpleConnectionPool.Configuration.DEFAULT);
         } catch (Exception e) {
             LOGGER.info("Error while retrieving SimpleConnectionPool.Configuration, falling back to defaults.", e);
             return new SimpleConnectionPool(rabbitMQConnectionFactory, SimpleConnectionPool.Configuration.DEFAULT);
@@ -93,14 +91,12 @@ public class OpenPaasModule extends AbstractModule {
     @Named(OPENPAAS_INJECTION_KEY)
     @Singleton
     public ReactorRabbitMQChannelPool provideReactorRabbitMQChannelPool(
-        OpenPaasConfiguration openPaasConfiguration,
         @Named(OPENPAAS_INJECTION_KEY) SimpleConnectionPool simpleConnectionPool,
-        ReactorRabbitMQChannelPool.Configuration configuration,
         MetricFactory metricFactory, GaugeRegistry gaugeRegistry) {
 
         ReactorRabbitMQChannelPool channelPool = new ReactorRabbitMQChannelPool(
             simpleConnectionPool.getResilientConnection(),
-            configuration,
+            ReactorRabbitMQChannelPool.Configuration.DEFAULT,
             metricFactory,
             gaugeRegistry);
         channelPool.start();
