@@ -1,107 +1,157 @@
 package com.linagora.tmail;
 
 import java.net.URI;
-import java.util.List;
+import java.net.URISyntaxException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
+import com.rabbitmq.client.ConnectionFactory;
 
-public class AmqpUri {
-    private static final String DEFAULT_USER = "guest";
-    private static final String DEFAULT_PASSWORD_STRING = "guest";
-    private static final char[] DEFAULT_PASSWORD = DEFAULT_PASSWORD_STRING.toCharArray();
-    private static final RabbitMQConfiguration.ManagementCredentials DEFAULT_MANAGEMENT_CREDENTIAL = new RabbitMQConfiguration.ManagementCredentials(DEFAULT_USER, DEFAULT_PASSWORD);
-
+/**
+ * The `AmqpUri` class represents an AMQP (Advanced Message Queuing Protocol) URI, which
+ * is used to configure a connection to a RabbitMQ message broker.
+ *<p>
+ * This class handles the parsing and validation of the AMQP URI, and provides methods to extract
+ * relevant information from the URI, such as the username, password, and virtual host.
+ *<p>
+ * Notes:
+ * <ul>
+ *   <li>Providing an AMQP URI without a username will default to 'guest' as the username.</li>
+ *   <li>Providing an AMQP URI without a password will default to 'guest' as the password.</li>
+ *   <li>Providing an AMQP URI without a port will use <code>5672</code></co> as the port.</li>
+ *   <li>Providing an AMQPS (AMQP over SSL) URI without a port will use <code>5671</code></co> as the port.</li>
+ * </ul>
+ */
+public final class AmqpUri {
     private final URI uri;
-    private final RabbitMQConfiguration.ManagementCredentials managementCredentials;
+    private final AmqpUserInfo userInfo;
     private final Optional<String> vhost;
+    private final ConnectionFactory connectionFactory;
 
+    /**
+     * Constructs an `AmqpUri` object from the provided `URI`.
+     *
+     * @param uri the AMQP URI to be parsed and validated
+     * @throws RuntimeException if the provided URI is invalid
+     */
     public AmqpUri(URI uri) {
         Preconditions.checkNotNull(uri);
-        Preconditions.checkArgument("amqp".equals(uri.getScheme()) || "amqps".equals(uri.getScheme()));
+        connectionFactory = new ConnectionFactory();
+        try {
+            connectionFactory.setUri(uri);
+        } catch (URISyntaxException | NoSuchAlgorithmException | KeyManagementException e) {
+            throw new RuntimeException(String.format("Invalid AmqpUri: '%s'", uri), e);
+        }
+
         this.uri = uri;
-        managementCredentials = Optional.ofNullable(uri.getUserInfo())
-            .map(this::parseUserInfo)
-            .orElse(DEFAULT_MANAGEMENT_CREDENTIAL);
-        vhost = getVhostFromPath();
+        userInfo = new AmqpUserInfo(connectionFactory.getUsername(), connectionFactory.getPassword());
+        vhost = Optional.ofNullable(connectionFactory.getVirtualHost());
     }
 
+    /**
+     * Creates an `AmqpUri` object from the provided `URI`.
+     *
+     * @param uri the AMQP URI to be used
+     * @return an `AmqpUri` object representing the provided URI
+     */
     public static AmqpUri from(URI uri) {
         return new AmqpUri(uri);
     }
 
+    /**
+     * Creates an `AmqpUri` object from the provided AMQP URI string.
+     *
+     * @param uri the AMQP URI string to be used
+     * @return an `AmqpUri` object representing the provided URI string
+     */
     public static AmqpUri from(String uri) {
         return new AmqpUri(URI.create(uri));
     }
 
+    /**
+     * Returns an `Optional` containing the current `AmqpUri` object.
+     *
+     * @return an `Optional` containing the `AmqpUri` object
+     */
     public Optional<AmqpUri> asOptional() {
         return Optional.of(this);
     }
 
-    public RabbitMQConfiguration.ManagementCredentials getManagementCredentials() {
-        return managementCredentials;
+    /**
+     * Returns the AMQP user information, including the username and password,
+     * extracted from the AMQP URI.
+     *
+     * @return an `AmqpUserInfo` object containing the username and password
+     */
+    public AmqpUserInfo getUserInfo() {
+        return userInfo;
     }
 
+    /**
+     * Returns the virtual host specified in the AMQP URI, if any.
+     *
+     * @return an `Optional` containing the virtual host, or an empty `Optional` if not specified
+     */
     public Optional<String> getVhost() {
         return vhost;
     }
 
+    /**
+     * Returns the port number specified in the AMQP URI.
+     * <p>
+     * If the port is not specified in the URI it falls back to RabbitMQ defaults:
+     * <lu>
+     *     <li>AMQP  --> 6572</li>
+     *     <li>AMQPS --> 6571</li>
+     * </lu>
+     *
+     * @return the port number from the AMQP URI
+     */
+    public int getPort() {
+        return connectionFactory.getPort();
+    }
+
+    /**
+     * Converts the `AmqpUri` object into a `RabbitMQConfiguration` object, which can be used to
+     * configure the RabbitMQ client.
+     *
+     * @return a `RabbitMQConfiguration` object representing the AMQP URI
+     */
     public RabbitMQConfiguration toRabbitMqConfiguration() {
         return RabbitMQConfiguration.builder()
             .amqpUri(uri)
             .managementUri(uri)
-            .managementCredentials(getManagementCredentials())
+            .managementCredentials(userInfo.asManagementCredentials())
             .vhost(getVhost())
             .build();
     }
 
-    private Optional<String> getVhostFromPath() {
-        String vhostPath = uri.getPath();
-        if (vhostPath.startsWith("/")) {
-            return Optional.of(vhostPath.substring(1))
-                .filter(value -> !value.isEmpty());
-        }
-        return Optional.empty();
-    }
-
-    // TODO: Copy pasted from AmqpForwardAttribute, find a way to remove duplication.
-    private RabbitMQConfiguration.ManagementCredentials parseUserInfo(String userInfo) {
-        Preconditions.checkArgument(userInfo.contains(":"), "User info needs a password part");
-
-        List<String> parts = Splitter.on(':')
-            .splitToList(userInfo);
-        ImmutableList<String> passwordParts = parts.stream()
-            .skip(1)
-            .collect(ImmutableList.toImmutableList());
-
-        return new RabbitMQConfiguration.ManagementCredentials(
-            parts.get(0),
-            Joiner.on(':')
-                .join(passwordParts)
-                .toCharArray());
-    }
-
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
+    public final boolean equals(Object o) {
         if (!(o instanceof AmqpUri amqpUri)) {
             return false;
         }
         return Objects.equals(uri, amqpUri.uri) &&
-               Objects.equals(managementCredentials, amqpUri.managementCredentials) &&
+               Objects.equals(userInfo, amqpUri.userInfo) &&
                Objects.equals(vhost, amqpUri.vhost);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(uri, managementCredentials, vhost);
+        return Objects.hash(uri, userInfo, vhost);
+    }
+
+    @Override
+    public String toString() {
+        return "AmqpUri{" +
+               "uri=" + uri +
+               ", userInfo=" + userInfo +
+               ", vhost=" + vhost +
+               '}';
     }
 }
