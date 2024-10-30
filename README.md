@@ -31,7 +31,7 @@
 
 
 
-This project adapts and enhance [Apache James project](https://james.apache.org) with a goal to provide a complete, enterpriseready collaborative email solution adapted to the rest of 
+This project adapts and enhances [Apache James project](https://james.apache.org) with the goal to provide a complete, enterprise-ready collaborative email solution adapted to the rest of 
 the [Linagora](https://linagora.com) eco-system.
 
 Twake Mail relies on [TwakeMail Flutter](https://github.com/linagora/tmail-flutter) as a frontend.
