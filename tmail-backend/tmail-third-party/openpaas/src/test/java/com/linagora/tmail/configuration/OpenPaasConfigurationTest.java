@@ -17,7 +17,11 @@ class OpenPaasConfigurationTest {
 
     @Test
     void shouldRespectBeanContract() {
-        EqualsVerifier.forClass(OpenPaasConfiguration.class).verify();
+        AmqpUri red = AmqpUri.from("amqp://rabbitmq.com");
+        AmqpUri blue = AmqpUri.from("amqp://rabbitmq_test.com");
+        EqualsVerifier.forClass(OpenPaasConfiguration.class)
+            .withPrefabValues(AmqpUri.class, red, blue)
+            .verify();
     }
 
     @Test
