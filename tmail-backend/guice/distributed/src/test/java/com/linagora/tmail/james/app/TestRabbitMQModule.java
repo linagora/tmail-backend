@@ -90,7 +90,7 @@ public class TestRabbitMQModule extends AbstractModule {
     @Singleton
     public OpenPaasConfiguration provideOpenPaasConfiguration() throws URISyntaxException {
         return new OpenPaasConfiguration(
-            AmqpUri.from(rabbitMQ.amqpUri()).asOptional(),
+            AmqpUri.from(rabbitMQ.amqpUri()),
             URI.create("http://localhost:8081"),
             "user",
             "password"

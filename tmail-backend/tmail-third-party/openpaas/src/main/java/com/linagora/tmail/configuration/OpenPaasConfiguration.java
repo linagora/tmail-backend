@@ -2,19 +2,17 @@ package com.linagora.tmail.configuration;
 
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Strings;
 import com.linagora.tmail.AmqpUri;
 
 import spark.utils.StringUtils;
 
 public record OpenPaasConfiguration(
-    Optional<AmqpUri> maybeRabbitMqUri,
+    AmqpUri rabbitMqUri,
     URI apirUri,
     String adminUsername,
     String adminPassword) {
@@ -25,23 +23,22 @@ public record OpenPaasConfiguration(
     private static final String OPENPAAS_ADMIN_PASSWORD_PROPERTY = "openpaas.admin.password";
 
     public static OpenPaasConfiguration from(Configuration configuration) {
-        Optional<AmqpUri> maybeRabbitMqUri = readRabbitMqUri(configuration);
+        AmqpUri rabbitMqUri = readRabbitMqUri(configuration);
         URI openPaasApiUri = readApiUri(configuration);
         String adminUser = readAdminUsername(configuration);
         String adminPassword = readAdminPassword(configuration);
 
-        return new OpenPaasConfiguration(maybeRabbitMqUri, openPaasApiUri, adminUser, adminPassword);
+        return new OpenPaasConfiguration(rabbitMqUri, openPaasApiUri, adminUser, adminPassword);
     }
 
-    private static Optional<AmqpUri> readRabbitMqUri(Configuration configuration) {
+    private static AmqpUri readRabbitMqUri(Configuration configuration) {
         String rabbitMqUri = configuration.getString(RABBITMQ_URI_PROPERTY);
-        if (Strings.isNullOrEmpty(rabbitMqUri)) {
-            LOGGER.debug("RabbitMQ URI not defined in openpaas.properties.");
-            return Optional.empty();
+        if (StringUtils.isBlank(rabbitMqUri)) {
+            throw new IllegalStateException("RabbitMQ URI not defined in openpaas.properties.");
         }
 
         try {
-            return AmqpUri.from(URI.create(rabbitMqUri)).asOptional();
+            return AmqpUri.from(URI.create(rabbitMqUri));
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Invalid RabbitMQ URI in openpaas.properties.");
         }

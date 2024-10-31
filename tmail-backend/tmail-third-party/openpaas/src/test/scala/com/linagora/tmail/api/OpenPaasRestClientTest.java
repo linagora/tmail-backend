@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 public class OpenPaasRestClientTest {
@@ -24,7 +25,7 @@ public class OpenPaasRestClientTest {
     @BeforeEach
     void setup() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
-            Optional.empty(),
+            AmqpUri.from("amqp://not_important.com"),
             openPaasServerExtension.getBaseUrl().toURI(),
             OpenPaasServerExtension.GOOD_USER(),
             OpenPaasServerExtension.GOOD_PASSWORD());
@@ -47,7 +48,7 @@ public class OpenPaasRestClientTest {
     @Test
     void shouldThrowExceptionOnErrorStatusCode() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
-            Optional.empty(),
+            AmqpUri.from("amqp://not_important.com"),
             openPaasServerExtension.getBaseUrl().toURI(),
             OpenPaasServerExtension.BAD_USER(),
             OpenPaasServerExtension.BAD_PASSWORD());

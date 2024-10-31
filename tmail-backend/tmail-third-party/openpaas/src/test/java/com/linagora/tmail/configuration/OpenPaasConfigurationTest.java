@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
-import java.util.Optional;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
@@ -33,7 +32,7 @@ class OpenPaasConfigurationTest {
         configuration.addProperty("openpaas.admin.password", "123");
 
         OpenPaasConfiguration expected = new OpenPaasConfiguration(
-            AmqpUri.from("amqp://james:james@rabbitmqhost:5672").asOptional(),
+            AmqpUri.from("amqp://james:james@rabbitmqhost:5672"),
             URI.create("http://localhost:8080"),
             "jhon_doe",
             "123"
@@ -46,6 +45,7 @@ class OpenPaasConfigurationTest {
     @Test
     void fromShouldThrowWhenOpenPaasApiUriNotConfigured() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.admin.password", "123");
 
@@ -57,6 +57,7 @@ class OpenPaasConfigurationTest {
     @Test
     void fromShouldThrowWhenOpenPaasApiUriIsBlank() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.api.uri", "   ");
         configuration.addProperty("openpaas.admin.password", "123");
@@ -69,6 +70,7 @@ class OpenPaasConfigurationTest {
     @Test
     void fromShouldThrowWhenOpenPaasApiUriIsInvalid() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.api.uri", "BAD_URI");
         configuration.addProperty("openpaas.admin.password", "123");
@@ -81,6 +83,7 @@ class OpenPaasConfigurationTest {
     @Test
     void fromShouldThrowWhenOpenPaasAdminUserNotConfigured() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
         configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
         configuration.addProperty("openpaas.admin.password", "123");
 
@@ -92,6 +95,7 @@ class OpenPaasConfigurationTest {
     @Test
     void fromShouldThrowWhenOpenPaasAdminUserIsBlank() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
         configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
         configuration.addProperty("openpaas.admin.user", "     ");
         configuration.addProperty("openpaas.admin.password", "123");
@@ -104,6 +108,7 @@ class OpenPaasConfigurationTest {
     @Test
     void fromShouldThrowWhenOpenPaasAdminPasswordNotConfigured() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
         configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
 
@@ -115,6 +120,7 @@ class OpenPaasConfigurationTest {
     @Test
     void fromShouldThrowWhenOpenPaasAdminPasswordIsBlank() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
         configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.admin.password", "   ");
@@ -125,21 +131,28 @@ class OpenPaasConfigurationTest {
     }
 
     @Test
-    void fromShouldNotCrashWhenRabbitMqURINotConfigured() {
+    void fromShouldCrashWhenRabbitMqURINotConfigured() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.admin.password", "123");
 
-        OpenPaasConfiguration expected = new OpenPaasConfiguration(
-            Optional.empty(),
-            URI.create("http://localhost:8080"),
-            "jhon_doe",
-            "123"
-        );
+        assertThatThrownBy(() -> OpenPaasConfiguration.from(configuration))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("RabbitMQ URI not defined in openpaas.properties.");
+    }
 
-        assertThat(OpenPaasConfiguration.from(configuration))
-            .isEqualTo(expected);
+    @Test
+    void fromShouldCrashWhenRabbitMqUriIsBlank() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "  ");
+        configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
+        configuration.addProperty("openpaas.admin.user", "jhon_doe");
+        configuration.addProperty("openpaas.admin.password", "123");
+
+        assertThatThrownBy(() -> OpenPaasConfiguration.from(configuration))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("RabbitMQ URI not defined in openpaas.properties.");
     }
 
     @Test

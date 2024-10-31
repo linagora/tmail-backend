@@ -18,7 +18,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import reactor.core.publisher.Flux;
@@ -28,6 +27,7 @@ import reactor.rabbitmq.OutboundMessage;
 import jakarta.mail.internet.AddressException;
 
 import com.github.fge.lambdas.Throwing;
+import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
@@ -52,8 +52,7 @@ class OpenPaasContactsConsumerTest {
     void setup() throws URISyntaxException {
         OpenPaasRestClient restClient = new OpenPaasRestClient(
             new OpenPaasConfiguration(
-                // Providing an empty RabbitMQ URI will fall back to config in rabbitmq.properties
-                Optional.empty(),
+                AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
                 openPaasServerExtension.getBaseUrl().toURI(),
                 OpenPaasServerExtension.GOOD_USER(),
                 OpenPaasServerExtension.GOOD_PASSWORD()));

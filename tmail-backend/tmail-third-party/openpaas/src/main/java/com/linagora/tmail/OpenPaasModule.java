@@ -66,11 +66,7 @@ public class OpenPaasModule extends AbstractModule {
     @Named(OPENPAAS_INJECTION_KEY)
     @Singleton
     public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
-        return openPaasConfiguration.maybeRabbitMqUri()
-            .map(AmqpUri::toRabbitMqConfiguration)
-            .orElseThrow((() -> {
-                throw new IllegalStateException("RabbitMQ URI not configured correctly in openpaas.properties.");
-            }));
+        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
     }
 
     @Provides
