@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.rabbitmq.client.ConnectionFactory;
 
@@ -132,7 +133,7 @@ public final class AmqpUri {
     }
 
     @Override
-    public final boolean equals(Object o) {
+    public boolean equals(Object o) {
         if (!(o instanceof AmqpUri amqpUri)) {
             return false;
         }
@@ -148,10 +149,10 @@ public final class AmqpUri {
 
     @Override
     public String toString() {
-        return "AmqpUri{" +
-               "uri=" + uri +
-               ", userInfo=" + userInfo +
-               ", vhost=" + vhost +
-               '}';
+        return MoreObjects.toStringHelper(this)
+            .add("amqpURI", uri)
+            .add("userInfo", userInfo)
+            .add("vhost", vhost)
+            .toString();
     }
 }

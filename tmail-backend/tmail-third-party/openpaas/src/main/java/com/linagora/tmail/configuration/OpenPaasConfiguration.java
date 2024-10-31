@@ -17,8 +17,7 @@ public record OpenPaasConfiguration(
     Optional<AmqpUri> maybeRabbitMqUri,
     URI apirUri,
     String adminUsername,
-    String adminPassword
-) {
+    String adminPassword) {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasConfiguration.class);
     private static final String RABBITMQ_URI_PROPERTY = "rabbitmq.uri";
     private static final String OPENPAAS_API_URI = "openpaas.api.uri";

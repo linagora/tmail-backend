@@ -1,13 +1,11 @@
 package com.linagora.tmail;
 
-import java.net.URISyntaxException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.util.stream.Stream;
-import nl.jqno.equalsverifier.EqualsVerifier;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+
+import java.util.stream.Stream;
+
+import nl.jqno.equalsverifier.EqualsVerifier;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -25,16 +23,14 @@ class AmqpUriTest {
             Arguments.of("amqps://user:password@securehost:5671/securevhost"), // Using AMQPS for secure connection
             Arguments.of("amqp://@localhost:5672/"),
             Arguments.of("amqp://:password@host"),
-            Arguments.of("amqp://user@host")
-            );
+            Arguments.of("amqp://user@host"));
     }
 
     private static Stream<Arguments> badAmqpURIs() {
         return Stream.of(
             Arguments.of("http://guest:guest@localhost:5672/"), // Wrong protocol
             Arguments.of("amqp://user:pass@host:5672/extra/path"),      // Extra path element
-            Arguments.of("BAD_URI")                                     // Just bad
-        );
+            Arguments.of("BAD_URI"));                                   // Just bad
     }
 
     @ParameterizedTest
@@ -51,7 +47,7 @@ class AmqpUriTest {
     }
 
     @Test
-    void shouldRespectBeanContract() throws URISyntaxException, NoSuchAlgorithmException, KeyManagementException {
+    void shouldRespectBeanContract() throws Exception {
         ConnectionFactory red = new ConnectionFactory();
         ConnectionFactory blue = new ConnectionFactory();
 
