@@ -3,7 +3,6 @@ package com.linagora.tmail;
 import java.io.FileNotFoundException;
 
 import jakarta.inject.Named;
-import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.Configuration;

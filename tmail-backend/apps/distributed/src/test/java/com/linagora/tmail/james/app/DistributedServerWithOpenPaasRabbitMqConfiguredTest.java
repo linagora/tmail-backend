@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.multibindings.Multibinder;
 
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import com.linagora.tmail.OpenPaasRabbitMQExtension;
 import com.linagora.tmail.combined.identity.LdapExtension;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
@@ -35,7 +34,6 @@ public class DistributedServerWithOpenPaasRabbitMqConfiguredTest {
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
-        .extension(new OpenPaasRabbitMQExtension())
         .extension(new LdapExtension())
         .extension(new RedisExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
