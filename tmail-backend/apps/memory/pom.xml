@@ -87,6 +87,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-webadmin-team-mailboxes</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>webadmin-email-address-contact</artifactId>
         </dependency>
         <dependency>
@@ -99,21 +103,13 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>queue-rabbitmq-guice</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-linshare</artifactId>
+            <artifactId>apache-james-backends-rabbitmq</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>tmail-webadmin-team-mailboxes</artifactId>
-        </dependency>
-        <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-backends-rabbitmq</artifactId>
+            <artifactId>apache-james-linshare</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
@@ -170,6 +166,11 @@
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-webadmin-core</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>queue-rabbitmq-guice</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
