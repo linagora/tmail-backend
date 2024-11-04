@@ -9,6 +9,7 @@ import org.apache.james.imap.api.display.HumanReadableText;
 import org.apache.james.imap.api.message.request.ImapRequest;
 import org.apache.james.imap.api.message.response.StatusResponseFactory;
 import org.apache.james.imap.api.process.ImapSession;
+import org.apache.james.imap.main.PathConverter;
 import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.metrics.api.MetricFactory;
@@ -23,8 +24,9 @@ public class TMailAuthenticateProcessor extends AuthenticateProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(TMailAuthenticateProcessor.class);
 
     @Inject
-    public TMailAuthenticateProcessor(MailboxManager mailboxManager, StatusResponseFactory factory, MetricFactory metricFactory) {
-        super(mailboxManager, factory, metricFactory);
+    public TMailAuthenticateProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
+                                      MetricFactory metricFactory, PathConverter.Factory pathConverterFactory) {
+        super(mailboxManager, factory, metricFactory, pathConverterFactory);
     }
 
     @Override
