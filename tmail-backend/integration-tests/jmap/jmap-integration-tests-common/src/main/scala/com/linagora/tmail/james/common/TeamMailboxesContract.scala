@@ -421,7 +421,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -500,7 +500,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -579,7 +579,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -658,7 +658,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -737,7 +737,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -816,7 +816,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -1009,7 +1009,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -1348,7 +1348,7 @@ trait TeamMailboxesContract {
            |                    {
            |                        "id": "$id1",
            |                        "rights": {
-           |                            "bob@domain.tld": ["i", "l", "r", "s", "t", "w"]
+           |                            "bob@domain.tld": ["i", "l", "p", "r", "s", "t", "w"]
            |                        }
            |                    }
            |                ]
@@ -1450,7 +1450,7 @@ trait TeamMailboxesContract {
            |                        "isSubscribed": true,
            |                        "namespace": "TeamMailbox[marketing@domain.tld]",
            |                        "rights": {
-           |                            "bob@domain.tld": ["i",  "l", "r", "s", "t", "w"]
+           |                            "bob@domain.tld": ["i",  "l", "p", "r", "s", "t", "w"]
            |                        }
            |                    }
            |                ]
