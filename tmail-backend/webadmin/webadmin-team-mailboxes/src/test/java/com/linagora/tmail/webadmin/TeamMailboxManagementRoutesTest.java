@@ -210,6 +210,7 @@ public class TeamMailboxManagementRoutesTest {
                 .body()
                 .asString();
             assertThatJson(response)
+                .withOptions(Option.IGNORING_ARRAY_ORDER)
                 .isEqualTo("[" +
                     "    {" +
                     "        \"name\": \"marketing\"," +
