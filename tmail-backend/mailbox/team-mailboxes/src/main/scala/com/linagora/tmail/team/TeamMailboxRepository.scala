@@ -127,14 +127,9 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
   private def createSession(teamMailbox: TeamMailbox): MailboxSession =
     mailboxManager.createSystemSession(teamMailbox.owner)
 
-  private def createSession(domain: Domain): MailboxSession =
-    mailboxManager.createSystemSession(Username.fromLocalPartWithDomain("team-mailbox", domain))
-
   override def listTeamMailboxes(domain: Domain): Publisher[TeamMailbox] =
-    SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, createSession(domain)))
-      .filter(mailboxMetaData => mailboxMetaData.getPath.getUser.getDomainPart
-        .filter(domain.equals(_)).isPresent)
-      .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
+    listTeamMailboxes()
+      .filter(teamMailbox => teamMailbox.domain.equals(domain))
       .distinct()
 
   override def listTeamMailboxes(username: Username): Publisher[TeamMailbox] =
@@ -211,7 +206,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .`then`()
   }
 
-  override def listTeamMailboxes(): Publisher[TeamMailbox] = {
+  override def listTeamMailboxes(): SFlux[TeamMailbox] = {
     val session = mailboxManager.createSystemSession(Username.of("team-mailboxes"))
     SFlux.fromIterable(mailboxManager.list(session)
       .asScala
