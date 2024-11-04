@@ -14,6 +14,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
+import org.apache.james.OpenSearchHighlightModule;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisHealthCheck;
 import org.apache.james.core.healthcheck.HealthCheck;
@@ -21,10 +22,17 @@ import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.JMAPListenerModule;
+import org.apache.james.jmap.method.Method;
+import org.apache.james.jmap.method.SearchSnippetGetMethod;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
+import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
+import org.apache.james.mailbox.searchhighligt.SearchSnippet;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
@@ -100,6 +108,7 @@ import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.vault.VaultConfiguration;
+import org.reactivestreams.Publisher;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -174,6 +183,8 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
+import reactor.core.publisher.Mono;
+
 public class DistributedServer {
     private static class ScanningQuotaSearchModule extends AbstractModule {
         @Override
@@ -191,6 +202,13 @@ public class DistributedServer {
             bind(ListeningMessageSearchIndex.class).to(FakeMessageSearchIndex.class);
         }
     }
+
+    public static final Module JMAP_DISTRIBUTED_METHOD_SUPPORTED_MODULE = new AbstractModule() {
+        @Override
+        protected void configure() {
+            Multibinder.newSetBinder(binder(), Method.class).addBinding().to(SearchSnippetGetMethod.class);
+        }
+    };
 
     public static final Module WEBADMIN = Modules.combine(
         new CassandraRoutesModule(),
@@ -242,7 +260,8 @@ public class DistributedServer {
         new WebFingerModule(),
         new LabelMethodModule(),
         new JmapSettingsMethodModule(),
-        new ContactSupportCapabilitiesModule())
+        new ContactSupportCapabilitiesModule(),
+        JMAP_DISTRIBUTED_METHOD_SUPPORTED_MODULE)
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
@@ -361,19 +380,37 @@ public class DistributedServer {
                     new OSContactAutoCompleteModule(),
                     new OpenSearchClientModule(),
                     new OpenSearchMailboxModule(),
-                    new ReIndexingModule());
+                    new ReIndexingModule(),
+                    new OpenSearchHighlightModule());
             case Scanning:
                 return ImmutableList.of(
                     new DisabledEmailAddressContactSearchEngineModule(),
                     new ScanningQuotaSearchModule(),
-                    new ScanningSearchModule());
+                    new ScanningSearchModule(),
+                    new FakeSearchHighlightModule());
             case OpenSearchDisabled:
                 return ImmutableList.of(
                     new DisabledEmailAddressContactSearchEngineModule(),
                     new OpenSearchDisabledModule(),
-                    new ScanningQuotaSearchModule());
+                    new ScanningQuotaSearchModule(),
+                    new FakeSearchHighlightModule());
             default:
                 throw new RuntimeException("Unsupported search implementation " + searchConfiguration.getImplementation());
+        }
+    }
+
+    private static class FakeSearchHighlighter implements SearchHighlighter {
+
+        @Override
+        public Publisher<SearchSnippet> highlightSearch(List<MessageId> messageIds, MultimailboxesSearchQuery expression, MailboxSession session) {
+            return Mono.error(new NotImplementedException("not implemented"));
+        }
+    }
+
+    private static class FakeSearchHighlightModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            bind(SearchHighlighter.class).toInstance(new FakeSearchHighlighter());
         }
     }
 
