@@ -1,5 +1,7 @@
 package com.linagora.tmail.api;
 
+import java.net.URISyntaxException;
+import java.util.Optional;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
@@ -10,7 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.OpenPaasConfiguration;
+import com.linagora.tmail.AmqpUri;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 public class OpenPaasRestClientTest {
     public static final String BAD_USER_ID = "BAD_ID";
@@ -20,9 +23,10 @@ public class OpenPaasRestClientTest {
     OpenPaasRestClient restClient;
 
     @BeforeEach
-    void setup() {
+    void setup() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
-            openPaasServerExtension.getBaseUrl(),
+            AmqpUri.from("amqp://not_important.com"),
+            openPaasServerExtension.getBaseUrl().toURI(),
             OpenPaasServerExtension.GOOD_USER(),
             OpenPaasServerExtension.GOOD_PASSWORD());
 
@@ -42,9 +46,10 @@ public class OpenPaasRestClientTest {
     }
 
     @Test
-    void shouldThrowExceptionOnErrorStatusCode() {
+    void shouldThrowExceptionOnErrorStatusCode() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
-            openPaasServerExtension.getBaseUrl(),
+            AmqpUri.from("amqp://not_important.com"),
+            openPaasServerExtension.getBaseUrl().toURI(),
             OpenPaasServerExtension.BAD_USER(),
             OpenPaasServerExtension.BAD_PASSWORD());
 

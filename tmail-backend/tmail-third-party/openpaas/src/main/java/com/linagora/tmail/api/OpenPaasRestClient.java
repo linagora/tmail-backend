@@ -1,6 +1,6 @@
 package com.linagora.tmail.api;
 
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.HttpUtils;
-import com.linagora.tmail.OpenPaasConfiguration;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
@@ -29,9 +29,10 @@ public class OpenPaasRestClient {
     private final ObjectMapper deserializer = new ObjectMapper();
 
     public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
-        URL apiUrl = openPaasConfiguration.restClientUrl();
-        String user = openPaasConfiguration.restClientUser();
-        String password = openPaasConfiguration.restClientPassword();
+        URI apiUrl = openPaasConfiguration.apirUri();
+        String user = openPaasConfiguration.adminUsername();
+        String password = openPaasConfiguration.adminPassword();
+
         this.client = HttpClient.create()
             .baseUrl(apiUrl.toString())
             .headers(headers -> headers.add(AUTHORIZATION_HEADER, HttpUtils.createBasicAuthenticationToken(user, password)))

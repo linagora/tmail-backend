@@ -2,6 +2,7 @@ package com.linagora.tmail.james.app;
 
 import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
 
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 
@@ -18,6 +19,8 @@ import org.apache.james.queue.rabbitmq.view.cassandra.configuration.CassandraMai
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.AmqpUri;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.jmap.RabbitMQEmailAddressContactConfiguration;
 
 public class TestRabbitMQModule extends AbstractModule {
@@ -81,6 +84,17 @@ public class TestRabbitMQModule extends AbstractModule {
     @Singleton
     private RabbitMQMailQueueConfiguration getMailQueueSizeConfiguration() {
         return RabbitMQMailQueueConfiguration.sizeMetricsEnabled();
+    }
+
+    @Provides
+    @Singleton
+    public OpenPaasConfiguration provideOpenPaasConfiguration() throws URISyntaxException {
+        return new OpenPaasConfiguration(
+            AmqpUri.from(rabbitMQ.amqpUri()),
+            URI.create("http://localhost:8081"),
+            "user",
+            "password"
+        );
     }
 
     public static class QueueCleanUp implements CleanupTasksPerformer.CleanupTask {

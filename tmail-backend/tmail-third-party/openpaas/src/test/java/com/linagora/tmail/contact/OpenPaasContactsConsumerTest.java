@@ -27,7 +27,8 @@ import reactor.rabbitmq.OutboundMessage;
 import jakarta.mail.internet.AddressException;
 
 import com.github.fge.lambdas.Throwing;
-import com.linagora.tmail.OpenPaasConfiguration;
+import com.linagora.tmail.AmqpUri;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
@@ -51,7 +52,8 @@ class OpenPaasContactsConsumerTest {
     void setup() throws URISyntaxException {
         OpenPaasRestClient restClient = new OpenPaasRestClient(
             new OpenPaasConfiguration(
-                openPaasServerExtension.getBaseUrl(),
+                AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
+                openPaasServerExtension.getBaseUrl().toURI(),
                 OpenPaasServerExtension.GOOD_USER(),
                 OpenPaasServerExtension.GOOD_PASSWORD()));
         searchEngine = new InMemoryEmailAddressContactSearchEngine();

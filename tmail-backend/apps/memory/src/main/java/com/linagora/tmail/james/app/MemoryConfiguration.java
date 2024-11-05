@@ -17,6 +17,7 @@ import org.apache.james.server.core.filesystem.FileSystemImpl;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
@@ -26,6 +27,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
                                   FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                   LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
+                                  OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration,
                                   FileConfigurationProvider fileConfigurationProvider,
                                   boolean jmapEnabled,
                                   boolean dropListEnabled) implements Configuration {
@@ -36,6 +38,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
+        private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> dropListsEnabled;
 
@@ -46,6 +49,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             usersRepositoryImplementation = Optional.empty();
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
+            openPaasModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             dropListsEnabled = Optional.empty();
         }
@@ -98,6 +102,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return this;
         }
 
+        public Builder openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {
+            this.openPaasModuleChooserConfiguration = Optional.of(openPaasModuleChooserConfiguration);
+            return this;
+        }
+
         public Builder jmapEnabled(boolean enable) {
             this.jmapEnabled = Optional.of(enable);
             return this;
@@ -133,6 +142,9 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration.orElseGet(Throwing.supplier(
                 () -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
 
+            OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration = this.openPaasModuleChooserConfiguration.orElseGet(Throwing.supplier(
+                () -> OpenPaasModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+
             boolean jmapEnabled = this.jmapEnabled.orElseGet(() -> {
                 PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
                 try {
@@ -162,6 +174,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 usersRepositoryChoice,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
+                openPaasModuleChooserConfiguration,
                 configurationProvider,
                 jmapEnabled,
                 dropListsEnabled);
