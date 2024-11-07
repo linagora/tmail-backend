@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.mail.MessagingException;
@@ -31,6 +32,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.OutboundMessage;
+import reactor.rabbitmq.Sender;
 
 
 /**
@@ -53,13 +55,19 @@ import reactor.rabbitmq.OutboundMessage;
 public class OpenPaasAmqpForwardAttribute extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasAmqpForwardAttribute.class);
 
-    private final ReactorRabbitMQChannelPool openPaasRabbitChannelPool;
+    private final Sender sender;
     private OpenPaasAmqpForwardAttributeConfig config;
 
     @Inject
-    public OpenPaasAmqpForwardAttribute(@Named(OpenPaasModule.OPENPAAS_INJECTION_KEY) ReactorRabbitMQChannelPool openPaasRabbitChannelPool) {
-        this.openPaasRabbitChannelPool = openPaasRabbitChannelPool;
+    public OpenPaasAmqpForwardAttribute(OpenPaasRabbitMQChannelPoolHolder openPaasRabbitMQChannelPoolHolder)
+        throws MailetException {
+        ReactorRabbitMQChannelPool openPaasRabbitChannelPool =
+            openPaasRabbitMQChannelPoolHolder.get().orElseThrow(() ->
+                new MailetException(
+                    "Failed to initialize mailet. OpenPaasModule is required to this mailet to function correctly."));
         openPaasRabbitChannelPool.start();
+
+        sender = openPaasRabbitChannelPool.getSender();
     }
 
     @Override
@@ -72,7 +80,7 @@ public class OpenPaasAmqpForwardAttribute extends GenericMailet {
                 .durable(DURABLE)
                 .type(config.exchangeType().getType());
 
-        openPaasRabbitChannelPool.getSender().declareExchange(exchangeSpecification)
+        sender.declareExchange(exchangeSpecification)
             .onErrorResume(error -> error instanceof ShutdownSignalException && error.getMessage().contains("reply-code=406, reply-text=PRECONDITION_FAILED"),
                 error -> {
                     LOGGER.warn("Exchange `{}` already exists but with different configuration. Ignoring this error. \nError message: {}", config.exchange(), error.getMessage());
@@ -112,19 +120,34 @@ public class OpenPaasAmqpForwardAttribute extends GenericMailet {
 
     private void sendContent(Stream<byte[]> content) {
         try {
-            openPaasRabbitChannelPool.getSender()
-                .send(Flux.fromStream(content)
+            sender.send(Flux.fromStream(content)
                     .map(bytes -> new OutboundMessage(config.exchange().name(), config.routingKey(), bytes)))
                 .block();
         } catch (AlreadyClosedException e) {
-            LOGGER.error("AlreadyClosedException while writing to AMQP: {}", e.getMessage(), e);
+            LOGGER.error("AlreadyClosedException while writing to AMQP", e);
         } catch (Exception e) {
-            LOGGER.error("IOException while writing to AMQP: {}", e.getMessage(), e);
+            LOGGER.error("IOException while writing to AMQP", e);
         }
+    }
+
+    @PreDestroy
+    public void cleanUp() {
+        sender.close();
     }
 
     @Override
     public String getMailetInfo() {
         return "OpenPaasAmqpForwardAttribute";
     }
-}
+
+    public static class OpenPaasRabbitMQChannelPoolHolder {
+
+        @com.google.inject.Inject(optional = true)
+        @Named(OpenPaasModule.OPENPAAS_INJECTION_KEY)
+        ReactorRabbitMQChannelPool openPaasRabbitChannelPool;
+
+        public Optional<ReactorRabbitMQChannelPool> get() {
+            return Optional.ofNullable(openPaasRabbitChannelPool);
+        }
+    }
+ }
