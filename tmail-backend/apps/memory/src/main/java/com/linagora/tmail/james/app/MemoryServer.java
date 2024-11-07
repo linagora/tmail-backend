@@ -9,7 +9,6 @@ import java.util.List;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.ExtraProperties;
-import org.apache.james.FakeSearchMailboxModule;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.data.UsersRepositoryModuleChooser;
@@ -172,7 +171,7 @@ public class MemoryServer {
 
         LOGGER.info("Loading configuration {}", configuration.toString());
         GuiceJamesServer server = createServer(configuration)
-            .combineWith(new FakeSearchMailboxModule(), new JMXServerModule());
+            .combineWith(new JMXServerModule());
 
         JamesServerMain.main(server);
     }

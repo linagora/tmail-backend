@@ -22,8 +22,6 @@ import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.JMAPListenerModule;
-import org.apache.james.jmap.method.Method;
-import org.apache.james.jmap.method.SearchSnippetGetMethod;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
@@ -205,13 +203,6 @@ public class DistributedServer {
         }
     }
 
-    public static final Module JMAP_DISTRIBUTED_METHOD_SUPPORTED_MODULE = new AbstractModule() {
-        @Override
-        protected void configure() {
-            Multibinder.newSetBinder(binder(), Method.class).addBinding().to(SearchSnippetGetMethod.class);
-        }
-    };
-
     public static final Module WEBADMIN = Modules.combine(
         new CassandraRoutesModule(),
         new DataRoutesModules(),
@@ -262,8 +253,7 @@ public class DistributedServer {
         new WebFingerModule(),
         new LabelMethodModule(),
         new JmapSettingsMethodModule(),
-        new ContactSupportCapabilitiesModule(),
-        JMAP_DISTRIBUTED_METHOD_SUPPORTED_MODULE)
+        new ContactSupportCapabilitiesModule())
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
