@@ -9,57 +9,53 @@ import org.apache.mailet.MailetConfig;
 import org.apache.mailet.MailetException;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
+import com.linagora.tmail.Exchange;
 import com.rabbitmq.client.BuiltinExchangeType;
 
 public record OpenPaasAmqpForwardAttributeConfig(
     AttributeName attribute,
-    String exchange,
-    Optional<BuiltinExchangeType> maybeExchangeType,
+    Exchange exchange,
+    BuiltinExchangeType exchangeType,
     String routingKey) {
+    protected static final BuiltinExchangeType DEFAULT_EXCHANGE_TYPE = BuiltinExchangeType.DIRECT;
+    protected static final String ROUTING_KEY_DEFAULT_VALUE = "";
 
     public static final String EXCHANGE_PARAMETER_NAME = "exchange";
     public static final String EXCHANGE_TYPE_PARAMETER_NAME = "exchange_type";
     public static final String ROUTING_KEY_PARAMETER_NAME = "routing_key";
     public static final String ATTRIBUTE_PARAMETER_NAME = "attribute";
-    public static final String ROUTING_KEY_DEFAULT_VALUE = "";
-    public static final List<String> VALIDATE_EXCHANGE_TYPES = List.of("direct", "fanout", "topic", "headers");
+    public static final List<String> VALID_EXCHANGE_TYPES = List.of("direct", "fanout", "topic", "headers");
 
     public OpenPaasAmqpForwardAttributeConfig {
         Preconditions.checkNotNull(attribute);
         Preconditions.checkNotNull(exchange);
-        Preconditions.checkNotNull(maybeExchangeType);
+        Preconditions.checkNotNull(exchangeType);
         Preconditions.checkNotNull(routingKey);
-
-        Preconditions.checkArgument(!exchange.isBlank());
     }
 
     public static OpenPaasAmqpForwardAttributeConfig from(MailetConfig mailetConfig)
         throws MailetException {
-        AttributeName attribute = getAttributeParameter(mailetConfig);
-        String exchange = getExchangeParameter(mailetConfig);
-        Optional<BuiltinExchangeType> maybeExchangeType = getExchangeTypeParameter(mailetConfig);
-        String routingKey = getRoutingKeyParameter(mailetConfig);
+        AttributeName attribute = readAttributeParameter(mailetConfig);
+        Exchange exchange = readExchangeParameter(mailetConfig);
+        BuiltinExchangeType exchangeType = readExchangeTypeParameter(mailetConfig).orElse(DEFAULT_EXCHANGE_TYPE);
+        String routingKey = readRoutingKeyParameter(mailetConfig).orElse(ROUTING_KEY_DEFAULT_VALUE);
 
-        return new OpenPaasAmqpForwardAttributeConfig(
-            attribute,
-            exchange,
-            maybeExchangeType,
-            routingKey);
+        return new OpenPaasAmqpForwardAttributeConfig(attribute, exchange, exchangeType, routingKey);
     }
 
-    private static String getExchangeParameter(MailetConfig mailetConfig) throws MailetException {
+    private static Exchange readExchangeParameter(MailetConfig mailetConfig) throws MailetException {
         String exchange = mailetConfig.getInitParameter(EXCHANGE_PARAMETER_NAME);
-        if (StringUtils.isBlank(exchange)) {
+        if (exchange == null) {
             throw new MailetException("No value for " + EXCHANGE_PARAMETER_NAME + " parameter was provided.");
         }
-        return exchange;
+        return Exchange.of(exchange);
     }
 
-    private static Optional<BuiltinExchangeType> getExchangeTypeParameter(MailetConfig mailetConfig) throws MailetException {
+    private static Optional<BuiltinExchangeType> readExchangeTypeParameter(MailetConfig mailetConfig) throws MailetException {
         String exchangeType = mailetConfig.getInitParameter(EXCHANGE_TYPE_PARAMETER_NAME);
-        if (StringUtils.isNotEmpty(exchangeType) && !VALIDATE_EXCHANGE_TYPES.contains(exchangeType)) {
-            throw new MailetException("Invalid value for " + EXCHANGE_TYPE_PARAMETER_NAME + " parameter was provided: " + exchangeType + ". Valid values are: " + VALIDATE_EXCHANGE_TYPES);
+        if (StringUtils.isNotBlank(exchangeType) && !VALID_EXCHANGE_TYPES.contains(exchangeType)) {
+            throw new MailetException("Invalid value for " + EXCHANGE_TYPE_PARAMETER_NAME + " parameter was provided: " + exchangeType + ". Valid values are: " +
+                                      VALID_EXCHANGE_TYPES);
         }
 
         return Optional.ofNullable(exchangeType)
@@ -68,14 +64,13 @@ public record OpenPaasAmqpForwardAttributeConfig(
             .map(BuiltinExchangeType::valueOf);
     }
 
-    private static String getRoutingKeyParameter(MailetConfig mailetConfig) {
-        return Optional.ofNullable(mailetConfig.getInitParameter(ROUTING_KEY_PARAMETER_NAME))
-            .orElse(ROUTING_KEY_DEFAULT_VALUE);
+    private static Optional<String> readRoutingKeyParameter(MailetConfig mailetConfig) {
+        return Optional.ofNullable(mailetConfig.getInitParameter(ROUTING_KEY_PARAMETER_NAME));
     }
 
-    private static AttributeName getAttributeParameter(MailetConfig mailetConfig) throws MailetException {
+    private static AttributeName readAttributeParameter(MailetConfig mailetConfig) throws MailetException {
         String rawAttribute = mailetConfig.getInitParameter(ATTRIBUTE_PARAMETER_NAME);
-        if (Strings.isNullOrEmpty(rawAttribute)) {
+        if (StringUtils.isBlank(rawAttribute)) {
             throw new MailetException("No value for " + ATTRIBUTE_PARAMETER_NAME + " parameter was provided.");
         }
         return AttributeName.of(rawAttribute);

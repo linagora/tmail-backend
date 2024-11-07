@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModule;
 import com.rabbitmq.client.AlreadyClosedException;
-import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.ShutdownSignalException;
 
 import reactor.core.publisher.Flux;
@@ -69,9 +68,9 @@ public class OpenPaasAmqpForwardAttribute extends GenericMailet {
         config = OpenPaasAmqpForwardAttributeConfig.from(newConfig);
 
         ExchangeSpecification exchangeSpecification =
-            ExchangeSpecification.exchange(config.exchange())
+            ExchangeSpecification.exchange(config.exchange().name())
                 .durable(DURABLE)
-                .type(config.maybeExchangeType().orElse(BuiltinExchangeType.DIRECT).getType());
+                .type(config.exchangeType().getType());
 
         openPaasRabbitChannelPool.getSender().declareExchange(exchangeSpecification)
             .onErrorResume(error -> error instanceof ShutdownSignalException && error.getMessage().contains("reply-code=406, reply-text=PRECONDITION_FAILED"),
@@ -115,7 +114,7 @@ public class OpenPaasAmqpForwardAttribute extends GenericMailet {
         try {
             openPaasRabbitChannelPool.getSender()
                 .send(Flux.fromStream(content)
-                    .map(bytes -> new OutboundMessage(config.exchange(), config.routingKey(), bytes)))
+                    .map(bytes -> new OutboundMessage(config.exchange().name(), config.routingKey(), bytes)))
                 .block();
         } catch (AlreadyClosedException e) {
             LOGGER.error("AlreadyClosedException while writing to AMQP: {}", e.getMessage(), e);
