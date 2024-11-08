@@ -215,3 +215,49 @@ Specified to TMail backend, we can configure the following configurations in the
 | https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys[S3 access key secret]
 |===
 
+== OpenPaas Integration Configurations
+
+Specified to TMail backend, we can configure the following configurations in the *openpaas.properties* file.
+
+For more information about the OpenPaas integration, see xref:tmail-backend/features/openpaas-integration.adoc[OpenPaas Integration].
+
+.openpaas.properties additional content
+|===
+| Property name | explanation
+| rabbitmq.uri
+| URI for RabbitMQ server to communicate with OpenPaas. Example: `rabbitmq.uri=amqp://guest:guest@localhost:5672/`
+| openpaas.api.uri
+| URI for OpenPaas API. Example: `openpaas.api.uri=http://localhost:8080`
+| openpaas.admin.user
+| Admin username for OpenPaas. Example: `openpaas.admin.user=admin`
+| openpaas.admin.password
+| Admin password for OpenPaas. Example: `openpaas.admin.password=admin`
+|===
+
+=== OpenPaasAmqpForwardAttribute
+
+This mailet forwards the specified mail attribute value to OpenPaas through the AMQP protocol.
+
+=== Parameters
+
+The mailet configuration requires the following parameters:
+
+* `attribute`: the name of the attribute which its value would be forwarded, the value is expected to be a Map<String, byte[]>.
+* `exchange`: name of the AMQP exchange.
+* `exchange_type`: type of the exchange. Can be "direct", "fanout", "topic", "headers". Optional, defaults to "direct".
+
+=== Example
+This configuration forwards contacts collected by the `ContactsCollection` mailet to OpenPaas through the AMQP protocol.
+
+[source,xml]
+----
+<mailet match="SenderIsLocal" class="com.linagora.tmail.mailets.ContactsCollection">
+    <attribute>extractedContacts</attribute>
+</mailet>
+
+<mailet match="All" class="com.linagora.tmail.mailet.OpenPaasAmqpForwardAttribute">
+  <attribute>extractedContacts</attribute>
+  <exchange>contacts:contact:add</exchange>
+  <exchange_type>FANOUT</exchange_type>
+</mailet>
+----
