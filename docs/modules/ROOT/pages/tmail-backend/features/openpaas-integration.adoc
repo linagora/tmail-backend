@@ -1,0 +1,42 @@
+= OpenPaaS Integration
+:navtitle: OpenPaaS Integration
+
+https://docs.open-paas.org/[OpenPaaS], developed by Linagora, is a collaborative platform offering features such as calendar management, contact storage, and more. TMail integrates with OpenPaaS to offer integrations with OpenPaaS Calendar and address book.
+
+This document describes the key integration points and functionality between TMail and OpenPaaS.
+
+== Features
+TMail provides the following functionalities:
+
+- Adds recipients used by local users to their OpenPaaS collected contacts address book.
+- Imports OpenPaaS contacts into the local auto-complete database.
+- Integrates new events received by email into the OpenPaaS calendar.
+- Updates attendance in the OpenPaaS calendar based on email event responses.
+
+== Architecture and Implementation
+=== Overview
+
+TMail interacts with OpenPaaS through two main channels:
+
+- RabbitMQ Messages.
+- REST API Calls to the https://docs.open-paas.org/apis/web/[OpenPaaS API].
+
+=== OpenPaas Contacts Consumption
+TMail integrates with OpenPaaS to fetch contacts and index them. The `OpenPaasContactsConsumer` class handles contacts consumption by fetching contacts from OpenPaaS and indexing using `EmailAddressContactSearchEngine`.
+
+This integration powers the auto-complete feature in TMail, allowing users to email their OpenPaaS contacts directly from TMail's compose screen.
+
+=== Mail Attribute Forwarding
+Another feature is the ability to forward mail attributes to a OpenPaas through an AMQP server. This is enabled by `OpenPaasAmqpForwardAttribute` mailet.
+
+The integration uses the AMQP server configured in the `openpaas.properties` file.
+
+=== Implementation Notes
+Deploying OpenPaaS alongside TMail is not required, making the integration with OpenPaaS optional.
+
+To create a TMail server with OpenPaaS integration, you need to enable the `OpenPaasModule`. This is achieved through the `OpenPaasModuleChooserConfiguration` class. The same approach can be used to disable OpenPaaS integration.
+
+You can find relevant code snippets in the following files:
+
+- https://github.com/linagora/tmail-backend/blob/d68c1337ed7334364e36007905bdd17b6947de13/tmail-backend/apps/distributed/src/main/java/com/linagora/tmail/james/app/DistributedServer.java[DistributedServer]
+- https://github.com/linagora/tmail-backend/blob/d68c1337ed7334364e36007905bdd17b6947de13/tmail-backend/apps/memory/src/main/java/com/linagora/tmail/james/app/MemoryServer.java[MemoryServer]

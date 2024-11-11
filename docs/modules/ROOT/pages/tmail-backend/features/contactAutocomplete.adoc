@@ -134,6 +134,8 @@ For example:
 }
 ....
 
+We also provide an integration with openpaas to synchronize contacts from openpaas to TMail. xref:ROOT:tmail-backend/features/openpaas-integration.adoc[Read more]...
+
 == Autocomplete with JMAP
 
 The client can easily get an autocomplete over its domain and account contacts via a simple JMAP method.
