@@ -8,6 +8,7 @@
 *** xref:tmail-backend/features/teamMailboxes.adoc[]
 *** xref:tmail-backend/features/tmailRateLimiting.adoc[]
 *** xref:tmail-backend/features/ldapMailingLists.adoc[]
+*** xref:tmail-backend/features/openpaas-integration.adoc[]
 ** xref:tmail-backend/extra-components/index.adoc[]
 ** xref:tmail-backend/imap-extensions/index.adoc[]
 *** xref:tmail-backend/imap-extensions/imapLoginDelegationExtension.adoc[]
