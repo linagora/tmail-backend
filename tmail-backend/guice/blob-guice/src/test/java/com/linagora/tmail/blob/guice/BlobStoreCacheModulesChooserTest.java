@@ -10,11 +10,12 @@ public class BlobStoreCacheModulesChooserTest {
     @Test
     void chooseModulesShouldReturnCacheDisabledModuleWhenCacheDisabled() {
         assertThat(BlobStoreCacheModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .s3()
+            .noSecondaryS3BlobStore()
             .disableCache()
             .deduplication()
             .noCryptoConfig()
-            .disableSingleSave()
-            .noSecondaryS3BlobStore()))
+            .disableSingleSave()))
             .hasSize(1)
             .first()
             .isInstanceOf(BlobStoreCacheModulesChooser.CacheDisabledModule.class);
@@ -23,11 +24,12 @@ public class BlobStoreCacheModulesChooserTest {
     @Test
     void chooseModulesShouldReturnCacheEnabledAndCassandraCacheModulesWhenCacheEnabled() {
         assertThat(BlobStoreCacheModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .s3()
+            .noSecondaryS3BlobStore()
             .enableCache()
             .deduplication()
             .noCryptoConfig()
-            .disableSingleSave()
-            .noSecondaryS3BlobStore()))
+            .disableSingleSave()))
             .hasSize(2)
             .allSatisfy(module ->
                 assertThat(module).isOfAnyClassIn(

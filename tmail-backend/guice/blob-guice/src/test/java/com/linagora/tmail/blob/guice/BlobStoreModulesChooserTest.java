@@ -10,11 +10,12 @@ public class BlobStoreModulesChooserTest {
     @Test
     void provideBlobStoreShouldReturnNoEncryptionWhenNoneConfigured() {
         assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .s3()
+            .noSecondaryS3BlobStore()
             .disableCache()
             .deduplication()
             .noCryptoConfig()
-            .disableSingleSave()
-            .noSecondaryS3BlobStore()))
+            .disableSingleSave()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.NoEncryptionModule)
             .hasSize(1);
     }
@@ -22,6 +23,8 @@ public class BlobStoreModulesChooserTest {
     @Test
     void provideBlobStoreShouldReturnEncryptionWhenConfigured() {
         assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .s3()
+            .noSecondaryS3BlobStore()
             .disableCache()
             .passthrough()
             .cryptoConfig(CryptoConfig.builder()
@@ -29,8 +32,7 @@ public class BlobStoreModulesChooserTest {
                 // Hex.encode("salty".getBytes(StandardCharsets.UTF_8))
                 .salt("73616c7479")
                 .build())
-            .disableSingleSave()
-            .noSecondaryS3BlobStore()))
+            .disableSingleSave()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.EncryptionModule)
             .hasSize(1);
     }
@@ -38,11 +40,12 @@ public class BlobStoreModulesChooserTest {
     @Test
     void objectStorageShouldReturnSingleSaveDeclarationModuleWhenEnableSingleSave() {
         assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .s3()
+            .noSecondaryS3BlobStore()
             .disableCache()
             .deduplication()
             .noCryptoConfig()
-            .enableSingleSave()
-            .noSecondaryS3BlobStore()))
+            .enableSingleSave()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.SingleSaveDeclarationModule)
             .hasSize(1);
     }
@@ -50,11 +53,12 @@ public class BlobStoreModulesChooserTest {
     @Test
     void objectStorageShouldReturnMultiSaveDeclarationModuleWhenDisableSingleSave() {
         assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .s3()
+            .noSecondaryS3BlobStore()
             .disableCache()
             .deduplication()
             .noCryptoConfig()
-            .disableSingleSave()
-            .noSecondaryS3BlobStore()))
+            .disableSingleSave()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.MultiSaveDeclarationModule)
             .hasSize(1);
     }

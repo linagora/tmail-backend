@@ -2,6 +2,8 @@ package com.linagora.tmail.blob.guice;
 
 import java.io.FileNotFoundException;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
@@ -16,12 +18,40 @@ import org.slf4j.LoggerFactory;
 
 import io.vavr.control.Try;
 
-public record BlobStoreConfiguration(boolean cacheEnabled,
+public record BlobStoreConfiguration(BlobStoreImplName implementation,
+                                     Optional<S3BlobStoreConfiguration> maybeSecondaryS3BlobStoreConfiguration,
+                                     boolean cacheEnabled,
                                      StorageStrategy storageStrategy,
                                      Optional<CryptoConfig> cryptoConfig,
-                                     boolean singleSaveEnabled,
-                                     Optional<S3BlobStoreConfiguration> maybeSecondaryS3BlobStoreConfiguration) {
+                                     boolean singleSaveEnabled) {
     private static final Logger LOGGER = LoggerFactory.getLogger(BlobStoreConfiguration.class);
+
+    @FunctionalInterface
+    public interface RequireImplementation {
+        RequireSecondaryS3BlobStoreConfig implementation(BlobStoreImplName implementation);
+
+        default RequireCache file() {
+            return implementation(BlobStoreImplName.FILE)
+                .noSecondaryS3BlobStore();
+        }
+
+        default RequireSecondaryS3BlobStoreConfig s3() {
+            return implementation(BlobStoreImplName.S3);
+        }
+    }
+
+    @FunctionalInterface
+    public interface RequireSecondaryS3BlobStoreConfig {
+        RequireCache secondaryS3BlobStore(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration);
+
+        default RequireCache noSecondaryS3BlobStore() {
+            return secondaryS3BlobStore(Optional.empty());
+        }
+
+        default RequireCache secondaryS3BlobStore(S3BlobStoreConfiguration s3BlobStoreConfiguration) {
+            return secondaryS3BlobStore(Optional.of(s3BlobStoreConfiguration));
+        }
+    }
 
     @FunctionalInterface
     public interface RequireCache {
@@ -64,35 +94,52 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
     
     @FunctionalInterface
     public interface RequireSingleSave {
-        RequireSecondaryS3BlobStoreConfig enableSingleSave(boolean enable);
+        BlobStoreConfiguration enableSingleSave(boolean enable);
 
-        default RequireSecondaryS3BlobStoreConfig disableSingleSave() {
+        default BlobStoreConfiguration disableSingleSave() {
             return enableSingleSave(false);
         }
 
-        default RequireSecondaryS3BlobStoreConfig enableSingleSave() {
+        default BlobStoreConfiguration enableSingleSave() {
             return enableSingleSave(true);
         }
     }
 
-    @FunctionalInterface
-    public interface RequireSecondaryS3BlobStoreConfig {
-        BlobStoreConfiguration secondaryS3BlobStore(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration);
+    public static RequireImplementation builder() {
+        return implementation -> secondaryS3BlobStoreConfig -> enableCache -> storageStrategy -> cryptoConfig -> enableSingleSave ->
+            new BlobStoreConfiguration(implementation, secondaryS3BlobStoreConfig, enableCache, storageStrategy, cryptoConfig, enableSingleSave);
+    }
 
-        default BlobStoreConfiguration noSecondaryS3BlobStore() {
-            return secondaryS3BlobStore(Optional.empty());
+    public enum BlobStoreImplName {
+        FILE("file"),
+        S3("s3");
+
+        static String supportedImplNames() {
+            return Stream.of(BlobStoreImplName.values())
+                .map(BlobStoreImplName::getName)
+                .collect(Collectors.joining(", "));
         }
 
-        default BlobStoreConfiguration secondaryS3BlobStore(S3BlobStoreConfiguration s3BlobStoreConfiguration) {
-            return secondaryS3BlobStore(Optional.of(s3BlobStoreConfiguration));
+        static BlobStoreImplName from(String name) {
+            return Stream.of(values())
+                .filter(blobName -> blobName.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(String.format("%s is not a valid name of BlobStores, " +
+                    "please use one of supported values in: %s", name, supportedImplNames())));
+        }
+
+        private final String name;
+
+        BlobStoreImplName(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
         }
     }
 
-    public static RequireCache builder() {
-        return enableCache -> storageStrategy -> cryptoConfig -> enableSingleSave -> secondaryS3BlobStoreConfig ->
-            new BlobStoreConfiguration(enableCache, storageStrategy, cryptoConfig, enableSingleSave, secondaryS3BlobStoreConfig);
-    }
-
+    static final String BLOBSTORE_IMPLEMENTATION_PROPERTY = "implementation";
     static final String CACHE_ENABLE_PROPERTY = "cache.enable";
     static final String ENCRYPTION_ENABLE_PROPERTY = "encryption.aes.enable";
     static final String ENCRYPTION_PASSWORD_PROPERTY = "encryption.aes.password";
@@ -116,11 +163,12 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
         } catch (FileNotFoundException e) {
             LOGGER.warn("Could not find " + ConfigurationComponent.NAME + " configuration file, using s3 blobstore as the default");
             return BlobStoreConfiguration.builder()
+                .implementation(BlobStoreImplName.S3)
+                .noSecondaryS3BlobStore()
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
-                .disableSingleSave()
-                .noSecondaryS3BlobStore();
+                .disableSingleSave();
         }
     }
 
@@ -139,18 +187,20 @@ public record BlobStoreConfiguration(boolean cacheEnabled,
 
         if (deduplicationEnabled) {
             return builder()
+                .implementation(BlobStoreImplName.S3)
+                .secondaryS3BlobStore(parseS3BlobStoreConfiguration(configuration))
                 .enableCache(cacheEnabled)
                 .deduplication()
                 .cryptoConfig(cryptoConfig)
-                .enableSingleSave(singleSaveEnabled)
-                .secondaryS3BlobStore(parseS3BlobStoreConfiguration(configuration));
+                .enableSingleSave(singleSaveEnabled);
         } else {
             return builder()
+                .implementation(BlobStoreImplName.S3)
+                .secondaryS3BlobStore(parseS3BlobStoreConfiguration(configuration))
                 .enableCache(cacheEnabled)
                 .passthrough()
                 .cryptoConfig(cryptoConfig)
-                .enableSingleSave(singleSaveEnabled)
-                .secondaryS3BlobStore(parseS3BlobStoreConfiguration(configuration));
+                .enableSingleSave(singleSaveEnabled);
         }
     }
 
