@@ -61,11 +61,12 @@ public class BlobStoreConfigurationTest {
 
         assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
+                .s3()
+                .noSecondaryS3BlobStore()
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
-                .disableSingleSave()
-                .noSecondaryS3BlobStore());
+                .disableSingleSave());
     }
 
     @Test
@@ -79,11 +80,12 @@ public class BlobStoreConfigurationTest {
 
         assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
+                .s3()
+                .noSecondaryS3BlobStore()
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
-                .disableSingleSave()
-                .noSecondaryS3BlobStore());
+                .disableSingleSave());
     }
 
     @Test
@@ -100,14 +102,15 @@ public class BlobStoreConfigurationTest {
 
         assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
+                .s3()
+                .noSecondaryS3BlobStore()
                 .disableCache()
                 .passthrough()
                 .cryptoConfig(CryptoConfig.builder()
                     .password("myPass".toCharArray())
                     .salt("73616c7479")
                     .build())
-                .disableSingleSave()
-                .noSecondaryS3BlobStore());
+                .disableSingleSave());
     }
 
     @Test

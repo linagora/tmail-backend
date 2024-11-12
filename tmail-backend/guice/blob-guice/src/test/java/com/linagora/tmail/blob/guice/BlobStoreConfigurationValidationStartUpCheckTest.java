@@ -44,18 +44,20 @@ public class BlobStoreConfigurationValidationStartUpCheckTest {
 
     private static BlobStoreConfiguration DEDUPLICATION_STRATEGY = BlobStoreConfiguration
         .builder()
+        .s3()
+        .noSecondaryS3BlobStore()
         .disableCache()
         .deduplication()
         .noCryptoConfig()
-        .disableSingleSave()
-        .noSecondaryS3BlobStore();
+        .disableSingleSave();
     private static BlobStoreConfiguration PASSTHROUGH_STRATEGY = BlobStoreConfiguration
         .builder()
+        .s3()
+        .noSecondaryS3BlobStore()
         .disableCache()
         .passthrough()
         .noCryptoConfig()
-        .disableSingleSave()
-        .noSecondaryS3BlobStore();
+        .disableSingleSave();
 
     private EventsourcingStorageStrategy eventsourcingStorageStrategy;
 
