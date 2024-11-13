@@ -1,8 +1,8 @@
-# OpenAI third party
+# AIBot third party
 
-We provide a mailet extension for OpenAI integration. The goal is to provide a mail bot at e.g. `gpt@example.com` that replies to users' questions.
+We provide a mailet extension for OpenAI-compatible APIs integration. The goal is to provide a mail bot at e.g. `gpt@example.com` that replies to users' questions.
 
-To use this extension, please plug the external jar `tmail-open-ai-jar-with-dependencies.jar` into your TMail application.
+To use this extension, please plug the external jar `tmail-ai-bot-jar-with-dependencies.jar` into your TMail application.
 
 Sample `mailetcontainer.xml` configuration:
 
