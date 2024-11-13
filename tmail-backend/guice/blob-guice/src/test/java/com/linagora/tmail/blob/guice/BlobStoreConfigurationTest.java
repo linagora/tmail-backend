@@ -61,12 +61,8 @@ public class BlobStoreConfigurationTest {
 
         assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
-<<<<<<< HEAD
                 .s3()
                 .noSecondaryS3BlobStore()
-=======
-                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
->>>>>>> ISSUE-922 Modularize BlobStoreModulesChooser for postgres-app
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
@@ -84,12 +80,8 @@ public class BlobStoreConfigurationTest {
 
         assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
-<<<<<<< HEAD
                 .s3()
                 .noSecondaryS3BlobStore()
-=======
-                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
->>>>>>> ISSUE-922 Modularize BlobStoreModulesChooser for postgres-app
                 .disableCache()
                 .passthrough()
                 .noCryptoConfig()
@@ -110,12 +102,8 @@ public class BlobStoreConfigurationTest {
 
         assertThat(BlobStoreConfiguration.parse(propertyProvider))
             .isEqualTo(BlobStoreConfiguration.builder()
-<<<<<<< HEAD
                 .s3()
                 .noSecondaryS3BlobStore()
-=======
-                .implementation(BlobStoreConfiguration.BlobStoreImplName.S3)
->>>>>>> ISSUE-922 Modularize BlobStoreModulesChooser for postgres-app
                 .disableCache()
                 .passthrough()
                 .cryptoConfig(CryptoConfig.builder()
@@ -225,7 +213,7 @@ public class BlobStoreConfigurationTest {
     }
 
     @Test
-    void blobImplementationShouldDefaultToS3() {
+    void blobImplementationShouldDefaultToS3() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", "true");
 

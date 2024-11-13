@@ -1,8 +1,5 @@
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
-
-import org.apache.james.CassandraExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
@@ -29,12 +26,8 @@ public class DistributedLinagoraForwardSetMethodTest implements LinagoraForwardS
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-<<<<<<< HEAD
                 .s3()
                 .noSecondaryS3BlobStore()
-=======
-                .implementation(S3)
->>>>>>> ISSUE-922 Modularize BlobStoreModulesChooser for postgres-app
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()

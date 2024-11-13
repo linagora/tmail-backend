@@ -14,10 +14,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.combined.identity.CombinedUsersRepository;
 import com.linagora.tmail.combined.identity.LdapExtension;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
+import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class CombinedIdentityJamesServerTest {

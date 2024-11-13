@@ -45,7 +45,7 @@ import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import com.linagora.tmail.blob.blobid.list.BlobIdList;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
-import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreModule;
+import com.linagora.tmail.blob.blobid.list.CassandraSingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
 import com.linagora.tmail.common.event.TmailInjectNameConstants;
@@ -149,7 +149,7 @@ public class BlobStoreModulesChooser {
     static class SingleSaveDeclarationModule extends AbstractModule {
         @Override
         protected void configure() {
-            install(new SingleSaveBlobStoreModule());
+            install(new CassandraSingleSaveBlobStoreModule());
         }
 
         @Provides
