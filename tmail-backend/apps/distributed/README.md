@@ -26,7 +26,7 @@ To build the distributed server:
 
 ```
 mvn clean install
-mvn compile com.google.cloud.tools:jib-maven-plugin:2.7.0:dockerBuild
+mvn compile com.google.cloud.tools:jib-maven-plugin:3.4.3:dockerBuild
 ```
 
 ## Run
@@ -84,7 +84,7 @@ First you need to generate your RSA keys and replace the local paths by the corr
 
 ```
 services:
-  james:
+  tmail-backend:
     [...]
     volumes:
     - ${RSA_PUBLICKEY_PATH}:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key

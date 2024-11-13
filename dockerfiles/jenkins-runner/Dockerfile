@@ -17,7 +17,7 @@ RUN set -x && \
   rm -rf /var/lib/apt/lists/*
 
 # Install Maven 3.6.3
-ENV MAVEN_VERSION 3.6.3
+ENV MAVEN_VERSION 3.9.9
 RUN curl -Lf https://downloads.apache.org/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz | tar -C /opt -xzv
 ENV M2_HOME /opt/apache-maven-$MAVEN_VERSION
 ENV maven.home $M2_HOME

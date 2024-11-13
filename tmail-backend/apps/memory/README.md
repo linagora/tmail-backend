@@ -20,7 +20,7 @@ Then to build your server:
 
 ```
 mvn clean install
-mvn compile com.google.cloud.tools:jib-maven-plugin:2.7.0:dockerBuild
+mvn compile com.google.cloud.tools:jib-maven-plugin:3.4.3:dockerBuild
 ```
 
 You can add the -DskipTests flag as well if you don't want to run the tests.
