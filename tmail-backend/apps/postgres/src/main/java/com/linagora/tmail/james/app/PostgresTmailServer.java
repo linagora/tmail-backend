@@ -7,15 +7,22 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
+import org.apache.james.OpenSearchHighlightModule;
 import org.apache.james.backends.redis.RedisHealthCheck;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
+import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
+import org.apache.james.mailbox.searchhighligt.SearchSnippet;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
@@ -81,6 +88,7 @@ import org.apache.james.quota.search.QuotaSearcher;
 import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.user.postgres.PostgresUsersDAO;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +102,7 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
-import com.linagora.tmail.blob.blobid.list.BlobStoreModulesChooser;
+import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
 import com.linagora.tmail.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreModule;
@@ -145,7 +153,24 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 
+import reactor.core.publisher.Mono;
+
 public class PostgresTmailServer {
+    private static class FakeSearchHighlighter implements SearchHighlighter {
+
+        @Override
+        public Publisher<SearchSnippet> highlightSearch(List<MessageId> messageIds, MultimailboxesSearchQuery expression, MailboxSession session) {
+            return Mono.error(new NotImplementedException("not implemented"));
+        }
+    }
+
+    private static class FakeSearchHighlightModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            bind(SearchHighlighter.class).toInstance(new FakeSearchHighlighter());
+        }
+    }
+
     static final Logger LOGGER = LoggerFactory.getLogger("org.apache.james.CONFIGURATION");
 
     private static final Module EVENT_STORE_JSON_SERIALIZATION_DEFAULT_MODULE = binder ->
@@ -399,17 +424,20 @@ public class PostgresTmailServer {
                     new OSContactAutoCompleteModule(),
                     new OpenSearchClientModule(),
                     new OpenSearchMailboxModule(),
-                    new ReIndexingModule());
+                    new ReIndexingModule(),
+                    new OpenSearchHighlightModule());
             case Scanning:
                 return List.of(
                     binder -> binder.bind(EmailAddressContactSearchEngine.class).toInstance(new InMemoryEmailAddressContactSearchEngine()),
                     SCANNING_SEARCH_MODULE,
-                    SCANNING_QUOTA_SEARCH_MODULE);
+                    SCANNING_QUOTA_SEARCH_MODULE,
+                    new FakeSearchHighlightModule());
             case OpenSearchDisabled:
                 return List.of(
                     binder -> binder.bind(EmailAddressContactSearchEngine.class).to(DisabledEmailAddressContactSearchEngine.class),
                     new OpenSearchDisabledModule(),
-                    SCANNING_QUOTA_SEARCH_MODULE);
+                    SCANNING_QUOTA_SEARCH_MODULE,
+                    new FakeSearchHighlightModule());
             default:
                 throw new RuntimeException("Unsupported search implementation " + configuration.searchConfiguration().getImplementation());
         }

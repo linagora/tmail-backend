@@ -4,7 +4,6 @@ import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY
 
 import org.apache.james.ClockExtension;
 import org.apache.james.DockerOpenSearchExtension;
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
@@ -12,12 +11,10 @@ import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.jmap.rfc8621.contract.EmailQueryMethodContract;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.utils.GuiceProbe;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;

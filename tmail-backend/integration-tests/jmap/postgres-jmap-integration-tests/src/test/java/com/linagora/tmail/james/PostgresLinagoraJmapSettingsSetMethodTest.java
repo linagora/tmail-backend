@@ -11,7 +11,7 @@ import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.util.Modules;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.JmapSettingsSetMethodContract;

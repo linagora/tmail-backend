@@ -19,7 +19,6 @@
 
 package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.POSTGRES;
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -36,7 +35,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.CombinedUsersRepository;
 import com.linagora.tmail.combined.identity.LdapExtension;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
@@ -54,7 +53,7 @@ class CombinedIdentityTmailServerTest {
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                .implementation(POSTGRES)
+                .postgres()
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()

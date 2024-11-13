@@ -1,6 +1,5 @@
 package com.linagora.tmail.integration.postgres;
 
-import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.S3;
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 
 import org.apache.james.JamesServerBuilder;
@@ -13,7 +12,7 @@ import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
@@ -33,7 +32,8 @@ public class PostgresTMailHealthCheckIntegrationTests extends TMailHealthCheckIn
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                .implementation(S3)
+                .s3()
+                .noSecondaryS3BlobStore()
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
