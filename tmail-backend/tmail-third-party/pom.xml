@@ -17,7 +17,7 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>open-ai</module>
+        <module>ai-bot</module>
         <module>openpaas</module>
     </modules>
 </project>
