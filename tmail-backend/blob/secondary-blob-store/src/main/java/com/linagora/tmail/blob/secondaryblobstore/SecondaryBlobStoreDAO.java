@@ -62,6 +62,10 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
         }
     }
 
+    public static BucketName withSuffix(BucketName bucketName, String suffix) {
+        return BucketName.of(bucketName.asString() + suffix);
+    }
+
     record SavingStatus(Optional<Throwable> e, ObjectStorageIdentity objectStorageIdentity) {
         public static SavingStatus success(ObjectStorageIdentity objectStorageIdentity) {
             return new SavingStatus(Optional.empty(), objectStorageIdentity);
@@ -82,13 +86,16 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
 
     private final BlobStoreDAO primaryBlobStoreDAO;
     private final BlobStoreDAO secondaryBlobStoreDAO;
+    private final String secondaryBucketSuffix;
     private final EventBus eventBus;
 
     public SecondaryBlobStoreDAO(BlobStoreDAO primaryBlobStoreDAO,
                                  BlobStoreDAO secondaryBlobStoreDAO,
+                                 String secondaryBucketSuffix,
                                  EventBus eventBus) {
         this.primaryBlobStoreDAO = primaryBlobStoreDAO;
         this.secondaryBlobStoreDAO = secondaryBlobStoreDAO;
+        this.secondaryBucketSuffix = secondaryBucketSuffix;
         this.eventBus = eventBus;
     }
 
@@ -98,7 +105,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
             return primaryBlobStoreDAO.read(bucketName, blobId);
         } catch (Exception ex) {
             LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
-            return secondaryBlobStoreDAO.read(bucketName, blobId);
+            return secondaryBlobStoreDAO.read(withSuffix(bucketName, secondaryBucketSuffix), blobId);
         }
     }
 
@@ -107,7 +114,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
         return Mono.from(primaryBlobStoreDAO.readReactive(bucketName, blobId))
             .onErrorResume(ex -> {
                 LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
-                return Mono.from(secondaryBlobStoreDAO.readReactive(bucketName, blobId));
+                return Mono.from(secondaryBlobStoreDAO.readReactive(withSuffix(bucketName, secondaryBucketSuffix), blobId));
             });
     }
 
@@ -116,14 +123,14 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
         return Mono.from(primaryBlobStoreDAO.readBytes(bucketName, blobId))
             .onErrorResume(ex -> {
                 LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
-                return Mono.from(secondaryBlobStoreDAO.readBytes(bucketName, blobId));
+                return Mono.from(secondaryBlobStoreDAO.readBytes(withSuffix(bucketName, secondaryBucketSuffix), blobId));
             });
     }
 
     @Override
     public Mono<Void> save(BucketName bucketName, BlobId blobId, byte[] data) {
         return Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, data), ObjectStorageIdentity.PRIMARY),
-                asSavingStatus(secondaryBlobStoreDAO.save(bucketName, blobId, data), ObjectStorageIdentity.SECONDARY))
+                asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName, secondaryBucketSuffix), blobId, data), ObjectStorageIdentity.SECONDARY))
             .collectList()
             .flatMap(savingStatuses -> merge(savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage), NO_REGISTRATION_KEYS)));
@@ -136,7 +143,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
                 fileBackedOutputStream -> Mono.fromCallable(() -> IOUtils.copy(inputStream, fileBackedOutputStream))
                     .flatMap(size -> Flux.merge(
                             asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.PRIMARY),
-                            asSavingStatus(secondaryBlobStoreDAO.save(bucketName, blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.SECONDARY))
+                            asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName, secondaryBucketSuffix), blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.SECONDARY))
                         .collectList()
                         .flatMap(savingStatuses -> merge(savingStatuses,
                             failedObjectStorage -> eventBus.dispatch(
@@ -149,7 +156,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Mono<Void> save(BucketName bucketName, BlobId blobId, ByteSource content) {
         return Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, content), ObjectStorageIdentity.PRIMARY),
-                asSavingStatus(secondaryBlobStoreDAO.save(bucketName, blobId, content), ObjectStorageIdentity.SECONDARY))
+                asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName, secondaryBucketSuffix), blobId, content), ObjectStorageIdentity.SECONDARY))
             .collectList()
             .flatMap(savingStatuses -> merge(savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage), NO_REGISTRATION_KEYS)));
@@ -158,7 +165,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Mono<Void> delete(BucketName bucketName, BlobId blobId) {
         return Flux.merge(asSavingStatus(primaryBlobStoreDAO.delete(bucketName, blobId), ObjectStorageIdentity.PRIMARY),
-                asSavingStatus(secondaryBlobStoreDAO.delete(bucketName, blobId), ObjectStorageIdentity.SECONDARY))
+                asSavingStatus(secondaryBlobStoreDAO.delete(withSuffix(bucketName, secondaryBucketSuffix), blobId), ObjectStorageIdentity.SECONDARY))
             .collectList()
             .flatMap(savingStatuses -> merge(savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobsDeletion(Event.EventId.random(), bucketName, ImmutableList.of(blobId), failedObjectStorage), NO_REGISTRATION_KEYS)));
@@ -167,7 +174,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Mono<Void> delete(BucketName bucketName, Collection<BlobId> blobIds) {
         return Flux.merge(asSavingStatus(primaryBlobStoreDAO.delete(bucketName, blobIds), ObjectStorageIdentity.PRIMARY),
-                asSavingStatus(secondaryBlobStoreDAO.delete(bucketName, blobIds), ObjectStorageIdentity.SECONDARY))
+                asSavingStatus(secondaryBlobStoreDAO.delete(withSuffix(bucketName, secondaryBucketSuffix), blobIds), ObjectStorageIdentity.SECONDARY))
             .collectList()
             .flatMap(savingStatuses -> merge(savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobsDeletion(Event.EventId.random(), bucketName, blobIds, failedObjectStorage), NO_REGISTRATION_KEYS)));
@@ -176,7 +183,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Mono<Void> deleteBucket(BucketName bucketName) {
         return Flux.merge(asSavingStatus(primaryBlobStoreDAO.deleteBucket(bucketName), ObjectStorageIdentity.PRIMARY),
-                asSavingStatus(secondaryBlobStoreDAO.deleteBucket(bucketName), ObjectStorageIdentity.SECONDARY))
+                asSavingStatus(secondaryBlobStoreDAO.deleteBucket(withSuffix(bucketName, secondaryBucketSuffix)), ObjectStorageIdentity.SECONDARY))
             .collectList()
             .flatMap(savingStatuses -> merge(savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BucketDeletion(Event.EventId.random(), bucketName, failedObjectStorage), NO_REGISTRATION_KEYS)));

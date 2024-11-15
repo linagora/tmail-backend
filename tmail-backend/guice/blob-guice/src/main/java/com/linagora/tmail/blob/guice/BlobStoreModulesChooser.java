@@ -11,7 +11,6 @@ import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
 import org.apache.james.blob.objectstorage.aws.JamesS3MetricPublisher;
-import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
 import org.apache.james.events.EventBus;
@@ -84,9 +83,9 @@ public class BlobStoreModulesChooser {
     }
 
     static class SecondaryObjectStorageModule extends AbstractModule {
-        private final S3BlobStoreConfiguration secondaryS3BlobStoreConfiguration;
+        private final SecondaryS3BlobStoreConfiguration secondaryS3BlobStoreConfiguration;
 
-        public SecondaryObjectStorageModule(S3BlobStoreConfiguration secondaryS3BlobStoreConfiguration) {
+        public SecondaryObjectStorageModule(SecondaryS3BlobStoreConfiguration secondaryS3BlobStoreConfiguration) {
             this.secondaryS3BlobStoreConfiguration = secondaryS3BlobStoreConfiguration;
         }
 
@@ -96,15 +95,15 @@ public class BlobStoreModulesChooser {
         BlobStoreDAO getSecondaryS3BlobStoreDAO(BlobId.Factory blobIdFactory,
                                                 MetricFactory metricFactory,
                                                 GaugeRegistry gaugeRegistry) {
-            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration,
+            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(),
                 () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
-            return new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration, blobIdFactory);
+            return new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(), blobIdFactory);
         }
 
         @ProvidesIntoSet
         TmailReactiveGroupEventListener provideFailedBlobOperationListener(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO firstBlobStoreDAO,
                                                                            @Named(SECOND_BLOB_STORE_DAO) BlobStoreDAO secondBlobStoreDAO) {
-            return new FailedBlobOperationListener(firstBlobStoreDAO, secondBlobStoreDAO);
+            return new FailedBlobOperationListener(firstBlobStoreDAO, secondBlobStoreDAO, secondaryS3BlobStoreConfiguration.secondaryBucketSuffix());
         }
 
         @Provides
@@ -113,7 +112,7 @@ public class BlobStoreModulesChooser {
         BlobStoreDAO provideSecondaryBlobStoreDAO(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO firstBlobStoreDAO,
                                                   @Named(SECOND_BLOB_STORE_DAO) BlobStoreDAO secondBlobStoreDAO,
                                                   @Named(TmailInjectNameConstants.TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus) {
-            return new SecondaryBlobStoreDAO(firstBlobStoreDAO, secondBlobStoreDAO, eventBus);
+            return new SecondaryBlobStoreDAO(firstBlobStoreDAO, secondBlobStoreDAO, secondaryS3BlobStoreConfiguration.secondaryBucketSuffix(), eventBus);
         }
     }
 
@@ -172,8 +171,8 @@ public class BlobStoreModulesChooser {
         }
     }
 
-    public static Module chooseSecondaryObjectStorageModule(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration) {
-        return maybeS3BlobStoreConfiguration
+    public static Module chooseSecondaryObjectStorageModule(Optional<SecondaryS3BlobStoreConfiguration> maybeSecondaryS3BlobStoreConfiguration) {
+        return maybeSecondaryS3BlobStoreConfiguration
             .map(configuration -> (Module) new SecondaryObjectStorageModule(configuration))
             .orElse(new NoSecondaryObjectStorageModule());
     }

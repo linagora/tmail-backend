@@ -1,5 +1,6 @@
 package com.linagora.tmail.blob.secondaryblobstore;
 
+import static com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO.withSuffix;
 import static org.apache.james.blob.api.BlobStoreDAOFixture.SHORT_BYTEARRAY;
 import static org.apache.james.blob.api.BlobStoreDAOFixture.TEST_BLOB_ID;
 import static org.apache.james.blob.api.BlobStoreDAOFixture.TEST_BUCKET_NAME;
@@ -15,6 +16,7 @@ import java.util.Optional;
 
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BlobStoreDAOContract;
+import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.ObjectStoreException;
 import org.apache.james.blob.api.TestBlobId;
 import org.apache.james.blob.objectstorage.aws.AwsS3AuthConfiguration;
@@ -47,6 +49,9 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     static DockerAwsS3Container primaryS3 = new DockerAwsS3Container();
     static DockerAwsS3Container secondaryS3 = new DockerAwsS3Container();
 
+    private static final String SECONDARY_BUCKET_NAME_SUFFIX = "-secondary-bucket-suffix";
+    private static final BucketName TEST_SECONDARY_BUCKET_NAME = withSuffix(TEST_BUCKET_NAME, SECONDARY_BUCKET_NAME_SUFFIX);
+
     private static S3BlobStoreDAO primaryBlobStoreDAO;
     private static S3BlobStoreDAO secondaryBlobStoreDAO;
     private static SecondaryBlobStoreDAO testee;
@@ -59,8 +64,8 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
         primaryBlobStoreDAO = createS3BlobStoreDAO(primaryS3);
         secondaryBlobStoreDAO = createS3BlobStoreDAO(secondaryS3);
         EventBus eventBus = new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), RetryBackoffConfiguration.DEFAULT, new MemoryEventDeadLetters());
-        eventBus.register(new FailedBlobOperationListener(primaryBlobStoreDAO, secondaryBlobStoreDAO));
-        testee = new SecondaryBlobStoreDAO(primaryBlobStoreDAO, secondaryBlobStoreDAO, eventBus);
+        eventBus.register(new FailedBlobOperationListener(primaryBlobStoreDAO, secondaryBlobStoreDAO, SECONDARY_BUCKET_NAME_SUFFIX));
+        testee = new SecondaryBlobStoreDAO(primaryBlobStoreDAO, secondaryBlobStoreDAO, SECONDARY_BUCKET_NAME_SUFFIX, eventBus);
     }
 
     private static S3BlobStoreDAO createS3BlobStoreDAO(DockerAwsS3Container s3Container) {
@@ -112,7 +117,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
     @Test
     public void readShouldReturnInputStreamWhenBlobDoesNotExistInThePrimaryBlobStore() {
-        Mono.from(secondaryBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(secondaryBlobStoreDAO.save(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
         assertThat(testee.read(TEST_BUCKET_NAME, TEST_BLOB_ID))
             .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
@@ -120,7 +125,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
     @Test
     public void readReactiveShouldReturnDataWhenBlobDoesNotExistInThePrimaryBlobStore() {
-        Mono.from(secondaryBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(secondaryBlobStoreDAO.save(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
         assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
@@ -129,7 +134,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     @Test
     public void readReactiveShouldReturnDataWhenPrimaryBlobStoreIsDown() {
         Mono.from(primaryBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
-        Mono.from(secondaryBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(secondaryBlobStoreDAO.save(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
         primaryS3.pause();
 
@@ -163,7 +168,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
     @Test
     public void readBytesShouldReturnDataWhenBlobDoesNotExistInThePrimaryBlobStore() {
-        Mono.from(secondaryBlobStoreDAO.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
+        Mono.from(secondaryBlobStoreDAO.save(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
         assertThat(Mono.from(testee.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
@@ -175,7 +180,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
         assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
     }
 
@@ -187,7 +192,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
         assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
     }
 
@@ -199,7 +204,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
         assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
     }
 
@@ -209,7 +214,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
         assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
     }
 
@@ -221,7 +226,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
         assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
     }
 
@@ -233,7 +238,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
         assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
     }
 
@@ -243,7 +248,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
 
         assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
             .isEqualTo(SHORT_BYTEARRAY);
     }
 
