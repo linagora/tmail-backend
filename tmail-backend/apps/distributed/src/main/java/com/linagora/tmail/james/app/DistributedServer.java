@@ -122,14 +122,14 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
+import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
+import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
-import com.linagora.tmail.combined.identity.UsersRepositoryModuleChooser;
 import com.linagora.tmail.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
@@ -353,10 +353,11 @@ public class DistributedServer {
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
             .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.mailQueueViewChoice()))
-            .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration,
-                BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.CASSANDRA))
+            .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
-            .combineWith(chooseUsersModule(configuration))
+            .combineWith(new UsersRepositoryModuleChooser(
+                DatabaseCombinedUserRequireModule.of(CassandraUsersDAO.class),
+                new CassandraUsersRepositoryModule()).chooseModule(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
@@ -370,13 +371,6 @@ public class DistributedServer {
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(overrideEventBusModule(configuration))
             .overrideWith(chooseDropListsModule(configuration));
-    }
-
-    private static Module chooseUsersModule(DistributedJamesConfiguration configuration) {
-        return new UsersRepositoryModuleChooser(
-            DatabaseCombinedUserRequireModule.of(CassandraUsersDAO.class),
-            new CassandraUsersRepositoryModule())
-            .chooseModule(configuration.usersRepositoryImplementation());
     }
 
     public static List<Module> chooseModules(SearchConfiguration searchConfiguration) {
