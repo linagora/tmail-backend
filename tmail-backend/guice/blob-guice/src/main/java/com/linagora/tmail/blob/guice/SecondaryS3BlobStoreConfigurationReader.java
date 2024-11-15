@@ -56,7 +56,7 @@ public class SecondaryS3BlobStoreConfigurationReader {
                 .filter(SdkException.class::isInstance));
 
         String secondaryBucketSuffix = Optional.ofNullable(configuration.getString(OBJECTSTORAGE_S3_BUCKET_SUFFIX, null))
-            .orElseThrow(() -> new ConfigurationException("require the secondary bucket suffix (" + OBJECTSTORAGE_S3_BUCKET_SUFFIX + " key)")); // safeguard to not use a same bucket for both blob stores by incident
+            .orElse("");
 
         return new SecondaryS3BlobStoreConfiguration(S3BlobStoreConfiguration.builder()
             .authConfiguration(SecondaryAwsS3ConfigurationReader.from(configuration))

@@ -1,7 +1,6 @@
 package com.linagora.tmail.james;
 
 import static com.linagora.tmail.blob.guice.BlobStoreModulesChooser.MAYBE_SECONDARY_BLOBSTORE;
-import static com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO.withSuffix;
 import static io.netty.handler.codec.http.HttpHeaderNames.ACCEPT;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
@@ -273,7 +272,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         List<BlobId> blobIds = Flux.from(blobStoreProbe.getPrimaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
         calmlyAwait.atMost(ONE_MINUTE)
             .untilAsserted(() -> {
-                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(withSuffix(bucketName, SECONDARY_BUCKET_SUFFIX))).collectList().block();
+                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(BucketName.of(bucketName.asString() + SECONDARY_BUCKET_SUFFIX))).collectList().block();
                 assertThat(blobIds2).hasSameSizeAs(blobIds);
                 assertThat(blobIds2).hasSameElementsAs(blobIds);
             });
@@ -320,7 +319,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         List<BlobId> expectedBlobIds = Flux.from(blobStoreProbe.getPrimaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
         calmlyAwait.atMost(TEN_SECONDS)
             .untilAsserted(() -> {
-                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(withSuffix(bucketName, SECONDARY_BUCKET_SUFFIX))).collectList().block();
+                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(BucketName.of(bucketName.asString() + SECONDARY_BUCKET_SUFFIX))).collectList().block();
                 assertThat(blobIds2).hasSameSizeAs(expectedBlobIds);
                 assertThat(blobIds2).hasSameElementsAs(expectedBlobIds);
             });

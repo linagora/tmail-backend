@@ -1,7 +1,5 @@
 package com.linagora.tmail.blob.secondaryblobstore;
 
-import static com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO.withSuffix;
-
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
@@ -60,14 +58,14 @@ public class FailedBlobOperationListener implements TmailReactiveGroupEventListe
     }
 
     private Mono<Void> readFromSecondaryAndSaveToPrimary(BucketName bucketName, BlobId blobId) {
-        return Mono.from(secondaryBlobStoreDAO.readReactive(withSuffix(bucketName, secondaryBucketSuffix), blobId))
+        return Mono.from(secondaryBlobStoreDAO.readReactive(withSuffix(bucketName), blobId))
             .flatMap(inputStream -> Mono.from(primaryBlobStoreDAO.save(bucketName, blobId, inputStream)))
             .subscribeOn(Schedulers.boundedElastic());
     }
 
     private Mono<Void> readFromPrimaryAndSaveToSecondary(BucketName bucketName, BlobId blobId) {
         return Mono.from(primaryBlobStoreDAO.readReactive(bucketName, blobId))
-            .flatMap(inputStream -> Mono.from(secondaryBlobStoreDAO.save(withSuffix(bucketName, secondaryBucketSuffix), blobId, inputStream)))
+            .flatMap(inputStream -> Mono.from(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, inputStream)))
             .subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -83,13 +81,17 @@ public class FailedBlobOperationListener implements TmailReactiveGroupEventListe
     }
 
     private Mono<Void> deleteBlobsFromSecondaryBucket(FailedBlobEvents.BlobsDeletion blobsDeletionEvent) {
-        return Mono.from(secondaryBlobStoreDAO.delete(withSuffix(blobsDeletionEvent.bucketName(), secondaryBucketSuffix), blobsDeletionEvent.blobIds()));
+        return Mono.from(secondaryBlobStoreDAO.delete(withSuffix(blobsDeletionEvent.bucketName()), blobsDeletionEvent.blobIds()));
     }
 
     private Publisher<Void> handleFailedBucketDeletionEvent(FailedBlobEvents.BucketDeletion bucketDeletionEvent) {
         return switch (bucketDeletionEvent.failedObjectStorage()) {
             case PRIMARY -> primaryBlobStoreDAO.deleteBucket(bucketDeletionEvent.bucketName());
-            case SECONDARY -> secondaryBlobStoreDAO.deleteBucket(withSuffix(bucketDeletionEvent.bucketName(), secondaryBucketSuffix));
+            case SECONDARY -> secondaryBlobStoreDAO.deleteBucket(withSuffix(bucketDeletionEvent.bucketName()));
         };
+    }
+
+    private BucketName withSuffix(BucketName bucketName) {
+        return BucketName.of(bucketName.asString() + secondaryBucketSuffix);
     }
 }
