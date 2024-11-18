@@ -108,6 +108,10 @@ object JmapSettings {
 }
 
 case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state: UuidState) {
+  def this(settings: scala.collection.mutable.Map[JmapSettingsKey, JmapSettingsValue], state: UuidState) = {
+    this(settings.toMap, state)
+  }
+
   def trashCleanupEnabled(): Boolean =
     settings.get(trashCleanupEnabledSetting).exists(trashCleanupEnabled => trashCleanupEnabled.value.toBoolean)
 
