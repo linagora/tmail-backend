@@ -211,4 +211,13 @@ public class BlobStoreConfigurationTest {
         assertThatThrownBy(() -> BlobStoreConfiguration.from(configuration))
             .isInstanceOf(ConversionException.class);
     }
+
+    @Test
+    void blobImplementationShouldDefaultToS3() throws ConfigurationException {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("deduplication.enable", "true");
+
+        assertThat(BlobStoreConfiguration.from(configuration).implementation())
+            .isEqualTo(BlobStoreConfiguration.BlobStoreImplName.S3);
+    }
 }

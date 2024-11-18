@@ -10,6 +10,7 @@ import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
+import org.apache.james.blob.file.FileBlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.JamesS3MetricPublisher;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
@@ -24,6 +25,7 @@ import org.apache.james.modules.blobstore.BlobDeduplicationGCModule;
 import org.apache.james.modules.blobstore.validation.EventsourcingStorageStrategy;
 import org.apache.james.modules.blobstore.validation.StorageStrategyModule;
 import org.apache.james.modules.mailbox.BlobStoreAPIModule;
+import org.apache.james.modules.mailbox.DefaultBucketModule;
 import org.apache.james.modules.objectstorage.S3BlobStoreModule;
 import org.apache.james.modules.objectstorage.S3BucketModule;
 import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore;
@@ -43,8 +45,8 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import com.linagora.tmail.blob.blobid.list.BlobIdList;
+import com.linagora.tmail.blob.blobid.list.CassandraSingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
-import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
 import com.linagora.tmail.common.event.TmailInjectNameConstants;
@@ -57,15 +59,34 @@ public class BlobStoreModulesChooser {
     public static final String MAYBE_SINGLE_SAVE_BLOBSTORE = "maybe_single_save_blob_store_dao";
     public static final String SECOND_BLOB_STORE_DAO = "second_blob_store_dao";
 
-    static class BaseObjectStorageModule extends AbstractModule {
+    static class ObjectStorageBlobStoreDAODeclarationModule extends AbstractModule {
         @Override
         protected void configure() {
-            install(new S3BucketModule());
             install(new S3BlobStoreModule());
-            bind(BlobStoreDAO.class).annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
-                .to(S3BlobStoreDAO.class);
-        }
+            install(new S3BucketModule());
 
+            bind(BlobStoreDAO.class)
+                .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
+                .to(S3BlobStoreDAO.class)
+                .in(Scopes.SINGLETON);
+        }
+    }
+
+    static class FileBlobStoreDAODeclarationModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            install(new DefaultBucketModule());
+            bind(BucketName.class)
+                .toInstance(BucketName.DEFAULT);
+
+            bind(BlobStoreDAO.class)
+                .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
+                .to(FileBlobStoreDAO.class)
+                .in(Scopes.SINGLETON);
+        }
+    }
+
+    static class BaseObjectStorageModule extends AbstractModule {
         @Provides
         @Singleton
         BlobStoreDAO provideFinalBlobStoreDAO(@Named(MAYBE_SINGLE_SAVE_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
@@ -145,18 +166,31 @@ public class BlobStoreModulesChooser {
         }
     }
 
-    static class SingleSaveDeclarationModule extends AbstractModule {
+    public static class SingleSaveDeclarationModule extends AbstractModule {
+        public enum BackedStorage {
+            CASSANDRA
+        }
+
+        private final BackedStorage backedStorage;
+
+        public SingleSaveDeclarationModule(BackedStorage backedStorage) {
+            this.backedStorage = backedStorage;
+        }
+
         @Override
         protected void configure() {
-            install(new SingleSaveBlobStoreModule());
+            switch (backedStorage) {
+                case CASSANDRA -> install(new CassandraSingleSaveBlobStoreModule());
+                default -> throw new RuntimeException("Unsupported storage " + backedStorage.name());
+            }
         }
 
         @Provides
         @Singleton
         @Named(MAYBE_SINGLE_SAVE_BLOBSTORE)
-        public BlobStoreDAO provideSingleSaveBlobStoreDAO(@Named(MAYBE_ENCRYPTION_BLOBSTORE) BlobStoreDAO blobStoreDAO,
-                                                          BlobIdList blobIdList,
-                                                          BucketName defaultBucketName) {
+        BlobStoreDAO provideSingleSaveBlobStoreDAO(@Named(MAYBE_ENCRYPTION_BLOBSTORE) BlobStoreDAO blobStoreDAO,
+                                                   BlobIdList blobIdList,
+                                                   BucketName defaultBucketName) {
             return new SingleSaveBlobStoreDAO(blobStoreDAO, blobIdList, defaultBucketName);
         }
     }
@@ -183,9 +217,9 @@ public class BlobStoreModulesChooser {
             .orElse(new NoEncryptionModule());
     }
 
-    public static Module chooseSaveDeclarationModule(boolean singleSaveEnabled) {
+    public static Module chooseSaveDeclarationModule(boolean singleSaveEnabled, SingleSaveDeclarationModule.BackedStorage backedSingleSaveStorage) {
         if (singleSaveEnabled) {
-            return new SingleSaveDeclarationModule();
+            return new SingleSaveDeclarationModule(backedSingleSaveStorage);
         }
         return new MultiSaveDeclarationModule();
     }
@@ -226,15 +260,31 @@ public class BlobStoreModulesChooser {
         }
     }
 
-    @VisibleForTesting
-    public static List<Module> chooseModules(BlobStoreConfiguration blobStoreConfiguration) {
+    public static List<Module> chooseModules(BlobStoreConfiguration blobStoreConfiguration, SingleSaveDeclarationModule.BackedStorage backedSingleSaveStorage) {
         return ImmutableList.<Module>builder()
-            .add(new BaseObjectStorageModule())
+            .add(chooseBlobStoreDAOModule(blobStoreConfiguration.implementation()))
             .add(chooseSecondaryObjectStorageModule(blobStoreConfiguration.maybeSecondaryS3BlobStoreConfiguration()))
             .add(chooseEncryptionModule(blobStoreConfiguration.cryptoConfig()))
-            .add(chooseSaveDeclarationModule(blobStoreConfiguration.singleSaveEnabled()))
+            .add(chooseSaveDeclarationModule(blobStoreConfiguration.singleSaveEnabled(), backedSingleSaveStorage))
+            .add(new BaseObjectStorageModule())
             .addAll(chooseStoragePolicyModule(blobStoreConfiguration.storageStrategy()))
             .add(new StoragePolicyConfigurationSanityEnforcementModule(blobStoreConfiguration))
             .build();
+    }
+
+    @VisibleForTesting
+    public static List<Module> chooseModules(BlobStoreConfiguration choosingConfiguration) {
+        return chooseModules(choosingConfiguration, SingleSaveDeclarationModule.BackedStorage.CASSANDRA);
+    }
+
+    public static Module chooseBlobStoreDAOModule(BlobStoreConfiguration.BlobStoreImplName implementation) {
+        switch (implementation) {
+            case S3:
+                return new ObjectStorageBlobStoreDAODeclarationModule();
+            case FILE:
+                return new FileBlobStoreDAODeclarationModule();
+            default:
+                throw new RuntimeException("Unsupported blobStore implementation " + implementation);
+        }
     }
 }
