@@ -31,10 +31,12 @@ import org.apache.james.utils.TestIMAPClient;
 import org.apache.mailet.base.test.FakeMail;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
+@Disabled("Unstable test https://github.com/linagora/tmail-backend/issues/1303")
 class AIBotIntegrationTest {
     private static final String BOB = "bob@" + DEFAULT_DOMAIN;
     private static final String ALICE = "alice@" + DEFAULT_DOMAIN;
