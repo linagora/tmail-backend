@@ -10,7 +10,7 @@ import org.assertj.core.api.Assertions.{assertThat, assertThatCode}
 import org.junit.jupiter.api.Test
 
 object TicketStoreContract {
-  val initialDate = ZonedDateTime.parse("2010-10-30T15:12:00Z")
+  val initialDate = ZonedDateTime.parse("2010-10-30T15:12:00Z[UTC]")
 }
 
 trait TicketStoreContract {
