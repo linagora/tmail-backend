@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.modules.mailbox.ConfigurationComponent;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
@@ -172,6 +173,12 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
     }
 
     static BlobStoreConfiguration from(Configuration configuration) throws ConfigurationException {
+        BlobStoreImplName blobStoreImplName = Optional.ofNullable(configuration.getString(BLOBSTORE_IMPLEMENTATION_PROPERTY))
+            .filter(StringUtils::isNotBlank)
+            .map(StringUtils::trim)
+            .map(BlobStoreImplName::from)
+            .orElse(BlobStoreImplName.S3);
+
         boolean cacheEnabled = configuration.getBoolean(CACHE_ENABLE_PROPERTY, false);
         boolean deduplicationEnabled = Try.ofCallable(() -> configuration.getBoolean(DEDUPLICATION_ENABLE_PROPERTY))
                 .getOrElseThrow(() -> new IllegalStateException("""
