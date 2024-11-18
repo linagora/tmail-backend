@@ -22,6 +22,7 @@ public class SecondaryS3BlobStoreConfigurationReader {
     private static final String OBJECTSTORAGE_NAMESPACE = "objectstorage.namespace";
     private static final String OBJECTSTORAGE_BUCKET_PREFIX = "objectstorage.bucketPrefix";
     private static final String OBJECTSTORAGE_S3_REGION = "objectstorage.s3.secondary.region";
+    private static final String OBJECTSTORAGE_S3_BUCKET_SUFFIX = "objectstorage.s3.secondary.bucket.suffix";
     private static final String OBJECTSTORAGE_S3_HTTP_CONCURRENCY = "objectstorage.s3.http.concurrency";
     private static final String OBJECTSTORAGE_S3_READ_TIMEOUT = "objectstorage.s3.read.timeout";
     private static final String OBJECTSTORAGE_S3_WRITE_TIMEOUT = "objectstorage.s3.write.timeout";
@@ -30,7 +31,7 @@ public class SecondaryS3BlobStoreConfigurationReader {
     private static final String OBJECTSTORAGE_S3_UPLOAD_RETRY_MAX_ATTEMPTS = "objectstorage.s3.upload.retry.maxAttempts";
     private static final String OBJECTSTORAGE_S3_UPLOAD_RETRY_BACKOFF_DURATION_MILLIS = "objectstorage.s3.upload.retry.backoffDurationMillis";
 
-    public static S3BlobStoreConfiguration from(Configuration configuration) throws ConfigurationException {
+    public static SecondaryS3BlobStoreConfiguration from(Configuration configuration) throws ConfigurationException {
         Optional<Integer> httpConcurrency = Optional.ofNullable(configuration.getInteger(OBJECTSTORAGE_S3_HTTP_CONCURRENCY, null));
         Optional<String> namespace = Optional.ofNullable(configuration.getString(OBJECTSTORAGE_NAMESPACE, null));
         Optional<String> bucketPrefix = Optional.ofNullable(configuration.getString(OBJECTSTORAGE_BUCKET_PREFIX, null));
@@ -54,7 +55,10 @@ public class SecondaryS3BlobStoreConfigurationReader {
                 .jitter(UPLOAD_RETRY_BACKOFF_JETTY_DEFAULT)
                 .filter(SdkException.class::isInstance));
 
-        return S3BlobStoreConfiguration.builder()
+        String secondaryBucketSuffix = Optional.ofNullable(configuration.getString(OBJECTSTORAGE_S3_BUCKET_SUFFIX, null))
+            .orElse("");
+
+        return new SecondaryS3BlobStoreConfiguration(S3BlobStoreConfiguration.builder()
             .authConfiguration(SecondaryAwsS3ConfigurationReader.from(configuration))
             .region(region)
             .defaultBucketName(namespace.map(BucketName::of))
@@ -65,7 +69,8 @@ public class SecondaryS3BlobStoreConfigurationReader {
             .writeTimeout(writeTimeout)
             .connectionTimeout(connectionTimeout)
             .uploadRetrySpec(uploadRetrySpec)
-            .build();
+            .build(),
+            secondaryBucketSuffix);
     }
 
 }

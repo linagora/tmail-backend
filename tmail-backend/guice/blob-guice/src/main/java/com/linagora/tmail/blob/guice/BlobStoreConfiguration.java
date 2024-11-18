@@ -8,7 +8,6 @@ import java.util.stream.Stream;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.blob.aes.CryptoConfig;
-import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.modules.mailbox.ConfigurationComponent;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
@@ -19,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import io.vavr.control.Try;
 
 public record BlobStoreConfiguration(BlobStoreImplName implementation,
-                                     Optional<S3BlobStoreConfiguration> maybeSecondaryS3BlobStoreConfiguration,
+                                     Optional<SecondaryS3BlobStoreConfiguration> maybeSecondaryS3BlobStoreConfiguration,
                                      boolean cacheEnabled,
                                      StorageStrategy storageStrategy,
                                      Optional<CryptoConfig> cryptoConfig,
@@ -42,14 +41,14 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
 
     @FunctionalInterface
     public interface RequireSecondaryS3BlobStoreConfig {
-        RequireCache secondaryS3BlobStore(Optional<S3BlobStoreConfiguration> maybeS3BlobStoreConfiguration);
+        RequireCache secondaryS3BlobStore(Optional<SecondaryS3BlobStoreConfiguration> maybeSecondaryS3BlobStoreConfiguration);
 
         default RequireCache noSecondaryS3BlobStore() {
             return secondaryS3BlobStore(Optional.empty());
         }
 
-        default RequireCache secondaryS3BlobStore(S3BlobStoreConfiguration s3BlobStoreConfiguration) {
-            return secondaryS3BlobStore(Optional.of(s3BlobStoreConfiguration));
+        default RequireCache secondaryS3BlobStore(SecondaryS3BlobStoreConfiguration secondaryS3BlobStoreConfiguration) {
+            return secondaryS3BlobStore(Optional.of(secondaryS3BlobStoreConfiguration));
         }
     }
 
@@ -215,7 +214,7 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
         return Optional.empty();
     }
 
-    private static Optional<S3BlobStoreConfiguration> parseS3BlobStoreConfiguration(Configuration configuration) throws ConfigurationException {
+    private static Optional<SecondaryS3BlobStoreConfiguration> parseS3BlobStoreConfiguration(Configuration configuration) throws ConfigurationException {
         if (configuration.getBoolean(OBJECT_STORAGE_S3_SECONDARY_ENABLED, false)) {
             return Optional.of(SecondaryS3BlobStoreConfigurationReader.from(configuration));
         } else {

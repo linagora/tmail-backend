@@ -60,6 +60,7 @@ import com.google.inject.Inject;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.SecondaryS3BlobStoreConfiguration;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobEvents;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
@@ -126,9 +127,10 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     static final String ANDRE_PASSWORD = "andrepassword";
     static final String ACCEPT_RFC8621_VERSION_HEADER = "application/json; jmapVersion=rfc-8621";
     static final String ACCOUNT_ID = "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6";
+    static final String SECONDARY_BUCKET_SUFFIX = "-secondary-bucket-suffix";
 
     static DockerAwsS3Container secondaryS3 = new DockerAwsS3Container();
-    static S3BlobStoreConfiguration secondaryS3Configuration;
+    static SecondaryS3BlobStoreConfiguration secondaryS3Configuration;
 
     static {
         secondaryS3.start();
@@ -138,13 +140,14 @@ class DistributedLinagoraSecondaryBlobStoreTest {
             .secretKey(DockerAwsS3Container.SECRET_ACCESS_KEY)
             .build();
 
-        secondaryS3Configuration = S3BlobStoreConfiguration.builder()
+        secondaryS3Configuration = new SecondaryS3BlobStoreConfiguration(S3BlobStoreConfiguration.builder()
             .authConfiguration(authConfiguration)
             .region(secondaryS3.dockerAwsS3().region())
             .uploadRetrySpec(Optional.of(Retry.backoff(3, java.time.Duration.ofSeconds(1))
                 .filter(UPLOAD_RETRY_EXCEPTION_PREDICATE)))
             .readTimeout(Optional.of(Duration.ofMillis(500)))
-            .build();
+            .build(),
+            SECONDARY_BUCKET_SUFFIX);
     }
 
     @RegisterExtension
@@ -238,8 +241,9 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         calmlyAwait.atMost(TEN_SECONDS)
             .untilAsserted(() -> {
                 BucketName bucketName = Flux.from(blobStoreProbe.getPrimaryBlobStoreDAO().listBuckets()).collectList().block().getFirst();
+                BucketName secondaryBucketName = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBuckets()).collectList().block().getFirst();
                 List<BlobId> blobIds = Flux.from(blobStoreProbe.getPrimaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
-                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
+                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(secondaryBucketName)).collectList().block();
                 assertThat(blobIds).hasSameSizeAs(blobIds2);
                 assertThat(blobIds).hasSameElementsAs(blobIds2);
             });
@@ -268,14 +272,14 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         List<BlobId> blobIds = Flux.from(blobStoreProbe.getPrimaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
         calmlyAwait.atMost(ONE_MINUTE)
             .untilAsserted(() -> {
-                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
+                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(BucketName.of(bucketName.asString() + SECONDARY_BUCKET_SUFFIX))).collectList().block();
                 assertThat(blobIds2).hasSameSizeAs(blobIds);
                 assertThat(blobIds2).hasSameElementsAs(blobIds);
             });
     }
 
     @Test
-    void sendEmailShouldResultingInEventuallySavingDataToBothObjectStoragesWhenSecondStorageIsDownForLongTime(GuiceJamesServer server) throws Exception {
+    void sendEmailShouldResultingInEventuallySavingDataToBothObjectStoragesWhenSecondStorageIsDownForLongTime(GuiceJamesServer server) {
         secondaryS3.pause();
 
         given()
@@ -315,7 +319,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         List<BlobId> expectedBlobIds = Flux.from(blobStoreProbe.getPrimaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
         calmlyAwait.atMost(TEN_SECONDS)
             .untilAsserted(() -> {
-                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(bucketName)).collectList().block();
+                List<BlobId> blobIds2 = Flux.from(blobStoreProbe.getSecondaryBlobStoreDAO().listBlobs(BucketName.of(bucketName.asString() + SECONDARY_BUCKET_SUFFIX))).collectList().block();
                 assertThat(blobIds2).hasSameSizeAs(expectedBlobIds);
                 assertThat(blobIds2).hasSameElementsAs(expectedBlobIds);
             });

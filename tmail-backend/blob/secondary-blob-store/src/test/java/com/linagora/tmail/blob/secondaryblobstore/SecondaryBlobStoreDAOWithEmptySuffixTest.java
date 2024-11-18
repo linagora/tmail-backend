@@ -44,12 +44,12 @@ import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
-public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
+public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOContract {
     static DockerAwsS3Container primaryS3 = new DockerAwsS3Container();
     static DockerAwsS3Container secondaryS3 = new DockerAwsS3Container();
 
-    private static final String SECONDARY_BUCKET_NAME_SUFFIX = "-secondary-bucket-suffix";
-    private static final BucketName TEST_SECONDARY_BUCKET_NAME = BucketName.of(TEST_BUCKET_NAME.asString() + SECONDARY_BUCKET_NAME_SUFFIX);
+    private static final String EMPTY_SECONDARY_BUCKET_NAME_SUFFIX = "";
+    private static final BucketName TEST_SECONDARY_BUCKET_NAME = BucketName.of(TEST_BUCKET_NAME.asString() + EMPTY_SECONDARY_BUCKET_NAME_SUFFIX);
 
     private static S3BlobStoreDAO primaryBlobStoreDAO;
     private static S3BlobStoreDAO secondaryBlobStoreDAO;
@@ -63,8 +63,8 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
         primaryBlobStoreDAO = createS3BlobStoreDAO(primaryS3);
         secondaryBlobStoreDAO = createS3BlobStoreDAO(secondaryS3);
         EventBus eventBus = new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), RetryBackoffConfiguration.DEFAULT, new MemoryEventDeadLetters());
-        eventBus.register(new FailedBlobOperationListener(primaryBlobStoreDAO, secondaryBlobStoreDAO, SECONDARY_BUCKET_NAME_SUFFIX));
-        testee = new SecondaryBlobStoreDAO(primaryBlobStoreDAO, secondaryBlobStoreDAO, SECONDARY_BUCKET_NAME_SUFFIX, eventBus);
+        eventBus.register(new FailedBlobOperationListener(primaryBlobStoreDAO, secondaryBlobStoreDAO, EMPTY_SECONDARY_BUCKET_NAME_SUFFIX));
+        testee = new SecondaryBlobStoreDAO(primaryBlobStoreDAO, secondaryBlobStoreDAO, EMPTY_SECONDARY_BUCKET_NAME_SUFFIX, eventBus);
     }
 
     private static S3BlobStoreDAO createS3BlobStoreDAO(DockerAwsS3Container s3Container) {
@@ -77,7 +77,7 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
         S3BlobStoreConfiguration s3Configuration = S3BlobStoreConfiguration.builder()
             .authConfiguration(authConfiguration)
             .region(s3Container.dockerAwsS3().region())
-            .uploadRetrySpec(Optional.of(Retry.backoff(3, java.time.Duration.ofSeconds(1))
+            .uploadRetrySpec(Optional.of(Retry.backoff(3, Duration.ofSeconds(1))
                 .filter(UPLOAD_RETRY_EXCEPTION_PREDICATE)))
             .readTimeout(Optional.of(Duration.ofMillis(500)))
             .build();
