@@ -61,7 +61,7 @@ public class SecondaryS3BlobStoreConfigurationReader {
         return new SecondaryS3BlobStoreConfiguration(S3BlobStoreConfiguration.builder()
             .authConfiguration(SecondaryAwsS3ConfigurationReader.from(configuration))
             .region(region)
-            .defaultBucketName(namespace.map(BucketName::of))
+            .defaultBucketName(namespace.map(value -> value + secondaryBucketSuffix).map(BucketName::of))
             .bucketPrefix(bucketPrefix)
             .httpConcurrency(httpConcurrency)
             .inMemoryReadLimit(inMemoryReadLimit)
