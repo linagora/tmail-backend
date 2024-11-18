@@ -1,5 +1,6 @@
 = Advanced features
 :navtitle: Advanced features
+:imagesdir: /docs/modules/ROOT/assets/images
 
 TMail offers a number of essential advanced features, amongst them:
 
