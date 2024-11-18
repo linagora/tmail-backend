@@ -13,15 +13,16 @@ The user is able to autocomplete over his personal contacts and domain contacts 
 
 == Storing account contacts when sending mails
 
-An administrator needs to rely on the `ContactsCollection` mailet in `mailetcontainer.xml` configuration file
-in order to extract the recipient contacts of a message and index them asynchronously. This mailet also stores
-them as JSON in a specified message attribute.
+An administrator can use a combination of the `ContactExtractor` and `IndexContacts` mailets in the `mailetcontainer.xml` configuration file
+in order to extract the recipient contacts of a message and index them asynchronously.
 
-For example:
-
+For example, in the configuration below, TMail will extract the list of recipients every time the current user sends an email and store them in the `ExtractedContacts` attribute. Then, the `IndexContacts` mailet will index them to enable the autocomplete feature.
 ....
-<mailet match="SenderIsLocal" class="com.linagora.tmail.mailets.ContactsCollection">
-    <attribute>ExtractedContacts</attribute>
+<mailet match="All" class="ContactExtractor">
+  <attribute>ExtractedContacts</attribute>
+</mailet>
+<mailet match="All" class="IndexContacts">
+  <attribute>ExtractedContacts</attribute>
 </mailet>
 ....
 

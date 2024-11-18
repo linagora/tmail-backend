@@ -249,11 +249,11 @@ The mailet configuration requires the following parameters:
 * `exchange_type`: type of the exchange. Can be "direct", "fanout", "topic", "headers". Optional, defaults to "direct".
 
 === Example
-This configuration forwards contacts collected by the `ContactsCollection` mailet to OpenPaas through the AMQP protocol.
+This configuration forwards contacts extracted by the `ContactExtractor` mailet to OpenPaas through the AMQP protocol.
 
 [source,xml]
 ----
-<mailet match="SenderIsLocal" class="com.linagora.tmail.mailets.ContactsCollection">
+<mailet match="SenderIsLocal" class="ContactExtractor">
     <attribute>extractedContacts</attribute>
 </mailet>
 
