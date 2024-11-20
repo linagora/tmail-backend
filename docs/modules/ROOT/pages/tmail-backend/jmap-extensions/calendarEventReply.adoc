@@ -164,6 +164,7 @@ The mailets pipeline configuration below should be added to the transport proces
 	    <mailet match="SenderIsLocal" class="com.linagora.tmail.mailet.OpenPaasAmqpForwardAttribute">
                 <attribute>icalendarAsJson2</attribute>
                 <exchange>james:events</exchange>
+                <onMailetException>ignore</onMailetException>
             </mailet>
             <!-- End of ICAL pipeline -->
 ```
