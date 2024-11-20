@@ -1,6 +1,7 @@
 package com.linagora.tmail.team
 
 import com.google.common.base.CharMatcher
+import com.linagora.tmail.team.TeamMailbox.TEAM_MAILBOX_LOCAL_PART
 import com.linagora.tmail.team.TeamMailboxName.TeamMailboxNameType
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMemberRole.{ManagerRole, MemberRole, Role}
@@ -51,6 +52,7 @@ case class TeamMailboxName(value: TeamMailboxNameType) {
 }
 
 object TeamMailbox {
+  val TEAM_MAILBOX_LOCAL_PART = "team-mailbox"
   private val MAXIMUM_CHARACTERS_OF_MAIL_ADDRESS = 320
   type TeamMailboxType = String Refined TeamMailboxConstraint
   private val charMatcher: CharMatcher = CharMatcher.inRange('a', 'z')
@@ -125,17 +127,17 @@ object TeamMailbox {
 }
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
-  def owner: Username = Username.fromLocalPartWithDomain("team-mailbox", domain)
+  def owner: Username = Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain)
 
   def asMailAddress: MailAddress = MailAddress.of(mailboxName.value.value, domain)
 
-  def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), mailboxName.value)
+  def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), mailboxName.value)
 
-  def mailboxPath(subPath : String): MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.$subPath")
+  def mailboxPath(subPath : String): MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}.$subPath")
 
-  def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.${MailboxConstants.INBOX}")
+  def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}.${MailboxConstants.INBOX}")
 
-  def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain), s"${mailboxName.value}.Sent")
+  def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}.Sent")
 
   def defaultMailboxPaths: Seq[MailboxPath] = Seq(
     mailboxPath,

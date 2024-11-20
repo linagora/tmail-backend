@@ -139,6 +139,7 @@ import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TmailEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
+import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
@@ -325,7 +326,8 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TmailEventModule(),
-            new TmailEventDeadLettersModule());
+            new TmailEventDeadLettersModule(),
+            new TMailIMAPModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()

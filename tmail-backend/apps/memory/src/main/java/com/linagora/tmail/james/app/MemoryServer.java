@@ -53,6 +53,7 @@ import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
+import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
@@ -162,7 +163,8 @@ public class MemoryServer {
             new MemoryLabelRepositoryModule(),
             new MemoryJmapSettingsRepositoryModule(),
             new PublicAssetsMemoryModule(),
-            new TMailMailboxSortOrderProviderModule());
+            new TMailMailboxSortOrderProviderModule(),
+            new TMailIMAPModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()
