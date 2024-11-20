@@ -132,11 +132,13 @@ Additionally, the reply email templates support Mustache data for dynamic conten
 
 To access sample template files, please visit the https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed/src/main/eml-template[tmail-backend].
 
-== Integrates with OpenPaaS Calendar by AmqpForwardAttribute mailet
+== Integrates with OpenPaaS Calendar through the OpenPaasAmqpForwardAttribute mailet
 
 This configuration helps process iCalendar data from emails and forwards it to OpenPaaS Calendar system (via AMQP) for further operations, such as updating the event status.
 
-The mailets pipeline configuration bellow should be added to transport processor within `mailetcontainer.xml`:
+For further information about the integration between OpenPaas and TMail, see xref:tmail-backend/features/openpaas-integration.adoc[OpenPaas Integration].
+
+The mailets pipeline configuration below should be added to the transport processor within `mailetcontainer.xml`:
 ```
             <!-- ICAL pipeline for EventCaleandar response -->
             <mailet match="SenderIsLocal" class="StripAttachment">
@@ -159,10 +161,9 @@ The mailets pipeline configuration bellow should be added to transport processor
                 <rawSource>rawIcalendar2</rawSource>
                 <onMailetException>ignore</onMailetException>
             </mailet>
-            <mailet match="SenderIsLocal" class="AmqpForwardAttribute">
-                <uri>amqp://${env:OP_JAMES_AMQP_USERNAME}:${env:OP_JAMES_AMQP_PASSWORD}@${env:OP_JAMES_AMQP_HOST}:${env:OP_JAMES_AMQP_PORT}</uri>
-                <exchange>james:events</exchange>
+	    <mailet match="SenderIsLocal" class="com.linagora.tmail.mailet.OpenPaasAmqpForwardAttribute">
                 <attribute>icalendarAsJson2</attribute>
+                <exchange>james:events</exchange>
                 <onMailetException>ignore</onMailetException>
             </mailet>
             <!-- End of ICAL pipeline -->
