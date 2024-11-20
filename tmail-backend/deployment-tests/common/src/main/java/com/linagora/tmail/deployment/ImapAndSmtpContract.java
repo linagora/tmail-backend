@@ -4,7 +4,6 @@ import static com.linagora.tmail.deployment.JmxCredentialsFixture.JMX_PASSWORD;
 import static com.linagora.tmail.deployment.JmxCredentialsFixture.JMX_USER;
 
 import org.apache.james.mpt.api.ImapHostSystem;
-import org.apache.james.mpt.imapmailbox.external.james.DeploymentValidation;
 import org.apache.james.mpt.imapmailbox.external.james.ExternalJamesModule;
 import org.apache.james.mpt.imapmailbox.external.james.host.SmtpHostSystem;
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
@@ -16,7 +15,7 @@ import org.testcontainers.containers.GenericContainer;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 
-public abstract class ImapAndSmtpContract extends DeploymentValidation {
+public abstract class ImapAndSmtpContract extends TMailDeploymentValidation {
     protected abstract ExternalJamesConfiguration configuration();
 
     protected abstract GenericContainer<?> container();
