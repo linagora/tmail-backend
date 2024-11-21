@@ -380,15 +380,6 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     @Override
-    public void saveShouldThrowWhenNullData() {
-        BlobStoreDAO store = testee();
-
-        assertThatThrownBy(() -> Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, (byte[]) null)).block())
-            .isInstanceOf(ObjectStoreException.class);
-    }
-
-    @Test
-    @Override
     public void saveByteSourceShouldThrowOnIOException() {
         BlobStoreDAO store = testee();
 
