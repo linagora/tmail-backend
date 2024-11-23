@@ -78,6 +78,12 @@ class PostgresPublicAssetDAO(postgresExecutor: PostgresExecutor, blobIdFactory: 
         .where(USER.eq(username.asString()))))
       .map(toMetadata(_)))
 
+  def selectAllAssetsOrderByIdAsc(username: Username): SFlux[PublicAssetMetadata] =
+    SFlux(postgresExecutor.executeRows(dslContext => Flux.from(dslContext.selectFrom(TABLE_NAME)
+        .where(USER.eq(username.asString()))
+        .orderBy(ASSET_ID.asc())))
+      .map(toMetadata(_)))
+
   def selectAsset(username: Username, assetId: PublicAssetId): SMono[PublicAssetMetadata] =
     SMono(postgresExecutor.executeRow(dslContext => Mono.from(dslContext.selectFrom(TABLE_NAME)
         .where(USER.eq(username.asString()))

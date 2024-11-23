@@ -1,6 +1,5 @@
 package com.linagora.tmail.integration.postgres;
 
-import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.POSTGRES;
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY;
 
 import java.util.function.Function;
@@ -15,7 +14,7 @@ import org.apache.james.utils.GuiceProbe;
 import com.google.inject.Module;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
@@ -36,7 +35,7 @@ public class PostgresWebAdminBase {
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                .implementation(POSTGRES)
+                .postgres()
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
