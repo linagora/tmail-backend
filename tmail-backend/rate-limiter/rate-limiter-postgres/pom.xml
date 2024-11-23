@@ -11,8 +11,8 @@
     </parent>
 
     <artifactId>tmail-rate-limiter-postgres</artifactId>
-    <name>Team-mail :: Rate Limiter PostgreSQL</name>
-    <description>Rate limiter PostgreSQL Storage for Team-mail</description>
+    <name>Twake Mail :: Rate Limiter PostgreSQL</name>
+    <description>Rate limiter PostgreSQL Storage for Twake Mail</description>
 
     <dependencies>
         <dependency>
