@@ -38,6 +38,7 @@ import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
 import org.apache.james.blob.objectstorage.aws.S3RequestOption;
 import org.apache.james.blob.objectstorage.aws.sse.S3SSECConfiguration;
 import org.apache.james.blob.objectstorage.aws.sse.S3SSECustomerKeyFactory;
+import org.apache.james.blob.postgres.PostgresBlobStoreDAO;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventListener;
 import org.apache.james.eventsourcing.Event;
@@ -73,8 +74,11 @@ import com.google.inject.name.Names;
 import com.linagora.tmail.blob.blobid.list.BlobIdList;
 import com.linagora.tmail.blob.blobid.list.CassandraSingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
+import com.linagora.tmail.blob.blobid.list.postgres.PostgresSingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
+
+import modules.BlobPostgresModule;
 
 public class BlobStoreModulesChooser {
     public static final String INITIAL_BLOBSTORE_DAO = "initial_blobstore_dao";
@@ -120,6 +124,22 @@ public class BlobStoreModulesChooser {
             bind(BlobStoreDAO.class)
                 .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
                 .to(FileBlobStoreDAO.class)
+                .in(Scopes.SINGLETON);
+        }
+    }
+
+    static class PostgresBlobStoreDAODeclarationModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            install(new BlobPostgresModule());
+
+            install(new DefaultBucketModule());
+            bind(BucketName.class)
+                .toInstance(BucketName.DEFAULT);
+
+            bind(BlobStoreDAO.class)
+                .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
+                .to(PostgresBlobStoreDAO.class)
                 .in(Scopes.SINGLETON);
         }
     }
@@ -208,7 +228,8 @@ public class BlobStoreModulesChooser {
 
     public static class SingleSaveDeclarationModule extends AbstractModule {
         public enum BackedStorage {
-            CASSANDRA
+            CASSANDRA,
+            POSTGRES
         }
 
         private final BackedStorage backedStorage;
@@ -221,6 +242,7 @@ public class BlobStoreModulesChooser {
         protected void configure() {
             switch (backedStorage) {
                 case CASSANDRA -> install(new CassandraSingleSaveBlobStoreModule());
+                case POSTGRES -> install(new PostgresSingleSaveBlobStoreModule());
                 default -> throw new RuntimeException("Unsupported storage " + backedStorage.name());
             }
         }
@@ -323,6 +345,8 @@ public class BlobStoreModulesChooser {
                 return new ObjectStorageBlobStoreDAODeclarationModule();
             case FILE:
                 return new FileBlobStoreDAODeclarationModule();
+            case POSTGRES:
+                return new PostgresBlobStoreDAODeclarationModule();
             default:
                 throw new RuntimeException("Unsupported blobStore implementation " + implementation);
         }
