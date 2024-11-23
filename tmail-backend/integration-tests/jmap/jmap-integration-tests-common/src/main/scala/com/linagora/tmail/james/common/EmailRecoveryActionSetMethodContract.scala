@@ -76,7 +76,7 @@ object EmailRecoveryActionSetMethodContract {
   private val taskAwaitBasePath: String = "/tasks"
 
   val DELETED_MESSAGE_CONTENT: Array[Byte] = "header: value\r\n\r\ncontent".getBytes(StandardCharsets.UTF_8)
-  val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
+  val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ISO_DATE_TIME
   val RESTORATION_HORIZON_SPAN_IN_DAYS: Int = 14
 
   def creationSetInvalidRequestList: Stream[Arguments] = {
