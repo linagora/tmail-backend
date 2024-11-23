@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>postgres-webadmin-integration-tests</artifactId>
-    <name>Team-mail :: Integration Tests :: Web Admin :: Postgres</name>
+    <name>Twake Mail :: Integration Tests :: Web Admin :: Postgres</name>
 
     <dependencies>
         <dependency>
