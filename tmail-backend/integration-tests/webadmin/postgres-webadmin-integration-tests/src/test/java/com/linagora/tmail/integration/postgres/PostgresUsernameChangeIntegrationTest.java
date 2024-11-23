@@ -1,6 +1,5 @@
 package com.linagora.tmail.integration.postgres;
 
-import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.POSTGRES;
 import static com.linagora.tmail.james.jmap.OpenSearchContactConfiguration.DEFAULT_CONFIGURATION;
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,7 +23,7 @@ import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
 import org.opensearch.client.opensearch.core.SearchRequest;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
@@ -55,7 +54,7 @@ public class PostgresUsernameChangeIntegrationTest extends UsernameChangeIntegra
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                .implementation(POSTGRES)
+                .postgres()
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
