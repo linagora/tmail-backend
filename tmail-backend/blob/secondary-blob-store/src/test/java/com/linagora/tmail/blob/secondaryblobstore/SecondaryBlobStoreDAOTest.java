@@ -378,6 +378,16 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
             .isInstanceOf(IOException.class);
     }
 
+    // TODO remove, after rebasing james-project/postgresql on james-project/master
+    @Test
+    @Override
+    public void saveShouldThrowWhenNullData() {
+        BlobStoreDAO store = testee();
+
+        assertThatThrownBy(() -> Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, (byte[]) null)).block())
+            .isInstanceOf(ObjectStoreException.class);
+    }
+
     @Test
     @Override
     public void saveByteSourceShouldThrowOnIOException() {
