@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>postgres-healthcheck-integration-tests</artifactId>
-    <name>Team-mail :: Integration Tests :: Healthcheck :: Postgres</name>
+    <name>Twake Mail :: Integration Tests :: Healthcheck :: Postgres</name>
 
     <dependencies>
         <dependency>

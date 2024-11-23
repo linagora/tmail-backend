@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>deployment-tests-postgres</artifactId>
-    <name>Team-mail :: Deployment Tests :: Postgres</name>
+    <name>Twake Mail :: Deployment Tests :: Postgres</name>
 
     <dependencies>
         <dependency>

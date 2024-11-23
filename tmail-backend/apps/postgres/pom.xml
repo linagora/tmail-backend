@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>postgres</artifactId>
-    <name>Team-mail :: Apps :: Postgres</name>
+    <name>Twake Mail :: Apps :: Postgres</name>
 
     <dependencies>
         <dependency>

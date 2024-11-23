@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>tmail-guice-common</artifactId>
-    <name>Team-mail :: Guice :: Common</name>
+    <name>Twake Mail :: Guice :: Common</name>
 
     <dependencies>
         <dependency>
