@@ -78,6 +78,9 @@ class PostgresPublicAssetRepository @Inject()(val executorFactory: PostgresExecu
 
   override def getTotalSize(username: Username): Publisher[Long] =
     dao(username).selectSumSize(username)
+
+  override def listPublicAssetMetaDataOrderByIdAsc(username: Username): Publisher[PublicAssetMetadata] =
+    dao(username).selectAllAssetsOrderByIdAsc(username)
 }
 
 class PostgresPublicAssetRepositoryModule extends AbstractModule {

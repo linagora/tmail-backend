@@ -1,6 +1,5 @@
 package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration.BlobStoreImplName.POSTGRES;
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY;
 
 import org.apache.james.JamesServerBuilder;
@@ -13,7 +12,7 @@ import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
@@ -28,7 +27,7 @@ class PostgresTmailServerTest implements JamesServerConcreteContract, JmapJamesS
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
-                .implementation(POSTGRES)
+                .postgres()
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()

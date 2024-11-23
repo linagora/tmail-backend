@@ -20,6 +20,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>blob-guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>combined-identity</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -41,6 +45,11 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>tmail-guice-distributed</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-openpaas</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

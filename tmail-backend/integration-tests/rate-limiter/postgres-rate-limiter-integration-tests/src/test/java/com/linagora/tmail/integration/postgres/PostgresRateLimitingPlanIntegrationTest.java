@@ -10,7 +10,7 @@ import org.apache.james.mailrepository.api.MailRepositoryUrl;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.integration.RateLimitingPlanIntegrationContract;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
