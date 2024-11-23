@@ -7,7 +7,7 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.blob.blobid.list.BlobStoreConfiguration;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.integration.RspamdScannerIntegrationContract;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
