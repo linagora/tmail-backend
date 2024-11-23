@@ -110,6 +110,7 @@ import com.linagora.tmail.encrypted.postgres.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
+import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
@@ -305,7 +306,8 @@ public class PostgresTmailServer {
             new PostgresPublicAssetRepositoryModule(),
             new PostgresTicketStoreModule(),
             new TasksHeathCheckModule(),
-            chooseEventBusModules(configuration));
+            chooseEventBusModules(configuration),
+            new TMailIMAPModule());
 
     private static final Module SCANNING_QUOTA_SEARCH_MODULE = new AbstractModule() {
         @Override
