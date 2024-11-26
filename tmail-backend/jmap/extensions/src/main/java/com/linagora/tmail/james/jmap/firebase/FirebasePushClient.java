@@ -58,7 +58,8 @@ public class FirebasePushClient {
     }
 
     public Mono<Void> push(FirebasePushRequest pushRequest) {
-        return sendReactive(createFcmMessage(pushRequest), !DRY_RUN);
+        return sendReactive(createFcmMessage(pushRequest), !DRY_RUN)
+            .doOnError(throwable -> LOGGER.warn("Error when pushing FCM notification", throwable));
     }
 
     public Mono<Boolean> validateToken(FirebaseToken token) {
