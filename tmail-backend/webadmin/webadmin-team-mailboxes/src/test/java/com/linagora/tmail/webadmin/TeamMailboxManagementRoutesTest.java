@@ -173,8 +173,9 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", "Invalid arguments supplied in the user request")
-                .containsEntry("details", "Domain parts ASCII chars must be a-z A-Z 0-9 - or _");
+                .containsEntry("message", "Invalid arguments supplied in the user request");
+            assertThat((String) errors.get("details"))
+                .contains("Domain parts ASCII chars must be a-z A-Z 0-9 - or _");
         }
 
         @Test
@@ -478,8 +479,9 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", "Invalid arguments supplied in the user request")
-                .containsEntry("details", "Domain parts ASCII chars must be a-z A-Z 0-9 - or _");
+                .containsEntry("message", "Invalid arguments supplied in the user request");
+            assertThat((String) errors.get("details"))
+                .contains("Domain parts ASCII chars must be a-z A-Z 0-9 - or _");
         }
     }
 
