@@ -48,6 +48,7 @@
         <module>imap-extensions</module>
 
         <module>jmap/extensions</module>
+        <module>jmap/extensions-api</module>
         <module>jmap/extensions-cassandra</module>
         <module>jmap/extensions-opensearch</module>
         <module>jmap/extensions-rabbitmq</module>

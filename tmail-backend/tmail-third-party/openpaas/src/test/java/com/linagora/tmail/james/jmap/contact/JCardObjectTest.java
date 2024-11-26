@@ -1,4 +1,4 @@
-package com.linagora.tmail.contact;
+package com.linagora.tmail.james.jmap.contact;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Optional;
 
 import jakarta.mail.internet.AddressException;
+
+import com.linagora.tmail.contact.JCardObject;
 
 public class JCardObjectTest {
 

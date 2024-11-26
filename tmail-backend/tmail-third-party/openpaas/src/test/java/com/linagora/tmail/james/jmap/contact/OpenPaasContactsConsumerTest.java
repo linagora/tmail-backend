@@ -1,4 +1,4 @@
-package com.linagora.tmail.contact;
+package com.linagora.tmail.james.jmap.contact;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
@@ -31,10 +31,7 @@ import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
-import com.linagora.tmail.james.jmap.contact.ContactFields;
-import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
-import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+import com.linagora.tmail.contact.OpenPaasContactsConsumer;
 
 class OpenPaasContactsConsumerTest {
 

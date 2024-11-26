@@ -8,8 +8,8 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>jmap-extensions</artifactId>
-    <name>Twake Mail :: JMAP :: Extensions</name>
+    <artifactId>jmap-extensions-api</artifactId>
+    <name>Twake Mail :: JMAP :: Extensions :: API</name>
 
     <properties>
         <uuid-creator.version>5.3.7</uuid-creator.version>
@@ -138,11 +138,6 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>jmap-extensions-api</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
     <build>

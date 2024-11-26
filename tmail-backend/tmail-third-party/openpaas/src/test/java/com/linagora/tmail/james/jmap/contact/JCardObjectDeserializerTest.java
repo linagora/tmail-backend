@@ -1,4 +1,4 @@
-package com.linagora.tmail.contact;
+package com.linagora.tmail.james.jmap.contact;
 
 import java.util.Optional;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.linagora.tmail.contact.JCardObject;
 
 public class JCardObjectDeserializerTest {
     static ObjectMapper objectMapper;
