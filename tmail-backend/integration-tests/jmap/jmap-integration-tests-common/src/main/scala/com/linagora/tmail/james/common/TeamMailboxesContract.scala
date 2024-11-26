@@ -45,6 +45,7 @@ import org.apache.james.webadmin.WebAdminUtils
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
+import org.hamcrest.Matchers.{equalTo, hasKey}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsArray, Json}
 import sttp.capabilities.WebSockets
@@ -3124,6 +3125,22 @@ trait TeamMailboxesContract {
            |			},
            |			"c1"]]
            |}""".stripMargin)
+  }
+
+  @Test
+  def shouldReturnSubaddressingSupportedInTeamMailboxesCapability(): Unit = {
+    val subaddressingSupported = true
+
+    `given`()
+    .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities", hasKey("urn:apache:james:params:jmap:mail:shares"))
+      .body("capabilities.'urn:apache:james:params:jmap:mail:shares'", hasKey("subaddressingSupported"))
+      .body("capabilities.'urn:apache:james:params:jmap:mail:shares'.subaddressingSupported", equalTo(subaddressingSupported))
   }
 
   private def authenticatedRequest(server: GuiceJamesServer): RequestT[Identity, Either[String, String], Any] = {
