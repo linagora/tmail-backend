@@ -28,7 +28,7 @@ import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactInjectKeys;
+import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.TmailContactUserAddedEvent;
 
 import reactor.core.publisher.Flux;

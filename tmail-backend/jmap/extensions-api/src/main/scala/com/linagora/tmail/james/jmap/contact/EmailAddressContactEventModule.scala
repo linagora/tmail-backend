@@ -3,6 +3,7 @@ package com.linagora.tmail.james.jmap.contact
 import com.google.inject.multibindings.ProvidesIntoSet
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Singleton}
+import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys
 import org.apache.james.events.EventBus
 import org.apache.james.lifecycle.api.Startable
 import org.apache.james.utils.{InitializationOperation, InitilizationOperationBuilder}
