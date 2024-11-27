@@ -1,0 +1,10 @@
+= Deleted message vault configuration
+:navtitle: Deleted message vault configuration
+
+By default, on Tmail backend, the deleted message vault is enabled (contrary to James server where it is disabled).
+
+It is still possible to disable it by modifying the following property on `deletedMessageVault.properties`:
+
+....
+enabled=false
+....

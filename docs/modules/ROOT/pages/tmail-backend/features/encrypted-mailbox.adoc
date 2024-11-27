@@ -45,6 +45,8 @@ We will eventually work on lifting some of these restrictions.
 gpg.encryption.enable=true
 ....
 
+As described in xref:tmail-backend/configure/encrypted-mailbox.adoc[this page].
+
 Create a GPG keypair. This can be done via:
 
 ....

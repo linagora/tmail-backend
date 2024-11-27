@@ -1,0 +1,67 @@
+= Firebase Cloud Messaging configurations
+:navtitle: Firebase Cloud Messaging configurations
+
+If you wish you to configure pushing notifications via FCM, please configure the `firebase.properties` file.
+Omitting the file would mean disable FCM usage.
+
+.firebase.properties
+|===
+| Property name | explanation
+| enable
+| Optional. Boolean, default to true. Whether to enable FCM usage.
+
+Example: `enable=true`.
+
+| privatekey.url
+| Required if FCM usage is enabled. String. Path to a Service Account key file in JSON format from the Google Developers
+Console or a stored user credential using the format supported by the Cloud SDK.
+Documentation to generate a private key file for service account: https://firebase.google.com/docs/admin/setup?hl=en#initialize_the_sdk_in_non-google_environments.
+
+Example: `privatekey.url=/root/conf/firebase_push_privatekey.json`.
+
+| api.key
+| Optional. API key of your Firebase project that is used to authenticate and authorize access to Firebase services in your application.
+Shows in the JMAP session, to allow mobile app to have some customized.
+
+| app.id
+| Optional. App ID of your Firebase project that is used to identify your app in various Firebase services.
+Shows in the JMAP session, to allow mobile app to have some customized.
+
+| messaging.sender.id
+| Optional. Messaging sender ID that is used to identify the sender of messages in FCM.
+Shows in the JMAP session, to allow mobile app to have some customized.
+
+| project.id
+| Optional. Project ID that is used to identify your Firebase project in various Firebase services.
+Shows in the JMAP session, to allow mobile app to have some customized.
+
+| database.url
+| Optional. The database URL is the unique URL that is used to access the Firebase Realtime Database for your project.
+Shows in the JMAP session, to allow mobile app to have some customized.
+
+| storage.bucket
+| Optional. The storage bucket is the bucket where messages are store on the Firebase database.
+Shows in the JMAP session, to allow mobile app to have some customized.
+
+| auth.domain
+| Optional. The authentication domain is the domain that is used to authenticate users in your Firebase project using Firebase Authentication.
+Shows in the JMAP session, to allow mobile app to have some customized.
+
+| vapid.public.key
+| Optional. The VAPID public key is a unique identifier that is used to send push notifications to your app using FCM.
+Shows in the JMAP session, to allow mobile app to have some customized.
+
+|===
+
+=== FCM proxy setting
+
+FCM driver can easily be configured via system properties for pushing data through a proxy. To do so one can edit `jvm.properties`:
+
+....
+# com.google.api.client.http.javanet.NetHttpTransport L 82
+com.google.api.client.should_use_proxy=true
+# com.google.api.client.http.javanet.NetHttpTransport::defaultProxy
+https.proxyHost=192.168.12.45
+https.proxyPort=443
+http.nonProxyHosts=localhost|127.0.0.1|::1|*.local|*.internal|192.168.*.*
+....

@@ -1,0 +1,13 @@
+= Additional Queue configurations
+:navtitle: Additional Queue configurations
+
+Specified to TMail backend, we can configure the following configurations in the *queue.properties* file.
+
+.queue.properties additional content
+|===
+| Property name | explanation
+| event.bus.keys.choice
+| Optional. Default to the RABBITMQ implementation. Supported values (case insensitive): `REDIS` / `RABBITMQ`.
+
+Example: `event.bus.keys.choice=redis` if you want to use Redis for user notifications.
+|===

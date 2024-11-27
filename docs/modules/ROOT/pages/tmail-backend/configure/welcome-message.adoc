@@ -1,0 +1,19 @@
+== Welcome Listener
+:navtitle: Welcome Listener
+
+This listener will add an email in a user newly created INBOX from a predefined EML.
+
+This can be used to welcome users and avoid the "Empty INBOX newcomer syndrome".
+
+Sample configuration: `listeners.xml`
+
+....xml
+<listeners>
+<listener>
+<class>com.linagora.tmail.mailbox.WelcomeListener</class>
+<configuration>
+<eml>file://welcome.eml</eml>
+</configuration>
+</listener>
+</listeners>
+....

@@ -1,0 +1,56 @@
+= Blob store additional configuration
+:navtitle: Blob store additional configuration
+
+Twake mail ships some slight blob store enhancements:
+ - BlobId list allows limiting the could of save request for similar objects onto the blob store,
+thus improving overall efficiency.
+ - Secondary blob store reads and write to several S3 sites providing higher resiliency.
+
+== Object Storage: BlobId list
+
+When deduplication upon blob storage is enabled in James, we would store only one object for all
+entities sharing the same content.
+
+This helps reducing storage costs as email content within companies is highly duplicated.
+
+However, this brings additional issues and opportunity:
+
+- We might not want to save several times the same content, when we know we actually already store it. Storing it twice
+is a waste of resources and writes might be billed by the cloud provider.
+- Concurrently reading and writing to the same blob might cause issues for low consistency object stores (eg Swift based),
+see link:https://issues.apache.org/jira/browse/JAMES-3570[this issue].
+
+We thus offer an additional cache, in Cassandra, to check if the blob is already stored prior to store it. Inconsistent
+cache results in double writes (low impact). We found it to have a positive impact on performance and solve isolation issues
+on top of Swift S3 APIs.
+
+Example `blob.properties`:
+
+....
+[...]
+# When deduplication is active, use a Cassandra projection to avoid saving several time the same blob to S3.
+# This prevents isolation issues for Swift backed S3 deployments, also adds a performance boost.
+# Mandatory, Allowed values are: true, false
+single.save.enable=false
+[...]
+....
+
+== Secondary blob store configurations
+Specified to TMail backend, we can configure the following configurations in the *blob.properties* file for the second blob store.
+
+.blob.properties additional content
+|===
+| Property name | explanation
+| objectstorage.s3.secondary.enabled
+| Optional. Default to the false Supported values: `true` / `false`.
+| objectstorage.s3.secondary.endPoint
+| S3 service endpoint
+| objectstorage.s3.secondary.region
+| S3 region
+| objectstorage.s3.secondary.bucket.suffix
+| Optional string. Defaults to empty. The suffix of bucket names for the secondary blob store. e.g. "-copy".
+| objectstorage.s3.secondary.accessKeyId
+| https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys[S3 access key id]
+| objectstorage.s3.secondary.secretKey
+| https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys[S3 access key secret]
+|===

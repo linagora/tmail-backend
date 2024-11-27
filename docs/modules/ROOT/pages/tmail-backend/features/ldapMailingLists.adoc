@@ -18,71 +18,10 @@ Twake mail define some sender controls, defined by the business category of the 
 
 Note that member and owner resolution is recursive: LDAP groups will be expended to their members.
 
-== Configuration
 
-We integrated a working example onto the link:https://github.com/linagora/tmail-backend/tree/master/demo[Twake mail demo].
+See xref:tmail-backend/configure/ldap-mailing-list.adoc[this page] in order to configure this feature.
 
-=== LDAPMailingList
-
-Mailing list resolution for Twake mail based on LDAP groups.</p>
-
-This mailet will look up mailAddress in order to identify groups and substitute their mail address with the ones of users.</p>
-
- - mailingListPredicate: a heuristic to determine if a given mail address is likely to be a list
-Specify `lists-prefix` for only mailAddress `abc@lists.domain.tld` to be considered lists and expended
-Specify `any-local` to try to expend all local addresses which had a cost!
- - baseDN: the base DN to use within group search. EG: ou=lists,dc=linagora,dc=com
- - rejectedSenderProcessor: processor to handle rejected sender. Generally this consists of a bounce mailet explaining the
-rejection.
- - userMailCacheSize: Number of users DN to keep in the cache. This saves DN lookups on member to retrieve their mail address.
- - userMailCacheDuration: Time during which one should keep entries into the user DN => mailAddress cache.
- - mailAttributeForGroups: Attribute holding the mail address of a group. For easy testing this can be set to description
-but for production use a special LDAP schema needs to be crafted for using the mail attribute.
-
-Performance considerations:
-
- - Sender validation goes faster if the email local part is also the user uid, as this heuristic saves precious LDAP lookups
- - All DN lookups for retrieving mail address are cached for efficiency. This implies that email address changes for users
-is a rare event, and we accept it to be non-synchronized for the duration of the cache retention when this happens
- - LDAP groups composition and validation rules are never cached so far: addition of new users into a group will
-thus be an instant operation.
-
-Example:
-
-....
-<mailet match="All" class="com.linagora.tmail.mailet.LDAPMailingList">
-    <baseDN>ou=lists,dc=tmail,dc=com</baseDN>
-    <mailAttributeForGroups>description</mailAttributeForGroups>
-    <rejectedSenderProcessor>rejectedSender</rejectedSenderProcessor>
-</mailet>
-....
-
-=== IsALDAPMailingList
-
-Matcher matching mailing lists defined by the LDAP.
-
-Useful for integrating LDAP lists with Recipient Rewrite Tables: it can be used to re-process lists generated as
-an output of RRTs.
-
-Matcher argument needs to be in the form baseDN#groupObjectClass#mailAttribute
-
-Sample usage:
-
-....
-<mailet match="com.linagora.tmail.mailet.IsALDAPMailingList=ou=lists,dc=tmail,dc=com#groupofnames#description" class="ToProcessor">
-  <processor>transport</processor>
-</mailet>
-....
-
-=== Valid RCPT Handling
-
-Use either `TMailWithMailingListValidRcptHandler` or `NaiveTMailWithMailingListsValidRcptHandler` as a Valid RCPT handler in order to accept LDAP lists for incoming SMTP mails
-
- - `TMailWithMailingListValidRcptHandler` performs a LDAP search onto each recipients
- - `NaiveTMailWithMailingListsValidRcptHandler` relies on the syntax of the mail address (matches .*@lists.domain.tld) which
-is cheaper but generates false positives.
-
-=== Sample LDIF
+== Sample LDIF
 
 ....
 dn: ou=people, dc=james,dc=org

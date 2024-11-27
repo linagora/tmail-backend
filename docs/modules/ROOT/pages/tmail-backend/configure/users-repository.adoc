@@ -1,0 +1,45 @@
+= Combined user repository
+:navtitle: Combined user repository
+
+Linagora uses LDAP as an identity provider.
+
+We use it in a couple of occasions including:
+
+- IMAP / SMTP login, which involves checking the user password against the LDAP
+- Receiving an email (both at the SMTP and mail processing level, we check that the user exists)
+
+The above implies that emails can not be received during LDAP outages. Emails received during LDAP outages
+may be rejected at the SMTP level, thus queued in upstream systems or considered as errored upon mail processing.
+
+This makes LDAP a critical component of our stack.
+
+Also, calling too often the LDAP comes at a performance price.
+
+We propose an alternative implementation of user repository combining both the LDAP and the cassandra implementation:
+
+- Existence checks will be performed against Cassandra alone
+- However authentication checks will be performed against the LDAP
+
+With such a set up, we need to plan a recurring synchronisation task using link:https://github.com/lsc-project/lsc-james-plugin#users-synchronization[LSC].
+See link:https://github.com/lsc-project/lsc-james-plugin/tree/master/sample/ldap-to-james-user[this sample configuration]
+
+Also, we await a higher availability as emails can still be received during LDAP outage. The only impact will only be no new SMTP/IMAP login.
+
+Furthermore, the load on a LDAP will be reduced to LSC synchronisation and IMAP/SMTP logins.
+
+Example `usersrepository.xml`:
+
+....
+<usersrepository name="LocalUsers"
+    class="org.apache.james.user.ldap.CombinedUsersRepository"
+    ldapHost="${env:OP_JAMES_LDAP_URI}"
+    userBase="${env:OP_JAMES_LDAP_BASE_DN}"
+    principal="${env:OP_JAMES_LDAP_PRINCIPAL_DN}"
+    credentials="${env:OP_JAMES_LDAP_BIND_PW}"
+    userIdAttribute="mail"
+    userObjectClass="person"
+    administratorId="${env:OP_JAMES_ADMINISTRATOR_ID}" >
+    <enableVirtualHosting>true</enableVirtualHosting>
+</usersrepository>
+
+....
