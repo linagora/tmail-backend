@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.contact.{Addition, ContactOwner, EmailAddressContactMessage, MessageEntry, User}
+import com.linagora.tmail.james.jmap.contact._
 import org.apache.james.core.MailAddress
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
