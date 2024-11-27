@@ -126,6 +126,7 @@ com.google.api.client.should_use_proxy=true
 # com.google.api.client.http.javanet.NetHttpTransport::defaultProxy
 https.proxyHost=192.168.12.45
 https.proxyPort=443
+http.nonProxyHosts=localhost|127.0.0.1|::1|*.local|*.internal|192.168.*.*
 ....
 
 == Additional Queue configurations
