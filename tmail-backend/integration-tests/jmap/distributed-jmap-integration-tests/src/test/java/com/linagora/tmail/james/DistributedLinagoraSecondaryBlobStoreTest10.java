@@ -53,7 +53,6 @@ import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -87,7 +86,7 @@ import reactor.core.publisher.Flux;
 import reactor.util.retry.Retry;
 
 @Tag(BasicFeature.TAG)
-class DistributedLinagoraSecondaryBlobStoreTest {
+class DistributedLinagoraSecondaryBlobStoreTest10 {
     public static final ConditionFactory calmlyAwait = Awaitility.with()
         .pollInterval(ONE_HUNDRED_MILLISECONDS)
         .and()
@@ -173,7 +172,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         secondaryS3Configuration = new SecondaryS3BlobStoreConfiguration(S3BlobStoreConfiguration.builder()
             .authConfiguration(authConfiguration)
             .region(secondaryS3.dockerAwsS3().region())
-            .uploadRetrySpec(Optional.of(Retry.backoff(3, java.time.Duration.ofSeconds(1))
+            .uploadRetrySpec(Optional.of(Retry.backoff(3, Duration.ofSeconds(1))
                 .filter(UPLOAD_RETRY_EXCEPTION_PREDICATE)))
             .readTimeout(Optional.of(Duration.ofMillis(500)))
             .build(),
@@ -253,7 +252,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     }
 
     //TODO Fix flaky test (https://github.com/linagora/tmail-backend/issues/1299)
-    @RepeatedTest(value = 10, failureThreshold = 1)
+    @Test
     void sendEmailShouldResultingInEventuallySavingDataToBothObjectStoragesWhenSecondStorageIsDownForShortTime(GuiceJamesServer server) throws Exception {
         secondaryS3.pause();
 
@@ -286,7 +285,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     }
 
     //TODO Fix flaky test (https://github.com/linagora/tmail-backend/issues/1299)
-    @RepeatedTest(value = 10, failureThreshold = 1)
+    @Test
     void sendEmailShouldResultingInEventuallySavingDataToBothObjectStoragesWhenSecondStorageIsDownForLongTime(GuiceJamesServer server) {
         secondaryS3.pause();
 
