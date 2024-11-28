@@ -5,7 +5,7 @@ See xref:tmail-backend/features/encrypted-mailbox.adoc[this page] for feature ex
 
 == Enabling/Disabling the encrypted mailbox
 
-Encrypting messages is costly thus we unserstand an administrator might choose not to enable this feature.
+Encrypting messages is costly thus we understand an administrator might choose not to enable this feature.
 
 We provide an easy way to disable completely the **Encrypted Mailbox** through the configuration.
 
