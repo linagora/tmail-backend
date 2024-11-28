@@ -5,6 +5,8 @@ https://docs.open-paas.org/[OpenPaaS], developed by Linagora, is a collaborative
 
 This document describes the key integration points and functionality between TMail and OpenPaaS.
 
+See xref:tmail-backend/configure/openpaas.adoc[this page for configuring the integration].
+
 == Features
 TMail provides the following functionalities:
 

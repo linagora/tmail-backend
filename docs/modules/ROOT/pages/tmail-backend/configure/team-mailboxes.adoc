@@ -1,0 +1,13 @@
+= Configuring team mailboxes
+:navtitle: Configuring team mailboxes
+
+Read xref:tmail-backend/features/teamMailboxes.adoc[this page] for feature explanations.
+
+== Configuring team mailboxes
+
+An administrator needs to customize TMail configuration in order to benefit from Team mailboxes, namely:
+
+- Rely on the `TMailLocalDelivery` mailet in replacement of `apache/james-project` `LocalDelivery` mailet
+in xref:james-distributed-app::configure/mailetcontainer.adoc[mailetcontainer.xml].
+- Rely on the `TMailValidRcptHandler` RCPT hook in replacement of `apache/james-project` `ValidRcptHandler` RCPT hook
+in xref:james-distributed-app::configure/smtp.adoc[smtpserver.xml].

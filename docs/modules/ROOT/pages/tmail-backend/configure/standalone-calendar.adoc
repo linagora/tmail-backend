@@ -1,0 +1,94 @@
+= Standalone calendar
+:navtitle: Standalone calendar
+
+In the absence of Calendar Twake mail offers minimalistic features:
+
+ - Offers auto-complete for recipient of sent mails
+ - remebers event attendance and ease calendar invitation replies
+
+== Storing account contacts when sending mails
+
+An administrator can use a combination of the `ContactExtractor` and `IndexContacts` mailets in the `mailetcontainer.xml` configuration file
+in order to extract the recipient contacts of a message and index them asynchronously.
+
+For example, in the configuration below, TMail will extract the list of recipients every time the current user sends an email and store them in the `ExtractedContacts` attribute. Then, the `IndexContacts` mailet will index them to enable the autocomplete feature.
+....
+<mailet match="All" class="ContactExtractor">
+  <attribute>ExtractedContacts</attribute>
+</mailet>
+<mailet match="All" class="IndexContacts">
+  <attribute>ExtractedContacts</attribute>
+</mailet>
+....
+
+== Internationalization configuration
+
+The Internationalization configuration allows setting the location directory for email templates used in generating reply emails for the CalendarEvent reply method, as well as specifying the supported languages for replying to CalendarEvent emails.
+
+These properties are added to the `jmap.properties` file to configure the internationalization settings.
+
+- *calendarEvent.reply.mailTemplateLocation*: Specifies the directory location for storing email templates used to generate reply emails for CalendarEvent method. Example: `file://eml-template/`
+
+- *calendarEvent.reply.supportedLanguages*: Specifies the supported languages for replying to CalendarEvent emails. Languages are indicated by language tags, such as `en` for English and `fr` for French. Example: `en,fr`
+
+In the specified directory location, valid email template files should follow a naming convention that includes the language tag, such as:
+```
+calendar_reply_accepted-en.eml
+calendar_reply_declined-en.eml
+calendar_reply_tentative-en.eml
+```
+Example file for French language:
+```
+calendar_reply_accepted-fr.eml
+```
+
+Additionally, the reply email templates support Mustache data for dynamic content generation. Mustache tags are placeholders in the email templates that are replaced with actual data before sending. Below is a list of supported Mustache tags:
+
+- PART_STAT: The status of the reply, such as ACCEPTED, REJECTED, or MAYBE.
+- ATTENDEE: The attendee's name and email address.
+- ATTENDEE_CN: The attendee's name.
+- EVENT_ORGANIZER: The event organizer's name and email address.
+- EVENT_ORGANIZER_CN: The event organizer's name.
+- EVENT_TITLE: The title of the event.
+- EVENT_START_DATE: The start date and time of the event.
+- EVENT_END_DATE: The end date and time of the event.
+- EVENT_LOCATION: The location of the event.
+
+To access sample template files, please visit the https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed/src/main/eml-template[tmail-backend].
+
+== Integrates with OpenPaaS Calendar through the OpenPaasAmqpForwardAttribute mailet
+
+This configuration helps process iCalendar data from emails and forwards it to OpenPaaS Calendar system (via AMQP) for further operations, such as updating the event status.
+
+For further information about the integration between OpenPaas and TMail, see xref:tmail-backend/features/openpaas-integration.adoc[OpenPaas Integration].
+
+The mailets pipeline configuration below should be added to the transport processor within `mailetcontainer.xml`:
+```
+            <!-- ICAL pipeline for EventCaleandar response -->
+            <mailet match="SenderIsLocal" class="StripAttachment">
+                <mimeType>text/calendar</mimeType>
+                <attribute>rawIcalendar2</attribute>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="SenderIsLocal" class="MimeDecodingMailet">
+                <attribute>rawIcalendar2</attribute>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="SenderIsLocal" class="ICalendarParser">
+                <sourceAttribute>rawIcalendar2</sourceAttribute>
+                <destinationAttribute>icalendar2</destinationAttribute>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="SenderIsLocal" class="com.linagora.tmail.mailet.SenderICALToJsonAttribute">
+                <source>icalendar2</source>
+                <destination>icalendarAsJson2</destination>
+                <rawSource>rawIcalendar2</rawSource>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+	    <mailet match="SenderIsLocal" class="com.linagora.tmail.mailet.OpenPaasAmqpForwardAttribute">
+                <attribute>icalendarAsJson2</attribute>
+                <exchange>james:events</exchange>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <!-- End of ICAL pipeline -->
+```

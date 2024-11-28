@@ -1,0 +1,48 @@
+= Additional JMAP configurations
+:navtitle: Additional JMAP configurations
+
+Specified to TMail backend, we can configure the following configurations in the *`jmap.properties`* file.
+
+.`jmap.properties` additional content
+|===
+| Property name | explanation
+| `authentication.strategy.rfc8621.tickets.ip.validation.enabled`
+| Enable IP validation for Ticket authentication. Optional, boolean, default to true.
+
+| `public.asset.total.size`
+| Optional. Configures the maximum size of total public assets that can be uploaded by a user.
+
+Default to 20MB. Supported units are B (bytes) K (KB) M (MB) G (GB).
+
+Example: `public.asset.total.size=20MB`.
+
+| `emailRecoveryAction.maxEmailRecoveryPerRequest`
+| Optional. Configures the maximum number of emails a user can restore at once, eg, with one query.
+
+If no value is provided, default to 5.
+
+Example: `emailRecoveryAction.maxEmailRecoveryPerRequest=6`
+
+| `emailRecoveryAction.restorationHorizon`
+| Optional. Configures the maximum time deadline after which a mail cannot be restored by the user.
+The period starts at the email deletion date. Once the deadline is over, the user must contact an admin if he wishes to restore the mail.
+
+Default to 15 days. Supported units are
+`ms` (or `msec`, `msecs`),
+`s` (or `sec`, `secs`, `second`, `seconds`),
+`m` (or `min`, `mins`, `minute`, `minutes`),
+`h` (or `hour`, `hours`),
+`d` (or `day`, `days`),
+`w` (or `week`, `weeks`),
+`month` (or `months`),
+`y` (or `year`, `years`).
+
+Example: `emailRecoveryAction.restorationHorizon=10d`
+
+| `calendarEvent.reply.mailTemplateLocation`
+| Optional. Configures the mail template location. Example: `calendarEvent.reply.mailTemplateLocation=classpath://eml/`
+
+| `calendarEvent.reply.supportedLanguages`
+| Optional. Configures the supported languages. Example: `calendarEvent.reply.supportedLanguages=en,fr`
+
+|===

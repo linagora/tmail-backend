@@ -1,0 +1,15 @@
+= RabbitMQ optional components
+:navtitle: RabbitMQ optional components
+
+== Scheduled RabbitMQ reconnection handler
+
+This components periodically checks (every minutes) that every critical queue is
+correctly consumed. If not, it restarts the RabbitMQ consumers, essentially
+resuming consumption.
+
+In order to activate it, in `rabbitmq.properties`:
+
+....
+scheduled.consumer.reconnection.enabled=true
+....
+

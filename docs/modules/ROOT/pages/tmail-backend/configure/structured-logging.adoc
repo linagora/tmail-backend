@@ -1,0 +1,42 @@
+= Structured logging
+
+{server-name} leverages the use of MDC in order to achieve structured logging, and better add context to the logged information. We furthermore ship json logs to file with RollingFileAppender on the classpath to easily allow FluentBit to directly tail the log file.
+Here is a sample conf/logback.xml configuration file for logback with the following pre-requisites:
+
+Logging in a structured json fashion and write to file for centralizing logging.
+Centralize logging third party like FluentBit can tail from logging’s file then filter/process and put in to OpenSearch
+
+....
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+        <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+                <resetJUL>true</resetJUL>
+        </contextListener>
+
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+                    <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
+                        <timestampFormat>yyyy-MM-dd'T'HH:mm:ss.SSSX</timestampFormat>
+                        <timestampFormatTimezoneId>Etc/UTC</timestampFormatTimezoneId>
+
+                        <!-- Importance for handling multiple lines log -->
+                        <appendLineSeparator>true</appendLineSeparator>
+
+                        <jsonFormatter class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter">
+                            <prettyPrint>false</prettyPrint>
+                        </jsonFormatter>
+                    </layout>
+                </encoder>
+                <immediateFlush>false</immediateFlush>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="LOG_FILE" />
+        </root>
+
+</configuration>
+....
+
+
+Those logs can then dinamically be parsed by the link:https://grafana.com/oss/loki/[Loki] stack.

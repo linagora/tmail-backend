@@ -1,0 +1,33 @@
+= Additional OpenSearch configurations
+:navtitle: Additional OpenSearch configurations
+
+Specified to TMail backend, we can configure the following configurations in the *opensearch.properties* file.
+
+.opensearch.properties additional content
+|===
+| Property name | explanation
+| opensearch.index.contact.user.name
+| Name of the user contact index backed by the alias. It will be created if missing. Optional. Defaults to `user_contact`.
+
+| opensearch.alias.read.contact.user.name
+| Name of the alias to use for user contact reads. It will be created if missing. Optional. Defaults to `user_contact_read_alias`.
+
+| opensearch.alias.write.contact.user.name
+| Name of the alias to use for user contact writes. It will be created if missing. Optional. Defaults to `user_contact_write_alias`.
+
+| opensearch.index.contact.domain.name
+| Name of the domain contact index backed by the alias. It will be created if missing. Defaults to `domain_contact`.
+
+| opensearch.alias.read.contact.domain.name
+| Name of the alias to use for domain contact reads. It will be created if missing. Optional. Defaults to `domain_contact_read_alias`.
+
+| opensearch.alias.write.contact.domain.name
+| Name of the alias to use for user contact writes. It will be created if missing. Optional. Defaults to `domain_contact_write_alias`.
+
+| opensearch.index.contact.min.ngram
+| Supported minimum length of input characters to auto complete. Optional. Defaults to `2`.
+
+| opensearch.index.contact.max.ngram.diff
+| The maximum allowed difference between min_gram and max_gram for NGramTokenizer and NGramTokenFilter. Optional. Defaults to `27`.
+
+|===
