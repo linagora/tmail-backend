@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.method
 import com.linagora.tmail.james.jmap.json.LabelSerializer
 import com.linagora.tmail.james.jmap.label.LabelRepository
 import com.linagora.tmail.james.jmap.method.LabelSetCreatePerformer.{LabelCreationFailure, LabelCreationResult, LabelCreationResults, LabelCreationSuccess}
-import com.linagora.tmail.james.jmap.model.{LabelCreationId, LabelCreationRequest, LabelCreationResponse, LabelSetRequest}
+import com.linagora.tmail.james.jmap.model.{LabelCreationId, LabelCreationParseException, LabelCreationRequest, LabelCreationResponse, LabelSetRequest}
 import jakarta.inject.Inject
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -11,8 +11,6 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
-
-case class LabelCreationParseException(setError: SetError) extends Exception
 
 object LabelSetCreatePerformer {
   sealed trait LabelCreationResult {
@@ -58,11 +56,10 @@ class LabelSetCreatePerformer @Inject()(val labelRepository: LabelRepository,
       .map(LabelCreationResults)
 
   private def parseCreate(jsObject: JsObject): Either[LabelCreationParseException, LabelCreationRequest] =
-    LabelCreationRequest.validateProperties(jsObject)
-      .flatMap(validJsObject => Json.fromJson(validJsObject)(LabelSerializer.labelCreationRequest) match {
+    LabelSerializer.deserializeLabelCreationRequest(jsObject) match {
         case JsSuccess(creationRequest, _) => Right(creationRequest)
         case JsError(errors) => Left(LabelCreationParseException(standardError(errors)))
-      })
+    }
 
   private def createLabel(mailboxSession: MailboxSession,
                           clientId: LabelCreationId,
