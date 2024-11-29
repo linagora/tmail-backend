@@ -1,0 +1,86 @@
+package com.linagora.tmail.james.jmap.model
+
+import java.util.UUID
+
+import eu.timepit.refined
+import eu.timepit.refined.auto._
+import eu.timepit.refined.string.MatchesRegex
+import org.apache.james.jmap.core.Id.Id
+import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UuidState}
+import org.apache.james.jmap.mail.Keyword
+import org.apache.james.jmap.method.WithAccountId
+
+case class LabelCreationParseException(setError: SetError) extends Exception
+
+object LabelId {
+  def fromKeyword(keyword: Keyword): LabelId =
+    LabelId(Id.validate(keyword.flagName).toOption.get)
+
+  def generate(): LabelId =
+    LabelId(Id.validate(UUID.randomUUID().toString).toOption.get)
+}
+
+case class LabelId(id: Id) {
+  def toKeyword: Keyword =
+    Keyword.of(id.value).get
+
+  def asUnparsedLabelId: UnparsedLabelId =
+    UnparsedLabelId(id)
+
+  def serialize: String = id.value
+}
+
+object KeywordUtil {
+  def generate(): Keyword =
+    Keyword.of(UUID.randomUUID().toString).get
+}
+
+case class DisplayName(value: String)
+
+object Color {
+  private type ColorRegex = MatchesRegex["^#[a-fA-F0-9]{6}$"]
+
+  def validate(string: String): Either[IllegalArgumentException, Color] =
+    refined.refineV[ColorRegex](string) match {
+      case Left(_) => scala.Left(new IllegalArgumentException(s"The string should be a valid hexadecimal color value following this pattern #[a-fA-F0-9]{6}"))
+      case Right(value) => scala.Right(Color(value))
+    }
+}
+
+case class Color(value: String)
+
+object LabelCreationRequest {
+  val serverSetProperty = Set("id", "keyword")
+  val assignableProperties = Set("displayName", "color")
+  val knownProperties = assignableProperties ++ serverSetProperty
+}
+
+case class LabelCreationRequest(displayName: DisplayName, color: Option[Color]) {
+  def toLabel: Label = {
+    val keyword: Keyword = KeywordUtil.generate()
+
+    Label(id = LabelId.fromKeyword(keyword),
+      displayName = displayName,
+      keyword = keyword,
+      color = color)
+  }
+}
+
+object Label {
+  val allProperties: Properties = Properties("id", "displayName", "keyword", "color")
+  val idProperty: Properties = Properties("id")
+}
+
+case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color: Option[Color]) {
+  def update(newDisplayName: Option[DisplayName], newColor: Option[Color]): Label =
+    copy(displayName = newDisplayName.getOrElse(displayName),
+      color = newColor.orElse(color))
+}
+
+case class LabelNotFoundException(id: LabelId) extends RuntimeException
+
+case class UnparsedLabelId(id: Id) {
+  def asLabelId: LabelId = LabelId(id)
+}
+
+case class LabelIds(list: List[UnparsedLabelId])
