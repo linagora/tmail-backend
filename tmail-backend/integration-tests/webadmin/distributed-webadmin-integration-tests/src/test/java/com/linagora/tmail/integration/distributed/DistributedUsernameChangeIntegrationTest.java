@@ -34,6 +34,7 @@ import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedUsernameChangeIntegrationTest extends UsernameChangeIntegrationContract {
@@ -58,6 +59,7 @@ public class DistributedUsernameChangeIntegrationTest extends UsernameChangeInte
                 .noCryptoConfig()
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .extension(opensearchExtension)
         .extension(new CassandraExtension())

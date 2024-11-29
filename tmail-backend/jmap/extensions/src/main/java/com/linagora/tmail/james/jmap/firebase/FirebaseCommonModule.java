@@ -4,11 +4,10 @@ import java.io.FileNotFoundException;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.core.Disconnector;
 import org.apache.james.events.EventListener;
 import org.apache.james.jmap.method.Method;
 import org.apache.james.utils.PropertiesProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -20,7 +19,6 @@ import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionGetMethod;
 import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetMethod;
 
 public class FirebaseCommonModule extends AbstractModule {
-    private static final Logger LOGGER = LoggerFactory.getLogger(FirebaseCommonModule.class);
 
     @Override
     protected void configure() {
@@ -38,6 +36,9 @@ public class FirebaseCommonModule extends AbstractModule {
 
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
             .addBinding().to(FirebasePushListener.class);
+
+        Multibinder<Disconnector> disconnectorMultibinder = Multibinder.newSetBinder(binder(), Disconnector.class);
+        disconnectorMultibinder.addBinding().to(FirebaseSubscriptionDisconnector.class);
     }
 
     @Provides
