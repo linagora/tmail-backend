@@ -23,7 +23,7 @@ public class FirebaseSubscriptionDisconnector implements Disconnector {
 
     @Override
     public void disconnect(Predicate<Username> username) {
-                        Flux.from(usersRepository.listReactive())
+        Flux.from(usersRepository.listReactive())
             .filter(username)
             .flatMap(repository::revoke)
             .then()

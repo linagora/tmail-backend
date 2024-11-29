@@ -1,5 +1,6 @@
 package com.linagora.tmail.integration.distributed;
 
+import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -99,9 +100,9 @@ public class DistributedProtocolServerIntegrationTest {
             .isNotNull();
 
         // When we disconnect
-        RestAssured.when()
+        when()
             .delete("/" + BOB.asString())
-            .then()
+        .then()
             .statusCode(HttpStatus.NO_CONTENT_204);
 
         // Then the subscription should be revoked
@@ -119,9 +120,9 @@ public class DistributedProtocolServerIntegrationTest {
             .isNotNull();
 
         // When we disconnect ALICE
-        RestAssured.when()
+        when()
             .delete("/" + ALICE.asString())
-            .then()
+        .then()
             .statusCode(HttpStatus.NO_CONTENT_204);
 
         // Then the subscription of BOB should still be there
