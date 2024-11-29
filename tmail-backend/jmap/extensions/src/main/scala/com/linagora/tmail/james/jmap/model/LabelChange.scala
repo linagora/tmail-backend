@@ -1,6 +1,5 @@
 package com.linagora.tmail.james.jmap.model
 
-import com.linagora.tmail.james.jmap.label.LabelChanges
 import org.apache.james.jmap.api.change.Limit
 import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.apache.james.jmap.method.WithAccountId
