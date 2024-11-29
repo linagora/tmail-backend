@@ -1,6 +1,10 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationId, LabelCreationRequest, LabelCreationResponse, LabelGetRequest, LabelGetResponse, LabelId, LabelIds, LabelPatchObject, LabelSetRequest, LabelSetResponse, LabelUpdateResponse, UnparsedLabelId}
+import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationId, LabelCreationParseException, LabelCreationRequest, LabelCreationResponse, LabelGetRequest, LabelGetResponse, LabelId, LabelIds, LabelPatchObject, LabelSetRequest, LabelSetResponse, LabelUpdateResponse, UnparsedLabelId}
+import eu.timepit.refined.collection.NonEmpty
+import eu.timepit.refined.refineV
+import eu.timepit.refined.types.string.NonEmptyString
+import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.Keyword
@@ -48,7 +52,40 @@ object LabelSerializer {
   private implicit val labelMapUpdateRequestReads: Reads[Map[UnparsedLabelId, LabelPatchObject]] =
     Reads.mapReads[UnparsedLabelId, LabelPatchObject] { string => unparsedLabelIdReads.reads(JsString(string)) }
 
-  implicit val labelCreationRequest: Reads[LabelCreationRequest] = Json.reads[LabelCreationRequest]
+  implicit val labelCreationRequestStandardWrites: Writes[LabelCreationRequest] = Json.writes[LabelCreationRequest]
+
+  private val labelCreationRequestStandardReads: Reads[LabelCreationRequest] = Json.reads[LabelCreationRequest]
+
+  implicit val labelCreationRequestReads: Reads[LabelCreationRequest] = new Reads[LabelCreationRequest] {
+    override def reads(json: JsValue): JsResult[LabelCreationRequest] =
+      labelCreationRequestStandardReads.reads(json)
+        .flatMap(request => {
+          validateProperties(json.as[JsObject])
+            .fold(_ => JsError("Failed to validate properties"), _ => JsSuccess(request))
+        })
+
+    def validateProperties(jsObject: JsObject): Either[LabelCreationParseException, JsObject] =
+      (jsObject.keys.intersect(LabelCreationRequest.serverSetProperty),
+        jsObject.keys.diff(LabelCreationRequest.knownProperties)) match {
+        case (_, unknownProperties) if unknownProperties.nonEmpty =>
+          Left(LabelCreationParseException(SetError.invalidArguments(
+            SetErrorDescription("Some unknown properties were specified"),
+            Some(toProperties(unknownProperties.toSet)))))
+        case (specifiedServerSetProperties, _) if specifiedServerSetProperties.nonEmpty =>
+          Left(LabelCreationParseException(SetError.invalidArguments(
+            SetErrorDescription("Some server-set properties were specified"),
+            Some(toProperties(specifiedServerSetProperties.toSet)))))
+        case _ => scala.Right(jsObject)
+      }
+
+    private def toProperties(strings: Set[String]): Properties = Properties(strings
+      .flatMap(string => {
+        val refinedValue: Either[String, NonEmptyString] = refineV[NonEmpty](string)
+        refinedValue.fold(_ => None, Some(_))
+      }))
+  }
+
+  def deserializeLabelCreationRequest(input: JsValue): JsResult[LabelCreationRequest] = Json.fromJson[LabelCreationRequest](input)
 
   private implicit val labelMapUpdateResponseWrites: Writes[Map[LabelId, LabelUpdateResponse]] =
     mapWrites[LabelId, LabelUpdateResponse](_.id.value, labelUpdateResponseWrites)

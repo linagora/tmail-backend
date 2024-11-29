@@ -2,19 +2,15 @@ package com.linagora.tmail.james.jmap.model
 
 import java.util.UUID
 
-import com.linagora.tmail.james.jmap.method.LabelCreationParseException
 import eu.timepit.refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.collection.NonEmpty
-import eu.timepit.refined.refineV
 import eu.timepit.refined.string.MatchesRegex
-import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.james.jmap.core.Id.Id
-import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UuidState}
 import org.apache.james.jmap.mail.Keyword
 import org.apache.james.jmap.method.WithAccountId
-import play.api.libs.json.JsObject
+
+case class LabelCreationParseException(setError: SetError) extends Exception
 
 object LabelId {
   def fromKeyword(keyword: Keyword): LabelId =
@@ -54,28 +50,9 @@ object Color {
 case class Color(value: String)
 
 object LabelCreationRequest {
-  private val serverSetProperty = Set("id", "keyword")
-  private val assignableProperties = Set("displayName", "color")
-  private val knownProperties = assignableProperties ++ serverSetProperty
-
-  def validateProperties(jsObject: JsObject): Either[LabelCreationParseException, JsObject] =
-    (jsObject.keys.intersect(serverSetProperty), jsObject.keys.diff(knownProperties)) match {
-      case (_, unknownProperties) if unknownProperties.nonEmpty =>
-        Left(LabelCreationParseException(SetError.invalidArguments(
-          SetErrorDescription("Some unknown properties were specified"),
-          Some(toProperties(unknownProperties.toSet)))))
-      case (specifiedServerSetProperties, _) if specifiedServerSetProperties.nonEmpty =>
-        Left(LabelCreationParseException(SetError.invalidArguments(
-          SetErrorDescription("Some server-set properties were specified"),
-          Some(toProperties(specifiedServerSetProperties.toSet)))))
-      case _ => scala.Right(jsObject)
-    }
-
-  private def toProperties(strings: Set[String]): Properties = Properties(strings
-    .flatMap(string => {
-      val refinedValue: Either[String, NonEmptyString] = refineV[NonEmpty](string)
-      refinedValue.fold(_ => None, Some(_))
-    }))
+  val serverSetProperty = Set("id", "keyword")
+  val assignableProperties = Set("displayName", "color")
+  val knownProperties = assignableProperties ++ serverSetProperty
 }
 
 case class LabelCreationRequest(displayName: DisplayName, color: Option[Color]) {
