@@ -4,7 +4,7 @@ import java.time.ZonedDateTime
 import java.util.stream.IntStream
 
 import com.linagora.tmail.james.jmap.label.LabelChangeRepositoryContract.DATE
-import com.linagora.tmail.james.jmap.model.LabelId
+import com.linagora.tmail.james.jmap.model.{LabelChange, LabelChanges, LabelId}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.{Limit, State}
 import org.apache.james.jmap.api.exception.ChangeNotFoundException

@@ -2,9 +2,9 @@ package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.Inject
 import com.linagora.tmail.james.jmap.json.{LabelChangesSerializer => Serializer}
-import com.linagora.tmail.james.jmap.label.{LabelChangeRepository, LabelChanges}
+import com.linagora.tmail.james.jmap.label.LabelChangeRepository
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
-import com.linagora.tmail.james.jmap.model.{LabelChangesRequest => Request, LabelChangesResponse => Response}
+import com.linagora.tmail.james.jmap.model.{LabelChanges, LabelChangesRequest => Request, LabelChangesResponse => Response}
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.api.change.{State => JavaState}
 import org.apache.james.jmap.api.exception.ChangeNotFoundException
