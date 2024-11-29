@@ -1,5 +1,7 @@
 package com.linagora.tmail.blob.guice;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,8 +14,12 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.cassandra.cache.CachedBlobStore;
 import org.apache.james.blob.file.FileBlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.JamesS3MetricPublisher;
+import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
+import org.apache.james.blob.objectstorage.aws.S3RequestOption;
+import org.apache.james.blob.objectstorage.aws.sse.S3SSECConfiguration;
+import org.apache.james.blob.objectstorage.aws.sse.S3SSECustomerKeyFactory;
 import org.apache.james.events.EventBus;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTO;
@@ -31,6 +37,7 @@ import org.apache.james.modules.objectstorage.S3BucketModule;
 import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore;
 import org.apache.james.server.blob.deduplication.PassThroughBlobStore;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
+import org.apache.james.server.core.MissingArgumentException;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -69,6 +76,19 @@ public class BlobStoreModulesChooser {
                 .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
                 .to(S3BlobStoreDAO.class)
                 .in(Scopes.SINGLETON);
+        }
+
+        @Provides
+        @Singleton
+        S3RequestOption provideS3RequestOption(S3BlobStoreConfiguration configuration) throws InvalidKeySpecException, NoSuchAlgorithmException {
+            if (!configuration.ssecEnabled()) {
+                return S3RequestOption.DEFAULT;
+            }
+            S3SSECConfiguration ssecConfiguration = configuration.getSSECConfiguration()
+                .orElseThrow(() -> new MissingArgumentException("SSEC is enabled but no configuration is provided"));
+
+            S3SSECustomerKeyFactory sseCustomerKeyFactory = new S3SSECustomerKeyFactory.SingleCustomerKeyFactory((S3SSECConfiguration.Basic) ssecConfiguration);
+            return new S3RequestOption(new S3RequestOption.SSEC(true, Optional.of(sseCustomerKeyFactory)));
         }
     }
 
@@ -115,10 +135,11 @@ public class BlobStoreModulesChooser {
         @Named(SECOND_BLOB_STORE_DAO)
         BlobStoreDAO getSecondaryS3BlobStoreDAO(BlobId.Factory blobIdFactory,
                                                 MetricFactory metricFactory,
-                                                GaugeRegistry gaugeRegistry) {
+                                                GaugeRegistry gaugeRegistry,
+                                                S3RequestOption s3RequestOption) {
             S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(),
                 () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
-            return new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(), blobIdFactory);
+            return new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(), blobIdFactory, s3RequestOption);
         }
 
         @ProvidesIntoSet

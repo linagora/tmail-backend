@@ -23,6 +23,7 @@ import org.apache.james.blob.objectstorage.aws.DockerAwsS3Container;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
 import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.blob.objectstorage.aws.S3ClientFactory;
+import org.apache.james.blob.objectstorage.aws.S3RequestOption;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
@@ -82,7 +83,8 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
             .readTimeout(Optional.of(Duration.ofMillis(500)))
             .build();
 
-        return new S3BlobStoreDAO(new S3ClientFactory(s3Configuration, new RecordingMetricFactory(), new NoopGaugeRegistry()), s3Configuration, new TestBlobId.Factory());
+        return new S3BlobStoreDAO(new S3ClientFactory(s3Configuration, new RecordingMetricFactory(), new NoopGaugeRegistry()),
+            s3Configuration, new TestBlobId.Factory(), S3RequestOption.DEFAULT);
     }
 
     @AfterEach
