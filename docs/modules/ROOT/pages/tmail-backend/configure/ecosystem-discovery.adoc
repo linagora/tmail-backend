@@ -1,0 +1,61 @@
+= Ecosystem Discovery
+:navtitle: Ecosystem Discovery
+
+
+Allows clients to discover Linagora ecosystem services.
+An example case for the Mobile APP grid in the application.
+
+== How to use it
+
+Clients can access the ecosystem discovery endpoint using the following URL:
+
+```
+http://${jmapBaseServerUrl}/.well-known/linagora-ecosystem
+```
+
+The JSON object response sample:
+```json
+{
+    "linShareApiUrl": "https://linshare.linagora.com/linshare/webservice",
+    "linToApiUrl": "https://linto.ai/demo",
+    "linToApiKey": "apiKey",
+    "twakeApiUrl": "https://api.twake.app",
+    "mobileApps": {
+        "Twake Chat": {
+            "logoURL": "https://twake-chat.xyz/tild3837-6430-4761-b135-303536323633__twake-chat_1.svg",
+            "appId": "twake-chat"
+        },
+        "Twake Drive": {
+            "logoURL": "https://twake-drive.xyz/tild6334-3137-4635-b331-636632306164__drive_1.svg",
+            "webLink": "https://tdrive.linagora.com"
+        }
+    }
+}
+```
+
+== How to configure the response JSON
+
+Provide the key-value in the `linagora-ecosystem.properties` file in the configure path.
+Use `.` for nested keys, representing hierarchical configuration.
+Example: `service.database.url` translates to a JSON structure:
+```json
+{
+    "service": {
+        "database": {
+            "url": "..."
+        }
+    }
+}
+```
+Use `_` as a substitute for spaces in keys for better readability.
+Example: `key_with_space` can be interpreted as `key with space` in json key.
+When `app.key_with_space.apikey=1234` is set in the properties file, it will be translated to:
+```json
+{
+    "app": {
+        "key with space": {
+            "apikey": "1234"
+        }
+    }
+}
+```

@@ -22,3 +22,4 @@ This includes:
 - link:rabbitmq.adoc[Additional RabbitMQ configuration]
 - xref:tmail-backend/imap-extensions/imapAuthDelegationExtension.adoc[IMAP extensions]
 - xref:tmail-backend/smtp-extensions/smtpAuthDelegationExtension.adoc[SMTP extensions]
+- link:ecosystem-discovery.adoc[Linagora Ecosystem discovery]
