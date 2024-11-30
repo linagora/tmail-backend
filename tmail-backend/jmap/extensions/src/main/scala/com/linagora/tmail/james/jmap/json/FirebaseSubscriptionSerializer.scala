@@ -1,10 +1,14 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.method.{ApiKey, AppId, AuthDomain, DatabaseUrl, FirebaseCapabilityProperties, MessagingSenderId, ProjectId, StorageBucket, VapidPublicKey}
-import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, FirebaseSubscriptionUpdateResponse, FirebaseToken, UnparsedFirebaseSubscriptionId}
+import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionCreation, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationParseException, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, FirebaseSubscriptionUpdateResponse, FirebaseToken, UnparsedFirebaseSubscriptionId}
+import eu.timepit.refined.collection.NonEmpty
+import eu.timepit.refined.refineV
+import eu.timepit.refined.types.string.NonEmptyString
 import jakarta.inject.Inject
 import org.apache.james.jmap.api.change.TypeStateFactory
 import org.apache.james.jmap.api.model.TypeName
+import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError, UTCDate}
 import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json._
@@ -85,7 +89,37 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
 
   def deserializeFirebaseSubscriptionSetRequest(input: JsValue): JsResult[FirebaseSubscriptionSetRequest] = Json.fromJson[FirebaseSubscriptionSetRequest](input)
 
-  def deserializeFirebaseSubscriptionCreationRequest(input: JsValue): JsResult[FirebaseSubscriptionCreationRequest] = Json.fromJson[FirebaseSubscriptionCreationRequest](input)
+  private val subscriptionCreationRequestStandardReads: Reads[FirebaseSubscriptionCreationRequest] = Json.reads[FirebaseSubscriptionCreationRequest]
+
+  implicit val subscriptionCreationRequestReads: Reads[FirebaseSubscriptionCreationRequest] = new Reads[FirebaseSubscriptionCreationRequest] {
+    override def reads(json: JsValue): JsResult[FirebaseSubscriptionCreationRequest] =
+      subscriptionCreationRequestStandardReads.reads(json)
+        .flatMap(request => {
+          validateProperties(json.as[JsObject])
+            .fold(_ => JsError("Failed to validate properties"), _ => JsSuccess(request))
+        })
+
+    def validateProperties(jsObject: JsObject): Either[FirebaseSubscriptionCreationParseException, JsObject] =
+      (jsObject.keys.intersect(FirebaseSubscriptionCreation.serverSetProperty), jsObject.keys.diff(FirebaseSubscriptionCreation.knownProperties)) match {
+        case (_, unknownProperties) if unknownProperties.nonEmpty =>
+          Left(FirebaseSubscriptionCreationParseException(SetError.invalidArguments(
+            SetErrorDescription("Some unknown properties were specified"),
+            Some(toProperties(unknownProperties.toSet)))))
+        case (specifiedServerSetProperties, _) if specifiedServerSetProperties.nonEmpty =>
+          Left(FirebaseSubscriptionCreationParseException(SetError.invalidArguments(
+            SetErrorDescription("Some server-set properties were specified"),
+            Some(toProperties(specifiedServerSetProperties.toSet)))))
+        case _ => scala.Right(jsObject)
+      }
+
+    private def toProperties(strings: Set[String]): Properties = Properties(strings
+      .flatMap(string => {
+        val refinedValue: Either[String, NonEmptyString] = refineV[NonEmpty](string)
+        refinedValue.fold(_ => None, Some(_))
+      }))
+  }
+
+  def deserializeFirebaseSubscriptionCreationRequest(input: JsValue): JsResult[FirebaseSubscriptionCreationRequest] = Json.fromJson[FirebaseSubscriptionCreationRequest](input)(subscriptionCreationRequestReads)
 
   def serialize(response: FirebaseSubscriptionGetResponse, properties: Properties): JsValue =
     Json.toJson(response)
