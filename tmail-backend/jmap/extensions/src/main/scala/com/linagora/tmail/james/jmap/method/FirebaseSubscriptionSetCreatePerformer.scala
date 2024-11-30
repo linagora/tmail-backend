@@ -68,8 +68,7 @@ class FirebaseSubscriptionSetCreatePerformer @Inject()(val repository: FirebaseS
 
 
   private def parseCreate(json: JsObject): Either[Exception, FirebaseSubscriptionCreationRequest] = for {
-    validJsObject <- FirebaseSubscriptionCreation.validateProperties(json)
-    parsedRequest <- serializer.deserializeFirebaseSubscriptionCreationRequest(validJsObject).asEither
+    parsedRequest <- serializer.deserializeFirebaseSubscriptionCreationRequest(json).asEither
       .left.map(errors => FirebaseSubscriptionCreationParseException.from(errors))
     validatedRequest <- parsedRequest.validate
       .left.map(e => FirebaseSubscriptionCreationParseException(SetError.invalidArguments(SetErrorDescription(e.getMessage))))
