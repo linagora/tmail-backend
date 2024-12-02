@@ -52,7 +52,6 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -250,8 +249,6 @@ class DistributedLinagoraSecondaryBlobStoreTest {
             });
     }
 
-    //TODO Fix flaky test (https://github.com/linagora/tmail-backend/issues/1299)
-    @Disabled
     @Test
     void sendEmailShouldResultingInEventuallySavingDataToBothObjectStoragesWhenSecondStorageIsDownForShortTime(GuiceJamesServer server) throws Exception {
         secondaryS3.pause();
@@ -281,8 +278,6 @@ class DistributedLinagoraSecondaryBlobStoreTest {
             });
     }
 
-    //TODO Fix flaky test (https://github.com/linagora/tmail-backend/issues/1299)
-    @Disabled
     @Test
     void sendEmailShouldResultingInEventuallySavingDataToBothObjectStoragesWhenSecondStorageIsDownForLongTime(GuiceJamesServer server) {
         secondaryS3.pause();
