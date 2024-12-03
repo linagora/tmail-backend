@@ -8,10 +8,8 @@ import java.util.Locale
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.{CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, TICKET_IP_VALIDATION_ENABLED}
 import com.linagora.tmail.james.jmap.method.CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT
 import com.linagora.tmail.james.jmap.model.LanguageLocation
-import eu.timepit.refined
 import org.apache.commons.configuration2.Configuration
 import org.apache.james.core.MailAddress
-import org.apache.james.jmap.core.UnsignedInt.{UnsignedInt, UnsignedIntConstraint}
 import org.apache.james.server.core.MissingArgumentException
 import org.apache.james.util.{DurationParser, Size}
 
@@ -58,13 +56,6 @@ object JMAPExtensionConfiguration {
   }
 }
 
-object PublicAssetTotalSizeLimit {
-  def of(size: Size): Try[PublicAssetTotalSizeLimit] = refined.refineV[UnsignedIntConstraint](size.asBytes()) match {
-    case Right(value) => Success(PublicAssetTotalSizeLimit(value))
-    case Left(error) => Failure(new NumberFormatException(error))
-  }
-}
-
 case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit = PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT,
                                       supportMailAddress: Option[MailAddress] = Option.empty,
                                       ticketIpValidationEnable: TicketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED,
@@ -82,10 +73,6 @@ case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTota
   def this() = {
     this(PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, Option.empty)
   }
-}
-
-case class PublicAssetTotalSizeLimit(value: UnsignedInt) {
-  def asLong(): Long = value.value
 }
 
 case class TicketIpValidationEnable(value: Boolean)
