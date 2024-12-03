@@ -15,10 +15,9 @@ class MemoryPublicAssetServiceTest extends PublicAssetServiceContract {
 
   @BeforeEach
   def setup(): Unit = {
-    val jmapConfiguration = JMAPExtensionConfiguration()
     val blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO, BucketName.DEFAULT, blobIdFactory)
-    memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, jmapConfiguration, PUBLIC_ASSET_URI_PREFIX)
-    publicAssetSetService = new PublicAssetSetService(identityRepository, memoryPublicAssetRepository, jmapConfiguration)
+    memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, PUBLIC_ASSET_URI_PREFIX)
+    publicAssetSetService = new PublicAssetSetService(identityRepository, memoryPublicAssetRepository, JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT)
   }
 
   override def testee: PublicAssetSetService = publicAssetSetService

@@ -2,7 +2,6 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.InputStream
 import java.net.URI
-import java.time.Instant
 import java.util.UUID
 
 import com.github.f4b6a3.uuid.UuidCreator
@@ -16,9 +15,40 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.core.JmapRfc8621Configuration
+import org.apache.james.jmap.mail.{BlobId => JmapBlobId}
 import org.apache.james.mailbox.model.ContentType
 
 import scala.util.Try
+
+object PublicAssetSetCreationRequest {
+  val knownProperties: Set[String] = Set("blobId", "identityIds")
+}
+
+case class PublicAssetSetCreationRequest(blobId: JmapBlobId, identityIds: Option[Map[IdentityId, Boolean]] = None)
+
+case class PublicAssetCreationRequest(size: Size,
+                                      contentType: ImageContentType,
+                                      identityIds: Seq[IdentityId] = Seq.empty,
+                                      content: () => InputStream)
+
+object PublicURI {
+  def fromString(value: String): Either[Throwable, PublicURI] = Try(new URI(value))
+    .map(PublicURI.apply)
+    .toEither
+
+  def from(assetId: PublicAssetId, username: Username, publicUriPrefix: URI): PublicURI = {
+    val baseUri = new URIBuilder(publicUriPrefix)
+    val initPathSegments = baseUri.getPathSegments
+    val finalPathSegments = ImmutableList.builder()
+      .addAll(initPathSegments)
+      .add("publicAsset")
+      .add(username.asString())
+      .add(assetId.asString())
+      .build()
+    PublicURI(baseUri.setPathSegments(finalPathSegments)
+      .build())
+  }
+}
 
 object PublicAssetIdFactory {
   def generate(): PublicAssetId = PublicAssetId(UuidCreator.getTimeBased)
@@ -41,25 +71,6 @@ case class PublicAssetId(value: UUID) {
 object PublicAssetURIPrefix {
   def fromConfiguration(configuration: JmapRfc8621Configuration): Either[Throwable, URI] =
     Try(new URI(configuration.urlPrefixString)).toEither
-}
-
-object PublicURI {
-  def fromString(value: String): Either[Throwable, PublicURI] = Try(new URI(value))
-    .map(PublicURI.apply)
-    .toEither
-
-  def from(assetId: PublicAssetId, username: Username, publicUriPrefix: URI): PublicURI = {
-    val baseUri = new URIBuilder(publicUriPrefix)
-    val initPathSegments = baseUri.getPathSegments
-    val finalPathSegments = ImmutableList.builder()
-      .addAll(initPathSegments)
-      .add("publicAsset")
-      .add(username.asString())
-      .add(assetId.asString())
-      .build()
-    PublicURI(baseUri.setPathSegments(finalPathSegments)
-      .build())
-  }
 }
 
 case class PublicURI(value: URI) extends AnyVal
@@ -87,24 +98,6 @@ object ImageContentType {
       .map(e => PublicAssetInvalidContentTypeException(e))
 }
 
-trait PublicAssetException extends RuntimeException {
-  def message: String
-
-  override def getMessage: String = message
-}
-
-case class PublicAssetInvalidContentTypeException(contentType: String) extends PublicAssetException {
-  override val message: String = s"Invalid content type: $contentType"
-}
-
-case class PublicAssetNotFoundException(id: PublicAssetId) extends PublicAssetException {
-  override val message: String = s"Public asset not found: ${id.asString()}"
-}
-
-case class PublicAssetQuotaLimitExceededException(limitAsByte: Long) extends PublicAssetException {
-  override val message: String = s"Exceeding public asset quota limit of $limitAsByte bytes"
-}
-
 case class PublicAssetStorage(id: PublicAssetId,
                               publicURI: PublicURI,
                               size: Size,
@@ -116,11 +109,6 @@ case class PublicAssetStorage(id: PublicAssetId,
 
   def contentTypeAsString(): String = contentType.value
 }
-
-case class PublicAssetCreationRequest(size: Size,
-                                      contentType: ImageContentType,
-                                      identityIds: Seq[IdentityId] = Seq.empty,
-                                      content: () => InputStream)
 
 object PublicAssetMetadata {
   def from(publicAsset: PublicAssetStorage): PublicAssetMetadata =
@@ -150,4 +138,22 @@ case class PublicAssetMetadata(id: PublicAssetId,
       content = () => content)
 
   def sizeAsLong(): java.lang.Long = size.value
+}
+
+trait PublicAssetException extends RuntimeException {
+  def message: String
+
+  override def getMessage: String = message
+}
+
+case class PublicAssetNotFoundException(id: PublicAssetId) extends PublicAssetException {
+  override val message: String = s"Public asset not found: ${id.asString()}"
+}
+
+case class PublicAssetQuotaLimitExceededException(limitAsByte: Long) extends PublicAssetException {
+  override val message: String = s"Exceeding public asset quota limit of $limitAsByte bytes"
+}
+
+case class PublicAssetInvalidContentTypeException(contentType: String) extends PublicAssetException {
+  override val message: String = s"Invalid content type: $contentType"
 }

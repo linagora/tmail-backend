@@ -2,7 +2,6 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.util.UUID
 
-import cats.implicits._
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer.PublicAssetSetUpdateReads
 import com.linagora.tmail.james.jmap.method.PublicAssetSetMethod.LOGGER
 import com.linagora.tmail.james.jmap.method.standardErrorMessage
@@ -10,11 +9,10 @@ import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentTy
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{AccountId, Properties, SetError, UuidState}
-import org.apache.james.jmap.mail.{IdentityIds, BlobId => JmapBlobId}
-import org.apache.james.jmap.method.{WithAccountId, standardError}
+import org.apache.james.jmap.core.{AccountId, SetError, UuidState}
+import org.apache.james.jmap.method.WithAccountId
 import org.apache.james.jmap.routes.BlobNotFoundException
-import play.api.libs.json.{JsArray, JsError, JsObject, JsString, JsSuccess, JsValue}
+import play.api.libs.json.{JsError, JsObject, JsSuccess}
 
 import scala.util.Try
 
@@ -24,33 +22,6 @@ case class PublicAssetSetRequest(accountId: AccountId,
                                  destroy: Option[Seq[UnparsedPublicAssetId]]) extends WithAccountId
 
 case class PublicAssetCreationId(id: Id)
-
-object PublicAssetSetCreationRequest {
-  val knownProperties: Set[String] = Set("blobId", "identityIds")
-
-  def validateProperties(jsObject: JsObject): Either[PublicAssetCreationParseException, JsObject] = {
-    jsObject.fields.find(mapEntry => !knownProperties.contains(mapEntry._1))
-      .map(e => Left(PublicAssetCreationParseException(SetError.invalidArguments(
-        SetErrorDescription("Some unknown properties were specified"),
-        Some(Properties.toProperties(Set(e._1)))))))
-      .getOrElse(Right(jsObject))
-  }
-}
-
-case class PublicAssetSetCreationRequest(blobId: JmapBlobId, identityIds: Option[Map[IdentityId, Boolean]] = None) {
-
-  def parseIdentityIds: Either[PublicAssetCreationParseException, List[IdentityId]] =
-    identityIds match {
-      case None => Right(List.empty)
-      case Some(identityIdMap) => identityIdMap.map {
-        case (identityId: IdentityId, bolVal) => if (bolVal) {
-          Right(identityId)
-        } else {
-          scala.Left(PublicAssetCreationParseException(SetError.invalidArguments(SetErrorDescription(s"identityId '$identityId' must be a true"), Some(Properties.toProperties(Set("identityIds"))))))
-        }
-      }.toList.sequence
-    }
-}
 
 case class UnparsedPublicAssetId(id: String) {
 

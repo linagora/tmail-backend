@@ -13,6 +13,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-configuration</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions-api</artifactId>
             <version>1.0.0-SNAPSHOT</version>
@@ -21,6 +25,11 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>jmap-extensions</artifactId>
             <scope>test</scope>
         </dependency>
 
