@@ -2,11 +2,10 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.io.ByteArrayInputStream
 import java.net.URI
-import java.time.Clock
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
-import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
+import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
 import jakarta.inject.{Inject, Named}
 import org.apache.james.backends.cassandra.components.CassandraModule
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
@@ -18,15 +17,15 @@ import reactor.core.scala.publisher.SMono
 
 class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
                                                val blobStore: BlobStore,
-                                               val configuration: JMAPExtensionConfiguration,
+                                               val publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit,
                                                @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
   private val bucketName: BucketName = blobStore.getDefaultBucketName
 
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono(getTotalSize(username))
-      .filter(totalSize => (totalSize + creationRequest.size.value) <= configuration.publicAssetTotalSizeLimit.asLong())
+      .filter(totalSize => (totalSize + creationRequest.size.value) <= publicAssetTotalSizeLimit.asLong())
       .flatMap(_ => SMono(createAsset(username, creationRequest)))
-      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException(configuration.publicAssetTotalSizeLimit.asLong())))
+      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException(publicAssetTotalSizeLimit.asLong())))
 
   private def createAsset(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())

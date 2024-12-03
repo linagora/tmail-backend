@@ -15,8 +15,9 @@ class MemoryPublicAssetRepositoryTest extends PublicAssetRepositoryContract {
 
   @BeforeEach
   def setup(): Unit = {
+
     val blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO, BucketName.DEFAULT, blobIdFactory)
-    memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, JMAPExtensionConfiguration(), PUBLIC_ASSET_URI_PREFIX)
+    memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, PUBLIC_ASSET_URI_PREFIX)
   }
 
   override def teste: PublicAssetRepository = memoryPublicAssetRepository

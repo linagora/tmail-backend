@@ -5,7 +5,7 @@ import java.net.URI
 import java.time.Clock
 
 import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
-import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
+import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
 import jakarta.inject.{Inject, Named}
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.core.Username
@@ -16,35 +16,8 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
 
-trait PublicAssetRepository {
-  def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage]
-
-  def update(username: Username, id: PublicAssetId, identityIds: Set[IdentityId]): Publisher[Void]
-
-  def remove(username: Username, id: PublicAssetId): Publisher[Void]
-
-  def revoke(username: Username): Publisher[Void]
-
-  def get(username: Username, ids: Set[PublicAssetId]): Publisher[PublicAssetStorage]
-
-  def get(username: Username, id: PublicAssetId): Publisher[PublicAssetStorage] = get(username, Set(id))
-
-  def list(username: Username): Publisher[PublicAssetStorage]
-
-  def listPublicAssetMetaDataOrderByIdAsc(username: Username): Publisher[PublicAssetMetadata]
-
-  def listAllBlobIds(): Publisher[BlobId]
-
-  def updateIdentityIds(username: Username, id: PublicAssetId, identityIdsToAdd: Seq[IdentityId], identityIdsToRemove: Seq[IdentityId]): Publisher[Void] =
-    SMono(get(username, id))
-      .map(publicAsset => (publicAsset.identityIds.toSet ++ identityIdsToAdd.toSet) -- identityIdsToRemove.toSet)
-      .flatMap(identityIds => SMono(update(username, id, identityIds)))
-
-  def getTotalSize(username: Username): Publisher[Long]
-}
-
 class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
-                                            val configuration: JMAPExtensionConfiguration,
+                                            val publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit,
                                             @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
   private val tableStore: Table[Username, PublicAssetId, PublicAssetMetadata] = Tables.synchronizedTable(HashBasedTable.create())
 
@@ -52,9 +25,9 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
 
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono(getTotalSize(username))
-      .filter(totalSize => (totalSize + creationRequest.size.value) <= configuration.publicAssetTotalSizeLimit.asLong())
+      .filter(totalSize => (totalSize + creationRequest.size.value) <= publicAssetTotalSizeLimit.asLong())
       .flatMap(_ => SMono(createAsset(username, creationRequest)))
-      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException(configuration.publicAssetTotalSizeLimit.asLong())))
+      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException(publicAssetTotalSizeLimit.asLong())))
 
   private def createAsset(username: Username, creationRequest: PublicAssetCreationRequest): SMono[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
