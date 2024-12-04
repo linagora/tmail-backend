@@ -34,6 +34,7 @@ import org.apache.james.util.DurationParser;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
+import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -274,12 +275,20 @@ public class ScheduledReconnectionHandler implements Startable {
                 .loadTrustMaterial(trustStore.getFile(), trustStore.getPassword());
         }
 
+        class QueueNotFoundException extends RuntimeException {
+
+        }
+
         ErrorDecoder RETRY_500 = (methodKey, response) -> {
-            if (response.status() == 500) {
-                throw new RetryableException(response.status(), "Error encountered, scheduling retry",
-                    response.request().httpMethod(), new Date(), response.request());
+            switch (response.status()) {
+                case HttpStatus.NOT_FOUND_404:
+                    throw new QueueNotFoundException();
+                case HttpStatus.INTERNAL_SERVER_ERROR_500:
+                    throw new RetryableException(response.status(), "Error encountered, scheduling retry",
+                        response.request().httpMethod(), new Date(), response.request());
+                default:
+                    throw new RuntimeException("Non-recoverable exception status: " + response.status());
             }
-            throw new RuntimeException("Non recoverable exception status: " + response.status());
         };
 
         @RequestLine(value = "GET /api/queues/{vhost}/{name}", decodeSlash = false)
@@ -287,10 +296,11 @@ public class ScheduledReconnectionHandler implements Startable {
 
     }
 
-    private static final ImmutableList<String> QUEUES_TO_MONITOR = ImmutableList.of("JamesMailQueue-workqueue-spool",
+    public static final ImmutableList<String> QUEUES_TO_MONITOR = ImmutableList.of("JamesMailQueue-workqueue-spool",
         "JamesMailQueue-workqueue-outgoing",
         "mailboxEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
-        "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup");
+        "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
+        "deleted-message-vault-work-queue");
     private static final Logger LOGGER = LoggerFactory.getLogger(ScheduledReconnectionHandler.class);
     
     private final Set<SimpleConnectionPool.ReconnectionHandler> reconnectionHandlers;
@@ -314,7 +324,7 @@ public class ScheduledReconnectionHandler implements Startable {
     
     public void start() {
         if (scheduledReconnectionHandlerConfiguration.enabled()) {
-            disposable = Flux.interval(Duration.ofMinutes(1))
+            disposable = Flux.interval(scheduledReconnectionHandlerConfiguration.interval())
                 .filter(any -> restartNeeded())
                 .concatMap(any -> restart())
                 .onErrorResume(e -> {
@@ -339,16 +349,24 @@ public class ScheduledReconnectionHandler implements Startable {
                 .then());
     }
     
-    private boolean restartNeeded() {
+    public boolean restartNeeded() {
         return QUEUES_TO_MONITOR.stream()
-            .filter(this::hasNoConsumers)
-            .findAny()
-            .isPresent();
+            .anyMatch(queue -> !hasConsumers(queue));
     }
 
-    private boolean hasNoConsumers(String queue) {
-        return mqManagementAPI.queueDetails(configuration.getVhost().orElse(DEFAULT_VHOST), queue)
-            .getConsumerDetails()
-            .isEmpty();
+    private boolean hasConsumers(String queue) {
+        try {
+            boolean hasConsumers = !mqManagementAPI.queueDetails(configuration.getVhost().orElse(DEFAULT_VHOST), queue)
+                .getConsumerDetails()
+                .isEmpty();
+
+            if (!hasConsumers) {
+                LOGGER.warn("The {} queue has no consumers", queue);
+            }
+
+            return hasConsumers;
+        } catch (RabbitMQManagementAPI.QueueNotFoundException e) {
+            return true;
+        }
     }
 }
