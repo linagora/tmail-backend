@@ -2,6 +2,7 @@ package com.linagora.tmail.james.common
 
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract.{basePath, bobAccountId, calmlyAwait, contactA, contactB, firstnameA, firstnameB, mailAddressA, mailAddressB, surnameA, surnameB, webAdminApi}
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe
 import com.linagora.tmail.james.jmap.contact.ContactFields
