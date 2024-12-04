@@ -9,7 +9,11 @@ resuming consumption.
 
 In order to activate it, in `rabbitmq.properties`:
 
+- `scheduled.consumer.reconnection.enabled`: Boolean. Default to true. Whether to enable the scheduled RabbitMQ reconnection handler.
+- `scheduled.consumer.reconnection.interval`: Duration. Default to 60 seconds. Interval between consumers check.
+
 ....
 scheduled.consumer.reconnection.enabled=true
+scheduled.consumer.reconnection.interval=60s
 ....
 
