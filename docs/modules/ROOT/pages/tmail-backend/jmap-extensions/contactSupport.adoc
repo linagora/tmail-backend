@@ -15,9 +15,14 @@ com:linagora:params:jmap:contact:support
 The associated object have the following fields:
 
 - `supportMailAddress`: *String|null*. The support mail address. Need to match addr-spec [@!RFC5322].
+- `httpLink`: *String|null*. The support HTTP link. Need to match uri [@!RFC3986].
 
 == Configuration
 
 The support email address can be configured in the `jmap.properties` by setting the `support.mail.address` property.
 
-Since this extension is optional, configuring it is also optional. If a valid configuration is not provided, the extension will be "disabled"—meaning the server will not advertise it as a supported capability.
+The support http link can be configured in the `jmap.properties` by setting the `support.httpLink` property.
+
+You can choose to configure either the support email address, the support HTTP link (both must not be defined at the same time).
+
+Since this extension is optional, configuring it is also optional.
