@@ -10,6 +10,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import org.apache.http.ssl.TrustStrategy;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.lifecycle.api.Startable;
+import org.apache.james.util.DurationParser;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
@@ -59,13 +61,21 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class ScheduledReconnectionHandler implements Startable {
-    public record ScheduledReconnectionHandlerConfiguration(boolean enabled) {
+    public record ScheduledReconnectionHandlerConfiguration(boolean enabled, Duration interval) {
+        public static final boolean ENABLED = true;
+        public static final Duration ONE_MINUTE = Duration.ofSeconds(60);
+
         public static ScheduledReconnectionHandlerConfiguration parse(PropertiesProvider propertiesProvider) throws ConfigurationException {
             try {
                 Configuration configuration = propertiesProvider.getConfiguration("rabbitmq");
-                return new ScheduledReconnectionHandlerConfiguration(configuration.getBoolean("scheduled.consumer.reconnection.enabled", true));
+                boolean enabled = configuration.getBoolean("scheduled.consumer.reconnection.enabled", ENABLED);
+                Duration interval = Optional.ofNullable(configuration.getString("scheduled.consumer.reconnection.interval", null))
+                    .map(s -> DurationParser.parse(s, ChronoUnit.SECONDS))
+                    .orElse(ONE_MINUTE);
+
+                return new ScheduledReconnectionHandlerConfiguration(enabled, interval);
             } catch (FileNotFoundException e) {
-                return new ScheduledReconnectionHandlerConfiguration(false);
+                return new ScheduledReconnectionHandlerConfiguration(false, ONE_MINUTE);
             }
         }
     }
