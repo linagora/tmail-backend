@@ -8,7 +8,7 @@ import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.Keyword
-import play.api.libs.json.{Format, JsArray, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes, __}
+import play.api.libs.json.{Format, JsArray, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, JsonValidationError, Reads, Writes, __}
 
 object LabelSerializer {
   private implicit val labelIdFormat: Format[LabelId] = Json.valueFormat[LabelId]
@@ -61,7 +61,8 @@ object LabelSerializer {
       labelCreationRequestStandardReads.reads(json)
         .flatMap(request => {
           validateProperties(json.as[JsObject])
-            .fold(_ => JsError("Failed to validate properties"), _ => JsSuccess(request))
+            .fold(exception => JsError(JsonValidationError("Invalid properties", exception.setError)),
+              _ => JsSuccess(request))
         })
 
     def validateProperties(jsObject: JsObject): Either[LabelCreationParseException, JsObject] =
