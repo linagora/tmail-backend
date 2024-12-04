@@ -2,7 +2,6 @@ package com.linagora.tmail.james.common
 
 import java.time.Duration
 import java.util.concurrent.TimeUnit
-
 import com.linagora.tmail.james.common.LinagoraContactAutocompleteMethodContract.{basePath, bobAccountId, calmlyAwait, contactA, contactB, firstnameA, firstnameB, mailAddressA, mailAddressB, surnameA, surnameB, webAdminApi}
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe
 import com.linagora.tmail.james.jmap.contact.ContactFields
@@ -19,7 +18,7 @@ import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture._
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.modules.protocols.SmtpGuiceProbe
 import org.apache.james.utils.{DataProbeImpl, SMTPMessageSender, WebAdminGuiceProbe}
