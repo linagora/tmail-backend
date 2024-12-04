@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.method.JSON_CUSTOM_VALIDATION_ERROR
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationId, LabelCreationParseException, LabelCreationRequest, LabelCreationResponse, LabelGetRequest, LabelGetResponse, LabelId, LabelIds, LabelPatchObject, LabelSetRequest, LabelSetResponse, LabelUpdateResponse, UnparsedLabelId}
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.refineV
@@ -8,7 +9,7 @@ import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.Keyword
-import play.api.libs.json.{Format, JsArray, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes, __}
+import play.api.libs.json.{Format, JsArray, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, JsonValidationError, Reads, Writes, __}
 
 object LabelSerializer {
   private implicit val labelIdFormat: Format[LabelId] = Json.valueFormat[LabelId]
@@ -57,12 +58,11 @@ object LabelSerializer {
   private val labelCreationRequestStandardReads: Reads[LabelCreationRequest] = Json.reads[LabelCreationRequest]
 
   implicit val labelCreationRequestReads: Reads[LabelCreationRequest] = new Reads[LabelCreationRequest] {
-    override def reads(json: JsValue): JsResult[LabelCreationRequest] =
-      labelCreationRequestStandardReads.reads(json)
-        .flatMap(request => {
-          validateProperties(json.as[JsObject])
-            .fold(_ => JsError("Failed to validate properties"), _ => JsSuccess(request))
-        })
+    override def reads(json: JsValue): JsResult[LabelCreationRequest] = {
+      validateProperties(json.as[JsObject])
+        .fold(exception => JsError(JsonValidationError(JSON_CUSTOM_VALIDATION_ERROR, exception.setError)),
+          _ => labelCreationRequestStandardReads.reads(json))
+    }
 
     def validateProperties(jsObject: JsObject): Either[LabelCreationParseException, JsObject] =
       (jsObject.keys.intersect(LabelCreationRequest.serverSetProperty),

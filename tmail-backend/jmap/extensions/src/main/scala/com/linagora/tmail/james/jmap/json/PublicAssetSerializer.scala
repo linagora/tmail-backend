@@ -1,11 +1,12 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.method.standardErrorMessage
+import com.linagora.tmail.james.jmap.method.{JSON_CUSTOM_VALIDATION_ERROR, standardErrorMessage}
 import com.linagora.tmail.james.jmap.model.{PublicAssetDTO, PublicAssetGetRequest, PublicAssetGetResponse}
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
-import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationId, PublicAssetCreationResponse, PublicAssetId, PublicAssetPatchObject, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetUpdateResponse, PublicURI, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
+import com.linagora.tmail.james.jmap.publicAsset.{PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationResponse, PublicAssetId, PublicAssetPatchObject, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetUpdateResponse, PublicURI, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
 import org.apache.james.jmap.api.model.IdentityId
-import org.apache.james.jmap.core.{SetError, UuidState}
+import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.{Properties, SetError, UuidState}
 import org.apache.james.jmap.json.{mapMarkerReads, mapWrites}
 import org.apache.james.jmap.mail.{IdentityIds, UnparsedIdentityId, BlobId => JmapBlobId}
 import play.api.libs.json.{JsBoolean, JsError, JsNull, JsObject, JsPath, JsResult, JsString, JsSuccess, JsValue, Json, JsonValidationError, Reads, Writes}
@@ -91,7 +92,23 @@ object PublicAssetSerializer {
   private implicit val blobIdReads: Reads[JmapBlobId] = Json.valueReads[JmapBlobId]
   private implicit val unparsedIdentityIdReads: Reads[UnparsedIdentityId] = Json.valueReads[UnparsedIdentityId]
   private implicit val identityIdsReads: Reads[IdentityIds] = Json.valueReads[IdentityIds]
-  private implicit val publicAssetCreationRequestReads: Reads[PublicAssetSetCreationRequest] = Json.reads[PublicAssetSetCreationRequest]
+
+  private implicit val publicAssetCreationRequestStandardReads: Reads[PublicAssetSetCreationRequest] = Json.reads[PublicAssetSetCreationRequest]
+  private implicit val publicAssetCreationRequestReads: Reads[PublicAssetSetCreationRequest] = new Reads[PublicAssetSetCreationRequest] {
+    override def reads(json: JsValue): JsResult[PublicAssetSetCreationRequest] =
+      validateProperties(json.as[JsObject])
+        .fold(exception => JsError(JsonValidationError(JSON_CUSTOM_VALIDATION_ERROR, exception.setError)),
+          _ => publicAssetCreationRequestStandardReads.reads(json))
+
+    def validateProperties(jsObject: JsObject): Either[PublicAssetCreationParseException, JsObject] = {
+      jsObject.fields.find(mapEntry => !PublicAssetSetCreationRequest.knownProperties.contains(mapEntry._1))
+        .map(e => Left(PublicAssetCreationParseException(SetError.invalidArguments(
+          SetErrorDescription("Some unknown properties were specified"),
+          Some(Properties.toProperties(Set(e._1)))))))
+        .getOrElse(Right(jsObject))
+    }
+  }
+
   private implicit val publicAssetCreationIdReads: Reads[PublicAssetCreationId] = Json.reads[PublicAssetCreationId]
   private implicit val unparsedPublicAssetIdReads: Reads[UnparsedPublicAssetId] = Json.valueReads[UnparsedPublicAssetId]
 

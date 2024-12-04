@@ -8,6 +8,7 @@ import play.api.libs.json.{JsError, JsPath, JsResult, JsonValidationError}
 import scala.language.implicitConversions
 
 package object method {
+  val JSON_CUSTOM_VALIDATION_ERROR: String = "error.custom.validation"
 
   def standardErrorMessage(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): String =
     errors.head match {
@@ -19,8 +20,15 @@ package object method {
       case _ => ResponseSerializer.serialize(JsError(errors)).toString()
     }
 
+  private def tryExtractSetErrorMessage(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): Option[SetError] =
+    errors.head match {
+      case (_, Seq(JsonValidationError(Seq(JSON_CUSTOM_VALIDATION_ERROR), setError: SetError))) => Option(setError)
+      case _ => None
+    }
+
   def standardError(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): SetError =
-    SetError.invalidArguments(SetErrorDescription(standardErrorMessage(errors)))
+    tryExtractSetErrorMessage(errors)
+      .getOrElse(SetError.invalidArguments(SetErrorDescription(standardErrorMessage(errors))))
 
   implicit class AsEitherRequest[T](val jsResult: JsResult[T]) {
     def asEitherRequest: Either[IllegalArgumentException, T] =
