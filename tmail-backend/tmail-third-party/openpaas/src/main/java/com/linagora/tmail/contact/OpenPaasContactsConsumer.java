@@ -40,9 +40,15 @@ import reactor.rabbitmq.Sender;
 public class OpenPaasContactsConsumer implements Startable, Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
-    public static final String EXCHANGE_NAME = "contacts:contact:add";
-    public static final String QUEUE_NAME = "openpaas-contacts-queue";
-    public static final String DEAD_LETTER = QUEUE_NAME + "-dead-letter";
+    public static final String EXCHANGE_NAME_ADD = "contacts:contact:add";
+    public static final String EXCHANGE_NAME_UPDATE = "contacts:contact:update";
+    public static final String EXCHANGE_NAME_DELETE = "contacts:contact:delete";
+    public static final String QUEUE_NAME_ADD = "openpaas-contacts-queue-add";
+    public static final String QUEUE_NAME_UPDATE = "openpaas-contacts-queue-update";
+    public static final String QUEUE_NAME_DELETE = "openpaas-contacts-queue-delete";
+    public static final String DEAD_LETTER_ADD = "openpaas-contacts-queue-add-dead-letter";
+    public static final String DEAD_LETTER_UPDATE = "openpaas-contacts-queue-update-dead-letter";
+    public static final String DEAD_LETTER_DELETE = "openpaas-contacts-queue-delete-dead-letter";
 
     private final ReceiverProvider receiverProvider;
     private final Sender sender;
@@ -63,46 +69,57 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
         this.openPaasRestClient = openPaasRestClient;
     }
 
+    @FunctionalInterface
+    public interface ContactHandler {
+        Mono<?> handleContact(AccountId ownerAccountId, ContactFields openPaasContact);
+    }
+
     public void start() {
+        startExchange(EXCHANGE_NAME_ADD, QUEUE_NAME_ADD, DEAD_LETTER_ADD, this::indexContactIfNeeded);
+        startExchange(EXCHANGE_NAME_UPDATE, QUEUE_NAME_UPDATE, DEAD_LETTER_UPDATE, this::updateContact);
+        startExchange(EXCHANGE_NAME_DELETE, QUEUE_NAME_DELETE, DEAD_LETTER_DELETE, this::deleteContact);
+    }
+
+    public void startExchange(String exchange, String queue, String deadLetter, ContactHandler contactHandler) {
         Flux.concat(
-                sender.declareExchange(ExchangeSpecification.exchange(EXCHANGE_NAME)
+                sender.declareExchange(ExchangeSpecification.exchange(exchange)
                     .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
                 sender.declareQueue(QueueSpecification
-                    .queue(DEAD_LETTER)
+                    .queue(deadLetter)
                     .durable(DURABLE)
                     .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder().build())),
                 sender.declareQueue(QueueSpecification
-                    .queue(QUEUE_NAME)
+                    .queue(queue)
                     .durable(DURABLE)
                     .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder()
-                        .deadLetter(DEAD_LETTER)
+                        .deadLetter(deadLetter)
                         .build())),
                 sender.bind(BindingSpecification.binding()
-                    .exchange(EXCHANGE_NAME)
-                    .queue(QUEUE_NAME)
+                    .exchange(exchange)
+                    .queue(queue)
                     .routingKey(EMPTY_ROUTING_KEY)))
             .then()
             .block();
 
-        consumeContactsDisposable = doConsumeContactMessages();
+        consumeContactsDisposable = doConsumeContactMessages(queue, contactHandler);
     }
 
-    private Disposable doConsumeContactMessages() {
-        return delivery()
-            .flatMap(delivery -> messageConsume(delivery, delivery.getBody()))
+    private Disposable doConsumeContactMessages(String queue, ContactHandler contactHandler) {
+        return delivery(queue)
+            .flatMap(delivery -> messageConsume(delivery, delivery.getBody(), contactHandler))
             .subscribe();
     }
 
-    public Flux<AcknowledgableDelivery> delivery() {
+    public Flux<AcknowledgableDelivery> delivery(String queue) {
         return Flux.using(receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(QUEUE_NAME),
+            receiver -> receiver.consumeManualAck(queue),
             Receiver::close);
     }
 
-    private Mono<EmailAddressContact> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
+    private Mono<?> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload, ContactHandler contactHandler) {
         return Mono.just(messagePayload)
-            .map(ContactAddedRabbitMqMessage::fromJSON)
-            .flatMap(this::handleMessage)
+            .map(ContactRabbitMqMessage::fromJSON)
+            .flatMap(contactMessage -> handleMessage(contactMessage, contactHandler))
             .doOnSuccess(result -> {
                 LOGGER.debug("Consumed contact successfully '{}'", result);
                 ackDelivery.ack();
@@ -114,13 +131,13 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             });
     }
 
-    private Mono<EmailAddressContact> handleMessage(ContactAddedRabbitMqMessage contactAddedMessage) {
-        LOGGER.trace("Consumed jCard object message: {}", contactAddedMessage);
-        Optional<ContactFields> maybeContactFields = contactAddedMessage.vcard().asContactFields();
+    private Mono<?> handleMessage(ContactRabbitMqMessage contactMessage, ContactHandler contactHandler) {
+        LOGGER.trace("Consumed jCard object message: {}", contactMessage);
+        Optional<ContactFields> maybeContactFields = contactMessage.vcard().asContactFields();
         return maybeContactFields.map(
-                openPaasContact -> openPaasRestClient.retrieveMailAddress(contactAddedMessage.userId())
+                openPaasContact -> openPaasRestClient.retrieveMailAddress(contactMessage.userId())
                     .map(this::getAccountIdFromMailAddress)
-                    .flatMap(ownerAccountId -> indexContactIfNeeded(ownerAccountId, openPaasContact)))
+                    .flatMap(ownerAccountId -> contactHandler.handleContact(ownerAccountId, openPaasContact)))
             .orElse(Mono.empty());
     }
 
@@ -135,6 +152,23 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
                 } else {
                     return Mono.empty();
                 }
+            });
+    }
+
+    private Mono<EmailAddressContact> updateContact(AccountId ownerAccountId, ContactFields openPaasContact) {
+        return Mono.from(contactSearchEngine.get(ownerAccountId, openPaasContact.address()))
+            .flatMap(existingContact -> Mono.from(contactSearchEngine.update(ownerAccountId, openPaasContact)))
+            .onErrorResume(ContactNotFoundException.class, e -> {
+                LOGGER.warn("Contact not found for update: {}", openPaasContact.address());
+                return Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact));
+            });
+    }
+
+    private Mono<Void> deleteContact(AccountId ownerAccountId, ContactFields openPaasContact) {
+        return Mono.from(contactSearchEngine.delete(ownerAccountId, openPaasContact.address()))
+            .onErrorResume(error -> {
+                LOGGER.warn("Failed to delete contact: {}", openPaasContact, error);
+                return Mono.empty();
             });
     }
 
