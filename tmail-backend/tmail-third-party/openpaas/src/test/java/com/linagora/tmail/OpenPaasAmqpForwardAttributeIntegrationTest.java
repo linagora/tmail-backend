@@ -39,6 +39,7 @@ import java.util.UUID;
 import jakarta.inject.Singleton;
 
 import org.apache.james.MemoryJamesServerMain;
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.mailets.TemporaryJamesServer;
@@ -135,6 +136,12 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                 .withBase(Modules.combine(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE,
                     new OpenPaasModule()))
                 .withOverrides(new AbstractModule() {
+                    @Provides
+                    @Singleton
+                    public RabbitMQConfiguration provideCommonRabbitMQConfiguration() throws URISyntaxException {
+                        return rabbitMQExtension.getRabbitMQ().getConfiguration();
+                    }
+
                     @Provides
                     @Singleton
                     public OpenPaasConfiguration provideOpenPaasConfiguration()
@@ -242,6 +249,12 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                 .withBase(Modules.combine(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE,
                     new OpenPaasModule()))
                 .withOverrides(new AbstractModule() {
+                    @Provides
+                    @Singleton
+                    public RabbitMQConfiguration provideCommonRabbitMQConfiguration() throws URISyntaxException {
+                        return rabbitMQExtension.getRabbitMQ().getConfiguration();
+                    }
+
                     @Provides
                     @Singleton
                     public OpenPaasConfiguration provideOpenPaasConfiguration()
