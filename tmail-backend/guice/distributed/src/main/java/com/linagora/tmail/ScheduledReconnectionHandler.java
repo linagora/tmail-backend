@@ -351,10 +351,10 @@ public class ScheduledReconnectionHandler implements Startable {
     
     public boolean restartNeeded() {
         return QUEUES_TO_MONITOR.stream()
-            .anyMatch(queue -> !hasConsumers(queue));
+            .anyMatch(this::restartNeeded);
     }
 
-    private boolean hasConsumers(String queue) {
+    private boolean restartNeeded(String queue) {
         try {
             boolean hasConsumers = !mqManagementAPI.queueDetails(configuration.getVhost().orElse(DEFAULT_VHOST), queue)
                 .getConsumerDetails()
@@ -364,9 +364,9 @@ public class ScheduledReconnectionHandler implements Startable {
                 LOGGER.warn("The {} queue has no consumers", queue);
             }
 
-            return hasConsumers;
+            return !hasConsumers;
         } catch (RabbitMQManagementAPI.QueueNotFoundException e) {
-            return true;
+            return false;
         }
     }
 }
