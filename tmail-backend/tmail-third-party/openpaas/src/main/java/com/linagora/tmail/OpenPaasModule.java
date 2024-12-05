@@ -65,8 +65,8 @@ public class OpenPaasModule extends AbstractModule {
     @Provides
     @Named(OPENPAAS_INJECTION_KEY)
     @Singleton
-    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
-        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
+    public RabbitMQConfiguration provideRabbitMQConfiguration(RabbitMQConfiguration commonRabbitMQConfiguration, OpenPaasConfiguration openPaasConfiguration) {
+        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration(commonRabbitMQConfiguration);
     }
 
     @Provides
