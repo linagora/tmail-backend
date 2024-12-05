@@ -7,6 +7,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.TEN_SECONDS;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+
+import jakarta.mail.internet.AddressException;
+
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -16,25 +23,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.rabbitmq.OutboundMessage;
-
-import jakarta.mail.internet.AddressException;
-
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.AmqpUri;
-import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.rabbitmq.OutboundMessage;
 
 class OpenPaasContactsConsumerTest {
 
@@ -344,6 +345,107 @@ class OpenPaasContactsConsumerTest {
                 .isEqualTo(indexedContact));
     }
 
+    @Test
+    void consumeMessageShouldNotCrashOnUnknownProperty() throws InterruptedException {
+        IntStream.range(0, 10).forEach(i -> sendMessage("BAD_PAYLOAD" + i));
+
+        TimeUnit.MILLISECONDS.sleep(100);
+
+        sendMessage("""
+            {
+                "unknownProperty": "value",
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                    .collectList().block())
+                .hasSize(1));
+    }
+
+
+    @Test
+    void consumeMessageShouldNotCrashOnUnknownPropertyOfVCardObject() throws InterruptedException {
+        IntStream.range(0, 10).forEach(i -> sendMessage("BAD_PAYLOAD" + i));
+
+        TimeUnit.MILLISECONDS.sleep(100);
+
+        sendMessage("""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "unknownProperty", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                    .collectList().block())
+                .hasSize(1));
+    }
+
+    @Test
+    void contactShouldBeIndexedWhenMessageHasUnknownProperty() {
+        sendMessage("""
+            {   "unknownProperty": "value",
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "unknownProperty", {}, "text", "4.0" ],
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                    .collectList().block())
+                .hasSize(1)
+                .map(EmailAddressContact::fields)
+                .allSatisfy(Throwing.consumer(contact -> {
+                    assertThat(contact.address()).isEqualTo(new MailAddress("jhon@doe.com"));
+                    assertThat(contact.firstname()).isEqualTo("Jane Doe");
+                    assertThat(contact.surname()).isEqualTo("");
+                })));
+    }
+
 
     private void sendMessage(String message) {
         rabbitMQExtension.getSender()
@@ -363,8 +465,7 @@ class OpenPaasContactsConsumerTest {
 
             return Mono.from(searchEngine.index(aliceAccountId,
                 new ContactFields(jhonDoeMailAddress, "Jhon", "Doe"))).block().fields();
-        }
-        catch (AddressException e) {
+        } catch (AddressException e) {
             throw new RuntimeException(e);
         }
     }
