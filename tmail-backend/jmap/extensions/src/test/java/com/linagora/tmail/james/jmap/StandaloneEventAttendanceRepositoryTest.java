@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap;
 
+import java.util.List;
 import reactor.core.publisher.Mono;
 
 import static org.apache.james.mailbox.fixture.MailboxFixture.ALICE;
@@ -14,8 +15,10 @@ import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.fixture.MailboxFixture;
 import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.Mailbox;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.store.MessageIdManagerTestSystem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -88,6 +91,59 @@ public class StandaloneEventAttendanceRepositoryTest {
 
         assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser(), messageId)).block())
             .isEqualTo(AttendanceStatus.NeedsAction);
+    }
+
+    @Test
+    void setAttendanceStatusShouldSetAcceptedFlag() {
+        Flags flags = new Flags();
+        MessageId messageId = createMessage(flags);
+
+        Mono.from(testee.setAttendanceStatus(mailbox.getUser(), messageId, AttendanceStatus.Accepted)).block();
+
+        Flags updatedFlags = getFlags(messageId);
+
+        assertThat(updatedFlags.contains("$accepted")).isTrue();
+    }
+
+    @Test
+    void setAttendanceStatusShouldSetDeclinedFlag() {
+        Flags flags = new Flags();
+        MessageId messageId = createMessage(flags);
+
+        Mono.from(testee.setAttendanceStatus(mailbox.getUser(), messageId, AttendanceStatus.Declined)).block();
+
+        Flags updatedFlags = getFlags(messageId);
+        assertThat(updatedFlags.contains("$rejected")).isTrue();
+    }
+
+    @Test
+    void setAttendanceStatusShouldSetTentativeFlag() {
+        Flags flags = new Flags();
+        MessageId messageId = createMessage(flags);
+
+        Mono.from(testee.setAttendanceStatus(mailbox.getUser(), messageId, AttendanceStatus.Tentative)).block();
+
+        Flags updatedFlags = getFlags(messageId);
+        assertThat(updatedFlags.contains("$tentativelyaccepted")).isTrue();
+    }
+
+    @Test
+    void setAttendanceStatusShouldRemoveExistingEventAttendanceFlags() {
+        Flags flags = new Flags("$accepted");
+        MessageId messageId = createMessage(flags);
+
+        Mono.from(testee.setAttendanceStatus(mailbox.getUser(), messageId, AttendanceStatus.Declined)).block();
+
+        Flags updatedFlags = getFlags(messageId);
+        assertThat(updatedFlags.contains("$accepted")).isFalse();
+        assertThat(updatedFlags.contains("$rejected")).isTrue();
+    }
+
+    private Flags getFlags(MessageId messageId) {
+        return Mono.from(messageIdManagerTestSystem.getMessageIdManager()
+                .getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
+            .map(MessageResult::getFlags)
+            .block();
     }
 
     private MessageId createMessage(Flags flags) {
