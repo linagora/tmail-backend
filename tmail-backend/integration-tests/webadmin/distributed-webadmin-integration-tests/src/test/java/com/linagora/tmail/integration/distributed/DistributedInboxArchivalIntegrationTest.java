@@ -10,7 +10,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.integration.CleanupIntegrationContract;
+import com.linagora.tmail.integration.InboxArchivalIntegrationContract;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -21,8 +21,7 @@ import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class DistributedCleanupIntegrationContract extends CleanupIntegrationContract {
-
+public class DistributedInboxArchivalIntegrationTest extends InboxArchivalIntegrationContract {
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
@@ -50,5 +49,4 @@ public class DistributedCleanupIntegrationContract extends CleanupIntegrationCon
                 .addBinding()
                 .to(JmapSettingsProbe.class)))
         .build();
-
 }
