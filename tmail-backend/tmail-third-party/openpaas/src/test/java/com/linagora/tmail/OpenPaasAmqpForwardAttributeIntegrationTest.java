@@ -18,6 +18,7 @@
  ****************************************************************/
 package com.linagora.tmail;
 
+import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.apache.james.backends.rabbitmq.Constants.AUTO_ACK;
 import static org.apache.james.mailets.configuration.Constants.DEFAULT_DOMAIN;
@@ -36,9 +37,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 import org.apache.james.MemoryJamesServerMain;
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.mailets.TemporaryJamesServer;
@@ -147,6 +150,14 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             false);
                     }
                 })
+                .withOverrides(new AbstractModule() {
+                    @Provides
+                    @Named(OPENPAAS_INJECTION_KEY)
+                    @Singleton
+                    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
+                        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
+                    }
+                })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())
                 .withMailetContainer(TemporaryJamesServer.defaultMailetContainerConfiguration()
                     .postmaster(SENDER)
@@ -252,6 +263,14 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             "user",
                             "password",
                             false);
+                    }
+                })
+                .withOverrides(new AbstractModule() {
+                    @Provides
+                    @Named(OPENPAAS_INJECTION_KEY)
+                    @Singleton
+                    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
+                        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())

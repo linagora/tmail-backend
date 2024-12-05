@@ -8,7 +8,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.TEN_SECONDS;
 
-import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -52,24 +51,32 @@ class OpenPaasContactsConsumerTest {
 
     @BeforeEach
     void setup() throws URISyntaxException {
-        OpenPaasRestClient restClient = new OpenPaasRestClient(
-            new OpenPaasConfiguration(
-                AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
-                openPaasServerExtension.getBaseUrl().toURI(),
-                OpenPaasServerExtension.GOOD_USER(),
-                OpenPaasServerExtension.GOOD_PASSWORD(),
-                OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED));
+        OpenPaasConfiguration openPaasConfiguration = new OpenPaasConfiguration(
+            AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
+            openPaasServerExtension.getBaseUrl().toURI(),
+            OpenPaasServerExtension.GOOD_USER(),
+            OpenPaasServerExtension.GOOD_PASSWORD(),
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
+        OpenPaasRestClient restClient = new OpenPaasRestClient(openPaasConfiguration);
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
-            rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),
+            openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration(rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration()),
             searchEngine, restClient);
 
         consumer.start();
     }
 
     @AfterEach
-    void afterEach() throws IOException {
+    void afterEach() {
         consumer.close();
+    }
+
+    @Test
+    void openPaasContactsQueueShouldBeQuorumQueueWhenQuorumQueuesAreEnabled() throws Exception {
+        assertThat(rabbitMQExtension.managementAPI()
+            .queueDetails("/", "openpaas-contacts-queue-add")
+            .getArguments())
+            .containsEntry("x-queue-type", "quorum");
     }
 
     @Test
