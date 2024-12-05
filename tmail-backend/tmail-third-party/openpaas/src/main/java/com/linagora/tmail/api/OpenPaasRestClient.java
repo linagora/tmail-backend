@@ -15,6 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
 import reactor.netty.http.client.HttpClient;
@@ -33,10 +35,21 @@ public class OpenPaasRestClient {
         String user = openPaasConfiguration.adminUsername();
         String password = openPaasConfiguration.adminPassword();
 
-        this.client = HttpClient.create()
+        this.client = createHttpClient(openPaasConfiguration, apiUrl, user, password);
+    }
+
+    private HttpClient createHttpClient(OpenPaasConfiguration openPaasConfiguration, URI apiUrl, String user, String password) {
+        HttpClient baseHttpClient = HttpClient.create()
             .baseUrl(apiUrl.toString())
             .headers(headers -> headers.add(AUTHORIZATION_HEADER, HttpUtils.createBasicAuthenticationToken(user, password)))
             .responseTimeout(RESPONSE_TIMEOUT);
+
+        if (openPaasConfiguration.trustAllSslCerts()) {
+            return baseHttpClient.secure(sslContextSpec -> sslContextSpec.sslContext(
+                SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)));
+        }
+
+        return baseHttpClient;
     }
 
     public Mono<MailAddress> retrieveMailAddress(String openPaasUserId) {

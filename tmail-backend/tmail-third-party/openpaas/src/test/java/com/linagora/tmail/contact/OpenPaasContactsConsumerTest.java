@@ -1,11 +1,19 @@
 package com.linagora.tmail.contact;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.apache.james.backends.rabbitmq.RabbitMQExtension.IsolationPolicy.WEAK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.TEN_SECONDS;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+
+import jakarta.mail.internet.AddressException;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.MailAddress;
@@ -16,25 +24,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.rabbitmq.OutboundMessage;
-
-import jakarta.mail.internet.AddressException;
-
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.AmqpUri;
-import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.rabbitmq.OutboundMessage;
 
 class OpenPaasContactsConsumerTest {
 
@@ -55,7 +57,8 @@ class OpenPaasContactsConsumerTest {
                 AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
                 openPaasServerExtension.getBaseUrl().toURI(),
                 OpenPaasServerExtension.GOOD_USER(),
-                OpenPaasServerExtension.GOOD_PASSWORD()));
+                OpenPaasServerExtension.GOOD_PASSWORD(),
+                OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED));
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),
