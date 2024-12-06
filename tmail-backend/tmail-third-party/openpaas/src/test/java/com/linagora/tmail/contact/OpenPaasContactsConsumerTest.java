@@ -1,5 +1,6 @@
 package com.linagora.tmail.contact;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.apache.james.backends.rabbitmq.RabbitMQExtension.IsolationPolicy.WEAK;
@@ -56,7 +57,8 @@ class OpenPaasContactsConsumerTest {
                 AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
                 openPaasServerExtension.getBaseUrl().toURI(),
                 OpenPaasServerExtension.GOOD_USER(),
-                OpenPaasServerExtension.GOOD_PASSWORD()));
+                OpenPaasServerExtension.GOOD_PASSWORD(),
+                OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED));
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),

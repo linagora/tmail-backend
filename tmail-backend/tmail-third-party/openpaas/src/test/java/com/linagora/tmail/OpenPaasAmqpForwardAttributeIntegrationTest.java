@@ -55,7 +55,6 @@ import org.apache.james.utils.SMTPMessageSender;
 import org.apache.james.utils.TestIMAPClient;
 import org.apache.mailet.MailetException;
 import org.apache.mailet.base.test.FakeMail;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -144,8 +143,8 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
                             URI.create("http://localhost:8081"),
                             "user",
-                            "password"
-                        );
+                            "password",
+                            false);
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())
@@ -251,8 +250,8 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
                             URI.create("http://localhost:8081"),
                             "user",
-                            "password"
-                        );
+                            "password",
+                            false);
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())

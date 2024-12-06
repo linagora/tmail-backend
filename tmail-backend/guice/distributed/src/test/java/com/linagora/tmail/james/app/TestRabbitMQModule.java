@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.app;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
 
 import java.net.URI;
@@ -93,8 +94,8 @@ public class TestRabbitMQModule extends AbstractModule {
             AmqpUri.from(rabbitMQ.amqpUri()),
             URI.create("http://localhost:8081"),
             "user",
-            "password"
-        );
+            "password",
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
     }
 
     public static class QueueCleanUp implements CleanupTasksPerformer.CleanupTask {

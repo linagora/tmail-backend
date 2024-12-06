@@ -2,6 +2,7 @@ package com.linagora.tmail.configuration;
 
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 import org.slf4j.Logger;
@@ -15,20 +16,24 @@ public record OpenPaasConfiguration(
     AmqpUri rabbitMqUri,
     URI apirUri,
     String adminUsername,
-    String adminPassword) {
+    String adminPassword,
+    boolean trustAllSslCerts) {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasConfiguration.class);
     private static final String RABBITMQ_URI_PROPERTY = "rabbitmq.uri";
     private static final String OPENPAAS_API_URI = "openpaas.api.uri";
     private static final String OPENPAAS_ADMIN_USER_PROPERTY = "openpaas.admin.user";
     private static final String OPENPAAS_ADMIN_PASSWORD_PROPERTY = "openpaas.admin.password";
+    private static final String OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY = "openpaas.rest.client.trust.all.ssl.certs";
+    public static final boolean OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED = false;
 
     public static OpenPaasConfiguration from(Configuration configuration) {
         AmqpUri rabbitMqUri = readRabbitMqUri(configuration);
         URI openPaasApiUri = readApiUri(configuration);
         String adminUser = readAdminUsername(configuration);
         String adminPassword = readAdminPassword(configuration);
+        boolean trustAllSslCerts = readTrustAllSslCerts(configuration);
 
-        return new OpenPaasConfiguration(rabbitMqUri, openPaasApiUri, adminUser, adminPassword);
+        return new OpenPaasConfiguration(rabbitMqUri, openPaasApiUri, adminUser, adminPassword, trustAllSslCerts);
     }
 
     private static AmqpUri readRabbitMqUri(Configuration configuration) {
@@ -84,6 +89,11 @@ public record OpenPaasConfiguration(
         }
 
         return openPaasAdminPassword;
+    }
+
+    private static boolean readTrustAllSslCerts(Configuration configuration) {
+        return Optional.ofNullable(configuration.getBoolean(OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY, null))
+            .orElse(OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
     }
 
 }
