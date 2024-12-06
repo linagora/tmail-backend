@@ -87,6 +87,12 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
         consumeContactsDisposable = doConsumeContactMessages();
     }
 
+    public void restart() {
+        Disposable previousConsumer = consumeContactsDisposable;
+        consumeContactsDisposable = doConsumeContactMessages();
+        Optional.ofNullable(previousConsumer).ifPresent(Disposable::dispose);
+    }
+
     private Disposable doConsumeContactMessages() {
         return delivery()
             .flatMap(delivery -> messageConsume(delivery, delivery.getBody()))
