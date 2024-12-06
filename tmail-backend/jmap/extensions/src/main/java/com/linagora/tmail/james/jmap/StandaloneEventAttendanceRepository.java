@@ -12,9 +12,7 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.SessionProvider;
-import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.FetchGroup;
-import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
 import org.reactivestreams.Publisher;
@@ -106,19 +104,23 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         }
     }
 
-    private Mono<Flags> doSetFlags(MessageId messageId, Flags flagsToSet, MailboxSession session) {
-        try {
-            List<MailboxId> mailboxIds =
-                messageIdManager.getMessage(messageId, FetchGroup.MINIMAL, session)
-                    .stream().map(MessageResult::getMailboxId).toList();
-            messageIdManager.setFlags(flagsToSet, MessageManager.FlagsUpdateMode.REPLACE, messageId, mailboxIds,
-                session);
-
-            return Mono.just(flagsToSet);
-        } catch (MailboxException e) {
-            LOGGER.error("Error while setting flags", e);
-            return Mono.empty();
-        }
+    private Mono<Void> doSetFlags(MessageId messageId, Flags flagsToSet, MailboxSession session) {
+        return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
+            .map(MessageResult::getMailboxId)
+            .flux()
+            .collectList()
+            .flatMap(mailboxIds ->
+                Mono.from(messageIdManager.setFlagsReactive(
+                    flagsToSet,
+                    MessageManager.FlagsUpdateMode.REPLACE,
+                    messageId,
+                    mailboxIds,
+                    session
+                ))
+            )
+            .onErrorContinue((error, object) ->
+                LOGGER.error("Error while setting flags for message ID {}", messageId, error)
+            );
     }
 
     private Mono<Flags> getFlags(MessageId messageId, MailboxSession session) {
