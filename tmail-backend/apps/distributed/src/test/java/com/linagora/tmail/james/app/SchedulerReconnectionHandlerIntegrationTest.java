@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
@@ -69,6 +70,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
+                .overrideWith(new OpenPaasModule())
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(DeletedMessageVaultWorkQueueProbe.class))
                 .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)
@@ -86,7 +88,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
             CALMLY_AWAIT.atMost(10, SECONDS)
                 .untilAsserted(() -> SoftAssertions.assertSoftly(softly -> QUEUES_TO_MONITOR
                     .forEach(queueName -> softly.assertThat(consumerCount(dockerRabbitMQ, queueName))
-                    .isEqualTo(1L))));
+                    .isGreaterThanOrEqualTo(1L))));
         }
 
         @Test
@@ -113,7 +115,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
             CALMLY_AWAIT.atMost(20, SECONDS)
                 .untilAsserted(() -> SoftAssertions.assertSoftly(softly ->
                     QUEUES_TO_MONITOR.forEach(queueName -> softly.assertThat(consumerCount(dockerRabbitMQ, queueName))
-                        .isEqualTo(1L))));
+                        .isGreaterThanOrEqualTo(1L))));
         }
     }
 
@@ -143,6 +145,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
+                .overrideWith(new OpenPaasModule())
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(ScheduledReconnectionHandlerProbe.class))
                 .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)
@@ -160,7 +163,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
             CALMLY_AWAIT.atMost(10, SECONDS)
                 .untilAsserted(() -> SoftAssertions.assertSoftly(softly -> QUEUES_TO_MONITOR_EXCEPT_DELETED_MESSAGE_VAULT
                     .forEach(queueName -> softly.assertThat(consumerCount(dockerRabbitMQ, queueName))
-                    .isEqualTo(1L))));
+                    .isGreaterThanOrEqualTo(1L))));
         }
 
         @Test

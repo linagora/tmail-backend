@@ -60,8 +60,10 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private final RabbitMQConfiguration commonRabbitMQConfiguration;
     private final EmailAddressContactSearchEngine contactSearchEngine;
     private final OpenPaasRestClient openPaasRestClient;
+    private Disposable consumeAddedContactsDisposable;
+    private Disposable consumeUpdatedContactsDisposable;
+    private Disposable consumeDeletedContactsDisposable;
     private final OpenPaasConfiguration openPaasConfiguration;
-    private Disposable consumeContactsDisposable;
 
     @Inject
     public OpenPaasContactsConsumer(@Named(OPENPAAS_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
@@ -83,12 +85,15 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     }
 
     public void start() {
-        startExchange(EXCHANGE_NAME_ADD, QUEUE_NAME_ADD, DEAD_LETTER_ADD, this::indexContactIfNeeded);
-        startExchange(EXCHANGE_NAME_UPDATE, QUEUE_NAME_UPDATE, DEAD_LETTER_UPDATE, this::updateContact);
-        startExchange(EXCHANGE_NAME_DELETE, QUEUE_NAME_DELETE, DEAD_LETTER_DELETE, this::deleteContact);
+        startExchange(EXCHANGE_NAME_ADD, QUEUE_NAME_ADD, DEAD_LETTER_ADD);
+        startExchange(EXCHANGE_NAME_UPDATE, QUEUE_NAME_UPDATE, DEAD_LETTER_UPDATE);
+        startExchange(EXCHANGE_NAME_DELETE, QUEUE_NAME_DELETE, DEAD_LETTER_DELETE);
+        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::indexContactIfNeeded);
+        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::updateContact);
+        consumeDeletedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_DELETE, this::deleteContact);
     }
 
-    public void startExchange(String exchange, String queue, String deadLetter, ContactHandler contactHandler) {
+    public void startExchange(String exchange, String queue, String deadLetter) {
         Flux.concat(
                 sender.declareExchange(ExchangeSpecification.exchange(exchange)
                     .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
@@ -109,8 +114,18 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
                     .routingKey(EMPTY_ROUTING_KEY)))
             .then()
             .block();
+    }
 
-        consumeContactsDisposable = doConsumeContactMessages(queue, contactHandler);
+    public void restart() {
+        Disposable previousAddedConsumer = consumeAddedContactsDisposable;
+        Disposable previousUpdatedConsumer = consumeUpdatedContactsDisposable;
+        Disposable previousDeletedConsumer = consumeDeletedContactsDisposable;
+        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::indexContactIfNeeded);
+        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::updateContact);
+        consumeDeletedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_DELETE, this::deleteContact);
+        Optional.ofNullable(previousAddedConsumer).ifPresent(Disposable::dispose);
+        Optional.ofNullable(previousUpdatedConsumer).ifPresent(Disposable::dispose);
+        Optional.ofNullable(previousDeletedConsumer).ifPresent(Disposable::dispose);
     }
 
     private QueueArguments.Builder evaluateQueueArguments() {
@@ -200,7 +215,8 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     @Override
     public void close() {
-        Optional.ofNullable(consumeContactsDisposable)
-            .ifPresent(Disposable::dispose);
+        Optional.ofNullable(consumeAddedContactsDisposable).ifPresent(Disposable::dispose);
+        Optional.ofNullable(consumeUpdatedContactsDisposable).ifPresent(Disposable::dispose);
+        Optional.ofNullable(consumeDeletedContactsDisposable).ifPresent(Disposable::dispose);
     }
 }
