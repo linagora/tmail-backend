@@ -20,7 +20,6 @@ import org.apache.james.lifecycle.api.Startable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
@@ -38,7 +37,6 @@ import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 
-
 public class OpenPaasContactsConsumer implements Startable, Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
@@ -50,7 +48,6 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private final Sender sender;
     private final RabbitMQConfiguration commonRabbitMQConfiguration;
     private final EmailAddressContactSearchEngine contactSearchEngine;
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final OpenPaasRestClient openPaasRestClient;
     private Disposable consumeContactsDisposable;
 
