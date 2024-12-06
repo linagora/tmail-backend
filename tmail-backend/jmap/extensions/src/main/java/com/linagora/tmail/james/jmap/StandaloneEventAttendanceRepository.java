@@ -39,8 +39,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
         return getFlags(messageId, systemMailboxSession)
-            .map(this::getAttendanceStatusFromFlags)
-            .flatMap(Mono::justOrEmpty)
+            .flatMap(this::getAttendanceStatusFromFlags)
             .switchIfEmpty(handleMissingEventAttendanceFlag(messageId, systemMailboxSession));
     }
 
@@ -82,7 +81,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         };
     }
 
-    private Optional<AttendanceStatus> getAttendanceStatusFromFlags(Flags flags) {
+    private Mono<AttendanceStatus> getAttendanceStatusFromFlags(Flags flags) {
         long eventAttendanceFlagsCount = Arrays.stream(flags.getUserFlags())
             .filter(EVENT_ATTENDANCE_FLAGS::contains)
             .count();
@@ -92,15 +91,15 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         }
 
         if (flags.contains("$accepted")) {
-            return Optional.of(AttendanceStatus.Accepted);
+            return Mono.just(AttendanceStatus.Accepted);
         } else if (flags.contains("$rejected")) {
-            return Optional.of(AttendanceStatus.Declined);
+            return Mono.just(AttendanceStatus.Declined);
         } else if (flags.contains("$tentativelyaccepted")) {
-            return Optional.of(AttendanceStatus.Tentative);
+            return Mono.just(AttendanceStatus.Tentative);
         } else if (flags.contains("$needs-action")) {
-            return Optional.of(AttendanceStatus.NeedsAction);
+            return Mono.just(AttendanceStatus.NeedsAction);
         } else {
-            return Optional.empty();
+            return Mono.empty();
         }
     }
 
