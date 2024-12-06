@@ -1,9 +1,10 @@
 package com.linagora.tmail.api;
 
-import java.net.URISyntaxException;
-import java.util.Optional;
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+
+import java.net.URISyntaxException;
 
 import jakarta.mail.internet.AddressException;
 
@@ -28,7 +29,8 @@ public class OpenPaasRestClientTest {
             AmqpUri.from("amqp://not_important.com"),
             openPaasServerExtension.getBaseUrl().toURI(),
             OpenPaasServerExtension.GOOD_USER(),
-            OpenPaasServerExtension.GOOD_PASSWORD());
+            OpenPaasServerExtension.GOOD_PASSWORD(),
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
 
         restClient = new OpenPaasRestClient(openPaasConfig);
     }
@@ -51,7 +53,8 @@ public class OpenPaasRestClientTest {
             AmqpUri.from("amqp://not_important.com"),
             openPaasServerExtension.getBaseUrl().toURI(),
             OpenPaasServerExtension.BAD_USER(),
-            OpenPaasServerExtension.BAD_PASSWORD());
+            OpenPaasServerExtension.BAD_PASSWORD(),
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
 
         restClient = new OpenPaasRestClient(openPaasConfig);
 
