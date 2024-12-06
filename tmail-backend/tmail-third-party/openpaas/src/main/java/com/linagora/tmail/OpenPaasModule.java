@@ -25,6 +25,7 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.contact.OpenPaasContactsConsumer;
+import com.linagora.tmail.contact.OpenPaasContactsConsumerReconnectionHandler;
 
 public class OpenPaasModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasModule.class);
@@ -96,5 +97,10 @@ public class OpenPaasModule extends AbstractModule {
             gaugeRegistry);
         channelPool.start();
         return channelPool;
+    }
+
+    @ProvidesIntoSet
+    SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(OpenPaasContactsConsumer contactsConsumer) {
+        return new OpenPaasContactsConsumerReconnectionHandler(contactsConsumer);
     }
 }
