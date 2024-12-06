@@ -3,7 +3,6 @@ package com.linagora.tmail.james.jmap;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
 import jakarta.mail.Flags;
@@ -62,25 +61,17 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
         return getFlags(messageId, systemMailboxSession)
-            .flatMap(this::filterOutEventAttendanceFlags)
-            .flatMap(flagsWithoutEventAttendanceFlags -> {
-                Flags flagsToSet = new Flags(flagsWithoutEventAttendanceFlags);
-                getFlagFromAttendanceStatus(attendanceStatus)
-                    .ifPresent(flagsToSet::add);
-                return doSetFlags(messageId, flagsToSet, systemMailboxSession);
-            })
-            .then();
-    }
-
-    private Mono<Flags> filterOutEventAttendanceFlags(Flags flags) {
-        return Mono.fromSupplier(() -> {
-            Flags flagsWithoutEventAttendanceFlags = new Flags();
-            Arrays.stream(flags.getSystemFlags()).forEach(flagsWithoutEventAttendanceFlags::add);
-            Arrays.stream(flags.getUserFlags())
-                .filter(Predicate.not(EVENT_ATTENDANCE_FLAGS::contains))
-                .forEach(flagsWithoutEventAttendanceFlags::add);
-            return flagsWithoutEventAttendanceFlags;
-        });
+            .flatMap(flags -> {
+                EVENT_ATTENDANCE_FLAGS.forEach(flags::remove);
+                String attendanceFlag =
+                    getFlagFromAttendanceStatus(attendanceStatus).orElseGet(() -> {
+                        LOGGER.warn("No flag found for attendance status {}", attendanceStatus);
+                        LOGGER.warn("Falling back to $needs-action");
+                        return "$needs-action";
+                    });
+                flags.add(attendanceFlag);
+                return doSetFlags(messageId, flags, systemMailboxSession);
+            }).then();
     }
 
     private Optional<String> getFlagFromAttendanceStatus(AttendanceStatus attendanceStatus) {
