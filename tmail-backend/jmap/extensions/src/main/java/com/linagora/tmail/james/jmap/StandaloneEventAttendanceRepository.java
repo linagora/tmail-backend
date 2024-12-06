@@ -26,7 +26,7 @@ import reactor.core.publisher.Mono;
 
 public class StandaloneEventAttendanceRepository implements EventAttendanceRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneEventAttendanceRepository.class);
-    private static final List<String> EVENT_ATTENDANCE_FLAGS = List.of("$accepted", "$rejected", "$tentativelyaccepted");
+    private static final List<String> EVENT_ATTENDANCE_FLAGS = List.of("$accepted", "$rejected", "$tentativelyaccepted", "$needs-action");
 
     private final MessageIdManager messageIdManager;
     private final SessionProvider sessionProvider;
@@ -42,7 +42,18 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
         return getFlags(messageId, systemMailboxSession)
-            .map(this::getAttendanceStatusFromFlags);
+            .map(this::getAttendanceStatusFromFlags)
+            .flatMap(Mono::justOrEmpty)
+            .switchIfEmpty(handleMissingEventAttendanceFlag(messageId, systemMailboxSession));
+    }
+
+    private Mono<AttendanceStatus> handleMissingEventAttendanceFlag(MessageId messageId, MailboxSession systemMailboxSession) {
+        return Mono.from(getFlags(messageId, systemMailboxSession)).map(flags -> {
+            LOGGER.warn("No event attendance flag found for message {}", messageId);
+            LOGGER.warn("Flags for message {}: {}", messageId, flags);
+            LOGGER.warn("Defaulting to NeedsAction for message {}", messageId);
+            return AttendanceStatus.NeedsAction;
+        });
     }
 
     @Override
@@ -51,7 +62,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
         return getFlags(messageId, systemMailboxSession)
-            .flatMap(this::removeEventAttendanceFlags)
+            .flatMap(this::filterOutEventAttendanceFlags)
             .flatMap(flagsWithoutEventAttendanceFlags -> {
                 Flags flagsToSet = new Flags(flagsWithoutEventAttendanceFlags);
                 getFlagFromAttendanceStatus(attendanceStatus)
@@ -61,7 +72,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
             .then();
     }
 
-    private Mono<Flags> removeEventAttendanceFlags(Flags flags) {
+    private Mono<Flags> filterOutEventAttendanceFlags(Flags flags) {
         return Mono.fromSupplier(() -> {
             Flags flagsWithoutEventAttendanceFlags = new Flags();
             Arrays.stream(flags.getSystemFlags()).forEach(flagsWithoutEventAttendanceFlags::add);
@@ -77,28 +88,30 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
             case Accepted -> Optional.of("$accepted");
             case Declined -> Optional.of("$rejected");
             case Tentative -> Optional.of("$tentativelyaccepted");
-            case Delegated, NeedsAction -> Optional.empty();
+            case NeedsAction -> Optional.of("$needs-action");
+            case Delegated -> Optional.empty();
         };
     }
 
-    private AttendanceStatus getAttendanceStatusFromFlags(Flags flags) {
+    private Optional<AttendanceStatus> getAttendanceStatusFromFlags(Flags flags) {
         long eventAttendanceFlagsCount = Arrays.stream(flags.getUserFlags())
             .filter(EVENT_ATTENDANCE_FLAGS::contains)
             .count();
 
         if (eventAttendanceFlagsCount > 1) {
             LOGGER.warn("A message should not have more than one event attendance flag");
-            return AttendanceStatus.NeedsAction;
         }
 
         if (flags.contains("$accepted")) {
-            return AttendanceStatus.Accepted;
+            return Optional.of(AttendanceStatus.Accepted);
         } else if (flags.contains("$rejected")) {
-            return AttendanceStatus.Declined;
+            return Optional.of(AttendanceStatus.Declined);
         } else if (flags.contains("$tentativelyaccepted")) {
-            return AttendanceStatus.Tentative;
+            return Optional.of(AttendanceStatus.Tentative);
+        } else if (flags.contains("$needs-action")) {
+            return Optional.of(AttendanceStatus.NeedsAction);
         } else {
-            return AttendanceStatus.NeedsAction;
+            return Optional.empty();
         }
     }
 

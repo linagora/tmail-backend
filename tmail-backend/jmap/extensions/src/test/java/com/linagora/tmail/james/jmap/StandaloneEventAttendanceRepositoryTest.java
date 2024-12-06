@@ -66,13 +66,15 @@ public class StandaloneEventAttendanceRepositoryTest {
 
     // It should also print a warning message
     @Test
-    void givenMoreThanEventAttendanceFlagIsLinkedToMailGetAttendanceStatusShouldReturnNeedsAction() {
+    void givenMoreThanEventAttendanceFlagIsLinkedToMailGetAttendanceStatusShouldReturnAny() {
         Flags flags = new Flags("$rejected");
         flags.add("$accepted");
 
         MessageId messageId = createMessage(flags);
         assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser(), messageId)).block())
-            .isEqualTo(AttendanceStatus.NeedsAction);
+            .satisfiesAnyOf(
+                status -> assertThat(status).isEqualTo(AttendanceStatus.Accepted),
+                status -> assertThat(status).isEqualTo(AttendanceStatus.Declined));
     }
 
     @Test
