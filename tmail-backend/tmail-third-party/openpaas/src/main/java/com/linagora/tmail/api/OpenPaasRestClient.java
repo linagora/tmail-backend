@@ -45,7 +45,7 @@ public class OpenPaasRestClient {
             .responseSingle((statusCode, data) -> handleUserResponse(openPaasUserId, statusCode, data))
             .map(OpenPaasUserResponse::preferredEmail)
             .map(this::parseMailAddress)
-            .onErrorResume(e -> Mono.error(new OpenPaasRestClientException("Failed to retrieve user mail using OpenPaas id", e)));
+            .onErrorResume(e -> Mono.error(new OpenPaasRestClientException("Failed to retrieve user mail using OpenPaas id " + openPaasUserId, e)));
     }
 
     private Mono<OpenPaasUserResponse> handleUserResponse(String openPaasUserId, HttpClientResponse httpClientResponse, ByteBufMono dataBuf) {
