@@ -62,7 +62,7 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
                 try {
                     return Optional.of(new MailAddress(email));
                 } catch (AddressException e) {
-                    LOGGER.error("Invalid contact mail address '{}' found in JCard Object", email, e);
+                    LOGGER.info("Invalid contact mail address '{}' found in JCard Object", email);
                     return Optional.empty();
                 }
             });
