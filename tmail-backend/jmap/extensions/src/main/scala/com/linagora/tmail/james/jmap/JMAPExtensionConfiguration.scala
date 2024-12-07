@@ -5,6 +5,7 @@ import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
+import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.{CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, TICKET_IP_VALIDATION_ENABLED}
 import com.linagora.tmail.james.jmap.method.CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT
 import com.linagora.tmail.james.jmap.model.LanguageLocation
@@ -26,6 +27,7 @@ object JMAPExtensionConfiguration {
   val CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT: CalendarEventReplySupportedLanguagesConfig = CalendarEventReplySupportedLanguagesConfig(Set(LANGUAGE_DEFAULT))
 
   val SUPPORT_MAIL_ADDRESS_PROPERTY: String = "support.mail.address"
+  val SUPPORT_HTTP_LINK_PROPERTY: String = "support.httpLink"
 
   def from(configuration: Configuration): JMAPExtensionConfiguration = {
     val publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit = Option(configuration.getString(PUBLIC_ASSET_TOTAL_SIZE_LIMIT_PROPERTY, null))
@@ -36,6 +38,13 @@ object JMAPExtensionConfiguration {
     val supportMailAddressOpt: Option[MailAddress] =
       Option(configuration.getString(SUPPORT_MAIL_ADDRESS_PROPERTY, null))
         .map(s => new MailAddress(s))
+
+    val supportHttpLinkOpt: Option[URL] = Option(configuration.getString(SUPPORT_HTTP_LINK_PROPERTY, null))
+      .map(httpLink => Try(new URI(httpLink).toURL)
+        .getOrElse(throw new MissingArgumentException(s"Invalid `$SUPPORT_HTTP_LINK_PROPERTY` in the jmap configuration file: " + httpLink)))
+
+    Preconditions.checkArgument(!(supportMailAddressOpt.isDefined && supportHttpLinkOpt.isDefined),
+      s"Both `$SUPPORT_MAIL_ADDRESS_PROPERTY` and `$SUPPORT_HTTP_LINK_PROPERTY` must not be defined at the same time.".asInstanceOf[Object])
 
     val ticketIpValidationEnable: TicketIpValidationEnable = Option(configuration.getBoolean(TICKET_IP_VALIDATION_PROPERTY, null))
       .map(TicketIpValidationEnable(_))
@@ -53,8 +62,13 @@ object JMAPExtensionConfiguration {
 
     val webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.parse(configuration)
 
-    JMAPExtensionConfiguration(publicAssetTotalSizeLimit, supportMailAddressOpt, ticketIpValidationEnable,
-      calendarEventReplySupportedLanguagesConfig, emailRecoveryActionConfiguration, webFingerConfiguration)
+    JMAPExtensionConfiguration(publicAssetTotalSizeLimit = publicAssetTotalSizeLimit,
+      supportMailAddress = supportMailAddressOpt,
+      supportHttpLink = supportHttpLinkOpt,
+      ticketIpValidationEnable = ticketIpValidationEnable,
+      calendarEventReplySupportedLanguagesConfig = calendarEventReplySupportedLanguagesConfig,
+      emailRecoveryActionConfiguration = emailRecoveryActionConfiguration,
+      webFingerConfiguration = webFingerConfiguration)
   }
 }
 
@@ -66,21 +80,14 @@ object PublicAssetTotalSizeLimit {
 }
 
 case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit = PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT,
-                                      supportMailAddress: Option[MailAddress] = Option.empty,
+                                      supportMailAddress: Option[MailAddress] = None,
+                                      supportHttpLink: Option[URL] = None,
                                       ticketIpValidationEnable: TicketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED,
                                       calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT,
                                       emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.DEFAULT,
                                       webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.DEFAULT) {
   def this(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit) = {
     this(publicAssetTotalSizeLimit, Option.empty)
-  }
-
-  def this(supportMailAddress: MailAddress) = {
-    this(PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, Option(supportMailAddress))
-  }
-
-  def this() = {
-    this(PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, Option.empty)
   }
 }
 
