@@ -100,7 +100,7 @@ public class OpenPaasModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(@Named(OPENPAAS_INJECTION_KEY) OpenPaasContactsConsumer contactsConsumer) {
+    SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(OpenPaasContactsConsumer contactsConsumer) {
         return new OpenPaasContactsConsumerReconnectionHandler(contactsConsumer);
     }
 }
