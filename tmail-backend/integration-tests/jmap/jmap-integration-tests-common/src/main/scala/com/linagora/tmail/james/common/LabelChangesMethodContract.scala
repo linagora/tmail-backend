@@ -6,8 +6,8 @@ import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.common.LabelChangesMethodContract.firebasePushClient
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
 import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebasePushRequest}
-import com.linagora.tmail.james.jmap.label.{LabelChange, LabelTypeName}
-import com.linagora.tmail.james.jmap.model.LabelId
+import com.linagora.tmail.james.jmap.label.{LabelTypeName}
+import com.linagora.tmail.james.jmap.model.{LabelChange, LabelId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON

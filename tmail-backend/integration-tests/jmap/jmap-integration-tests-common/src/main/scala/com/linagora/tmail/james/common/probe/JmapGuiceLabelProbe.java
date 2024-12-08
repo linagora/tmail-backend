@@ -7,10 +7,10 @@ import jakarta.inject.Inject;
 import org.apache.james.core.Username;
 import org.apache.james.utils.GuiceProbe;
 
-import com.linagora.tmail.james.jmap.label.LabelChange;
 import com.linagora.tmail.james.jmap.label.LabelChangeRepository;
 import com.linagora.tmail.james.jmap.label.LabelRepository;
 import com.linagora.tmail.james.jmap.model.Label;
+import com.linagora.tmail.james.jmap.model.LabelChange;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 
 import reactor.core.publisher.Flux;

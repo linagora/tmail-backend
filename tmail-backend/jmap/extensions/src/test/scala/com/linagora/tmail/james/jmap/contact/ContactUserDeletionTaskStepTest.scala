@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.ContactUsernameChangeTaskStepTest.{ALICE, ALICE_ACCOUNT_ID, ALICE_CONTACT, ANDRE_CONTACT, BOB_ACCOUNT_ID, MARIE_CONTACT}
+import ContactUsernameChangeTaskStepTest.{ALICE, ALICE_ACCOUNT_ID, ALICE_CONTACT, ANDRE_CONTACT, BOB_ACCOUNT_ID, MARIE_CONTACT}
 import org.apache.james.core.Domain
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode}
 import org.junit.jupiter.api.{BeforeEach, Test}

@@ -1,12 +1,20 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.contact.{ContactOwner, EmailAddressContactMessage, MessageEntry, TmailContactMessageScope, TmailContactMessageType}
+import org.apache.james.core.MailAddress
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
-import play.api.libs.json.{JsError, JsPath, JsResult, JsString, JsSuccess, JsValue, Json, Reads}
+import play.api.libs.json.{JsError, JsPath, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
 
 import scala.util.{Failure, Success, Try}
 
 object EmailAddressContactMessageSerializer {
+  implicit val mailAddressReads: Reads[MailAddress] = {
+    case JsString(value) => Try(JsSuccess(new MailAddress(value)))
+      .fold(e => JsError(s"Invalid mailAddress: ${e.getMessage}"), mailAddress => mailAddress)
+    case _ => JsError("Expecting mailAddress to be represented by a JsString")
+  }
+
+  implicit val mailAddressWrites: Writes[MailAddress] = mail => JsString(mail.toString)
 
   private implicit val contactMessageTypeReads: Reads[TmailContactMessageType] = {
     case JsString(value) => TmailContactMessageType.from(value)

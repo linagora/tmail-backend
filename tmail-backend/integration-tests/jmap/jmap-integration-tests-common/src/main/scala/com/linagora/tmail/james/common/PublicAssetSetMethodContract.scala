@@ -537,6 +537,7 @@ trait PublicAssetSetMethodContract {
            |        "accountId": "$ACCOUNT_ID",
            |        "create": {
            |          "4f29": {
+           |            "blobId": "9c4b1b1b-1992-11ef-b9f4-39749479be62",
            |            "invalid1": "invalid-blob-id"
            |          }
            |        }

@@ -14,24 +14,6 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
 
-trait LabelRepository {
-  def addLabel(username: Username, labelCreationRequest: LabelCreationRequest): Publisher[Label]
-
-  def addLabel(username: Username, label: Label): Publisher[Void]
-
-  def addLabels(username: Username, labelCreationRequests: util.Collection[LabelCreationRequest]): Publisher[Label]
-
-  def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName] = None, newColor: Option[Color] = None): Publisher[Void]
-
-  def getLabels(username: Username, ids: util.Collection[LabelId]): Publisher[Label]
-
-  def listLabels(username: Username): Publisher[Label]
-
-  def deleteLabel(username: Username, labelId: LabelId): Publisher[Void]
-
-  def deleteAllLabels(username: Username): Publisher[Void]
-}
-
 class MemoryLabelRepository extends LabelRepository {
   private val labelsTable: Table[Username, Keyword, Label] = Tables.synchronizedTable(HashBasedTable.create())
 

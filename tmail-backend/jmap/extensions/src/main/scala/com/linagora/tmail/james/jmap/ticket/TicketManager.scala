@@ -2,7 +2,6 @@ package com.linagora.tmail.james.jmap.ticket
 
 import java.net.InetAddress
 import java.time.{Clock, ZonedDateTime}
-import java.util.UUID
 
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import jakarta.inject.Inject
@@ -11,23 +10,6 @@ import org.apache.james.jmap.core.UTCDate
 import reactor.core.scala.publisher.SMono
 
 import scala.collection.mutable
-import scala.util.Try
-
-object TicketValue {
-  def parse(string: String): Either[IllegalArgumentException, TicketValue] = Try(UUID.fromString(string))
-    .map(TicketValue(_))
-    .fold(e => Left(new IllegalArgumentException("TicketValue must be backed by a UUID", e)), Right(_))
-
-  def generate: TicketValue = TicketValue(UUID.randomUUID())
-}
-
-case class ForbiddenException() extends RuntimeException
-case class TicketValue(value: UUID)
-case class Ticket(clientAddress: InetAddress,
-                  value: TicketValue,
-                  generatedOn: UTCDate,
-                  validUntil: UTCDate,
-                  username: Username)
 
 object TicketManager {
   private val validity: java.time.Duration = java.time.Duration.ofMinutes(1)
@@ -71,14 +53,6 @@ class TicketManager @Inject() (clock: Clock, ticketStore: TicketStore, jmapExten
       .map(_.value)
       .switchIfEmpty(SMono.error(ForbiddenException()))
       .flatMap(ticketStore.delete)
-}
-
-trait TicketStore {
-  def persist(ticket: Ticket): SMono[Unit]
-
-  def retrieve(value: TicketValue): SMono[Ticket]
-
-  def delete(ticketValue: TicketValue): SMono[Unit]
 }
 
 class MemoryTicketStore extends TicketStore {
