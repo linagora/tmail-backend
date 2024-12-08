@@ -141,6 +141,20 @@ public class StandaloneEventAttendanceRepositoryTest {
         assertThat(updatedFlags.contains("$rejected")).isTrue();
     }
 
+    @Test
+    void setAttendanceStatusShouldBeIdempotent() {
+        Flags flags = new Flags();
+        MessageId messageId = createMessage(flags);
+
+        Mono.from(testee.setAttendanceStatus(mailbox.getUser(), messageId, AttendanceStatus.Accepted)).block();
+        Mono.from(testee.setAttendanceStatus(mailbox.getUser(), messageId, AttendanceStatus.Accepted)).block();
+
+        Flags updatedFlags = getFlags(messageId);
+
+        assertThat(updatedFlags.contains("$accepted")).isTrue();
+        assertThat(updatedFlags.getUserFlags().length).isEqualTo(1);
+    }
+
     private Flags getFlags(MessageId messageId) {
         return Mono.from(messageIdManagerTestSystem.getMessageIdManager()
                 .getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
