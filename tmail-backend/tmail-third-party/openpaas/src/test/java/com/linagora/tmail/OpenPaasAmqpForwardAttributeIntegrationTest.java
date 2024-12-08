@@ -134,25 +134,26 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
 
             jamesServer = TemporaryJamesServer.builder()
                 .withBase(Modules.combine(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE,
-                    new OpenPaasModule(), new AbstractModule() {
-                        @Provides
-                        @Singleton
-                        public RabbitMQConfiguration provideCommonRabbitMQConfiguration() throws URISyntaxException {
-                            return rabbitMQExtension.getRabbitMQ().getConfiguration();
-                        }
+                    new OpenPaasModule()))
+                .withOverrides(new AbstractModule() {
+                    @Provides
+                    @Singleton
+                    public RabbitMQConfiguration provideCommonRabbitMQConfiguration() throws URISyntaxException {
+                        return rabbitMQExtension.getRabbitMQ().getConfiguration();
+                    }
 
-                        @Provides
-                        @Singleton
-                        public OpenPaasConfiguration provideOpenPaasConfiguration()
-                            throws URISyntaxException {
-                            return new OpenPaasConfiguration(
-                                AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
-                                URI.create("http://localhost:8081"),
-                                "user",
-                                "password",
-                                false);
-                        }
-                    }))
+                    @Provides
+                    @Singleton
+                    public OpenPaasConfiguration provideOpenPaasConfiguration()
+                        throws URISyntaxException {
+                        return new OpenPaasConfiguration(
+                            AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
+                            URI.create("http://localhost:8081"),
+                            "user",
+                            "password",
+                            false);
+                    }
+                })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())
                 .withMailetContainer(TemporaryJamesServer.defaultMailetContainerConfiguration()
                     .postmaster(SENDER)
