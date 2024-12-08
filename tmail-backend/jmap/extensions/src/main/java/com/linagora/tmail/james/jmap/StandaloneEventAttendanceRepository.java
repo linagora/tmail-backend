@@ -73,9 +73,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                     MessageManager.FlagsUpdateMode.REPLACE,
                     messageId,
                     mailboxIds,
-                    session
-                ))
-            );
+                    session)));
     }
 
     private Mono<Flags> getFlags(MessageId messageId, MailboxSession session) {

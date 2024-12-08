@@ -167,8 +167,7 @@ public class StandaloneEventAttendanceRepositoryTest {
             mailbox.getMailboxId(),
             MessageUid.of(111),
             flags,
-            session
-        );
+            session);
         return messageId;
     }
 
