@@ -123,12 +123,20 @@ public final class AmqpUri {
      *
      * @return a `RabbitMQConfiguration` object representing the AMQP URI
      */
-    public RabbitMQConfiguration toRabbitMqConfiguration() {
+    public RabbitMQConfiguration toRabbitMqConfiguration(RabbitMQConfiguration commonRabbitMQConfiguration) {
         return RabbitMQConfiguration.builder()
             .amqpUri(uri)
             .managementUri(uri)
             .managementCredentials(userInfo.asManagementCredentials())
             .vhost(getVhost())
+            .useSsl(commonRabbitMQConfiguration.useSsl())
+            .useSslManagement(commonRabbitMQConfiguration.useSslManagement())
+            .sslConfiguration(commonRabbitMQConfiguration.getSslConfiguration())
+            .useQuorumQueues(commonRabbitMQConfiguration.isQuorumQueuesUsed())
+            .quorumQueueReplicationFactor(commonRabbitMQConfiguration.getQuorumQueueReplicationFactor())
+            .quorumQueueDeliveryLimit(commonRabbitMQConfiguration.getQuorumQueueDeliveryLimit())
+            .networkRecoveryIntervalInMs(commonRabbitMQConfiguration.getNetworkRecoveryIntervalInMs())
+            .queueTTL(commonRabbitMQConfiguration.getQueueTTL())
             .build();
     }
 

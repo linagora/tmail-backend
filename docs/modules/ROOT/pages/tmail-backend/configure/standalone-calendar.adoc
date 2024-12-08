@@ -16,7 +16,7 @@ For example, in the configuration below, TMail will extract the list of recipien
 <mailet match="All" class="ContactExtractor">
   <attribute>ExtractedContacts</attribute>
 </mailet>
-<mailet match="All" class="IndexContacts">
+<mailet match="All" class="com.linagora.tmail.mailets.IndexContacts">
   <attribute>ExtractedContacts</attribute>
 </mailet>
 ....
