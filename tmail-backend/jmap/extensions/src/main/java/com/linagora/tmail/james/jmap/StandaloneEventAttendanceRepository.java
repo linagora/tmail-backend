@@ -17,6 +17,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class StandaloneEventAttendanceRepository implements EventAttendanceRepository {
@@ -54,26 +55,29 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                                                AttendanceStatus attendanceStatus) {
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
-        return getFlags(messageId, systemMailboxSession)
-            .flatMap(flags -> {
-                AttendanceStatus.getEventAttendanceFlags().forEach(flags::remove);
-                flags.add(attendanceStatus.getUserFlag());
-                return doSetFlags(messageId, flags, systemMailboxSession);
-            }).then();
+        return updateEventAttendanceFlags(messageId, attendanceStatus, systemMailboxSession);
     }
 
-    private Mono<Void> doSetFlags(MessageId messageId, Flags flagsToSet, MailboxSession session) {
+    private Mono<Void> updateEventAttendanceFlags(MessageId messageId, AttendanceStatus attendanceStatus, MailboxSession session) {
         return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
             .map(MessageResult::getMailboxId)
             .flux()
             .collectList()
             .flatMap(mailboxIds ->
-                Mono.from(messageIdManager.setFlagsReactive(
-                    flagsToSet,
-                    MessageManager.FlagsUpdateMode.REPLACE,
-                    messageId,
-                    mailboxIds,
-                    session)));
+                Flux.concat(
+                    messageIdManager.setFlagsReactive(
+                        AttendanceStatus.getEventAttendanceFlags(),
+                        MessageManager.FlagsUpdateMode.REMOVE,
+                        messageId,
+                        mailboxIds,
+                        session),
+                    messageIdManager.setFlagsReactive(
+                        new Flags(attendanceStatus.getUserFlag()),
+                        MessageManager.FlagsUpdateMode.ADD,
+                        messageId,
+                        mailboxIds,
+                        session)
+                ).then());
     }
 
     private Mono<Flags> getFlags(MessageId messageId, MailboxSession session) {

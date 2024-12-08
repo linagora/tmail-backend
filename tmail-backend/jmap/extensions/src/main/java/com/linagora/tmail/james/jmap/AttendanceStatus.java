@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import jakarta.mail.Flags;
 
+import org.apache.james.mailbox.FlagsBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +59,9 @@ public enum AttendanceStatus {
         return eventAttendanceFlags.stream().findAny();
     }
 
-    public static Set<String> getEventAttendanceFlags() {
-        return EVENT_ATTENDANCE_FLAGS;
+    public static Flags getEventAttendanceFlags() {
+        return FlagsBuilder.builder()
+            .add(EVENT_ATTENDANCE_FLAGS.toArray(new String[0]))
+            .build();
     }
 }
