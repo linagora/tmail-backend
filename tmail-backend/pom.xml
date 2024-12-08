@@ -65,6 +65,7 @@
 
         <module>event-bus-redis</module>
         <module>tmail-third-party</module>
+        <module>plugins</module>
     </modules>
 
     <properties>
