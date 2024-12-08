@@ -75,9 +75,6 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                     mailboxIds,
                     session
                 ))
-            )
-            .onErrorContinue((error, object) ->
-                LOGGER.error("Error while setting flags for message ID {}", messageId, error)
             );
     }
 
