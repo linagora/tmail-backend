@@ -178,7 +178,6 @@ public class LDAPMailingList extends GenericMailet {
     }
 
     private final LDAPConnectionPool ldapConnectionPool;
-    private final Optional<Filter> userExtraFilter;
     private final LdapRepositoryConfiguration configuration;
     private Filter objectClassFilter;
     private String[] listAttributes;
@@ -192,8 +191,6 @@ public class LDAPMailingList extends GenericMailet {
     public LDAPMailingList(LDAPConnectionPool ldapConnectionPool, LdapRepositoryConfiguration configuration) {
         this.configuration = configuration;
         this.ldapConnectionPool = ldapConnectionPool;
-        this.userExtraFilter = Optional.ofNullable(configuration.getFilter())
-            .map(Throwing.function(Filter::create).sneakyThrow());
     }
 
     @VisibleForTesting
@@ -298,9 +295,7 @@ public class LDAPMailingList extends GenericMailet {
 
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
-        return userExtraFilter
-            .map(extraFilter -> Filter.createANDFilter(objectClassFilter, specificUserFilter, extraFilter))
-            .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
+        return Filter.createANDFilter(objectClassFilter, specificUserFilter);
     }
 
     private MailTransformation listToMailTransformation(MaybeSender maybeSender, SearchResultEntry list) {
