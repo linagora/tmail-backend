@@ -24,19 +24,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.rabbitmq.OutboundMessage;
+
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.AmqpUri;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
-import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
-
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.rabbitmq.OutboundMessage;
 
 class OpenPaasContactsConsumerTest {
 
@@ -74,11 +74,11 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashOnInvalidMessages() throws InterruptedException {
-        IntStream.range(0, 10).forEach(i -> sendMessage("BAD_PAYLOAD" + i));
+        IntStream.range(0, 10).forEach(i -> sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, "BAD_PAYLOAD" + i));
 
         TimeUnit.MILLISECONDS.sleep(100);
 
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -90,7 +90,7 @@ class OpenPaasContactsConsumerTest {
                      [ "version", {}, "text", "4.0" ],
                      [ "kind",    {}, "text", "individual" ],
                      [ "fn",      {}, "text", "Jane Doe" ],
-                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
                      [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
                   ]
                ]
@@ -99,14 +99,14 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block())
                 .hasSize(1));
     }
 
     @Test
     void contactShouldBeIndexedWhenContactUserAddedMessage() {
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -118,7 +118,7 @@ class OpenPaasContactsConsumerTest {
                      [ "version", {}, "text", "4.0" ],
                      [ "kind",    {}, "text", "individual" ],
                      [ "fn",      {}, "text", "Jane Doe" ],
-                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
                      [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
                   ]
                ]
@@ -127,20 +127,180 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
                 .allSatisfy(Throwing.consumer(contact -> {
-                    assertThat(contact.address()).isEqualTo(new MailAddress("jhon@doe.com"));
+                    assertThat(contact.address()).isEqualTo(new MailAddress("john@doe.com"));
                     assertThat(contact.firstname()).isEqualTo("Jane Doe");
                     assertThat(contact.surname()).isEqualTo("");
                 })));
     }
 
     @Test
+    void contactShouldBeUpdatedWhenContactUserUpdatedMessageWithSameAddress() {
+
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+                assertThat(
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
+                                .collectList().block())
+                        .hasSize(1)
+                        .map(EmailAddressContact::fields)
+                        .allSatisfy(Throwing.consumer(contact -> {
+                            assertThat(contact.address()).isEqualTo(new MailAddress("john@doe.com"));
+                            assertThat(contact.firstname()).isEqualTo("Jane Doe");
+                            assertThat(contact.surname()).isEqualTo("");
+                        })));
+
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_UPDATE,"""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Updated Jane Doe" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+                assertThat(
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
+                                .collectList().block())
+                        .hasSize(1)
+                        .map(EmailAddressContact::fields)
+                        .anySatisfy(Throwing.consumer(contact -> {
+                            assertThat(contact.address()).isEqualTo(new MailAddress("john@doe.com"));
+                            assertThat(contact.firstname()).isEqualTo("Updated Jane Doe");
+                            assertThat(contact.surname()).isEqualTo("");
+                        })));
+    }
+
+    @Test
+    void newContactShouldBeAddedWhenContactUserUpdatedMessageWithUpdatedAddress() {
+
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+                assertThat(
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
+                                .collectList().block())
+                        .hasSize(1)
+                        .map(EmailAddressContact::fields)
+                        .allSatisfy(Throwing.consumer(contact -> {
+                            assertThat(contact.address()).isEqualTo(new MailAddress("john@doe.com"));
+                            assertThat(contact.firstname()).isEqualTo("Jane Doe");
+                            assertThat(contact.surname()).isEqualTo("");
+                        })));
+
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_UPDATE,"""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Updated Jane Doe" ],
+                     [ "email",   {}, "text", "john2@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+                assertThat(
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
+                                .collectList().block())
+                        .hasSize(2)
+                        .map(EmailAddressContact::fields)
+                        .anySatisfy(Throwing.consumer(contact -> {
+                            assertThat(contact.address()).isEqualTo(new MailAddress("john2@doe.com"));
+                            assertThat(contact.firstname()).isEqualTo("Updated Jane Doe");
+                            assertThat(contact.surname()).isEqualTo("");
+                        })));
+    }
+
+    @Test
+    void contactShouldBeDeletedWhenContactUserDeletedMessage() {
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_DELETE,"""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+                assertThat(
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
+                                .collectList().block())
+                        .hasSize(0));
+    }
+
+    @Test
     void consumeMessageShouldNotCrashOnInvalidContactMailAddress() {
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -161,10 +321,10 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block()).isEmpty());
 
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -176,7 +336,7 @@ class OpenPaasContactsConsumerTest {
                      [ "version", {}, "text", "4.0" ],
                      [ "kind",    {}, "text", "individual" ],
                      [ "fn",      {}, "text", "Jane Doe" ],
-                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
                      [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
                   ]
                ]
@@ -185,14 +345,14 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block())
                 .hasSize(1));
     }
 
     @Test
     void consumeMessageShouldNotCrashWhenFnPropertyIsNotProvided() {
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -203,7 +363,7 @@ class OpenPaasContactsConsumerTest {
                   [
                      [ "version", {}, "text", "4.0" ],
                      [ "kind",    {}, "text", "individual" ],
-                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
                      [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
                   ]
                ]
@@ -212,21 +372,21 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
                 .allSatisfy(Throwing.consumer(contact -> {
                     assertThat(contact.firstname()).isEmpty();
                     assertThat(contact.surname()).isEmpty();
-                    assertThat(contact.address()).isEqualTo(new MailAddress("jhon@doe.com"));
+                    assertThat(contact.address()).isEqualTo(new MailAddress("john@doe.com"));
                 })));
     }
 
     @Test
     void consumeMessageShouldNotCrashOnInvalidOwnerMailAddress() {
         // Note: Bob has an invalid mail address.
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "bookId": "BOB_USER_ID",
                 "bookName": "contacts",
@@ -238,7 +398,7 @@ class OpenPaasContactsConsumerTest {
                      [ "version", {}, "text", "4.0" ],
                      [ "kind",    {}, "text", "individual" ],
                      [ "fn",      {}, "text", "Jane Doe" ],
-                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
                      [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
                   ]
                ]
@@ -247,11 +407,11 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block())
                 .isEmpty());
 
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -263,7 +423,7 @@ class OpenPaasContactsConsumerTest {
                      [ "version", {}, "text", "4.0" ],
                      [ "kind",    {}, "text", "individual" ],
                      [ "fn",      {}, "text", "Jane Doe" ],
-                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
                      [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
                   ]
                ]
@@ -272,7 +432,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block())
                 .hasSize(1));
     }
@@ -280,9 +440,9 @@ class OpenPaasContactsConsumerTest {
     @Test
     void givenDisplayNameFromOpenPaasNotEmptyThenStoredDisplayNameShouldBeOverridden()
         throws AddressException {
-        indexJhonDoe(OpenPaasServerExtension.ALICE_EMAIL());
+        indexJohnDoe(OpenPaasServerExtension.ALICE_EMAIL());
 
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -293,8 +453,8 @@ class OpenPaasContactsConsumerTest {
                   [
                      [ "version", {}, "text", "4.0" ],
                      [ "kind",    {}, "text", "individual" ],
-                     [ "fn",      {}, "text", "Jhon Dont" ],
-                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "fn",      {}, "text", "John Dont" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
                      [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
                   ]
                ]
@@ -302,11 +462,11 @@ class OpenPaasContactsConsumerTest {
             """);
 
         ContactFields expectedContact =
-            new ContactFields(new MailAddress("jhon@doe.com"), "Jhon Dont", "");
+            new ContactFields(new MailAddress("john@doe.com"), "John Dont", "");
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -316,9 +476,9 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void givenDisplayNameFromOpenPaasIsEmptyThenStoredDisplayNameShouldPersist() {
-        ContactFields indexedContact = indexJhonDoe(OpenPaasServerExtension.ALICE_EMAIL());
+        ContactFields indexedContact = indexJohnDoe(OpenPaasServerExtension.ALICE_EMAIL());
 
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -330,7 +490,7 @@ class OpenPaasContactsConsumerTest {
                      [ "version", {}, "text", "4.0" ],
                      [ "kind",    {}, "text", "individual" ],
                      [ "fn",      {}, "text", "  " ],
-                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
                      [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
                   ]
                ]
@@ -339,7 +499,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -349,11 +509,11 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashOnUnknownProperty() throws InterruptedException {
-        IntStream.range(0, 10).forEach(i -> sendMessage("BAD_PAYLOAD" + i));
+        IntStream.range(0, 10).forEach(i -> sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, "BAD_PAYLOAD" + i));
 
         TimeUnit.MILLISECONDS.sleep(100);
 
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
                 "unknownProperty": "value",
                 "bookId": "ALICE_USER_ID",
@@ -383,11 +543,11 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashOnUnknownPropertyOfVCardObject() throws InterruptedException {
-        IntStream.range(0, 10).forEach(i -> sendMessage("BAD_PAYLOAD" + i));
+        IntStream.range(0, 10).forEach(i -> sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, "BAD_PAYLOAD" + i));
 
         TimeUnit.MILLISECONDS.sleep(100);
 
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -415,7 +575,7 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void contactShouldBeIndexedWhenMessageHasUnknownProperty() {
-        sendMessage("""
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {   "unknownProperty": "value",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
@@ -449,24 +609,24 @@ class OpenPaasContactsConsumerTest {
     }
 
 
-    private void sendMessage(String message) {
+    private void sendMessage(String exchange, String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                OpenPaasContactsConsumer.EXCHANGE_NAME,
+                exchange,
                 EMPTY_ROUTING_KEY,
                 message.getBytes(UTF_8))))
             .block();
     }
 
-    private ContactFields indexJhonDoe(String ownerMailAddressString) {
+    private ContactFields indexJohnDoe(String ownerMailAddressString) {
         try {
             MailAddress ownerMailAddress = new MailAddress(ownerMailAddressString);
-            MailAddress jhonDoeMailAddress = new MailAddress("jhon@doe.com");
+            MailAddress johnDoeMailAddress = new MailAddress("john@doe.com");
             AccountId aliceAccountId =
                 AccountId.fromUsername(Username.fromMailAddress(ownerMailAddress));
 
             return Mono.from(searchEngine.index(aliceAccountId,
-                new ContactFields(jhonDoeMailAddress, "Jhon", "Doe"))).block().fields();
+                new ContactFields(johnDoeMailAddress, "John", "Doe"))).block().fields();
         } catch (AddressException e) {
             throw new RuntimeException(e);
         }
