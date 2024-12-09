@@ -81,10 +81,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                  "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -110,10 +106,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                  "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -146,10 +138,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -178,10 +166,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_UPDATE,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -214,10 +198,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -246,10 +226,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_UPDATE,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -281,10 +257,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_DELETE,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -310,10 +282,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -335,10 +303,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -364,10 +328,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -399,10 +359,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "BOB_USER_ID",
-                "bookId": "BOB_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "BOB_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -425,10 +381,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -457,10 +409,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -494,10 +442,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -531,10 +475,6 @@ class OpenPaasContactsConsumerTest {
             {
                 "unknownProperty": "value",
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -564,11 +504,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
-                "bookId": "ALICE_USER_ID",
                 "_id": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -594,10 +530,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {   "unknownProperty": "value",
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -630,10 +562,6 @@ class OpenPaasContactsConsumerTest {
         // Note: _id is absent in the message.
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -653,10 +581,6 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
@@ -681,10 +605,6 @@ class OpenPaasContactsConsumerTest {
     void contactShouldNotIndexedWhenAddedMessageAbsentOpenPassId() throws InterruptedException {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
-                "bookId": "ALICE_USER_ID",
-                "bookName": "contacts",
-                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
-                "userId": "ALICE_USER_ID",
                 "vcard": [
                 "vcard",
                   [
