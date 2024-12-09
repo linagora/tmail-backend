@@ -34,23 +34,20 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
 
     @Override
     public Publisher<AttendanceStatus> getAttendanceStatus(Username username, MessageId messageId) {
-        LOGGER.debug("Getting attendance status for user '{}' and message '{}'", username, messageId);
+        LOGGER.trace("Getting attendance status for user '{}' and message '{}'", username, messageId);
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
         return getFlags(messageId, systemMailboxSession)
             .flatMap(userFlags -> Mono.justOrEmpty(AttendanceStatus.fromMessageFlags(userFlags)))
-            .switchIfEmpty(handleMissingEventAttendanceFlag(messageId, systemMailboxSession));
+            .switchIfEmpty(handleMissingEventAttendanceFlag(messageId));
     }
 
-    private Mono<AttendanceStatus> handleMissingEventAttendanceFlag(MessageId messageId, MailboxSession systemMailboxSession) {
-        return Mono.from(getFlags(messageId, systemMailboxSession)).map(flags -> {
-            LOGGER.debug("""
+    private Mono<AttendanceStatus> handleMissingEventAttendanceFlag(MessageId messageId) {
+        LOGGER.debug("""
                 No event attendance flag found for message {}.
-                Flags: {}.
                 Defaulting to NeedsAction
-                """, messageId, flags);
-            return AttendanceStatus.NeedsAction;
-        });
+                """, messageId);
+        return Mono.just(AttendanceStatus.NeedsAction);
     }
 
     @Override
@@ -62,9 +59,8 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
     }
 
     private Mono<Void> updateEventAttendanceFlags(MessageId messageId, AttendanceStatus attendanceStatus, MailboxSession session) {
-        return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
+        return Flux.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
             .map(MessageResult::getMailboxId)
-            .flux()
             .collectList()
             .flatMap(mailboxIds ->
                 Flux.concat(
@@ -83,8 +79,8 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                 ).then());
     }
 
-    private Mono<Flags> getFlags(MessageId messageId, MailboxSession session) {
-        return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
+    private Flux<Flags> getFlags(MessageId messageId, MailboxSession session) {
+        return Flux.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
             .map(MessageResult::getFlags);
     }
 }
