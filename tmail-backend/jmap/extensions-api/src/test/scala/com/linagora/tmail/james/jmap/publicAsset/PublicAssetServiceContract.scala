@@ -30,7 +30,7 @@ object PublicAssetServiceContract {
 
   val identityRepository: IdentityRepository = mock(classOf[IdentityRepository])
 
-  val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED: Long = PublicAssetTotalSizeLimit.of(org.apache.james.util.Size.of(20L, org.apache.james.util.Size.Unit.M)).get.asLong()
+  val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED: Long = PublicAssetTotalSizeLimit.DEFAULT.asLong()
 
   val CLOCK = new UpdatableTickingClock(Instant.now())
 }

@@ -18,7 +18,7 @@ import scala.util.{Failure, Success, Try}
 
 object JMAPExtensionConfiguration {
   val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_PROPERTY: String = "public.asset.total.size"
-  val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT: PublicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.of(Size.of(20L, Size.Unit.M)).get
+  val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT: PublicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.DEFAULT
   val TICKET_IP_VALIDATION_PROPERTY: String = "authentication.strategy.rfc8621.tickets.ip.validation.enabled"
   val TICKET_IP_VALIDATION_ENABLED: TicketIpValidationEnable = TicketIpValidationEnable(true)
   val CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_PROPERTY: String = "calendarEvent.reply.supportedLanguages"
