@@ -142,6 +142,18 @@ public class StandaloneEventAttendanceRepositoryTest {
     }
 
     @Test
+    void setAttendanceStatusShouldRemoveExistingEventAttendanceFlagsWhenNeedsActionSet() {
+        Flags flags = new Flags("$rejected");
+        MessageId messageId = createMessage(flags);
+
+        Mono.from(testee.setAttendanceStatus(mailbox.getUser(), messageId, AttendanceStatus.NeedsAction)).block();
+
+        Flags updatedFlags = getFlags(messageId);
+        assertThat(updatedFlags.contains("$rejected")).isFalse();
+        assertThat(updatedFlags.contains("$needs-action")).isTrue();
+    }
+
+    @Test
     void setAttendanceStatusShouldBeIdempotent() {
         Flags flags = new Flags();
         MessageId messageId = createMessage(flags);
