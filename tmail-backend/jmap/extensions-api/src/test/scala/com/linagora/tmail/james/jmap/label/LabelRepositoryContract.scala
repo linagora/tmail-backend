@@ -1,7 +1,7 @@
 package com.linagora.tmail.james.jmap.label
 
 import com.linagora.tmail.james.jmap.label.LabelRepositoryContract.{ALICE, BLUE, BOB, RED}
-import com.linagora.tmail.james.jmap.model._
+import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import org.apache.james.core.Username
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.Test

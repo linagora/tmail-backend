@@ -2,12 +2,11 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-
 import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
-import com.linagora.tmail.james.jmap.publicAsset.PublicAssetServiceContract._
+import com.linagora.tmail.james.jmap.publicAsset.PublicAssetServiceContract.{CLOCK, IDENTITY1, IDENTITY_ID1, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED, identityRepository}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.identity.IdentityRepository
-import org.apache.james.jmap.api.model._
+import org.apache.james.jmap.api.model.{HtmlSignature, Identity, IdentityId, IdentityName, MayDeleteIdentity, Size, TextSignature}
 import org.apache.james.utils.UpdatableTickingClock
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
