@@ -36,7 +36,7 @@ public enum AttendanceStatus {
         return userFlag;
     }
 
-    public static Optional<AttendanceStatus> fromUseFlag(String userFlag) {
+    public static Optional<AttendanceStatus> fromUserFlag(String userFlag) {
         Preconditions.checkNotNull(userFlag);
         for (AttendanceStatus status : AttendanceStatus.values()) {
             if (status.userFlag.equals(userFlag)) {
@@ -49,7 +49,7 @@ public enum AttendanceStatus {
     public static Optional<AttendanceStatus> fromMessageFlags(Flags flags) {
         List<AttendanceStatus> eventAttendanceFlags = Arrays.stream(flags.getUserFlags())
             .filter(EVENT_ATTENDANCE_FLAGS::contains)
-            .flatMap(flag -> AttendanceStatus.fromUseFlag(flag).stream())
+            .flatMap(flag -> AttendanceStatus.fromUserFlag(flag).stream())
             .toList();
 
         if (eventAttendanceFlags.size() > 1) {
