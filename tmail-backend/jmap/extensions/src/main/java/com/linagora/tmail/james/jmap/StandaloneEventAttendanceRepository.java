@@ -43,9 +43,11 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
 
     private Mono<AttendanceStatus> handleMissingEventAttendanceFlag(MessageId messageId, MailboxSession systemMailboxSession) {
         return Mono.from(getFlags(messageId, systemMailboxSession)).map(flags -> {
-            LOGGER.warn("No event attendance flag found for message {}", messageId);
-            LOGGER.warn("Flags for message {}: {}", messageId, flags);
-            LOGGER.warn("Defaulting to NeedsAction for message {}", messageId);
+            LOGGER.debug("""
+                No event attendance flag found for message {}.
+                Flags: {}.
+                Defaulting to NeedsAction
+                """, messageId, flags);
             return AttendanceStatus.NeedsAction;
         });
     }
