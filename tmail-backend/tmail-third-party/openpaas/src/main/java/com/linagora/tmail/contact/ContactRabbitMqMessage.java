@@ -6,8 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public record ContactRabbitMqMessage(String bookId, String bookName, String contactId,
-                                     String userId, JCardObject vcard,
+public record ContactRabbitMqMessage(JCardObject vcard,
                                      @JsonProperty(value = "_id") String openPaasUserId) {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
