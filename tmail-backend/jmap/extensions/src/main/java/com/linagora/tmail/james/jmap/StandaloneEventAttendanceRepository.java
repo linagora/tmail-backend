@@ -34,6 +34,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
 
     @Override
     public Publisher<AttendanceStatus> getAttendanceStatus(Username username, MessageId messageId) {
+        LOGGER.debug("Getting attendance status for user '{}' and message '{}'", username, messageId);
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
         return getFlags(messageId, systemMailboxSession)
