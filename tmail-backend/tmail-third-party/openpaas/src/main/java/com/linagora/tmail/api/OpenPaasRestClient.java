@@ -4,6 +4,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
+import jakarta.inject.Inject;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.MailAddress;
@@ -30,6 +31,7 @@ public class OpenPaasRestClient {
     private final HttpClient client;
     private final ObjectMapper deserializer = new ObjectMapper();
 
+    @Inject
     public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
         URI apiUrl = openPaasConfiguration.apirUri();
         String user = openPaasConfiguration.adminUsername();

@@ -1,6 +1,5 @@
 package com.linagora.tmail.contact;
 
-import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 
@@ -8,7 +7,6 @@ import java.io.Closeable;
 import java.util.Optional;
 
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
@@ -60,8 +58,8 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     private Disposable consumeDeletedContactsDisposable;
 
     @Inject
-    public OpenPaasContactsConsumer(@Named(OPENPAAS_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
-                                    @Named(OPENPAAS_INJECTION_KEY) RabbitMQConfiguration commonRabbitMQConfiguration,
+    public OpenPaasContactsConsumer(ReactorRabbitMQChannelPool channelPool,
+                                    RabbitMQConfiguration commonRabbitMQConfiguration,
                                     EmailAddressContactSearchEngine contactSearchEngine,
                                     OpenPaasRestClient openPaasRestClient) {
         this.receiverProvider = channelPool::createReceiver;
