@@ -11,6 +11,7 @@ import org.apache.commons.configuration2.plist.PropertyListConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
+import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.user.ldap.DockerLdapSingleton;
 import org.apache.james.user.ldap.LdapGenericContainer;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
@@ -20,11 +21,15 @@ import org.apache.mailet.ProcessingState;
 import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMailContext;
 import org.apache.mailet.base.test.FakeMailetConfig;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.github.fge.lambdas.Throwing;
+
 class LDAPMailingListTest {
+    private static final String MESSAGE_CONTENT = "any text";
     static LdapGenericContainer ldapContainer = DockerLdapSingleton.ldapContainer;
 
     @BeforeAll
@@ -56,12 +61,19 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipient("mygroup@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
-        assertThat(mail.getRecipients())
-            .containsOnly(new MailAddress("james-user@james.org"),
-                new MailAddress("james-user2@james.org"));
+        SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
+            softly.assertThat(mailetContext.getSentMails()).hasSize(1);
+            softly.assertThat(mailetContext.getSentMails().get(0).getRecipients())
+                .containsOnly(new MailAddress("james-user@james.org"),
+                    new MailAddress("james-user2@james.org"));
+        }));
     }
 
     @Test
@@ -83,6 +95,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipient("group2@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -110,6 +126,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipient("group2@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         LoopPrevention.RecordedRecipients recordedRecipients = LoopPrevention.RecordedRecipients.fromMail(mail);
         recordedRecipients.merge(new MailAddress("group2@lists.james.org")).recordOn(mail);
@@ -137,6 +157,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipient("unknown-category@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -164,6 +188,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipient("format@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -195,6 +223,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipient("group3@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -226,6 +258,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipient("group30@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -257,6 +293,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@localhost") // local server for FakeMailContext
             .recipient("group3@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -285,6 +325,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@localhost") // local server for FakeMailContext
             .recipient("group30@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -313,6 +357,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user4@james.org")
             .recipient("group4@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -341,6 +389,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user6@james.org")
             .recipient("group5bis@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -369,6 +421,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user6@james.org")
             .recipient("group5tier@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -397,6 +453,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user@james.org")
             .recipient("group4@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -425,6 +485,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user3@james.org")
             .recipient("group4@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -456,6 +520,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user4@james.org")
             .recipient("group5@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -486,6 +554,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user2@james.org")
             .recipient("group5@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -516,6 +588,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user3@james.org")
             .recipient("group5@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -547,6 +623,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user3@james.org")
             .recipients("group5@lists.james.org", "james-user4@james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -573,6 +653,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user3@james.org")
             .recipient("noowner@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -604,6 +688,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user3@james.org")
             .recipient("loop1@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -630,6 +718,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user2@james.org")
             .recipient("group6@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -658,6 +750,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user2@james.org")
             .recipient("group7@localhost")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -686,6 +782,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user2@lists.james.org")
             .recipient("group6@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -714,6 +814,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user2@lists.james.org")
             .recipient("group8@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -741,6 +845,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user2@lists.james.org")
             .recipient("nested@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -770,6 +878,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user2@lists.james.org")
             .recipient("nestedOwner@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -798,6 +910,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("james-user3@localhost")
             .recipient("group6@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -828,6 +944,10 @@ class LDAPMailingListTest {
             .name("test-mail")
             .state(FakeMail.DEFAULT)
             .recipient("group6@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -857,6 +977,10 @@ class LDAPMailingListTest {
             .name("test-mail")
             .state(FakeMail.DEFAULT)
             .recipient("group5@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -886,6 +1010,10 @@ class LDAPMailingListTest {
             .name("test-mail")
             .state(FakeMail.DEFAULT)
             .recipient("group4@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -915,6 +1043,10 @@ class LDAPMailingListTest {
             .name("test-mail")
             .state(FakeMail.DEFAULT)
             .recipient("group3@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -944,6 +1076,10 @@ class LDAPMailingListTest {
             .name("test-mail")
             .state(FakeMail.DEFAULT)
             .recipient("group2@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -971,6 +1107,10 @@ class LDAPMailingListTest {
             .name("test-mail")
             .state(FakeMail.DEFAULT)
             .recipient("group2@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -1017,6 +1157,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipient("mygroup@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -1050,6 +1194,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipients("mygroup@lists.james.org", "unrelated@james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail);
 
@@ -1078,6 +1226,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipients("mygroup@lists.james.org", "unrelated@james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail1);
 
@@ -1086,6 +1238,10 @@ class LDAPMailingListTest {
             .state(FakeMail.DEFAULT)
             .sender("bob@james.org")
             .recipients("mygroup@lists.james.org", "unrelated@james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
             .build();
         testee.service(mail2);
 

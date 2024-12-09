@@ -8,12 +8,12 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.MimeMessage;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
@@ -25,7 +25,6 @@ import org.apache.james.util.DurationParser;
 import org.apache.mailet.LoopPrevention;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailetContext;
-import org.apache.mailet.PerRecipientHeaders;
 import org.apache.mailet.ProcessingState;
 import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
@@ -132,7 +131,9 @@ public class LDAPMailingList extends GenericMailet {
         Function<MailetContext, MailingListPredicate> ANY_LOCAL = mailetContext -> mailAddress -> mailetContext.isLocalServer(mailAddress.getDomain());
     }
 
-    interface MailTransformation extends UnaryOperator<Mail> {
+    interface MailTransformation  {
+        Mail transform(Mail mail) throws MessagingException;
+
         Function<MailAddress, MailTransformation> removeRecipient = rcpt -> mail -> {
             mail.setRecipients(mail.getRecipients()
                 .stream()
@@ -155,15 +156,15 @@ public class LDAPMailingList extends GenericMailet {
         };
 
         default MailTransformation doCompose(MailTransformation other) {
-            return mail -> apply(other.apply(mail));
+            return mail -> transform(other.transform(mail));
         }
 
         default MailTransformation doComposeIf(MailTransformation other, Predicate<Mail> condition) {
             return mail -> {
                 if (condition.apply(mail)) {
-                    return apply(other.apply(mail));
+                    return transform(other.transform(mail));
                 }
-                return apply(mail);
+                return transform(mail);
             };
         }
     }
@@ -206,7 +207,7 @@ public class LDAPMailingList extends GenericMailet {
             .flatMap(Throwing.function(list -> resolveListDN(list).stream()))
             .map(entry -> listToMailTransformation(mail.getMaybeSender(), entry))
             .reduce(MailTransformation.NOOP, MailTransformation::doCompose)
-            .apply(mail);
+            .transform(mail);
     }
 
     @Override
@@ -318,33 +319,29 @@ public class LDAPMailingList extends GenericMailet {
 
             return MailTransformation.removeRecipient.apply(listAddress)
                 .doComposeIf(
-                    MailTransformation.recordListInLoopDetection.apply(listAddress)
-                        .doCompose(MailTransformation.addRecipients.apply(memberAddresses))
-                        .doCompose(addListHeaders(memberAddresses, listAddress)),
+                    mail -> {
+                        Mail duplicate = mail.duplicate();
+                        try {
+                            MailTransformation.recordListInLoopDetection.apply(listAddress).transform(duplicate);
+                            duplicate.setRecipients(memberAddresses);
+                            addListHeaders(duplicate.getMessage(), listAddress);
+                            getMailetContext().sendMail(mail);
+                        } finally {
+                            LifecycleUtil.dispose(duplicate);
+                        }
+
+                        return mail;
+                    },
                     mail -> !LoopPrevention.RecordedRecipients.fromMail(mail).getRecipients().contains(listAddress));
         } catch (AddressException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private MailTransformation addListHeaders(Collection<MailAddress> rcpts, MailAddress listName) {
-        return mail -> {
-            PerRecipientHeaders.Header listIdHeader = PerRecipientHeaders.Header.builder()
-                .name("List-Id")
-                .value("<" + listName.asString() + ">")
-                .build();
-            PerRecipientHeaders.Header listPostHeader = PerRecipientHeaders.Header.builder()
-                .name("List-Post")
-                .value("<mailto:" + listName.asString() + ">")
-                .build();
-
-            rcpts.forEach(rcpt -> {
-                mail.addSpecificHeaderForRecipient(listIdHeader, rcpt);
-                mail.addSpecificHeaderForRecipient(listPostHeader, rcpt);
-            });
-
-            return mail;
-        };
+    private void addListHeaders(MimeMessage message, MailAddress listName) throws MessagingException {
+        message.addHeader("List-Id","<" + listName.asString() + ">");
+        message.addHeader("List-Post","<mailto:" + listName.asString() + ">");
+        message.setHeader("Reply-To", listName.asString());
     }
 
     private MailTransformation toRejectedProcessor(MailAddress listAddress) {
