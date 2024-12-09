@@ -11,6 +11,7 @@ import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.model.FetchGroup;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
 import org.reactivestreams.Publisher;
@@ -55,28 +56,33 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                                                AttendanceStatus attendanceStatus) {
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
-        return updateEventAttendanceFlags(messageId, attendanceStatus, systemMailboxSession);
-    }
-
-    private Mono<Void> updateEventAttendanceFlags(MessageId messageId, AttendanceStatus attendanceStatus, MailboxSession session) {
-        return Flux.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
+        return Flux.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, systemMailboxSession))
             .map(MessageResult::getMailboxId)
             .collectList()
             .flatMap(mailboxIds ->
-                Flux.concat(
-                    messageIdManager.setFlagsReactive(
-                        AttendanceStatus.getEventAttendanceFlags(),
-                        MessageManager.FlagsUpdateMode.REMOVE,
-                        messageId,
-                        mailboxIds,
-                        session),
-                    messageIdManager.setFlagsReactive(
-                        new Flags(attendanceStatus.getUserFlag()),
-                        MessageManager.FlagsUpdateMode.ADD,
-                        messageId,
-                        mailboxIds,
-                        session)
-                ).then());
+                updateEventAttendanceFlagsInMailboxes(messageId, attendanceStatus, systemMailboxSession, mailboxIds));
+    }
+
+    private Mono<Void> updateEventAttendanceFlagsInMailboxes(MessageId messageId, AttendanceStatus attendanceStatus,
+                                                             MailboxSession session, List<MailboxId> mailboxIds) {
+        // By removing the current event attendance flags (without the new flag to set) we ensure
+        // commutativity of operations that is it does not matter whether the REMOVE or ADD operation is done first.
+        Flags eventAttendanceFlagsToRemove = AttendanceStatus.getEventAttendanceFlags();
+        eventAttendanceFlagsToRemove.remove(attendanceStatus.getUserFlag());
+        return Flux.concat(
+            messageIdManager.setFlagsReactive(
+                eventAttendanceFlagsToRemove,
+                MessageManager.FlagsUpdateMode.REMOVE,
+                messageId,
+                mailboxIds,
+                session),
+            messageIdManager.setFlagsReactive(
+                new Flags(attendanceStatus.getUserFlag()),
+                MessageManager.FlagsUpdateMode.ADD,
+                messageId,
+                mailboxIds,
+                session)
+        ).then();
     }
 
     private Flux<Flags> getFlags(MessageId messageId, MailboxSession session) {
