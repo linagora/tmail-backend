@@ -1,5 +1,6 @@
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
@@ -91,7 +92,8 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
                     URI.create("http://localhost:8081"),
                     "user",
                     "password",
-                    OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
+                    OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+                    OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
             }
         };
 
