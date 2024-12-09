@@ -81,8 +81,8 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                 MessageManager.FlagsUpdateMode.ADD,
                 messageId,
                 mailboxIds,
-                session)
-        ).then();
+                session))
+            .then();
     }
 
     private Flux<Flags> getFlags(MessageId messageId, MailboxSession session) {
