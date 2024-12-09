@@ -17,7 +17,6 @@ import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 
-import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepository;
@@ -35,7 +34,6 @@ import reactor.core.publisher.Mono;
 public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
     private final TeamMailboxRepository teamMailboxRepository;
     private final LDAPConnectionPool ldapConnectionPool;
-    private final Optional<Filter> userExtraFilter;
     private Filter objectClassFilter;
     private String baseDN;
     private String mailAttributeForGroups;
@@ -45,13 +43,10 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
                                                 RecipientRewriteTable recipientRewriteTable,
                                                 DomainList domains,
                                                 TeamMailboxRepository teamMailboxRepository,
-                                                LDAPConnectionPool ldapConnectionPool,
-                                                LdapRepositoryConfiguration configuration) {
+                                                LDAPConnectionPool ldapConnectionPool) {
         super(users, recipientRewriteTable, domains);
         this.teamMailboxRepository = teamMailboxRepository;
         this.ldapConnectionPool = ldapConnectionPool;
-        this.userExtraFilter = Optional.ofNullable(configuration.getFilter())
-            .map(Throwing.function(Filter::create).sneakyThrow());
     }
 
     @VisibleForTesting
@@ -67,8 +62,6 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
         } catch (LDAPException e) {
             throw new RuntimeException(e);
         }
-        this.userExtraFilter = Optional.ofNullable(configuration.getFilter())
-            .map(Throwing.function(Filter::create).sneakyThrow());
     }
 
     @Override
@@ -109,9 +102,7 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
 
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
-        return userExtraFilter
-            .map(extraFilter -> Filter.createANDFilter(objectClassFilter, specificUserFilter, extraFilter))
-            .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
+        return Filter.createANDFilter(objectClassFilter, specificUserFilter);
     }
 
     @Override
