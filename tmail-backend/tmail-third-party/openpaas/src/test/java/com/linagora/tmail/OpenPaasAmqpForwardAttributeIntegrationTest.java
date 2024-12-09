@@ -19,6 +19,7 @@
 package com.linagora.tmail;
 
 import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.apache.james.backends.rabbitmq.Constants.AUTO_ACK;
 import static org.apache.james.mailets.configuration.Constants.DEFAULT_DOMAIN;
@@ -147,7 +148,8 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             URI.create("http://localhost:8081"),
                             "user",
                             "password",
-                            false);
+                            false,
+                            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
                     }
                 })
                 .withOverrides(new AbstractModule() {
@@ -262,7 +264,8 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             URI.create("http://localhost:8081"),
                             "user",
                             "password",
-                            false);
+                            false,
+                            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
                     }
                 })
                 .withOverrides(new AbstractModule() {

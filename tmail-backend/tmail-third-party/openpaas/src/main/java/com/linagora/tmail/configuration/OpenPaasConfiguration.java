@@ -17,7 +17,8 @@ public record OpenPaasConfiguration(
     URI apirUri,
     String adminUsername,
     String adminPassword,
-    boolean trustAllSslCerts) {
+    boolean trustAllSslCerts,
+    boolean quorumQueuesBypass) {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasConfiguration.class);
     private static final String RABBITMQ_URI_PROPERTY = "rabbitmq.uri";
     private static final String OPENPAAS_API_URI = "openpaas.api.uri";
@@ -25,6 +26,9 @@ public record OpenPaasConfiguration(
     private static final String OPENPAAS_ADMIN_PASSWORD_PROPERTY = "openpaas.admin.password";
     private static final String OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY = "openpaas.rest.client.trust.all.ssl.certs";
     public static final boolean OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED = false;
+    private static final String OPENPAAS_QUEUES_QUORUM_BYPASS_PROPERTY = "openpaas.queues.quorum.bypass";
+    public static final boolean OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED = false;
+    public static final boolean OPENPAAS_QUEUES_QUORUM_BYPASS_ENABLED = true;
 
     public static OpenPaasConfiguration from(Configuration configuration) {
         AmqpUri rabbitMqUri = readRabbitMqUri(configuration);
@@ -32,8 +36,9 @@ public record OpenPaasConfiguration(
         String adminUser = readAdminUsername(configuration);
         String adminPassword = readAdminPassword(configuration);
         boolean trustAllSslCerts = readTrustAllSslCerts(configuration);
+        boolean quorumQueuesBypass = readQuorumQueuesBypass(configuration);
 
-        return new OpenPaasConfiguration(rabbitMqUri, openPaasApiUri, adminUser, adminPassword, trustAllSslCerts);
+        return new OpenPaasConfiguration(rabbitMqUri, openPaasApiUri, adminUser, adminPassword, trustAllSslCerts, quorumQueuesBypass);
     }
 
     private static AmqpUri readRabbitMqUri(Configuration configuration) {
@@ -94,6 +99,10 @@ public record OpenPaasConfiguration(
     private static boolean readTrustAllSslCerts(Configuration configuration) {
         return Optional.ofNullable(configuration.getBoolean(OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY, null))
             .orElse(OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
+    }
+
+    private static boolean readQuorumQueuesBypass(Configuration configuration) {
+        return configuration.getBoolean(OPENPAAS_QUEUES_QUORUM_BYPASS_PROPERTY, OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
     }
 
 }
