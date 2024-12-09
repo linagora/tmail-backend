@@ -157,3 +157,7 @@ case class PublicAssetQuotaLimitExceededException(limitAsByte: Long) extends Pub
 case class PublicAssetInvalidContentTypeException(contentType: String) extends PublicAssetException {
   override val message: String = s"Invalid content type: $contentType"
 }
+
+case class PublicAssetIdentityIdNotFoundException(identityIds: Seq[IdentityId]) extends PublicAssetException {
+  override val message: String = s"IdentityId not found: ${identityIds.map(_.id.toString).mkString(", ")}"
+}
