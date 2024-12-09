@@ -38,12 +38,9 @@ public enum AttendanceStatus {
 
     public static Optional<AttendanceStatus> fromUserFlag(String userFlag) {
         Preconditions.checkNotNull(userFlag);
-        for (AttendanceStatus status : AttendanceStatus.values()) {
-            if (status.userFlag.equals(userFlag)) {
-                return Optional.of(status);
-            }
-        }
-        return Optional.empty();
+        return Arrays.stream(AttendanceStatus.values())
+            .filter(status -> status.userFlag.equals(userFlag))
+            .findFirst();
     }
 
     public static Optional<AttendanceStatus> fromMessageFlags(Flags flags) {
