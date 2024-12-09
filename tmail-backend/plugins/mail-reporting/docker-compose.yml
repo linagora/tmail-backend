@@ -1,0 +1,95 @@
+version: '3.8'
+
+networks:
+  emaily:
+    driver: bridge
+
+services:
+  tmail-backend:
+    depends_on:
+      cassandra:
+        condition: service_healthy
+      opensearch:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      s3:
+        condition: service_started
+    image: linagora/tmail-backend:distributed-1.0.1-rc1
+    container_name: tmail-backend
+    hostname: tmail-backend.local
+    ports:
+      - "80:80"
+      - "25:25"
+      - "110:110"
+      - "143:143"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+      - "8000:8000"
+    networks:
+      - emaily
+    volumes:
+      - ./sample_conf/jwt_publickey:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - ./sample_conf/jwt_privatekey:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+      - ./sample_conf/queue.properties:/root/conf/queue.properties
+      - ./sample_conf/extensions.properties:/root/conf/extensions.properties
+      - ./sample_conf/webadmin.properties:/root/conf/webadmin.properties
+      - ./sample_conf/mailetcontainer.xml:/root/conf/mailetcontainer.xml
+      - ./target/mail-plugin-report-1.0.0-SNAPSHOT.jar:/root/extensions-jars/tmail-report-plugin.jar
+      # Key generation:
+      # openssl genrsa -out jwt_privatekey 4096
+      # openssl rsa -in jwt_privatekey -pubout > jwt_publickey
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f -s -o /dev/null 'http://localhost:8000/healthcheck?check=IMAPHealthCheck&check=Cassandra%20backend&strict'" ]
+      interval: 60s
+      timeout: 30s
+      retries: 2
+      start_period: 60s
+
+  opensearch:
+    image: opensearchproject/opensearch:2.1.0
+    environment:
+      - discovery.type=single-node
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
+    networks:
+      - emaily
+
+  cassandra:
+    image: cassandra:4.1.3
+    ports:
+      - "9042:9042"
+    healthcheck:
+      test: [ "CMD", "cqlsh", "-e", "describe keyspaces" ]
+      interval: 3s
+      timeout: 20s
+      retries: 5
+    environment:
+      - JVM_OPTS=-Dcassandra.skip_wait_for_gossip_to_settle=0 -Dcassandra.initial_token=1
+    networks:
+      - emaily
+
+  rabbitmq:
+    image: rabbitmq:3.12.1-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - emaily
+
+  s3:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    container_name: s3.docker.test
+    environment:
+      - MINIO_ROOT_USER=accessKey1
+      - MINIO_ROOT_PASSWORD=secretKey1
+    command:
+      - server
+      - /data
+      - --console-address
+      - ":9090"
+    networks:
+      - emaily
+

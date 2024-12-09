@@ -17,6 +17,6 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>reporting</module>
+        <module>mail-reporting</module>
     </modules>
 </project>
