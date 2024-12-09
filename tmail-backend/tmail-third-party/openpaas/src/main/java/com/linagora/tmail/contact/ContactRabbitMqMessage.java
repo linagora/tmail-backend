@@ -2,11 +2,13 @@ package com.linagora.tmail.contact;
 
 import java.io.IOException;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public record ContactRabbitMqMessage(String bookId, String bookName, String contactId,
-                                          String userId, JCardObject vcard) {
+                                     String userId, JCardObject vcard,
+                                     @JsonProperty(value = "_id") String openPaasUserId) {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
