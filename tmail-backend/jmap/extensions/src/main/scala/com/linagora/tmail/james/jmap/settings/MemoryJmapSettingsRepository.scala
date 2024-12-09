@@ -14,18 +14,6 @@ import reactor.core.scala.publisher.SMono
 
 import scala.collection.mutable
 
-trait JmapSettingsRepository {
-  def get(username: Username): Publisher[JmapSettings]
-
-  def getLatestState(username: Username): Publisher[UuidState]
-
-  def reset(username: Username, settings: JmapSettingsUpsertRequest): Publisher[SettingsStateUpdate]
-
-  def updatePartial(username: Username, settingsPatch: JmapSettingsPatch): Publisher[SettingsStateUpdate]
-
-  def delete(username: Username): Publisher[Void]
-}
-
 case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsRepository {
 
   import scala.jdk.CollectionConverters._

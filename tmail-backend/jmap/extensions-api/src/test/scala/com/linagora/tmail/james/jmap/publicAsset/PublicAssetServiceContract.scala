@@ -2,8 +2,7 @@ package com.linagora.tmail.james.jmap.publicAsset
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-
-import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT
+import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetServiceContract.{CLOCK, IDENTITY1, IDENTITY_ID1, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED, identityRepository}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.identity.IdentityRepository
@@ -30,7 +29,7 @@ object PublicAssetServiceContract {
 
   val identityRepository: IdentityRepository = mock(classOf[IdentityRepository])
 
-  val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED: Long = PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT.asLong()
+  val PUBLIC_ASSET_TOTAL_SIZE_LIMIT_IN_CONFIGURED: Long = PublicAssetTotalSizeLimit.DEFAULT.asLong()
 
   val CLOCK = new UpdatableTickingClock(Instant.now())
 }

@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.method
 
+import cats.implicits.toTraverseOps
 import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PUBLIC_ASSETS
@@ -9,7 +10,8 @@ import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.IdentityId
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{ClientId, Id, Invocation, ServerId, SessionTranslator, UuidState}
+import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.{ClientId, Id, Invocation, Properties, ServerId, SessionTranslator, SetError, UuidState}
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.{Blob, BlobNotFoundException, BlobResolvers, ProcessingContext, SessionSupplier}
 import org.apache.james.mailbox.MailboxSession
@@ -96,14 +98,26 @@ class PublicAssetSetCreatePerformer @Inject()(val publicAssetRepository: PublicA
       .flatMap(publicAsset => SMono(publicAssetSetService.create(mailboxSession.getUser, publicAsset)))
 
   private def parseCreate(jsObject: JsObject): Either[PublicAssetCreationParseException, PublicAssetSetCreationRequest] =
-    PublicAssetSetCreationRequest.validateProperties(jsObject)
-      .flatMap(validJsObject => PublicAssetSerializer.deserializePublicAssetSetCreationRequest(validJsObject) match {
-        case JsSuccess(creationRequest, _) => Right(creationRequest)
-        case JsError(errors) => Left(PublicAssetCreationParseException(standardError(errors)))
-      })
+    PublicAssetSerializer.deserializePublicAssetSetCreationRequest(jsObject) match {
+      case JsSuccess(creationRequest, _) => Right(creationRequest)
+      case JsError(errors) => Left(PublicAssetCreationParseException(standardError(errors)))
+    }
+
+
+  private def doParseIdentityIds(creationRequest: PublicAssetSetCreationRequest): Either[PublicAssetCreationParseException, List[IdentityId]] =
+    creationRequest.identityIds match {
+      case None => Right(List.empty)
+      case Some(identityIdMap) => identityIdMap.map {
+        case (identityId: IdentityId, bolVal) => if (bolVal) {
+          Right(identityId)
+        } else {
+          scala.Left(PublicAssetCreationParseException(SetError.invalidArguments(SetErrorDescription(s"identityId '$identityId' must be a true"), Some(Properties.toProperties(Set("identityIds"))))))
+        }
+      }.toList.sequence
+  }
 
   private def parseIdentityIds(creationRequest: PublicAssetSetCreationRequest): SMono[Seq[IdentityId]] =
-    SMono.fromCallable(() => creationRequest.parseIdentityIds)
+    SMono.fromCallable(() => doParseIdentityIds(creationRequest))
       .flatMap(result => result.fold(e => SMono.error(e), ids => SMono.just(ids)))
 
   private def generatePublicAssetCreationRequest(creationRequest: PublicAssetSetCreationRequest,

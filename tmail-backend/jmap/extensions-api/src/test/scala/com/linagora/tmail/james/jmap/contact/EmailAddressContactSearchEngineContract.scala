@@ -2,7 +2,7 @@ package com.linagora.tmail.james.jmap.contact
 
 import java.util.stream.IntStream
 
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, contactFieldsFrench, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
+import EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, contactFieldsFrench, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}

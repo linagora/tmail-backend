@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
-import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
+import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.identity.IdentityRepository
@@ -10,7 +10,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 class PublicAssetSetService @Inject()(val identityRepository: IdentityRepository,
                                       val publicAssetRepository: PublicAssetRepository,
-                                      val configuration: JMAPExtensionConfiguration) {
+                                      val publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit) {
 
   def checkIdentityIdsExist(identityIds: Seq[IdentityId], session: MailboxSession): SMono[Seq[IdentityId]] =
     SFlux(identityRepository.list(session.getUser))
@@ -27,7 +27,7 @@ class PublicAssetSetService @Inject()(val identityRepository: IdentityRepository
       .onErrorResume {
         case _: PublicAssetQuotaLimitExceededException => cleanUpPublicAsset(username, creationRequest.size.value)
           .filter(cleanedUpSize => cleanedUpSize >= creationRequest.size.value)
-          .switchIfEmpty(SMono.error(new PublicAssetQuotaLimitExceededException(configuration.publicAssetTotalSizeLimit.asLong())))
+          .switchIfEmpty(SMono.error(new PublicAssetQuotaLimitExceededException(publicAssetTotalSizeLimit.asLong())))
           .flatMap(_ => SMono(publicAssetRepository.create(username, creationRequest)))
       }
 

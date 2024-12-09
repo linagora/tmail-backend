@@ -19,6 +19,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import com.linagora.tmail.james.jmap.model.LabelChange;
+
 public class CassandraLabelChangeRepositoryTest implements LabelChangeRepositoryContract {
     static final CassandraModule MODULE = CassandraLabelChangeTable.MODULE();
 

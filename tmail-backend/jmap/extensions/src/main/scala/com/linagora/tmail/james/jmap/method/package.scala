@@ -19,8 +19,15 @@ package object method {
       case _ => ResponseSerializer.serialize(JsError(errors)).toString()
     }
 
+  private def tryExtractSetErrorMessage(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): Option[SetError] =
+    errors.head match {
+      case (_, Seq(JsonValidationError(_, setError: SetError))) => Option(setError)
+      case _ => None
+    }
+
   def standardError(errors: collection.Seq[(JsPath, collection.Seq[JsonValidationError])]): SetError =
-    SetError.invalidArguments(SetErrorDescription(standardErrorMessage(errors)))
+    tryExtractSetErrorMessage(errors)
+      .getOrElse(SetError.invalidArguments(SetErrorDescription(standardErrorMessage(errors))))
 
   implicit class AsEitherRequest[T](val jsResult: JsResult[T]) {
     def asEitherRequest: Either[IllegalArgumentException, T] =
