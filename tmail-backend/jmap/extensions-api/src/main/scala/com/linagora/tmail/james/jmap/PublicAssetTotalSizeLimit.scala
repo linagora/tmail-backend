@@ -7,6 +7,8 @@ import org.apache.james.util.Size
 import scala.util.{Failure, Success, Try}
 
 object PublicAssetTotalSizeLimit {
+  val DEFAULT: PublicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.of(Size.of(20L, Size.Unit.M)).get
+
   def of(size: Size): Try[PublicAssetTotalSizeLimit] = refined.refineV[UnsignedIntConstraint](size.asBytes()) match {
     case Right(value) => Success(PublicAssetTotalSizeLimit(value))
     case Left(error) => Failure(new NumberFormatException(error))

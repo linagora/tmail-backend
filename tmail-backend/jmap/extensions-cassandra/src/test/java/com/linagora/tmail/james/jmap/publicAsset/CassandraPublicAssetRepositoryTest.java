@@ -19,8 +19,7 @@ class CassandraPublicAssetRepositoryTest implements PublicAssetRepositoryContrac
 
     @BeforeEach
     void setup(CassandraCluster cassandra) {
-        PublicAssetTotalSizeLimit publicAssetTotalSizeLimit =
-            PublicAssetTotalSizeLimit.of(Size.of(20L, Size.Unit.M)).get();
+        PublicAssetTotalSizeLimit publicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.DEFAULT();
         publicAssetRepository = new CassandraPublicAssetRepository(
             new CassandraPublicAssetDAO(cassandra.getConf(), blobIdFactory()),
             new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, blobIdFactory()),
