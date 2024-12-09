@@ -136,6 +136,20 @@ class PublicAssetSerializerTest {
   }
 
   @Test
+  def deserializeCreationRequestShouldFailWhenUnknownPropertySpecified(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |  "blobId": "1234",
+        |  "unknown": "something"
+        |}""".stripMargin)
+
+    val deserializeResult: JsResult[PublicAssetSetCreationRequest] = PublicAssetSerializer.deserializePublicAssetSetCreationRequest(jsInput)
+
+    assertThat(deserializeResult.isError)
+      .isTrue
+  }
+
+  @Test
   def serializePublicAssetSetResponseShouldSucceed(): Unit = {
     val response = PublicAssetSetResponse(
       accountId = AccountId("29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"),
