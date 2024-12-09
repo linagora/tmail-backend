@@ -6,12 +6,14 @@ import java.time.Duration;
 
 import jakarta.mail.internet.AddressException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.MailAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
@@ -53,6 +55,7 @@ public class OpenPaasRestClient {
     }
 
     public Mono<MailAddress> retrieveMailAddress(String openPaasUserId) {
+        Preconditions.checkArgument(StringUtils.isNotEmpty(openPaasUserId), "OpenPaas user id cannot be empty");
         return client.get()
             .uri(String.format("/users/%s", openPaasUserId))
             .responseSingle((statusCode, data) -> handleUserResponse(openPaasUserId, statusCode, data))

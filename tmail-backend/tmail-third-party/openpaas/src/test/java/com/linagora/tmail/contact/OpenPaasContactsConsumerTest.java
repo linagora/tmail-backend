@@ -24,19 +24,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.rabbitmq.OutboundMessage;
-
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.AmqpUri;
-import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.rabbitmq.OutboundMessage;
 
 class OpenPaasContactsConsumerTest {
 
@@ -80,6 +80,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                 "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -108,6 +109,7 @@ class OpenPaasContactsConsumerTest {
     void contactShouldBeIndexedWhenContactUserAddedMessage() {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                 "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -143,6 +145,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -174,6 +177,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_UPDATE,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -209,6 +213,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -240,6 +245,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_UPDATE,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -274,6 +280,7 @@ class OpenPaasContactsConsumerTest {
     void contactShouldBeDeletedWhenContactUserDeletedMessage() {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_DELETE,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -302,6 +309,7 @@ class OpenPaasContactsConsumerTest {
     void consumeMessageShouldNotCrashOnInvalidContactMailAddress() {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -326,6 +334,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -354,6 +363,7 @@ class OpenPaasContactsConsumerTest {
     void consumeMessageShouldNotCrashWhenFnPropertyIsNotProvided() {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -388,6 +398,7 @@ class OpenPaasContactsConsumerTest {
         // Note: Bob has an invalid mail address.
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                "_id": "BOB_USER_ID",
                 "bookId": "BOB_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -413,6 +424,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -444,6 +456,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -480,6 +493,7 @@ class OpenPaasContactsConsumerTest {
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -516,6 +530,7 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
                 "unknownProperty": "value",
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -550,6 +565,7 @@ class OpenPaasContactsConsumerTest {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
                 "bookId": "ALICE_USER_ID",
+                "_id": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
                 "userId": "ALICE_USER_ID",
@@ -577,6 +593,7 @@ class OpenPaasContactsConsumerTest {
     void contactShouldBeIndexedWhenMessageHasUnknownProperty() {
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {   "unknownProperty": "value",
+                "_id": "ALICE_USER_ID",
                 "bookId": "ALICE_USER_ID",
                 "bookName": "contacts",
                 "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
@@ -606,6 +623,85 @@ class OpenPaasContactsConsumerTest {
                     assertThat(contact.firstname()).isEqualTo("Jane Doe");
                     assertThat(contact.surname()).isEqualTo("");
                 })));
+    }
+
+    @Test
+    void consumeMessageShouldNotCrashWhenAbsentOpenPassId() throws InterruptedException {
+        // Note: _id is absent in the message.
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        Thread.sleep(500);
+
+        // Note: id is present in the message.
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
+            {
+                "_id": "ALICE_USER_ID",
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
+                    .collectList().block())
+                .hasSize(1));
+    }
+
+    @Test
+    void contactShouldNotIndexedWhenAddedMessageAbsentOpenPassId() throws InterruptedException {
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
+            {
+                "bookId": "ALICE_USER_ID",
+                "bookName": "contacts",
+                "contactId": "fd9b3c98-fc77-4187-92ac-d9f58d400968",
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+       Thread.sleep(500);
+        assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
+            .collectList().block())
+            .hasSize(0);
     }
 
 

@@ -5,11 +5,13 @@ import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 
 import java.io.Closeable;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
@@ -117,8 +119,12 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     }
 
     private Mono<?> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload, ContactHandler contactHandler) {
-        return Mono.just(messagePayload)
-            .map(ContactRabbitMqMessage::fromJSON)
+        return Mono.fromCallable(() -> ContactRabbitMqMessage.fromJSON(messagePayload))
+            .filter(contactMessage -> !StringUtils.isEmpty(contactMessage.openPaasUserId()))
+            .switchIfEmpty(Mono.defer(() -> {
+                LOGGER.warn("OpenPaas user id is empty, skipping contact message: {}", new String(messagePayload, StandardCharsets.UTF_8));
+                return Mono.empty();
+            }))
             .flatMap(contactMessage -> handleMessage(contactMessage, contactHandler))
             .doOnSuccess(result -> {
                 LOGGER.debug("Consumed contact successfully '{}'", result);
@@ -133,12 +139,10 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     private Mono<?> handleMessage(ContactRabbitMqMessage contactMessage, ContactHandler contactHandler) {
         LOGGER.trace("Consumed jCard object message: {}", contactMessage);
-        Optional<ContactFields> maybeContactFields = contactMessage.vcard().asContactFields();
-        return maybeContactFields.map(
-                openPaasContact -> openPaasRestClient.retrieveMailAddress(contactMessage.userId())
-                    .map(this::getAccountIdFromMailAddress)
-                    .flatMap(ownerAccountId -> contactHandler.handleContact(ownerAccountId, openPaasContact)))
-            .orElse(Mono.empty());
+        return Mono.justOrEmpty(contactMessage.vcard().asContactFields())
+            .flatMap(openPaasContact -> openPaasRestClient.retrieveMailAddress(contactMessage.openPaasUserId())
+                .map(this::getAccountIdFromMailAddress)
+                .flatMap(ownerAccountId -> contactHandler.handleContact(ownerAccountId, openPaasContact)));
     }
 
     private Mono<EmailAddressContact> indexContactIfNeeded(AccountId ownerAccountId, ContactFields openPaasContact) {
