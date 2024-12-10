@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.contact
 
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactListenerIntegrationTest.{ACCOUNT_ID, CONTACT, CONTACT_ADDED_EVENT}
+import EmailAddressContactListenerIntegrationTest.{ACCOUNT_ID, CONTACT, CONTACT_ADDED_EVENT}
 import org.apache.james.core.MailAddress
 import org.apache.james.events.EventBusTestFixture.{EVENT_ID, NO_KEYS, USERNAME}
 import org.apache.james.events.delivery.InVmEventDelivery
