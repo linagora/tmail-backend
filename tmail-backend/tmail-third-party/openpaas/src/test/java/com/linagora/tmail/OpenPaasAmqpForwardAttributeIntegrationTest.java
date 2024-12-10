@@ -18,6 +18,8 @@
  ****************************************************************/
 package com.linagora.tmail;
 
+import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.apache.james.backends.rabbitmq.Constants.AUTO_ACK;
 import static org.apache.james.mailets.configuration.Constants.DEFAULT_DOMAIN;
@@ -36,9 +38,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 import org.apache.james.MemoryJamesServerMain;
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.mailets.TemporaryJamesServer;
@@ -144,7 +148,16 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             URI.create("http://localhost:8081"),
                             "user",
                             "password",
-                            false);
+                            false,
+                            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+                    }
+                })
+                .withOverrides(new AbstractModule() {
+                    @Provides
+                    @Named(OPENPAAS_INJECTION_KEY)
+                    @Singleton
+                    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
+                        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())
@@ -251,7 +264,16 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             URI.create("http://localhost:8081"),
                             "user",
                             "password",
-                            false);
+                            false,
+                            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+                    }
+                })
+                .withOverrides(new AbstractModule() {
+                    @Provides
+                    @Named(OPENPAAS_INJECTION_KEY)
+                    @Singleton
+                    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
+                        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())

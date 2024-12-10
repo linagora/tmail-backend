@@ -1,5 +1,6 @@
 package com.linagora.tmail.api;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -30,7 +31,8 @@ public class OpenPaasRestClientTest {
             openPaasServerExtension.getBaseUrl().toURI(),
             OpenPaasServerExtension.GOOD_USER(),
             OpenPaasServerExtension.GOOD_PASSWORD(),
-            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
 
         restClient = new OpenPaasRestClient(openPaasConfig);
     }
@@ -54,7 +56,8 @@ public class OpenPaasRestClientTest {
             openPaasServerExtension.getBaseUrl().toURI(),
             OpenPaasServerExtension.BAD_USER(),
             OpenPaasServerExtension.BAD_PASSWORD(),
-            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
 
         restClient = new OpenPaasRestClient(openPaasConfig);
 

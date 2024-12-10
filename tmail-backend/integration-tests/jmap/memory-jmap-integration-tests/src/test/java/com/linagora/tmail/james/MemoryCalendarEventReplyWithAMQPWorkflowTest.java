@@ -1,5 +1,6 @@
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
@@ -24,7 +25,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.linagora.tmail.AmqpUri;
-import com.linagora.tmail.OpenPaasModule;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
@@ -60,10 +61,10 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
                 .workingDirectory(tmpDir)
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+                .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED)
                 .build();
         })
         .server(configuration -> MemoryServer.createServer(configuration)
-            .combineWith(new OpenPaasModule())
             .overrideWith(
                 new LinagoraTestJMAPServerModule(),
                 new DelegationProbeModule(),
@@ -91,7 +92,8 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
                     URI.create("http://localhost:8081"),
                     "user",
                     "password",
-                    OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
+                    OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+                    OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
             }
         };
 

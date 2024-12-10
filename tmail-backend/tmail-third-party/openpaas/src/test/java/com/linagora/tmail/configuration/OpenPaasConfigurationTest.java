@@ -31,16 +31,30 @@ class OpenPaasConfigurationTest {
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.admin.password", "123");
         configuration.addProperty("openpaas.rest.client.trust.all.ssl.certs", "true");
+        configuration.addProperty("openpaas.queues.quorum.bypass", "true");
 
         OpenPaasConfiguration expected = new OpenPaasConfiguration(
             AmqpUri.from("amqp://james:james@rabbitmqhost:5672"),
             URI.create("http://localhost:8080"),
             "jhon_doe",
             "123",
+            true,
             true);
 
         assertThat(OpenPaasConfiguration.from(configuration))
             .isEqualTo(expected);
+    }
+
+    @Test
+    void quorumQueuesBypassShouldBeDisableByDefault() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
+        configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
+        configuration.addProperty("openpaas.admin.user", "jhon_doe");
+        configuration.addProperty("openpaas.admin.password", "123");
+
+        assertThat(OpenPaasConfiguration.from(configuration).quorumQueuesBypass())
+            .isEqualTo(false);
     }
 
     @Test

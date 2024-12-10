@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.app;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
 
@@ -95,7 +96,8 @@ public class TestRabbitMQModule extends AbstractModule {
             URI.create("http://localhost:8081"),
             "user",
             "password",
-            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
     }
 
     public static class QueueCleanUp implements CleanupTasksPerformer.CleanupTask {

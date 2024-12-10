@@ -17,6 +17,8 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 | Admin password for OpenPaas. Example: `openpaas.admin.password=admin`
 | openpaas.rest.client.trust.all.ssl.certs
 | Whether the OpenPaaS Rest client should trust all SSL certificates. Optional, boolean. Default to false.
+| openpaas.queues.quorum.bypass
+| Whether to ignore quorum queues setting from `rabbitmq.properties`. Optional, boolean. Default to false. If `true`, OpenPaaS queues would use classic queues.
 |===
 
 == OpenPaasAmqpForwardAttribute

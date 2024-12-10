@@ -1,16 +1,20 @@
 package com.linagora.tmail.james.app;
 
+import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 import static org.apache.james.JamesServerMain.LOGGER;
 import static org.apache.james.MemoryJamesServerMain.JMAP;
 import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
 import java.util.List;
 
+import jakarta.inject.Named;
+
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.mailbox.MailboxManager;
@@ -46,6 +50,7 @@ import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore;
@@ -235,7 +240,15 @@ public class MemoryServer {
 
     private static List<Module> chooseOpenPaas(OpenPaasModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enabled()) {
-            return List.of(new OpenPaasModule());
+            return List.of(Modules.override(new OpenPaasModule())
+                .with(new AbstractModule() {
+                    @Provides
+                    @Named(OPENPAAS_INJECTION_KEY)
+                    @Singleton
+                    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
+                        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
+                    }
+                }));
         }
         return List.of();
     }

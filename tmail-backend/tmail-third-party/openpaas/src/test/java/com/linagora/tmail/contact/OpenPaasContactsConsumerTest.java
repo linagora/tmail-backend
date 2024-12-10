@@ -1,14 +1,15 @@
 package com.linagora.tmail.contact;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_ENABLED;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
-import static org.apache.james.backends.rabbitmq.RabbitMQExtension.IsolationPolicy.WEAK;
+import static org.apache.james.backends.rabbitmq.RabbitMQExtension.IsolationPolicy.STRONG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.TEN_SECONDS;
 
-import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -45,35 +46,69 @@ class OpenPaasContactsConsumerTest {
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
-        .isolationPolicy(WEAK);
+        .isolationPolicy(STRONG);
 
     private EmailAddressContactSearchEngine searchEngine;
     private OpenPaasContactsConsumer consumer;
 
     @BeforeEach
     void setup() throws URISyntaxException {
-        OpenPaasRestClient restClient = new OpenPaasRestClient(
-            new OpenPaasConfiguration(
-                AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
-                openPaasServerExtension.getBaseUrl().toURI(),
-                OpenPaasServerExtension.GOOD_USER(),
-                OpenPaasServerExtension.GOOD_PASSWORD(),
-                OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED));
+        OpenPaasConfiguration openPaasConfiguration = new OpenPaasConfiguration(
+            AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
+            openPaasServerExtension.getBaseUrl().toURI(),
+            OpenPaasServerExtension.GOOD_USER(),
+            OpenPaasServerExtension.GOOD_PASSWORD(),
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+        OpenPaasRestClient restClient = new OpenPaasRestClient(openPaasConfiguration);
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
-            rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration(),
-            searchEngine, restClient);
-
-        consumer.start();
+            openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration(rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration()),
+            searchEngine, restClient, openPaasConfiguration);
     }
 
     @AfterEach
-    void afterEach() throws IOException {
+    void afterEach() {
         consumer.close();
     }
 
     @Test
+    void openPaasContactsQueueShouldBeQuorumQueueWhenQuorumQueuesAreEnabled() throws Exception {
+        consumer.start();
+
+        assertThat(rabbitMQExtension.managementAPI()
+            .queueDetails("/", "openpaas-contacts-queue-add")
+            .getArguments())
+            .containsEntry("x-queue-type", "quorum");
+    }
+
+    @Test
+    void openPaasContactsQueueShouldBeClassicQueueWhenQuorumQueuesBypassEnabled() throws Exception {
+        OpenPaasConfiguration openPaasConfiguration = new OpenPaasConfiguration(
+            AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
+            openPaasServerExtension.getBaseUrl().toURI(),
+            OpenPaasServerExtension.GOOD_USER(),
+            OpenPaasServerExtension.GOOD_PASSWORD(),
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+            OPENPAAS_QUEUES_QUORUM_BYPASS_ENABLED);
+        OpenPaasRestClient restClient = new OpenPaasRestClient(openPaasConfiguration);
+        searchEngine = new InMemoryEmailAddressContactSearchEngine();
+        consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
+            openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration(rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration()),
+            searchEngine, restClient, openPaasConfiguration);
+        consumer.start();
+
+        assertThat(rabbitMQExtension.managementAPI()
+            .queueDetails("/", "openpaas-contacts-queue-add")
+            .getArguments())
+            .doesNotContainEntry("x-queue-type", "quorum")
+            .containsEntry("x-queue-version", "2");
+    }
+
+    @Test
     void consumeMessageShouldNotCrashOnInvalidMessages() throws InterruptedException {
+        consumer.start();
+
         IntStream.range(0, 10).forEach(i -> sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, "BAD_PAYLOAD" + i));
 
         TimeUnit.MILLISECONDS.sleep(100);
@@ -103,6 +138,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void contactShouldBeIndexedWhenContactUserAddedMessage() {
+        consumer.start();
+
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                  "_id": "ALICE_USER_ID",
@@ -134,6 +171,7 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void contactShouldBeUpdatedWhenContactUserUpdatedMessageWithSameAddress() {
+        consumer.start();
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
@@ -194,6 +232,7 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void newContactShouldBeAddedWhenContactUserUpdatedMessageWithUpdatedAddress() {
+        consumer.start();
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
@@ -254,6 +293,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void contactShouldBeDeletedWhenContactUserDeletedMessage() {
+        consumer.start();
+
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_DELETE,"""
             {
                 "_id": "ALICE_USER_ID",
@@ -279,6 +320,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashOnInvalidContactMailAddress() {
+        consumer.start();
+
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
@@ -325,6 +368,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashWhenFnPropertyIsNotProvided() {
+        consumer.start();
+
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
                 "_id": "ALICE_USER_ID",
@@ -355,6 +400,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashOnInvalidOwnerMailAddress() {
+        consumer.start();
+
         // Note: Bob has an invalid mail address.
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {
@@ -404,6 +451,8 @@ class OpenPaasContactsConsumerTest {
     @Test
     void givenDisplayNameFromOpenPaasNotEmptyThenStoredDisplayNameShouldBeOverridden()
         throws AddressException {
+        consumer.start();
+
         indexJohnDoe(OpenPaasServerExtension.ALICE_EMAIL());
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
@@ -437,6 +486,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void givenDisplayNameFromOpenPaasIsEmptyThenStoredDisplayNameShouldPersist() {
+        consumer.start();
+
         ContactFields indexedContact = indexJohnDoe(OpenPaasServerExtension.ALICE_EMAIL());
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
@@ -467,6 +518,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashOnUnknownProperty() throws InterruptedException {
+        consumer.start();
+
         IntStream.range(0, 10).forEach(i -> sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, "BAD_PAYLOAD" + i));
 
         TimeUnit.MILLISECONDS.sleep(100);
@@ -498,6 +551,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashOnUnknownPropertyOfVCardObject() throws InterruptedException {
+        consumer.start();
+
         IntStream.range(0, 10).forEach(i -> sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, "BAD_PAYLOAD" + i));
 
         TimeUnit.MILLISECONDS.sleep(100);
@@ -527,6 +582,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void contactShouldBeIndexedWhenMessageHasUnknownProperty() {
+        consumer.start();
+
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {   "unknownProperty": "value",
                 "_id": "ALICE_USER_ID",
@@ -559,6 +616,8 @@ class OpenPaasContactsConsumerTest {
 
     @Test
     void consumeMessageShouldNotCrashWhenAbsentOpenPassId() throws InterruptedException {
+        consumer.start();
+
         // Note: _id is absent in the message.
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
             {

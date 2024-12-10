@@ -12,6 +12,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
@@ -23,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.api.OpenPaasRestClient;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
@@ -51,24 +53,28 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     public static final String DEAD_LETTER_ADD = "openpaas-contacts-queue-add-dead-letter";
     public static final String DEAD_LETTER_UPDATE = "openpaas-contacts-queue-update-dead-letter";
     public static final String DEAD_LETTER_DELETE = "openpaas-contacts-queue-delete-dead-letter";
+    private static final boolean FALLBACK_CLASSIC_QUEUES_VERSION_1 = Boolean.parseBoolean(System.getProperty("fallback.classic.queues.v1", "false"));
 
     private final ReceiverProvider receiverProvider;
     private final Sender sender;
     private final RabbitMQConfiguration commonRabbitMQConfiguration;
     private final EmailAddressContactSearchEngine contactSearchEngine;
     private final OpenPaasRestClient openPaasRestClient;
+    private final OpenPaasConfiguration openPaasConfiguration;
     private Disposable consumeContactsDisposable;
 
     @Inject
     public OpenPaasContactsConsumer(@Named(OPENPAAS_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                     @Named(OPENPAAS_INJECTION_KEY) RabbitMQConfiguration commonRabbitMQConfiguration,
                                     EmailAddressContactSearchEngine contactSearchEngine,
-                                    OpenPaasRestClient openPaasRestClient) {
+                                    OpenPaasRestClient openPaasRestClient,
+                                    OpenPaasConfiguration openPaasConfiguration) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.commonRabbitMQConfiguration = commonRabbitMQConfiguration;
         this.contactSearchEngine = contactSearchEngine;
         this.openPaasRestClient = openPaasRestClient;
+        this.openPaasConfiguration = openPaasConfiguration;
     }
 
     @FunctionalInterface
@@ -89,11 +95,12 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
                 sender.declareQueue(QueueSpecification
                     .queue(deadLetter)
                     .durable(DURABLE)
-                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder().build())),
+                    .arguments(evaluateQueueArguments()
+                        .build())),
                 sender.declareQueue(QueueSpecification
                     .queue(queue)
                     .durable(DURABLE)
-                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder()
+                    .arguments(evaluateQueueArguments()
                         .deadLetter(deadLetter)
                         .build())),
                 sender.bind(BindingSpecification.binding()
@@ -104,6 +111,17 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             .block();
 
         consumeContactsDisposable = doConsumeContactMessages(queue, contactHandler);
+    }
+
+    private QueueArguments.Builder evaluateQueueArguments() {
+        if (!openPaasConfiguration.quorumQueuesBypass()) {
+            return commonRabbitMQConfiguration.workQueueArgumentsBuilder();
+        }
+        if (!FALLBACK_CLASSIC_QUEUES_VERSION_1) {
+            return QueueArguments.builder()
+                .classicQueueVersion(2);
+        }
+        return QueueArguments.builder();
     }
 
     private Disposable doConsumeContactMessages(String queue, ContactHandler contactHandler) {
