@@ -1,4 +1,4 @@
-package com.linagora.tmail.contact;
+package com.linagora.tmail.james.jmap.contact;
 
 import jakarta.inject.Named;
 import jakarta.inject.Provider;
