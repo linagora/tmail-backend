@@ -46,7 +46,6 @@ public class MailReportRecorder extends GenericMailet {
                 recipient,
                 instant))
             .flatMap(mailReportGenerator::append, ReactorUtils.DEFAULT_CONCURRENCY)
-            .then()
-            .block();
+            .blockLast();
     }
 }

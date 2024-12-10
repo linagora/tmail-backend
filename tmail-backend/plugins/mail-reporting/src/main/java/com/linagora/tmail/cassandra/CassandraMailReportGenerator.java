@@ -9,6 +9,7 @@ import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
 
@@ -24,6 +25,7 @@ import org.apache.james.utils.UserDefinedStartable;
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.api.MailReportEntry;
@@ -92,9 +94,7 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
 
     private PreparedStatement prepareSelectByDateBetween() {
         return session.prepare(selectFrom(TABLE_NAME)
-            .all().allowFiltering()
-            .whereColumn(DATE).isGreaterThanOrEqualTo(bindMarker(DATE_START))
-            .whereColumn(DATE).isLessThanOrEqualTo(bindMarker(DATE_END))
+            .all()
             .build());
     }
 
@@ -111,9 +111,8 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
 
     @Override
     public Flux<MailReportEntry> generateReport(Instant start, Instant end) {
-        return cassandraAsyncExecutor.executeRows(selectByDateBetween.bind()
-                .setInstant(DATE_START, start)
-                .setInstant(DATE_END, end))
+        return cassandraAsyncExecutor.executeRows(selectByDateBetween.bind())
+            .filter(isBetweenDate(start, end))
             .handle((row, sink) -> MailReportEntry.Kind.parse(row.getString(KIND))
                 .flatMap(Throwing.function(kind -> Optional.of(new MailReportEntry(kind,
                     row.getString(SUBJECT),
@@ -121,5 +120,12 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
                     Optional.ofNullable(row.getString(RECIPIENT)).map(Throwing.function(MailAddress::new)).orElse(null),
                     row.getInstant(DATE)))))
                 .ifPresent(sink::next));
+    }
+
+    private Predicate<Row> isBetweenDate(Instant start, Instant end) {
+        return row -> {
+            Instant date = row.getInstant(DATE);
+            return !date.isBefore(start) && !date.isAfter(end);
+        };
     }
 }

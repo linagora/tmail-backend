@@ -15,7 +15,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.james</groupId>
+            <groupId>${james.groupId}</groupId>
             <artifactId>apache-mailet-api</artifactId>
             <scope>provided</scope>
         </dependency>
