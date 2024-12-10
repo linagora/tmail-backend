@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.MimeMessage;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
@@ -21,6 +22,7 @@ import org.apache.james.core.MaybeSender;
 import org.apache.james.lifecycle.api.LifecycleUtil;
 import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
+import org.apache.james.util.AuditTrail;
 import org.apache.james.util.DurationParser;
 import org.apache.mailet.LoopPrevention;
 import org.apache.mailet.Mail;
@@ -38,6 +40,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.DN;
@@ -306,7 +309,20 @@ public class LDAPMailingList extends GenericMailet {
 
             if (!authorized) {
                 return toRejectedProcessor(listAddress)
-                    .doCompose(MailTransformation.removeRecipient.apply(listAddress));
+                    .doCompose(MailTransformation.removeRecipient.apply(listAddress))
+                    .doCompose(mail -> {
+                        AuditTrail.entry()
+                            .protocol("mailetcontainer")
+                            .action("list")
+                            .parameters(Throwing.supplier(() -> ImmutableMap.of("mailId", mail.getName(),
+                                "mimeMessageId", Optional.ofNullable(mail.getMessage())
+                                    .map(Throwing.function(MimeMessage::getMessageID))
+                                    .orElse(""),
+                                "sender", maybeSender.asString(),
+                                "listAddress", listAddress.asString())))
+                            .log("Rejected a mail to a mailing list.");
+                        return mail;
+                    });
             }
 
             List<MailAddress> memberAddresses = list.getAttributes().stream()
@@ -320,7 +336,20 @@ public class LDAPMailingList extends GenericMailet {
                 .doComposeIf(
                     MailTransformation.recordListInLoopDetection.apply(listAddress)
                         .doCompose(MailTransformation.addRecipients.apply(memberAddresses))
-                        .doCompose(addListHeaders(memberAddresses, listAddress)),
+                        .doCompose(addListHeaders(memberAddresses, listAddress))
+                        .doCompose(mail -> {
+                            AuditTrail.entry()
+                                .protocol("mailetcontainer")
+                                .action("list")
+                                .parameters(Throwing.supplier(() -> ImmutableMap.of("mailId", mail.getName(),
+                                    "mimeMessageId", Optional.ofNullable(mail.getMessage())
+                                        .map(Throwing.function(MimeMessage::getMessageID))
+                                        .orElse(""),
+                                    "sender", maybeSender.asString(),
+                                    "listAddress", listAddress.asString())))
+                                .log("Sent a mail to a mailing list.");
+                            return mail;
+                        }),
                     mail -> !LoopPrevention.RecordedRecipients.fromMail(mail).getRecipients().contains(listAddress));
         } catch (AddressException e) {
             throw new RuntimeException(e);
