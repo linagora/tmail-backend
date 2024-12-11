@@ -172,17 +172,24 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
 
     private Mono<?> handleMessage(ContactRabbitMqMessage contactMessage, ContactHandler contactHandler) {
         LOGGER.trace("Consumed jCard object message: {}", contactMessage);
-        return Mono.justOrEmpty(contactMessage.vcard().asContactFields())
-            .flatMap(openPaasContact -> openPaasRestClient.retrieveMailAddress(contactMessage.openPaasUserId())
+        return Mono.fromCallable(() -> contactMessage.vcard().asContactFields())
+            .flatMap(openPaasContacts -> openPaasRestClient.retrieveMailAddress(contactMessage.openPaasUserId())
                 .map(this::getAccountIdFromMailAddress)
-                .flatMap(ownerAccountId -> contactHandler.handleContact(ownerAccountId, openPaasContact)));
+                .flatMap(ownerAccountId -> Flux.fromIterable(openPaasContacts)
+                        .map(contact -> contactHandler.handleContact(ownerAccountId, contact))
+                        .collectList()
+                        .then()))
+            .then();
     }
 
     private Mono<EmailAddressContact> indexContactIfNeeded(AccountId ownerAccountId, ContactFields openPaasContact) {
         return Mono.from(contactSearchEngine.get(ownerAccountId, openPaasContact.address()))
-            .onErrorResume(ContactNotFoundException.class, e -> Mono.empty())
-            .switchIfEmpty(
-                Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact)))
+            .onErrorResume(ContactNotFoundException.class, e -> {
+                System.out.println("ContactNotFoundException");
+                return Mono.empty();
+            })
+            .switchIfEmpty(Mono.fromRunnable(() -> System.out.println("indexing new contact from OpenPaaS"))
+                .then(Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact))))
             .flatMap(existingContact -> {
                 if (!openPaasContact.firstname().isBlank()) {
                     return Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact));

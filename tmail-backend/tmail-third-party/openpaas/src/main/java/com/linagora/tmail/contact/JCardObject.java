@@ -1,5 +1,6 @@
 package com.linagora.tmail.contact;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.james.core.MailAddress;
@@ -11,12 +12,12 @@ import com.google.common.base.Preconditions;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 
 @JsonDeserialize(using = JCardObjectDeserializer.class)
-public record JCardObject(Optional<String> fnOpt, Optional<MailAddress> emailOpt) {
+public record JCardObject(Optional<String> fnOpt, List<MailAddress> mailAddresses) {
     public static final Logger LOGGER = LoggerFactory.getLogger(JCardObject.class);
 
     public JCardObject {
         Preconditions.checkNotNull(fnOpt);
-        Preconditions.checkNotNull(emailOpt);
+        Preconditions.checkNotNull(mailAddresses);
     }
 
     /**
@@ -31,27 +32,21 @@ public record JCardObject(Optional<String> fnOpt, Optional<MailAddress> emailOpt
     }
 
     /**
-     * Purpose: To specify the electronic mail address for communication
+     * Purpose: To specify the electronic mail addresses for communication
      * with the object the vCard represents.
      * <p>
-     * Example: jane_doe@example.com
+     * Example: ["jane_doe_at_work@example.com", "jane_doe_at_home@example.com"]
      */
-    @Override
-    public Optional<MailAddress> emailOpt() {
-        return emailOpt;
+    public List<MailAddress> mailAddresses() {
+        return mailAddresses;
     }
 
-    public Optional<ContactFields> asContactFields() {
+    public List<ContactFields> asContactFields() {
         Optional<String> contactFullnameOpt = fnOpt();
-        Optional<MailAddress> contactMailAddressOpt = emailOpt();
 
-        if (contactMailAddressOpt.isEmpty()) {
-            return Optional.empty();
-        }
-
-        MailAddress contactMailAddress = contactMailAddressOpt.get();
-        String contactFullname = contactFullnameOpt.orElse("");
-
-        return Optional.of(new ContactFields(contactMailAddress, contactFullname, ""));
+        return mailAddresses()
+            .stream()
+            .map(address -> new ContactFields(address, contactFullnameOpt.orElse(""), ""))
+            .toList();
     }
 }
