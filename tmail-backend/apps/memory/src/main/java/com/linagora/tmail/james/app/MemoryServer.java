@@ -64,7 +64,7 @@ import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
+import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.jmap.label.MemoryLabelRepositoryModule;
 import com.linagora.tmail.james.jmap.mail.TMailMailboxSortOrderProviderModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
@@ -226,7 +226,7 @@ public class MemoryServer {
 
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enable()) {
-            return List.of(new MemoryFirebaseSubscriptionRepository.Module(), new FirebaseCommonModule());
+            return List.of(new MemoryFirebaseSubscriptionRepositoryModule(), new FirebaseCommonModule());
         }
         return List.of();
     }
