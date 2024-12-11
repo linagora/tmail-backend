@@ -9,8 +9,6 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.core.UTCDate
 import reactor.core.scala.publisher.SMono
 
-import scala.collection.mutable
-
 object TicketManager {
   private val validity: java.time.Duration = java.time.Duration.ofMinutes(1)
 }
@@ -53,20 +51,4 @@ class TicketManager @Inject() (clock: Clock, ticketStore: TicketStore, jmapExten
       .map(_.value)
       .switchIfEmpty(SMono.error(ForbiddenException()))
       .flatMap(ticketStore.delete)
-}
-
-class MemoryTicketStore extends TicketStore {
-  private val map: mutable.Map[TicketValue, Ticket] = mutable.Map()
-
-  override def persist(ticket: Ticket): SMono[Unit] =
-    SMono.fromCallable(() => map.put(ticket.value, ticket))
-      .`then`
-
-  override def retrieve(value: TicketValue): SMono[Ticket] = map.get(value)
-    .map(SMono.just)
-    .getOrElse(SMono.empty)
-
-  override def delete(ticketValue: TicketValue): SMono[Unit] =
-    SMono.fromCallable(() => map.remove(ticketValue))
-      .`then`
 }
