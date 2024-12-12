@@ -1,10 +1,13 @@
-package com.linagora.tmail.james.jmap.firebase;
+package com.linagora.tmail.james.app.modules;
 
 import org.apache.james.user.api.DeleteUserDataTaskStep;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository;
+import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionUserDeletionTaskStep;
+import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
 
 public class MemoryFirebaseSubscriptionRepositoryModule extends AbstractModule {
     @Override

@@ -1,9 +1,10 @@
-package com.linagora.tmail.james.jmap.contact
+package com.linagora.tmail.james.app.modules
 
 import com.google.inject.multibindings.ProvidesIntoSet
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys
+import com.linagora.tmail.james.jmap.contact.{EmailAddressContactListener, InMemoryEmailAddressContactSearchEngineModule}
 import org.apache.james.events.EventBus
 import org.apache.james.lifecycle.api.Startable
 import org.apache.james.utils.{InitializationOperation, InitilizationOperationBuilder}
