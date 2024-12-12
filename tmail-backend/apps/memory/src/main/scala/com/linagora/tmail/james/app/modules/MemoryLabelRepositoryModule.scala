@@ -1,7 +1,8 @@
-package com.linagora.tmail.james.jmap.label
+package com.linagora.tmail.james.app.modules
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
+import com.linagora.tmail.james.jmap.label.{LabelChangeRepository, LabelRepository, LabelUserDeletionTaskStep, LabelUsernameChangeTaskStep, MemoryLabelChangeRepository, MemoryLabelRepository}
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 
 case class MemoryLabelRepositoryModule() extends AbstractModule {
