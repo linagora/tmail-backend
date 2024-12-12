@@ -1,4 +1,4 @@
-package com.linagora.tmail.james.app.modules
+package com.linagora.tmail.james.app.modules.jmap
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}

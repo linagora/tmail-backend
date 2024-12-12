@@ -1,4 +1,4 @@
-package com.linagora.tmail.james.app.modules;
+package com.linagora.tmail.james.app.modules.jmap;
 
 import org.apache.james.user.api.DeleteUserDataTaskStep;
 
