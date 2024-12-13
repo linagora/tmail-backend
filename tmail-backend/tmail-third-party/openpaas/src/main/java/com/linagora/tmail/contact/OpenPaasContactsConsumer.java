@@ -170,26 +170,20 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             });
     }
 
-    private Mono<?> handleMessage(ContactRabbitMqMessage contactMessage, ContactHandler contactHandler) {
+    private Mono<Void> handleMessage(ContactRabbitMqMessage contactMessage, ContactHandler contactHandler) {
         LOGGER.trace("Consumed jCard object message: {}", contactMessage);
         return Mono.fromCallable(() -> contactMessage.vcard().asContactFields())
             .flatMap(openPaasContacts -> openPaasRestClient.retrieveMailAddress(contactMessage.openPaasUserId())
                 .map(this::getAccountIdFromMailAddress)
                 .flatMap(ownerAccountId -> Flux.fromIterable(openPaasContacts)
-                        .map(contact -> contactHandler.handleContact(ownerAccountId, contact))
-                        .collectList()
-                        .then()))
-            .then();
+                    .flatMap(contact -> contactHandler.handleContact(ownerAccountId, contact))
+                    .then()));
     }
 
     private Mono<EmailAddressContact> indexContactIfNeeded(AccountId ownerAccountId, ContactFields openPaasContact) {
         return Mono.from(contactSearchEngine.get(ownerAccountId, openPaasContact.address()))
-            .onErrorResume(ContactNotFoundException.class, e -> {
-                System.out.println("ContactNotFoundException");
-                return Mono.empty();
-            })
-            .switchIfEmpty(Mono.fromRunnable(() -> System.out.println("indexing new contact from OpenPaaS"))
-                .then(Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact))))
+            .onErrorResume(ContactNotFoundException.class, e -> Mono.empty())
+            .switchIfEmpty(Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact)))
             .flatMap(existingContact -> {
                 if (!openPaasContact.firstname().isBlank()) {
                     return Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact));
