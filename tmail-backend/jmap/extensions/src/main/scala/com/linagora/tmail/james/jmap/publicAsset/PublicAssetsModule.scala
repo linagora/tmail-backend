@@ -43,10 +43,3 @@ class PublicAssetsModule extends AbstractModule {
     PublicAssetURIPrefix.fromConfiguration(jmapConfiguration).fold(throw _, identity)
   }
 }
-
-class PublicAssetsMemoryModule extends AbstractModule {
-  override def configure(): Unit = {
-    bind(classOf[MemoryPublicAssetRepository]).in(Scopes.SINGLETON)
-    bind(classOf[PublicAssetRepository]).to(classOf[MemoryPublicAssetRepository])
-  }
-}

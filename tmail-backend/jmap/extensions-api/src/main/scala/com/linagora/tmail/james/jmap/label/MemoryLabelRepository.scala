@@ -3,12 +3,9 @@ package com.linagora.tmail.james.jmap.label
 import java.util
 
 import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
-import com.google.inject.multibindings.Multibinder
-import com.google.inject.{AbstractModule, Scopes}
-import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
+import com.linagora.tmail.james.jmap.model._
 import org.apache.james.core.Username
 import org.apache.james.jmap.mail.Keyword
-import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -54,22 +51,4 @@ class MemoryLabelRepository extends LabelRepository {
   override def deleteAllLabels(username: Username): Publisher[Void] =
     SMono.fromCallable(() => labelsTable.row(username).clear())
       .`then`()
-}
-
-case class MemoryLabelRepositoryModule() extends AbstractModule {
-  override def configure(): Unit = {
-    bind(classOf[LabelRepository]).to(classOf[MemoryLabelRepository])
-    bind(classOf[MemoryLabelRepository]).in(Scopes.SINGLETON)
-
-    Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
-      .addBinding()
-      .to(classOf[LabelUsernameChangeTaskStep])
-
-    Multibinder.newSetBinder(binder(), classOf[DeleteUserDataTaskStep])
-      .addBinding()
-      .to(classOf[LabelUserDeletionTaskStep])
-
-    bind(classOf[LabelChangeRepository]).to(classOf[MemoryLabelChangeRepository])
-    bind(classOf[MemoryLabelChangeRepository]).in(Scopes.SINGLETON)
-  }
 }

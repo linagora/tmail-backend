@@ -59,13 +59,15 @@ import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.imap.TMailIMAPModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryFirebaseSubscriptionRepositoryModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryJmapSettingsRepositoryModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryLabelRepositoryModule;
+import com.linagora.tmail.james.app.modules.jmap.PublicAssetsMemoryModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
-import com.linagora.tmail.james.jmap.contact.MemoryEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.firebase.MemoryFirebaseSubscriptionRepository;
-import com.linagora.tmail.james.jmap.label.MemoryLabelRepositoryModule;
 import com.linagora.tmail.james.jmap.mail.TMailMailboxSortOrderProviderModule;
 import com.linagora.tmail.james.jmap.method.CalendarEventMethodModule;
 import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
@@ -84,11 +86,9 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
-import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsMemoryModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
@@ -226,7 +226,7 @@ public class MemoryServer {
 
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enable()) {
-            return List.of(new MemoryFirebaseSubscriptionRepository.Module(), new FirebaseCommonModule());
+            return List.of(new MemoryFirebaseSubscriptionRepositoryModule(), new FirebaseCommonModule());
         }
         return List.of();
     }

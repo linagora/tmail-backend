@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.publicAsset
 
-import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
+import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetServiceContract.identityRepository
 import org.apache.james.blob.api.BucketName
@@ -16,8 +16,8 @@ class MemoryPublicAssetServiceTest extends PublicAssetServiceContract {
   @BeforeEach
   def setup(): Unit = {
     val blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO, BucketName.DEFAULT, blobIdFactory)
-    memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, PUBLIC_ASSET_URI_PREFIX)
-    publicAssetSetService = new PublicAssetSetService(identityRepository, memoryPublicAssetRepository, JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT)
+    memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, PublicAssetTotalSizeLimit.DEFAULT, PUBLIC_ASSET_URI_PREFIX)
+    publicAssetSetService = new PublicAssetSetService(identityRepository, memoryPublicAssetRepository, PublicAssetTotalSizeLimit.DEFAULT)
   }
 
   override def testee: PublicAssetSetService = publicAssetSetService
