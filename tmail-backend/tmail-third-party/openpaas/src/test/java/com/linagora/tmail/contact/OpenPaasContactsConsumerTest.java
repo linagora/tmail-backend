@@ -170,6 +170,36 @@ class OpenPaasContactsConsumerTest {
     }
 
     @Test
+    void multipleAddressesShouldBeIndexedWhenContactUserAddedMessage() {
+        consumer.start();
+
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
+            {
+                 "_id": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "john@doe.com" ],
+                     [ "email",   {}, "text", "another.john@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "john", 10))
+                .collectList().block())
+                .map(EmailAddressContact::fields)
+                .containsExactlyInAnyOrder(
+                    new ContactFields(new MailAddress("john@doe.com"), "Jane Doe", ""),
+                    new ContactFields(new MailAddress("another.john@doe.com"), "Jane Doe", "")));
+    }
+
+    @Test
     void contactShouldBeUpdatedWhenContactUserUpdatedMessageWithSameAddress() {
         consumer.start();
 

@@ -2,15 +2,14 @@ package com.linagora.tmail.contact;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jakarta.mail.internet.AddressException;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.core.MailAddress;
 import org.apache.james.util.streams.Iterators;
 import org.slf4j.Logger;
@@ -20,6 +19,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 
 
 public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
@@ -46,7 +47,7 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
         JsonNode node = p.getCodec().readTree(p);
 
         JsonNode jCardPropertiesArray = node.get(PROPERTIES_ARRAY_INDEX);
-        Map<String, String> jCardProperties =
+        Multimap<String, String> jCardProperties =
             collectJCardProperties(jCardPropertiesArray.iterator());
 
         if (!jCardProperties.containsKey(FN)) {
@@ -57,24 +58,28 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
                 Ensure the 'fn' property is present and correctly formatted.""", json);
         }
 
-        Optional<MailAddress> maybeMailAddress = getOptionalFromMap(jCardProperties, EMAIL)
+        List<MailAddress> mailAddresses = jCardProperties.get(EMAIL)
+            .stream()
             .flatMap(email -> {
                 try {
-                    return Optional.of(new MailAddress(email));
+                    return Stream.of(new MailAddress(email));
                 } catch (AddressException e) {
                     LOGGER.info("Invalid contact mail address '{}' found in JCard Object", email);
-                    return Optional.empty();
+                    return Stream.empty();
                 }
-            });
+            })
+            .toList();
 
-        return new JCardObject(getOptionalFromMap(jCardProperties, FN), maybeMailAddress);
+        return new JCardObject(getFormattedName(jCardProperties), mailAddresses);
     }
 
-    private static Map<String, String> collectJCardProperties(Iterator<JsonNode> propertiesIterator) {
-        return Iterators.toStream(propertiesIterator)
+    private static Multimap<String, String> collectJCardProperties(Iterator<JsonNode> propertiesIterator) {
+        Multimap<String, String> multimap = ArrayListMultimap.create();
+        Iterators.toStream(propertiesIterator)
             .map(JCardObjectDeserializer::getPropertyKeyValuePair)
             .flatMap(Optional::stream)
-            .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+            .forEach(pair -> multimap.put(pair.getKey(), pair.getValue()));
+        return multimap;
     }
 
     private static Optional<ImmutablePair<String, String>> getPropertyKeyValuePair(JsonNode propertyNode) {
@@ -87,7 +92,9 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
         }
     }
 
-    private Optional<String> getOptionalFromMap(Map<String, String> map, String key) {
-        return Optional.ofNullable(map.getOrDefault(key, null));
+    private Optional<String> getFormattedName(Multimap<String, String> multimap) {
+        return multimap.get(FN)
+            .stream()
+            .findFirst();
     }
 }

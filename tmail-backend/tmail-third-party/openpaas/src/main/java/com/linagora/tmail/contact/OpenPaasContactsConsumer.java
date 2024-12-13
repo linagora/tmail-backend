@@ -170,19 +170,20 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
             });
     }
 
-    private Mono<?> handleMessage(ContactRabbitMqMessage contactMessage, ContactHandler contactHandler) {
+    private Mono<Void> handleMessage(ContactRabbitMqMessage contactMessage, ContactHandler contactHandler) {
         LOGGER.trace("Consumed jCard object message: {}", contactMessage);
-        return Mono.justOrEmpty(contactMessage.vcard().asContactFields())
-            .flatMap(openPaasContact -> openPaasRestClient.retrieveMailAddress(contactMessage.openPaasUserId())
+        return Mono.fromCallable(() -> contactMessage.vcard().asContactFields())
+            .flatMap(openPaasContacts -> openPaasRestClient.retrieveMailAddress(contactMessage.openPaasUserId())
                 .map(this::getAccountIdFromMailAddress)
-                .flatMap(ownerAccountId -> contactHandler.handleContact(ownerAccountId, openPaasContact)));
+                .flatMap(ownerAccountId -> Flux.fromIterable(openPaasContacts)
+                    .flatMap(contact -> contactHandler.handleContact(ownerAccountId, contact))
+                    .then()));
     }
 
     private Mono<EmailAddressContact> indexContactIfNeeded(AccountId ownerAccountId, ContactFields openPaasContact) {
         return Mono.from(contactSearchEngine.get(ownerAccountId, openPaasContact.address()))
             .onErrorResume(ContactNotFoundException.class, e -> Mono.empty())
-            .switchIfEmpty(
-                Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact)))
+            .switchIfEmpty(Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact)))
             .flatMap(existingContact -> {
                 if (!openPaasContact.firstname().isBlank()) {
                     return Mono.from(contactSearchEngine.index(ownerAccountId, openPaasContact));
