@@ -39,7 +39,7 @@ public class AppConfiguration {
     @Value("${redis.password}")
     private String redisPassword;
 
-    @Value("${redis.timeout:5000}")
+    @Value("${redis.timeout:500}")
     private Integer redisTimeout;
 
     @Value("${redis.ignoreErrors:true}")
