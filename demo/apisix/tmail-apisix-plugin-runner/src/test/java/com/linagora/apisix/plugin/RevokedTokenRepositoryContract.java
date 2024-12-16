@@ -12,28 +12,28 @@ interface RevokedTokenRepositoryContract {
 
     @Test
     default void existShouldReturnFalseWhenDoesNotExist() {
-        assertThat(testee().exist("sid1")).isFalse();
+        assertThat(testee().exist("sid1").block()).isFalse();
     }
 
     @Test
     default void existShouldReturnTrueWhenExist() {
         String sid = "sid1";
-        testee().add(sid);
-        assertThat(testee().exist(sid)).isTrue();
+        testee().add(sid).block();
+        assertThat(testee().exist(sid).block()).isTrue();
     }
 
     @Test
     default void addShouldBeIdempotent() {
         String sid = "sid1";
-        testee().add(sid);
-        assertThatCode(() -> testee().add(sid)).doesNotThrowAnyException();
-        assertThat(testee().exist(sid)).isTrue();
+        testee().add(sid).block();
+        assertThatCode(() -> testee().add(sid).block()).doesNotThrowAnyException();
+        assertThat(testee().exist(sid).block()).isTrue();
     }
 
     @Test
     default void existShouldCheckingAssignKey() {
-        testee().add("sid2");
-        assertThat(testee().exist("sid1")).isFalse();
+        testee().add("sid2").block();
+        assertThat(testee().exist("sid1").block()).isFalse();
     }
 
     class MemoryRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {

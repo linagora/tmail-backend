@@ -16,8 +16,10 @@ import org.springframework.util.StringUtils;
 import io.lettuce.core.ReadFrom;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
-import io.lettuce.core.api.sync.RedisStringCommands;
+import io.lettuce.core.api.reactive.RedisReactiveCommands;
+import io.lettuce.core.api.reactive.RedisStringReactiveCommands;
 import io.lettuce.core.cluster.RedisClusterClient;
+import io.lettuce.core.cluster.api.reactive.RedisAdvancedClusterReactiveCommands;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.masterreplica.MasterReplica;
 import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
@@ -56,7 +58,7 @@ public class AppConfiguration {
         return new IRevokedTokenRepository.MemoryRevokedTokenRepository();
     }
 
-    private RedisStringCommands<String, String> initRedisCommand() {
+    private RedisStringReactiveCommands<String, String> initRedisCommand() {
         Duration timeoutDuration = Duration.ofMillis(redisTimeout);
 
         logger.info("The plugin using redis {} for storage revoked tokens.\n" +
@@ -76,14 +78,14 @@ public class AppConfiguration {
         }
     }
 
-    public static RedisStringCommands<String, String> initRedisCommandSentinel(String redisUrl,
+    public static RedisReactiveCommands<String, String> initRedisCommandSentinel(String redisUrl,
                                                                                Duration redisTimeout) {
         RedisURI redisURI = RedisURI.create(redisUrl);
         redisURI.setTimeout(redisTimeout);
-        return RedisClient.create(redisURI).connect().sync();
+        return RedisClient.create(redisURI).connect().reactive();
     }
 
-    public static RedisStringCommands<String, String> initRedisCommandStandalone(String redisUrl,
+    public static RedisReactiveCommands<String, String> initRedisCommandStandalone(String redisUrl,
                                                                                  String redisPassword,
                                                                                  Duration redisTimeout) {
         String[] redisUrlParts = redisUrl.split(":");
@@ -94,26 +96,26 @@ public class AppConfiguration {
             .withTimeout(redisTimeout)
             .build();
 
-        return RedisClient.create(redisURI).connect().sync();
+        return RedisClient.create(redisURI).connect().reactive();
     }
 
-    public static RedisStringCommands<String, String> initRedisCommandCluster(String redisUrl,
-                                                                              String redisPassword,
-                                                                              Duration redisTimeout) {
+    public static RedisAdvancedClusterReactiveCommands<String, String> initRedisCommandCluster(String redisUrl,
+                                                                                               String redisPassword,
+                                                                                               Duration redisTimeout) {
         List<RedisURI> redisURIList = buildRedisUriList(redisUrl, redisPassword, redisTimeout);
-        return RedisClusterClient.create(redisURIList).connect().sync();
+        return RedisClusterClient.create(redisURIList).connect().reactive();
     }
 
-    public static RedisStringCommands<String, String> initRedisCommandMasterReplica(String redisUrl,
-                                                                                    String redisPassword,
-                                                                                    Duration redisTimeout) {
+    public static RedisReactiveCommands<String, String> initRedisCommandMasterReplica(String redisUrl,
+                                                                                      String redisPassword,
+                                                                                      Duration redisTimeout) {
         List<RedisURI> redisURIList = buildRedisUriList(redisUrl, redisPassword, redisTimeout);
 
         RedisClient redisClient = RedisClient.create();
         StatefulRedisMasterReplicaConnection<String, String> connection = MasterReplica
             .connect(redisClient, StringCodec.UTF8, redisURIList);
         connection.setReadFrom(ReadFrom.MASTER_PREFERRED);
-        return connection.sync();
+        return connection.reactive();
     }
 
     public static List<RedisURI> buildRedisUriList(String redisUrl, String redisPassword, Duration redisTimeout) {
