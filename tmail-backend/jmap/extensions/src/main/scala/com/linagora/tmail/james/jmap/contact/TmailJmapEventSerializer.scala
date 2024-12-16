@@ -1,6 +1,9 @@
 package com.linagora.tmail.james.jmap.contact
 
+import java.util
+
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.google.common.collect.ImmutableList
 import jakarta.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.events.Event.EventId
@@ -24,6 +27,15 @@ case class TmailJmapEventSerializer @Inject()() extends EventSerializer {
   }
 
   override def fromBytes(serialized: Array[Byte]): Event = genericSerializer.deserializeFromBytes(serialized)
+
+  override def toJson(event: util.Collection[Event]): String = {
+    if (event.size() != 1) {
+      throw new IllegalArgumentException("Not supported for multiple events, please serialize separately")
+    }
+    toJson(event.iterator().next())
+  }
+
+  override def asEvents(serialized: String): util.List[Event] = ImmutableList.of(asEvent(serialized))
 }
 
 case class TmailContactUserAddedEventDTO(@JsonProperty("type") getType: String,
