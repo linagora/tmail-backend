@@ -1,6 +1,7 @@
 package com.linagora.tmail.event;
 
 import java.util.Collection;
+import java.util.List;
 
 import jakarta.inject.Inject;
 
@@ -57,6 +58,18 @@ public class TmailEventSerializer implements EventSerializer {
     }
 
     @Override
+    public String toJson(Collection<Event> events) {
+        try {
+            List<EventDTO> eventDTOs = events.stream()
+                .map(this::toDTO)
+                .toList();
+            return objectMapper.writeValueAsString(eventDTOs);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public Event asEvent(String serialized) {
         try {
             EventDTO eventDTO = objectMapper.readValue(serialized, EventDTO.class);
@@ -65,6 +78,21 @@ public class TmailEventSerializer implements EventSerializer {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public List<Event> asEvents(String serialized) {
+        try {
+            List<EventDTO> eventDTOs = objectMapper.readValue(
+                serialized,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, EventDTO.class));
+            return eventDTOs.stream()
+                .map(this::fromDTO)
+                .toList();
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     private EventDTO toDTO(Event event) {
         return switch (event) {

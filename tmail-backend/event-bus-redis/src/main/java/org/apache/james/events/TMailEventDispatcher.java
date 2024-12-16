@@ -11,8 +11,10 @@ import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
 import static org.apache.james.backends.rabbitmq.Constants.evaluateExclusive;
 import static org.apache.james.events.RabbitMQAndRedisEventBus.EVENT_BUS_ID;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
@@ -118,12 +120,36 @@ public class TMailEventDispatcher {
             .then();
     }
 
+    Mono<Void> dispatch(Collection<EventBus.EventWithRegistrationKey> events) {
+        return Flux
+            .concat(Flux.fromIterable(events)
+                    .concatMap(e -> dispatchToLocalListeners(e.event(), e.keys()))
+                    .then(),
+                dispatchToRemoteListeners(events))
+            .doOnError(throwable -> LOGGER.error("error while dispatching event", throwable))
+            .then();
+    }
+
     private Mono<Void> dispatchToLocalListeners(Event event, Set<RegistrationKey> keys) {
         return Flux.fromIterable(keys)
             .flatMap(key -> Flux.fromIterable(localListenerRegistry.getLocalListeners(key))
                 .map(listener -> Tuples.of(key, listener)), EventBus.EXECUTION_RATE)
             .filter(pair -> pair.getT2().getExecutionMode() == EventListener.ExecutionMode.SYNCHRONOUS)
             .flatMap(pair -> executeListener(event, pair.getT2(), pair.getT1()), EventBus.EXECUTION_RATE)
+            .then();
+    }
+
+    private Mono<Void> dispatchToRemoteListeners(Collection<EventBus.EventWithRegistrationKey> events) {
+        ImmutableList<Event> underlyingEvents = events.stream()
+            .map(EventBus.EventWithRegistrationKey::event)
+            .collect(ImmutableList.toImmutableList());
+
+        return Mono.fromCallable(() -> eventSerializer.toJson(underlyingEvents))
+            .flatMap(serializedEvent -> Mono.zipDelayError(
+                remoteGroupsDispatch(serializedEvent.getBytes(StandardCharsets.UTF_8), underlyingEvents),
+                Flux.fromIterable(events)
+                    .concatMap(e -> remoteKeysDispatch(serializedEvent, e.keys()))
+                    .then()))
             .then();
     }
 
@@ -164,6 +190,21 @@ public class TMailEventDispatcher {
                 event.getEventId().getId(),
                 ex))
             .onErrorResume(ex -> deadLetters.store(dispatchingFailureGroup, event)
+                .then(propagateErrorIfNeeded(ex)));
+    }
+
+    private Mono<Void> remoteGroupsDispatch(byte[] serializedEvent, List<Event> events) {
+        return remoteDispatchWithAcks(serializedEvent)
+            .onErrorResume(ex -> Flux.fromIterable(events)
+                .map(event -> {
+                    LOGGER.error(
+                        "cannot dispatch event of type '{}' belonging '{}' with id '{}' to remote groups, store it into dead letter",
+                        event.getClass().getSimpleName(),
+                        event.getUsername().asString(),
+                        event.getEventId().getId(),
+                        ex);
+                    return deadLetters.store(dispatchingFailureGroup, event);
+                })
                 .then(propagateErrorIfNeeded(ex)));
     }
 
