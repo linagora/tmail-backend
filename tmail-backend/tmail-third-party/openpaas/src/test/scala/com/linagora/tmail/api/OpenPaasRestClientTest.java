@@ -5,6 +5,7 @@ import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_RE
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import java.net.URI;
 import java.net.URISyntaxException;
 
 import jakarta.mail.internet.AddressException;
@@ -63,5 +64,36 @@ public class OpenPaasRestClientTest {
 
         assertThatThrownBy(() -> restClient.retrieveMailAddress(OpenPaasServerExtension.ALICE_USER_ID()).block())
             .isInstanceOf(OpenPaasRestClientException.class);
+    }
+
+    @Test
+    void searchOpenPaasUserIdShouldReturnUserIdWhenUserExists() {
+        assertThat(restClient.searchOpenPaasUserId(OpenPaasServerExtension.ALICE_EMAIL()).block())
+            .isEqualTo(OpenPaasServerExtension.ALICE_USER_ID());
+    }
+
+    @Test
+    void searchOpenPaasUserIdShouldReturnEmptyWhenSearchResultIsEmpty() {
+        assertThat(restClient.searchOpenPaasUserId(OpenPaasServerExtension.NOTFOUND_EMAIL()).blockOptional())
+            .isEmpty();
+    }
+
+    @Test
+    void searchOpenPaasUserIdShouldReturnEmptyWhenResponseError() {
+        assertThatThrownBy(() -> restClient.searchOpenPaasUserId(OpenPaasServerExtension.ERROR_EMAIL()).block())
+            .isInstanceOf(OpenPaasRestClientException.class);
+    }
+
+    // This method is used to get the rest client manually for integration test
+    private OpenPaasRestClient getRestClientManuallyForTest() throws URISyntaxException {
+        OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
+            AmqpUri.from("amqp://not_important.com"),
+            new URI("http://localhost:8080/api"),
+            "admin@open-paas.org",
+            "secret",
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+
+        return new OpenPaasRestClient(openPaasConfig);
     }
 }

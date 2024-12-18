@@ -23,9 +23,11 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.api.OpenPaasRestClient;
+import com.linagora.tmail.carddav.CardDavClient;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.contact.OpenPaasContactsConsumer;
 import com.linagora.tmail.contact.OpenPaasContactsConsumerReconnectionHandler;
+import com.linagora.tmail.carddav.CardDavClient.DefaultImpl.CardDavConfiguration;
 
 public class OpenPaasModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasModule.class);
@@ -61,6 +63,18 @@ public class OpenPaasModule extends AbstractModule {
     @Provides
     public OpenPaasRestClient provideOpenPaasRestCLient(OpenPaasConfiguration openPaasConfiguration) {
         return new OpenPaasRestClient(openPaasConfiguration);
+    }
+
+    @Provides
+    @Singleton
+    public CardDavConfiguration provideCardDavConfiguration(@Named(OPENPAAS_CONFIGURATION_NAME) Configuration propertiesConfiguration) {
+        return CardDavConfiguration.from(propertiesConfiguration);
+    }
+
+    @Provides
+    @Singleton
+    public CardDavClient provideCardDavClient(CardDavConfiguration cardDavConfiguration) {
+        return new CardDavClient.DefaultImpl(cardDavConfiguration);
     }
 
     @Provides

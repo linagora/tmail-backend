@@ -3,7 +3,7 @@ package com.linagora.tmail.api
 import java.net.{URI, URL}
 
 import com.linagora.tmail.HttpUtils
-import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, BOB_INVALID_EMAIL, BOB_USER_ID, GOOD_AUTHENTICATION_TOKEN, LOGGER}
+import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, BOB_INVALID_EMAIL, BOB_USER_ID, ERROR_EMAIL, GOOD_AUTHENTICATION_TOKEN, LOGGER, NOTFOUND_EMAIL}
 import org.junit.jupiter.api.extension._
 import org.mockserver.configuration.ConfigurationProperties
 import org.mockserver.integration.ClientAndServer
@@ -17,6 +17,8 @@ import org.slf4j.{Logger, LoggerFactory}
 object OpenPaasServerExtension {
   val ALICE_USER_ID: String = "ALICE_USER_ID"
   val ALICE_EMAIL: String = "adoe@linagora.com"
+  val NOTFOUND_EMAIL: String = "notfound@lina.com"
+  val ERROR_EMAIL: String = "error@lina.com"
   val BOB_USER_ID: String = "BOB_USER_ID"
   val BOB_INVALID_EMAIL: String = "BOB_EMAIL_IS_INVALID"
   val GOOD_USER = "admin"
@@ -136,6 +138,17 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
                      |  "followers": 0,
                      |  "followings": 0
                      |}""".stripMargin))
+
+    setSearchEmailExist(ALICE_EMAIL, ALICE_USER_ID)
+    setSearchEmailNotFound(NOTFOUND_EMAIL)
+
+    mockServer.when(
+        request.withPath(s"/users")
+          .withQueryStringParameter("email", ERROR_EMAIL)
+          .withMethod("GET")
+          .withHeader(string("Authorization"), string(GOOD_AUTHENTICATION_TOKEN)))
+      .respond(response.withStatusCode(503)
+        .withBody(s"""503 Temporary error""".stripMargin))
   }
 
   override def afterEach(context: ExtensionContext): Unit = {
@@ -153,5 +166,46 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
     mockServer
 
   def getBaseUrl: URL = new URI(s"http://localhost:${mockServer.getLocalPort}").toURL
+
+  def setSearchEmailExist(emailQuery: String, openPassUidExpected: String): Unit = {
+    mockServer.when(
+      request.withPath(s"/users")
+        .withQueryStringParameter("email", emailQuery)
+        .withMethod("GET")
+        .withHeader(string("Authorization"), string(GOOD_AUTHENTICATION_TOKEN)))
+      .respond(response.withStatusCode(200)
+        .withBody(s"""[
+                     |    {
+                     |        "_id": "$openPassUidExpected",
+                     |        "firstname": "John1",
+                     |        "lastname": "Doe1",
+                     |        "preferredEmail": "$emailQuery",
+                     |        "emails": [
+                     |            "$emailQuery"
+                     |        ],
+                     |        "domains": [
+                     |            {
+                     |                "joined_at": "2024-12-17T13:00:22.766Z",
+                     |                "domain_id": "676175e3aea7130059d339b2"
+                     |            }
+                     |        ],
+                     |        "states": [],
+                     |        "avatars": [],
+                     |        "id": "$openPassUidExpected",
+                     |        "displayName": "John1 Doe1",
+                     |        "objectType": "user"
+                     |    }
+                     |]""".stripMargin))
+  }
+
+  def setSearchEmailNotFound(emailQuery: String): Unit = {
+    mockServer.when(
+      request.withPath(s"/users")
+        .withQueryStringParameter("email", emailQuery)
+        .withMethod("GET")
+        .withHeader(string("Authorization"), string(GOOD_AUTHENTICATION_TOKEN)))
+      .respond(response.withStatusCode(200)
+        .withBody(s"""[]""".stripMargin))
+  }
 
 }
