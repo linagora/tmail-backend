@@ -2729,7 +2729,6 @@ trait TeamMailboxesContract {
 
             Thread.sleep(100)
             List(
-              ws.receive().asPayload,
               ws.receive().asPayload)
 
         })
