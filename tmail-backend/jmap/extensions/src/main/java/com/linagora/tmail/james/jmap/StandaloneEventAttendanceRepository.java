@@ -73,7 +73,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                                                                     Optional<LanguageLocation> maybePreferredLanguage) {
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
-        return getEnclosingMessageId(eventBlobIds).flatMapMany(messageId ->
+        return getEnclosingMessageId(eventBlobIds).flatMap(messageId ->
             Flux.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, systemMailboxSession))
                 .map(MessageResult::getMailboxId)
                 .collectList()
@@ -83,7 +83,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                         attendanceStatus,
                         systemMailboxSession,
                         mailboxIds)))
-            .flatMap(ignored -> tryToSendReplyEmail(username, eventBlobIds, maybePreferredLanguage, systemMailboxSession));
+            .then(tryToSendReplyEmail(username, eventBlobIds, maybePreferredLanguage, systemMailboxSession));
     }
 
     private Mono<CalendarEventReplyResults> tryToSendReplyEmail(Username username, BlobIds eventBlobIds, Optional<LanguageLocation> maybePreferredLanguage, MailboxSession systemMailboxSession) {
