@@ -11,7 +11,8 @@ public record MailReportEntry(Kind kind,
                               String subject,
                               MaybeSender sender,
                               MailAddress recipient,
-                              Instant date) {
+                              Instant date,
+                              long size) {
     public enum Kind {
         Sent("SENT"),
         Received("RECEIVED");
