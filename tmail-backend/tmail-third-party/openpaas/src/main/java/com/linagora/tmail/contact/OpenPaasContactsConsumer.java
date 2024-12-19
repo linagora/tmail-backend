@@ -129,7 +129,7 @@ public class OpenPaasContactsConsumer implements Startable, Closeable {
     }
 
     private QueueArguments.Builder evaluateQueueArguments() {
-        if (!openPaasConfiguration.quorumQueuesBypass()) {
+        if (!openPaasConfiguration.contactConsumerConfiguration().get().quorumQueuesBypass()) {
             return commonRabbitMQConfiguration.workQueueArgumentsBuilder();
         }
         if (!FALLBACK_CLASSIC_QUEUES_VERSION_1) {

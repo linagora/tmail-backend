@@ -5,7 +5,9 @@ import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_RE
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Optional;
 
 import jakarta.mail.internet.AddressException;
 
@@ -27,12 +29,13 @@ public class OpenPaasRestClientTest {
     @BeforeEach
     void setup() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
-            AmqpUri.from("amqp://not_important.com"),
-            openPaasServerExtension.getBaseUrl().toURI(),
+            openPaasServerExtension.getBaseUrl(),
             OpenPaasServerExtension.GOOD_USER(),
             OpenPaasServerExtension.GOOD_PASSWORD(),
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
-            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+           new OpenPaasConfiguration.ContactConsumerConfiguration(
+                AmqpUri.from("amqp://not_important.com"),
+                OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
 
         restClient = new OpenPaasRestClient(openPaasConfig);
     }
@@ -52,16 +55,47 @@ public class OpenPaasRestClientTest {
     @Test
     void shouldThrowExceptionOnErrorStatusCode() throws URISyntaxException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
-            AmqpUri.from("amqp://not_important.com"),
-            openPaasServerExtension.getBaseUrl().toURI(),
+            openPaasServerExtension.getBaseUrl(),
             OpenPaasServerExtension.BAD_USER(),
             OpenPaasServerExtension.BAD_PASSWORD(),
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
-            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+            new OpenPaasConfiguration.ContactConsumerConfiguration(
+                AmqpUri.from("amqp://not_important.com"),
+                OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
 
         restClient = new OpenPaasRestClient(openPaasConfig);
 
         assertThatThrownBy(() -> restClient.retrieveMailAddress(OpenPaasServerExtension.ALICE_USER_ID()).block())
             .isInstanceOf(OpenPaasRestClientException.class);
+    }
+
+    @Test
+    void searchOpenPaasUserIdShouldReturnUserIdWhenUserExists() {
+        assertThat(restClient.searchOpenPaasUserId(OpenPaasServerExtension.ALICE_EMAIL()).block())
+            .isEqualTo(OpenPaasServerExtension.ALICE_USER_ID());
+    }
+
+    @Test
+    void searchOpenPaasUserIdShouldReturnEmptyWhenSearchResultIsEmpty() {
+        assertThat(restClient.searchOpenPaasUserId(OpenPaasServerExtension.NOTFOUND_EMAIL()).blockOptional())
+            .isEmpty();
+    }
+
+    @Test
+    void searchOpenPaasUserIdShouldReturnEmptyWhenResponseError() {
+        assertThat(restClient.searchOpenPaasUserId(OpenPaasServerExtension.ERROR_EMAIL()).blockOptional())
+            .isEmpty();
+    }
+
+    // This method is used to get the rest client manually for integration test
+    private OpenPaasRestClient getRestClientManuallyForTest() throws URISyntaxException {
+        OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
+            new URI("http://localhost:8080/api"),
+            "admin@open-paas.org",
+            "secret",
+            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
+            Optional.empty(), Optional.empty());
+
+        return new OpenPaasRestClient(openPaasConfig);
     }
 }

@@ -3,6 +3,8 @@ package com.linagora.tmail;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+import org.apache.http.auth.UsernamePasswordCredentials;
+
 public class HttpUtils {
 
     /**
@@ -16,5 +18,9 @@ public class HttpUtils {
             .getEncoder()
             .encode(userPassword.getBytes(StandardCharsets.UTF_8));
         return "Basic " + new String(base64UserPassword, StandardCharsets.UTF_8);
+    }
+
+    public static String createBasicAuthenticationToken(UsernamePasswordCredentials credentials) {
+        return createBasicAuthenticationToken(credentials.getUserName(), credentials.getPassword());
     }
 }

@@ -34,12 +34,13 @@ class OpenPaasConfigurationTest {
         configuration.addProperty("openpaas.queues.quorum.bypass", "true");
 
         OpenPaasConfiguration expected = new OpenPaasConfiguration(
-            AmqpUri.from("amqp://james:james@rabbitmqhost:5672"),
             URI.create("http://localhost:8080"),
             "jhon_doe",
             "123",
             true,
-            true);
+            new OpenPaasConfiguration.ContactConsumerConfiguration(
+                AmqpUri.from("amqp://james:james@rabbitmqhost:5672"),
+                true));
 
         assertThat(OpenPaasConfiguration.from(configuration))
             .isEqualTo(expected);
@@ -53,7 +54,7 @@ class OpenPaasConfigurationTest {
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.admin.password", "123");
 
-        assertThat(OpenPaasConfiguration.from(configuration).quorumQueuesBypass())
+        assertThat(OpenPaasConfiguration.from(configuration).contactConsumerConfiguration().get().quorumQueuesBypass())
             .isEqualTo(false);
     }
 
@@ -158,28 +159,26 @@ class OpenPaasConfigurationTest {
     }
 
     @Test
-    void fromShouldCrashWhenRabbitMqURINotConfigured() {
+    void contactConsumerConfigurationShouldReturnEmptyWhenRabbitMqURINotConfigured() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.admin.password", "123");
 
-        assertThatThrownBy(() -> OpenPaasConfiguration.from(configuration))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage("RabbitMQ URI not defined in openpaas.properties.");
+        assertThat(OpenPaasConfiguration.from(configuration).contactConsumerConfiguration())
+            .isEmpty();
     }
 
     @Test
-    void fromShouldCrashWhenRabbitMqUriIsBlank() {
+    void contactConsumerConfigurationShouldEmptyWhenRabbitMqUriIsBlank() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("rabbitmq.uri", "  ");
         configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.admin.password", "123");
 
-        assertThatThrownBy(() -> OpenPaasConfiguration.from(configuration))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage("RabbitMQ URI not defined in openpaas.properties.");
+        assertThat( OpenPaasConfiguration.from(configuration).contactConsumerConfiguration())
+            .isEmpty();
     }
 
     @Test

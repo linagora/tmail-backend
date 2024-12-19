@@ -5,21 +5,30 @@ import java.net.URI;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 
 import com.linagora.tmail.AmqpUri;
 
-import spark.utils.StringUtils;
 
-public record OpenPaasConfiguration(
-    AmqpUri rabbitMqUri,
-    URI apirUri,
-    String adminUsername,
-    String adminPassword,
-    boolean trustAllSslCerts,
-    boolean quorumQueuesBypass) {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasConfiguration.class);
+public record OpenPaasConfiguration(URI apirUri,
+                                    String adminUsername,
+                                    String adminPassword,
+                                    boolean trustAllSslCerts,
+                                    Optional<ContactConsumerConfiguration> contactConsumerConfiguration,
+                                    Optional<CardDavConfiguration> cardDavConfiguration) {
+
+    public record ContactConsumerConfiguration(AmqpUri amqpUri,
+                                               boolean quorumQueuesBypass) {
+    }
+
+    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, ContactConsumerConfiguration contactConsumerConfiguration) {
+        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.of(contactConsumerConfiguration), Optional.empty());
+    }
+
+    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, CardDavConfiguration cardDavConfiguration) {
+        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.empty(), Optional.of(cardDavConfiguration));
+    }
+
     private static final String RABBITMQ_URI_PROPERTY = "rabbitmq.uri";
     private static final String OPENPAAS_API_URI = "openpaas.api.uri";
     private static final String OPENPAAS_ADMIN_USER_PROPERTY = "openpaas.admin.user";
@@ -31,24 +40,31 @@ public record OpenPaasConfiguration(
     public static final boolean OPENPAAS_QUEUES_QUORUM_BYPASS_ENABLED = true;
 
     public static OpenPaasConfiguration from(Configuration configuration) {
-        AmqpUri rabbitMqUri = readRabbitMqUri(configuration);
         URI openPaasApiUri = readApiUri(configuration);
         String adminUser = readAdminUsername(configuration);
         String adminPassword = readAdminPassword(configuration);
         boolean trustAllSslCerts = readTrustAllSslCerts(configuration);
-        boolean quorumQueuesBypass = readQuorumQueuesBypass(configuration);
 
-        return new OpenPaasConfiguration(rabbitMqUri, openPaasApiUri, adminUser, adminPassword, trustAllSslCerts, quorumQueuesBypass);
+        Optional<ContactConsumerConfiguration> contactConsumerConfiguration = readRabbitMqUri(configuration)
+            .map(amqpUri -> new ContactConsumerConfiguration(amqpUri, readQuorumQueuesBypass(configuration)));
+
+        Optional<CardDavConfiguration> cardDavConfiguration = CardDavConfiguration.maybeFrom(configuration);
+
+        return new OpenPaasConfiguration(openPaasApiUri, adminUser, adminPassword, trustAllSslCerts, contactConsumerConfiguration, cardDavConfiguration);
     }
 
-    private static AmqpUri readRabbitMqUri(Configuration configuration) {
+    public static boolean isConfiguredContactConsumer(Configuration configuration) {
+        return readRabbitMqUri(configuration).isPresent();
+    }
+
+    public static Optional<AmqpUri> readRabbitMqUri(Configuration configuration) {
         String rabbitMqUri = configuration.getString(RABBITMQ_URI_PROPERTY);
         if (StringUtils.isBlank(rabbitMqUri)) {
-            throw new IllegalStateException("RabbitMQ URI not defined in openpaas.properties.");
+           return Optional.empty();
         }
 
         try {
-            return AmqpUri.from(URI.create(rabbitMqUri));
+            return Optional.of(AmqpUri.from(URI.create(rabbitMqUri)));
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Invalid RabbitMQ URI in openpaas.properties.");
         }
