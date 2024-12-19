@@ -172,14 +172,16 @@ public class TMailReportsIntegrationTest {
                         "subject": "test",
                         "sender": "bob@domain.tld",
                         "recipient": "alice@domain.tld",
-                        "date": "${json-unit.ignore}"
+                        "date": "${json-unit.ignore}",
+                        "size": "${json-unit.ignore}"
                     },
                     {
                         "kind": "Sent",
                         "subject": "test",
                         "sender": "bob@domain.tld",
                         "recipient": "alice@domain.tld",
-                        "date": "${json-unit.ignore}"
+                        "date": "${json-unit.ignore}",
+                        "size": "${json-unit.ignore}"
                     }
                 ]""");
     }
@@ -227,14 +229,16 @@ public class TMailReportsIntegrationTest {
                         "subject": "subject2",
                         "sender": "bob@domain.tld",
                         "recipient": "cedric@domain.tld",
-                        "date": "${json-unit.ignore}"
+                        "date": "${json-unit.ignore}",
+                        "size": "${json-unit.ignore}"
                     },
                     {
                         "kind": "Received",
                         "subject": "subject2",
                         "sender": "bob@domain.tld",
                         "recipient": "cedric@domain.tld",
-                        "date": "${json-unit.ignore}"
+                        "date": "${json-unit.ignore}",
+                        "size": "${json-unit.ignore}"
                     }
                 ]""");
     }
