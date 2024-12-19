@@ -83,8 +83,8 @@ public class OpenPaasRestClientTest {
 
     @Test
     void searchOpenPaasUserIdShouldReturnEmptyWhenResponseError() {
-        assertThatThrownBy(() -> restClient.searchOpenPaasUserId(OpenPaasServerExtension.ERROR_EMAIL()).block())
-            .isInstanceOf(OpenPaasRestClientException.class);
+        assertThat(restClient.searchOpenPaasUserId(OpenPaasServerExtension.ERROR_EMAIL()).blockOptional())
+            .isEmpty();
     }
 
     // This method is used to get the rest client manually for integration test
