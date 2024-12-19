@@ -1,0 +1,38 @@
+To: Bob <bob@domain.tld>
+From: Alice <alice@do.main.tld>
+Subject: Event Invitation from Alice
+Message-ID: <ffaa7bce-fbe3-83b5-de3f-9a7301233615@linagora.com>
+Date: Tue, 5 Sep 2017 09:54:16 +0200
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------D24E361990BDBA143D4D8794"
+Content-Language: en-US
+
+This is a multi-part message in MIME format.
+--------------D24E361990BDBA143D4D8794
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+
+The message has a text attachment.
+
+--------------D24E361990BDBA143D4D8794
+Content-Type: text/calendar; charset=UTF-8; method=REQUEST
+Content-Disposition: attachment;
+Content-Transfer-Encoding: base64
+
+QkVHSU46VkNBTEVOREFSClZFUlNJT046Mi4wClBST0RJRDotLy9TYWJyZS8vU2FicmUgVk9iamVj
+dCA0LjEuMy8vRU4KQ0FMU0NBTEU6R1JFR09SSUFOCk1FVEhPRDpSRVFVRVNUCkJFR0lOOlZUSU1F
+Wk9ORQpUWklEOkFzaWEvSG9fQ2hpX01pbmgKQkVHSU46U1RBTkRBUkQKVFpPRkZTRVRGUk9NOisw
+NzAwClRaT0ZGU0VUVE86KzA3MDAKVFpOQU1FOklDVApEVFNUQVJUOjE5NzAwMTAxVDAwMDAwMApF
+TkQ6U1RBTkRBUkQKRU5EOlZUSU1FWk9ORQpFTkQ6VkNBTEVOREFSCg==
+--------------D24E361990BDBA143D4D8794
+Content-Type: application/ics; name=meeting.ics
+Content-Disposition: attachment; filename=meeting.ics
+Content-Transfer-Encoding: base64
+
+QkVHSU46VkNBTEVOREFSClZFUlNJT046Mi4wClBST0RJRDotLy9TYWJyZS8vU2FicmUgVk9iamVj
+dCA0LjEuMy8vRU4KQ0FMU0NBTEU6R1JFR09SSUFOCk1FVEhPRDpSRVFVRVNUCkJFR0lOOlZUSU1F
+Wk9ORQpUWklEOkFzaWEvSG9fQ2hpX01pbmgKQkVHSU46U1RBTkRBUkQKVFpPRkZTRVRGUk9NOisw
+NzAwClRaT0ZGU0VUVE86KzA3MDAKVFpOQU1FOklDVApEVFNUQVJUOjE5NzAwMTAxVDAwMDAwMApF
+TkQ6U1RBTkRBUkQKRU5EOlZUSU1FWk9ORQpFTkQ6VkNBTEVOREFSCg==
+--------------D24E361990BDBA143D4D8794--

@@ -4,7 +4,9 @@ import java.util
 import java.util.Optional
 
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer
+import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest
 import jakarta.mail.Flags
+import net.fortuna.ical4j.model.parameter.PartStat
 import org.apache.james.jmap.mail.{BlobId, BlobIds, PartId}
 import org.apache.james.mailbox.exception.MailboxException
 import org.apache.james.mailbox.fixture.MailboxFixture
@@ -15,8 +17,10 @@ import org.apache.james.mailbox.store.MessageIdManagerTestSystem
 import org.apache.james.mailbox.{MailboxSession, MailboxSessionUtil, MessageUid}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
-import org.mockito.Mockito.mock
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{mock, when}
 import reactor.core.publisher.Mono
+import reactor.core.scala.publisher.SMono
 
 import scala.util.Random
 
@@ -32,6 +36,12 @@ class StandaloneEventAttendanceRepositoryTest {
   def setUp(): Unit = {
     messageIdManagerTestSystem = createTestSystem
     calendarEventReplyPerformer = mock(classOf[CalendarEventReplyPerformer])
+    when(calendarEventReplyPerformer.process(
+      any(classOf[CalendarEventReplyRequest]),
+      any(classOf[MailboxSession]),
+      any(classOf[PartStat])))
+    .thenReturn(SMono.empty)
+
     testee = new StandaloneEventAttendanceRepository(messageIdManagerTestSystem.getMessageIdManager, messageIdManagerTestSystem.getMailboxManager.getSessionProvider, calendarEventReplyPerformer, new TestMessageId.Factory)
     session = MailboxSessionUtil.create(ALICE)
     mailbox = messageIdManagerTestSystem.createMailbox(MailboxFixture.INBOX_ALICE, session)

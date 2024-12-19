@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 
+import net.fortuna.ical4j.model.parameter.PartStat;
+
 public enum AttendanceStatus {
     Accepted("$accepted"),
     Declined("$rejected"),
@@ -54,6 +56,15 @@ public enum AttendanceStatus {
         }
 
         return eventAttendanceFlags.stream().findAny();
+    }
+
+    public Optional<PartStat> toPartStat() {
+        return switch (this) {
+            case Accepted -> Optional.of(PartStat.ACCEPTED);
+            case Declined -> Optional.of(PartStat.DECLINED);
+            case Tentative -> Optional.of(PartStat.TENTATIVE);
+            case NeedsAction -> Optional.of(PartStat.NEEDS_ACTION);
+        };
     }
 
     public static Flags getEventAttendanceFlags() {
