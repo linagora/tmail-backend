@@ -2,7 +2,6 @@ package com.linagora.tmail.james.common
 
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.concurrent.TimeUnit
-
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -15,11 +14,13 @@ import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
+import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
+import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
@@ -44,8 +45,18 @@ trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
 
   @Test
-  def acceptShouldSucceed(): Unit = {
-    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
+  def acceptShouldSucceed(server: GuiceJamesServer): Unit = {
+    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
+
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+
+    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessageAndGetAppendResult(
+        BOB.asString(),
+        MailboxPath.inbox(BOB),
+        AppendCommand.from(mailInputStream))
+
+    // val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
 
     val request: String =
       s"""{
@@ -56,7 +67,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |    "CalendarEvent/accept",
          |    {
          |      "accountId": "$ACCOUNT_ID",
-         |      "blobIds": [ "$blobId" ]
+         |      "blobIds": [ "${appendResult.getMessageAttachments.getFirst.getAttachmentId}" ]
          |    },
          |    "c1"]]
          |}""".stripMargin
@@ -80,7 +91,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "CalendarEvent/accept",
            |    {
            |        "accountId": "$ACCOUNT_ID",
-           |        "accepted": [ "$blobId" ]
+           |        "accepted": [ "${appendResult.getMessageAttachments.getFirst.getAttachmentId}" ]
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -570,6 +581,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
   @Test
   def shouldSucceedWhenDelegated(server: GuiceJamesServer): Unit = {
     val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/aliceInviteBob.ics"))
+    println(blobId)
     server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
 
     val bobAccountId = ACCOUNT_ID
