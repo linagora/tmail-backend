@@ -1,6 +1,6 @@
 package com.linagora.tmail.api
 
-import java.net.{URI, URL}
+import java.net.URI
 
 import com.linagora.tmail.HttpUtils
 import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, BOB_INVALID_EMAIL, BOB_USER_ID, ERROR_EMAIL, GOOD_AUTHENTICATION_TOKEN, LOGGER, NOTFOUND_EMAIL}
@@ -12,7 +12,6 @@ import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import org.mockserver.model.NottableString.string
 import org.slf4j.{Logger, LoggerFactory}
-
 
 object OpenPaasServerExtension {
   val ALICE_USER_ID: String = "ALICE_USER_ID"
@@ -165,7 +164,7 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
   override def resolveParameter(parameterContext: ParameterContext, extensionContext: ExtensionContext): AnyRef =
     mockServer
 
-  def getBaseUrl: URL = new URI(s"http://localhost:${mockServer.getLocalPort}").toURL
+  def getBaseUrl: URI = new URI(s"http://localhost:${mockServer.getLocalPort}")
 
   def setSearchEmailExist(emailQuery: String, openPassUidExpected: String): Unit = {
     mockServer.when(

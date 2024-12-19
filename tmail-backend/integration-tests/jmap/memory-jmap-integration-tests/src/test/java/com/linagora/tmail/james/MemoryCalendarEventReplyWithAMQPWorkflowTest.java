@@ -1,5 +1,8 @@
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLED;
+import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CARDDAV;
+import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CONTACTS_CONSUMER;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
@@ -56,12 +59,11 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
                     confPath.resolve("mailetcontainer.xml").toFile()
                 )).run();
 
-            System.out.println("confPath: " + confPath);
             return MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-                .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED)
+                .openPaasModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED, !ENABLE_CARDDAV, ENABLE_CONTACTS_CONSUMER))
                 .build();
         })
         .server(configuration -> MemoryServer.createServer(configuration)
@@ -88,12 +90,13 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
             @Singleton
             public OpenPaasConfiguration provideOpenPaasConfiguration() {
                 return new OpenPaasConfiguration(
-                    AmqpUri.from(amqpUri),
                     URI.create("http://localhost:8081"),
                     "user",
                     "password",
                     OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
-                    OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+                    new OpenPaasConfiguration.ContactConsumerConfiguration(
+                        AmqpUri.from(amqpUri),
+                        OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
             }
         };
 

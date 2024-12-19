@@ -1,6 +1,13 @@
 package com.linagora.tmail.carddav;
 
-import org.apache.james.jmap.core.URL;
+import static org.mockserver.model.NottableString.string;
+
+import java.net.URI;
+import java.time.Duration;
+import java.util.Optional;
+import java.util.function.Function;
+
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -10,9 +17,18 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import org.mockserver.configuration.ConfigurationProperties;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
+import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
 
+import com.github.fge.lambdas.Throwing;
+import com.linagora.tmail.HttpUtils;
+import com.linagora.tmail.configuration.CardDavConfiguration;
+
 public class CardDavServerExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
+
+    public static final String CARD_DAV_ADMIN = "admin";
+    public static final String CARD_DAV_ADMIN_PASSWORD = "secret123";
+    public static final Function<String, String> CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION = openPaasUserName -> HttpUtils.createBasicAuthenticationToken(CARD_DAV_ADMIN + "&" + openPaasUserName, CARD_DAV_ADMIN_PASSWORD);
 
     private ClientAndServer mockServer = null;
 
@@ -39,55 +55,70 @@ public class CardDavServerExtension implements BeforeEachCallback, AfterEachCall
         return mockServer;
     }
 
-    public URL getBaseUrl() {
-        return new URL("http://localhost:" + mockServer.getPort());
+    public URI getBaseUrl() {
+        return Throwing.supplier(() -> new URI("http://localhost:" + mockServer.getPort())).get();
     }
 
-    public void setCollectedContactExists(String openPassUserId, String collectedContactUid, boolean exists) {
+    public void setCollectedContactExists(String openPassUserName, String openPassUserId, String collectedContactUid, boolean exists) {
         if (exists) {
             mockServer.when(HttpRequest.request()
                     .withMethod("GET")
-                    .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid))
-                .respond(org.mockserver.model.HttpResponse.response()
+                    .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
+                    .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))))
+                .respond(HttpResponse.response()
                     .withStatusCode(200));
         } else {
             mockServer.when(HttpRequest.request()
                     .withMethod("GET")
-                    .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid))
-                .respond(org.mockserver.model.HttpResponse.response()
+                    .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
+                    .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))))
+                .respond(HttpResponse.response()
                     .withStatusCode(404));
         }
     }
 
-    public void setCreateCollectedContact(String openPassUserId, String collectedContactUid) {
+    public void setCreateCollectedContact(String openPassUserName, String openPassUserId, String collectedContactUid) {
         mockServer.when(HttpRequest.request()
                 .withMethod("PUT")
-                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf"))
-            .respond(org.mockserver.model.HttpResponse.response()
+                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
+                .withHeader(string("Content-Type"), string("text/vcard"))
+                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))))
+            .respond(HttpResponse.response()
                 .withStatusCode(201));
     }
 
-    public void setCreateCollectedContactAlreadyExists(String openPassUserId, String collectedContactUid) {
+    public void setCreateCollectedContactAlreadyExists(String openPassUserName, String openPassUserId, String collectedContactUid) {
         mockServer.when(HttpRequest.request()
                 .withMethod("PUT")
-                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf"))
-            .respond(org.mockserver.model.HttpResponse.response()
+                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
+                .withHeader(string("Content-Type"), string("text/vcard"))
+                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))))
+            .respond(HttpResponse.response()
                 .withStatusCode(204));
     }
 
-    public void assertCollectedContactExistsWasCalled(String openPassUserId, String collectedContactUid) {
+    public void assertCollectedContactExistsWasCalled(String openPassUserName, String openPassUserId, String collectedContactUid, int times) {
         mockServer.verify(HttpRequest.request()
-            .withMethod("GET")
-            .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid),
-
-
-            VerificationTimes.exactly(1));
+                .withMethod("GET")
+                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid)
+                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))),
+            VerificationTimes.exactly(times));
     }
 
-    public void assertCreateCollectedContactWasCalled(String openPassUserId, String collectedContactUid) {
+    public void assertCreateCollectedContactWasCalled(String openPassUserName, String openPassUserId, String collectedContactUid, int times) {
         mockServer.verify(HttpRequest.request()
-            .withMethod("PUT")
-            .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf"),
-            VerificationTimes.exactly(1));
+                .withMethod("PUT")
+                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
+                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName)))
+                .withHeader(string("Content-Type"), string("text/vcard")),
+            VerificationTimes.exactly(times));
+    }
+
+    public CardDavConfiguration getCardDavConfiguration() {
+        return new CardDavConfiguration(
+            new UsernamePasswordCredentials(CARD_DAV_ADMIN, CARD_DAV_ADMIN_PASSWORD),
+            getBaseUrl(),
+            Optional.of(true),
+            Optional.of(Duration.ofSeconds(10)));
     }
 }

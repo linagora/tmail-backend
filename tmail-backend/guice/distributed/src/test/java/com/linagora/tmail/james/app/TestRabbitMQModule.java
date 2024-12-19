@@ -92,12 +92,13 @@ public class TestRabbitMQModule extends AbstractModule {
     @Singleton
     public OpenPaasConfiguration provideOpenPaasConfiguration() throws URISyntaxException {
         return new OpenPaasConfiguration(
-            AmqpUri.from(rabbitMQ.amqpUri()),
             URI.create("http://localhost:8081"),
             "user",
             "password",
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
-            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+            new OpenPaasConfiguration.ContactConsumerConfiguration(
+                AmqpUri.from(rabbitMQ.amqpUri()),
+                OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
     }
 
     public static class QueueCleanUp implements CleanupTasksPerformer.CleanupTask {

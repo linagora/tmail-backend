@@ -1,5 +1,9 @@
 version: "3"
 
+networks:
+  emaily:
+    driver: bridge
+
 services:
   openpass:
     container_name: esn
@@ -31,12 +35,16 @@ services:
       - rabbitmq
       - elasticsearch
       - sabre_dav
+    networks:
+      - emaily
 
   redis:
     container_name: esn_redis
     image: redis:latest
     ports:
       - "6379:6379"
+    networks:
+      - emaily
 
   rabbitmq:
     container_name: esn_rabbitmq
@@ -45,11 +53,16 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+    networks:
+      - emaily
+
   mongo:
     container_name: esn_mongo
     image: mongo
     ports:
       - "27017:27017"
+    networks:
+      - emaily
 
   elasticsearch:
     container_name: esn_elasticsearch
@@ -58,6 +71,8 @@ services:
       - "9200:9200"
     environment:
       - discovery.type=single-node
+    networks:
+      - emaily
 
   sabre_dav:
     container_name: esn_sabre
@@ -81,3 +96,37 @@ services:
       - SABRE_ADMIN_LOGIN=admin
       - SABRE_ADMIN_PASSWORD=secret123
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
+    networks:
+      - emaily
+
+  tmail-backend:
+    image: linagora/tmail-backend-memory:latest
+    container_name: tmail-backend
+    hostname: tmail-backend.local
+    ports:
+      - "8000:8000"
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "143:143"
+      - "993:993"
+    environment:
+      - DOMAIN=open-paas.org
+    volumes:
+      - ./sample_conf/jwt_publickey:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - ./sample_conf/jwt_privatekey:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+      - ./sample_conf/mailetcontainer.xml:/root/conf/mailetcontainer.xml
+      - ./sample_conf/openpaas.properties:/root/conf/openpaas.properties
+    networks:
+      - emaily
+
+  tmail-provision-sample-data:
+    image: curlimages/curl:latest
+    container_name: create-users
+    depends_on:
+      - tmail-backend
+    volumes:
+      - ./script_create_sample_data_for_docker_compose.sh:/usr/local/bin/provision.sh
+    entrypoint: ["sh", "/usr/local/bin/provision.sh"]
+    networks:
+      - emaily

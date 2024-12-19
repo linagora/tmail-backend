@@ -16,14 +16,16 @@ public class CardDavCreationFactory {
 
     public static CardDavCreationObjectRequest create(Optional<String> fullName, MailAddress email) {
         CardDavCreationObjectRequest.Email emailObject = new CardDavCreationObjectRequest.Email(List.of(EMAIL_TYPE_DEFAULT), email);
-
-        String uid = Hashing.sha1()
-            .hashString(email.asString(), StandardCharsets.UTF_8)
-            .toString();
-        return new CardDavCreationObjectRequest(VERSION, uid, fullName, Optional.empty(), emailObject);
+        return new CardDavCreationObjectRequest(VERSION, createContactUid(email), fullName, Optional.empty(), emailObject);
     }
 
     public static CardDavCreationObjectRequest create(MailAddress email) {
         return create(Optional.empty(), email);
+    }
+
+    public static String createContactUid(MailAddress email) {
+        return Hashing.sha1()
+            .hashString(email.asString(), StandardCharsets.UTF_8)
+            .toString();
     }
 }

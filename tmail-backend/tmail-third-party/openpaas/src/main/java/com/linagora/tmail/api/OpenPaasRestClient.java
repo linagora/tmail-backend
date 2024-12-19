@@ -74,7 +74,10 @@ public class OpenPaasRestClient {
             .uri(String.format("/users?email=%s", email))
             .responseSingle((statusCode, data) -> handleUserSearchResponse(email, statusCode, data))
             .map(UserSearchResponse::id)
-            .onErrorResume(e -> Mono.error(new OpenPaasRestClientException("Failed to search OpenPaas user id by email " + email, e)));
+            .onErrorResume(e -> {
+                LOGGER.error("Failed to search OpenPaas user id by email {}", email, e);
+                return Mono.empty();
+            });
     }
 
     private Mono<UserSearchResponse> handleUserSearchResponse(String email, HttpClientResponse httpClientResponse, ByteBufMono dataBuf) {
@@ -99,9 +102,8 @@ public class OpenPaasRestClient {
                 .defaultIfEmpty("")
                 .flatMap(errorResponse -> Mono.error(new OpenPaasRestClientException(
                     String.format("""
-                                Error when search OpenPaas user response by email %s.\s
                                 Response Status = %s,
-                                Response Body = %s""", email, httpClientResponse.status().code(), errorResponse))));
+                                Response Body = %s""", httpClientResponse.status().code(), errorResponse))));
         };
     }
 

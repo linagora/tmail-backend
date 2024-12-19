@@ -123,6 +123,7 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
+import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.ScheduledReconnectionHandler;
@@ -464,6 +465,13 @@ public class DistributedServer {
 
     private static List<Module> chooseOpenPaasModule(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {
         if (openPaasModuleChooserConfiguration.enabled()) {
+            ImmutableList.Builder<Module> moduleBuilder = ImmutableList.<Module>builder().add(new OpenPaasModule());
+            if (openPaasModuleChooserConfiguration.cardDavCollectedContactEnabled()) {
+                moduleBuilder.add(new OpenPaasModule.CardDavModule());
+            }
+            if (openPaasModuleChooserConfiguration.contactsConsumerEnabled()) {
+                moduleBuilder.add(new OpenPaasContactsConsumerModule());
+            }
             return List.of(new OpenPaasModule());
         }
         return List.of();
