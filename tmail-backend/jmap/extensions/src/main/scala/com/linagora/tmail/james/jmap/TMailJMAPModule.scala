@@ -4,7 +4,10 @@ import java.io.FileNotFoundException
 
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Singleton}
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer
 import org.apache.commons.configuration2.{Configuration, PropertiesConfiguration}
+import org.apache.james.mailbox.model.MessageId
+import org.apache.james.mailbox.{MessageIdManager, SessionProvider}
 import org.apache.james.utils.PropertiesProvider
 
 import scala.util.Try
@@ -27,4 +30,8 @@ class TMailJMAPModule extends AbstractModule {
 
   @Provides
   def providePublicAssetTotalSizeLimit(jmapExtensionConfiguration: JMAPExtensionConfiguration): PublicAssetTotalSizeLimit = jmapExtensionConfiguration.publicAssetTotalSizeLimit
+
+  @Provides
+  def provideEventAttendanceRepository(messageIdManager: MessageIdManager, sessionProvider: SessionProvider, calendarEventReplyPerformer: CalendarEventReplyPerformer, messageIdFactory: MessageId.Factory): EventAttendanceRepository =
+    new StandaloneEventAttendanceRepository(messageIdManager, sessionProvider, calendarEventReplyPerformer, messageIdFactory)
 }
