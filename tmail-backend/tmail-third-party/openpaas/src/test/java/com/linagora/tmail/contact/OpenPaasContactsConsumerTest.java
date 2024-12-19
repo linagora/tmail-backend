@@ -645,6 +645,40 @@ class OpenPaasContactsConsumerTest {
     }
 
     @Test
+    void contactShouldBeIndexedWhenFallbackOpenPaasIdToUserId() {
+        consumer.start();
+
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
+            {
+                "userId": "ALICE_USER_ID",
+                "vcard": [
+                "vcard",
+                  [
+                     [ "unknownProperty", {}, "text", "4.0" ],
+                     [ "version", {}, "text", "4.0" ],
+                     [ "kind",    {}, "text", "individual" ],
+                     [ "fn",      {}, "text", "Jane Doe" ],
+                     [ "email",   {}, "text", "jhon@doe.com" ],
+                     [ "org",     {}, "text", [ "ABC, Inc.", "North American Division", "Marketing" ] ]
+                  ]
+               ]
+            }
+            """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                    .collectList().block())
+                .hasSize(1)
+                .map(EmailAddressContact::fields)
+                .allSatisfy(Throwing.consumer(contact -> {
+                    assertThat(contact.address()).isEqualTo(new MailAddress("jhon@doe.com"));
+                    assertThat(contact.firstname()).isEqualTo("Jane Doe");
+                    assertThat(contact.surname()).isEqualTo("");
+                })));
+    }
+
+    @Test
     void consumeMessageShouldNotCrashWhenAbsentOpenPassId() throws InterruptedException {
         consumer.start();
 
