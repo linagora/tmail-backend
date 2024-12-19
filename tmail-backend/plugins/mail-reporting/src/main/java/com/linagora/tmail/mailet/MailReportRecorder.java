@@ -7,16 +7,19 @@ import java.util.Optional;
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 
+import org.apache.james.core.MailAddress;
 import org.apache.james.util.ReactorUtils;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMailet;
 
+import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.api.MailReportEntry;
 import com.linagora.tmail.api.MailReportGenerator;
 
 import reactor.core.publisher.Flux;
 
 public class MailReportRecorder extends GenericMailet {
+    public static final int SIZE_FAILURE = -1;
     private final MailReportGenerator mailReportGenerator;
     private final Clock clock;
     private MailReportEntry.Kind kind;
@@ -40,11 +43,9 @@ public class MailReportRecorder extends GenericMailet {
         String subject = Optional.ofNullable(mail.getMessage().getSubject()).orElse("<no subject>");
 
         Flux.fromIterable(mail.getRecipients())
-            .map(recipient -> new MailReportEntry(kind,
-                subject,
-                mail.getMaybeSender(),
-                recipient,
-                instant))
+            .map(Throwing.<MailAddress, MailReportEntry>function(recipient -> new MailReportEntry(kind,
+                    subject, mail.getMaybeSender(), recipient, instant, mail.getMessageSize()))
+                .fallbackTo(recipient -> new MailReportEntry(kind, subject, mail.getMaybeSender(), recipient, instant, SIZE_FAILURE)))
             .flatMap(mailReportGenerator::append, ReactorUtils.DEFAULT_CONCURRENCY)
             .blockLast();
     }

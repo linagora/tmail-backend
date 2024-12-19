@@ -16,6 +16,7 @@ import jakarta.inject.Inject;
 import org.apache.james.backends.cassandra.components.CassandraModule;
 import org.apache.james.backends.cassandra.init.CassandraTableManager;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
+import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
@@ -24,8 +25,10 @@ import org.apache.james.utils.UserDefinedStartable;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.type.DataTypes;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.api.MailReportEntry;
@@ -42,6 +45,7 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
     public static final CqlIdentifier RECIPIENT = CqlIdentifier.fromCql("recipient");
     public static final CqlIdentifier SUBJECT = CqlIdentifier.fromCql("subject");
     public static final CqlIdentifier DATE = CqlIdentifier.fromCql("date");
+    public static final CqlIdentifier SIZE = CqlIdentifier.fromCql("size");
     public static final int TTL = (int) DurationParser.parse(System.getProperty("mu.report.retention", "365d")).getSeconds();
     public static final CassandraModule MODULE = CassandraModule.builder()
         .table(TABLE_NAME)
@@ -53,14 +57,14 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
             .withColumn(SENDER, TEXT)
             .withColumn(RECIPIENT, TEXT)
             .withColumn(SUBJECT, TEXT)
+            .withColumn(SIZE, DataTypes.BIGINT)
             .withColumn(DATE, TIMESTAMP))
         .build();
-    private static final String DATE_START = "date_start";
-    private static final String DATE_END = "date_end";
 
     private final CqlSession session;
     private final CassandraAsyncExecutor cassandraAsyncExecutor;
     private final CassandraTypesProvider typesProvider;
+    private final DriverExecutionProfile batchProfile;
     private PreparedStatement insert;
     private PreparedStatement selectByDateBetween;
 
@@ -70,6 +74,7 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
         this.session = session;
         this.cassandraAsyncExecutor = new CassandraAsyncExecutor(session);
         this.typesProvider = typesProvider;
+        this.batchProfile = JamesExecutionProfiles.getBatchProfile(session);
     }
 
     @Override
@@ -88,6 +93,7 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
             .value(RECIPIENT, bindMarker(RECIPIENT))
             .value(SUBJECT, bindMarker(SUBJECT))
             .value(DATE, bindMarker(DATE))
+            .value(SIZE, bindMarker(SIZE))
             .usingTtl(TTL)
             .build());
     }
@@ -106,19 +112,21 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
             .setString(SENDER, entry.sender().asString())
             .setString(RECIPIENT, entry.recipient().asString())
             .setString(SUBJECT, entry.subject())
+            .setLong(SIZE, entry.size())
             .setInstant(DATE, entry.date()));
     }
 
     @Override
     public Flux<MailReportEntry> generateReport(Instant start, Instant end) {
-        return cassandraAsyncExecutor.executeRows(selectByDateBetween.bind())
+        return cassandraAsyncExecutor.executeRows(selectByDateBetween.bind().setExecutionProfile(batchProfile))
             .filter(isBetweenDate(start, end))
             .handle((row, sink) -> MailReportEntry.Kind.parse(row.getString(KIND))
                 .flatMap(Throwing.function(kind -> Optional.of(new MailReportEntry(kind,
                     row.getString(SUBJECT),
                     MaybeSender.getMailSender(row.getString(SENDER)),
                     Optional.ofNullable(row.getString(RECIPIENT)).map(Throwing.function(MailAddress::new)).orElse(null),
-                    row.getInstant(DATE)))))
+                    row.getInstant(DATE),
+                    row.getLong(SIZE)))))
                 .ifPresent(sink::next));
     }
 

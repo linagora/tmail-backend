@@ -45,7 +45,8 @@ public interface MailReportGeneratorContract {
         Instant now = Instant.now();
         MailReportEntry record1 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject1", MaybeSender.getMailSender("bob@domain.tld"),
-            new MailAddress("alice@domain.tld"), now.minus(Duration.ofSeconds(1)));
+            new MailAddress("alice@domain.tld"), now.minus(Duration.ofSeconds(1)),
+            123L);
         testee().append(record1).block();
 
         assertThat(testee().generateReport(now.minus(Duration.ofSeconds(10)), now)
@@ -61,19 +62,22 @@ public interface MailReportGeneratorContract {
         Instant now = Instant.now();
         MailReportEntry record1 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject1", MaybeSender.getMailSender("bob1@domain.tld"),
-            new MailAddress("alice1@domain.tld"), now.minus(Duration.ofDays(3)));
+            new MailAddress("alice1@domain.tld"), now.minus(Duration.ofDays(3)),
+            123L);
         testee().append(record1).block();
 
         // record 2: 1 day ago
         MailReportEntry record2 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject2", MaybeSender.getMailSender("bob2@domain.tld"),
-            new MailAddress("alice2@doamin.tld"), now.minus(Duration.ofDays(1)));
+            new MailAddress("alice2@doamin.tld"), now.minus(Duration.ofDays(1)),
+            124L);
         testee().append(record2).block();
 
         // record 3: now
         MailReportEntry record3 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject3", MaybeSender.getMailSender("bob3@domain.tld"),
-            new MailAddress("alice3@domain.tld"), now);
+            new MailAddress("alice3@domain.tld"), now,
+            125L);
         testee().append(record3).block();
 
         // When we generate report for the last 2 days
@@ -94,13 +98,15 @@ public interface MailReportGeneratorContract {
         // record 1: 3 seconds ago
         MailReportEntry record1 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject1", MaybeSender.getMailSender("bob1@domain.tld"),
-            new MailAddress("alice1@domain.tld"), now.minus(Duration.ofSeconds(3)));
+            new MailAddress("alice1@domain.tld"), now.minus(Duration.ofSeconds(3)),
+            123L);
         testee().append(record1).block();
 
         // record 2: 1 second ago
         MailReportEntry record2 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject2", MaybeSender.getMailSender("bob2@domain.tld"),
-            new MailAddress("alice2@doamin.tld"), now.minus(Duration.ofSeconds(1)));
+            new MailAddress("alice2@doamin.tld"), now.minus(Duration.ofSeconds(1)),
+            124L);
         testee().append(record2).block();
 
         // When we generate report for the last 2 seconds
@@ -119,19 +125,22 @@ public interface MailReportGeneratorContract {
         Instant now = Instant.now();
         MailReportEntry record1 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject1", MaybeSender.getMailSender("bob1@domain.tld"),
-            new MailAddress("alice1@domain.tld"), now.minus(Duration.ofDays(90)));
+            new MailAddress("alice1@domain.tld"), now.minus(Duration.ofDays(90)),
+            123L);
         testee().append(record1).block();
 
         // record 2: 1 month ago
         MailReportEntry record2 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject2", MaybeSender.getMailSender("bob2@domain.tld"),
-            new MailAddress("alice2@doamin.tld"), now.minus(Duration.ofDays(30)));
+            new MailAddress("alice2@doamin.tld"), now.minus(Duration.ofDays(30)),
+            123L);
         testee().append(record2).block();
 
         // record 3: now
         MailReportEntry record3 = new MailReportEntry(MailReportEntry.Kind.Sent,
             "subject3", MaybeSender.getMailSender("bob3@domain.tld"),
-            new MailAddress("alice3@domain.tld"), now.minus(Duration.ofSeconds(100)));
+            new MailAddress("alice3@domain.tld"), now.minus(Duration.ofSeconds(100)),
+            123L);
         testee().append(record3).block();
 
         // When we generate report for the last 2 months
