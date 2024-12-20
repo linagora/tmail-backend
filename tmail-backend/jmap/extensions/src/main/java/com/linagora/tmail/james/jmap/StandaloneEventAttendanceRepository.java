@@ -99,6 +99,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
     private Mono<MessageId> getEnclosingMessageId(BlobIds blobIds) {
         return Flux.fromIterable(JavaConverters.seqAsJavaList(blobIds.value()))
             .flatMap(blobId -> extractMessageId(blobId.value()))
+            .onErrorContinue((e, object) -> LOGGER.debug("Error while extracting message id from blobId", e))
             .distinct()
             .collectList()
             .handle((enclosingMessageIds, sink) -> {
@@ -112,10 +113,17 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
 
     private Mono<MessageId> extractMessageId(String blobId) {
         return Mono.just(blobId)
-            .map(blobIdParam -> {
+            .handle((blobIdParam, sink) -> {
                 int underscoreIndex = blobId.indexOf('_');
-                String messageId = blobId.substring(0, underscoreIndex);
-                return messageIdFactory.fromString(messageId);
+                if (underscoreIndex == -1) {
+                    sink.error(new IllegalArgumentException("""
+                        Invalid calendar event blobId: %s.
+                        The blobId should be in the form {messageId}_{partId}.
+                        """.formatted(blobId)));
+                } else {
+                    String messageId = blobId.substring(0, underscoreIndex);
+                    sink.next(messageIdFactory.fromString(messageId));
+                }
             });
     }
 
