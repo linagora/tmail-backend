@@ -26,6 +26,8 @@ import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.Json
 
+import scala.util.Using
+
 
 trait LinagoraCalendarEventAcceptMethodContract {
 
@@ -42,23 +44,54 @@ trait LinagoraCalendarEventAcceptMethodContract {
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build
+
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+  }
+
+  def _sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                                icsPartIds: String*): Seq[String] = {
+
+    Using(ClassLoaderUtils.getSystemResourceAsSharedStream(invitationEml))(stream => {
+      val appendResult = server.getProbe(classOf[MailboxProbeImpl])
+        .appendMessageAndGetAppendResult(
+          BOB.asString(),
+          MailboxPath.inbox(BOB),
+          AppendCommand.from(stream))
+
+      icsPartIds.map(partId => s"${appendResult.getId.getMessageId.serialize()}_$partId")
+    }).get
+  }
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartId: String): String = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartId) match {
+      case Seq(a) => (a)
+    }
+  }
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartIds: (String, String)): (String, String) = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2) match {
+      case Seq(a, b) => (a, b)
+    }
+  }
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartIds: (String, String, String)): (String, String, String) = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
+      case Seq(a, b, c) => (a, b, c)
+    }
   }
 
   def randomBlobId: String
 
   @Test
   def acceptShouldSucceed(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
 
     val request: String =
       s"""{
@@ -101,17 +134,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def acceptAMissingMethodIcsShouldReturnNotAccept(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithIcsMissingMethod.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val missingMethodIcsBlobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val missingMethodIcsBlobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingMethod.eml", icsPartId = "3")
 
     val request: String =
       s"""{
@@ -159,17 +183,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def acceptAMissingOrganizerIcsShouldReturnNotAccept(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithIcsMissingOrginizer.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val missingOrganizerIcsBlobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val missingOrganizerIcsBlobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingOrginizer.eml", icsPartId = "3")
 
     val request: String =
       s"""{
@@ -217,17 +232,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def acceptAMissingAttendeeIcsShouldReturnAccepted(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithIcsMissingAttendee.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val missingAttendeeIcsBlobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val missingAttendeeIcsBlobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingAttendee.eml", icsPartId = "3")
 
     val request: String =
       s"""{
@@ -270,17 +276,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def acceptAMissingVEventIcsShouldReturnNotAccept(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithIcsMissingVEVENT.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val missingVEventIcsBlobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val missingVEventIcsBlobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingVEVENT.eml", icsPartId = "3")
 
     val request: String =
       s"""{
@@ -328,17 +325,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldReturnNotFoundResultWhenBlobIdDoesNotExist(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithIcsMissingMethod.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val notFoundBlobId: String = s"${appendResult.getId.getMessageId.serialize()}_88888"
+    val notFoundBlobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingMethod.eml", icsPartId = "88888")
 
     val request: String =
       s"""{
@@ -379,17 +367,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldReturnNotCreatedWhenNotAnICS(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val notParsableBlobId: String = s"${appendResult.getId.getMessageId.serialize()}_2"
+    val notParsableBlobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "2")
 
     val request: String =
       s"""{
@@ -436,19 +415,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldSucceedWhenMixSeveralCases(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val notAcceptedId: String = s"${appendResult.getId.getMessageId.serialize()}_2"
-    val notFoundBlobId: String = s"${appendResult.getId.getMessageId.serialize()}_999999"
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val (notAcceptedId, notFoundBlobId, blobId) =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartIds = ("2", "999999", "3"))
 
     val request: String =
       s"""{
@@ -611,17 +579,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldNotFoundWhenDoesNotHavePermission(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
 
     val request: String =
       s"""{
@@ -663,17 +622,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldSucceedWhenDelegated(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
 
     server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
 
@@ -763,18 +713,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldNotCreatedWhenInvalidIcsPayload(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithTwoInvalidIcsAttachments.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val blobId1: String = s"${appendResult.getId.getMessageId.serialize()}_5"
-    val blobId2: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val (blobId1, blobId2) =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithTwoInvalidIcsAttachments.eml", icsPartIds = ("5", "3"))
 
     val request: String =
       s"""{
@@ -826,17 +766,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldFailWhenInvalidLanguage(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
 
     `given`
       .body(s"""{
@@ -861,17 +792,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldFailWhenUnsupportedLanguage(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
 
     val response =  `given`
       .body(s"""{
@@ -912,17 +834,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
   @Test
   def shouldSupportSpecialValidLanguages(server: GuiceJamesServer): Unit = {
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAliceInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
 
     val request: String =
       s"""{
@@ -968,19 +881,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def shouldSendReplyMailToInvitor(server: GuiceJamesServer): Unit = {
     val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAndreInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    mailInputStream.close()
-
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAndreInviteBobIcsAttachment.eml", icsPartId = "3")
 
     `given`
       .body( s"""{
@@ -1090,19 +992,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
   @Test
   def mailReplyShouldSupportI18nWhenLanguageRequest(server: GuiceJamesServer): Unit = {
     val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-    val mailInputStream = ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithAndreInviteBobIcsAttachment.eml")
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-
-    val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(
-        BOB.asString(),
-        MailboxPath.inbox(BOB),
-        AppendCommand.from(mailInputStream))
-
-    mailInputStream.close()
-
-    val blobId: String = s"${appendResult.getId.getMessageId.serialize()}_3"
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAndreInviteBobIcsAttachment.eml", icsPartId = "3")
 
     `given`
       .body( s"""{
