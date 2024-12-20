@@ -8,7 +8,7 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 |===
 | Property name | explanation
 | rabbitmq.uri
-| URI for RabbitMQ server to communicate with OpenPaas. Example: `rabbitmq.uri=amqp://guest:guest@localhost:5672/`
+| Optional. URI for RabbitMQ server to communicate with OpenPaas consumer. Example: `rabbitmq.uri=amqp://guest:guest@localhost:5672/`
 | openpaas.api.uri
 | URI for OpenPaas API. Example: `openpaas.api.uri=http://localhost:8080`
 | openpaas.admin.user
@@ -19,13 +19,23 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 | Whether the OpenPaaS Rest client should trust all SSL certificates. Optional, boolean. Default to false.
 | openpaas.queues.quorum.bypass
 | Whether to ignore quorum queues setting from `rabbitmq.properties`. Optional, boolean. Default to false. If `true`, OpenPaaS queues would use classic queues.
+| carddav.api.uri
+| Optional. URI for CardDAV API. Example: `carddav.api.uri=http://sabre_dav:80/api`
+| carddav.admin.user
+| Admin username for CardDAV. Example: `carddav.admin.user=admin`
+| carddav.admin.password
+| Admin password for CardDAV. Example: `carddav.admin.password=admin`
+| carddav.rest.client.trust.all.ssl.certs
+| Whether the CardDAV Rest client should trust all SSL certificates. Optional, boolean. Default to false.
+| carddav.rest.client.response.timeout
+| Timeout for CardDAV Rest client. Optional, integer. Unit is milliseconds. Default to 10000.
 |===
 
 == OpenPaasAmqpForwardAttribute
 
 This mailet forwards the specified mail attribute value to OpenPaas through the AMQP protocol.
 
-== Parameters
+=== Parameters
 
 The mailet configuration requires the following parameters:
 
@@ -33,7 +43,7 @@ The mailet configuration requires the following parameters:
 * `exchange`: name of the AMQP exchange.
 * `exchange_type`: type of the exchange. Can be "direct", "fanout", "topic", "headers". Optional, defaults to "direct".
 
-== Example
+=== Example
 This configuration forwards contacts extracted by the `ContactExtractor` mailet to OpenPaas through the AMQP protocol.
 
 [source,xml]
@@ -48,3 +58,17 @@ This configuration forwards contacts extracted by the `ContactExtractor` mailet 
   <exchange_type>FANOUT</exchange_type>
 </mailet>
 ----
+
+== CardDavCollectedContact
+
+This mailet collects contacts from mail recipients and stores them in a CardDAV server using the HTTP API.
+
+=== Example
+This configuration sets up in `mailetcontainer.xml`
+
+----
+<mailet match="All" class="com.linagora.tmail.mailet.CardDavCollectedContact"/>
+----
+
+The docker compose sample for the OpenPaas integration with `CardDavCollectedContact` mailet: see `docker-compose-carddav-sample.yml`.
+A sample user `user1@open-paas.org/secret` has been created for testing purposes.

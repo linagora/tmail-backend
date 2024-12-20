@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
@@ -70,7 +71,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
-                .overrideWith(new OpenPaasModule())
+                .overrideWith(new OpenPaasModule(), new OpenPaasContactsConsumerModule())
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(DeletedMessageVaultWorkQueueProbe.class))
                 .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)
@@ -145,7 +146,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
-                .overrideWith(new OpenPaasModule())
+                .overrideWith(new OpenPaasModule(), new OpenPaasContactsConsumerModule())
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(ScheduledReconnectionHandlerProbe.class))
                 .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)

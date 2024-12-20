@@ -137,19 +137,18 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
 
             jamesServer = TemporaryJamesServer.builder()
                 .withBase(Modules.combine(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE,
-                    new OpenPaasModule()))
+                    new OpenPaasModule(), new OpenPaasContactsConsumerModule()))
                 .withOverrides(new AbstractModule() {
                     @Provides
                     @Singleton
                     public OpenPaasConfiguration provideOpenPaasConfiguration()
                         throws URISyntaxException {
                         return new OpenPaasConfiguration(
-                            AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
                             URI.create("http://localhost:8081"),
                             "user",
                             "password",
                             false,
-                            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+                            new OpenPaasConfiguration.ContactConsumerConfiguration(AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()), OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
                     }
                 })
                 .withOverrides(new AbstractModule() {
@@ -157,7 +156,7 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                     @Named(OPENPAAS_INJECTION_KEY)
                     @Singleton
                     public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
-                        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
+                        return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration();
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())
@@ -253,19 +252,18 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
 
             jamesServer = TemporaryJamesServer.builder()
                 .withBase(Modules.combine(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE,
-                    new OpenPaasModule()))
+                    new OpenPaasModule(), new OpenPaasContactsConsumerModule()))
                 .withOverrides(new AbstractModule() {
                     @Provides
                     @Singleton
                     public OpenPaasConfiguration provideOpenPaasConfiguration()
                         throws URISyntaxException {
                         return new OpenPaasConfiguration(
-                            AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
                             URI.create("http://localhost:8081"),
                             "user",
                             "password",
                             false,
-                            OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+                            new OpenPaasConfiguration.ContactConsumerConfiguration(AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()), OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
                     }
                 })
                 .withOverrides(new AbstractModule() {
@@ -273,7 +271,7 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                     @Named(OPENPAAS_INJECTION_KEY)
                     @Singleton
                     public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
-                        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
+                        return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration();
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())

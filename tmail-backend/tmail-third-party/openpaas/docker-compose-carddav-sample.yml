@@ -1,0 +1,132 @@
+version: "3"
+
+networks:
+  emaily:
+    driver: bridge
+
+services:
+  openpaas:
+    container_name: esn
+    image: linagora/esn:branch-1.11
+    ports:
+      - "8080:8080"
+    environment:
+      - SABRE_ENV=dev
+      - PROVISION=true
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+      - MONGO_DBNAME=esn_docker
+      - MONGO_TIMEOUT=100000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AMQP_HOST=rabbitmq
+      - AMQP_PORT=5672
+      - AMQP_PROTOCOL=amqp
+      - AMQP_USERNAME=guest
+      - AMQP_PASSWORD=guest
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - WEB_PORT=8080
+      - DAV_SERVER_HOST=esn_sabre
+      - DAV_SERVER_PORT=80
+    depends_on:
+      - mongo
+      - redis
+      - rabbitmq
+      - elasticsearch
+      - sabre_dav
+    networks:
+      - emaily
+
+  redis:
+    container_name: esn_redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - emaily
+
+  rabbitmq:
+    container_name: esn_rabbitmq
+    image: rabbitmq:3.13.3-management
+    hostname: esn-rabbit
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - emaily
+
+  mongo:
+    container_name: esn_mongo
+    image: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      - emaily
+
+  elasticsearch:
+    container_name: esn_elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.3.2
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+    networks:
+      - emaily
+
+  sabre_dav:
+    container_name: esn_sabre
+    image: linagora/esn-sabre
+    ports:
+      - "8001:80"
+    environment:
+      - SABRE_ENV=dev
+      - SABRE_MONGO_HOST=mongo
+      - SABRE_MONGO_PORT=27017
+      - ESN_MONGO_HOST=mongo
+      - ESN_MONGO_PORT=27017
+      - ESN_MONGO_DBNAME=esn_docker
+      - MONGO_TIMEOUT=100000
+      - ESN_HOST=esn
+      - ESN_PORT=8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AMQP_HOST=rabbitmq
+      - AMQP_PORT=5672
+      - SABRE_ADMIN_LOGIN=admin
+      - SABRE_ADMIN_PASSWORD=secret123
+      - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
+    networks:
+      - emaily
+
+  tmail-backend:
+    image: linagora/tmail-backend-memory:latest
+    container_name: tmail-backend
+    hostname: tmail-backend.local
+    ports:
+      - "8000:8000"
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "143:143"
+      - "993:993"
+    environment:
+      - DOMAIN=open-paas.org
+    volumes:
+      - ./sample_conf/jwt_publickey:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
+      - ./sample_conf/jwt_privatekey:/root/conf/jwt_privatekey # Replace with absolute path to your RSA private key
+      - ./sample_conf/mailetcontainer.xml:/root/conf/mailetcontainer.xml
+      - ./sample_conf/openpaas.properties:/root/conf/openpaas.properties
+    networks:
+      - emaily
+
+  tmail-provision-sample-data:
+    image: curlimages/curl:latest
+    container_name: create-users
+    depends_on:
+      - tmail-backend
+    volumes:
+      - ./script_create_sample_data_for_docker_compose.sh:/usr/local/bin/provision.sh
+    entrypoint: ["sh", "/usr/local/bin/provision.sh"]
+    networks:
+      - emaily

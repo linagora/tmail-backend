@@ -48,6 +48,7 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
+import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
@@ -240,15 +241,23 @@ public class MemoryServer {
 
     private static List<Module> chooseOpenPaas(OpenPaasModuleChooserConfiguration moduleChooserConfiguration) {
         if (moduleChooserConfiguration.enabled()) {
-            return List.of(Modules.override(new OpenPaasModule())
-                .with(new AbstractModule() {
-                    @Provides
-                    @Named(OPENPAAS_INJECTION_KEY)
-                    @Singleton
-                    public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
-                        return openPaasConfiguration.rabbitMqUri().toRabbitMqConfiguration();
-                    }
-                }));
+            ImmutableList.Builder<Module> moduleBuilder = ImmutableList.<Module>builder().add(new OpenPaasModule());
+
+            if (moduleChooserConfiguration.cardDavCollectedContactEnabled()) {
+                moduleBuilder.add(new OpenPaasModule.CardDavModule());
+            }
+            if (moduleChooserConfiguration.contactsConsumerEnabled()) {
+                moduleBuilder.add(Modules.override(new OpenPaasContactsConsumerModule())
+                    .with(new AbstractModule() {
+                        @Provides
+                        @Named(OPENPAAS_INJECTION_KEY)
+                        @Singleton
+                        public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
+                            return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration();
+                        }
+                    }));
+            }
+            return moduleBuilder.build();
         }
         return List.of();
     }
