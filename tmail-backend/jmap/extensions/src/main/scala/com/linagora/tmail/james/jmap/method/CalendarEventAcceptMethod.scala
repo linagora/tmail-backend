@@ -40,7 +40,7 @@ class CalendarEventAcceptMethod @Inject()(val eventAttendanceRepository: EventAt
                          invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,
                          request: CalendarEventReplyRequest): Publisher[InvocationWithContext] = {
-    return Mono.from(eventAttendanceRepository.setAttendanceStatus(mailboxSession.getUser, AttendanceStatus.Accepted, request.blobIds, OptionConverters.toJava(request.language)))
+    Mono.from(eventAttendanceRepository.setAttendanceStatus(mailboxSession.getUser, AttendanceStatus.Accepted, request.blobIds, OptionConverters.toJava(request.language)))
       .map(result => CalendarEventReplyAcceptedResponse.from(request.accountId, result))
           .map(response => Invocation(
             methodName,

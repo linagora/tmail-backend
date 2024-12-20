@@ -26,7 +26,6 @@ import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
-import net.fortuna.ical4j.model.parameter.PartStat;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import scala.collection.JavaConverters;
@@ -83,17 +82,21 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                         attendanceStatus,
                         systemMailboxSession,
                         mailboxIds)))
-            .then(tryToSendReplyEmail(username, eventBlobIds, maybePreferredLanguage, systemMailboxSession));
+            .then(tryToSendReplyEmail(username, eventBlobIds, maybePreferredLanguage, systemMailboxSession, attendanceStatus));
     }
 
-    private Mono<CalendarEventReplyResults> tryToSendReplyEmail(Username username, BlobIds eventBlobIds, Optional<LanguageLocation> maybePreferredLanguage, MailboxSession systemMailboxSession) {
+    private Mono<CalendarEventReplyResults> tryToSendReplyEmail(Username username,
+                                                                BlobIds eventBlobIds,
+                                                                Optional<LanguageLocation> maybePreferredLanguage,
+                                                                MailboxSession systemMailboxSession,
+                                                                AttendanceStatus attendanceStatus) {
         return Mono.just(AccountId.from(username))
             .flatMap(accountIdEither ->
                 accountIdEither.fold(
-                    exception -> Mono.error(new IllegalArgumentException(
-                        "Failed to get account id from username: " + username, exception)),
-                    accountId -> doSendReplyEmail(accountId, systemMailboxSession, eventBlobIds,
-                        maybePreferredLanguage)));
+                    exception ->
+                        Mono.error(new IllegalArgumentException("Failed to get account id from username: " + username, exception)),
+                    accountId ->
+                        doSendReplyEmail(accountId, systemMailboxSession, eventBlobIds, maybePreferredLanguage, attendanceStatus)));
     }
 
     private Mono<MessageId> getEnclosingMessageId(BlobIds blobIds) {
@@ -127,14 +130,18 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
             });
     }
 
-    private Mono<CalendarEventReplyResults> doSendReplyEmail(AccountId accountId, MailboxSession session, BlobIds eventBlobIds, Optional<LanguageLocation> maybePreferredLanguage) {
-        return Mono.from(calendarEventReplyPerformer.process(
-            new CalendarEventReplyRequest(
-                accountId,
-                eventBlobIds,
-                OptionConverters.toScala(maybePreferredLanguage)),
-            session,
-            PartStat.ACCEPTED));
+    private Mono<CalendarEventReplyResults> doSendReplyEmail(AccountId accountId,
+                                                             MailboxSession session,
+                                                             BlobIds eventBlobIds,
+                                                             Optional<LanguageLocation> maybePreferredLanguage,
+                                                             AttendanceStatus attendanceStatus) {
+        return Mono.justOrEmpty(attendanceStatus.toPartStat())
+            .switchIfEmpty(Mono.error(new IllegalArgumentException("Invalid attendance status: " + attendanceStatus)))
+            .flatMap(partStat -> Mono.from(
+                    calendarEventReplyPerformer.process(
+                        new CalendarEventReplyRequest(accountId, eventBlobIds,
+                        OptionConverters.toScala(maybePreferredLanguage)),
+                        session, partStat)));
     }
 
     private Mono<Void> updateEventAttendanceFlagsInMailboxes(MessageId messageId, AttendanceStatus attendanceStatus,
