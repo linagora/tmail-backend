@@ -1,6 +1,7 @@
 package com.linagora.tmail.james.jmap
 
 import java.io.FileNotFoundException
+
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer

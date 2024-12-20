@@ -2,6 +2,7 @@ package com.linagora.tmail.james.jmap
 
 import java.util
 import java.util.Optional
+
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest
 import jakarta.mail.Flags
