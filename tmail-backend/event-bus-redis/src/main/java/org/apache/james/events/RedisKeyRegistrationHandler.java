@@ -42,6 +42,7 @@ class RedisKeyRegistrationHandler {
     private final RedisPubSubReactiveCommands<String, String> redisSubscriber;
     private Scheduler scheduler;
     private final RedisEventBusConfiguration redisEventBusConfiguration;
+    private volatile boolean isStopping;
 
     RedisKeyRegistrationHandler(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer,
                                 RoutingKeyConverter routingKeyConverter, LocalListenerRegistry localListenerRegistry,
@@ -60,6 +61,7 @@ class RedisKeyRegistrationHandler {
         this.registrationBinder = new RedisKeyRegistrationBinder(redisSetReactiveCommands, registrationChannel);
         this.receiverSubscriber = Optional.empty();
         this.redisSubscriber = redisEventBusClientFactory.createRedisPubSubCommand();
+        this.isStopping = false;
     }
 
     void start() {
@@ -82,6 +84,8 @@ class RedisKeyRegistrationHandler {
     }
 
     void stop() {
+        isStopping = true;
+
         // delete the Pub/Sub channel: Redis Channels are ephemeral and automatically expire when they have no more subscribers.
         redisSubscriber.unsubscribe(registrationChannel.asString())
             .timeout(redisEventBusConfiguration.durationTimeout())
@@ -106,7 +110,7 @@ class RedisKeyRegistrationHandler {
             .thenReturn(new KeyRegistration(() -> {
                 if (registration.unregister().lastListenerRemoved()) {
                     return Mono.from(metricFactory.decoratePublisherWithTimerMetric("redis-unregister", registrationBinder.unbind(key)
-                        .doOnError(throwable -> LOGGER.error(throwable.getMessage()))
+                        .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while unbinding key", throwable))
                         .timeout(redisEventBusConfiguration.durationTimeout())
                         .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff())
                             .jitter(retryBackoff.getJitterFactor())
@@ -123,7 +127,7 @@ class RedisKeyRegistrationHandler {
     private Mono<Void> registerIfNeeded(RegistrationKey key, LocalListenerRegistry.LocalRegistration registration) {
         if (registration.isFirstListener()) {
             return registrationBinder.bind(key)
-                .doOnError(throwable -> LOGGER.error(throwable.getMessage()))
+                .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while binding key", throwable))
                 .timeout(redisEventBusConfiguration.durationTimeout())
                 .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.boundedElastic()))
                 .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
