@@ -100,7 +100,6 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         return Flux.fromIterable(JavaConverters.seqAsJavaList(blobIds.value()))
             .flatMap(blobId -> extractMessageId(blobId.value()))
             .distinct()
-            .log()
             .collectList()
             .handle((enclosingMessageIds, sink) -> {
                 if (enclosingMessageIds.size() != 1) {
