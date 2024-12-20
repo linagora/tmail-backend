@@ -324,7 +324,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
   }
 
   @Test
-  def shouldReturnNotCreatedWhenNotAnICS(server: GuiceJamesServer): Unit = {
+  def shouldReturnNotAcceptedWhenNotAnICS(server: GuiceJamesServer): Unit = {
     val notParsableBlobId: String =
       sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "2")
 
