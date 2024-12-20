@@ -1,9 +1,10 @@
 package com.linagora.tmail.james.common
 
-import java.io.{ByteArrayInputStream, InputStream}
+import java.io.InputStream
 import java.util.Optional
 import java.util.concurrent.TimeUnit
 
+import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.sendInvitationEmailToBobAndGetIcsBlobIds
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -15,8 +16,8 @@ import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
-import org.apache.james.mailbox.model.{MailboxId, MailboxPath}
+import org.apache.james.jmap.rfc8621.contract.Fixture._
+import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
@@ -37,6 +38,8 @@ trait LinagoraCalendarEventReplyWithAMQPWorkflowContract {
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build
+
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
   }
 
   def randomBlobId: String
@@ -46,8 +49,9 @@ trait LinagoraCalendarEventReplyWithAMQPWorkflowContract {
   @Test
   def shouldPublishAMQPMessageWhenReplyAcceptSuccess(server: GuiceJamesServer): Unit = {
     // Given an invitation file
-    val andreInboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-    val blobId: String = uploadAndGetBlobId(new ByteArrayInputStream(generateInviteIcs(BOB.asString(), ANDRE.asString()).getBytes))
+    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
+    val blobId: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAndreInviteBobIcsAttachment.eml", icsPartId = "3")
 
     // When Bob accepts the invitation
     `given`
