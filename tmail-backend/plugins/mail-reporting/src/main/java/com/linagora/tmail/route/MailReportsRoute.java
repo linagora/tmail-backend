@@ -21,9 +21,11 @@ public class MailReportsRoute implements Routes {
                                      String subject,
                                      String sender,
                                      String recipient,
-                                     Instant date) {
+                                     Instant date,
+                                     long size) {
         public static MailReportEntryDAO from(MailReportEntry entry) {
-            return new MailReportEntryDAO(entry.kind(), entry.subject(), entry.sender().asString("<>"), entry.recipient().asString(), entry.date());
+            return new MailReportEntryDAO(entry.kind(), entry.subject(), entry.sender().asString("<>"),
+                entry.recipient().asString(), entry.date(), entry.size());
         }
     }
 
@@ -45,6 +47,7 @@ public class MailReportsRoute implements Routes {
 
     @Override
     public void define(Service service) {
+        JsonTransformer transformer = new JsonTransformer();
         service.get(getBasePath() + "/mails", (request, response) -> {
             String rawDuration = request.queryParams("duration");
             Preconditions.checkArgument(rawDuration != null, "'duration' is a mandatory parameter");
@@ -55,6 +58,6 @@ public class MailReportsRoute implements Routes {
                 .map(MailReportEntryDAO::from)
                 .collectList()
                 .block();
-        }, new JsonTransformer());
+        }, transformer);
     }
 }
