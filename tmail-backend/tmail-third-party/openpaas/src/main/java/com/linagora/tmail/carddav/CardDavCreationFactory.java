@@ -1,7 +1,5 @@
 package com.linagora.tmail.carddav;
 
-import static com.linagora.tmail.carddav.CardDavCreationObjectRequest.EmailType;
-
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +7,8 @@ import java.util.Optional;
 import org.apache.james.core.MailAddress;
 
 import com.google.common.hash.Hashing;
+
+import ezvcard.parameter.EmailType;
 
 public class CardDavCreationFactory {
     private static final String VERSION = "4.0";

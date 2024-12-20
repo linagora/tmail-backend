@@ -5,7 +5,7 @@ networks:
     driver: bridge
 
 services:
-  openpass:
+  openpaas:
     container_name: esn
     image: linagora/esn:branch-1.11
     ports:

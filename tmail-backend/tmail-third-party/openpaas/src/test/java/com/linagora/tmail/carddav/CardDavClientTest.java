@@ -18,6 +18,8 @@ import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 
+import ezvcard.parameter.EmailType;
+
 public class CardDavClientTest {
     private static final String OPENPAAS_USER_NAME = "openpaasUserName1";
     private static final String OPENPAAS_USER_ID = "openpaasUserId1";
@@ -73,7 +75,7 @@ public class CardDavClientTest {
             Optional.of("An Bach4"),
             Optional.of(List.of("An", "Bach4")),
             new CardDavCreationObjectRequest.Email(
-                List.of(CardDavCreationObjectRequest.EmailType.HOME),
+                List.of(EmailType.HOME),
                 new MailAddress("anbach4@lina.com")));
 
         assertThatCode(() -> client.createCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, request).block())
@@ -96,7 +98,7 @@ public class CardDavClientTest {
             Optional.of("An Bach4"),
             Optional.of(List.of("An", "Bach4")),
             new CardDavCreationObjectRequest.Email(
-                List.of(CardDavCreationObjectRequest.EmailType.HOME),
+                List.of(EmailType.HOME),
                 new MailAddress("anbach4@lina.com")));
 
         assertThatThrownBy(() -> client.createCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, request).block())
