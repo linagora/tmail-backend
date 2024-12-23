@@ -871,6 +871,96 @@ trait LinagoraCalendarEventRejectMethodContract {
     }
   }
 
+  @Test
+  def shouldFailWhenBlobIdIsNotPrefixedByMessageId(): Unit = {
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/maybe",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "abcd123" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response =
+      `given`
+        .body(request)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "error",
+           |    {
+           |        "type": "invalidArguments",
+           |        "description": "Invalid calendar event blobId: abcd123. The blobId should be in the form {messageId}_{partId}."
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def shouldFailWhenCalendarBlobsBelongToDifferentMessages(server: GuiceJamesServer): Unit = {
+    val blobIdFromMessage1: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val blobIdFromMessage2: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+
+    val message1Id = blobIdFromMessage1.split("_")(0)
+    val message2Id = blobIdFromMessage2.split("_")(0)
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/reject",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobIdFromMessage1", "$blobIdFromMessage2" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response =
+      `given`
+        .body(request)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "error",
+           |    {
+           |        "type": "serverFail",
+           |        "description": "Expected a single enclosing message for all calendar event blobIds, got: [InMemoryMessageId{value=$message1Id}, InMemoryMessageId{value=$message2Id}]"
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
   private def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
     baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
