@@ -1093,7 +1093,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "error",
            |    {
            |        "type": "invalidArguments",
-           |        "description": "Invalid calendar event blobId: abcd123.The blobId should be in the form {messageId}_{partId}."
+           |        "description": "Invalid calendar event blobId: abcd123. The blobId should be in the form {messageId}_{partId}."
            |    },
            |    "c1"
            |]""".stripMargin)
