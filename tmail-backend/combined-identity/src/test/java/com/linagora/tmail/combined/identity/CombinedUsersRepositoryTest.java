@@ -5,6 +5,7 @@ import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN_LOCAL_PART;
 import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN_PASSWORD;
 
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
@@ -85,6 +86,11 @@ public class CombinedUsersRepositoryTest {
         }
 
         @Override
+        public UsersRepository testee(Set<Username> administrators) throws Exception {
+            return getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), extension.isSupportVirtualHosting(), administrators);
+        }
+
+        @Override
         public CassandraUsersDAO cassandraUsersDAO() {
             return cassandraUsersDAO;
         }
@@ -128,6 +134,11 @@ public class CombinedUsersRepositoryTest {
         }
 
         @Override
+        public UsersRepository testee(Set<Username> administrators) throws Exception {
+            return getUsersRepository(new CombinedUserDAO(readOnlyLDAPUsersDAO, cassandraUsersDAO), testSystem.getDomainList(), extension.isSupportVirtualHosting(), administrators);
+        }
+
+        @Override
         public CassandraUsersDAO cassandraUsersDAO() {
             return cassandraUsersDAO;
         }
@@ -141,6 +152,18 @@ public class CombinedUsersRepositoryTest {
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
         configuration.addProperty("enableVirtualHosting", String.valueOf(enableVirtualHosting));
         administrator.ifPresent(username -> configuration.addProperty("administratorId", username.asString()));
+        repository.configure(configuration);
+        return repository;
+    }
+
+    private static CombinedUsersRepository getUsersRepository(CombinedUserDAO combinedUserDAO,
+                                                              DomainList domainList,
+                                                              boolean enableVirtualHosting,
+                                                              Set<Username> administrators) throws Exception {
+        CombinedUsersRepository repository = new CombinedUsersRepository(domainList, combinedUserDAO);
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("enableVirtualHosting", String.valueOf(enableVirtualHosting));
+        administrators.forEach(admin -> configuration.addProperty("administratorIds.administratorId", admin.asString()));
         repository.configure(configuration);
         return repository;
     }
