@@ -53,6 +53,7 @@ class TmailLocalDelivery @Inject()(usersRepository: UsersRepository,
       .consume(getInitParameter("consume", true))
       .retries(MailetUtil.getInitParameterAsInteger(getInitParameter("retries"), Optional.of(MailDispatcher.RETRIES)))
       .mailetContext(getMailetContext)
+      .usersRepository(usersRepository)
       .build
   }
 }
