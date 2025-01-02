@@ -38,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.google.common.collect.ImmutableList;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
@@ -148,7 +149,7 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             "user",
                             "password",
                             false,
-                            new OpenPaasConfiguration.ContactConsumerConfiguration(AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()), OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
+                            new OpenPaasConfiguration.ContactConsumerConfiguration(ImmutableList.of(AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri())), OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
                     }
                 })
                 .withOverrides(new AbstractModule() {
@@ -156,7 +157,7 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                     @Named(OPENPAAS_INJECTION_KEY)
                     @Singleton
                     public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
-                        return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration();
+                        return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().getFirst().toRabbitMqConfiguration().build();
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())
@@ -263,7 +264,7 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                             "user",
                             "password",
                             false,
-                            new OpenPaasConfiguration.ContactConsumerConfiguration(AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()), OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
+                            new OpenPaasConfiguration.ContactConsumerConfiguration(ImmutableList.of(AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri())), OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
                     }
                 })
                 .withOverrides(new AbstractModule() {
@@ -271,7 +272,7 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                     @Named(OPENPAAS_INJECTION_KEY)
                     @Singleton
                     public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
-                        return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration();
+                        return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().getFirst().toRabbitMqConfiguration().build();
                     }
                 })
                 .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())

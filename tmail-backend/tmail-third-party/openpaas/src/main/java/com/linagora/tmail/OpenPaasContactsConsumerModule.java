@@ -2,6 +2,9 @@ package com.linagora.tmail;
 
 import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 
+import java.util.List;
+
+import com.google.common.collect.ImmutableList;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
@@ -11,6 +14,7 @@ import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.util.Host;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.slf4j.Logger;
@@ -41,7 +45,11 @@ public class OpenPaasContactsConsumerModule extends AbstractModule {
                                                               OpenPaasConfiguration openPaasConfiguration) {
         Preconditions.checkArgument(openPaasConfiguration.contactConsumerConfiguration().isPresent(),
             "OpenPaasConfiguration should have a contact consumer configuration");
-        return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration(commonRabbitMQConfiguration);
+        List<AmqpUri> uris = openPaasConfiguration.contactConsumerConfiguration().get().amqpUri();
+        return uris.getFirst()
+            .toRabbitMqConfiguration(commonRabbitMQConfiguration)
+            .hosts(uris.stream().map(uri -> Host.from(uri.getUri().getHost(), uri.getPort())).collect(ImmutableList.toImmutableList()))
+            .build();
     }
 
     @Provides

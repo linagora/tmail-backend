@@ -2,11 +2,15 @@ package com.linagora.tmail.configuration;
 
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.lang3.StringUtils;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.AmqpUri;
 
 
@@ -17,7 +21,7 @@ public record OpenPaasConfiguration(URI apirUri,
                                     Optional<ContactConsumerConfiguration> contactConsumerConfiguration,
                                     Optional<CardDavConfiguration> cardDavConfiguration) {
 
-    public record ContactConsumerConfiguration(AmqpUri amqpUri,
+    public record ContactConsumerConfiguration(List<AmqpUri> amqpUri,
                                                boolean quorumQueuesBypass) {
     }
 
@@ -57,14 +61,17 @@ public record OpenPaasConfiguration(URI apirUri,
         return readRabbitMqUri(configuration).isPresent();
     }
 
-    public static Optional<AmqpUri> readRabbitMqUri(Configuration configuration) {
+    public static Optional<List<AmqpUri>> readRabbitMqUri(Configuration configuration) {
         String rabbitMqUri = configuration.getString(RABBITMQ_URI_PROPERTY);
         if (StringUtils.isBlank(rabbitMqUri)) {
            return Optional.empty();
         }
 
         try {
-            return Optional.of(AmqpUri.from(URI.create(rabbitMqUri)));
+            return Optional.of(Splitter.on(',').trimResults()
+                .splitToStream(rabbitMqUri)
+                .map(AmqpUri::from)
+                .collect(ImmutableList.toImmutableList()));
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Invalid RabbitMQ URI in openpaas.properties.");
         }
