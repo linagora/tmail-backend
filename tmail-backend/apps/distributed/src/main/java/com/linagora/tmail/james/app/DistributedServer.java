@@ -472,7 +472,7 @@ public class DistributedServer {
             if (openPaasModuleChooserConfiguration.contactsConsumerEnabled()) {
                 moduleBuilder.add(new OpenPaasContactsConsumerModule());
             }
-            return List.of(new OpenPaasModule());
+            return moduleBuilder.build();
         }
         return List.of();
     }
