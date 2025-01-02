@@ -49,6 +49,6 @@ Example: `emailRecoveryAction.restorationHorizon=10d`
 | Optional. Configures the support contact mail address. Example: `support@my-domain.com`. Cannot be configured at the same time as `support.httpLink`.
 
 | `support.httpLink`
-| Optional. Configures the support contact HTTP link. Example: `https://my-domain.com/support`. Cannot be configured at the same time than `support.mail.address`.
+| Optional. Configures the support contact HTTP link. Example: `https://my-domain.com/support`. Cannot be configured at the same time as `support.mail.address`.
 
 |===
