@@ -45,4 +45,10 @@ Example: `emailRecoveryAction.restorationHorizon=10d`
 | `calendarEvent.reply.supportedLanguages`
 | Optional. Configures the supported languages. Example: `calendarEvent.reply.supportedLanguages=en,fr`
 
+| `support.mail.address`
+| Optional. Configures the support contact mail address. Example: `sypport@my-domain.com`. Cannot be configured at the same time than `support.httpLink`.
+
+| `support.httpLink`
+| Optional. Configures the support contact HTTP link. Example: `https://my-domain.com/support`. Cannot be configured at the same time than `support.mail.address`.
+
 |===
