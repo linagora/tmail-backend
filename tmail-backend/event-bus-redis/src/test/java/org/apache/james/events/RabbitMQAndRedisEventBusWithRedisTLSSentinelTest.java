@@ -26,7 +26,7 @@ public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupCo
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
-        .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
+        .isolationPolicy(RabbitMQExtension.IsolationPolicy.STRONG);
 
     @RegisterExtension
     static RedisSentinelExtension redisExtension = new RedisSentinelExtension(true);
