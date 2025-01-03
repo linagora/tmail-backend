@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Disabled;
 
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.reactive.RedisStringReactiveCommands;
 import io.lettuce.core.api.sync.RedisCommands;
-import io.lettuce.core.api.sync.RedisStringCommands;
 
 @Disabled("This test is disabled because it requires a Redis Sentinel cluster to be running, for manual testing only, " +
     "can run Redis Sentinel cluster by using docker-compose sample at https://github.com/apache/james-project/blob/149595da247dfb915ecb60d239edf627616916ae/server/mailet/rate-limiter-redis/docker-compose-sample/docker-compose-with-redis-sentinel.yml")
@@ -21,7 +21,7 @@ public class RedisSentinelRevokedTokenRepositoryTest implements RevokedTokenRepo
 
     RedisRevokedTokenRepository revokedTokenRepository;
 
-    RedisStringCommands<String, String> stringStringRedisStringCommands;
+    RedisStringReactiveCommands<String, String> stringStringRedisStringCommands;
 
     @BeforeEach
     void setup() {
