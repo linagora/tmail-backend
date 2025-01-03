@@ -13,3 +13,12 @@ Specified to TMail backend, we can configure the following configurations in the
 | Timeout for Redis event bus operations. Optional. Duration. Default to `10seconds`.
 
 |===
+
+Additionally, Twake mail allows executing some listeners in a synchronous fashion upon dispatching. They are then
+run synchronously as part of the dispatch process. If execution fails then retries happens asynchronously (best effort).
+
+This is controlled by the following setting in `jvm.properties`:
+
+....
+tmail.eventbus.synchronous.listener.groups=PopulateEmailQueryViewListenerGroup,MailboxChangeListenerGroup
+....
