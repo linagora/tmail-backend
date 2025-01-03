@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 
+import com.google.common.collect.ImmutableList;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -97,7 +98,7 @@ public class TestRabbitMQModule extends AbstractModule {
             "password",
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
             new OpenPaasConfiguration.ContactConsumerConfiguration(
-                AmqpUri.from(rabbitMQ.amqpUri()),
+                ImmutableList.of(AmqpUri.from(rabbitMQ.amqpUri())),
                 OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
     }
 
