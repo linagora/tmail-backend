@@ -47,7 +47,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
-
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -109,6 +108,13 @@ class TmailGroupRegistrationHandler {
             .map(Map.Entry::getValue);
     }
 
+    Stream<GroupRegistration> asynchronousGroupRegistrations() {
+        return groupRegistrations.entrySet()
+            .stream()
+            .filter(registration -> !RabbitMQAndRedisEventBus.shouldBeExecutedSynchronously(registration.getKey()))
+            .map(Map.Entry::getValue);
+    }
+
     GroupRegistration retrieveGroupRegistration(Group group) {
         return Optional.ofNullable(groupRegistrations.get(group))
             .orElseThrow(() -> new GroupRegistrationNotFound(group));
@@ -148,10 +154,7 @@ class TmailGroupRegistrationHandler {
         byte[] eventAsBytes = acknowledgableDelivery.getBody();
 
         return deserializeEvents(eventAsBytes)
-            .flatMapIterable(events -> groupRegistrations.entrySet()
-                .stream()
-                .filter(registration -> !RabbitMQAndRedisEventBus.shouldBeExecutedSynchronously(registration.getKey()))
-                .map(Map.Entry::getValue)
+            .flatMapIterable(events -> asynchronousGroupRegistrations()
                 .map(group -> Pair.of(group, events))
                 .collect(ImmutableList.toImmutableList()))
             .flatMap(event -> event.getLeft().runListenerReliably(DEFAULT_RETRY_COUNT, event.getRight()))

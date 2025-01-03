@@ -117,6 +117,7 @@ public class TMailEventDispatcher {
     Mono<Void> dispatch(Event event, Set<RegistrationKey> keys) {
         return Flux
             .concat(
+                executeLocalSynchronousListeners(ImmutableList.of(new EventBus.EventWithRegistrationKey(event, keys))),
                 dispatchToLocalListeners(event, keys),
                 dispatchToRemoteListeners(event, keys))
             .doOnError(throwable -> LOGGER.error("error while dispatching event", throwable))

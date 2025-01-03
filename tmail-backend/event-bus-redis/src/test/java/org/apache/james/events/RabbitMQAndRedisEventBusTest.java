@@ -106,7 +106,7 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
-        .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
+        .isolationPolicy(RabbitMQExtension.IsolationPolicy.STRONG);
 
     @RegisterExtension
     static RedisExtension redisExtension = new RedisExtension();
