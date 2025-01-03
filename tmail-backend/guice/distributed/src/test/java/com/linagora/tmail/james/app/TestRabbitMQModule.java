@@ -8,7 +8,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -19,6 +18,7 @@ import org.apache.james.queue.rabbitmq.RabbitMQMailQueueManagement;
 import org.apache.james.queue.rabbitmq.view.RabbitMQMailQueueConfiguration;
 import org.apache.james.queue.rabbitmq.view.cassandra.configuration.CassandraMailQueueViewConfiguration;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
