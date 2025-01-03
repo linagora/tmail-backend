@@ -4,7 +4,6 @@ import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 
 import java.util.List;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
@@ -21,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.ProvidesIntoSet;
