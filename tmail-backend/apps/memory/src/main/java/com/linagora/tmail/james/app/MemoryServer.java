@@ -7,7 +7,6 @@ import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
 import java.util.List;
 
-import com.linagora.tmail.AmqpUri;
 import jakarta.inject.Named;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -50,6 +49,7 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
+import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
