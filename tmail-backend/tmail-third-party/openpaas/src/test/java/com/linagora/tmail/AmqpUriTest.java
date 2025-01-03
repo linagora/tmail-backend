@@ -47,17 +47,9 @@ class AmqpUriTest {
     }
 
     @Test
-    void shouldRespectBeanContract() throws Exception {
-        ConnectionFactory red = new ConnectionFactory();
-        ConnectionFactory blue = new ConnectionFactory();
-
-        red.setUri("amqp://username@rabbitmq.com");
-        blue.setUri("amqp://rabbitmq_test.com");
-
+    void shouldRespectBeanContract() {
         EqualsVerifier
             .forClass(AmqpUri.class)
-            .withIgnoredFields("connectionFactory")
-            .withPrefabValues(ConnectionFactory.class, red, blue)
             .verify();
     }
 

@@ -41,6 +41,7 @@ import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.TaskManagerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultModule;
 import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
+import org.apache.james.util.Host;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
@@ -48,6 +49,7 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
+import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
@@ -253,7 +255,11 @@ public class MemoryServer {
                         @Named(OPENPAAS_INJECTION_KEY)
                         @Singleton
                         public RabbitMQConfiguration provideRabbitMQConfiguration(OpenPaasConfiguration openPaasConfiguration) {
-                            return openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration();
+                            List<AmqpUri> uris = openPaasConfiguration.contactConsumerConfiguration().get().amqpUri();
+                            return uris.getFirst()
+                                .toRabbitMqConfiguration()
+                                .hosts(uris.stream().map(uri -> Host.from(uri.getUri().getHost(), uri.getPort())).collect(ImmutableList.toImmutableList()))
+                                .build();
                         }
                     }));
             }

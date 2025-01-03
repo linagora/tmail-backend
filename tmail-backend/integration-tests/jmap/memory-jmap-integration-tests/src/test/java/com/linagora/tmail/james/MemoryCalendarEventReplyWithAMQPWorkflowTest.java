@@ -24,6 +24,7 @@ import org.apache.james.transport.mailets.amqp.AmqpExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
@@ -95,7 +96,7 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
                     "password",
                     OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
                     new OpenPaasConfiguration.ContactConsumerConfiguration(
-                        AmqpUri.from(amqpUri),
+                        ImmutableList.of(AmqpUri.from(amqpUri)),
                         OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
             }
         };

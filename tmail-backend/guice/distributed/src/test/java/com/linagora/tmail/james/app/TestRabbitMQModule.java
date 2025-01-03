@@ -18,6 +18,7 @@ import org.apache.james.queue.rabbitmq.RabbitMQMailQueueManagement;
 import org.apache.james.queue.rabbitmq.view.RabbitMQMailQueueConfiguration;
 import org.apache.james.queue.rabbitmq.view.cassandra.configuration.CassandraMailQueueViewConfiguration;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
@@ -97,7 +98,7 @@ public class TestRabbitMQModule extends AbstractModule {
             "password",
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
             new OpenPaasConfiguration.ContactConsumerConfiguration(
-                AmqpUri.from(rabbitMQ.amqpUri()),
+                ImmutableList.of(AmqpUri.from(rabbitMQ.amqpUri())),
                 OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
     }
 

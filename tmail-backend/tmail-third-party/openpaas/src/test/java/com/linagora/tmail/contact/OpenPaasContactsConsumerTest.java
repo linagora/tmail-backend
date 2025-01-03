@@ -14,6 +14,7 @@ import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
+import com.google.common.collect.ImmutableList;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
@@ -59,12 +60,12 @@ class OpenPaasContactsConsumerTest {
             OpenPaasServerExtension.GOOD_PASSWORD(),
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
             new OpenPaasConfiguration.ContactConsumerConfiguration(
-                AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
+                ImmutableList.of(AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri())),
             OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
         OpenPaasRestClient restClient = new OpenPaasRestClient(openPaasConfiguration);
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
-            openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration(rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration()),
+            openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().getFirst().toRabbitMqConfiguration(rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration()).build(),
             searchEngine, restClient, openPaasConfiguration);
     }
 
@@ -91,12 +92,12 @@ class OpenPaasContactsConsumerTest {
             OpenPaasServerExtension.GOOD_PASSWORD(),
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
             new OpenPaasConfiguration.ContactConsumerConfiguration(
-                AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri()),
+                ImmutableList.of(AmqpUri.from(rabbitMQExtension.getRabbitMQ().amqpUri())),
                 OPENPAAS_QUEUES_QUORUM_BYPASS_ENABLED));
         OpenPaasRestClient restClient = new OpenPaasRestClient(openPaasConfiguration);
         searchEngine = new InMemoryEmailAddressContactSearchEngine();
         consumer = new OpenPaasContactsConsumer(rabbitMQExtension.getRabbitChannelPool(),
-            openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().toRabbitMqConfiguration(rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration()),
+            openPaasConfiguration.contactConsumerConfiguration().get().amqpUri().getFirst().toRabbitMqConfiguration(rabbitMQExtension.getRabbitMQ().withQuorumQueueConfiguration()).build(),
             searchEngine, restClient, openPaasConfiguration);
         consumer.start();
 

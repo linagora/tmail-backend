@@ -8,6 +8,7 @@ import java.net.URI;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.AmqpUri;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
@@ -39,7 +40,7 @@ class OpenPaasConfigurationTest {
             "123",
             true,
             new OpenPaasConfiguration.ContactConsumerConfiguration(
-                AmqpUri.from("amqp://james:james@rabbitmqhost:5672"),
+                ImmutableList.of(AmqpUri.from("amqp://james:james@rabbitmqhost:5672")),
                 true));
 
         assertThat(OpenPaasConfiguration.from(configuration))

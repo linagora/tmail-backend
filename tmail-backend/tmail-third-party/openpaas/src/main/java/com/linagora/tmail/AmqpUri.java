@@ -32,7 +32,7 @@ public final class AmqpUri {
     private final URI uri;
     private final AmqpUserInfo userInfo;
     private final Optional<String> vhost;
-    private final ConnectionFactory connectionFactory;
+    private final int port;
 
     /**
      * Constructs an `AmqpUri` object from the provided `URI`.
@@ -42,7 +42,7 @@ public final class AmqpUri {
      */
     public AmqpUri(URI uri) {
         Preconditions.checkNotNull(uri);
-        connectionFactory = new ConnectionFactory();
+        ConnectionFactory connectionFactory = new ConnectionFactory();
         try {
             connectionFactory.setUri(uri);
         } catch (URISyntaxException | NoSuchAlgorithmException | KeyManagementException e) {
@@ -50,6 +50,7 @@ public final class AmqpUri {
         }
 
         this.uri = uri;
+        port = connectionFactory.getPort();
         userInfo = new AmqpUserInfo(connectionFactory.getUsername(), connectionFactory.getPassword());
         vhost = Optional.ofNullable(connectionFactory.getVirtualHost());
     }
@@ -114,7 +115,7 @@ public final class AmqpUri {
      * @return the port number from the AMQP URI
      */
     public int getPort() {
-        return connectionFactory.getPort();
+        return port;
     }
 
     /**
@@ -123,7 +124,7 @@ public final class AmqpUri {
      *
      * @return a `RabbitMQConfiguration` object representing the AMQP URI
      */
-    public RabbitMQConfiguration toRabbitMqConfiguration(RabbitMQConfiguration commonRabbitMQConfiguration) {
+    public RabbitMQConfiguration.Builder toRabbitMqConfiguration(RabbitMQConfiguration commonRabbitMQConfiguration) {
         return RabbitMQConfiguration.builder()
             .amqpUri(uri)
             .managementUri(uri)
@@ -136,17 +137,19 @@ public final class AmqpUri {
             .quorumQueueReplicationFactor(commonRabbitMQConfiguration.getQuorumQueueReplicationFactor())
             .quorumQueueDeliveryLimit(commonRabbitMQConfiguration.getQuorumQueueDeliveryLimit())
             .networkRecoveryIntervalInMs(commonRabbitMQConfiguration.getNetworkRecoveryIntervalInMs())
-            .queueTTL(commonRabbitMQConfiguration.getQueueTTL())
-            .build();
+            .queueTTL(commonRabbitMQConfiguration.getQueueTTL());
     }
 
-    public RabbitMQConfiguration toRabbitMqConfiguration() {
+    public RabbitMQConfiguration.Builder toRabbitMqConfiguration() {
         return RabbitMQConfiguration.builder()
             .amqpUri(uri)
             .managementUri(uri)
             .managementCredentials(userInfo.asManagementCredentials())
-            .vhost(getVhost())
-            .build();
+            .vhost(getVhost());
+    }
+
+    public URI getUri() {
+        return uri;
     }
 
     @Override
@@ -154,14 +157,15 @@ public final class AmqpUri {
         if (!(o instanceof AmqpUri amqpUri)) {
             return false;
         }
-        return Objects.equals(uri, amqpUri.uri) &&
-               Objects.equals(userInfo, amqpUri.userInfo) &&
-               Objects.equals(vhost, amqpUri.vhost);
+        return Objects.equals(uri, amqpUri.uri)
+            && Objects.equals(userInfo, amqpUri.userInfo)
+            && Objects.equals(vhost, amqpUri.vhost)
+            && Objects.equals(port, amqpUri.port);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(uri, userInfo, vhost);
+        return Objects.hash(uri, userInfo, vhost, port);
     }
 
     @Override
@@ -170,6 +174,7 @@ public final class AmqpUri {
             .add("amqpURI", uri)
             .add("userInfo", userInfo)
             .add("vhost", vhost)
+            .add("port", port)
             .toString();
     }
 }

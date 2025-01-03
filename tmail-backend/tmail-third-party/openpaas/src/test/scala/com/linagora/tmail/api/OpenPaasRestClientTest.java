@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
@@ -27,14 +28,14 @@ public class OpenPaasRestClientTest {
     OpenPaasRestClient restClient;
 
     @BeforeEach
-    void setup() throws URISyntaxException {
+    void setup() {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
             OpenPaasServerExtension.GOOD_USER(),
             OpenPaasServerExtension.GOOD_PASSWORD(),
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
            new OpenPaasConfiguration.ContactConsumerConfiguration(
-                AmqpUri.from("amqp://not_important.com"),
+               ImmutableList.of(AmqpUri.from("amqp://not_important.com")),
                 OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
 
         restClient = new OpenPaasRestClient(openPaasConfig);
@@ -60,7 +61,7 @@ public class OpenPaasRestClientTest {
             OpenPaasServerExtension.BAD_PASSWORD(),
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
             new OpenPaasConfiguration.ContactConsumerConfiguration(
-                AmqpUri.from("amqp://not_important.com"),
+                ImmutableList.of(AmqpUri.from("amqp://not_important.com")),
                 OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
 
         restClient = new OpenPaasRestClient(openPaasConfig);
