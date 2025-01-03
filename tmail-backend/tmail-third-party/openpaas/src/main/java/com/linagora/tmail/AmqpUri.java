@@ -157,14 +157,15 @@ public final class AmqpUri {
         if (!(o instanceof AmqpUri amqpUri)) {
             return false;
         }
-        return Objects.equals(uri, amqpUri.uri) &&
-               Objects.equals(userInfo, amqpUri.userInfo) &&
-               Objects.equals(vhost, amqpUri.vhost);
+        return Objects.equals(uri, amqpUri.uri)
+            && Objects.equals(userInfo, amqpUri.userInfo)
+            && Objects.equals(vhost, amqpUri.vhost)
+            && Objects.equals(port, amqpUri.port);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(uri, userInfo, vhost);
+        return Objects.hash(uri, userInfo, vhost, port);
     }
 
     @Override
@@ -173,6 +174,7 @@ public final class AmqpUri {
             .add("amqpURI", uri)
             .add("userInfo", userInfo)
             .add("vhost", vhost)
+            .add("port", port)
             .toString();
     }
 }
