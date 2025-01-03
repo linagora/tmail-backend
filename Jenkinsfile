@@ -1,7 +1,5 @@
 pipeline {
-    agent {
-      label 'jdk21'
-    }
+    agent any
 
     environment {
         DOCKER_HUB_CREDENTIAL = credentials('dockerHub')
