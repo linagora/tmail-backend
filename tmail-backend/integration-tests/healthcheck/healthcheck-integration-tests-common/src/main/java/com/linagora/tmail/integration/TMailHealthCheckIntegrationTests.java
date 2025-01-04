@@ -39,7 +39,7 @@ public abstract class TMailHealthCheckIntegrationTests {
 
         String listComponents =
             when()
-                .get("/healthcheck/Tasks%20execution")
+                .get("/healthcheck/checks/Tasks%20execution")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .extract()
