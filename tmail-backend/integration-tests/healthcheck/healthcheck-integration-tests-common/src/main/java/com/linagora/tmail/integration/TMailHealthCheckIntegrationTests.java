@@ -1,5 +1,6 @@
 package com.linagora.tmail.integration;
 
+import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,7 +39,9 @@ public abstract class TMailHealthCheckIntegrationTests {
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
 
         String listComponents =
-            when()
+            given()
+                .urlEncodingEnabled(false)
+            .when()
                 .get("/healthcheck/checks/Tasks%20execution")
             .then()
                 .statusCode(HttpStatus.OK_200)
