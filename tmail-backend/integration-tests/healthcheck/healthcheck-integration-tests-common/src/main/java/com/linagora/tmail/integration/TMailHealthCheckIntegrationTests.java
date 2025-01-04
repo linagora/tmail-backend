@@ -21,13 +21,13 @@ public abstract class TMailHealthCheckIntegrationTests {
 
         List<String> listComponentNames =
             when()
-                .get("/healthcheck")
+                .get("/healthcheck/checks")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .extract()
                 .body()
                 .jsonPath()
-                .getList("checks.componentName", String.class);
+                .getList("componentName", String.class);
 
         assertThat(listComponentNames).contains("Tasks execution", "Rspamd", "Redis");
     }
@@ -39,14 +39,14 @@ public abstract class TMailHealthCheckIntegrationTests {
 
         String listComponents =
             when()
-                .get("/healthcheck")
+                .get("/healthcheck/Tasks%20execution")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .extract()
                 .body()
                 .asString();
 
-        assertThat(listComponents).contains("""
+        assertThat(listComponents).isEqualTo("""
             {"componentName":"Tasks execution","escapedComponentName":"Tasks%20execution","status":"healthy","cause":null}""");
     }
 }
