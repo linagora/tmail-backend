@@ -2,6 +2,7 @@ package com.linagora.tmail.james.common
 
 import java.util.concurrent.TimeUnit
 
+import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.sendInvitationEmailToBobAndGetIcsBlobIds
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -17,17 +18,12 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
-import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
-import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.Json
-
-import scala.util.Using
-
 
 trait LinagoraCalendarEventAcceptMethodContract {
 
@@ -46,44 +42,6 @@ trait LinagoraCalendarEventAcceptMethodContract {
       .build
 
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-  }
-
-  def _sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
-                                                icsPartIds: String*): Seq[String] = {
-
-    Using(ClassLoaderUtils.getSystemResourceAsSharedStream(invitationEml))(stream => {
-      val appendResult = server.getProbe(classOf[MailboxProbeImpl])
-        .appendMessageAndGetAppendResult(
-          BOB.asString(),
-          MailboxPath.inbox(BOB),
-          AppendCommand.from(stream))
-
-      icsPartIds.map(partId => s"${appendResult.getId.getMessageId.serialize()}_$partId")
-    }).get
-  }
-
-  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
-                                               icsPartId: String): String = {
-
-    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartId) match {
-      case Seq(a) => (a)
-    }
-  }
-
-  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
-                                               icsPartIds: (String, String)): (String, String) = {
-
-    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2) match {
-      case Seq(a, b) => (a, b)
-    }
-  }
-
-  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
-                                               icsPartIds: (String, String, String)): (String, String, String) = {
-
-    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
-      case Seq(a, b, c) => (a, b, c)
-    }
   }
 
   def randomBlobId: String
