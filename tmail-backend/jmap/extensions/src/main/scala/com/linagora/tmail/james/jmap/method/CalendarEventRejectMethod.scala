@@ -2,10 +2,10 @@ package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.james.jmap.json.CalendarEventReplySerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
-import com.linagora.tmail.james.jmap.model.{CalendarEventReplyRejectedResponse, CalendarEventReplyRequest}
+import com.linagora.tmail.james.jmap.model.{CalendarEventReplyAcceptedResponse, CalendarEventReplyRejectedResponse, CalendarEventReplyRequest}
+import com.linagora.tmail.james.jmap.{AttendanceStatus, EventAttendanceRepository}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
-import net.fortuna.ical4j.model.parameter.PartStat
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, SessionTranslator}
@@ -16,8 +16,11 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.JsObject
+import reactor.core.publisher.Mono
 
-class CalendarEventRejectMethod @Inject()(val calendarEventReplyPerformer: CalendarEventReplyPerformer,
+import scala.compat.java8.OptionConverters
+
+class CalendarEventRejectMethod @Inject()(val eventAttendanceRepository: EventAttendanceRepository,
                                           val metricFactory: MetricFactory,
                                           val sessionTranslator: SessionTranslator,
                                           val sessionSupplier: SessionSupplier,
@@ -35,7 +38,7 @@ class CalendarEventRejectMethod @Inject()(val calendarEventReplyPerformer: Calen
                          invocation: InvocationWithContext,
                          mailboxSession: MailboxSession,
                          request: CalendarEventReplyRequest): Publisher[InvocationWithContext] =
-    calendarEventReplyPerformer.process(request, mailboxSession, PartStat.DECLINED)
+    Mono.from(eventAttendanceRepository.setAttendanceStatus(mailboxSession.getUser, AttendanceStatus.Declined, request.blobIds, OptionConverters.toJava(request.language)))
       .map(result => CalendarEventReplyRejectedResponse.from(request.accountId, result))
       .map(response => Invocation(
         methodName,
