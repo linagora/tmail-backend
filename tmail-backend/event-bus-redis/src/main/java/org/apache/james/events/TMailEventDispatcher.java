@@ -9,6 +9,7 @@ import static org.apache.james.backends.rabbitmq.Constants.EXCLUSIVE;
 import static org.apache.james.backends.rabbitmq.Constants.evaluateAutoDelete;
 import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
 import static org.apache.james.backends.rabbitmq.Constants.evaluateExclusive;
+import static org.apache.james.events.GroupRegistration.DEFAULT_RETRY_COUNT;
 import static org.apache.james.events.RabbitMQAndRedisEventBus.EVENT_BUS_ID;
 
 import java.nio.charset.StandardCharsets;
@@ -62,13 +63,14 @@ public class TMailEventDispatcher {
     private final RedisSetReactiveCommands<String, String> redisSetReactiveCommands;
     private final EventBusId eventBusId;
     private final RedisEventBusConfiguration redisEventBusConfiguration;
+    private final TmailGroupRegistrationHandler groupRegistrationHandler;
 
     TMailEventDispatcher(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer, Sender sender,
                          LocalListenerRegistry localListenerRegistry,
                          ListenerExecutor listenerExecutor,
                          EventDeadLetters deadLetters, RabbitMQConfiguration configuration,
                          RedisPubSubReactiveCommands<String, String> redisPubSubReactiveCommands,
-                         RedisSetReactiveCommands<String, String> redisSetReactiveCommands, RedisEventBusConfiguration redisEventBusConfiguration) {
+                         RedisSetReactiveCommands<String, String> redisSetReactiveCommands, RedisEventBusConfiguration redisEventBusConfiguration, TmailGroupRegistrationHandler groupRegistrationHandler) {
         this.namingStrategy = namingStrategy;
         this.eventSerializer = eventSerializer;
         this.sender = sender;
@@ -87,6 +89,7 @@ public class TMailEventDispatcher {
         this.redisSetReactiveCommands = redisSetReactiveCommands;
         this.eventBusId = eventBusId;
         this.redisEventBusConfiguration = redisEventBusConfiguration;
+        this.groupRegistrationHandler = groupRegistrationHandler;
     }
 
     void start() {
@@ -114,6 +117,7 @@ public class TMailEventDispatcher {
     Mono<Void> dispatch(Event event, Set<RegistrationKey> keys) {
         return Flux
             .concat(
+                executeLocalSynchronousListeners(ImmutableList.of(new EventBus.EventWithRegistrationKey(event, keys))),
                 dispatchToLocalListeners(event, keys),
                 dispatchToRemoteListeners(event, keys))
             .doOnError(throwable -> LOGGER.error("error while dispatching event", throwable))
@@ -122,11 +126,28 @@ public class TMailEventDispatcher {
 
     Mono<Void> dispatch(Collection<EventBus.EventWithRegistrationKey> events) {
         return Flux
-            .concat(Flux.fromIterable(events)
-                    .concatMap(e -> dispatchToLocalListeners(e.event(), e.keys()))
-                    .then(),
+            .concat(
+                executeLocalSynchronousListeners(events),
+                dispatchToLocalListeners(events),
                 dispatchToRemoteListeners(events))
             .doOnError(throwable -> LOGGER.error("error while dispatching event", throwable))
+            .then();
+    }
+
+    private Mono<Void> executeLocalSynchronousListeners(Collection<EventBus.EventWithRegistrationKey> events) {
+        if (RabbitMQAndRedisEventBus.listenersToExecuteSynchronously.isEmpty()) {
+            return Mono.empty();
+        }
+        return Flux.fromStream(groupRegistrationHandler.synchronousGroupRegistrations())
+            .flatMap(registration -> registration.runListenerReliably(DEFAULT_RETRY_COUNT, events.stream()
+                .map(EventBus.EventWithRegistrationKey::event)
+                .collect(ImmutableList.toImmutableList())))
+            .then();
+    }
+
+    private Mono<Void> dispatchToLocalListeners(Collection<EventBus.EventWithRegistrationKey> events) {
+        return Flux.fromIterable(events)
+            .concatMap(e -> dispatchToLocalListeners(e.event(), e.keys()))
             .then();
     }
 
