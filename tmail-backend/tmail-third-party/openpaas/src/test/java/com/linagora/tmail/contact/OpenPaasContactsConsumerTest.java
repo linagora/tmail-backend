@@ -14,7 +14,6 @@ import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
@@ -27,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.api.OpenPaasServerExtension;
@@ -667,6 +667,105 @@ class OpenPaasContactsConsumerTest {
                ]
             }
             """);
+
+        await().timeout(TEN_SECONDS).untilAsserted(() ->
+            assertThat(
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(OpenPaasServerExtension.ALICE_EMAIL()), "jhon", 10))
+                    .collectList().block())
+                .hasSize(1)
+                .map(EmailAddressContact::fields)
+                .allSatisfy(Throwing.consumer(contact -> {
+                    assertThat(contact.address()).isEqualTo(new MailAddress("jhon@doe.com"));
+                    assertThat(contact.firstname()).isEqualTo("Jane Doe");
+                    assertThat(contact.surname()).isEqualTo("");
+                })));
+    }
+
+    @Test
+    void contactShouldBeIndexedWhenFallbackToIdWithinUserBlock() {
+        consumer.start();
+
+        sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
+        {
+            "vcard": [
+                "vcard",
+                [
+                    [
+                        "unknownProperty",
+                        {},
+                        "text",
+                        "4.0"
+                    ],
+                    [
+                        "version",
+                        {},
+                        "text",
+                        "4.0"
+                    ],
+                    [
+                        "kind",
+                        {},
+                        "text",
+                        "individual"
+                    ],
+                    [
+                        "fn",
+                        {},
+                        "text",
+                        "Jane Doe"
+                    ],
+                    [
+                        "email",
+                        {},
+                        "text",
+                        "jhon@doe.com"
+                    ],
+                    [
+                        "org",
+                        {},
+                        "text",
+                        [
+                            "ABC, Inc.",
+                            "North American Division",
+                            "Marketing"
+                        ]
+                    ]
+                ]
+            ],
+            "user": {
+                "timestamps": {
+                    "creation": "2024-12-06T22:39:53.619Z"
+                },
+                "login": {
+                    "failures": []
+                },
+                "schemaVersion": 2,
+                "avatars": [],
+                "_id": "ALICE_USER_ID",
+                "domains": [
+                    {
+                        "joined_at": "2024-12-06T22:39:53.619Z",
+                        "domain_id": "66d6d18bbfa4450079d8eb54"
+                    }
+                ],
+                "accounts": [
+                    {
+                        "timestamps": {
+                            "creation": "2024-12-06T22:39:53.619Z"
+                        },
+                        "hosted": true,
+                        "emails": [
+                            "adoe@linagora.com"
+                        ],
+                        "preferredEmailIndex": 0,
+                        "type": "email"
+                    }
+                ],
+                "states": [],
+                "__v": 0
+            }
+        }
+        """);
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(

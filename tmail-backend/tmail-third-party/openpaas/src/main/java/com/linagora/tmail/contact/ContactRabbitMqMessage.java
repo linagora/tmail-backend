@@ -1,8 +1,7 @@
 package com.linagora.tmail.contact;
 
 import java.io.IOException;
-
-import org.apache.commons.lang3.StringUtils;
+import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -10,7 +9,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public record ContactRabbitMqMessage(JCardObject vcard,
                                      @JsonProperty(value = "_id") String openPaasUserId,
-                                     @JsonProperty(value = "userId") String userId) {
+                                     @JsonProperty(value = "userId") String userId,
+                                     @JsonProperty(value = "user") User user) {
+
+    public record User(@JsonProperty(value = "_id") String _id) {}
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -27,6 +29,10 @@ public record ContactRabbitMqMessage(JCardObject vcard,
     }
 
     public String openPaasUserId() {
-        return StringUtils.defaultIfEmpty(this.openPaasUserId,this.userId);
+        return Optional.ofNullable(this.openPaasUserId)
+            .or(() -> Optional.ofNullable(this.userId))
+            .or(() -> Optional.ofNullable(this.user)
+                .map(User::_id))
+            .orElse(null);
     }
 }
