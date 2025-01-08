@@ -8,6 +8,7 @@ import jakarta.mail.Flags;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.core.AccountId;
+import org.apache.james.jmap.mail.BlobId;
 import org.apache.james.jmap.mail.BlobIds;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -20,7 +21,10 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceResults;
+import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceResults$;
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer;
+import com.linagora.tmail.james.jmap.method.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
@@ -48,13 +52,28 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
     }
 
     @Override
-    public Publisher<AttendanceStatus> getAttendanceStatus(Username username, MessageId messageId) {
-        LOGGER.trace("Getting attendance status for user '{}' and message '{}'", username, messageId);
+    public Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, BlobIds calendarEventBlobIds) {
+        LOGGER.trace("Getting attendance status for user '{}' and message '{}'", username,
+            calendarEventBlobIds);
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
-        return getFlags(messageId, systemMailboxSession)
-            .flatMap(userFlags -> Mono.justOrEmpty(AttendanceStatus.fromMessageFlags(userFlags)))
-            .switchIfEmpty(handleMissingEventAttendanceFlag(messageId));
+        return Flux.fromIterable(JavaConverters.seqAsJavaList(calendarEventBlobIds.value()))
+            .flatMap(blobId -> getAttendanceStatusFromEventBlob(blobId.value(), systemMailboxSession))
+            .reduce(CalendarEventAttendanceResults$.MODULE$.empty(), CalendarEventAttendanceResults$.MODULE$::merge);
+    }
+
+    private Flux<CalendarEventAttendanceResults> getAttendanceStatusFromEventBlob(String blobId, MailboxSession systemMailboxSession) {
+        return extractMessageId(blobId)
+            .flatMapMany(messageId ->
+                getFlags(messageId, systemMailboxSession)
+                    .flatMap(userFlags -> Mono.justOrEmpty(AttendanceStatus.fromMessageFlags(userFlags)))
+                    .switchIfEmpty(handleMissingEventAttendanceFlag(messageId)))
+            .map(attendanceStatus ->
+                CalendarEventAttendanceResults$.MODULE$.done(
+                    new EventAttendanceStatusEntry(blobId, attendanceStatus)))
+            .onErrorResume(Exception.class, (error) ->
+                Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(
+                    BlobId.of(blobId).get(), error, systemMailboxSession)));
     }
 
     private Mono<AttendanceStatus> handleMissingEventAttendanceFlag(MessageId messageId) {
@@ -72,7 +91,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
         return Flux.fromIterable(JavaConverters.seqAsJavaList(calendarEventBlobIds.value()))
-            .map(blobId -> extractMessageId(blobId.value()))
+            .flatMap(blobId -> extractMessageId(blobId.value()))
             .onErrorContinue((throwable, o) -> LOGGER.debug("Failed to extract message id from blob id: {}", o, throwable))
             .collectList()
             .flatMap(messageIds ->
@@ -85,8 +104,12 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
             .then(tryToSendReplyEmail(username, calendarEventBlobIds, maybePreferredLanguage, systemMailboxSession, attendanceStatus));
     }
 
-    private MessageId extractMessageId(String blobId) {
-        return messageIdFactory.fromString(new MessagePartBlobId(blobId).getMessageId());
+    private Mono<MessageId> extractMessageId(String blobId) {
+        return Mono.fromCallable(() ->
+            MessagePartBlobId.tryParse(blobId)
+                .map(MessagePartBlobId::getMessageId)
+                .map(messageIdFactory::fromString)
+                .get());
     }
 
     private Mono<CalendarEventReplyResults> tryToSendReplyEmail(Username username,
