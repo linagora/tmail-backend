@@ -210,6 +210,27 @@ public class IMAPTeamMailboxIntegrationTest {
     }
 
     @Test
+    void listShouldFilterTeamMailboxWhenSUBSCRIBEDOptionANDMailboxNameWithRegexParameterIsProvided() throws Exception {
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("LIST (SUBSCRIBED) \"\" \"#TeamMailbox.*\""))
+            .contains("* LIST (\\HasChildren \\Subscribed) \".\" \"#TeamMailbox.marketing\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.marketing.Drafts\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.marketing.INBOX\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.marketing.Outbox\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.marketing.Sent\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.marketing.Trash\"")
+            .contains("* LIST (\\HasChildren \\Subscribed) \".\" \"#TeamMailbox.sale\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.sale.Drafts\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.sale.INBOX\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.sale.Outbox\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.sale.Sent\"")
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#TeamMailbox.sale.Trash")
+            .doesNotContain("\"INBOX\"")
+            .doesNotContain("\"#user.other3.INBOX\"");
+    }
+
+    @Test
     void listShouldFilterTeamMailboxWhenReferenceNameAndMailboxNameParameterWithRegexIsProvided() throws Exception {
         assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(MINISTER, MINISTER_PASSWORD)
@@ -281,5 +302,21 @@ public class IMAPTeamMailboxIntegrationTest {
             .sendCommand("LIST \"\" \"#user.*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"#user.other3.INBOX\"")
             .doesNotContain("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.INBOX\"");
+    }
+
+    @Test
+    void listShouldReturnUserMailboxWhenSUBSCRIBEDOptionAndQueryUserNamespaceInMailboxNameArgument() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        imapClient.sendCommand("SUBSCRIBE \"Mailbox123\"");
+        imapClient.sendCommand("SUBSCRIBE \"#user.other3.INBOX\"");
+        imapClient.sendCommand("SUBSCRIBE \"#TeamMailbox.marketing.INBOX\"");
+
+        assertThat(imapClient
+            .sendCommand("LIST (SUBSCRIBED) \"\" \"#user.*\""))
+            .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#user.other3.INBOX\"")
+            .doesNotContain("\"#TeamMailbox.marketing.INBOX\"")
+            .doesNotContain("\"Mailbox123\"");
     }
 }
