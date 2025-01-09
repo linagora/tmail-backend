@@ -62,26 +62,34 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
             .reduce(CalendarEventAttendanceResults$.MODULE$.empty(), CalendarEventAttendanceResults$.MODULE$::merge);
     }
 
-    private Flux<CalendarEventAttendanceResults> getAttendanceStatusFromEventBlob(String blobId, MailboxSession systemMailboxSession) {
+    private Mono<CalendarEventAttendanceResults> getAttendanceStatusFromEventBlob(String blobId, MailboxSession systemMailboxSession) {
         return extractMessageId(blobId)
-            .flatMapMany(messageId ->
-                getFlags(messageId, systemMailboxSession)
-                    .flatMap(userFlags -> Mono.justOrEmpty(AttendanceStatus.fromMessageFlags(userFlags)))
-                    .switchIfEmpty(handleMissingEventAttendanceFlag(messageId)))
-            .map(attendanceStatus ->
-                CalendarEventAttendanceResults$.MODULE$.done(
-                    new EventAttendanceStatusEntry(blobId, attendanceStatus)))
+            .flatMap(messageId ->
+                Mono.fromDirect(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, systemMailboxSession))
+                    .flatMap(messageResult -> getAttendanceStatusFromMessage(messageResult, blobId))
+                    .defaultIfEmpty(CalendarEventAttendanceResults$.MODULE$.notFound(BlobId.of(blobId).get())))
             .onErrorResume(Exception.class, (error) ->
                 Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(
                     BlobId.of(blobId).get(), error, systemMailboxSession)));
     }
 
-    private Mono<AttendanceStatus> handleMissingEventAttendanceFlag(MessageId messageId) {
+    private Mono<CalendarEventAttendanceResults> getAttendanceStatusFromMessage(MessageResult messageResult, String blobId) {
+        return Mono.just(messageResult.getFlags())
+            .flatMap(userFlags ->
+                Mono.justOrEmpty(AttendanceStatus.fromMessageFlags(userFlags))
+                    .map(attendanceStatus ->
+                        CalendarEventAttendanceResults$.MODULE$.done(
+                            new EventAttendanceStatusEntry(blobId, attendanceStatus))))
+            .defaultIfEmpty(handleMissingEventAttendanceFlag(blobId));
+    }
+
+    private CalendarEventAttendanceResults handleMissingEventAttendanceFlag(String blobId) {
         LOGGER.debug("""
-                No event attendance flag found for message {}.
+                No event attendance flag found for blob: {}.
                 Defaulting to NeedsAction
-                """, messageId);
-        return Mono.just(AttendanceStatus.NeedsAction);
+                """, blobId);
+        return CalendarEventAttendanceResults$.MODULE$.done(
+            new EventAttendanceStatusEntry(blobId, AttendanceStatus.NeedsAction));
     }
 
     @Override
@@ -160,10 +168,5 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                 List.of(message.getMailboxId()),
                 session)
         );
-    }
-
-    private Flux<Flags> getFlags(MessageId messageId, MailboxSession session) {
-        return Flux.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, session))
-            .map(MessageResult::getFlags);
     }
 }
