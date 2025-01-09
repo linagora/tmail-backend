@@ -210,7 +210,5 @@ class StandaloneEventAttendanceRepositoryTest {
     CalendarEventAttendanceResults.done(
       EventAttendanceStatusEntry(
         blobId.value.value,
-        attendanceStatus
-      )
-    )
+        attendanceStatus))
 }
