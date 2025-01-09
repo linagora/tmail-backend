@@ -100,27 +100,24 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
         try {
             return primaryBlobStoreDAO.read(bucketName, blobId);
         } catch (Exception ex) {
+            InputStream inputStream = secondaryBlobStoreDAO.read(withSuffix(bucketName), blobId);
             LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
-            return secondaryBlobStoreDAO.read(withSuffix(bucketName), blobId);
+            return inputStream;
         }
     }
 
     @Override
     public Mono<InputStream> readReactive(BucketName bucketName, BlobId blobId) {
         return Mono.from(primaryBlobStoreDAO.readReactive(bucketName, blobId))
-            .onErrorResume(ex -> {
-                LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
-                return Mono.from(secondaryBlobStoreDAO.readReactive(withSuffix(bucketName), blobId));
-            });
+            .onErrorResume(ex -> Mono.from(secondaryBlobStoreDAO.readReactive(withSuffix(bucketName), blobId))
+                .doOnSuccess(any -> LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex)));
     }
 
     @Override
     public Mono<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
         return Mono.from(primaryBlobStoreDAO.readBytes(bucketName, blobId))
-            .onErrorResume(ex -> {
-                LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
-                return Mono.from(secondaryBlobStoreDAO.readBytes(withSuffix(bucketName), blobId));
-            });
+            .onErrorResume(ex -> Mono.from(secondaryBlobStoreDAO.readBytes(withSuffix(bucketName), blobId))
+                .doOnSuccess(any -> LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex)));
     }
 
     @Override
