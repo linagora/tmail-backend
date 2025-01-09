@@ -1,11 +1,15 @@
 package com.linagora.tmail.blob.secondaryblobstore;
 
+import java.util.stream.Collectors;
+
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.events.Event;
 import org.apache.james.events.Group;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.common.event.TmailReactiveGroupEventListener;
 
@@ -13,6 +17,8 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class FailedBlobOperationListener implements TmailReactiveGroupEventListener {
+    public static final Logger LOGGER = LoggerFactory.getLogger(FailedBlobOperationListener.class);
+
     public static class FailedBlobOperationListenerGroup extends Group {
     }
 
@@ -52,8 +58,10 @@ public class FailedBlobOperationListener implements TmailReactiveGroupEventListe
 
     private Mono<Void> handleFailedBlobsAdditionEvent(FailedBlobEvents.BlobAddition blobAdditionEvent) {
         return switch (blobAdditionEvent.failedObjectStorage()) {
-            case PRIMARY -> readFromSecondaryAndSaveToPrimary(blobAdditionEvent.bucketName(), blobAdditionEvent.blobId());
-            case SECONDARY -> readFromPrimaryAndSaveToSecondary(blobAdditionEvent.bucketName(), blobAdditionEvent.blobId());
+            case PRIMARY -> readFromSecondaryAndSaveToPrimary(blobAdditionEvent.bucketName(), blobAdditionEvent.blobId())
+                .doOnSuccess(any -> LOGGER.info("Saved {} in secondary reading primary S3", blobAdditionEvent.blobId().asString()));
+            case SECONDARY -> readFromPrimaryAndSaveToSecondary(blobAdditionEvent.bucketName(), blobAdditionEvent.blobId())
+                .doOnSuccess(any -> LOGGER.info("Saved {} in primary reading secondary S3", blobAdditionEvent.blobId().asString()));
         };
     }
 
@@ -71,8 +79,10 @@ public class FailedBlobOperationListener implements TmailReactiveGroupEventListe
 
     private Mono<Void> handleFailedBlobsDeletionEvent(FailedBlobEvents.BlobsDeletion blobsDeletionEvent) {
         return switch (blobsDeletionEvent.failedObjectStorage()) {
-            case PRIMARY -> deleteBlobsFromPrimaryBucket(blobsDeletionEvent);
-            case SECONDARY -> deleteBlobsFromSecondaryBucket(blobsDeletionEvent);
+            case PRIMARY -> deleteBlobsFromPrimaryBucket(blobsDeletionEvent)
+                .doOnSuccess(any -> LOGGER.info("Delete {} in primary", blobsDeletionEvent.blobIds().stream().map(BlobId::asString).collect(Collectors.toList())));
+            case SECONDARY -> deleteBlobsFromSecondaryBucket(blobsDeletionEvent)
+                .doOnSuccess(any -> LOGGER.info("Delete {} in secondary", blobsDeletionEvent.blobIds().stream().map(BlobId::asString).collect(Collectors.toList())));
         };
     }
 
@@ -86,8 +96,10 @@ public class FailedBlobOperationListener implements TmailReactiveGroupEventListe
 
     private Publisher<Void> handleFailedBucketDeletionEvent(FailedBlobEvents.BucketDeletion bucketDeletionEvent) {
         return switch (bucketDeletionEvent.failedObjectStorage()) {
-            case PRIMARY -> primaryBlobStoreDAO.deleteBucket(bucketDeletionEvent.bucketName());
-            case SECONDARY -> secondaryBlobStoreDAO.deleteBucket(withSuffix(bucketDeletionEvent.bucketName()));
+            case PRIMARY -> Mono.from(primaryBlobStoreDAO.deleteBucket(bucketDeletionEvent.bucketName()))
+                .doOnSuccess(any -> LOGGER.info("Delete {} in primary", bucketDeletionEvent.bucketName().asString()));
+            case SECONDARY -> Mono.from(secondaryBlobStoreDAO.deleteBucket(withSuffix(bucketDeletionEvent.bucketName())))
+                .doOnSuccess(any -> LOGGER.info("Delete {} in primary", bucketDeletionEvent.bucketName().asString()));
         };
     }
 
