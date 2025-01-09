@@ -6,6 +6,7 @@ import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.Option
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
@@ -13,7 +14,7 @@ import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
-import org.junit.jupiter.api.{BeforeEach, Disabled, Test}
+import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.Json
 
 trait LinagoraCalendarEventAttendanceGetMethodContract {
@@ -186,7 +187,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
   }
 
   @Test
-  def shouldReturnNeedsActionByDefault(server: GuiceJamesServer): Unit = {
+  def shouldReturnNeedsActionWhenNoEventAttendanceFlagAttachedToMail(server: GuiceJamesServer): Unit = {
     val blobId: String =
       sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
 
@@ -234,10 +235,10 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
 
   @Test
   def shouldFailWhenNumberOfBlobIdsTooLarge(): Unit = {
-    val blobIds: Array[String] = Range.inclusive(1, 999)
+    val blobIds: List[String] = Range.inclusive(1, 999)
       .map(_ + "")
-      .toArray
-    val blobIdsJson: String = Json.stringify(Json.arr(blobIds)).replace("[[", "[").replace("]]", "]")
+      .toList
+    val blobIdsJson = blobIdsAsJson(blobIds)
     val request: String =
       s"""{
          |  "using": [
@@ -317,7 +318,6 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
            |]""".stripMargin)
   }
 
-  @Disabled("A system session is used to fetch message flags from user inbox which does not seem to handle user mailbox isolation.")
   @Test
   def shouldNotFoundWhenDoesNotHavePermission(server: GuiceJamesServer): Unit = {
     val blobId: String =
@@ -452,8 +452,14 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
       sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
     rejectInvitation(rejectedEventBlobId)
 
+    val rejectedEventBlobId2: String =
+      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    rejectInvitation(rejectedEventBlobId2)
+
     val needsActionEventBlobId: String =
     sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+
+    val notFoundBlobId = "99999_99999"
 
     val request: String =
       s"""{
@@ -464,7 +470,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |    "CalendarEventAttendance/get",
          |    {
          |      "accountId": "$ACCOUNT_ID",
-         |      "blobIds": [ "$acceptedEventBlobId", "$rejectedEventBlobId", "$needsActionEventBlobId" ]
+         |      "blobIds": [ "$acceptedEventBlobId", "$rejectedEventBlobId", "$needsActionEventBlobId", "$rejectedEventBlobId2", "$notFoundBlobId" ]
          |    },
          |    "c1"]]
          |}""".stripMargin
@@ -480,8 +486,9 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         .extract
         .body
         .asString
-    println(response)
+
     assertThatJson(response)
+      .when(Option.IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""|[
@@ -489,9 +496,10 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
             |  {
             |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
             |    "accepted": ["$acceptedEventBlobId"],
-            |    "rejected": ["$rejectedEventBlobId"],
+            |    "rejected": ["$rejectedEventBlobId", "$rejectedEventBlobId2"],
             |    "tentativelyAccepted": [],
-            |    "needsAction": ["$needsActionEventBlobId"]
+            |    "needsAction": ["$needsActionEventBlobId"],
+            |    "notFound": ["$notFoundBlobId"]
             |  },
             |  "c1"
             |]""".stripMargin)
@@ -568,6 +576,9 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
       .statusCode(SC_OK)
       .contentType(JSON)
   }
+
+  private def blobIdsAsJson(blobIds: List[String]) : String =
+    Json.stringify(Json.arr(blobIds)).replace("[[", "[").replace("]]", "]")
 
   private def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
     baseRequestSpecBuilder(server)
