@@ -369,7 +369,6 @@ public class LDAPMailingList extends GenericMailet {
     private void addListHeaders(MimeMessage message, MailAddress listName) throws MessagingException {
         message.addHeader("List-Id","<" + listName.asString() + ">");
         message.addHeader("List-Post","<mailto:" + listName.asString() + ">");
-        message.setHeader("Reply-To", listName.asString());
     }
 
     private MailTransformation toRejectedProcessor(MailAddress listAddress) {

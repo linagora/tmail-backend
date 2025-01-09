@@ -1254,9 +1254,6 @@ class LDAPMailingListTest {
 
         SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
             softly.assertThat(mailetContext.getSentMails()).hasSize(1);
-            softly.assertThat(mailetContext.getSentMails().get(0).getMsg().getHeader("Reply-To"))
-                .contains("mygroup@lists.james.org")
-                .hasSize(1);
             softly.assertThat(mailetContext.getSentMails().get(0).getMsg().getHeader("List-Id"))
                 .contains("<mygroup@lists.james.org>");
             softly.assertThat(mailetContext.getSentMails().get(0).getMsg().getHeader("List-Post"))
