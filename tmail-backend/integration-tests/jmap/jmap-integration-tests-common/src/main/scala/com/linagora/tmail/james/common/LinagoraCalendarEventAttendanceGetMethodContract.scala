@@ -7,10 +7,12 @@ import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
+import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
@@ -503,6 +505,59 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
             |  },
             |  "c1"
             |]""".stripMargin)
+  }
+
+  @Test
+  def shouldSucceedWhenDelegated(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
+
+    val blobId: String =
+    sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+
+    acceptInvitation(blobId)
+
+    val bobAccountId = ACCOUNT_ID
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEventAttendance/get",
+         |    {
+         |      "accountId": "$bobAccountId",
+         |      "blobIds": [ "$blobId" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response =
+      `given`(buildAndreRequestSpecification(server))
+        .body(request)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    assertThatJson(response)
+      .withOptions(IGNORING_ARRAY_ORDER)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "CalendarEventAttendance/get",
+           |    {
+           |    "accountId": "$ACCOUNT_ID",
+           |    "accepted": ["$blobId"],
+           |    "rejected": [],
+           |    "tentativelyAccepted": [],
+           |    "needsAction": []
+           |    },
+           |    "c1"
+           |]""".stripMargin)
   }
 
   private def acceptInvitation(blobId: String) = {
