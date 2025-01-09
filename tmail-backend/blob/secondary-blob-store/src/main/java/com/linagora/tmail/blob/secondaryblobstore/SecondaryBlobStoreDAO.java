@@ -128,7 +128,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
         return Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, data), ObjectStorageIdentity.PRIMARY),
                 asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, data), ObjectStorageIdentity.SECONDARY))
             .collectList()
-            .flatMap(savingStatuses -> merge(savingStatuses,
+            .flatMap(savingStatuses -> merge(blobId, savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage), NO_REGISTRATION_KEYS)));
     }
 
@@ -141,7 +141,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
                             asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.PRIMARY),
                             asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.SECONDARY))
                         .collectList()
-                        .flatMap(savingStatuses -> merge(savingStatuses,
+                        .flatMap(savingStatuses -> merge(blobId, savingStatuses,
                             failedObjectStorage -> eventBus.dispatch(
                                 new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage),
                                 NO_REGISTRATION_KEYS)))),
@@ -154,7 +154,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
         return Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, content), ObjectStorageIdentity.PRIMARY),
                 asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, content), ObjectStorageIdentity.SECONDARY))
             .collectList()
-            .flatMap(savingStatuses -> merge(savingStatuses,
+            .flatMap(savingStatuses -> merge(blobId, savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage), NO_REGISTRATION_KEYS)));
     }
 
@@ -163,7 +163,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
         return Flux.merge(asSavingStatus(primaryBlobStoreDAO.delete(bucketName, blobId), ObjectStorageIdentity.PRIMARY),
                 asSavingStatus(secondaryBlobStoreDAO.delete(withSuffix(bucketName), blobId), ObjectStorageIdentity.SECONDARY))
             .collectList()
-            .flatMap(savingStatuses -> merge(savingStatuses,
+            .flatMap(savingStatuses -> merge(blobId, savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobsDeletion(Event.EventId.random(), bucketName, ImmutableList.of(blobId), failedObjectStorage), NO_REGISTRATION_KEYS)));
     }
 
@@ -213,6 +213,24 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
 
         SavingStatus failedSavingStatus = savingStatuses.stream().filter(savingStatus -> !savingStatus.isSuccess()).findFirst().get();
         LOGGER.warn("Failure to save in {} blobStore", failedSavingStatus.objectStorageIdentity().name().toLowerCase(), failedSavingStatus.e.get());
+        return partialFailureHandler.apply(failedSavingStatus.objectStorageIdentity());
+    }
+
+    private Mono<Void> merge(BlobId blobId, List<SavingStatus> savingStatuses, Function<ObjectStorageIdentity, Mono<Void>> partialFailureHandler) {
+        Preconditions.checkArgument(savingStatuses.size() == 2);
+        boolean bothSucceeded = savingStatuses.get(0).isSuccess() && savingStatuses.get(1).isSuccess();
+        boolean bothFailed = !savingStatuses.get(0).isSuccess() && !savingStatuses.get(1).isSuccess();
+        if (bothSucceeded) {
+            return Mono.empty();
+        }
+        if (bothFailed) {
+            return Mono.error(new ObjectStoreException("Failure to save " + blobId.asString() + " in both blobStore. First exception was:",
+                savingStatuses.getFirst().e.get()));
+        }
+
+        SavingStatus failedSavingStatus = savingStatuses.stream().filter(savingStatus -> !savingStatus.isSuccess()).findFirst().get();
+        LOGGER.warn("Failure to save {} in {} blobStore", blobId.asString(),
+            failedSavingStatus.objectStorageIdentity().name().toLowerCase(), failedSavingStatus.e.get());
         return partialFailureHandler.apply(failedSavingStatus.objectStorageIdentity());
     }
 
