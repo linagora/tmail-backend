@@ -346,6 +346,14 @@ public class DistributedServer {
     }
 
     public static GuiceJamesServer createServer(DistributedJamesConfiguration configuration) {
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            if (throwable instanceof OutOfMemoryError) {
+                // Avoid using logger as it asynchronously writes to the disk and might not complete before VM exit
+                System.err.println("OutOfMemoryError detected: " + throwable.getMessage());
+                throwable.printStackTrace();
+            }
+        });
+
         ExtraProperties.initialize();
 
         BlobStoreConfiguration blobStoreConfiguration = configuration.blobStoreConfiguration();
