@@ -40,8 +40,7 @@ class RedisKeyRegistrationBinder {
         // Use Redis Set to store 1 registrationKey -> n channel(s) mapping in Redis
         RoutingKeyConverter.RoutingKey routingKey = RoutingKeyConverter.RoutingKey.of(key);
         return redisSetReactiveCommands.sadd(routingKey.asString(), registrationChannel.asString())
-            // the following log should be removed once we finished monitoring Redis event bus keys implementation
-            .doOnSuccess(l -> LOGGER.info("Registered {} key-channel mapping to Redis with key {} and channel {}", l, routingKey.asString(), registrationChannel.asString()))
+            .doOnSuccess(l -> LOGGER.debug("Registered {} key-channel mapping to Redis with key {} and channel {}", l, routingKey.asString(), registrationChannel.asString()))
             .then();
     }
 
@@ -49,8 +48,7 @@ class RedisKeyRegistrationBinder {
         // delete the registrationKey -> channel mapping in Redis
         RoutingKeyConverter.RoutingKey routingKey = RoutingKeyConverter.RoutingKey.of(key);
         return redisSetReactiveCommands.srem(routingKey.asString(), registrationChannel.asString())
-            // the following log should be removed once we finished monitoring Redis event bus keys implementation
-            .doOnSuccess(l -> LOGGER.info("Unregistered {} key-channel mapping to Redis with key {} and channel {}", l, routingKey.asString(), registrationChannel.asString()))
+            .doOnSuccess(l -> LOGGER.debug("Unregistered {} key-channel mapping to Redis with key {} and channel {}", l, routingKey.asString(), registrationChannel.asString()))
             .then();
     }
 }
