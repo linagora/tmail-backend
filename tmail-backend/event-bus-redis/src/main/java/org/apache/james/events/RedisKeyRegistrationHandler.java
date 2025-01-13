@@ -139,8 +139,7 @@ class RedisKeyRegistrationHandler {
     }
 
     private Mono<Void> handleChannelMessage(ChannelMessage<String, String> channelMessage) {
-        // the following log should be removed once we finished monitoring Redis event bus keys implementation
-        LOGGER.info("Processing message body {} from Redis channel {}", channelMessage.getMessage(), channelMessage.getChannel());
+        LOGGER.debug("Processing message body {} from Redis channel {}", channelMessage.getMessage(), channelMessage.getChannel());
 
         if (channelMessage.getMessage() == null) {
             return Mono.empty();
