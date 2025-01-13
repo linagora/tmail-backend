@@ -30,6 +30,12 @@
   <property name="severity" value="error"/>
   <property name="charset" value="UTF-8"/>
   <property name="fileExtensions" value="java, properties, xml"/>
+  <module name="RegexpHeader">
+    <property name="fileExtensions" value="java"/>
+    <property name="header" value=".*\n.*As a subpart of Twake Mail, this file is edited by Linagora.*"/>
+    <message key="header.missing" value="The file is missing the required license header"/>
+    <message key="header.mismatch" value="The file is missing the required license header"/>
+  </module>
   <module name="TreeWalker">
     <module name="IllegalImport">
       <property name="regexp" value="true"/>
