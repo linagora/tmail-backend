@@ -13,6 +13,9 @@ import com.google.common.base.Preconditions;
 
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
+import scala.util.Failure;
+import scala.util.Success;
+import scala.util.Try;
 
 public final class MessagePartBlobId {
     private static final Pattern MESSAGE_PART_BLOB_ID_PATTERN =
@@ -38,6 +41,14 @@ public final class MessagePartBlobId {
                 .skip(1)
                 .map(Long::parseLong)
                 .toList();
+    }
+
+    public static Try<MessagePartBlobId> tryParse(String blobId) {
+        try {
+            return new Success<>(new MessagePartBlobId(blobId));
+        } catch (Exception e) {
+            return new Failure<>(e);
+        }
     }
 
     public String getMessageId() {

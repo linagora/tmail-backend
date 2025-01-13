@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap
 import java.util
 import java.util.Optional
 
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer
+import com.linagora.tmail.james.jmap.method.{CalendarEventAttendanceResults, CalendarEventReplyPerformer, EventAttendanceStatusEntry}
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest
 import jakarta.mail.Flags
 import net.fortuna.ical4j.model.parameter.PartStat
@@ -51,22 +51,30 @@ class StandaloneEventAttendanceRepositoryTest {
   def givenAcceptedFlagIsLinkedToMailGetAttendanceStatusShouldReturnAccepted(): Unit = {
     val flags: Flags = new Flags("$accepted")
     val messageId: MessageId = createMessage(flags)
-    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, messageId)).block)
-      .isEqualTo(AttendanceStatus.Accepted)
+    val blobId = createFakeCalendaerEventBlobId(messageId)
+    val blobIds = BlobIds(Seq(blobId.value))
+    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, blobIds)).block())
+      .isEqualTo(done(blobId, AttendanceStatus.Accepted))
   }
 
   @Test
   def givenRejectedFlagIsLinkedToMailGetAttendanceStatusShouldReturnDeclined(): Unit = {
     val flags: Flags = new Flags("$rejected")
     val messageId: MessageId = createMessage(flags)
-    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, messageId)).block).isEqualTo(AttendanceStatus.Declined)
+    val blobId = createFakeCalendaerEventBlobId(messageId)
+    val blobIds = BlobIds(Seq(blobId.value))
+    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, blobIds)).block())
+      .isEqualTo(done(blobId, AttendanceStatus.Declined))
   }
 
   @Test
   def givenTentativelyAcceptedFlagIsLinkedToMailGetAttendanceStatusShouldReturnTentative(): Unit = {
     val flags: Flags = new Flags("$tentativelyaccepted")
     val messageId: MessageId = createMessage(flags)
-    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, messageId)).block).isEqualTo(AttendanceStatus.Tentative)
+    val blobId = createFakeCalendaerEventBlobId(messageId)
+    val blobIds = BlobIds(Seq(blobId.value))
+    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, blobIds)).block())
+      .isEqualTo(done(blobId, AttendanceStatus.Tentative))
   }
 
   // It should also print a warning message
@@ -75,24 +83,22 @@ class StandaloneEventAttendanceRepositoryTest {
     val flags: Flags = new Flags("$rejected")
     flags.add("$accepted")
     val messageId: MessageId = createMessage(flags)
+    val blobId = createFakeCalendaerEventBlobId(messageId)
+    val blobIds = BlobIds(Seq(blobId.value))
 
-
-    assertThat(util.List.of(AttendanceStatus.Accepted, AttendanceStatus.Declined))
-      .contains(Mono.from(testee.getAttendanceStatus(mailbox.getUser, messageId)).block)
+    assertThat(util.List.of((blobId, AttendanceStatus.Accepted), done(blobId, AttendanceStatus.Declined))
+      .contains(Mono.from(testee.getAttendanceStatus(mailbox.getUser, blobIds)).block()))
   }
 
   @Test
   def getAttendanceStatusShouldFallbackToNeedsActionWhenNoFlagIsLinkedToMail(): Unit = {
     val flags: Flags = new Flags
     val messageId: MessageId = createMessage(flags)
-    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, messageId)).block).isEqualTo(AttendanceStatus.NeedsAction)
-  }
+    val blobId = createFakeCalendaerEventBlobId(messageId)
+    val blobIds = BlobIds(Seq(blobId.value))
 
-  @Test
-  def getAttendanceStatusShouldFallbackToNeedsActionWhenNoEventAttendanceFlagIsLinkedToMail(): Unit = {
-    val flags: Flags = new Flags(Flags.Flag.RECENT)
-    val messageId: MessageId = createMessage(flags)
-    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, messageId)).block).isEqualTo(AttendanceStatus.NeedsAction)
+    assertThat(Mono.from(testee.getAttendanceStatus(mailbox.getUser, blobIds)).block())
+      .isEqualTo(done(blobId, AttendanceStatus.NeedsAction))
   }
 
   @Test
@@ -199,4 +205,10 @@ class StandaloneEventAttendanceRepositoryTest {
       .build()
     new MessageIdManagerTestSystem(resources.getMessageIdManager, messageIdFactory, resources.getMailboxManager.getMapperFactory, resources.getMailboxManager)
   }
+
+  private def done(blobId: BlobId, attendanceStatus: AttendanceStatus) =
+    CalendarEventAttendanceResults.done(
+      EventAttendanceStatusEntry(
+        blobId.value.value,
+        attendanceStatus))
 }

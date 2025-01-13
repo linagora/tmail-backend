@@ -96,3 +96,102 @@ However, in the response properties, 'rejected' replace 'accepted', while 'notRe
 == CalendarEvent/maybe
 Similarly to CalendarEvent/accept, CalendarEvent/maybe function in a similar manner.
 However, in the response properties, 'maybe' replace 'accepted', while 'notMaybe' replace 'notAccepted'.
+
+== CalendarEventAttendance/get
+This method allow clients to get the attendance status of a calendar event invitation.
+The CalendarEventAttendance/get method takes the following arguments:
+
+- *accountId*: `Id` The id of the account to use.
+- *blobIds*: `Id[]` The ids correspond to the blob of calendar event invitation files that the user wants to query for status.
+
+The response object contains the following arguments:
+
+- *accountId*: `Id` The id of the account used for the call.
+- *accepted*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were successfully accepted, or `null` if none.
+- *rejected*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were successfully rejected, or `null` if none.
+- *tentativelyAccepted*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were tentatively accepted successfully (user chose maybe as a response for his attendance), or `null` if none.
+- *needsAction*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were neither accepted, rejected nor tentatively accepted by user thus they need action, or `null` if none.
+- *notFound*: `Id[]|null` A list of blob ids given that could not be found, or `null` if none.
+- *notDone*: `Id[SetError]|null`  A map of the blobId to a SetError object for each calendar event that failed to reply, or null if all successful.
+
+The associated `replySupportedLanguage` capability property is not needed for this method to function.
+
+Note: The sum of sizes of arrays `accepted`, `rejected`, `tentativelyAccepted`, `needsAction` and `notFound` must be equal to the size of `blobIds`, otherwise the server must return an error.
+
+== Example
+
+The client makes a request to get the attendance status of calendar event invitations `1_5` that was previously accepted and `1_3` that was rejected:
+
+....
+{
+    "using": ["urn:ietf:params:jmap:core", "com:linagora:params:calendar:event"],
+    "methodCalls": [
+        [ "CalendarEventAttendance/get", {
+            "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            "blobIds": ["1_5", "1_3"]
+        }, "c1"]
+    ]
+}
+....
+
+The server responds:
+
+[source]
+----
+[[ "CalendarEventAttendance/get",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "accepted": [ "1_5" ],
+    "rejected": [ "1_3" ],
+    "tentativelyAccepted": [],
+    "needsAction": []
+}, "c1" ]]
+----
+
+In the case that a blob id is not found or not accessible for current user, the server would respond:
+
+[source]
+----
+[[ "CalendarEventAttendance/get",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "accepted": [],
+    "rejected": [],
+    "tentativelyAccepted": [],
+    "needsAction": []
+    "notFound": ["0f9f65ab-dc7b-4146-850f-6e4881093965" ]
+}, "c1" ]]
+----
+
+If the blob id was in an invalid format, the server would respond:
+
+[source]
+----
+[[ "CalendarEventAttendance/get",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "accepted": [],
+    "rejected": [],
+    "tentativelyAccepted": [],
+    "needsAction": [],
+    notDone: {
+        "BAD_BLOB_ID": {
+            "type": "invalidArguments",
+            "description": "Invalid BlobId 'BAD_BLOB_ID'. Blob id needs to match this format: {message_id}_{partId1}_{partId2}_..."
+        }
+    }
+}, "c1" ]]
+----
+
+If the number of blob ids in the request exceeds the limit (currently 16), the server would respond:
+
+----
+[
+    "error",
+    {
+        "type": "requestTooLarge",
+        "description": "The number of ids requested by the client exceeds the maximum number the server is willing to process in a single method call"
+    },
+    "c1"
+]
+----

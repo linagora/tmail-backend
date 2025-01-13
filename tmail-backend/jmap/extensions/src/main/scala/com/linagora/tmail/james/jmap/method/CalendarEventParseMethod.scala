@@ -58,6 +58,9 @@ class CalendarEventMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[CalendarEventMaybeMethod])
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[CalendarEventAttendanceGetMethod])
 
     bind(classOf[CalendarEventReplyPerformer]).in(Scopes.SINGLETON)
     bind(classOf[CalendarEventReplySupportedLanguage]).in(Scopes.SINGLETON)
