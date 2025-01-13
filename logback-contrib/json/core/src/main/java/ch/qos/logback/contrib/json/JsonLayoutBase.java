@@ -1,21 +1,14 @@
-/********************************************************************
- *  As a subpart of Twake Mail, this file is edited by Linagora.    *
- *                                                                  *
- *  https://twake-mail.com/                                         *
- *  https://linagora.com                                            *
- *                                                                  *
- *  This file is subject to The Affero Gnu Public License           *
- *  version 3.                                                      *
- *                                                                  *
- *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
- *                                                                  *
- *  This program is distributed in the hope that it will be         *
- *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
- *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
- *  PURPOSE. See the GNU Affero General Public License for          *
- *  more details.                                                   *
- ********************************************************************/
-
+/**
+ * Copyright (C) 2024, LINAGORA. All rights reserved.
+ *
+ * This file is licensed under the terms of the
+ * Eclipse Public License v1.0 as published by
+ * the Eclipse Foundation.
+ *
+ * This work is based on the work found at
+ * https://github.com/qos-ch/logback-contrib
+ * authored by the logback-contrib developers.
+ */
 package ch.qos.logback.contrib.json;
 
 import java.time.Instant;
