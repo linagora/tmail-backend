@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 public interface TeamMailboxPathConverterContract {
     boolean RELATIVE = true;
 
-    PathConverter pathConverter();
+    PathConverter teamMailboxPathConverter();
 
     Username teamMailboxUsername();
 
@@ -19,31 +19,31 @@ public interface TeamMailboxPathConverterContract {
 
     @Test
     default void buildFullPathShouldAcceptTeamMailboxName() {
-        assertThat(pathConverter().buildFullPath("#TeamMailbox.sale"))
+        assertThat(teamMailboxPathConverter().buildFullPath("#TeamMailbox.sale"))
             .isEqualTo(new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"));
     }
 
     @Test
     default void buildFullPathShouldShouldReturnFullTeamMailboxName() {
-        assertThat(pathConverter().buildFullPath("#TeamMailbox.sale.INBOX"))
+        assertThat(teamMailboxPathConverter().buildFullPath("#TeamMailbox.sale.INBOX"))
             .isEqualTo(new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale.INBOX"));
     }
 
     @Test
     default void buildFullPathWithTeamMailboxNamespaceShouldIgnoreCase() {
-        assertThat(pathConverter().buildFullPath("#teammailbox.sale"))
+        assertThat(teamMailboxPathConverter().buildFullPath("#teammailbox.sale"))
             .isEqualTo(new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"));
     }
 
     @Test
     default void mailboxNameShouldReturnNamespaceAndNameWhenRelative() {
-        assertThat(pathConverter().mailboxName(RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession()))
+        assertThat(teamMailboxPathConverter().mailboxName(RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession()))
             .contains("#TeamMailbox.sale");
     }
 
     @Test
     default void mailboxNameShouldReturnNamespaceAndNameWhenNotRelative() {
-        assertThat(pathConverter().mailboxName(!RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession()))
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession()))
             .contains("#TeamMailbox.sale");
     }
 }

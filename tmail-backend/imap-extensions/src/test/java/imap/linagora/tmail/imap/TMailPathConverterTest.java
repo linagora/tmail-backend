@@ -4,22 +4,21 @@ import org.apache.james.core.Username;
 import org.apache.james.imap.main.PathConverter;
 import org.apache.james.imap.main.PathConverterBasicContract;
 import org.apache.james.mailbox.MailboxSession;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.james.mailbox.model.MailboxConstants;
 import org.junit.jupiter.api.Nested;
 
 import com.linagora.tmail.imap.TMailPathConverter;
 
-public class TMailPathConverterTest implements PathConverterBasicContract, TeamMailboxPathConverterContract {
-
-    private PathConverter pathConverter;
-
-    @BeforeEach
-    void setup() {
-        pathConverter = new TMailPathConverter.Factory().forSession(mailboxSession);
-    }
+public class TMailPathConverterTest extends PathConverterBasicContract implements TeamMailboxPathConverterContract {
+    private final PathConverter pathConverter = new TMailPathConverter.Factory().forSession(mailboxSession);
 
     @Override
     public PathConverter pathConverter() {
+        return pathConverter;
+    }
+
+    @Override
+    public PathConverter teamMailboxPathConverter() {
         return pathConverter;
     }
 
@@ -33,18 +32,22 @@ public class TMailPathConverterTest implements PathConverterBasicContract, TeamM
         return mailboxSession;
     }
 
+    @Override
+    public char folderDelimiter() {
+        return MailboxConstants.MailboxFolderDelimiter.DOT.value;
+    }
+
     @Nested
-    class WithEmailTest implements PathConverterBasicContract.WithEmail, TeamMailboxPathConverterContract {
-
-        private PathConverter pathConverter;
-
-        @BeforeEach
-        void setup() {
-            pathConverter = new TMailPathConverter.Factory().forSession(mailboxSession);
-        }
+    class WithEmail extends PathConverterBasicContract.WithEmail implements TeamMailboxPathConverterContract {
+        private final PathConverter pathConverter = new TMailPathConverter.Factory().forSession(mailboxWithEmailSession);
 
         @Override
         public PathConverter pathConverter() {
+            return pathConverter;
+        }
+
+        @Override
+        public PathConverter teamMailboxPathConverter() {
             return pathConverter;
         }
 
