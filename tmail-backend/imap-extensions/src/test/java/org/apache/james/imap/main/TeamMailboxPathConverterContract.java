@@ -1,9 +1,8 @@
-package imap.linagora.tmail.imap;
+package org.apache.james.imap.main;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.core.Username;
-import org.apache.james.imap.main.PathConverter;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.junit.jupiter.api.Test;

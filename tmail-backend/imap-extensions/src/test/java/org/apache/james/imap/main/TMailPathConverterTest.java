@@ -1,8 +1,6 @@
-package imap.linagora.tmail.imap;
+package org.apache.james.imap.main;
 
 import org.apache.james.core.Username;
-import org.apache.james.imap.main.PathConverter;
-import org.apache.james.imap.main.PathConverterBasicContract;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.junit.jupiter.api.Nested;
