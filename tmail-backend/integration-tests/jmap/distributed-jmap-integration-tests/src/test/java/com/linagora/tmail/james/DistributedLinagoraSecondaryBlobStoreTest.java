@@ -56,6 +56,7 @@ import org.apache.james.events.Group;
 import org.apache.james.jmap.JMAPUrls;
 import org.apache.james.jmap.JmapGuiceProbe;
 import org.apache.james.jmap.http.UserCredential;
+import org.apache.james.junit.categories.BasicFeature;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.MailboxProbeImpl;
@@ -69,6 +70,7 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -100,7 +102,7 @@ import io.restassured.config.RestAssuredConfig;
 import reactor.core.publisher.Flux;
 import reactor.util.retry.Retry;
 
-//@Tag(BasicFeature.TAG) TODO https://github.com/linagora/tmail-backend/issues/1299
+@Tag(BasicFeature.TAG)
 class DistributedLinagoraSecondaryBlobStoreTest {
     public static final ConditionFactory calmlyAwait = Awaitility.with()
         .pollInterval(ONE_HUNDRED_MILLISECONDS)

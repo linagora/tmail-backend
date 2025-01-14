@@ -32,6 +32,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobEvents;
 import com.linagora.tmail.blob.secondaryblobstore.ObjectStorageIdentity;
 
@@ -76,15 +77,11 @@ public class TmailEventSerializer implements EventSerializer {
     }
 
     @Override
-    public String toJson(Collection<Event> events) {
-        try {
-            List<EventDTO> eventDTOs = events.stream()
-                .map(this::toDTO)
-                .toList();
-            return objectMapper.writeValueAsString(eventDTOs);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+    public String toJson(Collection<Event> event) {
+        if (event.size() != 1) {
+            throw new IllegalArgumentException("Not supported for multiple events, please serialize separately");
         }
+        return toJson(event.iterator().next());
     }
 
     @Override
@@ -99,16 +96,7 @@ public class TmailEventSerializer implements EventSerializer {
 
     @Override
     public List<Event> asEvents(String serialized) {
-        try {
-            List<EventDTO> eventDTOs = objectMapper.readValue(
-                serialized,
-                objectMapper.getTypeFactory().constructCollectionType(List.class, EventDTO.class));
-            return eventDTOs.stream()
-                .map(this::fromDTO)
-                .toList();
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return ImmutableList.of(asEvent(serialized));
     }
 
 
