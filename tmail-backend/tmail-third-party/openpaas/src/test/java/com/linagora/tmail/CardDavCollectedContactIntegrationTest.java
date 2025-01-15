@@ -58,8 +58,8 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.api.OpenPaasServerExtension;
-import com.linagora.tmail.carddav.CardDavCreationFactory;
-import com.linagora.tmail.carddav.CardDavServerExtension;
+import com.linagora.tmail.dav.CardDavUtils;
+import com.linagora.tmail.dav.DavServerExtension;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.mailet.CardDavCollectedContact;
@@ -75,7 +75,7 @@ public class CardDavCollectedContactIntegrationTest {
     static OpenPaasServerExtension openPaasServerExtension = new OpenPaasServerExtension();
 
     @RegisterExtension
-    static CardDavServerExtension cardDavServerExtension = new CardDavServerExtension();
+    static DavServerExtension cardDavServerExtension = new DavServerExtension();
 
     private TemporaryJamesServer jamesServer;
 
@@ -94,7 +94,7 @@ public class CardDavCollectedContactIntegrationTest {
             .withOverrides(new AbstractModule() {
                 @Override
                 protected void configure() {
-                   install(new OpenPaasModule.CardDavModule());
+                   install(new OpenPaasModule.DavModule());
                 }
 
                 @Provides
@@ -133,7 +133,7 @@ public class CardDavCollectedContactIntegrationTest {
     @Test
     void shouldPUTCreateCollectedContactWhenContactDoesNotExist() throws Exception {
         // Setup mock server
-        String contactUid = CardDavCreationFactory.createContactUid(BOB.asMailAddress());
+        String contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
         String openPassUid = UUID.randomUUID().toString();
         openPaasServerExtension.setSearchEmailExist(ALICE.asString(), openPassUid);
         // Contact does not exist
@@ -150,7 +150,7 @@ public class CardDavCollectedContactIntegrationTest {
     @Test
     void shouldNotPUTCreateCollectedContactWhenContactExists() throws Exception {
         // Setup mock server
-        String contactUid = CardDavCreationFactory.createContactUid(BOB.asMailAddress());
+        String contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
         String openPassUid = UUID.randomUUID().toString();
         openPaasServerExtension.setSearchEmailExist(ALICE.asString(), openPassUid);
         // Contact exists
@@ -167,7 +167,7 @@ public class CardDavCollectedContactIntegrationTest {
     @Test
     void shouldNotPUTCreateCollectedContactWhenSearchEmailDoesNotExist() throws Exception {
         // Setup mock server
-        String contactUid = CardDavCreationFactory.createContactUid(BOB.asMailAddress());
+        String contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
         String openPassUid = UUID.randomUUID().toString();
         openPaasServerExtension.setSearchEmailNotFound(ALICE.asString());
         cardDavServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid, !COLLECTED_CONTACT_EXISTS);
@@ -183,8 +183,8 @@ public class CardDavCollectedContactIntegrationTest {
     @Test
     void shouldPUTCreateCollectedContactMultipleTimesWhenMultipleRecipients() throws Exception {
         // Setup mock server
-        String bobContactUid = CardDavCreationFactory.createContactUid(BOB.asMailAddress());
-        String cedricContactUid = CardDavCreationFactory.createContactUid(CEDRIC.asMailAddress());
+        String bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        String cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
         String aliceOpenPassId = UUID.randomUUID().toString();
         openPaasServerExtension.setSearchEmailExist(ALICE.asString(), aliceOpenPassId);
         cardDavServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, !COLLECTED_CONTACT_EXISTS);
@@ -224,8 +224,8 @@ public class CardDavCollectedContactIntegrationTest {
     @Test
     void shouldPUTCreateCollectedContactForContactDoesNotExistWhenMultipleRecipients() throws Exception {
         // Setup mock server
-        String bobContactUid = CardDavCreationFactory.createContactUid(BOB.asMailAddress());
-        String cedricContactUid = CardDavCreationFactory.createContactUid(CEDRIC.asMailAddress());
+        String bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        String cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
         String aliceOpenPassId = UUID.randomUUID().toString();
         openPaasServerExtension.setSearchEmailExist(ALICE.asString(), aliceOpenPassId);
         cardDavServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, COLLECTED_CONTACT_EXISTS);

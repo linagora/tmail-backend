@@ -26,7 +26,7 @@ import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.configuration.CardDavConfiguration;
+import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 public record OpenPaasModuleChooserConfiguration(boolean enabled,
@@ -43,7 +43,7 @@ public record OpenPaasModuleChooserConfiguration(boolean enabled,
         try {
             Configuration configuration = propertiesProvider.getConfiguration("openpaas");
             boolean contactsConsumerEnabled = OpenPaasConfiguration.isConfiguredContactConsumer(configuration);
-            boolean cardDavCollectedContactEnabled = CardDavConfiguration.isConfigured(configuration);
+            boolean cardDavCollectedContactEnabled = DavConfiguration.isConfigured(configuration);
             LOGGER.info("OpenPaas module is turned on. Contacts consumer is enabled: {}, CardDav is enabled: {}",
                 contactsConsumerEnabled, cardDavCollectedContactEnabled);
             return new OpenPaasModuleChooserConfiguration(ENABLED, cardDavCollectedContactEnabled, contactsConsumerEnabled);

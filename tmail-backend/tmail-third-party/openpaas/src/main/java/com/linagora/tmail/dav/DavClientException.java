@@ -16,15 +16,15 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.carddav;
+package com.linagora.tmail.dav;
 
-public class CardDavClientException extends RuntimeException {
+public class DavClientException extends RuntimeException {
 
-    public CardDavClientException(String message) {
+    public DavClientException(String message) {
         super(message);
     }
 
-    public CardDavClientException(String message, Throwable cause) {
+    public DavClientException(String message, Throwable cause) {
         super(message, cause);
     }
 }

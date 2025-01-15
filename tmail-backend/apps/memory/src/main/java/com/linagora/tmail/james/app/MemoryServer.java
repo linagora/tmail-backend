@@ -266,7 +266,7 @@ public class MemoryServer {
             ImmutableList.Builder<Module> moduleBuilder = ImmutableList.<Module>builder().add(new OpenPaasModule());
 
             if (moduleChooserConfiguration.cardDavCollectedContactEnabled()) {
-                moduleBuilder.add(new OpenPaasModule.CardDavModule());
+                moduleBuilder.add(new OpenPaasModule.DavModule());
             }
             if (moduleChooserConfiguration.contactsConsumerEnabled()) {
                 moduleBuilder.add(Modules.override(new OpenPaasContactsConsumerModule())

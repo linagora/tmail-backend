@@ -16,9 +16,9 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.carddav;
+package com.linagora.tmail.dav;
 
-import static com.linagora.tmail.carddav.CardDavServerExtension.CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION;
+import static com.linagora.tmail.dav.DavServerExtension.CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -38,18 +38,20 @@ import org.mockserver.model.HttpResponse;
 
 import ezvcard.parameter.EmailType;
 
-public class CardDavClientTest {
+import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
+
+public class DavClientTest {
     private static final String OPENPAAS_USER_NAME = "openpaasUserName1";
     private static final String OPENPAAS_USER_ID = "openpaasUserId1";
 
     @RegisterExtension
-    static CardDavServerExtension cardDavServerExtension = new CardDavServerExtension();
+    static DavServerExtension cardDavServerExtension = new DavServerExtension();
 
-    private CardDavClient client;
+    private DavClient client;
 
     @BeforeEach
     void setup() {
-        client = new CardDavClient.OpenpaasCardDavClient(cardDavServerExtension.getCardDavConfiguration());
+        client = new DavClient(cardDavServerExtension.getCardDavConfiguration());
     }
 
     @Test
@@ -79,7 +81,7 @@ public class CardDavClientTest {
                 .withStatusCode(500));
 
         assertThatThrownBy(() -> client.existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
-            .isInstanceOf(CardDavClientException.class);
+            .isInstanceOf(DavClientException.class);
     }
 
     @Test
@@ -120,6 +122,6 @@ public class CardDavClientTest {
                 new MailAddress("anbach4@lina.com")));
 
         assertThatThrownBy(() -> client.createCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, request).block())
-            .isInstanceOf(CardDavClientException.class);
+            .isInstanceOf(DavClientException.class);
     }
 }
