@@ -41,18 +41,27 @@ import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.jmap.JMAPModule;
+import org.apache.james.jmap.rfc8621.RFC8621MethodsModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
+import org.apache.james.mailbox.AttachmentIdFactory;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.StringBackedAttachmentIdFactory;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
 import org.apache.james.mailbox.searchhighligt.SearchSnippet;
+import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
+import org.apache.james.mailbox.store.mail.AttachmentMapperFactory;
+import org.apache.james.mailbox.store.mail.MailboxMapperFactory;
+import org.apache.james.mailbox.store.mail.MessageMapperFactory;
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
+import org.apache.james.mailbox.store.user.SubscriptionMapperFactory;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
 import org.apache.james.modules.DistributedTaskManagerModule;
@@ -270,7 +279,9 @@ public class DistributedServer {
         new ForwardGetMethodModule(),
         new ForwardSetMethodModule(),
         new JMAPServerModule(),
-        JMAPModule.INSTANCE,
+        new JMAPModule(),
+        new RFC8621MethodsModule(),
+        new TMailCleverBlobResolverModule(),
         new JmapEventBusModule(),
         new PublicAssetsModule(),
         new KeystoreCassandraModule(),
@@ -316,7 +327,19 @@ public class DistributedServer {
 
     public static final Module CASSANDRA_MAILBOX_MODULE = Modules.combine(
         new CassandraConsistencyTaskSerializationModule(),
-        new CassandraMailboxModule(),
+        Modules.override(new CassandraMailboxModule())
+            .with(binder -> {
+                binder.bind(TMailCleverMailboxSessionMapperFactory.class).in(Scopes.SINGLETON);
+
+                binder.bind(MessageMapperFactory.class).to(TMailCleverMailboxSessionMapperFactory.class);
+                binder.bind(MailboxMapperFactory.class).to(TMailCleverMailboxSessionMapperFactory.class);
+                binder.bind(AttachmentIdFactory.class).to(StringBackedAttachmentIdFactory.class);
+                binder.bind(AttachmentMapperFactory.class).to(TMailCleverMailboxSessionMapperFactory.class);
+                binder.bind(MailboxSessionMapperFactory.class).to(TMailCleverMailboxSessionMapperFactory.class);
+                binder.bind(SubscriptionMapperFactory.class).to(TMailCleverMailboxSessionMapperFactory.class);
+
+                binder.bind(MessageParser.class).to(TMailCleverMessageParser.class);
+            }),
         new MailboxModule(),
         new TikaMailboxModule());
 
