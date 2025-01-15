@@ -28,10 +28,10 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 
 import com.google.common.base.Preconditions;
 
-public record CardDavConfiguration(UsernamePasswordCredentials adminCredential,
-                                   URI baseUrl,
-                                   Optional<Boolean> trustAllSslCerts,
-                                   Optional<Duration> responseTimeout) {
+public record DavConfiguration(UsernamePasswordCredentials adminCredential,
+                               URI baseUrl,
+                               Optional<Boolean> trustAllSslCerts,
+                               Optional<Duration> responseTimeout) {
     static final boolean CLIENT_TRUST_ALL_SSL_CERTS_DISABLED = false;
     static final String CARD_DAV_API_URI_PROPERTY = "carddav.api.uri";
     static final String CARD_DAV_ADMIN_USER_PROPERTY = "carddav.admin.user";
@@ -39,14 +39,14 @@ public record CardDavConfiguration(UsernamePasswordCredentials adminCredential,
     static final String CARD_DAV_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY = "carddav.rest.client.trust.all.ssl.certs";
     static final String CARD_DAV_REST_CLIENT_RESPONSE_TIMEOUT_PROPERTY = "carddav.rest.client.response.timeout";
 
-    public static Optional<CardDavConfiguration> maybeFrom(Configuration configuration) {
+    public static Optional<DavConfiguration> maybeFrom(Configuration configuration) {
         if (isConfigured(configuration)) {
             return Optional.of(from(configuration));
         }
         return Optional.empty();
     }
 
-    public static CardDavConfiguration from(Configuration configuration) {
+    public static DavConfiguration from(Configuration configuration) {
         String adminUser = configuration.getString(CARD_DAV_ADMIN_USER_PROPERTY, null);
         String adminPassword = configuration.getString(CARD_DAV_ADMIN_PASSWORD_PROPERTY, null);
 
@@ -64,7 +64,7 @@ public record CardDavConfiguration(UsernamePasswordCredentials adminCredential,
                 Preconditions.checkArgument(durationAsMilliseconds > 0, "Response timeout should not be negative");
                 return Duration.ofMillis(durationAsMilliseconds);
             });
-        return new CardDavConfiguration(adminCredential, baseUrl, trustAllSslCerts, responseTimeout);
+        return new DavConfiguration(adminCredential, baseUrl, trustAllSslCerts, responseTimeout);
     }
 
     public static boolean isConfigured(Configuration configuration) {
