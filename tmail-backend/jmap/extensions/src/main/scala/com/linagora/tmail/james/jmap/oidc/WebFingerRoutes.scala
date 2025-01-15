@@ -81,6 +81,7 @@ class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends J
         res => response
           .status(HttpResponseStatus.OK)
           .header(CONTENT_TYPE, "application/jrd+json")
+          .header("Cache-Control", "public, max-age=86400")
           .sendString(SMono.just(Serializers.serialise(res)))
           .`then`())
 
