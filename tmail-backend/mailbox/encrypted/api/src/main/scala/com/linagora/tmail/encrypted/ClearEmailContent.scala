@@ -21,14 +21,14 @@ package com.linagora.tmail.encrypted
 import jakarta.inject.Inject
 import org.apache.james.jmap.api.model.Preview
 import org.apache.james.mailbox.model.ParsedAttachment
-import org.apache.james.mailbox.store.mail.model.impl.MessageParser
+import org.apache.james.mailbox.store.mail.model.impl.MessageParserImpl
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.util.mime.MessageContentExtractor
 
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class ClearEmailContentFactory @Inject()(messageParser: MessageParser,
+class ClearEmailContentFactory @Inject()(messageParser: MessageParserImpl,
                                          messageContentExtractor: MessageContentExtractor,
                                          previewFactory: Preview.Factory) {
 

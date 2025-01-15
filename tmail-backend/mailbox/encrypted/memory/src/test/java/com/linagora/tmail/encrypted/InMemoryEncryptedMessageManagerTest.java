@@ -44,7 +44,7 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.model.MessageResultIterator;
-import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
+import org.apache.james.mailbox.store.mail.model.impl.MessageParserImpl;
 import org.apache.james.mime4j.dom.Body;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.Multipart;
@@ -91,7 +91,7 @@ public class InMemoryEncryptedMessageManagerTest {
         blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, new PlainBlobId.Factory());
         emailContentStore = new InMemoryEncryptedEmailContentStore(blobStore);
         testee = new EncryptedMessageManager(messageManager, keystoreManager,
-            new ClearEmailContentFactory(new MessageParser(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
+            new ClearEmailContentFactory(new MessageParserImpl(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
             emailContentStore);
 
         message = Message.Builder
@@ -281,7 +281,7 @@ public class InMemoryEncryptedMessageManagerTest {
 
         MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
         EncryptedMessageManager testee = new EncryptedMessageManager(messageManager, keystoreManager,
-            new ClearEmailContentFactory(new MessageParser(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
+            new ClearEmailContentFactory(new MessageParserImpl(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
             emailContentStore);
 
         testee.appendMessage(MessageManager.AppendCommand.from(message), session);
