@@ -35,8 +35,8 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.carddav.CardDavAddContactProcessor;
-import com.linagora.tmail.carddav.CardDavClient;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.james.jmap.contact.ContactAddIndexingProcessor;
 
 public class OpenPaasModule extends AbstractModule {
@@ -68,7 +68,7 @@ public class OpenPaasModule extends AbstractModule {
         return new OpenPaasRestClient(openPaasConfiguration);
     }
 
-    public static class CardDavModule extends AbstractModule {
+    public static class DavModule extends AbstractModule {
 
         @Override
         protected void configure() {
@@ -78,10 +78,10 @@ public class OpenPaasModule extends AbstractModule {
 
         @Provides
         @Singleton
-        public CardDavClient provideCardDavClient(OpenPaasConfiguration openPaasConfiguration) {
-            Preconditions.checkArgument(openPaasConfiguration.cardDavConfiguration().isPresent(),
-                "OpenPaasConfiguration should have a carddav configuration");
-            return new CardDavClient.OpenpaasCardDavClient(openPaasConfiguration.cardDavConfiguration().get());
+        public DavClient provideDavClient(OpenPaasConfiguration openPaasConfiguration) {
+            Preconditions.checkArgument(openPaasConfiguration.davConfiguration().isPresent(),
+                "OpenPaasConfiguration should have dav configuration");
+            return new DavClient(openPaasConfiguration.davConfiguration().get());
         }
     }
 }

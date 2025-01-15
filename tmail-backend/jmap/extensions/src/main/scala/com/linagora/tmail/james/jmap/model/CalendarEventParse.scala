@@ -311,7 +311,7 @@ object CalendarAttendeeParticipationStatus {
       .map(_.getValue)
       .map(CalendarAttendeeParticipationStatus(_))
 }
-case class CalendarAttendeeParticipationStatus(value: String) extends AnyVal
+case class CalendarAttendeeParticipationStatus(value: String)
 object CalendarAttendeeExpectReply {
   def from(attendee: Attendee): Option[CalendarAttendeeExpectReply] =
     Option(attendee.getParameter("RSVP").asInstanceOf[Parameter])

@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:cal="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/" xmlns:card="urn:ietf:params:xml:ns:carddav">
+    <d:response>
+        <d:href>/calendars/ALICE_ID/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:resourcetype>
+                    <d:collection/>
+                </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+    <d:response>
+        <d:href>/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:resourcetype>
+                    <d:collection/>
+                    <cal:calendar/>
+                </d:resourcetype>
+                <cs:getctag>http://sabre.io/ns/sync/542</cs:getctag>
+                <s:sync-token>542</s:sync-token>
+                <cal:supported-calendar-component-set>
+                    <cal:comp name="VEVENT"/>
+                    <cal:comp name="VTODO"/>
+                </cal:supported-calendar-component-set>
+                <cal:schedule-calendar-transp>
+                    <cal:opaque/>
+                </cal:schedule-calendar-transp>
+                <d:displayname>#default</d:displayname>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+    <d:response>
+        <d:href>/calendars/ALICE_ID/0b4e80d7-7337-458f-852d-7ae8d72a74b2/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:resourcetype>
+                    <d:collection/>
+                    <cal:calendar/>
+                </d:resourcetype>
+                <cs:getctag>http://sabre.io/ns/sync/2</cs:getctag>
+                <s:sync-token>2</s:sync-token>
+                <cal:supported-calendar-component-set>
+                    <cal:comp name="VEVENT"/>
+                    <cal:comp name="VTODO"/>
+                </cal:supported-calendar-component-set>
+                <cal:schedule-calendar-transp>
+                    <cal:opaque/>
+                </cal:schedule-calendar-transp>
+                <d:displayname>AnotherCAL</d:displayname>
+                <cal:calendar-description/>
+                <x1:calendar-color xmlns:x1="http://apple.com/ns/ical/">#9C27B0</x1:calendar-color>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+    <d:response>
+        <d:href>/calendars/ALICE_ID/inbox/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:resourcetype>
+                    <d:collection/>
+                    <cal:schedule-inbox/>
+                </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+    <d:response>
+        <d:href>/calendars/ALICE_ID/outbox/</d:href>
+        <d:propstat>
+            <d:prop>
+                <d:resourcetype>
+                    <d:collection/>
+                    <cal:schedule-outbox/>
+                </d:resourcetype>
+            </d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status>
+        </d:propstat>
+    </d:response>
+</d:multistatus>

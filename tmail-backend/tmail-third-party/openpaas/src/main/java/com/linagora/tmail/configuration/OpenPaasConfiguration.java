@@ -36,7 +36,7 @@ public record OpenPaasConfiguration(URI apirUri,
                                     String adminPassword,
                                     boolean trustAllSslCerts,
                                     Optional<ContactConsumerConfiguration> contactConsumerConfiguration,
-                                    Optional<CardDavConfiguration> cardDavConfiguration) {
+                                    Optional<DavConfiguration> davConfiguration) {
 
     public record ContactConsumerConfiguration(List<AmqpUri> amqpUri,
                                                boolean quorumQueuesBypass) {
@@ -46,7 +46,7 @@ public record OpenPaasConfiguration(URI apirUri,
         this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.of(contactConsumerConfiguration), Optional.empty());
     }
 
-    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, CardDavConfiguration cardDavConfiguration) {
+    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, DavConfiguration cardDavConfiguration) {
         this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.empty(), Optional.of(cardDavConfiguration));
     }
 
@@ -69,7 +69,7 @@ public record OpenPaasConfiguration(URI apirUri,
         Optional<ContactConsumerConfiguration> contactConsumerConfiguration = readRabbitMqUri(configuration)
             .map(amqpUri -> new ContactConsumerConfiguration(amqpUri, readQuorumQueuesBypass(configuration)));
 
-        Optional<CardDavConfiguration> cardDavConfiguration = CardDavConfiguration.maybeFrom(configuration);
+        Optional<DavConfiguration> cardDavConfiguration = DavConfiguration.maybeFrom(configuration);
 
         return new OpenPaasConfiguration(openPaasApiUri, adminUser, adminPassword, trustAllSslCerts, contactConsumerConfiguration, cardDavConfiguration);
     }
