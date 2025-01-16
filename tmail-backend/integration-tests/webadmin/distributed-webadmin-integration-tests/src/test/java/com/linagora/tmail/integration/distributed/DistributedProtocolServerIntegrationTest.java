@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.integration.distributed;
 
+import static com.linagora.tmail.integration.TestFixture.CALMLY_AWAIT;
 import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.mock;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -37,6 +39,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminUtils;
+import org.awaitility.Durations;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -124,12 +127,13 @@ public class DistributedProtocolServerIntegrationTest {
             .statusCode(HttpStatus.NO_CONTENT_204);
 
         // Then the subscription should be revoked
-        assertThat(firebaseSubscriptionProbe.retrieveSubscription(BOB, subscription.id()))
-            .isNull();
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> assertThat(firebaseSubscriptionProbe.retrieveSubscription(BOB, subscription.id()))
+                .isNull());
     }
 
     @Test
-    void disconnectShouldNotRevokeUserFirebaseSubscriptionOfUnPredicateUser(GuiceJamesServer server) {
+    void disconnectShouldNotRevokeUserFirebaseSubscriptionOfUnPredicateUser(GuiceJamesServer server) throws InterruptedException {
         // Given a subscription for BOB
         FirebaseSubscriptionProbe firebaseSubscriptionProbe = server.getProbe(FirebaseSubscriptionProbe.class);
         FirebaseSubscription subscription = firebaseSubscriptionProbe.createSubscription(BOB, createFirebaseSubscriptionCreationRequest());
@@ -144,6 +148,8 @@ public class DistributedProtocolServerIntegrationTest {
             .statusCode(HttpStatus.NO_CONTENT_204);
 
         // Then the subscription of BOB should still be there
+        Thread.sleep(500);
+
         assertThat(firebaseSubscriptionProbe.retrieveSubscription(BOB, subscription.id()))
             .isNotNull();
     }

@@ -85,6 +85,7 @@
         <module>event-bus-redis</module>
         <module>tmail-third-party</module>
         <module>plugins</module>
+        <module>data/data-rabbitmq</module>
     </modules>
 
     <properties>
@@ -127,6 +128,11 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>combined-identity</artifactId>
                 <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>data-rabbitmq</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
