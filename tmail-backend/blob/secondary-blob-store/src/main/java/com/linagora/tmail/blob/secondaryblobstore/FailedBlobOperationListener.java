@@ -24,17 +24,16 @@ import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.events.Event;
+import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.common.event.TmailReactiveGroupEventListener;
-
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-public class FailedBlobOperationListener implements TmailReactiveGroupEventListener {
+public class FailedBlobOperationListener implements EventListener.ReactiveGroupEventListener {
     public static final Logger LOGGER = LoggerFactory.getLogger(FailedBlobOperationListener.class);
 
     public static class FailedBlobOperationListenerGroup extends Group {

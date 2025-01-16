@@ -39,6 +39,7 @@ import org.apache.james.blob.objectstorage.aws.S3RequestOption;
 import org.apache.james.blob.objectstorage.aws.sse.S3SSECConfiguration;
 import org.apache.james.blob.objectstorage.aws.sse.S3SSECustomerKeyFactory;
 import org.apache.james.events.EventBus;
+import org.apache.james.events.EventListener;
 import org.apache.james.eventsourcing.Event;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTO;
 import org.apache.james.eventsourcing.eventstore.dto.EventDTOModule;
@@ -74,8 +75,6 @@ import com.linagora.tmail.blob.blobid.list.CassandraSingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
-import com.linagora.tmail.common.event.TmailInjectNameConstants;
-import com.linagora.tmail.common.event.TmailReactiveGroupEventListener;
 
 public class BlobStoreModulesChooser {
     public static final String INITIAL_BLOBSTORE_DAO = "initial_blobstore_dao";
@@ -83,6 +82,7 @@ public class BlobStoreModulesChooser {
     public static final String MAYBE_ENCRYPTION_BLOBSTORE = "maybe_encryption_blob_store_dao";
     public static final String MAYBE_SINGLE_SAVE_BLOBSTORE = "maybe_single_save_blob_store_dao";
     public static final String SECOND_BLOB_STORE_DAO = "second_blob_store_dao";
+    public static final String TMAIL_EVENT_BUS_INJECT_NAME = "TMAIL_EVENT_BUS";
 
     static class ObjectStorageBlobStoreDAODeclarationModule extends AbstractModule {
         @Override
@@ -161,8 +161,9 @@ public class BlobStoreModulesChooser {
         }
 
         @ProvidesIntoSet
-        TmailReactiveGroupEventListener provideFailedBlobOperationListener(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO firstBlobStoreDAO,
-                                                                           @Named(SECOND_BLOB_STORE_DAO) BlobStoreDAO secondBlobStoreDAO) {
+        @Named(TMAIL_EVENT_BUS_INJECT_NAME)
+        EventListener.ReactiveGroupEventListener provideFailedBlobOperationListener(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO firstBlobStoreDAO,
+                                                                                    @Named(SECOND_BLOB_STORE_DAO) BlobStoreDAO secondBlobStoreDAO) {
             return new FailedBlobOperationListener(firstBlobStoreDAO, secondBlobStoreDAO, secondaryS3BlobStoreConfiguration.secondaryBucketSuffix());
         }
 
@@ -171,7 +172,7 @@ public class BlobStoreModulesChooser {
         @Named(MAYBE_SECONDARY_BLOBSTORE)
         BlobStoreDAO provideSecondaryBlobStoreDAO(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO firstBlobStoreDAO,
                                                   @Named(SECOND_BLOB_STORE_DAO) BlobStoreDAO secondBlobStoreDAO,
-                                                  @Named(TmailInjectNameConstants.TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus) {
+                                                  @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus) {
             return new SecondaryBlobStoreDAO(firstBlobStoreDAO, secondBlobStoreDAO, secondaryS3BlobStoreConfiguration.secondaryBucketSuffix(), eventBus);
         }
     }
