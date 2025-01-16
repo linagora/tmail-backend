@@ -19,6 +19,7 @@
 package com.linagora.tmail.james;
 
 import static com.linagora.tmail.blob.guice.BlobStoreModulesChooser.MAYBE_SECONDARY_BLOBSTORE;
+import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME;
 import static io.netty.handler.codec.http.HttpHeaderNames.ACCEPT;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
@@ -82,7 +83,6 @@ import com.linagora.tmail.blob.guice.SecondaryS3BlobStoreConfiguration;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobEvents;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
-import com.linagora.tmail.common.event.TmailInjectNameConstants;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -118,7 +118,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
 
         @Inject
         public BlobStoreProbe(@Named(MAYBE_SECONDARY_BLOBSTORE) BlobStoreDAO blobStoreDAO,
-                              @Named(TmailInjectNameConstants.TMAIL_EVENT_BUS_INJECT_NAME) EventDeadLetters eventDeadLetters) {
+                              @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventDeadLetters eventDeadLetters) {
             SecondaryBlobStoreDAO secondaryBlobStoreDAO = (SecondaryBlobStoreDAO) blobStoreDAO;
             this.primaryBlobStoreDAO = (S3BlobStoreDAO) secondaryBlobStoreDAO.getFirstBlobStoreDAO();
             this.secondaryBlobStoreDAO = (S3BlobStoreDAO) secondaryBlobStoreDAO.getSecondBlobStoreDAO();
