@@ -1,62 +1,144 @@
 package org.apache.james.imap.main;
 
 import org.apache.james.core.Username;
-import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.junit.jupiter.api.Nested;
 
 import com.linagora.tmail.imap.TMailPathConverter;
 
-public class TMailPathConverterTest extends PathConverterBasicContract implements TeamMailboxPathConverterContract {
-    private final PathConverter pathConverter = new TMailPathConverter.Factory().forSession(mailboxSession);
+public class TMailPathConverterTest {
+    @Nested
+    public class BasicContract {
+        @Nested
+        public class DotDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.DOT.value;
+            }
+        }
 
-    @Override
-    public PathConverter pathConverter() {
-        return pathConverter;
-    }
+        @Nested
+        public class SlashDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.SLASH.value;
+            }
+        }
 
-    @Override
-    public PathConverter teamMailboxPathConverter() {
-        return pathConverter;
-    }
+        @Nested
+        public class PipeDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.PIPE.value;
+            }
+        }
 
-    @Override
-    public Username teamMailboxUsername() {
-        return Username.of("team-mailbox");
-    }
+        @Nested
+        public class CommaDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.COMMA.value;
+            }
+        }
 
-    @Override
-    public MailboxSession mailboxSession() {
-        return mailboxSession;
-    }
+        @Nested
+        public class ColonDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.COLON.value;
+            }
+        }
 
-    @Override
-    public char folderDelimiter() {
-        return MailboxConstants.MailboxFolderDelimiter.DOT.value;
+        @Nested
+        public class SemicolonDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.SEMICOLON.value;
+            }
+        }
+
+        public abstract static class TestBase extends PathConverterBasicContract {
+            private final PathConverter pathConverter = new TMailPathConverter.Factory().forSession(mailboxSession);
+
+            @Override
+            public PathConverter pathConverter() {
+                return pathConverter;
+            }
+
+            @Nested
+            class WithEmail extends PathConverterBasicContract.WithEmail {
+                private final PathConverter pathConverter = new TMailPathConverter.Factory().forSession(mailboxWithEmailSession);
+
+                @Override
+                public PathConverter pathConverter() {
+                    return pathConverter;
+                }
+            }
+        }
     }
 
     @Nested
-    class WithEmail extends PathConverterBasicContract.WithEmail implements TeamMailboxPathConverterContract {
-        private final PathConverter pathConverter = new TMailPathConverter.Factory().forSession(mailboxWithEmailSession);
-
-        @Override
-        public PathConverter pathConverter() {
-            return pathConverter;
+    public class TeamMailboxContract {
+        @Nested
+        public class DotDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.DOT.value;
+            }
         }
 
-        @Override
-        public PathConverter teamMailboxPathConverter() {
-            return pathConverter;
+        @Nested
+        public class SlashDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.SLASH.value;
+            }
         }
 
-        @Override
-        public Username teamMailboxUsername() {
-            return Username.of("team-mailbox@apache.org");
+        @Nested
+        public class PipeDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.PIPE.value;
+            }
         }
 
-        @Override
-        public MailboxSession mailboxSession() {
-            return mailboxSession;
+        @Nested
+        public class CommaDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.COMMA.value;
+            }
+        }
+
+        @Nested
+        public class ColonDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.COLON.value;
+            }
+        }
+
+        @Nested
+        public class SemicolonDelimiter extends TestBase {
+            @Override
+            public char folderDelimiter() {
+                return MailboxConstants.MailboxFolderDelimiter.SEMICOLON.value;
+            }
+        }
+
+        public abstract static class TestBase extends TeamMailboxPathConverterContract {
+            private final PathConverter pathConverter = new TMailPathConverter.Factory().forSession(mailboxSession);
+
+            @Override
+            public PathConverter teamMailboxPathConverter() {
+                return pathConverter;
+            }
+
+            @Override
+            public Username teamMailboxUsername() {
+                return Username.of("team-mailbox");
+            }
         }
     }
 }
