@@ -22,45 +22,48 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MailboxSessionUtil;
+import org.apache.james.mailbox.model.MailboxFolderDelimiterAwareTest;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.junit.jupiter.api.Test;
 
-public interface TeamMailboxPathConverterContract {
-    boolean RELATIVE = true;
+public abstract class TeamMailboxPathConverterContract extends MailboxFolderDelimiterAwareTest {
+    public static final boolean RELATIVE = true;
 
-    PathConverter teamMailboxPathConverter();
+    public final MailboxSession mailboxSession = MailboxSessionUtil.create(Username.of("username"), folderDelimiter());
 
-    Username teamMailboxUsername();
+    abstract PathConverter teamMailboxPathConverter();
 
-    MailboxSession mailboxSession();
+    abstract Username teamMailboxUsername();
+
 
     @Test
-    default void buildFullPathShouldAcceptTeamMailboxName() {
-        assertThat(teamMailboxPathConverter().buildFullPath("#TeamMailbox.sale"))
+    public void buildFullPathShouldAcceptTeamMailboxName() {
+        assertThat(teamMailboxPathConverter().buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox.sale")))
             .isEqualTo(new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"));
     }
 
     @Test
-    default void buildFullPathShouldShouldReturnFullTeamMailboxName() {
-        assertThat(teamMailboxPathConverter().buildFullPath("#TeamMailbox.sale.INBOX"))
-            .isEqualTo(new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale.INBOX"));
+    public void buildFullPathShouldShouldReturnFullTeamMailboxName() {
+        assertThat(teamMailboxPathConverter().buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox.sale.INBOX")))
+            .isEqualTo(new MailboxPath("#TeamMailbox", teamMailboxUsername(),  adjustToActiveFolderDelimiter("sale.INBOX")));
     }
 
     @Test
-    default void buildFullPathWithTeamMailboxNamespaceShouldIgnoreCase() {
-        assertThat(teamMailboxPathConverter().buildFullPath("#teammailbox.sale"))
+    public void buildFullPathWithTeamMailboxNamespaceShouldIgnoreCase() {
+        assertThat(teamMailboxPathConverter().buildFullPath(adjustToActiveFolderDelimiter("#teammailbox.sale")))
             .isEqualTo(new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"));
     }
 
     @Test
-    default void mailboxNameShouldReturnNamespaceAndNameWhenRelative() {
-        assertThat(teamMailboxPathConverter().mailboxName(RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession()))
-            .contains("#TeamMailbox.sale");
+    public void mailboxNameShouldReturnNamespaceAndNameWhenRelative() {
+        assertThat(teamMailboxPathConverter().mailboxName(RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession))
+            .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sale"));
     }
 
     @Test
-    default void mailboxNameShouldReturnNamespaceAndNameWhenNotRelative() {
-        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession()))
-            .contains("#TeamMailbox.sale");
+    public void mailboxNameShouldReturnNamespaceAndNameWhenNotRelative() {
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession))
+            .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sale"));
     }
 }

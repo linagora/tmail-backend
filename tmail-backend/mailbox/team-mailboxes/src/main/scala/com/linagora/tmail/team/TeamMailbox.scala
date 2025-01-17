@@ -119,7 +119,7 @@ object TeamMailbox {
   def from(mailboxPath: MailboxPath): Option[TeamMailbox] = mailboxPath.getNamespace match {
     case TEAM_MAILBOX_NAMESPACE =>
       for {
-        name <- TeamMailboxName.validate(mailboxPath.getHierarchyLevels('.').get(0).getName())
+        name <- TeamMailboxName.validate(mailboxPath.getHierarchyLevels(MailboxConstants.FOLDER_DELIMITER).get(0).getName())
           .map(nameValue => TeamMailboxName(nameValue))
           .toOption
         domain <- mailboxPath.getUser.getDomainPart.toScala
@@ -151,11 +151,11 @@ case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
 
   def mailboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), mailboxName.value)
 
-  def mailboxPath(subPath : String): MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}.$subPath")
+  def mailboxPath(subPath : String): MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}${MailboxConstants.FOLDER_DELIMITER}$subPath")
 
-  def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}.${MailboxConstants.INBOX}")
+  def inboxPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}${MailboxConstants.FOLDER_DELIMITER}${MailboxConstants.INBOX}")
 
-  def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}.Sent")
+  def sentPath: MailboxPath = new MailboxPath(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain), s"${mailboxName.value}${MailboxConstants.FOLDER_DELIMITER}Sent")
 
   def defaultMailboxPaths: Seq[MailboxPath] = Seq(
     mailboxPath,
