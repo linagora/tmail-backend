@@ -45,6 +45,8 @@
 
         <module>combined-identity</module>
 
+        <module>data/data-rabbitmq</module>
+
         <module>deployment-tests</module>
 
         <module>guice/blob-guice</module>
@@ -85,7 +87,6 @@
         <module>event-bus-redis</module>
         <module>tmail-third-party</module>
         <module>plugins</module>
-        <module>data/data-rabbitmq</module>
     </modules>
 
     <properties>

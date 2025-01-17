@@ -20,9 +20,7 @@ package com.linagora.tmail;
 
 import static com.linagora.tmail.RabbitMQDisconnectorConsumer.TMAIL_DISCONNECTOR_QUEUE_NAME;
 import static com.linagora.tmail.RabbitMQDisconnectorNotifier.TMAIL_DISCONNECTOR_EXCHANGE_NAME;
-import static org.apache.james.backends.rabbitmq.Constants.AUTO_DELETE;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
-import static org.apache.james.backends.rabbitmq.Constants.EXCLUSIVE;
 
 import jakarta.inject.Inject;
 

@@ -18,33 +18,43 @@
 
 package com.linagora.tmail.integration.distributed;
 
+import static com.linagora.tmail.RabbitMQDisconnectorNotifier.TMAIL_DISCONNECTOR_EXCHANGE_NAME;
 import static com.linagora.tmail.integration.TestFixture.CALMLY_AWAIT;
 import static io.restassured.RestAssured.when;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
+import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.TypeName;
+import org.apache.james.metrics.api.NoopGaugeRegistry;
+import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.awaitility.Durations;
 import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.RabbitMQDisconnectorNotifier;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -62,6 +72,11 @@ import com.linagora.tmail.james.jmap.model.FirebaseSubscriptionCreationRequest;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import io.restassured.RestAssured;
+import reactor.core.publisher.Flux;
+import reactor.rabbitmq.BindingSpecification;
+import reactor.rabbitmq.QueueSpecification;
+import reactor.rabbitmq.Receiver;
+import reactor.rabbitmq.Sender;
 import scala.jdk.javaapi.CollectionConverters;
 import scala.jdk.javaapi.OptionConverters;
 
@@ -69,6 +84,9 @@ public class DistributedProtocolServerIntegrationTest {
     protected static final Domain DOMAIN = Domain.of("domain.tld");
     protected static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
     protected static final Username ALICE = Username.fromLocalPartWithDomain("alice", DOMAIN);
+
+    @RegisterExtension
+    static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -87,7 +105,7 @@ public class DistributedProtocolServerIntegrationTest {
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
-        .extension(new RabbitMQExtension())
+        .extension(rabbitMQExtension)
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
@@ -96,8 +114,26 @@ public class DistributedProtocolServerIntegrationTest {
         .build();
 
 
+    private SimpleConnectionPool connectionPool;
+    private ReactorRabbitMQChannelPool channelPool;
+
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
+        // setup test rabbitMQ receiver
+        connectionPool = new SimpleConnectionPool(rabbitMQExtension.dockerRabbitMQ().createRabbitConnectionFactory(),
+            SimpleConnectionPool.Configuration.builder()
+                .retries(2)
+                .initialDelay(Duration.ofMillis(5)));
+
+        channelPool = new ReactorRabbitMQChannelPool(connectionPool.getResilientConnection(),
+            ReactorRabbitMQChannelPool.Configuration.builder()
+                .retries(2)
+                .maxBorrowDelay(Duration.ofMillis(250))
+                .maxChannel(10),
+            new RecordingMetricFactory(),
+            new NoopGaugeRegistry());
+        channelPool.start();
+
         WebAdminGuiceProbe webAdminGuiceProbe = server.getProbe(WebAdminGuiceProbe.class);
 
         DataProbeImpl dataProbe = server.getProbe(DataProbeImpl.class);
@@ -109,6 +145,16 @@ public class DistributedProtocolServerIntegrationTest {
             .setBasePath("/servers/channels")
             .build();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (channelPool != null) {
+            channelPool.close();
+        }
+        if (connectionPool != null) {
+            connectionPool.close();
+        }
     }
 
     @Test
@@ -165,4 +211,40 @@ public class DistributedProtocolServerIntegrationTest {
             CollectionConverters.asScala(List.of(mockTypeName)).toSeq());
     }
 
+    @Test
+    void shouldPublishFanoutMessageWhenDisconnectRouteIsCalled() {
+        // Given a queue bound to the fanout exchange
+        Sender sender = channelPool.getSender();
+        String queueName = "test-queue" + UUID.randomUUID();
+        Flux.concat(sender.declareQueue(QueueSpecification
+                    .queue(queueName)),
+                sender.bind(BindingSpecification.binding()
+                    .exchange(TMAIL_DISCONNECTOR_EXCHANGE_NAME)
+                    .queue(queueName)
+                    .routingKey(RabbitMQDisconnectorNotifier.ROUTING_KEY)))
+            .then().block();
+
+        ArrayList<String> receivedMessages = new ArrayList<>();
+        Flux.using(channelPool::createReceiver,
+                receiver -> receiver.consumeManualAck(queueName),
+                Receiver::close)
+            .doOnNext(ack -> {
+                receivedMessages.add(new String(ack.getBody(), StandardCharsets.UTF_8));
+                ack.ack();
+            })
+            .subscribe();
+
+        // When disconnect
+        when()
+            .delete("/" + BOB.asString())
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+
+        // Then a message should be received
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> assertThat(receivedMessages).hasSize(1));
+
+        assertThat(receivedMessages.getFirst()).isEqualTo("""
+            ["bob@domain.tld"]""");
+    }
 }

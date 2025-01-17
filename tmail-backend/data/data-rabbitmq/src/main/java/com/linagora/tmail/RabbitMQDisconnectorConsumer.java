@@ -51,15 +51,18 @@ public class RabbitMQDisconnectorConsumer implements Startable, Closeable {
 
     private final ReceiverProvider receiverProvider;
     private final InVMDisconnectorNotifier inVMDisconnectorNotifier;
+    private final DisconnectorRequestSerializer deserializer;
 
     private Disposable consumeMessages;
 
     @Inject
     @Singleton
     public RabbitMQDisconnectorConsumer(ReceiverProvider receiverProvider,
-                                        InVMDisconnectorNotifier inVMDisconnectorNotifier) {
+                                        InVMDisconnectorNotifier inVMDisconnectorNotifier,
+                                        DisconnectorRequestSerializer deserializer) {
         this.receiverProvider = receiverProvider;
         this.inVMDisconnectorNotifier = inVMDisconnectorNotifier;
+        this.deserializer = deserializer;
     }
 
     public void start() {
@@ -81,7 +84,7 @@ public class RabbitMQDisconnectorConsumer implements Startable, Closeable {
     }
 
     private Mono<Void> consumeMessage(AcknowledgableDelivery ackDelivery) {
-        return Mono.fromCallable(() -> DisconnectorRequestSerializer.deserialize(ackDelivery.getBody()))
+        return Mono.fromCallable(() -> deserializer.deserialize(ackDelivery.getBody()))
             .flatMap(disconnectorRequest -> Mono.fromRunnable(() -> inVMDisconnectorNotifier.disconnect(disconnectorRequest)).then())
             .doOnSuccess(result -> ackDelivery.ack())
             .onErrorResume(error -> {

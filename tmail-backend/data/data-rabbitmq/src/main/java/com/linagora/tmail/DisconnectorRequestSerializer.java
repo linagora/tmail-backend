@@ -19,22 +19,25 @@
 package com.linagora.tmail;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+
 import org.apache.james.DisconnectorNotifier.AllUsersRequest;
 import org.apache.james.DisconnectorNotifier.MultipleUserRequest;
 import org.apache.james.DisconnectorNotifier.Request;
 import org.apache.james.core.Username;
 
-import com.google.common.base.Splitter;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class DisconnectorRequestSerializer {
 
     public static class DisconnectorRequestSerializeException extends RuntimeException {
-        public DisconnectorRequestSerializeException(String message) {
-            super(message);
-        }
 
         public DisconnectorRequestSerializeException(String message, Throwable cause) {
             super(message, cause);
@@ -42,41 +45,39 @@ public class DisconnectorRequestSerializer {
     }
 
     public static final String ALL_USERS_REQUEST = "[]";
-    public static final String USER_DELIMITER = ",";
+    public static final byte[] ALL_USERS_REQUEST_BYTES = ALL_USERS_REQUEST.getBytes(StandardCharsets.UTF_8);
+    public static final TypeReference<List<String>> LIST_OF_STRING = new TypeReference<>() {
+    };
 
-    public static String serialize(Request request) {
+    private final ObjectMapper objectMapper;
+
+    @Inject
+    @Singleton
+    public DisconnectorRequestSerializer() {
+        this.objectMapper = new ObjectMapper();
+    }
+
+    public byte[] serialize(Request request) throws JsonProcessingException {
         return switch (request) {
-            case MultipleUserRequest multipleUserRequest -> multipleUserRequest.usernameList().stream()
-                .map(Username::asString)
-                .collect(Collectors.joining(USER_DELIMITER, "[", "]"));
-            case AllUsersRequest allUsersRequest -> ALL_USERS_REQUEST;
-            default -> throw new DisconnectorRequestSerializeException("Unknown request type: " + request);
+            case MultipleUserRequest multipleUserRequest -> objectMapper.writeValueAsBytes(
+                multipleUserRequest.usernameList().stream()
+                    .map(Username::asString)
+                    .toList());
+            case AllUsersRequest allUsersRequest -> ALL_USERS_REQUEST_BYTES;
         };
     }
 
-    public static byte[] serializeAsBytes(Request request) {
-        return serialize(request).getBytes(StandardCharsets.UTF_8);
-    }
-
-    public static Request deserialize(String serialized) {
-        if (ALL_USERS_REQUEST.equals(serialized)) {
+    public Request deserialize(byte[] serialized) {
+        if (serialized.length == 2 && serialized[0] == '[' && serialized[1] == ']') {
             return AllUsersRequest.ALL_USERS_REQUEST;
         }
-        if (StringUtils.startsWith(serialized, "[") && StringUtils.endsWith(serialized, "]")) {
-            try {
-                return MultipleUserRequest.of(Splitter.on(",")
-                    .omitEmptyStrings()
-                    .splitToStream(serialized.substring(1, serialized.length() - 1))
-                    .map(Username::of)
-                    .collect(Collectors.toSet()));
-            } catch (Exception e) {
-                throw new DisconnectorRequestSerializeException("Error while deserializing: " + serialized, e);
-            }
+        try {
+            Set<Username> usernameSet = objectMapper.readValue(serialized, LIST_OF_STRING)
+                .stream().map(Username::of)
+                .collect(Collectors.toSet());
+            return new MultipleUserRequest(usernameSet);
+        } catch (Exception e) {
+            throw new DisconnectorRequestSerializeException("Error while deserializing: " + new String(serialized, StandardCharsets.UTF_8), e);
         }
-        throw new DisconnectorRequestSerializeException("Unknown serialized format: " + serialized);
-    }
-
-    public static Request deserialize(byte[] serialized) {
-        return deserialize(new String(serialized, StandardCharsets.UTF_8));
     }
 }

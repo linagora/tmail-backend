@@ -42,11 +42,14 @@ public class RabbitMQDisconnectorNotifier implements DisconnectorNotifier, Start
     private static final Retry RETRY_SPEC = Retry.backoff(2, Duration.ofMillis(100));
 
     private final Sender sender;
+    private final DisconnectorRequestSerializer serializer;
 
     @Inject
     @Singleton
-    public RabbitMQDisconnectorNotifier(Sender sender) {
+    public RabbitMQDisconnectorNotifier(Sender sender,
+                                        DisconnectorRequestSerializer serializer) {
         this.sender = sender;
+        this.serializer = serializer;
     }
 
     @Override
@@ -54,7 +57,7 @@ public class RabbitMQDisconnectorNotifier implements DisconnectorNotifier, Start
         try {
             sender.send(Mono.just(new OutboundMessage(TMAIL_DISCONNECTOR_EXCHANGE_NAME,
                     ROUTING_KEY,
-                    DisconnectorRequestSerializer.serializeAsBytes(request))))
+                    serializer.serialize(request))))
                 .retryWhen(RETRY_SPEC)
                 .block();
         } catch (Exception exception) {
