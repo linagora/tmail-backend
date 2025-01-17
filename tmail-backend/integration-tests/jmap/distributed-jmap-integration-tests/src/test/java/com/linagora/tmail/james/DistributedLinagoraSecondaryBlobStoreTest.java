@@ -70,6 +70,7 @@ import org.apache.james.webadmin.routes.TasksRoutes;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -150,24 +151,6 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     static DockerAwsS3Container secondaryS3 = new DockerAwsS3Container();
     static SecondaryS3BlobStoreConfiguration secondaryS3Configuration;
 
-    static {
-        secondaryS3.start();
-        AwsS3AuthConfiguration authConfiguration = AwsS3AuthConfiguration.builder()
-            .endpoint(secondaryS3.getEndpoint())
-            .accessKeyId(DockerAwsS3Container.ACCESS_KEY_ID)
-            .secretKey(DockerAwsS3Container.SECRET_ACCESS_KEY)
-            .build();
-
-        secondaryS3Configuration = new SecondaryS3BlobStoreConfiguration(S3BlobStoreConfiguration.builder()
-            .authConfiguration(authConfiguration)
-            .region(secondaryS3.dockerAwsS3().region())
-            .uploadRetrySpec(Optional.of(Retry.backoff(3, java.time.Duration.ofSeconds(1))
-                .filter(UPLOAD_RETRY_EXCEPTION_PREDICATE)))
-            .readTimeout(Optional.of(Duration.ofMillis(500)))
-            .build(),
-            SECONDARY_BUCKET_SUFFIX);
-    }
-
     @RegisterExtension
     static JamesServerExtension
         testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -194,6 +177,25 @@ class DistributedLinagoraSecondaryBlobStoreTest {
             .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(BlobStoreProbe.class)))
         .build();
+
+    @BeforeAll
+    static void beforeAll() {
+        secondaryS3.start();
+        AwsS3AuthConfiguration authConfiguration = AwsS3AuthConfiguration.builder()
+            .endpoint(secondaryS3.getEndpoint())
+            .accessKeyId(DockerAwsS3Container.ACCESS_KEY_ID)
+            .secretKey(DockerAwsS3Container.SECRET_ACCESS_KEY)
+            .build();
+
+        secondaryS3Configuration = new SecondaryS3BlobStoreConfiguration(S3BlobStoreConfiguration.builder()
+            .authConfiguration(authConfiguration)
+            .region(secondaryS3.dockerAwsS3().region())
+            .uploadRetrySpec(Optional.of(Retry.backoff(3, java.time.Duration.ofSeconds(1))
+                .filter(UPLOAD_RETRY_EXCEPTION_PREDICATE)))
+            .readTimeout(Optional.of(Duration.ofMillis(500)))
+            .build(),
+            SECONDARY_BUCKET_SUFFIX);
+    }
 
     @AfterAll
     static void afterAll() {
