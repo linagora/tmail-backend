@@ -18,6 +18,7 @@
 
 package com.linagora.tmail;
 
+import static com.linagora.tmail.RabbitMQDisconnectorConsumer.TMAIL_DISCONNECTOR_QUEUE_NAME;
 import static com.rabbitmq.client.ConnectionFactory.DEFAULT_VHOST;
 
 import java.io.FileNotFoundException;
@@ -314,14 +315,18 @@ public class ScheduledReconnectionHandler implements Startable {
 
     }
 
-    public static final ImmutableList<String> QUEUES_TO_MONITOR = ImmutableList.of("JamesMailQueue-workqueue-spool",
+    public static final ImmutableList<String> QUEUES_TO_MONITOR = new ImmutableList.Builder<String>()
+        .add("JamesMailQueue-workqueue-spool",
         "JamesMailQueue-workqueue-outgoing",
         "mailboxEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
         "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
         "deleted-message-vault-work-queue",
         "openpaas-contacts-queue-add",
         "openpaas-contacts-queue-update",
-        "openpaas-contacts-queue-delete");
+        "openpaas-contacts-queue-delete")
+        .add(TMAIL_DISCONNECTOR_QUEUE_NAME)
+        .build();
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ScheduledReconnectionHandler.class);
     
     private final Set<SimpleConnectionPool.ReconnectionHandler> reconnectionHandlers;
