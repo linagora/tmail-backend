@@ -151,15 +151,15 @@ public class DavClient {
         };
     }
 
-    public Flux<VEvent> getCalendarVEventsByUid(String eventUid, String userId) {
+    public Flux<VEvent> getCalendarVEventsByUid(String userId, String eventUid) {
         Preconditions.checkArgument(StringUtils.isNotEmpty(eventUid), "VEvent id should not be empty");
         Preconditions.checkArgument(StringUtils.isNotEmpty(userId), "OpenPaas user id should not be empty");
 
         return findUserCalendars(userId)
-            .flatMap(calendarURI -> getCalendarVEventsByUidFromCalendar(eventUid, calendarURI));
+            .flatMap(calendarURI -> getCalendarVEventsByUidFromCalendar(calendarURI, eventUid));
     }
 
-    public Flux<VEvent> getCalendarVEventsByUidFromCalendar(String eventUid, URI calendarURI) {
+    public Flux<VEvent> getCalendarVEventsByUidFromCalendar(URI calendarURI, String eventUid) {
         return client.headers(headers ->
                 headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                     .add("Depth", "1")
