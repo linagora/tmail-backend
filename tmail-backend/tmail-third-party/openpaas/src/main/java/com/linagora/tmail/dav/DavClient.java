@@ -39,10 +39,7 @@ import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 import com.linagora.tmail.dav.xml.DavMultistatus;
 import com.linagora.tmail.dav.xml.DavResponse;
 import com.linagora.tmail.dav.xml.XMLUtil;
-import com.linagora.tmail.james.jmap.model.CalendarAttendeeField;
-import com.linagora.tmail.james.jmap.model.CalendarAttendeeParticipationStatus;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
-import com.linagora.tmail.james.jmap.model.CalendarParticipantsField;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -52,14 +49,13 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import net.fortuna.ical4j.model.Calendar;
+import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.component.VEvent;
-import net.fortuna.ical4j.model.parameter.PartStat;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientResponse;
-import scala.compat.java8.OptionConverters;
 
 public class DavClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
@@ -155,15 +151,31 @@ public class DavClient {
         };
     }
 
-    public Mono<PartStat> getUserParticipationStatus(String userId, String eventUid, String userEmail) {
-        return findAllUsersCalendars(userId)
-            .flatMap(calendarURI -> getCalendarEvents(eventUid, calendarURI))
-            .collectList()
-            .flatMap(events -> extractUserParticipationStatus(events, userEmail))
-            .map(status -> new PartStat(status.value()));
+    public Flux<VEvent> getCalendarVEventsByUid(String eventUid, String userId) {
+        Preconditions.checkArgument(StringUtils.isNotEmpty(eventUid), "VEvent id should not be empty");
+        Preconditions.checkArgument(StringUtils.isNotEmpty(userId), "OpenPaas user id should not be empty");
+
+        return findUserCalendars(userId)
+            .flatMap(calendarURI -> getCalendarVEventsByUidFromCalendar(eventUid, calendarURI));
     }
 
-    private Flux<URI> findAllUsersCalendars(String userId) {
+    public Flux<VEvent> getCalendarVEventsByUidFromCalendar(String eventUid, URI calendarURI) {
+        return client.headers(headers ->
+                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
+                    .add("Depth", "1")
+                    .add(HttpHeaderNames.AUTHORIZATION,
+                        HttpUtils.createBasicAuthenticationToken(
+                            config.adminCredential().getUserName(),
+                            config.adminCredential().getPassword())))
+            .request(HttpMethod.valueOf("REPORT"))
+            .uri(calendarURI.getPath())
+            .send(createCalendarRequestBody(eventUid))
+            .responseSingle(
+                (response, responseContent) -> handleCalendarResponse(responseContent, response.status(), eventUid))
+            .flatMapMany(vcalendar -> Flux.fromIterable(vcalendar.getComponents(Component.VEVENT)));
+    }
+
+    public Flux<URI> findUserCalendars(String userId) {
         return client.headers(headers ->
                 headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                     .add(HttpHeaderNames.AUTHORIZATION,
@@ -203,47 +215,20 @@ public class DavClient {
         return hrefs;
     }
 
-    private Flux<VEvent> getCalendarEvents(String eventUid, URI calendarURI) {
-        return client.headers(headers ->
-                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
-                    .add("Depth", "1")
-                    .add(HttpHeaderNames.AUTHORIZATION,
-                        HttpUtils.createBasicAuthenticationToken(config.adminCredential().getUserName(), config.adminCredential().getPassword())))
-            .request(HttpMethod.valueOf("REPORT"))
-            .uri(calendarURI.getPath())
-            .send(createCalendarRequestBody(eventUid))
-            .responseSingle((response, byteBufMono) -> handleCalendarResponse(response, byteBufMono, eventUid))
-            .flatMapMany(vcalendar -> Flux.fromIterable(vcalendar.getComponents("VEVENT")));
-    }
-
-    private Mono<CalendarAttendeeParticipationStatus> extractUserParticipationStatus(List<VEvent> events, String userEmail) {
-        if (events.size() != 1) {
-            return Mono.empty(); // TODO: handle recurring events
-        }
-
-        return Mono.just(events.getFirst())
-            .map(CalendarParticipantsField::from)
-            .map(participants ->
-                participants.findParticipantByMailTo(userEmail)
-                    .flatMap(CalendarAttendeeField::participationStatus))
-            .map(OptionConverters::toJava)
-            .flatMap(Mono::justOrEmpty);
-    }
-
     private Mono<ByteBuf> createCalendarRequestBody(String eventUid) {
         return Mono.just(Unpooled.wrappedBuffer(
             new GetCalendarByEventIdRequestBody(eventUid).value().getBytes()));
     }
 
-    private Mono<Calendar> handleCalendarResponse(HttpClientResponse response, ByteBufMono byteBufMono, String eventUid) {
-        if (response.status() == HttpResponseStatus.MULTI_STATUS) {
-            return byteBufMono.asString(StandardCharsets.UTF_8)
+    private Mono<Calendar> handleCalendarResponse(ByteBufMono responseContent, HttpResponseStatus responseStatus, String eventUid) {
+        if (responseStatus == HttpResponseStatus.MULTI_STATUS) {
+            return responseContent.asString(StandardCharsets.UTF_8)
                 .map(content -> XMLUtil.parse(content, DavMultistatus.class))
                 .flatMap(DavClient::extractVCalendarFromResponse);
         }
         return Mono.error(new DavClientException(
             String.format("Unexpected status code: %d when finding VCALENDAR object containing event: %s",
-                response.status().code(), eventUid)));
+                responseStatus.code(), eventUid)));
     }
 
     private static Mono<Calendar> extractVCalendarFromResponse(DavMultistatus multistatus) {
