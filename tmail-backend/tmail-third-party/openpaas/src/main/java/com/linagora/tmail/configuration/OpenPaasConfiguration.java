@@ -36,7 +36,7 @@ public record OpenPaasConfiguration(URI apirUri,
                                     String adminPassword,
                                     boolean trustAllSslCerts,
                                     Optional<ContactConsumerConfiguration> contactConsumerConfiguration,
-                                    Optional<DavConfiguration> cardDavConfiguration) {
+                                    Optional<DavConfiguration> davConfiguration) {
 
     public record ContactConsumerConfiguration(List<AmqpUri> amqpUri,
                                                boolean quorumQueuesBypass) {

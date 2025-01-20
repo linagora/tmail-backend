@@ -498,7 +498,7 @@ public class DistributedServer {
     private static List<Module> chooseOpenPaasModule(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {
         if (openPaasModuleChooserConfiguration.enabled()) {
             ImmutableList.Builder<Module> moduleBuilder = ImmutableList.<Module>builder().add(new OpenPaasModule());
-            if (openPaasModuleChooserConfiguration.cardDavCollectedContactEnabled()) {
+            if (openPaasModuleChooserConfiguration.shouldEnableDavServerInteraction()) {
                 moduleBuilder.add(new OpenPaasModule.DavModule());
             }
             if (openPaasModuleChooserConfiguration.contactsConsumerEnabled()) {

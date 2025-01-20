@@ -79,9 +79,9 @@ public class OpenPaasModule extends AbstractModule {
         @Provides
         @Singleton
         public DavClient provideDavClient(OpenPaasConfiguration openPaasConfiguration) {
-            Preconditions.checkArgument(openPaasConfiguration.cardDavConfiguration().isPresent(),
+            Preconditions.checkArgument(openPaasConfiguration.davConfiguration().isPresent(),
                 "OpenPaasConfiguration should have dav configuration");
-            return new DavClient(openPaasConfiguration.cardDavConfiguration().get());
+            return new DavClient(openPaasConfiguration.davConfiguration().get());
         }
     }
 }
