@@ -18,6 +18,9 @@
 
 package com.linagora.tmail.dav.request;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+
 public record GetCalendarByEventIdRequestBody(String vEventUid) {
 
     public String value() {
@@ -39,5 +42,9 @@ public record GetCalendarByEventIdRequestBody(String vEventUid) {
                   </C:filter>
             </C:calendar-query>
             """.formatted(vEventUid);
+    }
+
+    public ByteBuf asByteBuf() {
+        return Unpooled.wrappedBuffer(value().getBytes());
     }
 }

@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.IOUtils;
@@ -41,7 +42,6 @@ import com.linagora.tmail.dav.xml.DavResponse;
 import com.linagora.tmail.dav.xml.XMLUtil;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
@@ -169,10 +169,31 @@ public class DavClient {
                             config.adminCredential().getPassword())))
             .request(HttpMethod.valueOf("REPORT"))
             .uri(calendarURI.getPath())
-            .send(createCalendarRequestBody(eventUid))
+            .send(Mono.just(new GetCalendarByEventIdRequestBody(eventUid).asByteBuf()))
             .responseSingle(
                 (response, responseContent) -> handleCalendarResponse(responseContent, response.status(), eventUid))
             .flatMapMany(vcalendar -> Flux.fromIterable(vcalendar.getComponents(Component.VEVENT)));
+    }
+
+    private Mono<Calendar> handleCalendarResponse(ByteBufMono responseContent, HttpResponseStatus responseStatus, String eventUid) {
+        if (responseStatus == HttpResponseStatus.MULTI_STATUS) {
+            return responseContent.asString(StandardCharsets.UTF_8)
+                .map(content -> XMLUtil.parse(content, DavMultistatus.class))
+                .map(DavClient::extractVCalendarFromResponse)
+                .flatMap(Mono::justOrEmpty);
+        }
+        return Mono.error(new DavClientException(
+            String.format("Unexpected status code: %d when finding VCALENDAR object containing event: %s",
+                responseStatus.code(), eventUid)));
+    }
+
+    private static Optional<Calendar> extractVCalendarFromResponse(DavMultistatus multistatus) {
+        return multistatus.getResponses()
+            .stream()
+            .findFirst()
+            .flatMap(davResponse -> davResponse.getPropstat().getProp().getCalendarData())
+            .map(calendarData -> CalendarEventParsed.parseICal4jCalendar(
+                IOUtils.toInputStream(calendarData.getValue(), StandardCharsets.UTF_8)));
     }
 
     public Flux<URI> findUserCalendars(String userId) {
@@ -181,8 +202,7 @@ public class DavClient {
                     .add(HttpHeaderNames.AUTHORIZATION,
                         HttpUtils.createBasicAuthenticationToken(
                             config.adminCredential().getUserName(),
-                            config.adminCredential().getPassword()))
-            )
+                            config.adminCredential().getPassword())))
             .request(HttpMethod.valueOf("PROPFIND"))
             .uri(String.format(CALENDARS_BASE_PATH, userId))
             .responseSingle((response, byteBufMono) -> {
@@ -213,30 +233,5 @@ public class DavClient {
 
         LOGGER.trace("Found user calendars: {}", hrefs);
         return hrefs;
-    }
-
-    private Mono<ByteBuf> createCalendarRequestBody(String eventUid) {
-        return Mono.just(Unpooled.wrappedBuffer(
-            new GetCalendarByEventIdRequestBody(eventUid).value().getBytes()));
-    }
-
-    private Mono<Calendar> handleCalendarResponse(ByteBufMono responseContent, HttpResponseStatus responseStatus, String eventUid) {
-        if (responseStatus == HttpResponseStatus.MULTI_STATUS) {
-            return responseContent.asString(StandardCharsets.UTF_8)
-                .map(content -> XMLUtil.parse(content, DavMultistatus.class))
-                .flatMap(DavClient::extractVCalendarFromResponse);
-        }
-        return Mono.error(new DavClientException(
-            String.format("Unexpected status code: %d when finding VCALENDAR object containing event: %s",
-                responseStatus.code(), eventUid)));
-    }
-
-    private static Mono<Calendar> extractVCalendarFromResponse(DavMultistatus multistatus) {
-        return Flux.fromIterable(multistatus.getResponses())
-            .next()
-            .map(davResponse -> davResponse.getPropstat().getProp().getCalendarData())
-            .flatMap(Mono::justOrEmpty)
-            .map(calendarData -> CalendarEventParsed.parseICal4jCalendar(
-                IOUtils.toInputStream(calendarData.getValue(), StandardCharsets.UTF_8)));
     }
 }
