@@ -129,13 +129,14 @@ public class DavClient {
 
     public Mono<PartStat> getUserParticipationStatus(String userId, String eventUid,
                                                      String userEmail) {
-        return findAllUsersCalendars(userId, eventUid)
+        return findAllUsersCalendars(userId)
             .flatMap(calendarURI ->
                 getContainingVCalendar(eventUid, calendarURI)
                     .flatMapMany(vcalendar -> Flux.fromIterable(vcalendar.<VEvent>getComponents("VEVENT"))))
             .collectList()
             .flatMap(events -> doGetUserParticipationStatus(events, userEmail))
-            .map(x -> new PartStat(x.value()));
+            .map(CalendarAttendeeParticipationStatus::value)
+            .map(PartStat::new);
     }
 
     private Mono<CalendarAttendeeParticipationStatus> doGetUserParticipationStatus(List<VEvent> vEvents, String userEmail) {
@@ -170,7 +171,9 @@ public class DavClient {
                         .flatMap(multiStatusResponse ->
                             extractVCalendarFromResponse(XMLUtil.parse(multiStatusResponse, DavMultistatus.class)));
                 } else {
-                    return Mono.empty();
+                    return Mono.error(
+                        new DavClientException("Unexpected status code: " + response.status().code()
+                                               + " when finding VCALENDAR object containing event: " + eventUid));
                 }
             });
     }
@@ -180,7 +183,7 @@ public class DavClient {
         return Mono.empty();
     }
 
-    private Flux<URI> findAllUsersCalendars(String userId, String username) {
+    private Flux<URI> findAllUsersCalendars(String userId) {
         return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, "application/xml"))
             .headers(headers -> headers.add(HttpHeaderNames.AUTHORIZATION,
                 HttpUtils.createBasicAuthenticationToken(
@@ -191,11 +194,12 @@ public class DavClient {
             .responseSingle((response, byteBufMono) -> {
                 if (response.status() == HttpResponseStatus.MULTI_STATUS) {
                     return byteBufMono.asString(StandardCharsets.UTF_8)
-                        .map(multiStatusResponse -> XMLUtil.parse(multiStatusResponse,
-                            DavMultistatus.class))
+                        .map(multiStatusResponse -> XMLUtil.parse(multiStatusResponse, DavMultistatus.class))
                         .map(this::extractCalendarURIsFromResponse);
                 } else {
-                    return Mono.empty();
+                    return Mono.error(
+                        new DavClientException("Unexpected status code: " + response.status().code()
+                                                      + " when finding user calendars for user: " + userId));
                 }
             }).flatMapMany(Flux::fromIterable);
     }
