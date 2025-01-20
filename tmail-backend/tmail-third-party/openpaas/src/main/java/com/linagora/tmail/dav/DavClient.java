@@ -72,17 +72,25 @@ public class DavClient {
         adminCredentialWithDelegatedFunction;
 
     public DavClient(DavConfiguration davConfiguration) {
-        this.client = HttpClient.create()
-            .baseUrl(davConfiguration.baseUrl().toString())
-            .responseTimeout(davConfiguration.responseTimeout().orElse(RESPONSE_TIMEOUT_DEFAULT));
         this.davConfiguration = davConfiguration;
-
-        davConfiguration.trustAllSslCerts().ifPresent(trustAllSslCerts ->
-            client.secure(sslContextSpec -> sslContextSpec.sslContext(
-                SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE))));
+        this.client = createHttpClient(davConfiguration.trustAllSslCerts().orElse(false));
 
         this.adminCredentialWithDelegatedFunction = openPaasUsername -> new UsernamePasswordCredentials(davConfiguration.adminCredential().getUserName() + "&" + openPaasUsername,
             davConfiguration.adminCredential().getPassword());
+    }
+
+    private HttpClient createHttpClient(boolean trustAllSslCerts) {
+        if (trustAllSslCerts) {
+            return HttpClient.create()
+                .baseUrl(davConfiguration.baseUrl().toString())
+                .responseTimeout(davConfiguration.responseTimeout().orElse(RESPONSE_TIMEOUT_DEFAULT))
+                .secure(sslContextSpec -> sslContextSpec.sslContext(
+                    SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)));
+        } else {
+            return HttpClient.create()
+                .baseUrl(davConfiguration.baseUrl().toString())
+                .responseTimeout(davConfiguration.responseTimeout().orElse(RESPONSE_TIMEOUT_DEFAULT));
+        }
     }
 
     public Mono<Boolean> existsCollectedContact(String username, String userId,
