@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.ticket
 
-import java.net.URL
+import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets
 import java.util.stream
 
@@ -79,8 +79,8 @@ case class TicketRoutesCapability(properties: TicketRoutesCapabilityProperties) 
 }
 
 case class TicketRoutesCapabilityProperties(urlPrefix: String) extends CapabilityProperties {
-  val generationEndpoint: URL = new URL(s"$urlPrefix/$ENDPOINT")
-  val revocationEndpoint: URL = new URL(s"$urlPrefix/$ENDPOINT")
+  val generationEndpoint: URL = new URI(s"$urlPrefix/$ENDPOINT").toURL
+  val revocationEndpoint: URL = new URI(s"$urlPrefix/$ENDPOINT").toURL
 
   override def jsonify(): JsObject = Json.obj(
     ("generationEndpoint", generationEndpoint.toString),
