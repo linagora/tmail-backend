@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.annotations.VisibleForTesting;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -52,17 +53,27 @@ public class RabbitMQDisconnectorConsumer implements Startable, Closeable {
     private final ReceiverProvider receiverProvider;
     private final InVMDisconnectorNotifier inVMDisconnectorNotifier;
     private final DisconnectorRequestSerializer deserializer;
+    private final String disconnectorQueueName;
 
     private Disposable consumeMessages;
+
+    @VisibleForTesting
+    public RabbitMQDisconnectorConsumer(ReceiverProvider receiverProvider,
+                                        InVMDisconnectorNotifier inVMDisconnectorNotifier,
+                                        DisconnectorRequestSerializer deserializer,
+                                        String disconnectorQueueName) {
+        this.receiverProvider = receiverProvider;
+        this.inVMDisconnectorNotifier = inVMDisconnectorNotifier;
+        this.deserializer = deserializer;
+        this.disconnectorQueueName = disconnectorQueueName;
+    }
 
     @Inject
     @Singleton
     public RabbitMQDisconnectorConsumer(ReceiverProvider receiverProvider,
                                         InVMDisconnectorNotifier inVMDisconnectorNotifier,
                                         DisconnectorRequestSerializer deserializer) {
-        this.receiverProvider = receiverProvider;
-        this.inVMDisconnectorNotifier = inVMDisconnectorNotifier;
-        this.deserializer = deserializer;
+        this(receiverProvider, inVMDisconnectorNotifier, deserializer, TMAIL_DISCONNECTOR_QUEUE_NAME);
     }
 
     public void start() {
@@ -77,7 +88,7 @@ public class RabbitMQDisconnectorConsumer implements Startable, Closeable {
 
     private Disposable doConsumeMessages() {
         return Flux.using(receiverProvider::createReceiver,
-                receiver -> receiver.consumeManualAck(TMAIL_DISCONNECTOR_QUEUE_NAME),
+                receiver -> receiver.consumeManualAck(disconnectorQueueName),
                 Receiver::close)
             .flatMap(this::consumeMessage)
             .subscribe();
@@ -97,5 +108,9 @@ public class RabbitMQDisconnectorConsumer implements Startable, Closeable {
     @Override
     public void close() {
         Optional.ofNullable(consumeMessages).ifPresent(Disposable::dispose);
+    }
+
+    public String disconnectorQueueName() {
+        return disconnectorQueueName;
     }
 }

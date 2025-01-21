@@ -18,7 +18,6 @@
 
 package com.linagora.tmail;
 
-import static com.linagora.tmail.RabbitMQDisconnectorConsumer.TMAIL_DISCONNECTOR_QUEUE_NAME;
 import static com.linagora.tmail.RabbitMQDisconnectorNotifier.TMAIL_DISCONNECTOR_EXCHANGE_NAME;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 
@@ -63,12 +62,12 @@ public class RabbitMQDisconnectorOperator implements Startable, SimpleConnection
                     .type(BuiltinExchangeType.FANOUT.getType())
                     .durable(DURABLE)),
                 sender.declareQueue(QueueSpecification
-                    .queue(TMAIL_DISCONNECTOR_QUEUE_NAME)
+                    .queue(disconnectorConsumer.disconnectorQueueName())
                     .durable(DURABLE)
                     .arguments(queueArgumentSupplier().build())),
                 sender.bind(BindingSpecification.binding()
                     .exchange(TMAIL_DISCONNECTOR_EXCHANGE_NAME)
-                    .queue(TMAIL_DISCONNECTOR_QUEUE_NAME)
+                    .queue(disconnectorConsumer.disconnectorQueueName())
                     .routingKey(RabbitMQDisconnectorNotifier.ROUTING_KEY)))
             .then().block();
 
