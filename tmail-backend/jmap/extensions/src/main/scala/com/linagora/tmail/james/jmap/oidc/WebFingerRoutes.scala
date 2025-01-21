@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.oidc
 
-import java.net.{URL, URLDecoder, URLEncoder}
+import java.net.{URI, URL, URLDecoder, URLEncoder}
 import java.nio.charset.StandardCharsets
 import java.util.stream
 
@@ -73,7 +73,7 @@ object WebFingerRoutes {
 
 class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends JMAPRoutes {
   private val ENDPOINT: String = ".well-known/webfinger"
-  private val REL = new URL("http://openid.net/specs/connect/1.0/issuer")
+  private val REL = new URI("http://openid.net/specs/connect/1.0/issuer").toURL
 
   override def routes(): stream.Stream[JMAPRoute] =
     configuration.openIdUrl.map(url => stream.Stream.of(
@@ -107,7 +107,7 @@ class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends J
     case (None, _) => Failure(new IllegalArgumentException("'resource' query parameter is compulsory"))
     case (_, None) => Failure(new IllegalArgumentException("'rel' query parameter is compulsory"))
     case (Some(resource), Some("http://openid.net/specs/connect/1.0/issuer")) =>
-      Try(WebFingerRequest(new URL(URLDecoder.decode(resource, StandardCharsets.UTF_8))))
+      Try(WebFingerRequest(new URI(URLDecoder.decode(resource, StandardCharsets.UTF_8)).toURL))
     case _ => Failure(new IllegalArgumentException(s"'rel' supports only '$REL' (URL encoded: ${URLEncoder.encode(REL.toString, StandardCharsets.UTF_8)})"))
   }
 

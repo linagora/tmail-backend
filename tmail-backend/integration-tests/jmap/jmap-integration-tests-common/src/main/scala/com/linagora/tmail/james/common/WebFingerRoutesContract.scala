@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.common
 
-import java.net.URL
+import java.net.{URI, URL}
 
 import com.google.inject.Module
 import com.linagora.tmail.james.jmap.WebFingerConfiguration
@@ -34,7 +34,7 @@ import org.junit.jupiter.api.{BeforeEach, Test}
 
 object WebFingerRoutesContract {
   val MODULE: Module = binder => binder.bind(classOf[WebFingerConfiguration])
-    .toInstance(new WebFingerConfiguration(Some(new URL("https://auth.linagora.com/auth/realms/jmap"))))
+    .toInstance(new WebFingerConfiguration(Some(new URI("https://auth.linagora.com/auth/realms/jmap").toURL)))
 }
 
 trait WebFingerRoutesContract {
