@@ -183,12 +183,14 @@ public class TMailEventDispatcher {
             .map(EventBus.EventWithRegistrationKey::event)
             .collect(ImmutableList.toImmutableList());
 
+        ImmutableSet<RegistrationKey> keys = events.stream()
+            .flatMap(event -> event.keys().stream())
+            .collect(ImmutableSet.toImmutableSet());
+
         return Mono.fromCallable(() -> eventSerializer.toJson(underlyingEvents))
             .flatMap(serializedEvent -> Mono.zipDelayError(
                 remoteGroupsDispatch(serializedEvent.getBytes(StandardCharsets.UTF_8), underlyingEvents),
-                Flux.fromIterable(events)
-                    .concatMap(e -> remoteKeysDispatch(serializedEvent, e.keys()))
-                    .then()))
+                remoteKeysDispatch(serializedEvent, keys)))
             .then();
     }
 
