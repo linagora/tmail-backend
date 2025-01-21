@@ -30,6 +30,7 @@ import org.apache.james.jmap.mail.BlobId
 import org.apache.james.jmap.routes.{Applicable, Blob, BlobResolutionResult, BlobResolver, NonApplicable}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.{ContentType, MessageId}
+import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
 
 import scala.util.{Success, Try}
@@ -45,12 +46,12 @@ case class EncryptedAttachmentBlob(blobId: BlobId, bytes: Array[Byte]) extends B
 class EncryptedAttachmentBlobResolver @Inject()(encryptedEmailContentStore: EncryptedEmailContentStore,
                                      messageIdFactory: MessageId.Factory,
                                      blobStore: BlobStore) extends BlobResolver {
-  override def resolve(blobId: BlobId, mailboxSession: MailboxSession): BlobResolutionResult =
+  override def resolve(blobId: BlobId, mailboxSession: MailboxSession): Publisher[BlobResolutionResult] =
     EncryptedAttachmentBlobId.parse(messageIdFactory, blobId.value.value)
-      .fold(_ => NonApplicable,
-        encryptedId => Applicable(
+      .fold(_ =>  SMono.just(NonApplicable),
+        encryptedId => SMono.just(Applicable(
           SMono(encryptedEmailContentStore.retrieveAttachmentContent(encryptedId.messageId, encryptedId.position))
             .flatMap((blobStoreId: org.apache.james.blob.api.BlobId) =>
               SMono(blobStore.readBytes(blobStore.getDefaultBucketName, blobStoreId, StoragePolicy.LOW_COST)))
-            .map(bytes => EncryptedAttachmentBlob(blobId, bytes))))
+            .map(bytes => EncryptedAttachmentBlob(blobId, bytes)))))
 }
