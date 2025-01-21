@@ -144,6 +144,7 @@ import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
+import com.linagora.tmail.RabbitMQDisconnectorModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
@@ -338,6 +339,7 @@ public class DistributedServer {
             new DistributedEmailAddressContactEventDeadLettersModule(),
             new DistributedTaskSerializationModule(),
             new JMAPEventBusModule(),
+            new RabbitMQDisconnectorModule(),
             new RabbitMQEmailAddressContactModule(),
             new RabbitMQEventBusModule(),
             new RabbitMQModule(),

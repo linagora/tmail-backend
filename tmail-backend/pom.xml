@@ -43,6 +43,8 @@
 
         <module>combined-identity</module>
 
+        <module>data/data-rabbitmq</module>
+
         <module>deployment-tests</module>
 
         <module>guice/blob-guice</module>
@@ -76,6 +78,7 @@
 
         <module>webadmin/webadmin-email-address-contact</module>
         <module>webadmin/webadmin-mailbox</module>
+        <module>webadmin/webadmin-protocols</module>
         <module>webadmin/webadmin-team-mailboxes</module>
         <module>webadmin/webadmin-rate-limit</module>
         <module>healthcheck</module>
@@ -125,6 +128,11 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>combined-identity</artifactId>
                 <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>data-rabbitmq</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
