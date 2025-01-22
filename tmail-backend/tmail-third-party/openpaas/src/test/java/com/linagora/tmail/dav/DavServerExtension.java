@@ -1,155 +1,132 @@
-/********************************************************************
- *  As a subpart of Twake Mail, this file is edited by Linagora.    *
- *                                                                  *
- *  https://twake-mail.com/                                         *
- *  https://linagora.com                                            *
- *                                                                  *
- *  This file is subject to The Affero Gnu Public License           *
- *  version 3.                                                      *
- *                                                                  *
- *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
- *                                                                  *
- *  This program is distributed in the hope that it will be         *
- *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
- *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
- *  PURPOSE. See the GNU Affero General Public License for          *
- *  more details.                                                   *
- ********************************************************************/
-
-package com.linagora.tmail.carddav;
-
-import static org.mockserver.model.NottableString.string;
+package com.linagora.tmail.dav;
 
 import java.net.URI;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.function.Function;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.created;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
+import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.request;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 import org.apache.http.auth.UsernamePasswordCredentials;
-import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
-import org.mockserver.configuration.ConfigurationProperties;
-import org.mockserver.integration.ClientAndServer;
-import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpResponse;
-import org.mockserver.verify.VerificationTimes;
+import org.apache.james.util.ClassLoaderUtils;
 
-import com.github.fge.lambdas.Throwing;
+import com.github.tomakehurst.wiremock.client.MappingBuilder;
+import com.github.tomakehurst.wiremock.http.Body;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.matching.UrlPattern;
 import com.linagora.tmail.HttpUtils;
-import com.linagora.tmail.configuration.CardDavConfiguration;
+import com.linagora.tmail.configuration.DavConfiguration;
 
-public class CardDavServerExtension implements BeforeEachCallback, AfterEachCallback, BeforeAllCallback, AfterAllCallback, ParameterResolver {
+public class DavServerExtension extends WireMockExtension {
+    public static final String ALICE_ID = "ALICE_ID";
+    public static final String ALICE = "ALICE";
+    public static final String ALICE_CALENDAR_1 = "66e95872cf2c37001f0d2a09";
+    public static final String ALICE_CALENDAR_2 = "0b4e80d7-7337-458f-852d-7ae8d72a74b2";
 
-    public static final String CARD_DAV_ADMIN = "admin";
-    public static final String CARD_DAV_ADMIN_PASSWORD = "secret123";
-    public static final Function<String, String> CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION = openPaasUserName -> HttpUtils.createBasicAuthenticationToken(CARD_DAV_ADMIN + "&" + openPaasUserName, CARD_DAV_ADMIN_PASSWORD);
+    public static final String BOB_ID = "BOB_ID";
+    public static final String BOB = "BOB";
 
-    private ClientAndServer mockServer = null;
+    public static final String DAV_ADMIN = "admin";
+    public static final String DAV_ADMIN_PASSWORD = "secret123";
 
-    @Override
-    public void afterAll(ExtensionContext extensionContext) throws Exception {
-        if (mockServer != null) {
-            mockServer.stop();
-        }
+    public DavServerExtension(Builder builder) {
+        super(builder);
     }
 
     @Override
-    public void beforeAll(ExtensionContext extensionContext) throws Exception {
-        mockServer = ClientAndServer.startClientAndServer(0);
-        ConfigurationProperties.logLevel("DEBUG");
-    }
+    protected void onBeforeEach(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        super.onBeforeEach(wireMockRuntimeInfo);
 
-    @Override
-    public void afterEach(ExtensionContext extensionContext) throws Exception {
-        if (mockServer != null) {
-            mockServer.reset();
-        }
-    }
-
-    @Override
-    public void beforeEach(ExtensionContext extensionContext) throws Exception {
-    }
-
-    @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext.getParameter().getType().equals(ClientAndServer.class);
-    }
-
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return mockServer;
-    }
-
-    public URI getBaseUrl() {
-        return Throwing.supplier(() -> new URI("http://localhost:" + mockServer.getPort())).get();
+        stubFor(
+            propfind("/calendars/" + ALICE_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body(
+                                ClassLoaderUtils.getSystemResourceAsByteArray("ALICE_PROPFIND_CALENDARS_RESPONSE.xml")))
+                        .withStatus(207)));
     }
 
     public void setCollectedContactExists(String openPassUserName, String openPassUserId, String collectedContactUid, boolean exists) {
         if (exists) {
-            mockServer.when(HttpRequest.request()
-                    .withMethod("GET")
-                    .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
-                    .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))))
-                .respond(HttpResponse.response()
-                    .withStatusCode(200));
+            stubFor(
+                get("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId, collectedContactUid))
+                    .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+                    .willReturn(
+                        ok()));
+
         } else {
-            mockServer.when(HttpRequest.request()
-                    .withMethod("GET")
-                    .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
-                    .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))))
-                .respond(HttpResponse.response()
-                    .withStatusCode(404));
+            stubFor(
+                get("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId, collectedContactUid))
+                    .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+                    .willReturn(notFound()));
         }
     }
 
     public void setCreateCollectedContact(String openPassUserName, String openPassUserId, String collectedContactUid) {
-        mockServer.when(HttpRequest.request()
-                .withMethod("PUT")
-                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
-                .withHeader(string("Content-Type"), string("text/vcard"))
-                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))))
-            .respond(HttpResponse.response()
-                .withStatusCode(201));
+        stubFor(
+            put("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId, collectedContactUid))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+                .withHeader("Content-Type", equalTo("application/vcard"))
+                .willReturn(created()));
     }
 
     public void setCreateCollectedContactAlreadyExists(String openPassUserName, String openPassUserId, String collectedContactUid) {
-        mockServer.when(HttpRequest.request()
-                .withMethod("PUT")
-                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
-                .withHeader(string("Content-Type"), string("text/vcard"))
-                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))))
-            .respond(HttpResponse.response()
-                .withStatusCode(204));
+        stubFor(
+            put("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId, collectedContactUid))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+                .withHeader("Content-Type", equalTo("application/vcard"))
+                .willReturn(noContent()));
     }
 
     public void assertCollectedContactExistsWasCalled(String openPassUserName, String openPassUserId, String collectedContactUid, int times) {
-        mockServer.verify(HttpRequest.request()
-                .withMethod("GET")
-                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid)
-                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName))),
-            VerificationTimes.exactly(times));
+        verify(times,
+            getRequestedFor(
+                urlEqualTo("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId,
+                    collectedContactUid)))
+                .withHeader("Authorization",
+                equalTo(createDelegatedBasicAuthenticationToken(openPassUserName))));
     }
 
     public void assertCreateCollectedContactWasCalled(String openPassUserName, String openPassUserId, String collectedContactUid, int times) {
-        mockServer.verify(HttpRequest.request()
-                .withMethod("PUT")
-                .withPath("/addressbooks/" + openPassUserId + "/collected/" + collectedContactUid + ".vcf")
-                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(openPassUserName)))
-                .withHeader(string("Content-Type"), string("text/vcard")),
-            VerificationTimes.exactly(times));
+        verify(times,
+            putRequestedFor(
+                urlEqualTo("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId,
+                    collectedContactUid)))
+                .withHeader("Authorization",
+                    equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+                .withHeader("Content-Type", equalTo("application/vcard")));
     }
 
-    public CardDavConfiguration getCardDavConfiguration() {
-        return new CardDavConfiguration(
-            new UsernamePasswordCredentials(CARD_DAV_ADMIN, CARD_DAV_ADMIN_PASSWORD),
-            getBaseUrl(),
+    public DavConfiguration getCardDavConfiguration() {
+        return new DavConfiguration(
+            new UsernamePasswordCredentials(DAV_ADMIN, DAV_ADMIN_PASSWORD),
+            URI.create(baseUrl()),
             Optional.of(true),
             Optional.of(Duration.ofSeconds(10)));
+    }
+
+    public static String createDelegatedBasicAuthenticationToken(String username) {
+        return HttpUtils.createBasicAuthenticationToken(DAV_ADMIN + "&" + username, DAV_ADMIN_PASSWORD);
+    }
+
+    static MappingBuilder propfind(String url) {
+        return request("PROPFIND", new UrlPattern(equalTo(url), false));
+    }
+
+    private static MappingBuilder report(String url) {
+        return request("REPORT", new UrlPattern(equalTo(url), false));
     }
 }

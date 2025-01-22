@@ -62,7 +62,6 @@ public class DavClient {
 
     private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String COLLECTED_ADDRESS_BOOK_PATH = "/addressbooks/%s/collected/%s.vcf";
-    private static final String CALENDARS_BASE_PATH = "/calendars/%s";
     private static final Pattern CALENDAR_URI_PATTERN = Pattern.compile("/calendars/[^/]+/[^/]+/");
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String ACCEPT_XML = "application/xml";
@@ -151,22 +150,20 @@ public class DavClient {
         };
     }
 
-    public Flux<VEvent> getCalendarVEventsByUid(String userId, String eventUid) {
+    public Flux<VEvent> getCalendarVEventsByUid(String userId, String eventUid, String username) {
         Preconditions.checkArgument(StringUtils.isNotEmpty(eventUid), "VEvent id should not be empty");
         Preconditions.checkArgument(StringUtils.isNotEmpty(userId), "OpenPaas user id should not be empty");
 
-        return findUserCalendars(userId)
-            .flatMap(calendarURI -> getCalendarVEventsByUidFromCalendar(calendarURI, eventUid));
+        return findUserCalendars(userId, username)
+            .flatMap(calendarURI -> getCalendarVEventsByUidFromCalendar(calendarURI, eventUid, username));
     }
 
-    public Flux<VEvent> getCalendarVEventsByUidFromCalendar(URI calendarURI, String eventUid) {
+    public Flux<VEvent> getCalendarVEventsByUidFromCalendar(URI calendarURI, String eventUid, String username) {
         return client.headers(headers ->
                 headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                     .add("Depth", "1")
                     .add(HttpHeaderNames.AUTHORIZATION,
-                        HttpUtils.createBasicAuthenticationToken(
-                            config.adminCredential().getUserName(),
-                            config.adminCredential().getPassword())))
+                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
             .request(HttpMethod.valueOf("REPORT"))
             .uri(calendarURI.getPath())
             .send(Mono.just(new GetCalendarByEventIdRequestBody(eventUid).asByteBuf()))
@@ -196,15 +193,13 @@ public class DavClient {
                 IOUtils.toInputStream(calendarData.getValue(), StandardCharsets.UTF_8)));
     }
 
-    public Flux<URI> findUserCalendars(String userId) {
+    public Flux<URI> findUserCalendars(String userId, String username) {
         return client.headers(headers ->
                 headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                     .add(HttpHeaderNames.AUTHORIZATION,
-                        HttpUtils.createBasicAuthenticationToken(
-                            config.adminCredential().getUserName(),
-                            config.adminCredential().getPassword())))
+                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
             .request(HttpMethod.valueOf("PROPFIND"))
-            .uri(String.format(CALENDARS_BASE_PATH, userId))
+            .uri("/calendars/" + userId)
             .responseSingle((response, byteBufMono) -> {
                 if (response.status() == HttpResponseStatus.MULTI_STATUS) {
                     return byteBufMono.asString(StandardCharsets.UTF_8)

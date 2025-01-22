@@ -18,46 +18,58 @@
 
 package com.linagora.tmail.dav;
 
-import static com.linagora.tmail.dav.DavServerExtension.CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_ID;
+import static com.linagora.tmail.dav.DavServerExtension.createDelegatedBasicAuthenticationToken;
+import static com.linagora.tmail.dav.DavServerExtension.propfind;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.mockserver.model.NottableString.string;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.util.ClassLoaderUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.mockserver.integration.ClientAndServer;
-import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpResponse;
+
+import com.github.tomakehurst.wiremock.http.Body;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 
 import ezvcard.parameter.EmailType;
-
-import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 
 public class DavClientTest {
     private static final String OPENPAAS_USER_NAME = "openpaasUserName1";
     private static final String OPENPAAS_USER_ID = "openpaasUserId1";
 
     @RegisterExtension
-    static DavServerExtension cardDavServerExtension = new DavServerExtension();
+    static DavServerExtension davServerExtension = new DavServerExtension(
+        WireMockExtension.extensionOptions()
+            .options(wireMockConfig().dynamicPort()));
 
     private DavClient client;
 
     @BeforeEach
     void setup() {
-        client = new DavClient(cardDavServerExtension.getCardDavConfiguration());
+        client = new DavClient(davServerExtension.getCardDavConfiguration());
     }
 
     @Test
     void existsCollectedContactShouldReturnTrueWhenHTTPResponseIs200() {
         String collectedContactUid = UUID.randomUUID().toString();
-        cardDavServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, true);
+        davServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, true);
         assertThat(client.existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
             .isTrue();
     }
@@ -65,20 +77,18 @@ public class DavClientTest {
     @Test
     void existsCollectedContactShouldReturnFalseWhenHTTPResponseIs404() {
         String collectedContactUid = UUID.randomUUID().toString();
-        cardDavServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, false);
+        davServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, false);
         assertThat(client.existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
             .isFalse();
     }
 
     @Test
-    void existsCollectedContactShouldReturnFalseWhenHTTPResponseIs500(ClientAndServer mockServer) {
+    void existsCollectedContactShouldReturnFalseWhenHTTPResponseIs500() {
         String collectedContactUid = UUID.randomUUID().toString();
-        mockServer.when(HttpRequest.request()
-                .withMethod("GET")
-                .withPath("/addressbooks/" + OPENPAAS_USER_ID + "/collected/" + collectedContactUid + ".vcf")
-                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(OPENPAAS_USER_NAME))))
-            .respond(HttpResponse.response()
-                .withStatusCode(500));
+        davServerExtension.stubFor(
+            get("/addressbooks/%s/collected/%s.vcf".formatted(OPENPAAS_USER_ID, collectedContactUid))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+                .willReturn(serverError()));
 
         assertThatThrownBy(() -> client.existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
             .isInstanceOf(DavClientException.class);
@@ -87,7 +97,7 @@ public class DavClientTest {
     @Test
     void createCollectedContactShouldNotThrowWhenHTTPResponseIs201() throws Exception {
         String collectedContactUid = UUID.randomUUID().toString();
-        cardDavServerExtension.setCreateCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid);
+        davServerExtension.setCreateCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid);
 
         CardDavCreationObjectRequest request = new CardDavCreationObjectRequest(
             "4.0",
@@ -103,14 +113,13 @@ public class DavClientTest {
     }
 
     @Test
-    void createCollectedContactShouldThrowWhenHTTPResponseIs404(ClientAndServer mockServer) throws Exception {
+    void createCollectedContactShouldThrowWhenHTTPResponseIs404() throws Exception {
         String collectedContactUid = UUID.randomUUID().toString();
-        mockServer.when(HttpRequest.request()
-                .withMethod("PUT")
-                .withPath("/addressbooks/user1/collected/" + collectedContactUid + ".vcf")
-                .withHeader(string("Authorization"), string(CARD_DAV_ADMIN_WITH_DELEGATED_AUTHORIZATION.apply(OPENPAAS_USER_NAME))))
-            .respond(HttpResponse.response()
-                .withStatusCode(404));
+
+        davServerExtension.stubFor(
+            put("/addressbooks/user1/collected/%s.vcf".formatted(collectedContactUid))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+                .willReturn(notFound()));
 
         CardDavCreationObjectRequest request = new CardDavCreationObjectRequest(
             "4.0",
@@ -123,5 +132,44 @@ public class DavClientTest {
 
         assertThatThrownBy(() -> client.createCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, request).block())
             .isInstanceOf(DavClientException.class);
+    }
+
+    @Test
+    void findUserCalendarsShouldSucceed() {
+        assertThat(client.findUserCalendars(ALICE_ID, ALICE).collectList().block())
+            .hasSameElementsAs(
+                List.of(
+                    URI.create("/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/"),
+                    URI.create("/calendars/ALICE_ID/0b4e80d7-7337-458f-852d-7ae8d72a74b2/")));
+    }
+
+    @Test
+    void findUserCalendarsShouldReturnEmptyWhenUserHasNoCalendars() {
+        davServerExtension.stubFor(
+            propfind("/calendars/" + OPENPAAS_USER_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body(ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_CALENDARS.xml")))
+                        .withStatus(207)));
+
+        assertThat(client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
+            .isEmpty();
+    }
+
+    @Test
+    void findUserCalendarsShouldReturnEmptyWhenUserHasOnlySystemCalendars() {
+        davServerExtension.stubFor(
+            propfind("/calendars/" + OPENPAAS_USER_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body(ClassLoaderUtils.getSystemResourceAsByteArray("CALENDARS_CONTAINING_ONLY_INBOX_OUTBOX.xml")))
+                        .withStatus(207)));
+
+        assertThat(client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
+            .isEmpty();
     }
 }
