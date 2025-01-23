@@ -50,6 +50,12 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-openpaas</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>webadmin-integration-tests-common</artifactId>
             <scope>test</scope>
         </dependency>
@@ -127,6 +133,11 @@
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-rate-limiter-redis</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mock-server</groupId>
+            <artifactId>mockserver-netty</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

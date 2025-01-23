@@ -61,9 +61,15 @@ object EmailAddressContact {
 
 case class EmailAddressContact(id: UUID, fields: ContactFields)
 
+object ContactFields {
+  def of(mailAddress: MailAddress, displayName: String): ContactFields = ContactFields(mailAddress, firstname = Option(displayName).getOrElse(""), surname = "")
+}
+
 case class ContactFields(address: MailAddress, firstname: String = "", surname: String = "") {
   def contains(part: String): Boolean =
     address.asString().contains(part) || firstname.contains(part) || surname.contains(part)
+
+  def fullName(): String = s"$firstname $surname".trim
 }
 
 case class ContactNotFoundException(mailAddress: MailAddress) extends RuntimeException {

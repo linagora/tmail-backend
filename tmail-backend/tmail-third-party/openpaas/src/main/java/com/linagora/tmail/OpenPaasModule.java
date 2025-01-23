@@ -32,9 +32,12 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 import com.linagora.tmail.api.OpenPaasRestClient;
+import com.linagora.tmail.carddav.CardDavAddContactProcessor;
 import com.linagora.tmail.carddav.CardDavClient;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.james.jmap.contact.ContactAddIndexingProcessor;
 
 public class OpenPaasModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasModule.class);
@@ -66,6 +69,12 @@ public class OpenPaasModule extends AbstractModule {
     }
 
     public static class CardDavModule extends AbstractModule {
+
+        @Override
+        protected void configure() {
+            bind(ContactAddIndexingProcessor.class).to(CardDavAddContactProcessor.class)
+                .in(Scopes.SINGLETON);
+        }
 
         @Provides
         @Singleton
