@@ -120,6 +120,7 @@ import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
+import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
 
 public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
@@ -146,6 +147,7 @@ public class MemoryServer {
         new TMailJMAPModule(),
         new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
+        new ContactIndexingModule(),
         new CustomMethodModule(),
         new EncryptedEmailDetailedViewGetMethodModule(),
         new EncryptedEmailFastViewGetMethodModule(),

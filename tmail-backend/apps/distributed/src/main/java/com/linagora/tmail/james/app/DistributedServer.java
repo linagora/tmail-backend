@@ -206,6 +206,7 @@ import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
+import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
 
 import reactor.core.publisher.Mono;
 
@@ -250,7 +251,8 @@ public class DistributedServer {
         new EmailAddressContactRoutesModule(),
         new UserIdentityModule(),
         new MailboxesCleanupModule(),
-        new InboxArchivalTaskModule());
+        new InboxArchivalTaskModule(),
+        new ContactIndexingModule());
 
     public static final Module JMAP = Modules.override(
         new TMailJMAPModule(),
@@ -389,12 +391,12 @@ public class DistributedServer {
                 new CassandraUsersRepositoryModule()).chooseModule(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
-            .combineWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .combineWith(chooseRedisRateLimiterModule(configuration))
             .combineWith(chooseRspamdModule(configuration))
             .combineWith(chooseQuotaModule(configuration))
             .combineWith(chooseDeletedMessageVault(configuration.vaultConfiguration()))
             .combineWith(choosePop3ServerModule(configuration))
+            .overrideWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
