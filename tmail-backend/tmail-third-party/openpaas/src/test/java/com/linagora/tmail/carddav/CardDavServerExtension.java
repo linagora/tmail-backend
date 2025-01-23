@@ -26,7 +26,9 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -42,7 +44,7 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.CardDavConfiguration;
 
-public class CardDavServerExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
+public class CardDavServerExtension implements BeforeEachCallback, AfterEachCallback, BeforeAllCallback, AfterAllCallback, ParameterResolver {
 
     public static final String CARD_DAV_ADMIN = "admin";
     public static final String CARD_DAV_ADMIN_PASSWORD = "secret123";
@@ -51,16 +53,27 @@ public class CardDavServerExtension implements BeforeEachCallback, AfterEachCall
     private ClientAndServer mockServer = null;
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) throws Exception {
+    public void afterAll(ExtensionContext extensionContext) throws Exception {
         if (mockServer != null) {
             mockServer.stop();
         }
     }
 
     @Override
-    public void beforeEach(ExtensionContext extensionContext) throws Exception {
+    public void beforeAll(ExtensionContext extensionContext) throws Exception {
         mockServer = ClientAndServer.startClientAndServer(0);
         ConfigurationProperties.logLevel("DEBUG");
+    }
+
+    @Override
+    public void afterEach(ExtensionContext extensionContext) throws Exception {
+        if (mockServer != null) {
+            mockServer.reset();
+        }
+    }
+
+    @Override
+    public void beforeEach(ExtensionContext extensionContext) throws Exception {
     }
 
     @Override

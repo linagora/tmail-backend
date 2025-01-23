@@ -18,11 +18,8 @@
 
 package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
-import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
 
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 
@@ -36,12 +33,9 @@ import org.apache.james.queue.rabbitmq.RabbitMQMailQueueManagement;
 import org.apache.james.queue.rabbitmq.view.RabbitMQMailQueueConfiguration;
 import org.apache.james.queue.rabbitmq.view.cassandra.configuration.CassandraMailQueueViewConfiguration;
 
-import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.AmqpUri;
-import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.james.jmap.RabbitMQEmailAddressContactConfiguration;
 
 public class TestRabbitMQModule extends AbstractModule {
@@ -105,19 +99,6 @@ public class TestRabbitMQModule extends AbstractModule {
     @Singleton
     private RabbitMQMailQueueConfiguration getMailQueueSizeConfiguration() {
         return RabbitMQMailQueueConfiguration.sizeMetricsEnabled();
-    }
-
-    @Provides
-    @Singleton
-    public OpenPaasConfiguration provideOpenPaasConfiguration() throws URISyntaxException {
-        return new OpenPaasConfiguration(
-            URI.create("http://localhost:8081"),
-            "user",
-            "password",
-            OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
-            new OpenPaasConfiguration.ContactConsumerConfiguration(
-                ImmutableList.of(AmqpUri.from(rabbitMQ.amqpUri())),
-                OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED));
     }
 
     public static class QueueCleanUp implements CleanupTasksPerformer.CleanupTask {

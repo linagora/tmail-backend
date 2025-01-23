@@ -213,11 +213,11 @@ public class MemoryServer {
                 .chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
-            .combineWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .combineWith(choosePop3ServerModule(configuration))
+            .combineWith(chooseDropListsModule(configuration))
+            .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
-            .overrideWith(chooseJmapModule(configuration))
-            .combineWith(chooseDropListsModule(configuration));
+            .overrideWith(chooseJmapModule(configuration));
     }
 
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
