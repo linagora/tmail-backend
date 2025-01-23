@@ -21,7 +21,7 @@ package com.linagora.tmail.api
 import java.net.URI
 
 import com.linagora.tmail.HttpUtils
-import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, BOB_INVALID_EMAIL, BOB_USER_ID, ERROR_EMAIL, GOOD_AUTHENTICATION_TOKEN, LOGGER, NOTFOUND_EMAIL}
+import com.linagora.tmail.api.OpenPaasServerExtension.{ALICE_EMAIL, ALICE_USER_ID, BAD_AUTHENTICATION_TOKEN, BOB_INVALID_EMAIL, BOB_USER_ID, ERROR_EMAIL, GOOD_AUTHENTICATION_TOKEN, GOOD_PASSWORD, GOOD_USER, LOGGER, NOTFOUND_EMAIL}
 import org.junit.jupiter.api.extension._
 import org.mockserver.configuration.ConfigurationProperties
 import org.mockserver.integration.ClientAndServer
@@ -47,13 +47,15 @@ object OpenPaasServerExtension {
   private val LOGGER: Logger = LoggerFactory.getLogger(OpenPaasServerExtension.getClass)
 }
 
-class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback with ParameterResolver{
+class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback with BeforeAllCallback with AfterAllCallback with ParameterResolver {
   var mockServer: ClientAndServer = _
 
-  override def beforeEach(context: ExtensionContext): Unit = {
+  override def beforeAll(extensionContext: ExtensionContext): Unit = {
     mockServer = startClientAndServer(0)
     ConfigurationProperties.logLevel("DEBUG")
+  }
 
+  override def beforeEach(context: ExtensionContext): Unit = {
     mockServer.when(
       request.withPath(s"/users/$ALICE_USER_ID")
         .withMethod("GET")
@@ -172,6 +174,14 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
     if (mockServer == null) {
       LOGGER.warn("Mock server is null")
     } else {
+      mockServer.reset()
+    }
+  }
+
+  override def afterAll(extensionContext: ExtensionContext): Unit = {
+    if (mockServer == null) {
+      LOGGER.warn("Mock server is null")
+    } else {
       mockServer.close()
     }
   }
@@ -183,6 +193,10 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
     mockServer
 
   def getBaseUrl: URI = new URI(s"http://localhost:${mockServer.getLocalPort}")
+
+  def getUsername: String = GOOD_USER
+
+  def getPassword: String = GOOD_PASSWORD
 
   def setSearchEmailExist(emailQuery: String, openPassUidExpected: String): Unit = {
     mockServer.when(
@@ -224,5 +238,6 @@ class OpenPaasServerExtension extends BeforeEachCallback with AfterEachCallback 
       .respond(response.withStatusCode(200)
         .withBody(s"""[]""".stripMargin))
   }
+
 
 }

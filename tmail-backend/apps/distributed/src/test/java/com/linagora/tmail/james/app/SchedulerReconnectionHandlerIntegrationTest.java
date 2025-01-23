@@ -20,6 +20,7 @@ package com.linagora.tmail.james.app;
 
 import static com.linagora.tmail.ScheduledReconnectionHandler.QUEUES_TO_MONITOR;
 import static com.linagora.tmail.ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.ENABLED;
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
@@ -28,6 +29,8 @@ import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -44,12 +47,20 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Module;
 import com.google.inject.multibindings.Multibinder;
+import com.google.inject.util.Modules;
+import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
+import com.linagora.tmail.OpenPaasTestModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
+import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -68,8 +79,19 @@ class SchedulerReconnectionHandlerIntegrationTest {
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
         .await();
 
+    @RegisterExtension
+    static OpenPaasServerExtension openPaasServerExtension = new OpenPaasServerExtension();
+
+    static Function<RabbitMQExtension, OpenPaasConfiguration.ContactConsumerConfiguration> contactConsumerConfigurationFunction = rabbitMQExtension -> new OpenPaasConfiguration.ContactConsumerConfiguration(
+        ImmutableList.of(AmqpUri.from(Throwing.supplier(() -> rabbitMQExtension.dockerRabbitMQ().amqpUri()).get())),
+        OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+
     @Nested
     class DeletedMessageVaultQueueEnabled {
+
+        @RegisterExtension
+        static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
+
         @RegisterExtension
         static JamesServerExtension testExtension =  new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
             DistributedJamesConfiguration.builder()
@@ -89,7 +111,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
-                .overrideWith(new OpenPaasModule(), new OpenPaasContactsConsumerModule())
+                .overrideWith(getOpenPaasModule(openPaasServerExtension, rabbitMQExtension))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(DeletedMessageVaultWorkQueueProbe.class))
                 .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)
@@ -97,43 +119,43 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
             .extension(new DockerOpenSearchExtension())
             .extension(new CassandraExtension())
-            .extension(new RabbitMQExtension())
+            .extension(rabbitMQExtension)
             .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
             .build();
 
         @BeforeEach
-        void setUp(DockerRabbitMQ dockerRabbitMQ) {
+        void setUp() {
             // ensure all the consumers for vital queues started well
             CALMLY_AWAIT.atMost(10, SECONDS)
                 .untilAsserted(() -> SoftAssertions.assertSoftly(softly -> QUEUES_TO_MONITOR
-                    .forEach(queueName -> softly.assertThat(consumerCount(dockerRabbitMQ, queueName))
+                    .forEach(queueName -> softly.assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), queueName))
                     .isGreaterThanOrEqualTo(1L))));
         }
 
         @Test
-        void shouldRestartDeletedMessageVaultConsumerIfConsumerDisconnected(GuiceJamesServer jamesServer, DockerRabbitMQ dockerRabbitMQ) {
+        void shouldRestartDeletedMessageVaultConsumerIfConsumerDisconnected(GuiceJamesServer jamesServer) {
             // Disconnect consumer of `deleted-message-vault-work-queue`
             jamesServer.getProbe(DeletedMessageVaultWorkQueueProbe.class).stop();
-            assertThat(consumerCount(dockerRabbitMQ, DELETED_MESSAGE_VAULT_QUEUE))
+            assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
                 .isZero();
 
             // Await for `deleted-message-vault-work-queue` consumer to reconnect
             CALMLY_AWAIT.atMost(20, SECONDS)
-                .untilAsserted(() -> assertThat(consumerCount(dockerRabbitMQ, DELETED_MESSAGE_VAULT_QUEUE))
+                .untilAsserted(() -> assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
                     .isEqualTo(1L));
         }
 
         @Test
-        void allMonitoredConsumersShouldStayHealthyAfterAReconnectionTriggered(GuiceJamesServer jamesServer, DockerRabbitMQ dockerRabbitMQ) {
+        void allMonitoredConsumersShouldStayHealthyAfterAReconnectionTriggered(GuiceJamesServer jamesServer) {
             // Disconnect consumer of `deleted-message-vault-work-queue`
             jamesServer.getProbe(DeletedMessageVaultWorkQueueProbe.class).stop();
-            assertThat(consumerCount(dockerRabbitMQ, DELETED_MESSAGE_VAULT_QUEUE))
+            assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
                 .isZero();
 
             // All consumers should stay healthy after the reconnection caused by `deleted-message-vault-work-queue`
             CALMLY_AWAIT.atMost(20, SECONDS)
                 .untilAsserted(() -> SoftAssertions.assertSoftly(softly ->
-                    QUEUES_TO_MONITOR.forEach(queueName -> softly.assertThat(consumerCount(dockerRabbitMQ, queueName))
+                    QUEUES_TO_MONITOR.forEach(queueName -> softly.assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), queueName))
                         .isGreaterThanOrEqualTo(1L))));
         }
     }
@@ -144,6 +166,9 @@ class SchedulerReconnectionHandlerIntegrationTest {
             .stream()
             .filter(s -> !s.equals(DELETED_MESSAGE_VAULT_QUEUE))
             .toList();
+
+        @RegisterExtension
+        static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
 
         @RegisterExtension
         static JamesServerExtension testExtension =  new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -164,7 +189,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
-                .overrideWith(new OpenPaasModule(), new OpenPaasContactsConsumerModule())
+                .overrideWith(getOpenPaasModule(openPaasServerExtension, rabbitMQExtension))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(ScheduledReconnectionHandlerProbe.class))
                 .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)
@@ -172,16 +197,16 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
             .extension(new DockerOpenSearchExtension())
             .extension(new CassandraExtension())
-            .extension(new RabbitMQExtension())
+            .extension(rabbitMQExtension)
             .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
             .build();
 
         @BeforeEach
-        void setUp(DockerRabbitMQ dockerRabbitMQ) {
+        void setUp() {
             // ensure all the consumers for vital queues started well
             CALMLY_AWAIT.atMost(10, SECONDS)
                 .untilAsserted(() -> SoftAssertions.assertSoftly(softly -> QUEUES_TO_MONITOR_EXCEPT_DELETED_MESSAGE_VAULT
-                    .forEach(queueName -> softly.assertThat(consumerCount(dockerRabbitMQ, queueName))
+                    .forEach(queueName -> softly.assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), queueName))
                     .isGreaterThanOrEqualTo(1L))));
         }
 
@@ -215,5 +240,11 @@ class SchedulerReconnectionHandlerIntegrationTest {
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Module getOpenPaasModule(OpenPaasServerExtension openPaasServerExtension, RabbitMQExtension rabbitMQExtension) {
+        return Modules.override(new OpenPaasModule(), new OpenPaasContactsConsumerModule())
+            .with(new OpenPaasTestModule(openPaasServerExtension, Optional.empty(),
+                Optional.of(contactConsumerConfigurationFunction.apply(rabbitMQExtension))));
     }
 }
