@@ -192,6 +192,7 @@ import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetRepositoryModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
+import com.linagora.tmail.james.jmap.routes.DownloadAllRoutesModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.CassandraJmapSettingsRepositoryModule;
@@ -279,7 +280,8 @@ public class DistributedServer {
         new WebFingerModule(),
         new LabelMethodModule(),
         new JmapSettingsMethodModule(),
-        new ContactSupportCapabilitiesModule())
+        new ContactSupportCapabilitiesModule(),
+        new DownloadAllRoutesModule())
         .with(new CassandraTicketStoreModule(), new TeamMailboxJmapModule());
 
     public static final Module PROTOCOLS = Modules.combine(
