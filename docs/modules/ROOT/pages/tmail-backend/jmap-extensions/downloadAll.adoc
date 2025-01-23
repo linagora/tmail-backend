@@ -1,5 +1,5 @@
 = JMAP Download All
-:navtitle: JMAP Labels
+:navtitle: JMAP Download All
 
 This extension allows users, when reading an email, to download all attachments at once. The attachments are being compressed
 and delivered to the user in a zip file.
@@ -11,7 +11,7 @@ Servers supporting the JMAP Download All extension need to advertise it through 
 com:linagora:params:downloadAll
 ....
 
-The associated object is empty.
+The capability needs to advertise the following specified download all attachments route.
 
 == Specification
 
