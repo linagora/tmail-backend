@@ -18,6 +18,10 @@
 
 package com.linagora.tmail.dav.request;
 
+import java.nio.charset.StandardCharsets;
+
+import org.apache.commons.text.StringEscapeUtils;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -41,10 +45,10 @@ public record GetCalendarByEventIdRequestBody(String vEventUid) {
                     </C:comp-filter>
                   </C:filter>
             </C:calendar-query>
-            """.formatted(vEventUid);
+            """.formatted(StringEscapeUtils.escapeXml10(vEventUid));
     }
 
     public ByteBuf asByteBuf() {
-        return Unpooled.wrappedBuffer(value().getBytes());
+        return Unpooled.wrappedBuffer(value().getBytes(StandardCharsets.US_ASCII));
     }
 }
