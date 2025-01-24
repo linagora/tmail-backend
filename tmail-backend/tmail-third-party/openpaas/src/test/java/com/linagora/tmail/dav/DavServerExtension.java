@@ -15,24 +15,30 @@ import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.request;
+import static com.github.tomakehurst.wiremock.client.WireMock.reset;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.james.util.ClassLoaderUtils;
 
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Body;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.matching.UrlPattern;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.DavConfiguration;
+import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 
 public class DavServerExtension extends WireMockExtension {
     public static final String ALICE_ID = "ALICE_ID";
     public static final String ALICE = "ALICE";
     public static final String ALICE_CALENDAR_1 = "66e95872cf2c37001f0d2a09";
     public static final String ALICE_CALENDAR_2 = "0b4e80d7-7337-458f-852d-7ae8d72a74b2";
+    public static final String ALICE_VEVENT_1 = "ab3db856-a866-4a91-99a3-c84372eaee87";
+    public static final String ALICE_VEVENT_2 = "";
+    public static final String ALICE_RECURRING_EVENT = "";
 
     public static final String BOB_ID = "BOB_ID";
     public static final String BOB = "BOB";
@@ -57,6 +63,35 @@ public class DavServerExtension extends WireMockExtension {
                             new Body(
                                 ClassLoaderUtils.getSystemResourceAsByteArray("ALICE_PROPFIND_CALENDARS_RESPONSE.xml")))
                         .withStatus(207)));
+
+        stubFor(
+          report("/calendars/%s/%s/".formatted(ALICE_ID, ALICE_CALENDAR_1))
+              .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+              .withHeader("Accept", equalTo("application/xml"))
+              .withHeader("Depth", equalTo("1"))
+              .withRequestBody(equalTo(
+                  new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
+              .willReturn(
+                  aResponse()
+                      .withResponseBody(
+                          new Body(
+                              ClassLoaderUtils.getSystemResourceAsByteArray("ALICE_VEVENT1_RESPONSE.xml")))
+                      .withStatus(207)));
+
+        stubFor(
+            report("/calendars/%s/%s/".formatted(ALICE_ID, ALICE_CALENDAR_2))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml"))
+                .withHeader("Depth", equalTo("1"))
+                .withRequestBody(equalTo(
+                    new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body(
+                                ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
+                        .withStatus(207)));
+
     }
 
     public void setCollectedContactExists(String openPassUserName, String openPassUserId, String collectedContactUid, boolean exists) {
@@ -126,7 +161,7 @@ public class DavServerExtension extends WireMockExtension {
         return request("PROPFIND", new UrlPattern(equalTo(url), false));
     }
 
-    private static MappingBuilder report(String url) {
+    static MappingBuilder report(String url) {
         return request("REPORT", new UrlPattern(equalTo(url), false));
     }
 }
