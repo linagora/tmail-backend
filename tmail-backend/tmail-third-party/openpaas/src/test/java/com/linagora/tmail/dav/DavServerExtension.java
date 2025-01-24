@@ -1,9 +1,5 @@
 package com.linagora.tmail.dav;
 
-import java.net.URI;
-import java.time.Duration;
-import java.util.Optional;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -15,14 +11,16 @@ import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.request;
-import static com.github.tomakehurst.wiremock.client.WireMock.reset;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+
+import java.net.URI;
+import java.time.Duration;
+import java.util.Optional;
 
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.james.util.ClassLoaderUtils;
 
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
-import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.Body;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
@@ -45,6 +43,9 @@ public class DavServerExtension extends WireMockExtension {
 
     public static final String DAV_ADMIN = "admin";
     public static final String DAV_ADMIN_PASSWORD = "secret123";
+    private static final Duration TEN_SECONDS = Duration.ofSeconds(10);
+    private static final boolean TRUST_ALL_SSL_CERTS = true;
+    private static final boolean USE_REGEX = true;
 
     public DavServerExtension(Builder builder) {
         super(builder);
@@ -149,8 +150,8 @@ public class DavServerExtension extends WireMockExtension {
         return new DavConfiguration(
             new UsernamePasswordCredentials(DAV_ADMIN, DAV_ADMIN_PASSWORD),
             URI.create(baseUrl()),
-            Optional.of(true),
-            Optional.of(Duration.ofSeconds(10)));
+            Optional.of(TRUST_ALL_SSL_CERTS),
+            Optional.of(TEN_SECONDS));
     }
 
     public static String createDelegatedBasicAuthenticationToken(String username) {
@@ -158,10 +159,10 @@ public class DavServerExtension extends WireMockExtension {
     }
 
     static MappingBuilder propfind(String url) {
-        return request("PROPFIND", new UrlPattern(equalTo(url), false));
+        return request("PROPFIND", new UrlPattern(equalTo(url), !USE_REGEX));
     }
 
     static MappingBuilder report(String url) {
-        return request("REPORT", new UrlPattern(equalTo(url), false));
+        return request("REPORT", new UrlPattern(equalTo(url), !USE_REGEX));
     }
 }
