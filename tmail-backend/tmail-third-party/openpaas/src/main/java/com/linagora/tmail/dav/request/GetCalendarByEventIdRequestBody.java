@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.dav.request;
 
+import org.apache.commons.text.StringEscapeUtils;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
@@ -41,7 +43,7 @@ public record GetCalendarByEventIdRequestBody(String vEventUid) {
                     </C:comp-filter>
                   </C:filter>
             </C:calendar-query>
-            """.formatted(vEventUid);
+            """.formatted(StringEscapeUtils.escapeXml10(vEventUid));
     }
 
     public ByteBuf asByteBuf() {
