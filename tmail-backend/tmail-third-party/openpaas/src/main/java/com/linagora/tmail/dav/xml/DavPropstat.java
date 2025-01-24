@@ -20,6 +20,8 @@ package com.linagora.tmail.dav.xml;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import com.google.common.base.MoreObjects;
+
 public class DavPropstat {
     @XmlElement(name = "status", namespace = "DAV:")
     private DavStatus status;
@@ -37,8 +39,9 @@ public class DavPropstat {
 
     @Override
     public String toString() {
-        return "DavPropstat{" +
-               "status=" + status +
-               '}';
+        return MoreObjects.toStringHelper(this)
+            .add("status", status)
+            .add("prop", prop)
+            .toString();
     }
 }

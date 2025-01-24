@@ -22,6 +22,8 @@ import java.util.Optional;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import com.google.common.base.MoreObjects;
+
 public class DavProp {
     @XmlElement(name = "calendar-data", namespace = "urn:ietf:params:xml:ns:caldav")
     private CalendarData calendarData;
@@ -32,8 +34,8 @@ public class DavProp {
 
     @Override
     public String toString() {
-        return "DavProp{" +
-               "calendarData=" + calendarData +
-               '}';
+        return MoreObjects.toStringHelper(this)
+            .add("calendarData", calendarData)
+            .toString();
     }
 }

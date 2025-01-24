@@ -20,6 +20,8 @@ package com.linagora.tmail.dav.xml;
 
 import javax.xml.bind.annotation.XmlValue;
 
+import com.google.common.base.MoreObjects;
+
 public class CalendarData {
 
     @XmlValue
@@ -31,8 +33,8 @@ public class CalendarData {
 
     @Override
     public String toString() {
-        return "CalCalendarData{" +
-               "'" + value + '\'' +
-               '}';
+        return MoreObjects.toStringHelper(this)
+            .add("value", value)
+            .toString();
     }
 }

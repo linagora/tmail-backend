@@ -20,6 +20,8 @@ package com.linagora.tmail.dav.xml;
 
 import javax.xml.bind.annotation.XmlElement;
 
+import com.google.common.base.MoreObjects;
+
 public class DavResponse {
     @XmlElement(name = "href", namespace = "DAV:")
     private DavHref href;
@@ -37,8 +39,9 @@ public class DavResponse {
 
     @Override
     public String toString() {
-        return "DavResponse{" +
-               "href=" + href +
-               '}';
+        return MoreObjects.toStringHelper(this)
+            .add("href", href)
+            .add("propstat", propstat)
+            .toString();
     }
 }

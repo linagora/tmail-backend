@@ -20,10 +20,11 @@ package com.linagora.tmail.dav.xml;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import com.google.common.base.MoreObjects;
 
 @XmlRootElement(name = "multistatus", namespace = "DAV:")
 public class DavMultistatus {
@@ -40,7 +41,8 @@ public class DavMultistatus {
 
     @Override
     public String toString() {
-        return responses.stream().map(DavResponse::toString)
-            .collect(Collectors.joining(", ", "{", "}"));
+        return MoreObjects.toStringHelper(this)
+            .add("responses", responses)
+            .toString();
     }
 }

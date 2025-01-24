@@ -32,8 +32,6 @@ public class DavHref {
 
     @Override
     public String toString() {
-        return "DavHref{" +
-               "'" + value + '\'' +
-               '}';
+        return "'%s'".formatted(value);
     }
 }
