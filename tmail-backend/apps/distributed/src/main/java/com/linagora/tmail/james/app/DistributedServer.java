@@ -40,6 +40,7 @@ import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.JMAPListenerModule;
+import org.apache.james.jmap.JMAPModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
@@ -269,6 +270,7 @@ public class DistributedServer {
         new ForwardGetMethodModule(),
         new ForwardSetMethodModule(),
         new JMAPServerModule(),
+        JMAPModule.INSTANCE,
         new JmapEventBusModule(),
         new PublicAssetsModule(),
         new KeystoreCassandraModule(),
