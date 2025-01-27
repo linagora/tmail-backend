@@ -5,7 +5,7 @@ import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream
 import org.apache.james.jmap.mail.{BlobId, Disposition, EmailBodyPart}
 import org.apache.james.jmap.method.ZoneIdProvider
 import org.apache.james.mailbox.model.{Cid, MessageId, ParsedAttachment}
-import org.apache.james.mailbox.store.mail.model.impl.{FileBufferedBodyFactory, MessageParser}
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser
 import org.apache.james.mime4j.codec.DecodeMonitor
 import org.apache.james.mime4j.dom.{Message, SingleBody}
 import org.apache.james.mime4j.message.{DefaultMessageBuilder, DefaultMessageWriter}
@@ -13,8 +13,8 @@ import org.apache.james.mime4j.stream.MimeConfig
 
 import java.io.InputStream
 import java.util
-import scala.jdk.OptionConverters._
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 
 case class EmailBodyPartContent(part: EmailBodyPart) extends ByteSource {
