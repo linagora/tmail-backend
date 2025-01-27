@@ -450,6 +450,10 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
@@ -677,10 +681,6 @@
                                 </permissions>
                             </extraDirectories>
                         </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>net.alchim31.maven</groupId>
-                        <artifactId>scala-maven-plugin</artifactId>
                     </plugin>
                 </plugins>
             </build>
