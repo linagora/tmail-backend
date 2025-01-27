@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,9 +160,11 @@ public class DavClient {
                 getVCalendarContainingVEventFromCalendar(calendarURI, eventUid, username)
                     .switchIfEmpty(Mono.fromRunnable(
                         () -> LOGGER.trace("VEvent '{}' was not found in Calendar '{}'.", eventUid, calendarURI)))
-                    .doOnError(error -> LOGGER.debug("Error while querying '{}' for VEvent '{}': ",
-                        calendarURI, eventUid, error))
-                    .onErrorResume(ex -> Mono.empty()))
+                    .onErrorResume(ex -> {
+                        LOGGER.debug("Error while querying '{}' for VEvent '{}': ",
+                            calendarURI, eventUid, ex);
+                        return Mono.empty();
+                    }))
             .next();
     }
 
@@ -202,7 +203,7 @@ public class DavClient {
                 IOUtils.toInputStream(calendarData, StandardCharsets.UTF_8)));
     }
 
-    private String normalizeVCalendarData(@NotNull CalendarData calendarData) {
+    private String normalizeVCalendarData(CalendarData calendarData) {
         return calendarData.getValue()
             .lines()
             .map(String::trim)
