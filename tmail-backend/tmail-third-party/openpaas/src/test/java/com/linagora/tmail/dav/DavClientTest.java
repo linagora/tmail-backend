@@ -192,14 +192,14 @@ public class DavClientTest {
     }
 
     @Test
-    void getVCalendarContainingVEventShouldSucceed() {
-        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+    void getCalendarObjectContainingVEventShouldSucceed() {
+        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
 
     @Test
-    void getVCalendarContainingVEventShouldSucceedWhenQueryingOneOfUserCalendarsFails() {
+    void getCalendarObjectContainingVEventShouldSucceedWhenQueryingOneOfUserCalendarsFails() {
         davServerExtension.stubFor(
             report("/calendars/%s/%s/".formatted(ALICE_ID, ALICE_CALENDAR_2))
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
@@ -209,7 +209,7 @@ public class DavClientTest {
                     new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
                 .willReturn(notFound()));
 
-        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
@@ -244,7 +244,7 @@ public class DavClientTest {
                                 ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
-        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
             .isEqualTo(null);
     }
 }
