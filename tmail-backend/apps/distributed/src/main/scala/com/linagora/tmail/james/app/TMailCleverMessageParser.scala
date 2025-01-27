@@ -1,3 +1,21 @@
+/** ******************************************************************
+ * As a subpart of Twake Mail, this file is edited by Linagora.    *
+ * *
+ * https://twake-mail.com/                                         *
+ * https://linagora.com                                            *
+ * *
+ * This file is subject to The Affero Gnu Public License           *
+ * version 3.                                                      *
+ * *
+ * https://www.gnu.org/licenses/agpl-3.0.en.html                   *
+ * *
+ * This program is distributed in the hope that it will be         *
+ * useful, but WITHOUT ANY WARRANTY; without even the implied      *
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
+ * PURPOSE. See the GNU Affero General Public License for          *
+ * more details.                                                   *
+ * ****************************************************************** */
+
 package com.linagora.tmail.james.app
 
 import com.google.common.io.ByteSource
@@ -5,7 +23,7 @@ import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream
 import org.apache.james.jmap.mail.{BlobId, Disposition, EmailBodyPart}
 import org.apache.james.jmap.method.ZoneIdProvider
 import org.apache.james.mailbox.model.{Cid, MessageId, ParsedAttachment}
-import org.apache.james.mailbox.store.mail.model.impl.MessageParser
+import org.apache.james.mailbox.store.mail.model.impl.{FileBufferedBodyFactory, MessageParser}
 import org.apache.james.mime4j.codec.DecodeMonitor
 import org.apache.james.mime4j.dom.{Message, SingleBody}
 import org.apache.james.mime4j.message.{DefaultMessageBuilder, DefaultMessageWriter}

@@ -18,20 +18,30 @@
 
 package com.linagora.tmail.james.app;
 
-import org.apache.james.jmap.routes.BlobResolver;
-import org.apache.james.jmap.routes.MessageBlobResolver;
-import org.apache.james.jmap.routes.MessagePartBlobResolver;
-import org.apache.james.jmap.routes.UploadResolver;
+import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME;
 
+import jakarta.inject.Named;
+
+import org.apache.james.events.CassandraEventDeadLetters;
+import org.apache.james.events.CassandraEventDeadLettersDAO;
+import org.apache.james.events.CassandraEventDeadLettersGroupDAO;
+import org.apache.james.events.EventDeadLetters;
+
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.Multibinder;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
+import com.linagora.tmail.event.TmailEventSerializer;
 
-public class TMailCleverBlobResolverModule extends AbstractModule {
-    @Override
-    protected void configure() {
-        Multibinder<BlobResolver> blobResolverMultibinder = Multibinder.newSetBinder(binder(), BlobResolver.class);
-        blobResolverMultibinder.addBinding().to(MessageBlobResolver.class);
-        blobResolverMultibinder.addBinding().to(UploadResolver.class);
-        blobResolverMultibinder.addBinding().to(TMailCleverBlobResolver.class);
+public class TMailEventDeadLettersModule extends AbstractModule {
+
+    @Provides
+    @Singleton
+    @Named(TMAIL_EVENT_BUS_INJECT_NAME)
+    EventDeadLetters provideEventDeadLetters(CassandraEventDeadLettersGroupDAO cassandraEventDeadLettersGroupDAO,
+                                             CqlSession session,
+                                             TmailEventSerializer tmailEventSerializer) {
+        return new CassandraEventDeadLetters(new CassandraEventDeadLettersDAO(session, tmailEventSerializer),
+            cassandraEventDeadLettersGroupDAO);
     }
 }
