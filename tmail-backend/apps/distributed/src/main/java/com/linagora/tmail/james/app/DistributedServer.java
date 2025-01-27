@@ -323,7 +323,7 @@ public class DistributedServer {
         new CassandraConsistencyTaskSerializationModule(),
         Modules.override(new CassandraMailboxModule())
             .with(binder -> {
-                binder.bind(CassandraAttachmentMapper.AttachmentIdAssignationStrategy.class).to(TmailCleverAttachmentIdAssignationStrategy.class);
+                binder.bind(CassandraAttachmentMapper.AttachmentIdAssignationStrategy.class).to(TMailCleverAttachmentIdAssignationStrategy.class);
                 binder.bind(MessageParser.class).to(TMailCleverMessageParser.class);
             }),
         new MailboxModule(),
@@ -363,7 +363,7 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TmailEventModule(),
-            new TmailEventDeadLettersModule(),
+            new TMailEventDeadLettersModule(),
             new TMailIMAPModule());
 
     public static void main(String[] args) throws Exception {
