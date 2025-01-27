@@ -20,7 +20,7 @@ package com.linagora.tmail.james.jmap.model
 
 import java.io.InputStream
 import java.time.temporal.Temporal
-import java.time.{Duration, Instant, LocalDateTime, OffsetDateTime, ZoneId, ZonedDateTime}
+import java.time.{Duration, _}
 import java.util.{Locale, TimeZone}
 
 import com.google.common.base.Preconditions
@@ -35,35 +35,22 @@ import eu.timepit.refined.auto._
 import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
 import net.fortuna.ical4j.model.Recur.Skip
 import net.fortuna.ical4j.model.WeekDay.Day
+import net.fortuna.ical4j.model._
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.parameter.TzId
-import net.fortuna.ical4j.model.property.{Attendee, Clazz, ExRule, RRule, Status, Transp}
-import net.fortuna.ical4j.model.{Calendar, Month, NumberList, Parameter, Property, Recur, TimeZoneRegistryFactory}
+import net.fortuna.ical4j.model.property._
 import net.fortuna.ical4j.transform.recurrence.Frequency
 import net.fortuna.ical4j.util.CompatibilityHints
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
-import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UTCDate, UnsignedInt}
-import org.apache.james.jmap.mail.MDNParseRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
-import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
-import org.apache.james.jmap.method.WithAccountId
+import org.apache.james.jmap.core._
+import org.apache.james.jmap.mail.BlobId
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
-
-case class CalendarEventParseRequest(accountId: AccountId,
-                                     blobIds: BlobIds,
-                                     properties: Option[Properties]) extends WithAccountId {
-  def validate: Either[RequestTooLargeException, CalendarEventParseRequest] =
-    if (blobIds.value.length > MAXIMUM_NUMBER_OF_BLOB_IDS) {
-      Left(RequestTooLargeException("The number of ids requested by the client exceeds the maximum number the server is willing to process in a single method call"))
-    } else {
-      scala.Right(this)
-    }
-}
 
 object CalendarEventParse {
   type UnparsedBlobId = String Refined Id.IdConstraint
@@ -432,7 +419,7 @@ object CalendarEventByMonth {
     }
 }
 
-case class CalendarEventByMonth(value: Seq[Month])
+case class CalendarEventByMonth(value: Seq[net.fortuna.ical4j.model.Month])
 
 object CalendarEventByDay {
   def from(recur: Recur[Temporal]): Option[CalendarEventByDay] =
@@ -617,31 +604,3 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                extensionFields: CalendarExtensionFields = CalendarExtensionFields(),
                                recurrenceRules: RecurrenceRulesField = RecurrenceRulesField(Seq()),
                                excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq()))
-
-case class CalendarEventParseResponse(accountId: AccountId,
-                                      parsed: Option[Map[BlobId, CalendarEventParsedList]],
-                                      notFound: Option[CalendarEventNotFound],
-                                      notParsable: Option[CalendarEventNotParsable])
-
-object CalendarEventParseResults {
-  def notFound(blobId: UnparsedBlobId): CalendarEventParseResults = CalendarEventParseResults(None, Some(CalendarEventNotFound(Set(blobId))), None)
-
-  def notFound(blobId: BlobId): CalendarEventParseResults = CalendarEventParseResults(None, Some(CalendarEventNotFound(Set(blobId.value))), None)
-
-  def notParse(blobId: BlobId): CalendarEventParseResults = CalendarEventParseResults(None, None, Some(CalendarEventNotParsable(Set(blobId.value))))
-
-  def parse(blobId: BlobId, calendarEventParsed: List[CalendarEventParsed]): CalendarEventParseResults = CalendarEventParseResults(Some(Map(blobId -> CalendarEventParsedList(calendarEventParsed))), None, None)
-
-  def empty(): CalendarEventParseResults = CalendarEventParseResults(None, None, None)
-
-  def merge(response1: CalendarEventParseResults, response2: CalendarEventParseResults): CalendarEventParseResults = CalendarEventParseResults(
-    parsed = (response1.parsed ++ response2.parsed).reduceOption((parsed1, parsed2) => parsed1 ++ parsed2),
-    notFound = (response1.notFound ++ response2.notFound).reduceOption((notFound1, notFound2) => notFound1.merge(notFound2)),
-    notParsable = (response1.notParsable ++ response2.notParsable).reduceOption((notParsable1, notParsable2) => notParsable1.merge(notParsable2)))
-}
-
-case class CalendarEventParseResults(parsed: Option[Map[BlobId, CalendarEventParsedList]],
-                                     notFound: Option[CalendarEventNotFound],
-                                     notParsable: Option[CalendarEventNotParsable]) {
-  def asResponse(accountId: AccountId): CalendarEventParseResponse = CalendarEventParseResponse(accountId, parsed, notFound, notParsable)
-}
