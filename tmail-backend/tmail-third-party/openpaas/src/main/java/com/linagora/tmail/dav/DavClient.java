@@ -24,13 +24,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,11 +37,9 @@ import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
-import com.linagora.tmail.dav.xml.CalendarData;
 import com.linagora.tmail.dav.xml.DavMultistatus;
 import com.linagora.tmail.dav.xml.DavResponse;
 import com.linagora.tmail.dav.xml.XMLUtil;
-import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -51,7 +47,6 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-import net.fortuna.ical4j.model.Calendar;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
@@ -151,13 +146,35 @@ public class DavClient {
         };
     }
 
-    public Mono<Calendar> getVCalendarContainingVEvent(String userId, String eventUid, String username) {
+    public Mono<Void> updateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
+        return client.headers(headers ->
+                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
+                    .add(HttpHeaderNames.AUTHORIZATION,
+                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+            .request(HttpMethod.PUT)
+            .uri(updatedCalendarObject.uri().toString())
+            .send(Mono.just(Unpooled.wrappedBuffer(updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, responseContent) -> {
+                    if (response.status() == HttpResponseStatus.NO_CONTENT) {
+                        return ReactorUtils.logAsMono(
+                            () -> LOGGER.info("Calendar object '{}' updated successfully.", updatedCalendarObject.uri()));
+                    } else {
+                        return Mono.error(new DavClientException(
+                            String.format(
+                                "Unexpected status code: %d when updating calendar object '%s'",
+                                response.status().code(), updatedCalendarObject.uri())));
+                    }
+                }
+            );
+    }
+
+    public Mono<DavCalendarObject> getCalendarObjectContainingVEvent(String userId, String eventUid, String username) {
         Preconditions.checkArgument(StringUtils.isNotEmpty(eventUid), "VEvent id should not be empty");
         Preconditions.checkArgument(StringUtils.isNotEmpty(userId), "OpenPaas user id should not be empty");
 
         return findUserCalendars(userId, username)
             .flatMap(calendarURI ->
-                getVCalendarContainingVEventFromCalendar(calendarURI, eventUid, username)
+                getCalendarObjectContainingVEventFromSpecificCalendar(calendarURI, eventUid, username)
                     .switchIfEmpty(Mono.fromRunnable(
                         () -> LOGGER.trace("VEvent '{}' was not found in Calendar '{}'.", eventUid, calendarURI)))
                     .onErrorResume(ex -> {
@@ -168,7 +185,7 @@ public class DavClient {
             .next();
     }
 
-    public Mono<Calendar> getVCalendarContainingVEventFromCalendar(URI calendarURI, String eventUid, String username) {
+    private Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, String eventUid, String username) {
         return client.headers(headers ->
                 headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                     .add("Depth", "1")
@@ -181,11 +198,11 @@ public class DavClient {
                 (response, responseContent) -> handleCalendarResponse(responseContent, response.status(), eventUid));
     }
 
-    private Mono<Calendar> handleCalendarResponse(ByteBufMono responseContent, HttpResponseStatus responseStatus, String eventUid) {
+    private Mono<DavCalendarObject> handleCalendarResponse(ByteBufMono responseContent, HttpResponseStatus responseStatus, String eventUid) {
         if (responseStatus == HttpResponseStatus.MULTI_STATUS) {
             return responseContent.asString(StandardCharsets.UTF_8)
                 .map(content -> XMLUtil.parse(content, DavMultistatus.class))
-                .map(this::extractVCalendarFromResponse)
+                .map(this::extractCalendarObject)
                 .flatMap(Mono::justOrEmpty);
         }
         return Mono.error(new DavClientException(
@@ -193,22 +210,11 @@ public class DavClient {
                 responseStatus.code(), eventUid)));
     }
 
-    private Optional<Calendar> extractVCalendarFromResponse(DavMultistatus multistatus) {
+    private Optional<DavCalendarObject> extractCalendarObject(DavMultistatus multistatus) {
         return multistatus.getResponses()
             .stream()
             .findFirst()
-            .flatMap(davResponse -> davResponse.getPropstat().getProp().getCalendarData())
-            .map(this::normalizeVCalendarData)
-            .map(calendarData -> CalendarEventParsed.parseICal4jCalendar(
-                IOUtils.toInputStream(calendarData, StandardCharsets.UTF_8)));
-    }
-
-    private String normalizeVCalendarData(CalendarData calendarData) {
-        return calendarData.getValue()
-            .lines()
-            .map(String::trim)
-            .filter(Predicate.not(String::isBlank))
-            .collect(Collectors.joining("\n"));
+            .flatMap(DavCalendarObject::fromDavResponse);
     }
 
     public Flux<URI> findUserCalendars(String userId, String username) {

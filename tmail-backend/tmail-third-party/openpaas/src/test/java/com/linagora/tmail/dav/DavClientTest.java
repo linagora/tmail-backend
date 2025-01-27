@@ -29,6 +29,8 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static com.linagora.tmail.dav.DavServerExtension.ALICE;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_1;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_2;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_OBJECT_1;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_OBJECT_2;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_ID;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_VEVENT_1;
 import static com.linagora.tmail.dav.DavServerExtension.createDelegatedBasicAuthenticationToken;
@@ -192,14 +194,14 @@ public class DavClientTest {
     }
 
     @Test
-    void getVCalendarContainingVEventShouldSucceed() {
-        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+    void getCalendarObjectContainingVEventShouldSucceed() {
+        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
 
     @Test
-    void getVCalendarContainingVEventShouldSucceedWhenQueryingOneOfUserCalendarsFails() {
+    void getCalendarObjectContainingVEventShouldSucceedWhenQueryingOneOfUserCalendarsFails() {
         davServerExtension.stubFor(
             report("/calendars/%s/%s/".formatted(ALICE_ID, ALICE_CALENDAR_2))
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
@@ -209,7 +211,7 @@ public class DavClientTest {
                     new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
                 .willReturn(notFound()));
 
-        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
@@ -244,7 +246,29 @@ public class DavClientTest {
                                 ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
-        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
             .isEqualTo(null);
+    }
+
+    @Test
+    void updateCalendarObjectShouldSucceed() {
+        DavCalendarObject calendarObject =
+            new DavCalendarObject(URI.create(ALICE_CALENDAR_OBJECT_1),
+                CalendarEventParsed.parseICal4jCalendar(
+                    ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
+
+        assertThatCode(() -> client.updateCalendarObject(ALICE, calendarObject).block())
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    void updateCalendarObjectShouldFailsWhenHTTPStatusNot204() {
+        DavCalendarObject calendarObject =
+            new DavCalendarObject(URI.create(ALICE_CALENDAR_OBJECT_2),
+                CalendarEventParsed.parseICal4jCalendar(
+                    ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
+
+        assertThatThrownBy(() -> client.updateCalendarObject(ALICE, calendarObject).block())
+            .isInstanceOf(DavClientException.class);
     }
 }
