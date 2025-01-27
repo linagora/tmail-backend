@@ -55,6 +55,8 @@ public class DavServerExtension extends WireMockExtension {
     public static final String ALICE_VEVENT_1 = "ab3db856-a866-4a91-99a3-c84372eaee87";
     public static final String ALICE_VEVENT_2 = "";
     public static final String ALICE_RECURRING_EVENT = "";
+    public static final String ALICE_CALENDAR_OBJECT_1 = "/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/sabredav-c23db537-7162-4b8d-b034-ab9436304959.ics";
+    public static final String ALICE_CALENDAR_OBJECT_2 = "/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/random-stuff.ics";
 
     public static final String BOB_ID = "BOB_ID";
     public static final String BOB = "BOB";
@@ -111,6 +113,17 @@ public class DavServerExtension extends WireMockExtension {
                                 ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
+        stubFor(
+            put(ALICE_CALENDAR_OBJECT_1)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml"))
+                .willReturn(noContent()));
+
+        stubFor(
+            put(ALICE_CALENDAR_OBJECT_2)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml"))
+                .willReturn(notFound()));
     }
 
     public void setCollectedContactExists(String openPassUserName, String openPassUserId, String collectedContactUid, boolean exists) {
