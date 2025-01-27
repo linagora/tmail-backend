@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.dav;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -31,7 +32,7 @@ import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import net.fortuna.ical4j.model.Calendar;
 
-public record DavCalendarObject(String href, Calendar calendarData) {
+public record DavCalendarObject(URI uri, Calendar calendarData) {
 
     public static Optional<DavCalendarObject> fromDavResponse(DavResponse davResponse) {
         return davResponse.getPropstat().getProp().getCalendarData()
@@ -40,7 +41,7 @@ public record DavCalendarObject(String href, Calendar calendarData) {
                 IOUtils.toInputStream(calendarData, StandardCharsets.UTF_8)))
             .map(calendar ->
                 new DavCalendarObject(
-                    davResponse.getHref().getValue().orElseThrow(() ->
+                    davResponse.getHref().getValue().map(URI::create).orElseThrow(() ->
                         new DavClientException("Unable to find calendar object Href in dav response: " + davResponse)),
                     calendar));
     }

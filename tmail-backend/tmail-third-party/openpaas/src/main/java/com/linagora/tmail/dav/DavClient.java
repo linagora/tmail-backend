@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,6 +146,28 @@ public class DavClient {
         };
     }
 
+    public Mono<Void> updateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
+        return client.headers(headers ->
+                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
+                    .add(HttpHeaderNames.AUTHORIZATION,
+                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+            .request(HttpMethod.PUT)
+            .uri(updatedCalendarObject.uri().toString())
+            .send(Mono.just(Unpooled.wrappedBuffer(updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, responseContent) -> {
+                    if (response.status() == HttpResponseStatus.NO_CONTENT) {
+                        return ReactorUtils.logAsMono(
+                            () -> LOGGER.info("Calendar object '{}' updated successfully.", updatedCalendarObject.uri()));
+                    } else {
+                        return Mono.error(new DavClientException(
+                            String.format(
+                                "Unexpected status code: %d when updating calendar object '%s'",
+                                response.status().code(), updatedCalendarObject.uri())));
+                    }
+                }
+            );
+    }
+
     public Mono<DavCalendarObject> getCalendarObjectContainingVEvent(String userId, String eventUid, String username) {
         Preconditions.checkArgument(StringUtils.isNotEmpty(eventUid), "VEvent id should not be empty");
         Preconditions.checkArgument(StringUtils.isNotEmpty(userId), "OpenPaas user id should not be empty");
@@ -162,7 +185,7 @@ public class DavClient {
             .next();
     }
 
-    public Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, String eventUid, String username) {
+    private Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, String eventUid, String username) {
         return client.headers(headers ->
                 headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                     .add("Depth", "1")
