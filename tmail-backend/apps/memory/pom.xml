@@ -193,6 +193,12 @@
             <groupId>com.linagora.tmail</groupId>
             <artifactId>logback-json-classic</artifactId>
         </dependency>
+        <!--TODO: Remove once we upgrade spark-java-->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>11.0.24</version>
+        </dependency>
     </dependencies>
 
     <build>
