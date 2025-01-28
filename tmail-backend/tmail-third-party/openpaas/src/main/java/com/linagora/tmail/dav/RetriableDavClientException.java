@@ -18,13 +18,13 @@
 
 package com.linagora.tmail.dav;
 
-public class DavClientException extends RuntimeException {
+public class RetriableDavClientException extends DavClientException {
 
-    public DavClientException(String message) {
+    public RetriableDavClientException(String message) {
         super(message);
     }
 
-    public DavClientException(String message, Throwable cause) {
+    public RetriableDavClientException(String message, Throwable cause) {
         super(message, cause);
     }
 }
