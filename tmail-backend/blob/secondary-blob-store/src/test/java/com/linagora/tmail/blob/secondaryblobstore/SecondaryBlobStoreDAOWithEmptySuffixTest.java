@@ -182,7 +182,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
         secondaryS3.pause();
 
         assertThatThrownBy(() -> Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isInstanceOf(ObjectNotFoundException.class)
+            .isInstanceOf(ObjectStoreException.class)
             .hasStackTraceContaining("Unable to execute HTTP request: Read timed out");
     }
 
