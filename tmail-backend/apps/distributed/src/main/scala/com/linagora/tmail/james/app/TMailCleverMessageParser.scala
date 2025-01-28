@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.app
 
 import com.google.common.io.ByteSource
+import jakarta.inject.Inject
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream
 import org.apache.james.jmap.mail.{BlobId, Disposition, EmailBodyPart}
 import org.apache.james.jmap.method.ZoneIdProvider
@@ -64,7 +65,7 @@ object TMailCleverParsedAttachment {
   val placeholder: String = "___PLACEHOLDER___"
 }
 
-class TMailCleverMessageParser(zoneIdProvider: ZoneIdProvider) extends MessageParser {
+class TMailCleverMessageParser @Inject() (zoneIdProvider: ZoneIdProvider) extends MessageParser {
   override def retrieveAttachments(fullContent: InputStream): MessageParser.ParsingResult = {
     val defaultMessageBuilder = new DefaultMessageBuilder
     defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
