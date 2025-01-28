@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.carddav;
+package com.linagora.tmail.dav;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -34,6 +34,7 @@ import com.github.benmanes.caffeine.cache.AsyncCacheLoader;
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.linagora.tmail.api.OpenPaasRestClient;
+import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import com.linagora.tmail.james.jmap.contact.ContactAddIndexingProcessor;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 
@@ -44,12 +45,12 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CardDavAddContactProcessor.class);
 
-    private final CardDavClient cardDavClient;
+    private final DavClient cardDavClient;
     private final AsyncLoadingCache<Username, String> openPassUserIdLoader;
 
     @Inject
     @Singleton
-    public CardDavAddContactProcessor(CardDavClient cardDavClient,
+    public CardDavAddContactProcessor(DavClient cardDavClient,
                                       OpenPaasRestClient openPaasRestClient) {
         this.cardDavClient = cardDavClient;
 
@@ -67,7 +68,7 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
     public Publisher<Void> process(Username username, ContactFields contactFields) {
         return Mono.fromFuture(openPassUserIdLoader.get(username))
             .flatMap(openPassUserId -> {
-                CardDavCreationObjectRequest cardDavCreationObjectRequest = CardDavCreationFactory.create(Optional.of(contactFields.fullName()), contactFields.address());
+                CardDavCreationObjectRequest cardDavCreationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of(contactFields.fullName()), contactFields.address());
                 return cardDavClient.existsCollectedContact(username.asString(), openPassUserId, cardDavCreationObjectRequest.uid())
                     .filter(FunctionalUtils.identityPredicate().negate())
                     .flatMap(exists -> cardDavClient.createCollectedContact(username.asString(), openPassUserId, cardDavCreationObjectRequest))
