@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.carddav;
+package com.linagora.tmail.dav;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,6 +27,8 @@ import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.Test;
 
 import ezvcard.parameter.EmailType;
+
+import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 
 public class CardDavCreationObjectRequestTest {
 

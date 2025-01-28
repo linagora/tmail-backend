@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.carddav;
+package com.linagora.tmail.dav.request;
 
 import java.util.List;
 import java.util.Optional;

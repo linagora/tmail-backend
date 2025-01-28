@@ -36,7 +36,7 @@ public record OpenPaasConfiguration(URI apirUri,
                                     String adminPassword,
                                     boolean trustAllSslCerts,
                                     Optional<ContactConsumerConfiguration> contactConsumerConfiguration,
-                                    Optional<CardDavConfiguration> cardDavConfiguration) {
+                                    Optional<DavConfiguration> davConfiguration) {
 
     public record ContactConsumerConfiguration(List<AmqpUri> amqpUri,
                                                boolean quorumQueuesBypass) {
@@ -46,8 +46,8 @@ public record OpenPaasConfiguration(URI apirUri,
         this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.of(contactConsumerConfiguration), Optional.empty());
     }
 
-    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, CardDavConfiguration cardDavConfiguration) {
-        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.empty(), Optional.of(cardDavConfiguration));
+    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, DavConfiguration davConfiguration) {
+        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.empty(), Optional.of(davConfiguration));
     }
 
     private static final String RABBITMQ_URI_PROPERTY = "rabbitmq.uri";
@@ -69,9 +69,9 @@ public record OpenPaasConfiguration(URI apirUri,
         Optional<ContactConsumerConfiguration> contactConsumerConfiguration = readRabbitMqUri(configuration)
             .map(amqpUri -> new ContactConsumerConfiguration(amqpUri, readQuorumQueuesBypass(configuration)));
 
-        Optional<CardDavConfiguration> cardDavConfiguration = CardDavConfiguration.maybeFrom(configuration);
+        Optional<DavConfiguration> davConfiguration = DavConfiguration.maybeFrom(configuration);
 
-        return new OpenPaasConfiguration(openPaasApiUri, adminUser, adminPassword, trustAllSslCerts, contactConsumerConfiguration, cardDavConfiguration);
+        return new OpenPaasConfiguration(openPaasApiUri, adminUser, adminPassword, trustAllSslCerts, contactConsumerConfiguration, davConfiguration);
     }
 
     public static boolean isConfiguredContactConsumer(Configuration configuration) {

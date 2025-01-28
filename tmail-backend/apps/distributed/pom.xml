@@ -164,6 +164,12 @@
             <artifactId>apache-james-backends-opensearch</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents.core5</groupId>
+                    <artifactId>httpcore5</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
@@ -399,6 +405,12 @@
             <groupId>org.mock-server</groupId>
             <artifactId>mockserver-netty</artifactId>
             <scope>test</scope>
+        </dependency>
+       <!--TODO: Remove once we upgrade spark-java-->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>11.0.24</version>
         </dependency>
     </dependencies>
 
