@@ -34,10 +34,11 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.linagora.tmail.api.OpenPaasRestClient;
-import com.linagora.tmail.carddav.CardDavAddContactProcessor;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.dav.CardDavAddContactProcessor;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.james.jmap.contact.ContactAddIndexingProcessor;
+
 
 public class OpenPaasModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasModule.class);

@@ -109,7 +109,7 @@ public class CardDavCollectedContactIntegrationTest {
                         OpenPaasServerExtension.GOOD_USER(),
                         OpenPaasServerExtension.GOOD_PASSWORD(),
                         false,
-                        davServerExtension.getCardDavConfiguration());
+                        davServerExtension.getDavConfiguration());
                 }
             })
             .withMailetContainer(TemporaryJamesServer.defaultMailetContainerConfiguration()

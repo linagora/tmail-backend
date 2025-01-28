@@ -72,7 +72,7 @@ public class DavClientTest {
 
     @BeforeEach
     void setup() {
-        client = new DavClient(davServerExtension.getCardDavConfiguration());
+        client = new DavClient(davServerExtension.getDavConfiguration());
     }
 
     @Test
