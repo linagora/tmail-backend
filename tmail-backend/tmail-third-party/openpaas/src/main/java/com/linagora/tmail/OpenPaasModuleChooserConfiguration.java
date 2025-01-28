@@ -36,7 +36,7 @@ public record OpenPaasModuleChooserConfiguration(boolean enabled,
     public static final boolean ENABLED = true;
     public static final boolean DISABLED = false;
     public static final boolean ENABLE_CONTACTS_CONSUMER = true;
-    public static final boolean ENABLE_CARDDAV = true;
+    public static final boolean ENABLE_DAV = true;
 
     public static OpenPaasModuleChooserConfiguration parse(PropertiesProvider propertiesProvider) throws
         ConfigurationException {
@@ -44,12 +44,12 @@ public record OpenPaasModuleChooserConfiguration(boolean enabled,
             Configuration configuration = propertiesProvider.getConfiguration("openpaas");
             boolean contactsConsumerEnabled = OpenPaasConfiguration.isConfiguredContactConsumer(configuration);
             boolean isDavConfigured = DavConfiguration.isConfigured(configuration);
-            LOGGER.info("OpenPaas module is turned on. Contacts consumer is enabled: {}, CardDav is enabled: {}",
+            LOGGER.info("OpenPaas module is turned on. Contacts consumer is enabled: {}, Dav is enabled: {}",
                 contactsConsumerEnabled, isDavConfigured);
             return new OpenPaasModuleChooserConfiguration(ENABLED, isDavConfigured, contactsConsumerEnabled);
         } catch (FileNotFoundException e) {
             LOGGER.info("OpenPaas module is turned off.");
-            return new OpenPaasModuleChooserConfiguration(DISABLED, !ENABLE_CARDDAV, !ENABLE_CONTACTS_CONSUMER);
+            return new OpenPaasModuleChooserConfiguration(DISABLED, !ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER);
         }
     }
 }
