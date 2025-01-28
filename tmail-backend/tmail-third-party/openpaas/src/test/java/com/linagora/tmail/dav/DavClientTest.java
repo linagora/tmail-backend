@@ -18,14 +18,23 @@
 
 package com.linagora.tmail.dav;
 
+import java.net.URI;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static com.linagora.tmail.dav.DavClient.MAX_CALENDAR_OBJECT_UPDATE_RETRIES;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_1;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_2;
@@ -40,11 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
-import java.net.URI;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
+import org.apache.http.HttpStatus;
 import org.apache.james.core.MailAddress;
 import org.apache.james.util.ClassLoaderUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +67,8 @@ import ezvcard.parameter.EmailType;
 public class DavClientTest {
     private static final String OPENPAAS_USER_NAME = "openpaasUserName1";
     private static final String OPENPAAS_USER_ID = "openpaasUserId1";
+    private static final Function<DavCalendarObject, DavCalendarObject> DUMMY_CALENDAR_OBJECT_UPDATER
+        = calendarObject -> calendarObject;
 
     @RegisterExtension
     static DavServerExtension davServerExtension = new DavServerExtension(
@@ -252,23 +259,31 @@ public class DavClientTest {
 
     @Test
     void updateCalendarObjectShouldSucceed() {
-        DavCalendarObject calendarObject =
-            new DavCalendarObject(URI.create(ALICE_CALENDAR_OBJECT_1),
-                CalendarEventParsed.parseICal4jCalendar(
-                    ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
-
-        assertThatCode(() -> client.updateCalendarObject(ALICE, calendarObject).block())
+        assertThatCode(() -> client.updateCalendarObject(ALICE, URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .doesNotThrowAnyException();
     }
 
     @Test
     void updateCalendarObjectShouldFailsWhenHTTPStatusNot204() {
-        DavCalendarObject calendarObject =
-            new DavCalendarObject(URI.create(ALICE_CALENDAR_OBJECT_2),
-                CalendarEventParsed.parseICal4jCalendar(
-                    ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
-
-        assertThatThrownBy(() -> client.updateCalendarObject(ALICE, calendarObject).block())
+        assertThatThrownBy(() -> client.updateCalendarObject(ALICE, URI.create(ALICE_CALENDAR_OBJECT_2), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .isInstanceOf(DavClientException.class);
+    }
+
+    @Test
+    void updateCalendarObjectShouldRetryOnPreconditionFailedResponse412() {
+        davServerExtension.stubFor(
+            put(ALICE_CALENDAR_OBJECT_1)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml"))
+                .willReturn(aResponse().withStatus(HttpStatus.SC_PRECONDITION_FAILED)));
+
+        assertThatThrownBy(() -> client.updateCalendarObject(ALICE, URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
+            .isInstanceOf(DavClientException.class);
+
+        davServerExtension.verify(MAX_CALENDAR_OBJECT_UPDATE_RETRIES + 1,
+            putRequestedFor(
+                urlEqualTo(ALICE_CALENDAR_OBJECT_1))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml")));
     }
 }

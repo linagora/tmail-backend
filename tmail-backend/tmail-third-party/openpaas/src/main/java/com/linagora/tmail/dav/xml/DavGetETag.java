@@ -16,30 +16,24 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.dav;
+package com.linagora.tmail.dav.xml;
 
-public class DavClientException extends RuntimeException {
-    private final boolean shouldRetry;
+import javax.xml.bind.annotation.XmlValue;
 
-    public DavClientException(String message) {
-        this(message, false);
+import com.google.common.base.MoreObjects;
+
+public class DavGetETag {
+    @XmlValue
+    private String value;
+
+    public String getValue() {
+        return value;
     }
 
-    public DavClientException(String message, boolean shouldRetry) {
-        super(message);
-        this.shouldRetry = shouldRetry;
-    }
-
-    public DavClientException(String message, Throwable cause) {
-        this(message, cause, false);
-    }
-
-    public DavClientException(String message, Throwable cause, boolean shouldRetry) {
-        super(message, cause);
-        this.shouldRetry = shouldRetry;
-    }
-
-    public boolean shouldRetry() {
-        return shouldRetry;
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+            .add("value", value)
+            .toString();
     }
 }

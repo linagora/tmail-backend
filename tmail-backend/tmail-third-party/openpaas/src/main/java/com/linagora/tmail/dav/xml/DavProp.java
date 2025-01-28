@@ -28,14 +28,22 @@ public class DavProp {
     @XmlElement(name = "calendar-data", namespace = "urn:ietf:params:xml:ns:caldav")
     private CalendarData calendarData;
 
+    @XmlElement(name = "getetag", namespace = "DAV:")
+    private DavGetETag getETag;
+
     public Optional<CalendarData> getCalendarData() {
         return Optional.ofNullable(calendarData);
+    }
+
+    public Optional<String> getETag() {
+        return Optional.ofNullable(getETag).map(DavGetETag::getValue);
     }
 
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
             .add("calendarData", calendarData)
+            .add("getETag", getETag)
             .toString();
     }
 }

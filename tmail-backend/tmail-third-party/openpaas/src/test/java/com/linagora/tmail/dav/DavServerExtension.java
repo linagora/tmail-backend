@@ -124,6 +124,16 @@ public class DavServerExtension extends WireMockExtension {
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
                 .withHeader("Accept", equalTo("application/xml"))
                 .willReturn(notFound()));
+
+        stubFor(
+            get(ALICE_CALENDAR_OBJECT_1)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(
+                    aResponse()
+                        .withHeader("ETag", "123")
+                        .withResponseBody(
+                            new Body(
+                                ClassLoaderUtils.getSystemResourceAsString("VCALENDAR1.ics")))));
     }
 
     public void setCollectedContactExists(String openPassUserName, String openPassUserId, String collectedContactUid, boolean exists) {

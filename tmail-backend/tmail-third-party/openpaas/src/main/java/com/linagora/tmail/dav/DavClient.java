@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +41,7 @@ import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 import com.linagora.tmail.dav.xml.DavMultistatus;
 import com.linagora.tmail.dav.xml.DavResponse;
 import com.linagora.tmail.dav.xml.XMLUtil;
+import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -52,16 +54,20 @@ import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientResponse;
+import reactor.util.retry.Retry;
 
 public class DavClient {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
+    public static final int MAX_CALENDAR_OBJECT_UPDATE_RETRIES = 5;
+    public static final Duration MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF = Duration.ofMillis(100);
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
     private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String COLLECTED_ADDRESS_BOOK_PATH = "/addressbooks/%s/collected/%s.vcf";
     private static final Pattern CALENDAR_URI_PATTERN = Pattern.compile("/calendars/[^/]+/[^/]+/");
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String ACCEPT_XML = "application/xml";
     private static final String CONTENT_TYPE_VCARD = "application/vcard";
+    private static final boolean SHOULD_RETRY_CALENDAR_OBJECT_UPDATE = true;
 
     private final HttpClient client;
     private final DavConfiguration config;
@@ -146,26 +152,68 @@ public class DavClient {
         };
     }
 
-    public Mono<Void> updateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
+    public Mono<Void> updateCalendarObject(String username, URI calendarObjectUri, Function<DavCalendarObject, DavCalendarObject> calendarObjectUpdater) {
+        return getCalendarObjectByUri(username, calendarObjectUri)
+            .map(calendarObjectUpdater)
+            .flatMap(updatedCalendarObject -> doUpdateCalendarObject(username, updatedCalendarObject))
+            .retryWhen(
+                Retry.backoff(MAX_CALENDAR_OBJECT_UPDATE_RETRIES, MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF)
+                .filter(e -> e instanceof DavClientException && ((DavClientException) e).shouldRetry())
+                .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) ->
+                    new DavClientException("Max retries exceeded for calendar update", retrySignal.failure())));
+    }
+
+    private Mono<Void> doUpdateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
         return client.headers(headers ->
                 headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
+                    .add(HttpHeaderNames.IF_MATCH, updatedCalendarObject.eTag())
                     .add(HttpHeaderNames.AUTHORIZATION,
                         HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
             .request(HttpMethod.PUT)
             .uri(updatedCalendarObject.uri().toString())
-            .send(Mono.just(Unpooled.wrappedBuffer(updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
+            .send(Mono.just(Unpooled.wrappedBuffer(
+                updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, responseContent) ->
+                handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
+    }
+
+    private static Mono<Void> handleCalendarObjectUpdateResponse(DavCalendarObject updatedCalendarObject,
+                                                   HttpClientResponse response) {
+        if (response.status() == HttpResponseStatus.NO_CONTENT) {
+            return ReactorUtils.logAsMono(
+                () -> LOGGER.info("Calendar object '{}' updated successfully.",
+                    updatedCalendarObject.uri()));
+        } else if (response.status() == HttpResponseStatus.PRECONDITION_FAILED) {
+            return Mono.error(new DavClientException(
+                String.format(
+                    "Precondition failed (ETag mismatch) when updating calendar object '%s'. Retry may be needed.",
+                    updatedCalendarObject.uri()), SHOULD_RETRY_CALENDAR_OBJECT_UPDATE));
+        } else {
+            return Mono.error(new DavClientException(
+                String.format(
+                    "Unexpected status code: %d when updating calendar object '%s'",
+                    response.status().code(), updatedCalendarObject.uri())));
+        }
+    }
+
+    public Mono<DavCalendarObject> getCalendarObjectByUri(String username, URI uri) {
+        return client.headers(headers ->
+                headers.add(HttpHeaderNames.AUTHORIZATION,
+                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+            .request(HttpMethod.GET)
+            .uri(uri.toString())
             .responseSingle((response, responseContent) -> {
-                    if (response.status() == HttpResponseStatus.NO_CONTENT) {
-                        return ReactorUtils.logAsMono(
-                            () -> LOGGER.info("Calendar object '{}' updated successfully.", updatedCalendarObject.uri()));
-                    } else {
-                        return Mono.error(new DavClientException(
-                            String.format(
-                                "Unexpected status code: %d when updating calendar object '%s'",
-                                response.status().code(), updatedCalendarObject.uri())));
+                    if (response.status() == HttpResponseStatus.OK) {
+                        return responseContent.asInputStream()
+                            .map(CalendarEventParsed::parseICal4jCalendar)
+                            .map(calendar ->
+                                new DavCalendarObject(
+                                    uri, calendar, response.responseHeaders().get("ETag")));
                     }
-                }
-            );
+                    return Mono.error(new DavClientException(
+                        String.format("Unexpected status code: %d when fetching calendar object '%s'",
+                            response.status().code(), uri)));
+            });
     }
 
     public Mono<DavCalendarObject> getCalendarObjectContainingVEvent(String userId, String eventUid, String username) {

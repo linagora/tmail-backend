@@ -32,7 +32,7 @@ import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import net.fortuna.ical4j.model.Calendar;
 
-public record DavCalendarObject(URI uri, Calendar calendarData) {
+public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
 
     public static Optional<DavCalendarObject> fromDavResponse(DavResponse davResponse) {
         return davResponse.getPropstat().getProp().getCalendarData()
@@ -43,7 +43,7 @@ public record DavCalendarObject(URI uri, Calendar calendarData) {
                 new DavCalendarObject(
                     davResponse.getHref().getValue().map(URI::create).orElseThrow(() ->
                         new DavClientException("Unable to find calendar object Href in dav response: " + davResponse)),
-                    calendar));
+                    calendar, davResponse.getPropstat().getProp().getETag().orElse("ETag_NOT_FOUND")));
     }
 
     private static String normalizeVCalendarData(CalendarData calendarData) {
