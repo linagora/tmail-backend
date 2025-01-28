@@ -93,7 +93,7 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(Modules.override(new OpenPaasModule(), new OpenPaasModule.DavModule())
-                .with(new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getCardDavConfiguration()), Optional.empty()))))
+                .with(new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty()))))
         .build();
 
     @Disabled("This is responsibility of the OpenPaas server")

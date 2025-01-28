@@ -30,14 +30,14 @@ import com.linagora.tmail.configuration.OpenPaasConfiguration;
 public class OpenPaasTestModule extends AbstractModule {
 
     private final OpenPaasServerExtension openPaasServerExtension;
-    private final Optional<DavConfiguration> cardDavConfiguration;
+    private final Optional<DavConfiguration> davConfiguration;
     private final Optional<OpenPaasConfiguration.ContactConsumerConfiguration> contactConsumerConfiguration;
 
     public OpenPaasTestModule(OpenPaasServerExtension openPaasServerExtension,
-                              Optional<DavConfiguration> cardDavConfiguration,
+                              Optional<DavConfiguration> davConfiguration,
                               Optional<OpenPaasConfiguration.ContactConsumerConfiguration> contactConsumerConfiguration) {
         this.openPaasServerExtension = openPaasServerExtension;
-        this.cardDavConfiguration = cardDavConfiguration;
+        this.davConfiguration = davConfiguration;
         this.contactConsumerConfiguration = contactConsumerConfiguration;
     }
 
@@ -49,6 +49,6 @@ public class OpenPaasTestModule extends AbstractModule {
             openPaasServerExtension.getPassword(),
             false,
             contactConsumerConfiguration,
-            cardDavConfiguration);
+            davConfiguration);
     }
 }

@@ -20,7 +20,7 @@ package com.linagora.tmail.james.app;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLED;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CARDDAV;
+import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_DAV;
 import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CONTACTS_CONSUMER;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,6 +35,7 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -61,7 +62,7 @@ public class DistributedServerWithOpenPaasConfiguredTest {
     static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
 
     @Nested
-    class ContactsConsumer {
+    class ContactsConsumerConfigured {
         static Function<RabbitMQExtension, OpenPaasConfiguration.ContactConsumerConfiguration> contactConsumerConfigurationFunction = rabbitMQExtension -> new OpenPaasConfiguration.ContactConsumerConfiguration(
             ImmutableList.of(AmqpUri.from(Throwing.supplier(() -> rabbitMQExtension.dockerRabbitMQ().amqpUri()).get())),
             OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
@@ -75,7 +76,7 @@ public class DistributedServerWithOpenPaasConfiguredTest {
                 .searchConfiguration(SearchConfiguration.openSearch())
                 .usersRepository(UsersRepositoryModuleChooser.Implementation.COMBINED)
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
-                .openPassModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED, !ENABLE_CARDDAV, ENABLE_CONTACTS_CONSUMER))
+                .openPassModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED, !ENABLE_DAV, ENABLE_CONTACTS_CONSUMER))
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))
@@ -96,12 +97,14 @@ public class DistributedServerWithOpenPaasConfiguredTest {
     }
 
     @Nested
-    class CardDav {
+    class DavConfigured {
         @RegisterExtension
+        @Order(1)
         static DavServerExtension davServerExtension = new DavServerExtension(
             WireMockExtension.extensionOptions()
                 .options(wireMockConfig().dynamicPort()));
 
+        @Order(2)
         @RegisterExtension
         static JamesServerExtension
             testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -111,11 +114,12 @@ public class DistributedServerWithOpenPaasConfiguredTest {
                 .searchConfiguration(SearchConfiguration.openSearch())
                 .usersRepository(UsersRepositoryModuleChooser.Implementation.COMBINED)
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
-                .openPassModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED, ENABLE_CARDDAV, !ENABLE_CONTACTS_CONSUMER))
+                .openPassModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED,
+                    ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER))
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))
-                .overrideWith(new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getCardDavConfiguration()), Optional.empty())))
+                .overrideWith(new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty())))
             .extension(new DockerOpenSearchExtension())
             .extension(new CassandraExtension())
             .extension(new RabbitMQExtension())

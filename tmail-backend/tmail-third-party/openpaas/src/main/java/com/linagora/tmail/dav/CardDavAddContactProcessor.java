@@ -45,14 +45,14 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CardDavAddContactProcessor.class);
 
-    private final DavClient cardDavClient;
+    private final DavClient davClient;
     private final AsyncLoadingCache<Username, String> openPassUserIdLoader;
 
     @Inject
     @Singleton
-    public CardDavAddContactProcessor(DavClient cardDavClient,
+    public CardDavAddContactProcessor(DavClient davClient,
                                       OpenPaasRestClient openPaasRestClient) {
-        this.cardDavClient = cardDavClient;
+        this.davClient = davClient;
 
         AsyncCacheLoader<Username, String> openPaasUserIdCacheLoader = (key, executor) -> openPaasRestClient.searchOpenPaasUserId(key.asString())
             .subscribeOn(Schedulers.fromExecutor(executor))
@@ -69,9 +69,9 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
         return Mono.fromFuture(openPassUserIdLoader.get(username))
             .flatMap(openPassUserId -> {
                 CardDavCreationObjectRequest cardDavCreationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of(contactFields.fullName()), contactFields.address());
-                return cardDavClient.existsCollectedContact(username.asString(), openPassUserId, cardDavCreationObjectRequest.uid())
+                return davClient.existsCollectedContact(username.asString(), openPassUserId, cardDavCreationObjectRequest.uid())
                     .filter(FunctionalUtils.identityPredicate().negate())
-                    .flatMap(exists -> cardDavClient.createCollectedContact(username.asString(), openPassUserId, cardDavCreationObjectRequest))
+                    .flatMap(exists -> davClient.createCollectedContact(username.asString(), openPassUserId, cardDavCreationObjectRequest))
                     .onErrorResume(error -> {
                         LOGGER.error("Error while creating collected contact if not exists.", error);
                         return Mono.empty();
