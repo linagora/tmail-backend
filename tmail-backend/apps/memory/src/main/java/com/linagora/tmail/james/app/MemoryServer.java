@@ -108,6 +108,7 @@ import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
+import com.linagora.tmail.james.jmap.routes.DownloadAllRoutesModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
@@ -170,7 +171,8 @@ public class MemoryServer {
         new MessageVaultCapabilitiesModule(),
         new MailboxesCleanupModule(),
         new InboxArchivalTaskModule(),
-        new ContactSupportCapabilitiesModule())
+        new ContactSupportCapabilitiesModule(),
+        new DownloadAllRoutesModule())
         .with(new TeamMailboxJmapModule());
 
     public static final Module MODULES = Modules.override(
