@@ -20,7 +20,6 @@ package com.linagora.tmail.james.app;
 
 import org.apache.james.jmap.routes.BlobResolver;
 import org.apache.james.jmap.routes.MessageBlobResolver;
-import org.apache.james.jmap.routes.MessagePartBlobResolver;
 import org.apache.james.jmap.routes.UploadResolver;
 
 import com.google.inject.AbstractModule;
