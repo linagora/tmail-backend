@@ -52,6 +52,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import org.apache.http.HttpStatus;
 import org.apache.james.core.MailAddress;
 import org.apache.james.util.ClassLoaderUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -79,7 +80,13 @@ public class DavClientTest {
 
     @BeforeEach
     void setup() {
+        System.setProperty("MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF_IN_MILLS", "10");
         client = new DavClient(davServerExtension.getDavConfiguration());
+    }
+
+    @AfterEach
+    void tearDown() {
+        System.clearProperty("MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF_IN_MILLS");
     }
 
     @Test
