@@ -118,9 +118,16 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
         try {
             return primaryBlobStoreDAO.read(bucketName, blobId);
         } catch (Exception ex) {
-            InputStream inputStream = secondaryBlobStoreDAO.read(withSuffix(bucketName), blobId);
-            LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
-            return inputStream;
+            try {
+                InputStream inputStream = secondaryBlobStoreDAO.read(withSuffix(bucketName), blobId);
+                LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
+                return inputStream;
+            } catch (Exception ex2) {
+                if (ex instanceof ObjectNotFoundException && ex2 instanceof ObjectNotFoundException) {
+                    throw ex;
+                }
+                throw new ObjectStoreException("Failure to read " + blobId.asString() + " in bucket " + bucketName.asString() + " on both blobstores, first error:", ex);
+            }
         }
     }
 
@@ -128,6 +135,12 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     public Mono<InputStream> readReactive(BucketName bucketName, BlobId blobId) {
         return Mono.from(primaryBlobStoreDAO.readReactive(bucketName, blobId))
             .onErrorResume(ex -> Mono.from(secondaryBlobStoreDAO.readReactive(withSuffix(bucketName), blobId))
+                .onErrorResume(ex2 -> {
+                    if (ex instanceof ObjectNotFoundException && ex2 instanceof ObjectNotFoundException) {
+                        return Mono.error(ex);
+                    }
+                    return Mono.error(new ObjectStoreException("Failure to read " + blobId.asString() + " in bucket " + bucketName.asString() + " on both blobstores, first error:", ex));
+                })
                 .doOnSuccess(any -> LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex)));
     }
 
@@ -135,6 +148,12 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     public Mono<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
         return Mono.from(primaryBlobStoreDAO.readBytes(bucketName, blobId))
             .onErrorResume(ex -> Mono.from(secondaryBlobStoreDAO.readBytes(withSuffix(bucketName), blobId))
+                .onErrorResume(ex2 -> {
+                    if (ex instanceof ObjectNotFoundException && ex2 instanceof ObjectNotFoundException) {
+                        return Mono.error(ex);
+                    }
+                    return Mono.error(new ObjectStoreException("Failure to read " + blobId.asString() + " in bucket " + bucketName.asString() + " on both blobstores, first error:", ex));
+                })
                 .doOnSuccess(any -> LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex)));
     }
 

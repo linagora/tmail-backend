@@ -181,8 +181,8 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
         secondaryS3.pause();
 
         assertThatThrownBy(() -> Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isInstanceOf(SdkClientException.class)
-            .hasMessage("Unable to execute HTTP request: Read timed out");
+            .isInstanceOf(ObjectStoreException.class)
+            .hasStackTraceContaining("Unable to execute HTTP request: Read timed out");
     }
 
     @Test
