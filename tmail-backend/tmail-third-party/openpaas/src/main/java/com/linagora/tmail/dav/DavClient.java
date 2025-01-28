@@ -58,7 +58,6 @@ import reactor.util.retry.Retry;
 
 public class DavClient {
     public static final int MAX_CALENDAR_OBJECT_UPDATE_RETRIES = 5;
-    public static final Duration MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF = Duration.ofMillis(100);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
     private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(10);
@@ -67,10 +66,14 @@ public class DavClient {
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String ACCEPT_XML = "application/xml";
     private static final String CONTENT_TYPE_VCARD = "application/vcard";
-    private static final boolean SHOULD_RETRY_CALENDAR_OBJECT_UPDATE = true;
 
     private final HttpClient client;
     private final DavConfiguration config;
+    public final Duration calendarObjectUpdateRetryBackoff =
+        Optional.ofNullable(System.getProperty("MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF_IN_MILLS"))
+            .map(Long::parseLong)
+            .map(Duration::ofMillis)
+            .orElse(Duration.ofMillis(100));
 
     public DavClient(DavConfiguration config) {
         this.config = config;
@@ -157,8 +160,8 @@ public class DavClient {
             .map(calendarObjectUpdater)
             .flatMap(updatedCalendarObject -> doUpdateCalendarObject(username, updatedCalendarObject))
             .retryWhen(
-                Retry.backoff(MAX_CALENDAR_OBJECT_UPDATE_RETRIES, MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF)
-                .filter(e -> e instanceof DavClientException && ((DavClientException) e).shouldRetry())
+                Retry.backoff(MAX_CALENDAR_OBJECT_UPDATE_RETRIES, calendarObjectUpdateRetryBackoff)
+                .filter(RetriableDavClientException.class::isInstance)
                 .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) ->
                     new DavClientException("Max retries exceeded for calendar update", retrySignal.failure())));
     }
@@ -184,10 +187,10 @@ public class DavClient {
                 () -> LOGGER.info("Calendar object '{}' updated successfully.",
                     updatedCalendarObject.uri()));
         } else if (response.status() == HttpResponseStatus.PRECONDITION_FAILED) {
-            return Mono.error(new DavClientException(
+            return Mono.error(new RetriableDavClientException(
                 String.format(
                     "Precondition failed (ETag mismatch) when updating calendar object '%s'. Retry may be needed.",
-                    updatedCalendarObject.uri()), SHOULD_RETRY_CALENDAR_OBJECT_UPDATE));
+                    updatedCalendarObject.uri())));
         } else {
             return Mono.error(new DavClientException(
                 String.format(
