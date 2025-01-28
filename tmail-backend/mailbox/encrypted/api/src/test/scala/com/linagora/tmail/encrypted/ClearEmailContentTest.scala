@@ -24,7 +24,7 @@ import java.util.stream.IntStream
 import com.google.common.io.ByteSource
 import org.apache.james.jmap.api.model.Preview
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor
-import org.apache.james.mailbox.store.mail.model.impl.MessageParser
+import org.apache.james.mailbox.store.mail.model.impl.MessageParserImpl
 import org.apache.james.mime4j.dom.{Message, Multipart}
 import org.apache.james.mime4j.message.{BasicBodyFactory, BodyPartBuilder, MultipartBuilder}
 import org.apache.james.util.html.HtmlTextExtractor
@@ -58,7 +58,7 @@ class ClearEmailContentTest {
     val messageContentExtractor: MessageContentExtractor = new MessageContentExtractor()
     val htmlTextExtractor: HtmlTextExtractor = new JsoupHtmlTextExtractor
     previewFactory = new Preview.Factory(new MessageContentExtractor, htmlTextExtractor)
-    clearEmailContentFactory = new ClearEmailContentFactory(new MessageParser(), messageContentExtractor, previewFactory)
+    clearEmailContentFactory = new ClearEmailContentFactory(new MessageParserImpl(), messageContentExtractor, previewFactory)
 
     textPart = BodyPartBuilder.create()
       .setBody(TEXT_CONTENT, "plain", StandardCharsets.UTF_8)
