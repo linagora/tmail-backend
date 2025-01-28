@@ -34,6 +34,7 @@ import java.util.Optional;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BlobStoreDAOContract;
 import org.apache.james.blob.api.BucketName;
+import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreException;
 import org.apache.james.blob.api.TestBlobId;
 import org.apache.james.blob.objectstorage.aws.AwsS3AuthConfiguration;
@@ -181,8 +182,8 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
         secondaryS3.pause();
 
         assertThatThrownBy(() -> Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isInstanceOf(SdkClientException.class)
-            .hasMessage("Unable to execute HTTP request: Read timed out");
+            .isInstanceOf(ObjectNotFoundException.class)
+            .hasStackTraceContaining("Unable to execute HTTP request: Read timed out");
     }
 
     @Test
