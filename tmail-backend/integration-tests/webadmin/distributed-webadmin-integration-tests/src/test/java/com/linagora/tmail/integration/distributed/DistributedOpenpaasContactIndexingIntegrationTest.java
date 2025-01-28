@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.integration.distributed;
 
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
 import static org.apache.james.jmap.JmapRFCCommonRequests.ACCEPT_JMAP_RFC_HEADER;
 import static org.hamcrest.Matchers.empty;
@@ -40,13 +41,14 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasTestModule;
 import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.carddav.CardDavCreationFactory;
-import com.linagora.tmail.carddav.CardDavServerExtension;
+import com.linagora.tmail.dav.CardDavUtils;
+import com.linagora.tmail.dav.DavServerExtension;
 import com.linagora.tmail.integration.ContactIndexingIntegrationContract;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -63,7 +65,9 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
     static OpenPaasServerExtension openPaasServerExtension = new OpenPaasServerExtension();
 
     @RegisterExtension
-    static CardDavServerExtension cardDavServerExtension = new CardDavServerExtension();
+    static DavServerExtension davServerExtension = new DavServerExtension(
+        WireMockExtension.extensionOptions()
+            .options(wireMockConfig().dynamicPort()));
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -88,8 +92,8 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
         .extension(new ClockExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(Modules.override(new OpenPaasModule(), new OpenPaasModule.CardDavModule())
-                .with(new OpenPaasTestModule(openPaasServerExtension, Optional.of(cardDavServerExtension.getCardDavConfiguration()), Optional.empty()))))
+            .overrideWith(Modules.override(new OpenPaasModule(), new OpenPaasModule.DavModule())
+                .with(new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty()))))
         .build();
 
     @Disabled("This is responsibility of the OpenPaas server")
@@ -105,11 +109,11 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
 
         // Set up the scenario for openpaas & carddav extensions
         String bobOpenPassUid = UUID.randomUUID().toString();
-        String andreContactUid = CardDavCreationFactory.createContactUid(ANDRE.asMailAddress());
+        String andreContactUid = CardDavUtils.createContactUid(ANDRE.asMailAddress());
 
         openPaasServerExtension.setSearchEmailExist(BOB.asString(), bobOpenPassUid);
-        cardDavServerExtension.setCollectedContactExists(BOB.asString(), bobOpenPassUid, andreContactUid, false);
-        cardDavServerExtension.setCreateCollectedContact(BOB.asString(), bobOpenPassUid, andreContactUid);
+        davServerExtension.setCollectedContactExists(BOB.asString(), bobOpenPassUid, andreContactUid, false);
+        davServerExtension.setCreateCollectedContact(BOB.asString(), bobOpenPassUid, andreContactUid);
 
         // Verify that the andre contact is not indexed
         given(jmapSpec)
@@ -152,6 +156,6 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
             .body("additionalInformation.failedUsers", empty());
 
         // Verify that the andre contact was created in carddav
-        cardDavServerExtension.assertCreateCollectedContactWasCalled(BOB.asString(), bobOpenPassUid, andreContactUid, 1);
+        davServerExtension.assertCreateCollectedContactWasCalled(BOB.asString(), bobOpenPassUid, andreContactUid, 1);
     }
 }

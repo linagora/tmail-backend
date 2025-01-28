@@ -19,16 +19,16 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 | Whether the OpenPaaS Rest client should trust all SSL certificates. Optional, boolean. Default to false.
 | openpaas.queues.quorum.bypass
 | Whether to ignore quorum queues setting from `rabbitmq.properties`. Optional, boolean. Default to false. If `true`, OpenPaaS queues would use classic queues.
-| carddav.api.uri
-| Optional. URI for CardDAV API. Example: `carddav.api.uri=http://sabre_dav:80/api`
-| carddav.admin.user
-| Admin username for CardDAV. Example: `carddav.admin.user=admin`
-| carddav.admin.password
-| Admin password for CardDAV. Example: `carddav.admin.password=admin`
-| carddav.rest.client.trust.all.ssl.certs
-| Whether the CardDAV Rest client should trust all SSL certificates. Optional, boolean. Default to false.
-| carddav.rest.client.response.timeout
-| Timeout for CardDAV Rest client. Optional, integer. Unit is milliseconds. Default to 10000.
+| dav.api.uri
+| Optional. URI for DAV API. Example: `dav.api.uri=http://sabre_dav:80/api`
+| dav.admin.user
+| Admin username for DAV. Example: `dav.admin.user=admin`
+| dav.admin.password
+| Admin password for DAV. Example: `dav.admin.password=admin`
+| dav.rest.client.trust.all.ssl.certs
+| Whether the DAV Rest client should trust all SSL certificates. Optional, boolean. Default to false.
+| dav.rest.client.response.timeout
+| Timeout for DAV Rest client. Optional, integer. Unit is milliseconds. Default to 10000.
 |===
 
 == OpenPaasAmqpForwardAttribute
