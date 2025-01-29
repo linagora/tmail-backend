@@ -22,13 +22,18 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_1;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_2;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_ID;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_VEVENT_1;
 import static com.linagora.tmail.dav.DavServerExtension.createDelegatedBasicAuthenticationToken;
 import static com.linagora.tmail.dav.DavServerExtension.propfind;
+import static com.linagora.tmail.dav.DavServerExtension.report;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -47,6 +52,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.github.tomakehurst.wiremock.http.Body;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
+import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
+import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import ezvcard.parameter.EmailType;
 
@@ -151,7 +158,7 @@ public class DavClientTest {
                 .willReturn(
                     aResponse()
                         .withResponseBody(
-                            new Body(ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_CALENDARS.xml")))
+                            new Body(ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
         assertThat(client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
@@ -171,5 +178,73 @@ public class DavClientTest {
 
         assertThat(client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
             .isEmpty();
+    }
+
+    @Test
+    void findUserCalendarsShouldFailWhenHTTPResponseIsNot207() {
+        davServerExtension.stubFor(
+            propfind("/calendars/" + OPENPAAS_USER_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+                .willReturn(ok()));
+
+        assertThatThrownBy(() -> client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
+            .isInstanceOf(DavClientException.class);
+    }
+
+    @Test
+    void getVCalendarContainingVEventShouldSucceed() {
+        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+            .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
+                ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
+    }
+
+    @Test
+    void getVCalendarContainingVEventShouldSucceedWhenQueryingOneOfUserCalendarsFails() {
+        davServerExtension.stubFor(
+            report("/calendars/%s/%s/".formatted(ALICE_ID, ALICE_CALENDAR_2))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml"))
+                .withHeader("Depth", equalTo("1"))
+                .withRequestBody(equalTo(
+                    new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
+                .willReturn(notFound()));
+
+        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+            .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
+                ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
+    }
+
+    @Test
+    void getVCalendarContainingVEventShouldSucceedWhenVEventNotFoundInAnyUserCalendar() {
+        davServerExtension.stubFor(
+            report("/calendars/%s/%s/".formatted(ALICE_ID, ALICE_CALENDAR_1))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml"))
+                .withHeader("Depth", equalTo("1"))
+                .withRequestBody(equalTo(
+                    new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body(
+                                ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
+                        .withStatus(207)));
+
+        davServerExtension.stubFor(
+            report("/calendars/%s/%s/".formatted(ALICE_ID, ALICE_CALENDAR_2))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml"))
+                .withHeader("Depth", equalTo("1"))
+                .withRequestBody(equalTo(
+                    new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body(
+                                ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
+                        .withStatus(207)));
+
+        assertThat(client.getVCalendarContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).block())
+            .isEqualTo(null);
     }
 }
