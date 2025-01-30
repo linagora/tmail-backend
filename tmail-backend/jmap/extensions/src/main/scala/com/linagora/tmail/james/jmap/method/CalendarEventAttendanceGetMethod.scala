@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.method
 import com.linagora.tmail.james.jmap.json.CalendarEventAttendanceSerializer
 import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceGetRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
-import com.linagora.tmail.james.jmap.model.{CalendarEventNotDone, CalendarEventNotFound, CalendarEventNotParsable, InvalidCalendarFileException}
+import com.linagora.tmail.james.jmap.model.{CalendarEventAttendanceResults, CalendarEventNotDone, CalendarEventNotFound, CalendarEventNotParsable, InvalidCalendarFileException}
 import com.linagora.tmail.james.jmap.{AttendanceStatus, EventAttendanceRepository}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.refineV
@@ -99,38 +99,3 @@ case class CalendarEventAttendanceGetResponse(accountId: AccountId,
                                               notFound: Option[CalendarEventNotFound] = Option.empty,
                                               notDone: Option[CalendarEventNotDone] = Option.empty) extends WithAccountId
 
-object CalendarEventAttendanceResults {
-  def merge(r1: CalendarEventAttendanceResults, r2: CalendarEventAttendanceResults): CalendarEventAttendanceResults =
-    CalendarEventAttendanceResults(
-      done = r1.done ++ r2.done,
-      notFound = r1.notFound.orElse(r2.notFound),
-      notDone = r1.notDone.orElse(r2.notDone))
-
-  def notFound(blobId: BlobId): CalendarEventAttendanceResults = CalendarEventAttendanceResults(notFound = Some(CalendarEventNotFound(Set(blobId.value))))
-
-  def empty: CalendarEventAttendanceResults = CalendarEventAttendanceResults()
-
-  def done(eventAttendanceEntry: EventAttendanceStatusEntry): CalendarEventAttendanceResults =
-    CalendarEventAttendanceResults(List(eventAttendanceEntry))
-
-  def notDone(notParsable: CalendarEventNotParsable): CalendarEventAttendanceResults =
-    CalendarEventAttendanceResults(notDone = Some(CalendarEventNotDone(notParsable.asSetErrorMap)))
-
-  def notDone(blobId: BlobId, throwable: Throwable, mailboxSession: MailboxSession): CalendarEventAttendanceResults =
-    CalendarEventAttendanceResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable, mailboxSession)))), done = List(), notFound = None)
-
-  private def asSetError(throwable: Throwable, mailboxSession: MailboxSession): SetError = throwable match {
-    case _: InvalidCalendarFileException | _: IllegalArgumentException =>
-      // LOGGER.info("Error when generate reply mail for {}: {}", mailboxSession.getUser.asString(), throwable.getMessage)
-      SetError.invalidPatch(SetErrorDescription(throwable.getMessage))
-    case _ =>
-      // LOGGER.error("serverFail to generate reply mail for {}", mailboxSession.getUser.asString(), throwable)
-      SetError.serverFail(SetErrorDescription(throwable.getMessage))
-  }
-}
-
-case class CalendarEventAttendanceResults(done: List[EventAttendanceStatusEntry] = List(),
-                                          notFound: Option[CalendarEventNotFound] = Option.empty,
-                                          notDone: Option[CalendarEventNotDone] = Option.empty)
-
-case class EventAttendanceStatusEntry(blobId: String, eventAttendanceStatus: AttendanceStatus)
