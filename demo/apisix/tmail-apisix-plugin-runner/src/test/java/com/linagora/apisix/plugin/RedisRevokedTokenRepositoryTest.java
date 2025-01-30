@@ -18,7 +18,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import io.lettuce.core.RedisException;
-import io.lettuce.core.api.sync.RedisStringCommands;
+import io.lettuce.core.api.reactive.RedisStringReactiveCommands;
 
 class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
     static final String REDIS_PASSWORD = "redisSecret1";
@@ -40,7 +40,7 @@ class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract 
 
     @BeforeEach
     void beforeEach() {
-        RedisStringCommands<String, String> redisStringCommands = AppConfiguration.initRedisCommandStandalone(
+        RedisStringReactiveCommands<String, String> redisStringCommands = AppConfiguration.initRedisCommandStandalone(
             String.format("%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(6379)),
             REDIS_PASSWORD, Duration.ofSeconds(3));
         testee = new RedisRevokedTokenRepository(redisStringCommands, IGNORE_REDIS_ERRORS);
@@ -65,22 +65,22 @@ class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract 
         ContainerHelper.pause(REDIS_CONTAINER);
         TimeUnit.SECONDS.sleep(1);
 
-        assertThatCode(() -> testee().exist("sid1")).doesNotThrowAnyException();
+        assertThatCode(() -> testee().exist("sid1").block()).doesNotThrowAnyException();
     }
 
 
     @Test
     void existsShouldReturnCorrectWhenIgnoreWasConfigured() throws InterruptedException {
-        testee().add("sid1");
-        assertThat(testee().exist("sid1")).isTrue();
+        testee().add("sid1").block();
+        assertThat(testee().exist("sid1").block()).isTrue();
 
         ContainerHelper.pause(REDIS_CONTAINER);
         TimeUnit.SECONDS.sleep(1);
-        assertThat(testee().exist("sid1")).isFalse();
+        assertThat(testee().exist("sid1").block()).isFalse();
 
         ContainerHelper.unPause(REDIS_CONTAINER);
         TimeUnit.SECONDS.sleep(1);
-        assertThat(testee().exist("sid1")).isTrue();
+        assertThat(testee().exist("sid1").block()).isTrue();
     }
 
     @Test
