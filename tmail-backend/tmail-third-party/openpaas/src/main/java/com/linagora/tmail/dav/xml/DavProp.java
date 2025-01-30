@@ -31,12 +31,19 @@ public class DavProp {
     @XmlElement(name = "getetag", namespace = "DAV:")
     private DavGetETag getETag;
 
+    @XmlElement(name = "resourcetype", namespace = "DAV:")
+    private DavResourceType resourceType;
+
     public Optional<CalendarData> getCalendarData() {
         return Optional.ofNullable(calendarData);
     }
 
     public Optional<String> getETag() {
         return Optional.ofNullable(getETag).map(DavGetETag::getValue);
+    }
+
+    public Optional<DavResourceType> getResourceType() {
+        return Optional.ofNullable(resourceType);
     }
 
     @Override
