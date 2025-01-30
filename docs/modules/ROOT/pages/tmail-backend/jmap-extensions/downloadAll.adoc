@@ -8,10 +8,17 @@ and delivered to the user in a zip file.
 
 Servers supporting the JMAP Download All extension need to advertise it through the session capabilities:
 ....
-com:linagora:params:downloadAll
+"com:linagora:params:downloadAll": {
+  "endpoint":"http://localhost/jmap/downloadAll/{accountId}/{emailId}?name={name}",
+}
 ....
 
-The capability needs to advertise the following specified download all attachments route.
+The capability needs to advertise the following specified download all attachments route URL schema.
+
+It must contain the following variables detailed in the specification section:
+ - `accountId`
+ - `emailId`
+ - `name`
 
 == Specification
 
