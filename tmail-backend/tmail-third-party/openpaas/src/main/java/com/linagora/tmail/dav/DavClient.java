@@ -223,8 +223,10 @@ public class DavClient {
         return findUserCalendars(userId, username)
             .flatMap(calendarURI ->
                 getCalendarObjectContainingVEventFromSpecificCalendar(calendarURI, eventUid, username)
-                    .switchIfEmpty(Mono.fromRunnable(
-                        () -> LOGGER.trace("VEvent '{}' was not found in Calendar '{}'.", eventUid, calendarURI)))
+                    .switchIfEmpty(
+                        ReactorUtils.logAsMono(
+                            () -> LOGGER.trace("VEvent '{}' was not found in Calendar '{}'.", eventUid, calendarURI))
+                            .then(Mono.empty()))
                     .onErrorResume(ex -> {
                         LOGGER.debug("Error while querying '{}' for VEvent '{}': ",
                             calendarURI, eventUid, ex);
