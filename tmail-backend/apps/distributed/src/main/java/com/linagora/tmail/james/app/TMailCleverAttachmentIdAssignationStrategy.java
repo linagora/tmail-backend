@@ -15,33 +15,20 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-
 package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME;
+import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentMapper;
+import org.apache.james.mailbox.model.AttachmentId;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.ParsedAttachment;
+import org.apache.james.mailbox.model.StringBackedAttachmentId;
 
-import jakarta.inject.Named;
-
-import org.apache.james.events.CassandraEventDeadLetters;
-import org.apache.james.events.CassandraEventDeadLettersDAO;
-import org.apache.james.events.CassandraEventDeadLettersGroupDAO;
-import org.apache.james.events.EventDeadLetters;
-
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.linagora.tmail.event.TmailEventSerializer;
-
-public class TmailEventDeadLettersModule extends AbstractModule {
-
-    @Provides
-    @Singleton
-    @Named(TMAIL_EVENT_BUS_INJECT_NAME)
-    EventDeadLetters provideEventDeadLetters(CassandraEventDeadLettersGroupDAO cassandraEventDeadLettersGroupDAO,
-                                             CqlSession session,
-                                             TmailEventSerializer tmailEventSerializer) {
-        return new CassandraEventDeadLetters(new CassandraEventDeadLettersDAO(session, tmailEventSerializer),
-            cassandraEventDeadLettersGroupDAO);
+public class TMailCleverAttachmentIdAssignationStrategy implements CassandraAttachmentMapper.AttachmentIdAssignationStrategy {
+    @Override
+    public AttachmentId assign(ParsedAttachment parsedAttachment, MessageId messageId) {
+        if (parsedAttachment instanceof TMailCleverParsedAttachment TMailCleverParsedAttachment) {
+            return StringBackedAttachmentId.from(TMailCleverParsedAttachment.translate(messageId));
+        }
+        return StringBackedAttachmentId.random();
     }
 }
