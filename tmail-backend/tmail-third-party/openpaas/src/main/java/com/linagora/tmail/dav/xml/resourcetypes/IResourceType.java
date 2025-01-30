@@ -16,40 +16,9 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.dav.xml;
+package com.linagora.tmail.dav.xml.resourcetypes;
 
-import javax.xml.bind.annotation.XmlElement;
 
-import com.google.common.base.MoreObjects;
+public interface IResourceType {
 
-public class DavResponse {
-    @XmlElement(name = "href", namespace = "DAV:")
-    private DavHref href;
-
-    @XmlElement(name = "propstat", namespace = "DAV:")
-    private DavPropstat propstat;
-
-    public DavHref getHref() {
-        return href;
-    }
-
-    public DavPropstat getPropstat() {
-        return propstat;
-    }
-
-    public boolean isCalendarCollectionResponse() {
-        return getPropstat()
-            .getProp()
-            .getResourceType()
-            .map(DavResourceType::isCalendarCollection)
-            .orElse(false);
-    }
-
-    @Override
-    public String toString() {
-        return MoreObjects.toStringHelper(this)
-            .add("href", href)
-            .add("propstat", propstat)
-            .toString();
-    }
 }

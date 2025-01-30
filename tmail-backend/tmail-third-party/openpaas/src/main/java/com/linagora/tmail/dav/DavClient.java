@@ -21,11 +21,9 @@ package com.linagora.tmail.dav;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -62,7 +60,6 @@ public class DavClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
     private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String COLLECTED_ADDRESS_BOOK_PATH = "/addressbooks/%s/collected/%s.vcf";
-    private static final Pattern CALENDAR_URI_PATTERN = Pattern.compile("/calendars/[^/]+/[^/]+/");
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String ACCEPT_XML = "application/xml";
     private static final String CONTENT_TYPE_VCARD = "application/vcard";
@@ -290,22 +287,23 @@ public class DavClient {
     }
 
     private List<URI> extractCalendarURIsFromResponse(DavMultistatus multistatus) {
-        List<URI> hrefs = new ArrayList<>();
+        return multistatus.getResponses().stream()
+            .filter(DavResponse::isCalendarCollectionResponse)
+            .flatMap(response ->
+                response.getHref()
+                .getValue()
+                .filter(href -> !(href.endsWith("inbox/") || href.endsWith("outbox/")))
+                .flatMap(this::parseCalendarHref).stream())
+            .peek(href -> LOGGER.trace("Found user calendar: '{}'", href))
+            .toList();
+    }
 
-        for (DavResponse response : multistatus.getResponses()) {
-            response.getHref().getValue().ifPresent(href -> {
-                if (CALENDAR_URI_PATTERN.matcher(href).matches() &&
-                    !(href.endsWith("inbox/") || href.endsWith("outbox/"))) {
-                    try {
-                        hrefs.add(URI.create(href));
-                    } catch (RuntimeException e) {
-                        LOGGER.trace("Found an invalid calendar href in Dav server response '{}'", href);
-                    }
-                }
-            });
+    private Optional<URI> parseCalendarHref(String href) {
+        try {
+            return Optional.of(URI.create(href));
+        } catch (RuntimeException e) {
+            LOGGER.trace("Found an invalid calendar href in Dav server response '{}'", href);
+            return Optional.empty();
         }
-
-        LOGGER.trace("Found user calendars: {}", hrefs);
-        return hrefs;
     }
 }
