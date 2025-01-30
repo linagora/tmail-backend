@@ -31,20 +31,7 @@ import org.apache.james.mailbox.MailboxSession
 
 import scala.util.Try
 
-object LanguageLocation {
-  def fromString(languageCode: String): Try[LanguageLocation] = detectLocale(languageCode).map(LanguageLocation.apply)
 
-  def detectLocale(languageCode: String): Try[Locale] =
-    if (Locale.getISOLanguages.contains(languageCode)) {
-      Try(Locale.forLanguageTag(languageCode))
-    } else {
-      throw new IllegalArgumentException("The language must be a valid ISO language code")
-    }
-}
-
-case class LanguageLocation(language: Locale) {
-  def value: String = language.toLanguageTag
-}
 
 object CalendarEventReplyRequest {
   val MAXIMUM_NUMBER_OF_BLOB_IDS: Int = 16
@@ -71,41 +58,6 @@ case class CalendarEventReplyRequest(accountId: AccountId,
       case None => scala.Right(this)
     }
 }
-
-object CalendarEventReplyResults {
-  def merge(r1: CalendarEventReplyResults, r2: CalendarEventReplyResults): CalendarEventReplyResults =
-    CalendarEventReplyResults(
-      done = BlobIds(r1.done.value ++ r2.done.value),
-      notFound = (r1.notFound ++ r2.notFound).reduceOption((notFound1, notFound2) => notFound1.merge(notFound2)),
-      notDone = (r1.notDone ++ r2.notDone).reduceOption((notDone1, notDOne2) => notDone1.merge(notDOne2)))
-
-  def notFound(blobId: BlobId): CalendarEventReplyResults = CalendarEventReplyResults(notFound = Some(CalendarEventNotFound(Set(blobId.value))))
-
-  def empty: CalendarEventReplyResults = CalendarEventReplyResults()
-
-  def notDone(notParsable: CalendarEventNotParsable): CalendarEventReplyResults =
-    CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(notParsable.asSetErrorMap)))
-
-  def notDone(blobId: BlobId, throwable: Throwable, mailboxSession: MailboxSession): CalendarEventReplyResults =
-    CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable, mailboxSession)))))
-
-  private def asSetError(throwable: Throwable, mailboxSession: MailboxSession): SetError = throwable match {
-    case _: InvalidCalendarFileException | _: IllegalArgumentException =>
-      LOGGER.info("Error when generate reply mail for {}: {}", mailboxSession.getUser.asString(), throwable.getMessage)
-      SetError.invalidPatch(SetErrorDescription(throwable.getMessage))
-    case _ =>
-      LOGGER.error("serverFail to generate reply mail for {}", mailboxSession.getUser.asString(), throwable)
-      SetError.serverFail(SetErrorDescription(throwable.getMessage))
-  }
-}
-
-case class CalendarEventNotDone(value: Map[UnparsedBlobId, SetError]) {
-  def merge(other: CalendarEventNotDone): CalendarEventNotDone = CalendarEventNotDone(this.value ++ other.value)
-}
-
-case class CalendarEventReplyResults(done: BlobIds = BlobIds(Seq.empty),
-                                     notFound: Option[CalendarEventNotFound] = None,
-                                     notDone: Option[CalendarEventNotDone] = None)
 
 trait CalendarEventReplyResponse {
   def accountId: AccountId
