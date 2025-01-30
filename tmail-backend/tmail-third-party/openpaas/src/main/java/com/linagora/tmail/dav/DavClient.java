@@ -296,7 +296,11 @@ public class DavClient {
             response.getHref().getValue().ifPresent(href -> {
                 if (CALENDAR_URI_PATTERN.matcher(href).matches() &&
                     !(href.endsWith("inbox/") || href.endsWith("outbox/"))) {
-                    hrefs.add(URI.create(href));
+                    try {
+                        hrefs.add(URI.create(href));
+                    } catch (RuntimeException e) {
+                        LOGGER.trace("Found an invalid calendar href in Dav server response '{}'", href);
+                    }
                 }
             });
         }

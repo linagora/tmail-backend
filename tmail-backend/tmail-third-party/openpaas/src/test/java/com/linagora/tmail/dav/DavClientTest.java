@@ -207,6 +207,23 @@ public class DavClientTest {
             .isInstanceOf(DavClientException.class);
     }
 
+
+    @Test
+    void findUserCalendarsShouldNotFailWhenAnyOfUserCalendarsHrefsIsInvalid() {
+        davServerExtension.stubFor(
+            propfind("/calendars/" + OPENPAAS_USER_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body(ClassLoaderUtils.getSystemResourceAsByteArray("CALENDARS_WITH_ONE_INVALID_HREF.xml")))
+                        .withStatus(207)));
+
+        assertThat(client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
+            .hasSameElementsAs(
+                List.of(URI.create("/calendars/ALICE_ID/0b4e80d7-7337-458f-852d-7ae8d72a74b2/")));
+    }
+
     @Test
     void getCalendarObjectContainingVEventShouldSucceed() {
         assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
