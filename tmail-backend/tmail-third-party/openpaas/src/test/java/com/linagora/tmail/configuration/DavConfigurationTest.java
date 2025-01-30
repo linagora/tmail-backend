@@ -32,54 +32,54 @@ import org.junit.jupiter.api.Test;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 
-class CardDavConfigurationTest {
+class DavConfigurationTest {
 
     @Test
     void shouldRespectBeanContract() {
-        EqualsVerifier.forClass(CardDavConfiguration.class)
+        EqualsVerifier.forClass(DavConfiguration.class)
             .verify();
     }
 
     @Test
     void fromShouldReturnTheConfigurationWhenAllParametersAreGiven() throws URISyntaxException {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("carddav.api.uri", "http://localhost:8080");
-        configuration.addProperty("carddav.admin.user", "jhon_doe");
-        configuration.addProperty("carddav.admin.password", "123");
-        configuration.addProperty("carddav.rest.client.trust.all.ssl.certs", "true");
-        configuration.addProperty("carddav.rest.client.response.timeout", "500");
+        configuration.addProperty("dav.api.uri", "http://localhost:8080");
+        configuration.addProperty("dav.admin.user", "jhon_doe");
+        configuration.addProperty("dav.admin.password", "123");
+        configuration.addProperty("dav.rest.client.trust.all.ssl.certs", "true");
+        configuration.addProperty("dav.rest.client.response.timeout", "500");
 
-        CardDavConfiguration expected = new CardDavConfiguration(
+        DavConfiguration expected = new DavConfiguration(
             new UsernamePasswordCredentials("jhon_doe", "123"),
             new URI("http://localhost:8080"),
             Optional.of(true)
             , Optional.of(Duration.ofMillis(500)));
 
-        assertThat(CardDavConfiguration.from(configuration))
+        assertThat(DavConfiguration.from(configuration))
             .isEqualTo(expected);
     }
 
     @Test
     void fromShouldThrowWhenCardDavApiUriNotConfigured() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("carddav.admin.user", "jhon_doe");
-        configuration.addProperty("carddav.admin.password", "123");
+        configuration.addProperty("dav.admin.user", "jhon_doe");
+        configuration.addProperty("dav.admin.password", "123");
 
-        assertThatThrownBy(() -> CardDavConfiguration.from(configuration))
+        assertThatThrownBy(() -> DavConfiguration.from(configuration))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("carddav.api.uri should not be empty");
+            .hasMessage("dav.api.uri should not be empty");
     }
 
     @Test
     void fromShouldThrowWhenCardDavAdminUserNotConfigured() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("carddav.api.uri", "http://localhost:8080");
-        configuration.addProperty("carddav.admin.password", "123");
-        configuration.addProperty("carddav.rest.client.trust.all.ssl.certs", "true");
-        configuration.addProperty("carddav.rest.client.response.timeout", "500");
+        configuration.addProperty("dav.api.uri", "http://localhost:8080");
+        configuration.addProperty("dav.admin.password", "123");
+        configuration.addProperty("dav.rest.client.trust.all.ssl.certs", "true");
+        configuration.addProperty("dav.rest.client.response.timeout", "500");
 
-        assertThatThrownBy(() -> CardDavConfiguration.from(configuration))
+        assertThatThrownBy(() -> DavConfiguration.from(configuration))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("carddav.admin.user should not be empty");
+            .hasMessage("dav.admin.user should not be empty");
     }
 }

@@ -16,15 +16,24 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.carddav;
+package com.linagora.tmail.dav.xml;
 
-public class CardDavClientException extends RuntimeException {
+import javax.xml.bind.annotation.XmlValue;
 
-    public CardDavClientException(String message) {
-        super(message);
+import com.google.common.base.MoreObjects;
+
+public class DavGetETag {
+    @XmlValue
+    private String value;
+
+    public String getValue() {
+        return value;
     }
 
-    public CardDavClientException(String message, Throwable cause) {
-        super(message, cause);
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+            .add("value", value)
+            .toString();
     }
 }

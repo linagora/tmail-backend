@@ -26,30 +26,30 @@ import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.configuration.CardDavConfiguration;
+import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 public record OpenPaasModuleChooserConfiguration(boolean enabled,
-                                                 boolean cardDavCollectedContactEnabled,
+                                                 boolean shouldEnableDavServerInteraction,
                                                  boolean contactsConsumerEnabled) {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasModuleChooserConfiguration.class);
     public static final boolean ENABLED = true;
     public static final boolean DISABLED = false;
     public static final boolean ENABLE_CONTACTS_CONSUMER = true;
-    public static final boolean ENABLE_CARDDAV = true;
+    public static final boolean ENABLE_DAV = true;
 
     public static OpenPaasModuleChooserConfiguration parse(PropertiesProvider propertiesProvider) throws
         ConfigurationException {
         try {
             Configuration configuration = propertiesProvider.getConfiguration("openpaas");
             boolean contactsConsumerEnabled = OpenPaasConfiguration.isConfiguredContactConsumer(configuration);
-            boolean cardDavCollectedContactEnabled = CardDavConfiguration.isConfigured(configuration);
-            LOGGER.info("OpenPaas module is turned on. Contacts consumer is enabled: {}, CardDav is enabled: {}",
-                contactsConsumerEnabled, cardDavCollectedContactEnabled);
-            return new OpenPaasModuleChooserConfiguration(ENABLED, cardDavCollectedContactEnabled, contactsConsumerEnabled);
+            boolean isDavConfigured = DavConfiguration.isConfigured(configuration);
+            LOGGER.info("OpenPaas module is turned on. Contacts consumer is enabled: {}, Dav is enabled: {}",
+                contactsConsumerEnabled, isDavConfigured);
+            return new OpenPaasModuleChooserConfiguration(ENABLED, isDavConfigured, contactsConsumerEnabled);
         } catch (FileNotFoundException e) {
             LOGGER.info("OpenPaas module is turned off.");
-            return new OpenPaasModuleChooserConfiguration(DISABLED, !ENABLE_CARDDAV, !ENABLE_CONTACTS_CONSUMER);
+            return new OpenPaasModuleChooserConfiguration(DISABLED, !ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER);
         }
     }
 }
