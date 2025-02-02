@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap;
 
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
+import com.linagora.tmail.james.jmap.model.CalendarAttendeeParticipationStatus;
 
 import net.fortuna.ical4j.model.parameter.PartStat;
 
@@ -76,6 +78,17 @@ public enum AttendanceStatus {
         return eventAttendanceFlags.stream().findAny();
     }
 
+    public static Optional<AttendanceStatus> fromCalendarAttendeeParticipationStatus(
+        CalendarAttendeeParticipationStatus status) {
+        try {
+            PartStat partstat = new PartStat.Factory().createParameter(status.value());
+            return fromPartStat(partstat);
+        } catch (URISyntaxException e) {
+            LOGGER.trace("Unable to map CalendarAttendeeParticipationStatus '{}' to AttendanceStatus.", status, e);
+            return Optional.empty();
+        }
+    }
+
     public Optional<PartStat> toPartStat() {
         return switch (this) {
             case Accepted -> Optional.of(PartStat.ACCEPTED);
@@ -83,6 +96,21 @@ public enum AttendanceStatus {
             case Tentative -> Optional.of(PartStat.TENTATIVE);
             case NeedsAction -> Optional.of(PartStat.NEEDS_ACTION);
         };
+    }
+
+    public static Optional<AttendanceStatus> fromPartStat(PartStat partStat) {
+        if (partStat.equals(PartStat.ACCEPTED)) {
+            return Optional.of(Accepted);
+        } else if (partStat.equals(PartStat.DECLINED)) {
+            return Optional.of(Declined);
+        } else if (partStat.equals(PartStat.NEEDS_ACTION)) {
+            return Optional.of(NeedsAction);
+        } else if (partStat.equals(PartStat.TENTATIVE)) {
+            return Optional.of(Tentative);
+        } else {
+            LOGGER.trace("Unable to map PartStat '{}' to AttendanceStatus.", partStat);
+            return Optional.empty();
+        }
     }
 
     public static Flags getEventAttendanceFlags() {
