@@ -18,17 +18,33 @@
 
 package com.linagora.tmail.imap;
 
+import org.apache.james.imap.api.process.ImapSession;
 import org.apache.james.imap.main.PathConverter;
-import org.apache.james.imap.processor.NamespaceSupplier;
+import org.apache.james.mailbox.MailboxSession;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
+import com.google.common.annotations.VisibleForTesting;
 
-public class TMailIMAPModule extends AbstractModule {
+public class TMailPathConverterFactory implements PathConverter.Factory {
+    @VisibleForTesting
+    static Boolean IS_FULL_DOMAIN_ENABLED = Boolean.parseBoolean(System.getProperty("imap.teamMailbox.fullDomain.enabled", "false"));
 
-    @Override
-    protected void configure() {
-        bind(NamespaceSupplier.class).to(TMailNamespaceSupplier.class).in(Scopes.SINGLETON);
-        bind(PathConverter.Factory.class).to(TMailPathConverterFactory.class).in(Scopes.SINGLETON);
+    public PathConverter forSession(ImapSession session) {
+        return forSession(session.getMailboxSession());
+    }
+
+    public PathConverter forSession(MailboxSession session) {
+        if (IS_FULL_DOMAIN_ENABLED) {
+            return fullDomainPathConverterForSession(session);
+        } else {
+            return normalPathConverterForSession(session);
+        }
+    }
+
+    public TMailPathConverter normalPathConverterForSession(MailboxSession session) {
+        return new TMailPathConverter(session);
+    }
+
+    public TMailFullDomainPathConverter fullDomainPathConverterForSession(MailboxSession session) {
+        return new TMailFullDomainPathConverter(session);
     }
 }

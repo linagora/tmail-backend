@@ -1,0 +1,17 @@
+= Additional JVM configurations
+:navtitle: Additional JVM configurations
+
+Specified to TMail backend, we can configure the following configurations in the *`jvm.properties`* file.
+
+.`jvm.properties` additional content
+|===
+| Property name | explanation
+
+| `imap.teamMailbox.fullDomain.enabled`
+| Optional. Whether full domain display is enabled for team mailboxes.
+
+Default to false.
+
+Example: `imap.teamMailbox.fullDomain.enabled=false`.
+
+|===

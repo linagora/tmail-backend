@@ -15,6 +15,7 @@ This includes:
 - link:blob-store.adoc[Blob store addition configuration]
 - link:queue.adoc[Additional Queue configurations]
 - link:jmap.adoc[Additional JMAP configurations]
+- link:jvm.adoc[Additional JVM configurations]
 - link:deleted-message-vault.adoc[Additional Deleted message vault configuration]
 - link:ldap-mailing-list.adoc[LDAP mailing list]
 - link:users-repository.adoc[Combined users repository]
