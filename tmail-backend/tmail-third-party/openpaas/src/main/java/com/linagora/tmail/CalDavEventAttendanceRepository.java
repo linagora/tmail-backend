@@ -57,6 +57,7 @@ import com.linagora.tmail.james.jmap.model.LanguageLocation;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import scala.collection.JavaConverters;
+import scala.jdk.CollectionConverters;
 
 public class CalDavEventAttendanceRepository implements EventAttendanceRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(CalDavEventAttendanceRepository.class);
@@ -86,14 +87,14 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
                                                                          BlobIds calendarEventBlobIds) {
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
-        return Flux.fromIterable(JavaConverters.seqAsJavaList(calendarEventBlobIds.value()))
-            .flatMap(blobId -> getEventUid(blobId.value(), systemMailboxSession)
-                .flatMap(eventUid ->
-                    toDavUser(username)
-                        .flatMap(davUser -> davClient.getCalendarObjectContainingVEvent(davUser, eventUid)))
-                .map(calendarObject -> getAttendanceStatusFromCalendarObject(
-                    BlobId.of(blobId.value()).get(), calendarObject, username, systemMailboxSession)))
-            .reduce(CalendarEventAttendanceResults$.MODULE$.empty(), CalendarEventAttendanceResults$.MODULE$::merge);
+        return toDavUser(username)
+            .flatMapMany(davUser ->
+                Flux.fromIterable(CollectionConverters.SeqHasAsJava(calendarEventBlobIds.value()).asJava())
+                    .flatMap(blobId -> getEventUid(blobId.value(), systemMailboxSession)
+                        .flatMap(eventUid -> davClient.getCalendarObjectContainingVEvent(davUser, eventUid))
+                        .map(calendarObject -> getAttendanceStatusFromCalendarObject(
+                            BlobId.of(blobId.value()).get(), calendarObject, username, systemMailboxSession)))
+                    .reduce(CalendarEventAttendanceResults$.MODULE$.empty(), CalendarEventAttendanceResults$.MODULE$::merge));
     }
 
     private CalendarEventAttendanceResults getAttendanceStatusFromCalendarObject(BlobId blobId,
