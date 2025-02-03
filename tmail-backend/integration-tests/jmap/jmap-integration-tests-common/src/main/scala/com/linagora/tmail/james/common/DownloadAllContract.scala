@@ -24,6 +24,7 @@ import com.linagora.tmail.james.jmap.ZipUtil
 import com.linagora.tmail.james.jmap.ZipUtil.ZipEntryData
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
+import io.restassured.http.ContentType.JSON
 import org.apache.http.HttpStatus.{SC_FORBIDDEN, SC_NOT_FOUND, SC_OK, SC_UNAUTHORIZED}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
@@ -36,8 +37,8 @@ import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
 import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.hamcrest.Matchers.{containsString, equalTo}
-import org.junit.jupiter.api.{BeforeEach, Disabled, Test}
+import org.hamcrest.Matchers.{containsString, equalTo, hasKey}
+import org.junit.jupiter.api.{BeforeEach, Test}
 
 object DownloadAllContract {
   val accountId = "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"
@@ -316,4 +317,15 @@ trait DownloadAllContract {
       .body("type", equalTo("about:blank"))
       .body("detail", equalTo("The resource could not be found"))
   }
+
+  @Test
+  def shouldReturnCapabilityInSessionRoute(): Unit =
+    `given`()
+      .when()
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities", hasKey("com:linagora:params:downloadAll"))
+      .body("capabilities.'com:linagora:params:downloadAll'.endpoint", equalTo("http://localhost/jmap/downloadAll/{accountId}/{emailId}?name={name}"))
 }
