@@ -56,8 +56,9 @@ case class TMailCleverParsedAttachment(parsedAttachment: ParsedAttachment, blobI
     val rawValue = blobId.value.value
     if (rawValue.startsWith(TMailCleverParsedAttachment.placeholder)) {
       messageId.serialize() + rawValue.substring(TMailCleverParsedAttachment.placeholder.length)
+    } else {
+      throw new RuntimeException("unsuported blobid value " + rawValue)
     }
-    throw new RuntimeException("unsuported")
   }
 }
 
