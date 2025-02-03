@@ -22,7 +22,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -57,10 +60,46 @@ public class ZipUtil {
         }
     }
 
+    private static class ZipEntryNameGenerator {
+        private final Map<String, LinkedList<String>> mapEntryNameToNewNames;
+
+        public ZipEntryNameGenerator(Collection<ZipEntryStreamSource> streamSources) {
+            mapEntryNameToNewNames = new HashMap<>();
+            for (ZipEntryStreamSource streamSource : streamSources) {
+                if (!mapEntryNameToNewNames.containsKey(streamSource.entryName())) {
+                    LinkedList<String> list = new LinkedList<>();
+                    list.add(streamSource.entryName());
+                    mapEntryNameToNewNames.put(streamSource.entryName(), list);
+                } else {
+                    LinkedList<String> list = mapEntryNameToNewNames.get(streamSource.entryName());
+                    list.add(createEntryName(streamSource.entryName(), list.size()));
+                }
+            }
+        }
+
+        public String getNewEntryName(String originalName) {
+            return mapEntryNameToNewNames.get(originalName).poll();
+        }
+
+        private String createEntryName(String originalName, int extraNumber) {
+            String nameWithoutExt = originalName;
+            String ext = "";
+
+            int dotIndex = originalName.lastIndexOf(".");
+            if (dotIndex != -1) {
+                nameWithoutExt = originalName.substring(0, dotIndex);
+                ext = originalName.substring(dotIndex);
+            }
+
+            return nameWithoutExt + "_" + extraNumber + ext;
+        }
+    }
+
     public static Flux<byte[]> createZipStream(Collection<ZipEntryStreamSource> streamSources) {
         return Flux.create(sink -> {
+            Collection<ZipEntryStreamSource> updatedStreamSources = updateEntryName(streamSources);      // to handle the case of duplicated entry names,
             try (ZipOutputStream zipOutputStream = new ZipOutputStream(new ReactorNettyOutputStream(sink))) {
-                for (ZipEntryStreamSource streamSource: streamSources) {
+                for (ZipEntryStreamSource streamSource: updatedStreamSources) {
                     zipOutputStream.putNextEntry(new ZipEntry(streamSource.entryName()));
                     try (InputStream source = streamSource.inputStream()) {
                         source.transferTo(zipOutputStream);
@@ -92,5 +131,14 @@ public class ZipUtil {
         }
 
         return listBuilder.build();
+    }
+
+    private static Collection<ZipEntryStreamSource> updateEntryName(Collection<ZipEntryStreamSource> streamSources) {
+        ZipEntryNameGenerator zipEntryNameGenerator = new ZipEntryNameGenerator(streamSources);
+        ImmutableList.Builder<ZipEntryStreamSource> builder = new ImmutableList.Builder<>();
+        for (ZipEntryStreamSource streamSource : streamSources) {
+            builder.add(new ZipEntryStreamSource(streamSource.inputStream(), zipEntryNameGenerator.getNewEntryName(streamSource.entryName())));
+        }
+        return builder.build();
     }
 }
