@@ -39,7 +39,6 @@ routes:
     service_id: jmap_service_oidc
     methods:
       - GET
-      - POST
       - OPTIONS
     plugin_config_id: jmap-plugin
     plugins:
@@ -159,7 +158,6 @@ routes:
     service_id: jmap_service_basic_auth
     methods:
       - GET
-      - POST
       - OPTIONS
     plugin_config_id: jmap-plugin
   - id: downloadAll_basic_auth
