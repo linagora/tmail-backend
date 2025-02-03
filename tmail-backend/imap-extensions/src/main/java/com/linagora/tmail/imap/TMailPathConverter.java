@@ -40,21 +40,10 @@ import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxNameSpace;
 
 public class TMailPathConverter implements PathConverter {
+    protected final MailboxSession mailboxSession;
+    protected final PathConverter defaultpathConverter;
 
-    public static class Factory implements PathConverter.Factory {
-        public TMailPathConverter forSession(ImapSession session) {
-            return new TMailPathConverter(session.getMailboxSession());
-        }
-
-        public TMailPathConverter forSession(MailboxSession session) {
-            return new TMailPathConverter(session);
-        }
-    }
-
-    private final MailboxSession mailboxSession;
-    private final PathConverter defaultpathConverter;
-
-    private TMailPathConverter(MailboxSession mailboxSession) {
+    protected TMailPathConverter(MailboxSession mailboxSession) {
         this.mailboxSession = mailboxSession;
         this.defaultpathConverter = PathConverter.Factory.DEFAULT.forSession(mailboxSession);
     }
@@ -110,13 +99,13 @@ public class TMailPathConverter implements PathConverter {
         return defaultpathConverter.mailboxQuery(finalReferencename, mailboxName, session);
     }
 
-    private MailboxPath getTeamMailboxPath(String absolutePath) {
+    protected MailboxPath getTeamMailboxPath(String absolutePath) {
         List<String> mailboxPathParts = Splitter.on(mailboxSession.getPathDelimiter()).splitToList(absolutePath);
         String mailboxName = Joiner.on(mailboxSession.getPathDelimiter()).join(Iterables.skip(mailboxPathParts, 1));
         return new MailboxPath(TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE(), teamMailboxUsername(mailboxSession), mailboxName);
     }
 
-    private Username teamMailboxUsername(MailboxSession mailboxSession) {
+    protected Username teamMailboxUsername(MailboxSession mailboxSession) {
         return Username.from(TeamMailbox.TEAM_MAILBOX_LOCAL_PART(), mailboxSession.getUser().getDomainPart().map(Domain::asString));
     }
 }
