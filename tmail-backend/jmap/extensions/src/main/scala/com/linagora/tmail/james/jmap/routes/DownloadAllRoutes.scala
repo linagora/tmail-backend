@@ -28,6 +28,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.ZipUtil
 import com.linagora.tmail.james.jmap.ZipUtil.ZipEntryStreamSource
+import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_DOWNLOAD_ALL
 import com.linagora.tmail.james.jmap.routes.DownloadAllRoutes.{DEFAULT_FILE_NAME, ZIP_CONTENT_TYPE}
 import io.netty.buffer.Unpooled
 import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
@@ -35,8 +36,9 @@ import io.netty.handler.codec.http.HttpResponseStatus.{FORBIDDEN, INTERNAL_SERVE
 import io.netty.handler.codec.http.{HttpHeaderNames, HttpMethod, QueryStringDecoder}
 import jakarta.inject.{Inject, Named}
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
+import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Id.Id
-import org.apache.james.jmap.core.{AccountId, Id, ProblemDetails, SessionTranslator}
+import org.apache.james.jmap.core.{AccountId, Capability, CapabilityFactory, CapabilityProperties, Id, ProblemDetails, SessionTranslator, URL, UrlPrefixes}
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.Authenticator
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
@@ -51,7 +53,7 @@ import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.mime4j.codec.EncoderUtil
 import org.apache.james.mime4j.codec.EncoderUtil.Usage
 import org.apache.james.util.ReactorUtils
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
@@ -69,11 +71,30 @@ case class BlobWithName(blob: Blob, name: String)
 
 case class MessageNotFoundException(id: String, cause: Throwable = null) extends RuntimeException(cause)
 
+case class DownloadAllCapabilityProperties(endpoint: URL) extends CapabilityProperties {
+  override def jsonify(): JsObject = Json.obj("endpoint" -> endpoint.value)
+}
+
+case class DownloadAllCapability(properties: DownloadAllCapabilityProperties,
+                                 identifier: CapabilityIdentifier = LINAGORA_DOWNLOAD_ALL) extends Capability
+
+class DownloadAllCapabilityFactory @Inject() extends CapabilityFactory {
+
+  override def id(): CapabilityIdentifier = LINAGORA_DOWNLOAD_ALL
+
+  override def create(urlPrefixes: UrlPrefixes): Capability =
+    DownloadAllCapability(DownloadAllCapabilityProperties(URL(urlPrefixes.httpUrlPrefix.toString + "/jmap/downloadAll/{accountId}/{emailId}?name={name}")))
+}
+
 class DownloadAllRoutesModule extends AbstractModule {
   override def configure(): Unit = {
     Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
       .addBinding()
       .to(classOf[DownloadAllRoutes])
+
+    Multibinder.newSetBinder(binder(), classOf[CapabilityFactory])
+      .addBinding()
+      .to(classOf[DownloadAllCapabilityFactory])
   }
 }
 
