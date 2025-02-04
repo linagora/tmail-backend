@@ -102,6 +102,66 @@ trait DownloadAllContract {
   }
 
   @Test
+  def downloadShouldAddExtraNumberToFileNameWhenAttachmentNamesAreDuplicated(server: GuiceJamesServer): Unit = {
+    val path = MailboxPath.inbox(BOB)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString, path, AppendCommand.from(
+        ClassLoaderUtils.getSystemResourceAsSharedStream("eml/multipart_simple_with_duplicated_attachment_name.eml")))
+      .getMessageId
+
+
+    val response = `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+    .when
+      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType("application/zip")
+      .header("cache-control", "private, immutable, max-age=31536000")
+      .extract
+      .body
+      .asInputStream()
+
+    val list = ZipUtil.readZipData(response)
+    assertThat(list.stream()
+        .filter(zipEntryData => !zipEntryData.fileName().contains("."))
+        .map(zipEntryData => zipEntryData.fileName())
+        .toList)
+      .containsExactlyInAnyOrder("text", "text_1", "text_2")
+
+    assertThat(list.stream()
+        .filter(zipEntryData => !zipEntryData.fileName().contains("."))
+        .map(zipEntryData => zipEntryData.content())
+        .toList)
+      .containsExactlyInAnyOrder("-----BEGIN RSA PRIVATE KEY-----\n" +
+        "MIIEogIBAAKCAQEAx7PG0+E//EMpm7IgI5Q9TMDSFya/1hE+vvTJrk0iGFllPeHL\n" +
+        "A5/VlTM0YWgG6X50qiMfE3VLazf2c19iXrT0mq/21PZ1wFnogv4zxUNaih+Bng62\n" +
+        "F0SyruE/O/Njqxh/Ccq6K/e05TV4T643USxAeG0KppmYW9x8HA/GvV832apZuxkV\n" +
+        "i6NVkDBrfzaUCwu4zH+HwOv/pI87E7KccHYC++Biaj3\n",
+        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDHs8bT4T/8QymbsiAjlD1MwNIXJr/WET6+9MmuTSIYWWU94csDn9WVMzRhaAbpfnSqIx8TdUtrN/ZzX2JetPSar/bU9nXAWeiC/jPFQ1qKH4GeDrYXRLKu4T8782OrGH8Jyror97TlNXhPrjdRLEB4bQqmmZhb3HwcD8a9XzfZqlm7GRWLo1WQMGt/NpQLC7jMf4fA6/+kjzsTspxwdgL74GJqPfOXOiwgLHX8CZ6/5RyTqhT6pD3MktSNWaz/zIHPNEqf5BY9CBM1TFR5w+6MDHo0gmiIsXFEJTPnfhBvHDhSjB1RI0KxUClyYrJ4fBlUVeKfnawoVcu7YvCqF4F5 quynhnn@linagora\n",
+        "|1|oS75OgL3vF2Gdl99CJDbEpaJ3yE=|INGqljCW1XMf4ggOQm26/BNnKGc= ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXyN6m5U4hpph9uOv54aHc4Xr8jhAa/SX5MJ\n")
+
+    assertThat(list.stream()
+        .filter(zipEntryData => zipEntryData.fileName().contains("."))
+        .map(zipEntryData => zipEntryData.fileName())
+        .toList)
+      .containsExactlyInAnyOrder("text.txt", "text_1.txt")
+
+    assertThat(list.stream()
+        .filter(zipEntryData => zipEntryData.fileName().contains("."))
+        .map(zipEntryData => zipEntryData.content())
+        .toList)
+      .containsExactlyInAnyOrder("-----BEGIN RSA PRIVATE KEY-----\n" +
+        "MIIEogIBAAKCAQEAx7PG0+E//EMpm7IgI5Q9TMDSFya/1hE+vvTJrk0iGFllPeHL\n" +
+        "A5/VlTM0YWgG6X50qiMfE3VLazf2c19iXrT0mq/21PZ1wFnogv4zxUNaih+Bng62\n" +
+        "F0SyruE/O/Njqxh/Ccq6K/e05TV4T643USxAeG0KppmYW9x8HA/GvV832apZuxkV\n" +
+        "i6NVkDBrfzaUCwu4zH+HwOv/pI87E7KccHYC++Biaj3\n",
+        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDHs8bT4T/8QymbsiAjlD1MwNIXJr/WET6+9MmuTSIYWWU94csDn9WVMzRhaAbpfnSqIx8TdUtrN/ZzX2JetPSar/bU9nXAWeiC/jPFQ1qKH4GeDrYXRLKu4T8782OrGH8Jyror97TlNXhPrjdRLEB4bQqmmZhb3HwcD8a9XzfZqlm7GRWLo1WQMGt/NpQLC7jMf4fA6/+kjzsTspxwdgL74GJqPfOXOiwgLHX8CZ6/5RyTqhT6pD3MktSNWaz/zIHPNEqf5BY9CBM1TFR5w+6MDHo0gmiIsXFEJTPnfhBvHDhSjB1RI0KxUClyYrJ4fBlUVeKfnawoVcu7YvCqF4F5 quynhnn@linagora\n")
+  }
+
+  @Test
   def downloadShouldFailWhenUnauthenticated(server: GuiceJamesServer): Unit = {
     val path = MailboxPath.inbox(BOB)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
