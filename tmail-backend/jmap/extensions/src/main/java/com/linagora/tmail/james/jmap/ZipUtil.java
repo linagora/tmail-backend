@@ -23,7 +23,6 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -32,6 +31,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.IOUtils;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 
 import reactor.core.publisher.Flux;
@@ -57,41 +57,6 @@ public class ZipUtil {
         @Override
         public void write(byte[] b, int off, int len) {
             sink.next(java.util.Arrays.copyOfRange(b, off, off + len));
-        }
-    }
-
-    private static class ZipEntryNameGenerator {
-        private final Map<String, LinkedList<String>> mapEntryNameToNewNames;
-
-        public ZipEntryNameGenerator(Collection<ZipEntryStreamSource> streamSources) {
-            mapEntryNameToNewNames = new HashMap<>();
-            for (ZipEntryStreamSource streamSource : streamSources) {
-                if (!mapEntryNameToNewNames.containsKey(streamSource.entryName())) {
-                    LinkedList<String> list = new LinkedList<>();
-                    list.add(streamSource.entryName());
-                    mapEntryNameToNewNames.put(streamSource.entryName(), list);
-                } else {
-                    LinkedList<String> list = mapEntryNameToNewNames.get(streamSource.entryName());
-                    list.add(createEntryName(streamSource.entryName(), list.size()));
-                }
-            }
-        }
-
-        public String getNewEntryName(String originalName) {
-            return mapEntryNameToNewNames.get(originalName).poll();
-        }
-
-        private String createEntryName(String originalName, int extraNumber) {
-            String nameWithoutExt = originalName;
-            String ext = "";
-
-            int dotIndex = originalName.lastIndexOf(".");
-            if (dotIndex != -1) {
-                nameWithoutExt = originalName.substring(0, dotIndex);
-                ext = originalName.substring(dotIndex);
-            }
-
-            return nameWithoutExt + "_" + extraNumber + ext;
         }
     }
 
@@ -133,12 +98,39 @@ public class ZipUtil {
         return listBuilder.build();
     }
 
-    private static Collection<ZipEntryStreamSource> updateEntryName(Collection<ZipEntryStreamSource> streamSources) {
-        ZipEntryNameGenerator zipEntryNameGenerator = new ZipEntryNameGenerator(streamSources);
-        ImmutableList.Builder<ZipEntryStreamSource> builder = new ImmutableList.Builder<>();
+    @VisibleForTesting
+    static Collection<ZipEntryStreamSource> updateEntryName(Collection<ZipEntryStreamSource> streamSources) {
+        Map<String, Integer> nameCount = new HashMap<>();
+        ImmutableList.Builder<ZipEntryStreamSource> result = new ImmutableList.Builder<>();
+
         for (ZipEntryStreamSource streamSource : streamSources) {
-            builder.add(new ZipEntryStreamSource(streamSource.inputStream(), zipEntryNameGenerator.getNewEntryName(streamSource.entryName())));
+            String entryName = streamSource.entryName();
+
+            if (!nameCount.containsKey(entryName)) {
+                nameCount.put(entryName, 0);
+                result.add(new ZipEntryStreamSource(streamSource.inputStream(), entryName));
+            } else {
+                String baseName, extension = "";
+                int dotIndex = entryName.lastIndexOf('.');
+                if (dotIndex != -1) {
+                    baseName = entryName.substring(0, dotIndex);
+                    extension = entryName.substring(dotIndex);
+                } else {
+                    baseName = entryName;
+                }
+
+                int count = nameCount.get(entryName) + 1;
+                String newEntryName;
+                do {
+                    newEntryName = baseName + "_" + count + extension;
+                    count++;
+                } while (nameCount.containsKey(newEntryName));
+
+                nameCount.put(entryName, count - 1);
+                nameCount.put(newEntryName, 0);
+                result.add(new ZipEntryStreamSource(streamSource.inputStream(), newEntryName));
+            }
         }
-        return builder.build();
+        return result.build();
     }
 }

@@ -75,6 +75,7 @@ trait DownloadAllContract {
   def randomMessageId: MessageId
 
   @Test
+
   def downloadAll(server: GuiceJamesServer): Unit = {
     val path = MailboxPath.inbox(BOB)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
@@ -114,9 +115,9 @@ trait DownloadAllContract {
     val response = `given`
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .when
+    .when
       .get(s"/downloadAll/$accountId/${messageId.serialize()}")
-      .`then`
+    .`then`
       .statusCode(SC_OK)
       .contentType("application/zip")
       .header("cache-control", "private, immutable, max-age=31536000")
@@ -132,9 +133,9 @@ trait DownloadAllContract {
       .containsExactlyInAnyOrder("text", "text_1", "text_2")
 
     assertThat(list.stream()
-      .filter(zipEntryData => !zipEntryData.fileName().contains("."))
-      .map(zipEntryData => zipEntryData.content())
-      .toList)
+        .filter(zipEntryData => !zipEntryData.fileName().contains("."))
+        .map(zipEntryData => zipEntryData.content())
+        .toList)
       .containsExactlyInAnyOrder("-----BEGIN RSA PRIVATE KEY-----\n" +
         "MIIEogIBAAKCAQEAx7PG0+E//EMpm7IgI5Q9TMDSFya/1hE+vvTJrk0iGFllPeHL\n" +
         "A5/VlTM0YWgG6X50qiMfE3VLazf2c19iXrT0mq/21PZ1wFnogv4zxUNaih+Bng62\n" +
@@ -144,15 +145,15 @@ trait DownloadAllContract {
         "|1|oS75OgL3vF2Gdl99CJDbEpaJ3yE=|INGqljCW1XMf4ggOQm26/BNnKGc= ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXyN6m5U4hpph9uOv54aHc4Xr8jhAa/SX5MJ\n")
 
     assertThat(list.stream()
-      .filter(zipEntryData => zipEntryData.fileName().contains("."))
-      .map(zipEntryData => zipEntryData.fileName())
-      .toList)
+        .filter(zipEntryData => zipEntryData.fileName().contains("."))
+        .map(zipEntryData => zipEntryData.fileName())
+        .toList)
       .containsExactlyInAnyOrder("text.txt", "text_1.txt")
 
     assertThat(list.stream()
-      .filter(zipEntryData => zipEntryData.fileName().contains("."))
-      .map(zipEntryData => zipEntryData.content())
-      .toList)
+        .filter(zipEntryData => zipEntryData.fileName().contains("."))
+        .map(zipEntryData => zipEntryData.content())
+        .toList)
       .containsExactlyInAnyOrder("-----BEGIN RSA PRIVATE KEY-----\n" +
         "MIIEogIBAAKCAQEAx7PG0+E//EMpm7IgI5Q9TMDSFya/1hE+vvTJrk0iGFllPeHL\n" +
         "A5/VlTM0YWgG6X50qiMfE3VLazf2c19iXrT0mq/21PZ1wFnogv4zxUNaih+Bng62\n" +
