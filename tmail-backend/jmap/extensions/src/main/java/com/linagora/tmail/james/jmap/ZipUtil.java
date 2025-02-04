@@ -110,7 +110,8 @@ public class ZipUtil {
                 nameCount.put(entryName, 0);
                 result.add(new ZipEntryStreamSource(streamSource.inputStream(), entryName));
             } else {
-                String baseName, extension = "";
+                String baseName = "";
+                String extension = "";
                 int dotIndex = entryName.lastIndexOf('.');
                 if (dotIndex != -1) {
                     baseName = entryName.substring(0, dotIndex);
