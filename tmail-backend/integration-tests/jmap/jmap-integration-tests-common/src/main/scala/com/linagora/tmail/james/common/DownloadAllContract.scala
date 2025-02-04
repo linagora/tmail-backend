@@ -75,7 +75,6 @@ trait DownloadAllContract {
   def randomMessageId: MessageId
 
   @Test
-
   def downloadAll(server: GuiceJamesServer): Unit = {
     val path = MailboxPath.inbox(BOB)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
