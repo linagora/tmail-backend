@@ -194,6 +194,8 @@ import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.perfs.TMailCleverBlobResolverModule;
+import com.linagora.tmail.james.jmap.perfs.TMailCleverMessageParser;
 import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetRepositoryModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;

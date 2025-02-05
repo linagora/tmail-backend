@@ -16,7 +16,7 @@
  * more details.                                                   *
  * ****************************************************************** */
 
-package com.linagora.tmail.james.app
+package com.linagora.tmail.james.jmap.perfs
 
 import jakarta.inject.Inject
 import org.apache.james.jmap.mail.BlobId

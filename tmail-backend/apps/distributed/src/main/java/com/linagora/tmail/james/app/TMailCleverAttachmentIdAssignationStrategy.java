@@ -23,6 +23,8 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.ParsedAttachment;
 import org.apache.james.mailbox.model.StringBackedAttachmentId;
 
+import com.linagora.tmail.james.jmap.perfs.TMailCleverParsedAttachment;
+
 public class TMailCleverAttachmentIdAssignationStrategy implements CassandraAttachmentMapper.AttachmentIdAssignationStrategy {
     @Override
     public AttachmentId assign(ParsedAttachment parsedAttachment, MessageId messageId) {

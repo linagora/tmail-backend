@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.app;
+package com.linagora.tmail.james.jmap.perfs;
 
 import org.apache.james.jmap.routes.BlobResolver;
 import org.apache.james.jmap.routes.MessageBlobResolver;

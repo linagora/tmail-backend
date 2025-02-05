@@ -16,7 +16,7 @@
  * more details.                                                   *
  * ****************************************************************** */
 
-package com.linagora.tmail.james.app
+package com.linagora.tmail.james.jmap.perfs
 
 import com.google.common.io.ByteSource
 import jakarta.inject.Inject
