@@ -23,8 +23,8 @@ import java.time.format.DateTimeFormatter
 
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.{Cancelled, Confirmed, Tentative}
 import com.linagora.tmail.james.jmap.model.{CalendarEventByDay, CalendarEventByMonth, CalendarEventParsed, CalendarEventStatusField, RecurrenceRule, RecurrenceRuleFrequency, RecurrenceRuleInterval}
-import net.fortuna.ical4j.model.Recur.Frequency
 import net.fortuna.ical4j.model.{Month, WeekDay}
+import net.fortuna.ical4j.transform.recurrence.Frequency
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{Nested, Test}
@@ -572,8 +572,8 @@ class CalendarEventParsedTest {
        |BEGIN:VEVENT
        |UID:014351ba-ca86-4b0e-bf50-77d2f20afcb3
        |TRANSP:OPAQUE
-       |DTSTART;TZID=Asia/Saigon:20230328T103000
-       |DTEND;TZID=Asia/Saigon:20230328T113000
+       |DTSTART;TZID=Asia/Ho_Chi_Minh:20230328T103000
+       |DTEND;TZID=Asia/Ho_Chi_Minh:20230328T113000
        |CLASS:PUBLIC
        |X-OPENPAAS-VIDEOCONFERENCE:
        |SUMMARY:Test

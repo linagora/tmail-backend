@@ -728,11 +728,11 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |        "notAccepted": {
            |            "$blobId2": {
            |                "type": "invalidPatch",
-           |                "description": "Invalidate calendar event: STATUS : Value MUST match expression: TENTATIVE|CONFIRMED|CANCELLED|NEEDS-ACTION|COMPLETED|IN-PROCESS|CANCELLED|DRAFT|FINAL|CANCELLED"
+           |                "description": "Invalidate calendar event: STATUS : Value MUST match expression: (?i)TENTATIVE|CONFIRMED|CANCELLED|NEEDS-ACTION|COMPLETED|IN-PROCESS|CANCELLED|DRAFT|FINAL|CANCELLED"
            |            },
            |            "$blobId1": {
            |                "type": "invalidPatch",
-           |                "description": "Invalidate calendar event: TRANSP : Value MUST match expression: OPAQUE|TRANSPARENT"
+           |                "description": "Invalidate calendar event: TRANSP : Value MUST match expression: (?i)OPAQUE|TRANSPARENT"
            |            }
            |        }
            |    },

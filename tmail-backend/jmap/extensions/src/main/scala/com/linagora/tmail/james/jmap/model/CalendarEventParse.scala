@@ -19,7 +19,8 @@
 package com.linagora.tmail.james.jmap.model
 
 import java.io.InputStream
-import java.time.{Duration, ZoneId, ZonedDateTime}
+import java.time.temporal.Temporal
+import java.time.{Duration, Instant, LocalDateTime, OffsetDateTime, ZoneId, ZonedDateTime}
 import java.util.{Locale, TimeZone}
 
 import com.google.common.base.Preconditions
@@ -28,16 +29,17 @@ import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.EventStatus
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
 import com.linagora.tmail.james.jmap.model.CalendarPrivacyField.CalendarPrivacy
-import com.linagora.tmail.james.jmap.model.CalendarStartField.getAlternativeZoneId
 import com.linagora.tmail.james.jmap.model.RecurrenceRulesField.parseRecurrenceRules
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
-import net.fortuna.ical4j.model.Recur.{Frequency, Skip}
+import net.fortuna.ical4j.model.Recur.Skip
 import net.fortuna.ical4j.model.WeekDay.Day
 import net.fortuna.ical4j.model.component.VEvent
+import net.fortuna.ical4j.model.parameter.TzId
 import net.fortuna.ical4j.model.property.{Attendee, Clazz, ExRule, RRule, Status, Transp}
 import net.fortuna.ical4j.model.{Calendar, Month, NumberList, Parameter, Property, Recur, TimeZoneRegistryFactory}
+import net.fortuna.ical4j.transform.recurrence.Frequency
 import net.fortuna.ical4j.util.CompatibilityHints
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -48,6 +50,7 @@ import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.WithAccountId
 
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -115,8 +118,9 @@ object CalendarSequenceField {
 case class CalendarSequenceField(value: Int) extends AnyVal
 
 object CalendarUidField {
-  def from(VEvent: VEvent): Option[CalendarUidField] =
-    Option(VEvent.getUid).map(_.getValue).map(CalendarUidField(_))
+  def from(vEvent: VEvent): Option[CalendarUidField] =
+    vEvent.getUid.toScala
+      .map(_.getValue).map(CalendarUidField(_))
 }
 
 case class CalendarUidField(value: String) extends AnyVal
@@ -134,7 +138,7 @@ object CalendarFreeBusyStatusField extends Enumeration {
   private val Busy = Value("busy")
 
   def from(vEvent: VEvent): Option[CalendarFreeBusyStatusField] =
-    Option(vEvent.getTransparency)
+    Option(vEvent.getTimeTransparency)
       .map(transparency => transparency.getValue match {
         case Transp.VALUE_OPAQUE => Busy
         case Transp.VALUE_TRANSPARENT => Free
@@ -196,16 +200,10 @@ case class CalendarLocationField(value: String) extends AnyVal
 
 object CalendarStartField {
   def from(calendarEvent: VEvent): Option[CalendarStartField] =
-    Option(calendarEvent.getStartDate)
-      .flatMap(startDate => Option(startDate.getDate)
-        .map(date => CalendarStartField(ZonedDateTime.ofInstant(date.toInstant,
-          Option(startDate.getTimeZone)
-            .flatMap(timeZone => CalendarTimeZoneField.extractZoneId(timeZone.getID))
-            .getOrElse(getAlternativeZoneId(calendarEvent))))))
-
-  def getAlternativeZoneId(calendarEvent: VEvent): ZoneId =
-    CalendarTimeZoneField.getZoneIdFromTZID(calendarEvent)
-      .getOrElse(ZoneId.of("UTC"))
+    Option(calendarEvent.getDateTimeStart[Temporal]())
+      .map(startDate => startDate.getDate)
+      .flatMap(temporal => VEventTemporalUtil.temporalToZonedDateTime(temporal, VEventTemporalUtil.getAlternativeZoneId(calendarEvent)))
+      .map(CalendarStartField(_))
 }
 
 case class CalendarStartField(value: ZonedDateTime) extends AnyVal {
@@ -214,12 +212,25 @@ case class CalendarStartField(value: ZonedDateTime) extends AnyVal {
 
 object CalendarEndField {
   def from(calendarEvent: VEvent): Option[CalendarEndField] =
-    Option(calendarEvent.getEndDate())
-      .flatMap(endDate => Option(endDate.getDate)
-        .map(date => CalendarEndField(ZonedDateTime.ofInstant(date.toInstant,
-          Option(endDate.getTimeZone)
-            .flatMap(timeZone => CalendarTimeZoneField.extractZoneId(timeZone.getID))
-            .getOrElse(getAlternativeZoneId(calendarEvent))))))
+    calendarEvent.getEndDate[Temporal]().toScala
+      .map(endDate => endDate.getDate)
+      .flatMap(temporal => VEventTemporalUtil.temporalToZonedDateTime(temporal, VEventTemporalUtil.getAlternativeZoneId(calendarEvent)))
+      .map(CalendarEndField(_))
+}
+
+object VEventTemporalUtil {
+
+  def temporalToZonedDateTime(temporal: Temporal, zoneIdDefault: ZoneId = ZoneId.systemDefault()): Option[ZonedDateTime] = temporal match {
+    case zdt: ZonedDateTime => Some(zdt)
+    case odt: OffsetDateTime => Some(odt.atZoneSameInstant(zoneIdDefault))
+    case ldt: LocalDateTime => Some(ldt.atZone(zoneIdDefault))
+    case instant: Instant => Some(instant.atZone(zoneIdDefault))
+    case _ => None
+  }
+
+  def getAlternativeZoneId(calendarEvent: VEvent): ZoneId =
+    CalendarTimeZoneField.getZoneIdFromTZID(calendarEvent)
+      .getOrElse(ZoneId.of("UTC"))
 }
 
 case class CalendarEndField(value: ZonedDateTime) extends AnyVal {
@@ -243,14 +254,15 @@ object CalendarTimeZoneField {
       .map(zoneId => CalendarTimeZoneField(TimeZone.getTimeZone(zoneId)))
 
   def getZoneIdFromTZID(calendarEvent: VEvent): Option[ZoneId] =
-    Option(calendarEvent.getProperty(Property.TZID).asInstanceOf[Property])
+   calendarEvent.getProperty[Property](Property.TZID).toScala
       .map(_.getValue)
       .flatMap(string => extractZoneId(string))
 
   private def getZoneIdFromStartDate(calendarEvent: VEvent): Option[ZoneId] =
-    Option(calendarEvent.getStartDate)
-      .flatMap(date => Option(date.getTimeZone))
-      .flatMap(timeZone => extractZoneId(timeZone.getID))
+    Option(calendarEvent.getDateTimeStart[Temporal]())
+      .flatMap(date => date.getParameter[TzId](Parameter.TZID).toScala)
+      .map(_.getValue)
+      .flatMap(string => extractZoneId(string))
 
   def extractZoneId(value: String): Option[ZoneId] = {
     def parseIANAZone: ZoneId =
@@ -272,7 +284,7 @@ object CalendarOrganizerField {
   def from(calendarEvent: VEvent): Option[CalendarOrganizerField] =
     Option(calendarEvent.getOrganizer)
       .map(organizer =>
-        CalendarOrganizerField(name = Option(organizer.getParameter("CN").asInstanceOf[Parameter])
+        CalendarOrganizerField(name = organizer.getParameter[Parameter]("CN").toScala
           .map(_.getValue),
           mailto = Option(organizer.getCalAddress)
             .map(_.getSchemeSpecificPart)
@@ -285,36 +297,36 @@ object CalendarAttendeeName {
   private val ATTENDEE_PARAMETER_SECONDARY: String = "CN"
 
   def from(attendee: Attendee): Option[CalendarAttendeeName] =
-    Option(attendee.getParameter(ATTENDEE_PARAMETER_PRIMARY).asInstanceOf[Parameter])
-      .orElse(Option(attendee.getParameter(ATTENDEE_PARAMETER_SECONDARY).asInstanceOf[Parameter]))
+    attendee.getParameter[Parameter](ATTENDEE_PARAMETER_PRIMARY).toScala
+      .orElse(attendee.getParameter[Parameter](ATTENDEE_PARAMETER_SECONDARY).toScala)
       .map(_.getValue)
       .map(CalendarAttendeeName(_))
 }
 case class CalendarAttendeeName(value: String) extends AnyVal
 object CalendarAttendeeKind {
   def from(attendee: Attendee): Option[CalendarAttendeeKind] =
-    Option(attendee.getParameter("CUTYPE").asInstanceOf[Parameter])
+    attendee.getParameter[Parameter](Parameter.CUTYPE).toScala
       .map(_.getValue)
       .map(CalendarAttendeeKind(_))
 }
 case class CalendarAttendeeKind(value: String) extends AnyVal
 object CalendarAttendeeRole {
   def from(attendee: Attendee): Option[CalendarAttendeeRole] =
-    Option(attendee.getParameter("ROLE").asInstanceOf[Parameter])
+    attendee.getParameter[Parameter](Parameter.ROLE).toScala
       .map(_.getValue)
       .map(CalendarAttendeeRole(_))
 }
 case class CalendarAttendeeRole(value: String) extends AnyVal
 object CalendarAttendeeParticipationStatus {
   def from(attendee: Attendee): Option[CalendarAttendeeParticipationStatus] =
-    Option(attendee.getParameter("PARTSTAT").asInstanceOf[Parameter])
+   attendee.getParameter[Parameter](Parameter.PARTSTAT).toScala
       .map(_.getValue)
       .map(CalendarAttendeeParticipationStatus(_))
 }
 case class CalendarAttendeeParticipationStatus(value: String) extends AnyVal
 object CalendarAttendeeExpectReply {
   def from(attendee: Attendee): Option[CalendarAttendeeExpectReply] =
-    Option(attendee.getParameter("RSVP").asInstanceOf[Parameter])
+    attendee.getParameter[Parameter](Parameter.RSVP).toScala
       .map(_.getValue)
       .map(_.toBoolean)
       .map(CalendarAttendeeExpectReply(_))
@@ -367,8 +379,7 @@ object CalendarExtensionFields {
   private val EXTENSION_FIELD_PREFIX: String = "X-"
 
   def from(vevent: VEvent): CalendarExtensionFields =
-    CalendarExtensionFields(vevent.getProperties()
-      .asScala
+    CalendarExtensionFields(vevent.getProperties[Property]().asScala
       .filter(property => property.getName.toLowerCase(Locale.US).startsWith(EXTENSION_FIELD_PREFIX.toLowerCase(Locale.US)))
       .map(property => (property.getName, property.getValue))
       .groupMap(_._1)(_._2)
@@ -388,13 +399,13 @@ object NumberListUtils {
   }
 }
 object RecurrenceRuleFrequency {
-  def from(recur: Recur): RecurrenceRuleFrequency = RecurrenceRuleFrequency(recur.getFrequency)
+  def from(recur: Recur[Temporal]): RecurrenceRuleFrequency = RecurrenceRuleFrequency(recur.getFrequency)
 }
 
 case class RecurrenceRuleFrequency(value: Frequency) extends AnyVal
 
 object RecurrenceRuleRScale {
-  def from(recur: Recur): Option[RecurrenceRuleRScale] = {
+  def from(recur: Recur[Temporal]): Option[RecurrenceRuleRScale] = {
     val tokens: Iterator[String] = recur.toString.split("[;=]").iterator
     var rscale: Option[RecurrenceRuleRScale] = None
     while (tokens.hasNext) {
@@ -410,7 +421,7 @@ object RecurrenceRuleRScale {
 case class RecurrenceRuleRScale(value: String) extends AnyVal
 
 object CalendarEventByMonth {
-  def from(recur: Recur): Option[CalendarEventByMonth] =
+  def from(recur: Recur[Temporal]): Option[CalendarEventByMonth] =
     if (recur.getMonthList.isEmpty) {
       None
     } else {
@@ -424,7 +435,7 @@ object CalendarEventByMonth {
 case class CalendarEventByMonth(value: Seq[Month])
 
 object CalendarEventByDay {
-  def from(recur: Recur): Option[CalendarEventByDay] =
+  def from(recur: Recur[Temporal]): Option[CalendarEventByDay] =
     if (recur.getDayList.isEmpty) {
       None
     } else {
@@ -438,7 +449,7 @@ object CalendarEventByDay {
 case class CalendarEventByDay(value: Seq[Day])
 
 object RecurrenceRuleCount{
-  def from(recur: Recur) : Option[RecurrenceRuleCount] =
+  def from(recur: Recur[Temporal]) : Option[RecurrenceRuleCount] =
     recur.getCount match {
       case c if c > 0 => Some(from(c))
       case _ => None
@@ -449,7 +460,7 @@ object RecurrenceRuleCount{
 case class RecurrenceRuleCount(value: UnsignedInt)
 
 object RecurrenceRuleInterval {
-  def from(recur: Recur): Option[RecurrenceRuleInterval] =
+  def from(recur: Recur[Temporal]): Option[RecurrenceRuleInterval] =
     recur.getInterval match {
       case i if i > 0 => Some(from(i))
       case _ => None
@@ -460,24 +471,24 @@ object RecurrenceRuleInterval {
 case class RecurrenceRuleInterval(value: UnsignedInt)
 
 object RecurrenceRuleUntil {
-  def from(recur: Recur): Option[RecurrenceRuleUntil] =
+  def from(recur: Recur[Temporal]): Option[RecurrenceRuleUntil] =
     Option(recur.getUntil)
-      .map(date => UTCDate.from(date, ZoneId.of("UTC")))
-      .map(RecurrenceRuleUntil(_))
+      .flatMap(date => VEventTemporalUtil.temporalToZonedDateTime(date, ZoneId.of("UTC")))
+      .map(zoneDateTime => RecurrenceRuleUntil(new UTCDate(zoneDateTime)))
 }
+
 case class RecurrenceRuleUntil(value: UTCDate)
 
 object RecurrenceRulesField {
-
-  import NumberListUtils.SeqImprovements
+  import scala.jdk.CollectionConverters._
 
   def from(vevent: VEvent): RecurrenceRulesField =
-    RecurrenceRulesField(vevent.getProperties[RRule](Property.RRULE)
+    RecurrenceRulesField(vevent.getProperties[RRule[Temporal]](Property.RRULE)
       .asScala
       .map(rrule => parseRecurrenceRules(rrule.getRecur))
       .toSeq)
 
-  def parseRecurrenceRules(recur: Recur): RecurrenceRule = {
+  def parseRecurrenceRules(recur: Recur[Temporal]): RecurrenceRule = {
     val frequency: Frequency = recur.getFrequency
     RecurrenceRule(
       frequency = RecurrenceRuleFrequency(frequency),
@@ -486,22 +497,27 @@ object RecurrenceRulesField {
       interval = RecurrenceRuleInterval.from(recur),
       rscale = RecurrenceRuleRScale.from(recur),
       skip = Option(recur.getSkip),
-      firstDayOfWeek = Option(recur.getWeekStartDay),
+      firstDayOfWeek = Option(recur.getWeekStartDay).map(_.getDay),
       byDay = CalendarEventByDay.from(recur),
       byMonth = CalendarEventByMonth.from(recur),
-      byMonthDay = recur.getMonthDayList.getValue,
-      byYearDay = recur.getYearDayList.getValue,
-      byWeekNo = recur.getWeekNoList.getValue,
-      byHour = recur.getHourList.getValue,
-      byMinute = recur.getMinuteList.getValue,
-      bySecond = recur.getSecondList.getValue,
-      bySetPosition = recur.getSetPosList.getValue)
+      byMonthDay = convertJavaListToOptionSeq(recur.getMonthDayList),
+      byYearDay = convertJavaListToOptionSeq(recur.getYearDayList),
+      byWeekNo = convertJavaListToOptionSeq(recur.getWeekNoList),
+      byHour = convertJavaListToOptionSeq(recur.getHourList),
+      byMinute = convertJavaListToOptionSeq(recur.getMinuteList),
+      bySecond = convertJavaListToOptionSeq(recur.getSecondList),
+      bySetPosition = convertJavaListToOptionSeq(recur.getSetPosList))
   }
+
+  private def convertJavaListToOptionSeq(javaList: java.util.List[Integer]): Option[Seq[Int]] =
+    Option(javaList)
+      .filter(_.size() > 0)
+      .map(_.asScala.toSeq.map(_.toInt))
 }
 
 object ExcludedRecurrenceRulesField {
   def from(vevent: VEvent): ExcludedRecurrenceRulesField =
-    ExcludedRecurrenceRulesField(vevent.getProperties[ExRule](Property.EXRULE)
+    ExcludedRecurrenceRulesField(vevent.getProperties[ExRule[Temporal]](Property.EXRULE)
       .asScala
       .map(exRule => parseRecurrenceRules(exRule.getRecur))
       .toSeq)
@@ -559,7 +575,7 @@ object CalendarEventParsed {
     CalendarEventParsed(uid = CalendarUidField.from(vevent),
       title = CalendarTitleField.from(vevent),
       description = CalendarDescriptionField.from(vevent),
-      start = CalendarStartField.from(vevent),
+      start = start,
       end = end,
       utcStart = start.map(_.asUtcDate()),
       utcEnd = end.map(_.asUtcDate()),
