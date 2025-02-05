@@ -18,6 +18,9 @@
 
 package com.linagora.tmail.james.jmap.perfs
 
+import java.io.InputStream
+import java.util
+
 import com.google.common.io.ByteSource
 import jakarta.inject.Inject
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream
@@ -30,8 +33,6 @@ import org.apache.james.mime4j.dom.{Message, SingleBody}
 import org.apache.james.mime4j.message.{DefaultMessageBuilder, DefaultMessageWriter}
 import org.apache.james.mime4j.stream.MimeConfig
 
-import java.io.InputStream
-import java.util
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
