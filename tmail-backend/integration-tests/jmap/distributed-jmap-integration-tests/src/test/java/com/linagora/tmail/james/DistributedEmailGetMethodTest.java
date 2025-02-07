@@ -26,17 +26,39 @@
 
 package com.linagora.tmail.james;
 
+import static org.apache.james.MailsShouldBeWellReceived.CALMLY_AWAIT;
+import static org.apache.james.MailsShouldBeWellReceived.DOMAIN;
+import static org.apache.james.MailsShouldBeWellReceived.JAMES_USER;
+import static org.apache.james.MailsShouldBeWellReceived.PASSWORD;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Set;
+
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.core.Username;
 import org.apache.james.jmap.rfc8621.contract.EmailGetMethodContract;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.apache.james.junit.categories.BasicFeature;
+import org.apache.james.mailbox.DefaultMailboxes;
+import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
+import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mime4j.dom.Message;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.apache.james.modules.MailboxProbeImpl;
+import org.apache.james.utils.DataProbeImpl;
+import org.apache.james.utils.GuiceProbe;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -44,6 +66,8 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
+import com.linagora.tmail.james.common.probe.MessageFastViewProjectionProbe;
+import com.linagora.tmail.james.common.probe.MessageIdManagerProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -72,11 +96,71 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new DelegationProbeModule()))
+            .overrideWith(new DelegationProbeModule())
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(MessageFastViewProjectionProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(MessageIdManagerProbe.class)))
         .build();
 
     @Override
     public MessageId randomMessageId() {
         return MESSAGE_ID_FACTORY.of(Uuids.timeBased());
+    }
+
+    @Tag(BasicFeature.TAG)
+    @Test
+    void jmapPreviewShouldBeWellPreComputed(GuiceJamesServer server) throws Exception {
+        server.getProbe(DataProbeImpl.class).fluent()
+            .addDomain(DOMAIN)
+            .addUser(JAMES_USER, PASSWORD);
+
+        MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
+        mailboxProbe.createMailbox("#private", JAMES_USER, DefaultMailboxes.INBOX);
+        MessageId messageId = mailboxProbe.appendMessage(JAMES_USER, MailboxPath.inbox(Username.of(JAMES_USER)),
+            MessageManager.AppendCommand.from(Message.Builder.of()
+                .setSubject("Subject")
+                .setBody("This is content of the message", StandardCharsets.UTF_8)
+                .build()))
+            .getMessageId();
+
+        CALMLY_AWAIT
+            .atMost(Duration.ofSeconds(10))
+            .until(() -> server.getProbe(MessageFastViewProjectionProbe.class)
+                .retrieve(messageId)
+                .isPresent());
+    }
+
+    @Test
+    void jmapPreviewShouldBeWellRemovedWhenDeleteMessage(GuiceJamesServer server) throws Exception {
+        server.getProbe(DataProbeImpl.class).fluent()
+            .addDomain(DOMAIN)
+            .addUser(JAMES_USER, PASSWORD);
+
+        MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
+        mailboxProbe.createMailbox("#private", JAMES_USER, DefaultMailboxes.INBOX);
+        MessageId messageId = mailboxProbe.appendMessage(JAMES_USER, MailboxPath.inbox(Username.of(JAMES_USER)),
+                MessageManager.AppendCommand.from(Message.Builder.of()
+                    .setSubject("Subject")
+                    .setBody("This is content of the message", StandardCharsets.UTF_8)
+                    .build()))
+            .getMessageId();
+        CALMLY_AWAIT
+            .atMost(Duration.ofSeconds(10))
+            .until(() -> server.getProbe(MessageFastViewProjectionProbe.class)
+                .retrieve(messageId)
+                .isPresent());
+
+        server.getProbe(MessageIdManagerProbe.class)
+            .delete(Set.of(messageId), Username.of(JAMES_USER))
+            .block();
+
+        CALMLY_AWAIT
+            .atMost(Duration.ofSeconds(10))
+            .until(() -> server.getProbe(MessageFastViewProjectionProbe.class)
+                .retrieve(messageId)
+                .isEmpty());
     }
 }
