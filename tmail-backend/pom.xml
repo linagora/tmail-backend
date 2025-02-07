@@ -58,6 +58,7 @@
 
         <module>mailbox/encrypted</module>
         <module>mailbox/encrypted/pgp-utils</module>
+        <module>mailbox/listeners</module>
         <module>mailbox/plugin/welcome-listener</module>
         <module>mailbox/team-mailboxes</module>
 
@@ -355,6 +356,17 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>team-mailboxes-guice</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-listeners</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-listeners</artifactId>
+                <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
