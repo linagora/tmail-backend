@@ -38,6 +38,7 @@ import java.util.Set;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.rfc8621.contract.EmailGetMethodContract;
@@ -48,6 +49,8 @@ import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.opensearch.IndexBody;
+import org.apache.james.mailbox.opensearch.OpenSearchMailboxConfiguration;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.MailboxProbeImpl;
@@ -88,6 +91,7 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .searchConfiguration(SearchConfiguration.openSearch())
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
@@ -97,6 +101,10 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DelegationProbeModule())
+            .overrideWith(binder -> binder.bind(OpenSearchMailboxConfiguration.class)
+                .toInstance(OpenSearchMailboxConfiguration.builder()
+                    .indexBody(IndexBody.NO)
+                    .build()))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(MessageFastViewProjectionProbe.class))
