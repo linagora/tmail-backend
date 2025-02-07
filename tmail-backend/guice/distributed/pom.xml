@@ -131,6 +131,10 @@
             <artifactId>james-server-testing</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-listeners</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

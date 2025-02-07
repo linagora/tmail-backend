@@ -163,6 +163,7 @@ import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandr
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
+import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
@@ -462,6 +463,9 @@ public class DistributedServer {
 
     private static Module chooseJmapModule(DistributedJamesConfiguration configuration) {
         if (configuration.jmapEnabled()) {
+            if (configuration.searchConfiguration().getImplementation().equals(SearchConfiguration.Implementation.OpenSearch)) {
+                return new TMailJMAPListenerModule();
+            }
             return new JMAPListenerModule();
         }
         return binder -> {
