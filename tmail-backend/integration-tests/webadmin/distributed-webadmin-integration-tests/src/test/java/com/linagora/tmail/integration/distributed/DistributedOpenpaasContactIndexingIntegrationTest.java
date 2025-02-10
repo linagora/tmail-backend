@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.integration.distributed;
 
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static io.restassured.RestAssured.given;
 import static org.apache.james.jmap.JmapRFCCommonRequests.ACCEPT_JMAP_RFC_HEADER;
 import static org.hamcrest.Matchers.empty;
@@ -41,14 +40,13 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasTestModule;
-import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavServerExtension;
+import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.integration.ContactIndexingIntegrationContract;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -62,12 +60,10 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIndexingIntegrationContract {
 
     @RegisterExtension
-    static OpenPaasServerExtension openPaasServerExtension = new OpenPaasServerExtension();
+    static WireMockOpenPaaSServerExtension openPaasServerExtension = new WireMockOpenPaaSServerExtension();
 
     @RegisterExtension
-    static DavServerExtension davServerExtension = new DavServerExtension(
-        WireMockExtension.extensionOptions()
-            .options(wireMockConfig().dynamicPort()));
+    static DavServerExtension davServerExtension = new DavServerExtension();
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->

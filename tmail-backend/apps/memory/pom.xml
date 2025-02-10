@@ -137,6 +137,12 @@
             <groupId>${james.groupId}</groupId>
             <artifactId>jmap-rfc-8621-integration-tests-common</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.mock-server</groupId>
+                    <artifactId>mockserver-netty</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
@@ -186,6 +192,11 @@
         <dependency>
             <groupId>com.linagora.tmail</groupId>
             <artifactId>logback-json-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

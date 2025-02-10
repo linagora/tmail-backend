@@ -86,11 +86,6 @@
             <artifactId>reactor-netty</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.mock-server</groupId>
-            <artifactId>mockserver-netty</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>net.javacrumbs.json-unit</groupId>
             <artifactId>json-unit-assertj</artifactId>
         </dependency>
@@ -102,23 +97,12 @@
         <dependency>
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-standalone</artifactId>
-            <version>3.10.0</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>io.github.evis</groupId>
-                <artifactId>scalafix-maven-plugin_2.13</artifactId>
-                <configuration>
-                    <config>${project.parent.parent.parent.basedir}/.scalafix.conf</config>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

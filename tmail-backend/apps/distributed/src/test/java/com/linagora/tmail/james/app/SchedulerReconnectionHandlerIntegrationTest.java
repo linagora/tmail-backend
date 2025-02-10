@@ -57,10 +57,10 @@ import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasTestModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
-import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -80,7 +80,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
         .await();
 
     @RegisterExtension
-    static OpenPaasServerExtension openPaasServerExtension = new OpenPaasServerExtension();
+    static WireMockOpenPaaSServerExtension openPaasServerExtension = new WireMockOpenPaaSServerExtension();
 
     static Function<RabbitMQExtension, OpenPaasConfiguration.ContactConsumerConfiguration> contactConsumerConfigurationFunction = rabbitMQExtension -> new OpenPaasConfiguration.ContactConsumerConfiguration(
         ImmutableList.of(AmqpUri.from(Throwing.supplier(() -> rabbitMQExtension.dockerRabbitMQ().amqpUri()).get())),
@@ -242,7 +242,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
         }
     }
 
-    private static Module getOpenPaasModule(OpenPaasServerExtension openPaasServerExtension, RabbitMQExtension rabbitMQExtension) {
+    private static Module getOpenPaasModule(WireMockOpenPaaSServerExtension openPaasServerExtension, RabbitMQExtension rabbitMQExtension) {
         return Modules.override(new OpenPaasModule(), new OpenPaasContactsConsumerModule())
             .with(new OpenPaasTestModule(openPaasServerExtension, Optional.empty(),
                 Optional.of(contactConsumerConfigurationFunction.apply(rabbitMQExtension))));

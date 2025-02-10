@@ -19,12 +19,7 @@
 package com.linagora.tmail.dav;
 
 public class RetriableDavClientException extends DavClientException {
-
     public RetriableDavClientException(String message) {
         super(message);
-    }
-
-    public RetriableDavClientException(String message, Throwable cause) {
-        super(message, cause);
     }
 }

@@ -19,7 +19,6 @@
 package com.linagora.tmail.dav;
 
 public class DavClientException extends RuntimeException {
-
     public DavClientException(String message) {
         super(message);
     }
