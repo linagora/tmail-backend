@@ -23,17 +23,17 @@ import java.util.Optional;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 
 public class OpenPaasTestModule extends AbstractModule {
 
-    private final OpenPaasServerExtension openPaasServerExtension;
+    private final WireMockOpenPaaSServerExtension openPaasServerExtension;
     private final Optional<DavConfiguration> davConfiguration;
     private final Optional<OpenPaasConfiguration.ContactConsumerConfiguration> contactConsumerConfiguration;
 
-    public OpenPaasTestModule(OpenPaasServerExtension openPaasServerExtension,
+    public OpenPaasTestModule(WireMockOpenPaaSServerExtension openPaasServerExtension,
                               Optional<DavConfiguration> davConfiguration,
                               Optional<OpenPaasConfiguration.ContactConsumerConfiguration> contactConsumerConfiguration) {
         this.openPaasServerExtension = openPaasServerExtension;
@@ -45,8 +45,8 @@ public class OpenPaasTestModule extends AbstractModule {
     @Singleton
     public OpenPaasConfiguration provideOpenPaasServerExtension() {
         return new OpenPaasConfiguration(openPaasServerExtension.getBaseUrl(),
-            openPaasServerExtension.getUsername(),
-            openPaasServerExtension.getPassword(),
+            WireMockOpenPaaSServerExtension.ALICE_ID,
+            WireMockOpenPaaSServerExtension.GOOD_PASSWORD,
             false,
             contactConsumerConfiguration,
             davConfiguration);

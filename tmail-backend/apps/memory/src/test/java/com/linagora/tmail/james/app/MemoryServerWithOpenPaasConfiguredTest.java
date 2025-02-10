@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.james.app;
 
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLED;
 import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_DAV;
 import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CONTACTS_CONSUMER;
@@ -39,15 +38,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.fge.lambdas.Throwing;
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.OpenPaasTestModule;
-import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.dav.DavServerExtension;
+import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -55,7 +53,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 class MemoryServerWithOpenPaasConfiguredTest {
 
     @RegisterExtension
-    static OpenPaasServerExtension openPaasServerExtension = new OpenPaasServerExtension();
+    static WireMockOpenPaaSServerExtension openPaasServerExtension = new WireMockOpenPaaSServerExtension();
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
@@ -93,9 +91,7 @@ class MemoryServerWithOpenPaasConfiguredTest {
     @Nested
     class DavConfigured {
         @RegisterExtension
-        static DavServerExtension davServerExtension = new DavServerExtension(
-            WireMockExtension.extensionOptions()
-                .options(wireMockConfig().dynamicPort()));
+        static DavServerExtension davServerExtension = new DavServerExtension();
 
         @RegisterExtension
         static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->

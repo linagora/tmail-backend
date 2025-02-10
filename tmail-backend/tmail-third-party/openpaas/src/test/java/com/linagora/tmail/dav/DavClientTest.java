@@ -22,7 +22,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -33,7 +33,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static com.linagora.tmail.dav.DavClient.MAX_CALENDAR_OBJECT_UPDATE_RETRIES;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_1;
@@ -58,23 +57,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.tomakehurst.wiremock.http.Body;
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import ezvcard.parameter.EmailType;
 
-public class DavClientTest {
+class DavClientTest {
     private static final String OPENPAAS_USER_NAME = "openpaasUserName1";
     private static final String OPENPAAS_USER_ID = "openpaasUserId1";
-    private static final Function<DavCalendarObject, DavCalendarObject> DUMMY_CALENDAR_OBJECT_UPDATER
-        = calendarObject -> calendarObject;
+    private static final UnaryOperator<DavCalendarObject> DUMMY_CALENDAR_OBJECT_UPDATER = calendarObject -> calendarObject;
 
     @RegisterExtension
-    static DavServerExtension davServerExtension = new DavServerExtension(
-        WireMockExtension.extensionOptions()
-            .options(wireMockConfig().dynamicPort()));
+    static DavServerExtension davServerExtension = new DavServerExtension();
 
     private DavClient client;
 

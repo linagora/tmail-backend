@@ -30,6 +30,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.request;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 
 import java.net.URI;
 import java.time.Duration;
@@ -67,8 +68,9 @@ public class DavServerExtension extends WireMockExtension {
     private static final boolean TRUST_ALL_SSL_CERTS = true;
     private static final boolean USE_REGEX = true;
 
-    public DavServerExtension(Builder builder) {
-        super(builder);
+    public DavServerExtension() {
+        super(WireMockExtension.extensionOptions()
+            .options(wireMockConfig().dynamicPort()));
     }
 
     @Override

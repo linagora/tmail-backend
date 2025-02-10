@@ -18,7 +18,6 @@
 
 package com.linagora.tmail;
 
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.apache.james.mailets.configuration.Constants.DEFAULT_DOMAIN;
 import static org.apache.james.mailets.configuration.Constants.LOCALHOST_IP;
 import static org.apache.james.mailets.configuration.Constants.PASSWORD;
@@ -31,6 +30,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.UUID;
 
+import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import jakarta.inject.Singleton;
 import jakarta.mail.MessagingException;
 
@@ -55,11 +55,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.util.Modules;
-import com.linagora.tmail.api.OpenPaasServerExtension;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavServerExtension;
@@ -74,12 +72,10 @@ public class CardDavCollectedContactIntegrationTest {
     private static final boolean COLLECTED_CONTACT_EXISTS = true;
 
     @RegisterExtension
-    static OpenPaasServerExtension openPaasServerExtension = new OpenPaasServerExtension();
+    static WireMockOpenPaaSServerExtension openPaasServerExtension = new WireMockOpenPaaSServerExtension();
 
     @RegisterExtension
-    static DavServerExtension davServerExtension = new DavServerExtension(
-        WireMockExtension.extensionOptions()
-            .options(wireMockConfig().dynamicPort()));
+    static DavServerExtension davServerExtension = new DavServerExtension();
 
     private TemporaryJamesServer jamesServer;
 
@@ -106,8 +102,8 @@ public class CardDavCollectedContactIntegrationTest {
                 public OpenPaasConfiguration provideOpenPaasConfiguration() {
                     return new OpenPaasConfiguration(
                         openPaasServerExtension.getBaseUrl(),
-                        OpenPaasServerExtension.GOOD_USER(),
-                        OpenPaasServerExtension.GOOD_PASSWORD(),
+                        WireMockOpenPaaSServerExtension.ALICE_ID,
+                        WireMockOpenPaaSServerExtension.GOOD_PASSWORD,
                         false,
                         davServerExtension.getDavConfiguration());
                 }

@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -43,6 +43,7 @@ import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -66,8 +67,7 @@ public class DavClient {
 
     private final HttpClient client;
     private final DavConfiguration config;
-    public final Duration calendarObjectUpdateRetryBackoff =
-        Optional.ofNullable(System.getProperty("MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF_IN_MILLS"))
+    private static final Duration calendarObjectUpdateRetryBackoff = Optional.ofNullable(System.getProperty("MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF_IN_MILLS"))
             .map(Long::parseLong)
             .map(Duration::ofMillis)
             .orElse(Duration.ofMillis(100));
@@ -78,22 +78,17 @@ public class DavClient {
     }
 
     private HttpClient createHttpClient(boolean trustAllSslCerts) {
+        HttpClient client = HttpClient.create()
+            .baseUrl(config.baseUrl().toString())
+            .responseTimeout(config.responseTimeout().orElse(DEFAULT_RESPONSE_TIMEOUT));
         if (trustAllSslCerts) {
-            return HttpClient.create()
-                .baseUrl(config.baseUrl().toString())
-                .responseTimeout(config.responseTimeout().orElse(DEFAULT_RESPONSE_TIMEOUT))
-                .secure(sslContextSpec -> sslContextSpec.sslContext(
-                    SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)));
-        } else {
-            return HttpClient.create()
-                .baseUrl(config.baseUrl().toString())
-                .responseTimeout(config.responseTimeout().orElse(DEFAULT_RESPONSE_TIMEOUT));
+            return client.secure(sslContextSpec -> sslContextSpec.sslContext(SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)));
         }
+        return client;
     }
 
     private UsernamePasswordCredentials createDelegatedCredentials(String username) {
-        return new UsernamePasswordCredentials(
-            config.adminCredential().getUserName() + "&" + username,
+        return new UsernamePasswordCredentials(config.adminCredential().getUserName() + "&" + username,
             config.adminCredential().getPassword());
     }
 
@@ -101,12 +96,7 @@ public class DavClient {
         Preconditions.checkArgument(StringUtils.isNotEmpty(userId), "OpenPaas user id should not be empty");
         Preconditions.checkArgument(StringUtils.isNotEmpty(collectedId), "Collected id should not be empty");
 
-        return client
-            .headers(headers -> {
-                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_VCARD_JSON);
-                headers.add(HttpHeaderNames.AUTHORIZATION,
-                    HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username)));
-            })
+        return client.headers(headers -> addCardDavHeaders(username).apply(headers))
             .get()
             .uri(String.format(COLLECTED_ADDRESS_BOOK_PATH, userId, collectedId))
             .responseSingle((response, byteBufMono) -> handleContactExistsResponse(response, userId, collectedId));
@@ -125,94 +115,77 @@ public class DavClient {
     public Mono<Void> createCollectedContact(String username, String userId, CardDavCreationObjectRequest request) {
         Preconditions.checkArgument(StringUtils.isNotEmpty(userId), "OpenPaas user id should not be empty");
 
-        return client
-            .headers(headers ->
-                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_VCARD_JSON)
-                    .add(HttpHeaderNames.CONTENT_TYPE, CONTENT_TYPE_VCARD)
-                    .add(HttpHeaderNames.AUTHORIZATION,
-                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+        return client.headers(headers -> addCardDavHeaders(username).apply(headers)
+                    .add(HttpHeaderNames.CONTENT_TYPE, CONTENT_TYPE_VCARD))
             .put()
             .uri(String.format(COLLECTED_ADDRESS_BOOK_PATH, userId, request.uid()))
             .send(Mono.just(Unpooled.wrappedBuffer(request.toVCard().getBytes())))
-            .responseSingle((response, byteBufMono) ->
-                handleContactCreationResponse(response, userId, request));
+            .responseSingle((response, byteBufMono) -> handleContactCreationResponse(response, userId, request));
+    }
+
+    private UnaryOperator<HttpHeaders> addCardDavHeaders(String username) {
+        return headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_VCARD_JSON)
+            .add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username)));
     }
 
     private Mono<Void> handleContactCreationResponse(HttpClientResponse response, String userId, CardDavCreationObjectRequest request) {
         return switch (response.status().code()) {
             case 201 -> Mono.empty();
             case 204 -> {
-                LOGGER.info("Contact for user {} and collected id {} already exists",
-                    userId, request.uid());
+                LOGGER.info("Contact for user {} and collected id {} already exists", userId, request.uid());
                 yield Mono.empty();
             }
             default -> Mono.error(new DavClientException(
-                String.format("Unexpected status code: %d when creating contact for user: %s and collected id: %s",
-                    response.status().code(), userId, request.uid())));
+                String.format("Unexpected status code: %d when creating contact for user: %s and collected id: %s", response.status().code(), userId, request.uid())));
         };
     }
 
-    public Mono<Void> updateCalendarObject(String username, URI calendarObjectUri, Function<DavCalendarObject, DavCalendarObject> calendarObjectUpdater) {
+    public Mono<Void> updateCalendarObject(String username, URI calendarObjectUri, UnaryOperator<DavCalendarObject> calendarObjectUpdater) {
         return getCalendarObjectByUri(username, calendarObjectUri)
             .map(calendarObjectUpdater)
             .flatMap(updatedCalendarObject -> doUpdateCalendarObject(username, updatedCalendarObject))
-            .retryWhen(
-                Retry.backoff(MAX_CALENDAR_OBJECT_UPDATE_RETRIES, calendarObjectUpdateRetryBackoff)
+            .retryWhen(Retry.backoff(MAX_CALENDAR_OBJECT_UPDATE_RETRIES, calendarObjectUpdateRetryBackoff)
                 .filter(RetriableDavClientException.class::isInstance)
                 .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) ->
                     new DavClientException("Max retries exceeded for calendar update", retrySignal.failure())));
     }
 
     private Mono<Void> doUpdateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
-        return client.headers(headers ->
-                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
-                    .add(HttpHeaderNames.IF_MATCH, updatedCalendarObject.eTag())
-                    .add(HttpHeaderNames.AUTHORIZATION,
-                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+        return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
+                .add(HttpHeaderNames.IF_MATCH, updatedCalendarObject.eTag())
+                .add(HttpHeaderNames.AUTHORIZATION,
+                    HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
             .request(HttpMethod.PUT)
             .uri(updatedCalendarObject.uri().toString())
-            .send(Mono.just(Unpooled.wrappedBuffer(
-                updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
-            .responseSingle((response, responseContent) ->
-                handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
+            .send(Mono.just(Unpooled.wrappedBuffer(updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, responseContent) -> handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
     }
 
     private static Mono<Void> handleCalendarObjectUpdateResponse(DavCalendarObject updatedCalendarObject,
                                                    HttpClientResponse response) {
         if (response.status() == HttpResponseStatus.NO_CONTENT) {
-            return ReactorUtils.logAsMono(
-                () -> LOGGER.info("Calendar object '{}' updated successfully.",
-                    updatedCalendarObject.uri()));
+            return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' updated successfully.", updatedCalendarObject.uri()));
         } else if (response.status() == HttpResponseStatus.PRECONDITION_FAILED) {
             return Mono.error(new RetriableDavClientException(
-                String.format(
-                    "Precondition failed (ETag mismatch) when updating calendar object '%s'. Retry may be needed.",
-                    updatedCalendarObject.uri())));
+                String.format("Precondition failed (ETag mismatch) when updating calendar object '%s'. Retry may be needed.", updatedCalendarObject.uri())));
         } else {
             return Mono.error(new DavClientException(
-                String.format(
-                    "Unexpected status code: %d when updating calendar object '%s'",
-                    response.status().code(), updatedCalendarObject.uri())));
+                String.format("Unexpected status code: %d when updating calendar object '%s'", response.status().code(), updatedCalendarObject.uri())));
         }
     }
 
     public Mono<DavCalendarObject> getCalendarObjectByUri(String username, URI uri) {
-        return client.headers(headers ->
-                headers.add(HttpHeaderNames.AUTHORIZATION,
-                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+        return client.headers(headers -> headers.add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
             .request(HttpMethod.GET)
             .uri(uri.toString())
             .responseSingle((response, responseContent) -> {
                     if (response.status() == HttpResponseStatus.OK) {
                         return responseContent.asInputStream()
                             .map(CalendarEventParsed::parseICal4jCalendar)
-                            .map(calendar ->
-                                new DavCalendarObject(
-                                    uri, calendar, response.responseHeaders().get("ETag")));
+                            .map(calendar -> new DavCalendarObject(uri, calendar, response.responseHeaders().get("ETag")));
                     }
                     return Mono.error(new DavClientException(
-                        String.format("Unexpected status code: %d when fetching calendar object '%s'",
-                            response.status().code(), uri)));
+                        String.format("Unexpected status code: %d when fetching calendar object '%s'", response.status().code(), uri)));
             });
     }
 
@@ -221,31 +194,23 @@ public class DavClient {
         Preconditions.checkArgument(StringUtils.isNotEmpty(userId), "OpenPaas user id should not be empty");
 
         return findUserCalendars(userId, username)
-            .flatMap(calendarURI ->
-                getCalendarObjectContainingVEventFromSpecificCalendar(calendarURI, eventUid, username)
-                    .switchIfEmpty(
-                        ReactorUtils.logAsMono(
-                            () -> LOGGER.trace("VEvent '{}' was not found in Calendar '{}'.", eventUid, calendarURI))
+            .flatMap(calendarURI -> getCalendarObjectContainingVEventFromSpecificCalendar(calendarURI, eventUid, username)
+                    .switchIfEmpty(ReactorUtils.logAsMono(() -> LOGGER.trace("VEvent '{}' was not found in Calendar '{}'.", eventUid, calendarURI))
                             .then(Mono.empty()))
                     .onErrorResume(ex -> {
-                        LOGGER.debug("Error while querying '{}' for VEvent '{}': ",
-                            calendarURI, eventUid, ex);
+                        LOGGER.debug("Error while querying '{}' for VEvent '{}': ", calendarURI, eventUid, ex);
                         return Mono.empty();
                     }))
             .next();
     }
 
     private Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, String eventUid, String username) {
-        return client.headers(headers ->
-                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
-                    .add("Depth", "1")
-                    .add(HttpHeaderNames.AUTHORIZATION,
-                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+        return client.headers(headers -> calDavHeaders(username).apply(headers)
+                    .add("Depth", "1"))
             .request(HttpMethod.valueOf("REPORT"))
             .uri(calendarURI.getPath())
             .send(Mono.just(new GetCalendarByEventIdRequestBody(eventUid).asByteBuf()))
-            .responseSingle(
-                (response, responseContent) -> handleCalendarResponse(responseContent, response.status(), eventUid));
+            .responseSingle((response, responseContent) -> handleCalendarResponse(responseContent, response.status(), eventUid));
     }
 
     private Mono<DavCalendarObject> handleCalendarResponse(ByteBufMono responseContent, HttpResponseStatus responseStatus, String eventUid) {
@@ -256,8 +221,7 @@ public class DavClient {
                 .flatMap(Mono::justOrEmpty);
         }
         return Mono.error(new DavClientException(
-            String.format("Unexpected status code: %d when finding VCALENDAR object containing event: %s",
-                responseStatus.code(), eventUid)));
+            String.format("Unexpected status code: %d when finding VCALENDAR object containing event: %s", responseStatus.code(), eventUid)));
     }
 
     private Optional<DavCalendarObject> extractCalendarObject(DavMultistatus multistatus) {
@@ -268,10 +232,7 @@ public class DavClient {
     }
 
     public Flux<URI> findUserCalendars(String userId, String username) {
-        return client.headers(headers ->
-                headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
-                    .add(HttpHeaderNames.AUTHORIZATION,
-                        HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+        return client.headers(headers -> calDavHeaders(username).apply(headers))
             .request(HttpMethod.valueOf("PROPFIND"))
             .uri("/calendars/" + userId)
             .responseSingle((response, byteBufMono) -> {
@@ -288,11 +249,15 @@ public class DavClient {
             .flatMapMany(Flux::fromIterable);
     }
 
+    private UnaryOperator<HttpHeaders> calDavHeaders(String username) {
+        return headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
+            .add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username)));
+    }
+
     private List<URI> extractCalendarURIsFromResponse(DavMultistatus multistatus) {
         return multistatus.getResponses().stream()
             .filter(DavResponse::isCalendarCollectionResponse)
-            .flatMap(response ->
-                response.getHref()
+            .flatMap(response -> response.getHref()
                 .getValue()
                 .filter(href -> !(href.endsWith("inbox/") || href.endsWith("outbox/")))
                 .flatMap(this::parseCalendarHref).stream())
