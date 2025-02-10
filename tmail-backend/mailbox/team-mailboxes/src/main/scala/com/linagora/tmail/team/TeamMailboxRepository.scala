@@ -75,7 +75,9 @@ object TeamMailboxRepositoryImpl {
       Right.WriteSeenFlag,
       Right.DeleteMessages,
       Right.Insert,
-      Right.Write)
+      Right.Write,
+      Right.CreateMailbox,
+      Right.PerformExpunge)
 
   val TEAM_MAILBOX_MEMBER_RIGHTS: MailboxACL.Rfc4314Rights =
     new MailboxACL.Rfc4314Rights(BASIC_TEAM_MAILBOX_RIGHTS)

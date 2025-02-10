@@ -169,7 +169,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(entriesRights)
         .hasSize(1)
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
     })
   }
 
@@ -196,7 +196,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
         .containsOnly(TeamMailboxMember.asMember(BOB))
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
     })
   }
 
@@ -230,7 +230,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(entriesRights.asScala.head._2.contains(MailboxACL.Right.Administer))
         .isTrue
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("ailprstw")
+        .isEqualTo("aeiklprstw")
     })
   }
 
@@ -247,7 +247,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
         .containsOnly(TeamMailboxMember.asManager(BOB))
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("ailprstw")
+        .isEqualTo("aeiklprstw")
     })
   }
 
@@ -283,27 +283,27 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(inboxEntriesRights)
         .hasSize(1)
       softly.assertThat(inboxEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
 
       softly.assertThat(sentEntriesRights)
         .hasSize(1)
       softly.assertThat(sentEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
 
       softly.assertThat(outboxEntriesRights)
         .hasSize(1)
       softly.assertThat(outboxEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
 
       softly.assertThat(draftsEntriesRights)
         .hasSize(1)
       softly.assertThat(draftsEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
 
       softly.assertThat(trashEntriesRights)
         .hasSize(1)
       softly.assertThat(trashEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
     })
   }
 

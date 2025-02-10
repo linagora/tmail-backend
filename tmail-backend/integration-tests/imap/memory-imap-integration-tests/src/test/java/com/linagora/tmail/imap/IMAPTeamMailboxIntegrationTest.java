@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -336,5 +337,55 @@ public class IMAPTeamMailboxIntegrationTest {
             .contains("* LIST (\\HasNoChildren \\Subscribed) \".\" \"#user.other3.INBOX\"")
             .doesNotContain("\"#TeamMailbox.marketing.INBOX\"")
             .doesNotContain("\"Mailbox123\"");
+    }
+
+    @Test
+    void memberCanCreateTopFolder() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        // Verify that the team mailbox `marketing.new1` does not exist
+        assertThat(imapClient
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.new1\"");
+
+        // Create the team mailbox `marketing.new1` successfully
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        // Verify that the team mailbox `marketing.new1` exists
+        assertThat(imapClient
+            .sendCommand("LIST \"\" \"*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
+    }
+
+    @Test
+    void topFolderIsCreatedByMemberCanAppendMessagesSuccessful(GuiceJamesServer server) throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        // Create the team mailbox `marketing.new1` successfully
+        String folderName = UUID.randomUUID().toString();
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing."+folderName))
+            .contains("CREATE completed");
+
+        server.getProbe(MailboxProbeImpl.class).appendMessage(MINISTER.asString(), MARKETING_TEAM_MAILBOX.mailboxPath(folderName),
+            MessageManager.AppendCommand.from(Message.Builder.of()
+                .setSubject("Mail in marketing team mailbox" + folderName)
+                .setBody("This is content of teammailbox", StandardCharsets.UTF_8)
+                .build()));
+
+        Thread.sleep(200);
+
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("""
+                STATUS "#TeamMailbox.marketing.%s" (MESSAGES)
+                """.formatted(folderName)))
+            .contains("""
+                * STATUS "#TeamMailbox.marketing.%s" (MESSAGES 1)
+                """.formatted(folderName).trim());
     }
 }
