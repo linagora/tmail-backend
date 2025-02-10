@@ -41,15 +41,18 @@ import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.jmap.JMAPModule;
+import org.apache.james.jmap.rfc8621.RFC8621MethodsModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
+import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentMapper;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
 import org.apache.james.mailbox.searchhighligt.SearchSnippet;
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
@@ -191,6 +194,8 @@ import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.perfs.TMailCleverBlobResolverModule;
+import com.linagora.tmail.james.jmap.perfs.TMailCleverMessageParser;
 import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetRepositoryModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.routes.DownloadAllRoutesModule;
@@ -271,7 +276,9 @@ public class DistributedServer {
         new ForwardGetMethodModule(),
         new ForwardSetMethodModule(),
         new JMAPServerModule(),
-        JMAPModule.INSTANCE,
+        new JMAPModule(),
+        new RFC8621MethodsModule(),
+        new TMailCleverBlobResolverModule(),
         new JmapEventBusModule(),
         new PublicAssetsModule(),
         new KeystoreCassandraModule(),
@@ -318,7 +325,11 @@ public class DistributedServer {
 
     public static final Module CASSANDRA_MAILBOX_MODULE = Modules.combine(
         new CassandraConsistencyTaskSerializationModule(),
-        new CassandraMailboxModule(),
+        Modules.override(new CassandraMailboxModule())
+            .with(binder -> {
+                binder.bind(CassandraAttachmentMapper.AttachmentIdAssignationStrategy.class).to(TMailCleverAttachmentIdAssignationStrategy.class);
+                binder.bind(MessageParser.class).to(TMailCleverMessageParser.class);
+            }),
         new MailboxModule(),
         new TikaMailboxModule());
 
@@ -356,7 +367,7 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TmailEventModule(),
-            new TmailEventDeadLettersModule(),
+            new TMailEventDeadLettersModule(),
             new TMailIMAPModule());
 
     public static void main(String[] args) throws Exception {
