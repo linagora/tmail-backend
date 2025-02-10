@@ -387,5 +387,5 @@ trait DownloadAllContract {
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("capabilities", hasKey("com:linagora:params:downloadAll"))
-      .body("capabilities.'com:linagora:params:downloadAll'.endpoint", equalTo("http://localhost/jmap/downloadAll/{accountId}/{emailId}?name={name}"))
+      .body("capabilities.'com:linagora:params:downloadAll'.endpoint", equalTo("http://localhost/downloadAll/{accountId}/{emailId}?name={name}"))
 }
