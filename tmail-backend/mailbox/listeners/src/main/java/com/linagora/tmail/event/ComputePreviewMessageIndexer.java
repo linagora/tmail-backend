@@ -58,6 +58,7 @@ public class ComputePreviewMessageIndexer implements OpenSearchListeningMessageS
             return Mono.empty();
         }
         return Mono.fromCallable(() -> ResultUtils.loadMessageResult(message, FetchGroup.FULL_CONTENT))
+            .subscribeOn(Schedulers.parallel())
             .flatMap(Throwing.function(messageResult -> Mono.fromCallable(() -> Pair.of(message.getMessageId(),
                     computeFastViewPrecomputedProperties(messageResult)))
                 .subscribeOn(Schedulers.parallel())))
