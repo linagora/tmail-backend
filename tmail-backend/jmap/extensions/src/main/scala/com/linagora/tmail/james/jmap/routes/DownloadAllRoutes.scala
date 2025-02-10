@@ -83,7 +83,7 @@ class DownloadAllCapabilityFactory @Inject() extends CapabilityFactory {
   override def id(): CapabilityIdentifier = LINAGORA_DOWNLOAD_ALL
 
   override def create(urlPrefixes: UrlPrefixes): Capability =
-    DownloadAllCapability(DownloadAllCapabilityProperties(URL(urlPrefixes.httpUrlPrefix.toString + "/jmap/downloadAll/{accountId}/{emailId}?name={name}")))
+    DownloadAllCapability(DownloadAllCapabilityProperties(URL(urlPrefixes.httpUrlPrefix.toString + "/downloadAll/{accountId}/{emailId}?name={name}")))
 }
 
 class DownloadAllRoutesModule extends AbstractModule {

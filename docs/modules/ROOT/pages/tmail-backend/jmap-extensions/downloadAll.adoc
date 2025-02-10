@@ -9,7 +9,7 @@ and delivered to the user in a zip file.
 Servers supporting the JMAP Download All extension need to advertise it through the session capabilities:
 ....
 "com:linagora:params:downloadAll": {
-  "endpoint":"http://localhost/jmap/downloadAll/{accountId}/{emailId}?name={name}",
+  "endpoint":"http://localhost/downloadAll/{accountId}/{emailId}?name={name}",
 }
 ....
 
@@ -25,7 +25,7 @@ It must contain the following variables detailed in the specification section:
 The JMAP Download All extension is defined by a new JMAP route following this pattern:
 
 ....
-GET /jmap/downloadAll/{accountId}/{emailId}?name={name}
+GET /downloadAll/{accountId}/{emailId}?name={name}
 ....
 
 Where:
