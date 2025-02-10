@@ -30,6 +30,7 @@ import static org.apache.james.MailsShouldBeWellReceived.CALMLY_AWAIT;
 import static org.apache.james.MailsShouldBeWellReceived.DOMAIN;
 import static org.apache.james.MailsShouldBeWellReceived.JAMES_USER;
 import static org.apache.james.MailsShouldBeWellReceived.PASSWORD;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -39,6 +40,9 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.backends.cassandra.StatementRecorder;
+import org.apache.james.backends.cassandra.TestingSession;
+import org.apache.james.backends.cassandra.init.SessionWithInitializedTablesFactory;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.rfc8621.contract.EmailGetMethodContract;
@@ -60,7 +64,12 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
@@ -75,6 +84,36 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
+    public static class TestingSessionProbe implements GuiceProbe {
+        private final TestingSession testingSession;
+
+        @Inject
+        private TestingSessionProbe(TestingSession testingSession) {
+            this.testingSession = testingSession;
+        }
+
+        public TestingSession getTestingSession() {
+            return testingSession;
+        }
+    }
+
+    public static class TestingSessionModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            Multibinder.newSetBinder(binder(), GuiceProbe.class)
+                .addBinding()
+                .to(TestingSessionProbe.class);
+
+            bind(CqlSession.class).to(TestingSession.class);
+        }
+
+        @Provides
+        @Singleton
+        TestingSession provideSession(SessionWithInitializedTablesFactory factory) {
+            return new TestingSession(factory.get());
+        }
+    }
+
     public static final CassandraMessageId.Factory MESSAGE_ID_FACTORY = new CassandraMessageId.Factory();
 
     @RegisterExtension
@@ -101,6 +140,7 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DelegationProbeModule())
+            .overrideWith(new TestingSessionModule())
             .overrideWith(binder -> binder.bind(OpenSearchMailboxConfiguration.class)
                 .toInstance(OpenSearchMailboxConfiguration.builder()
                     .indexBody(IndexBody.NO)
@@ -121,6 +161,10 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
     @Tag(BasicFeature.TAG)
     @Test
     void jmapPreviewShouldBeWellPreComputed(GuiceJamesServer server) throws Exception {
+        StatementRecorder statementRecorder = server.getProbe(TestingSessionProbe.class)
+            .getTestingSession()
+            .recordStatements();
+
         server.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
             .addUser(JAMES_USER, PASSWORD);
@@ -139,6 +183,10 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
             .until(() -> server.getProbe(MessageFastViewProjectionProbe.class)
                 .retrieve(messageId)
                 .isPresent());
+
+        assertThat(statementRecorder.listExecutedStatements(
+            StatementRecorder.Selector.preparedStatementStartingWith("INSERT INTO message_fast_view_projection")))
+            .hasSize(1);
     }
 
     @Test
