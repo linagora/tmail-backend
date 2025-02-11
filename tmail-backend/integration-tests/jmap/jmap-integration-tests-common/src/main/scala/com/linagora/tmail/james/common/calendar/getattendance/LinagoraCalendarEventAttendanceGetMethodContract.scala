@@ -1,6 +1,5 @@
-package com.linagora.tmail.james.common
+package com.linagora.tmail.james.common.calendar.getattendance
 
-import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.sendInvitationEmailToBobAndGetIcsBlobIds
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -27,6 +26,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
       .fluent
       .addDomain(_2_DOT_DOMAIN.asString)
       .addDomain(DOMAIN.asString)
+      .addDomain("open-paas.org")
       .addUser(BOB.asString, BOB_PASSWORD)
       .addUser(ALICE.asString, ALICE_PASSWORD)
       .addUser(ANDRE.asString, ANDRE_PASSWORD)
@@ -78,7 +78,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$ACCOUNT_ID",
             |    "accepted": ["$blobId"],
             |    "rejected": [],
             |    "tentativelyAccepted": [],
@@ -128,7 +128,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$ACCOUNT_ID",
             |    "accepted": [],
             |    "rejected": ["$blobId"],
             |    "tentativelyAccepted": [],
@@ -178,7 +178,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$ACCOUNT_ID",
             |    "accepted": [],
             |    "rejected": [],
             |    "tentativelyAccepted": ["$blobId"],
@@ -225,7 +225,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$ACCOUNT_ID",
             |    "accepted": [],
             |    "rejected": [],
             |    "tentativelyAccepted": [],
@@ -630,6 +630,33 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
+  }
+
+  def _sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                                icsPartIds: String*): Seq[String]
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartId: String): String = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartId) match {
+      case Seq(a) => (a)
+    }
+  }
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartIds: (String, String)): (String, String) = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2) match {
+      case Seq(a, b) => (a, b)
+    }
+  }
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartIds: (String, String, String)): (String, String, String) = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
+      case Seq(a, b, c) => (a, b, c)
+    }
   }
 
   private def blobIdsAsJson(blobIds: List[String]) : String =
