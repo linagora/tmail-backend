@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 
+import jakarta.inject.Inject;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.james.util.ReactorUtils;
@@ -72,6 +74,7 @@ public class DavClient {
             .map(Duration::ofMillis)
             .orElse(Duration.ofMillis(100));
 
+    @Inject
     public DavClient(DavConfiguration config) {
         this.config = config;
         this.client = createHttpClient(config.trustAllSslCerts().orElse(false));
