@@ -227,7 +227,7 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
         return extractMessageId(blobId)
             .flatMap(messageId ->
                 Mono.fromDirect(
-                    messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, mailboxSession)))
+                    messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, mailboxSession)))
             .flatMap(messageResult ->
                 Mono.justOrEmpty(findHeaderByName(messageResult, X_MEETING_UID_HEADER)))
             .map(Header::getValue);
