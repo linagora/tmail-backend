@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -41,6 +42,7 @@ import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.TestIMAPClient;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -113,6 +115,7 @@ public class IMAPTeamMailboxIntegrationTest {
             .create(MARKETING_TEAM_MAILBOX)
             .create(SALE_TEAM_MAILBOX)
             .addMember(MARKETING_TEAM_MAILBOX, MINISTER)
+            .addMember(MARKETING_TEAM_MAILBOX, SECRETARY)
             .addMember(SALE_TEAM_MAILBOX, MINISTER);
 
         server.getProbe(ACLProbeImpl.class)
@@ -387,5 +390,26 @@ public class IMAPTeamMailboxIntegrationTest {
             .contains("""
                 * STATUS "#TeamMailbox.marketing.%s" (MESSAGES 1)
                 """.formatted(folderName).trim());
+    }
+
+    @Test
+    void topFolderCreatedByBobShouldBeAccessibleByAlice() throws Exception {
+        // Alice: Verify that the team mailbox `marketing.new1` does not exist
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(SECRETARY, SECRETARY_PASSWORD)
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.new1\"");
+
+        // Bob: Create the team mailbox `marketing.new1` successfully
+        assertThat( testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        // Alice: Verify that the team mailbox `marketing.new1` exists
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(SECRETARY, SECRETARY_PASSWORD)
+            .sendCommand("LIST \"\" \"*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
     }
 }

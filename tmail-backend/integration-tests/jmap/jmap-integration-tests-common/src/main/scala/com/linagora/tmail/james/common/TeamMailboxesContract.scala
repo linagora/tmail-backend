@@ -439,7 +439,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -518,7 +518,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -597,7 +597,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -676,7 +676,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -755,7 +755,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -834,7 +834,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -1027,7 +1027,7 @@ trait TeamMailboxesContract {
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -1159,7 +1159,7 @@ trait TeamMailboxesContract {
   }
 
   @Test
-  def creatingATeamMailboxChildShouldFail(server: GuiceJamesServer): Unit = {
+  def creatingATeamMailboxChildShouldSuccess(server: GuiceJamesServer): Unit = {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
@@ -1204,24 +1204,168 @@ trait TeamMailboxesContract {
       .whenIgnoringPaths("methodResponses[0][1].oldState", "methodResponses[0][1].newState")
       .isEqualTo(
         s"""{
-           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
-           |    "methodResponses": [
-           |        [
-           |            "Mailbox/set",
-           |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |                "notCreated": {
-           |                    "K39": {
-           |                        "type": "forbidden",
-           |                        "description": "Insufficient rights",
-           |                        "properties": ["parentId"]
-           |                    }
-           |                }
+           |  "sessionState": "$${json-unit.ignore}",
+           |  "methodResponses": [
+           |    [
+           |      "Mailbox/set",
+           |      {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "f318cfb6-5413-4d72-a007-f24652c1ca30",
+           |        "newState": "974e75a7-0e24-4490-8eea-e583c77ddec8",
+           |        "created": {
+           |          "K39": {
+           |            "id": "$${json-unit.ignore}",
+           |            "sortOrder": 1000,
+           |            "totalEmails": 0,
+           |            "unreadEmails": 0,
+           |            "totalThreads": 0,
+           |            "unreadThreads": 0,
+           |            "myRights": {
+           |              "mayReadItems": true,
+           |              "mayAddItems": true,
+           |              "mayRemoveItems": true,
+           |              "maySetSeen": true,
+           |              "maySetKeywords": true,
+           |              "mayCreateChild": true,
+           |              "mayRename": true,
+           |              "mayDelete": true,
+           |              "maySubmit": true
            |            },
-           |            "c1"
-           |        ]
+           |            "isSubscribed": true
+           |          }
+           |        }
+           |      },
+           |      "c1"
            |    ]
+           |  ]
            |}""".stripMargin)
+  }
+
+  @Test
+  def creatingATopChildMailboxOfTeamMailboxShouldSuccess(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val marketingTeamMailboxId = mailboxId(server, teamMailbox.mailboxPath)
+
+    val request =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [[
+         |           "Mailbox/set",
+         |           {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "create": {
+         |                  "K39" : {
+         |                    "name": "ChildOfTopMailbox",
+         |                    "parentId": "$marketingTeamMailboxId"
+         |                  }
+         |                }
+         |           },
+         |       "c1"],
+         |           ["Mailbox/get",
+         |         {
+         |           "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |           "ids": ["#K39"]
+         |          },
+         |       "c2"]
+         |
+         |    ]
+         |}""".stripMargin
+
+    val response: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .withOptions(IGNORING_ARRAY_ORDER)
+      .isEqualTo(
+        s"""
+           |{
+           |    "sessionState": "$${json-unit.ignore}",
+           |    "methodResponses": [
+           |      [
+           |        "Mailbox/set",
+           |        {
+           |          "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |          "oldState": "$${json-unit.ignore}",
+           |          "newState": "$${json-unit.ignore}",
+           |          "created": {
+           |            "K39": {
+           |              "id": "$${json-unit.ignore}",
+           |              "sortOrder": 1000,
+           |              "totalEmails": 0,
+           |              "unreadEmails": 0,
+           |              "totalThreads": 0,
+           |              "unreadThreads": 0,
+           |              "myRights": {
+           |                "mayReadItems": true,
+           |                "mayAddItems": true,
+           |                "mayRemoveItems": true,
+           |                "maySetSeen": true,
+           |                "maySetKeywords": true,
+           |                "mayCreateChild": true,
+           |                "mayRename": true,
+           |                "mayDelete": true,
+           |                "maySubmit": true
+           |              },
+           |              "isSubscribed": true
+           |            }
+           |          }
+           |        },
+           |        "c1"
+           |      ],
+           |      [
+           |        "Mailbox/get",
+           |        {
+           |          "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |          "state": "$${json-unit.ignore}",
+           |          "list": [
+           |            {
+           |              "id": "$${json-unit.ignore}",
+           |              "name": "ChildOfTopMailbox",
+           |              "parentId": "$marketingTeamMailboxId",
+           |              "sortOrder": 1000,
+           |              "totalEmails": 0,
+           |              "unreadEmails": 0,
+           |              "totalThreads": 0,
+           |              "unreadThreads": 0,
+           |              "myRights": {
+           |                "mayReadItems": true,
+           |                "mayAddItems": true,
+           |                "mayRemoveItems": true,
+           |                "maySetSeen": true,
+           |                "maySetKeywords": true,
+           |                "mayCreateChild": false,
+           |                "mayRename": false,
+           |                "mayDelete": false,
+           |                "maySubmit": false
+           |              },
+           |              "isSubscribed": true,
+           |              "namespace": "TeamMailbox[marketing@domain.tld]",
+           |              "rights": {
+           |                "bob@domain.tld": [ "e", "i", "l", "p", "r", "s", "t", "w" ]
+           |              }
+           |            }
+           |          ],
+           |          "notFound": []
+           |        },
+           |        "c2"
+           |      ]
+           |    ]
+           |  }""".stripMargin)
   }
 
   @Test
@@ -1366,7 +1510,7 @@ trait TeamMailboxesContract {
            |                    {
            |                        "id": "$id1",
            |                        "rights": {
-           |                            "bob@domain.tld": ["i", "l", "p", "r", "s", "t", "w"]
+           |                            "bob@domain.tld": ["e", "i", "l", "p", "r", "s", "t", "w"]
            |                        }
            |                    }
            |                ]
@@ -1468,7 +1612,7 @@ trait TeamMailboxesContract {
            |                        "isSubscribed": true,
            |                        "namespace": "TeamMailbox[marketing@domain.tld]",
            |                        "rights": {
-           |                            "bob@domain.tld": ["i",  "l", "p", "r", "s", "t", "w"]
+           |                            "bob@domain.tld": ["e", "i",  "l", "p", "r", "s", "t", "w"]
            |                        }
            |                    }
            |                ]
@@ -2996,7 +3140,7 @@ trait TeamMailboxesContract {
 
     val response: String = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request).log().all()
+      .body(request)
     .when()
       .post()
     .`then`
