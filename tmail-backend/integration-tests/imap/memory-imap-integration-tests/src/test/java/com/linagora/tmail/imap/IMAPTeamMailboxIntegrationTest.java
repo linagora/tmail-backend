@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -42,7 +41,6 @@ import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.TestIMAPClient;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -54,6 +52,9 @@ import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxName;
 import com.linagora.tmail.team.TeamMailboxProbe;
+
+import scala.jdk.javaapi.CollectionConverters;
+
 
 public class IMAPTeamMailboxIntegrationTest {
     static final String DOMAIN = "domain.tld";
@@ -371,7 +372,7 @@ public class IMAPTeamMailboxIntegrationTest {
         // Create the team mailbox `marketing.new1` successfully
         String folderName = UUID.randomUUID().toString();
         assertThat(imapClient
-            .sendCommand("CREATE #TeamMailbox.marketing."+folderName))
+            .sendCommand("CREATE #TeamMailbox.marketing." + folderName))
             .contains("CREATE completed");
 
         server.getProbe(MailboxProbeImpl.class).appendMessage(MINISTER.asString(), MARKETING_TEAM_MAILBOX.mailboxPath(folderName),
@@ -393,7 +394,7 @@ public class IMAPTeamMailboxIntegrationTest {
     }
 
     @Test
-    void topFolderCreatedByBobShouldBeAccessibleByAlice() throws Exception {
+    void topFolderCreatedByMemberAShouldBeAccessibleByOtherMemberB() throws Exception {
         // Alice: Verify that the team mailbox `marketing.new1` does not exist
         assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(SECRETARY, SECRETARY_PASSWORD)
@@ -401,7 +402,7 @@ public class IMAPTeamMailboxIntegrationTest {
             .doesNotContain("\"#TeamMailbox.marketing.new1\"");
 
         // Bob: Create the team mailbox `marketing.new1` successfully
-        assertThat( testIMAPClient.connect(IMAP_HOST, imapPort)
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(MINISTER, MINISTER_PASSWORD)
             .sendCommand("CREATE #TeamMailbox.marketing.new1"))
             .contains("CREATE completed");
@@ -409,6 +410,39 @@ public class IMAPTeamMailboxIntegrationTest {
         // Alice: Verify that the team mailbox `marketing.new1` exists
         assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(SECRETARY, SECRETARY_PASSWORD)
+            .sendCommand("LIST \"\" \"*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
+    }
+
+    @Test
+    void topFolderCreatedByMemberAShouldBeAccessibleByOtherUserWhenHasRight(GuiceJamesServer server) throws Exception {
+        // Verify user `other3` is not a member of the team mailbox `marketing`
+        assertThat(CollectionConverters.asJava(server.getProbe(TeamMailboxProbe.class)
+            .listMembers(MARKETING_TEAM_MAILBOX)))
+            .doesNotContain(OTHER3)
+            .contains(MINISTER);
+
+        // Verify that the team mailbox `marketing.new1` does not list in the mailbox list of user `other3`
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(OTHER3, OTHER3_PASSWORD)
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.new1\"");
+
+        // Given `minister` creates the team mailbox `marketing.new1`
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        // When add the right `other3` to the team mailbox `marketing.new1`
+        server.getProbe(ACLProbeImpl.class)
+            .replaceRights(MARKETING_TEAM_MAILBOX.mailboxPath("new1"),
+                OTHER3.asString(),
+                MailboxACL.Rfc4314Rights.of(List.of(MailboxACL.Right.Lookup, MailboxACL.Right.Read)));
+
+        // Then the team mailbox `marketing.new1` should list in the mailbox list of user `other3`
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(OTHER3, OTHER3_PASSWORD)
             .sendCommand("LIST \"\" \"*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
     }
