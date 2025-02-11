@@ -47,10 +47,11 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
     }
 
     private static String normalizeVCalendarData(CalendarData calendarData) {
-        return calendarData.getValue()
-            .lines()
-            .map(String::trim)
-            .filter(Predicate.not(String::isBlank))
-            .collect(Collectors.joining("\n"));
+        return calendarData.getValue();
+//        return calendarData.getValue()
+//            .lines()
+//            .map(String::trim)
+//            .filter(Predicate.not(String::isBlank))
+//            .collect(Collectors.joining("\n"));
     }
 }

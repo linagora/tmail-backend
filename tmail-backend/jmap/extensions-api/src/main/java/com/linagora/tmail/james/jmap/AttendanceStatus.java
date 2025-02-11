@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.james.jmap;
 
-import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -80,13 +79,8 @@ public enum AttendanceStatus {
 
     public static Optional<AttendanceStatus> fromCalendarAttendeeParticipationStatus(
         CalendarAttendeeParticipationStatus status) {
-        try {
-            PartStat partstat = new PartStat.Factory().createParameter(status.value());
-            return fromPartStat(partstat);
-        } catch (URISyntaxException e) {
-            LOGGER.trace("Unable to map CalendarAttendeeParticipationStatus '{}' to AttendanceStatus.", status, e);
-            return Optional.empty();
-        }
+        PartStat partstat = new PartStat.Factory().createParameter(status.value());
+        return fromPartStat(partstat);
     }
 
     public Optional<PartStat> toPartStat() {
