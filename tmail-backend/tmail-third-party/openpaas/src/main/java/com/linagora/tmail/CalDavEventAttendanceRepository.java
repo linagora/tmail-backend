@@ -18,6 +18,7 @@
 
 package com.linagora.tmail;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 
@@ -110,17 +111,22 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     }
 
     private Mono<CalendarEventAttendanceResults> getAttendanceStatusFromBlob(Username username, DavUser davUser,
-                                                                                      String blobId,
-                                                                                      MailboxSession systemMailboxSession) {
-        return retrieveEventUid(blobId, systemMailboxSession)
-            .flatMap(eventUid -> davClient.getCalendarObjectContainingVEvent(davUser, eventUid))
-            .map(calendarObject -> getAttendanceStatusFromCalendarObject(
-                BlobId.of(blobId).get(), calendarObject, username, systemMailboxSession))
-            .onErrorResume(error -> Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(BlobId.of(blobId).get(), error, systemMailboxSession)));
+                                                                             String blobId,
+                                                                             MailboxSession session) {
+        return extractMessageId(blobId)
+            .flatMap(messageId ->
+                Mono.fromDirect(
+                        messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, session))
+                    .map(this::retrieveEventUid)
+                    .flatMap(eventUid -> doGetCalendarObjectContainingVEvent(davUser, eventUid))
+                    .map(calendarObject -> getAttendanceStatusFromCalendarObject(
+                        BlobId.of(blobId).get(), calendarObject, username, session)))
+            .switchIfEmpty(Mono.just(CalendarEventAttendanceResults$.MODULE$.notFound(BlobId.of(blobId).get())))
+            .onErrorResume(error -> Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(BlobId.of(blobId).get(), error, session)));
     }
 
     private CalendarEventAttendanceResults getAttendanceStatusFromCalendarObject(BlobId blobId,
-        DavCalendarObject calendarObject, Username username, MailboxSession mailboxSession) {
+                                                                                 DavCalendarObject calendarObject, Username username, MailboxSession mailboxSession) {
 
         try {
             List<CalendarEventParsed> events =
@@ -157,7 +163,7 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     private Mono<DavUser> toDavUser(Username username) {
         try {
             return davUserProvider.provide(username.asMailAddress())
-                .switchIfEmpty(Mono.error(new RuntimeException("We couldn't find user in Dav server with username '%s'".formatted(username.asString()))));
+                .switchIfEmpty(Mono.error(new RuntimeException("Unable to find user in Dav server with username '%s'".formatted(username.asString()))));
         } catch (AddressException e) {
             LOGGER.debug("Failed to get user DAV information", e);
             return Mono.empty();
@@ -173,8 +179,8 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
 
         return toDavUser(username)
             .flatMapMany(davUser ->
-                    Flux.fromIterable(CollectionConverters.SeqHasAsJava(eventBlobIds.value()).asJava())
-                        .flatMap(blobId -> updateAttendanceStatusForEventBlob(BlobId.of(blobId.value()).get(), attendanceStatus, davUser, session)))
+                Flux.fromIterable(CollectionConverters.SeqHasAsJava(eventBlobIds.value()).asJava())
+                    .flatMap(blobId -> updateAttendanceStatusForEventBlob(BlobId.of(blobId.value()).get(), attendanceStatus, davUser, session)))
             .onErrorResume(e -> generateSetAttendanceStatusErrorResponse(e, eventBlobIds, session));
     }
 
@@ -185,19 +191,32 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
             .reduce(CalendarEventReplyResults$.MODULE$.empty(), CalendarEventReplyResults$.MODULE$::merge);
     }
 
-    private Mono<CalendarEventReplyResults> updateAttendanceStatusForEventBlob(BlobId blobId, AttendanceStatus attendanceStatus, DavUser davUser, MailboxSession mailboxSession) {
-        // PartStat partStat = PartStat.DECLINED;
+    private Mono<CalendarEventReplyResults> updateAttendanceStatusForEventBlob(BlobId blobId, AttendanceStatus attendanceStatus, DavUser davUser, MailboxSession session) {
         PartStat partStat = attendanceStatus.toPartStat().orElseThrow();
-        return retrieveEventUid(String.valueOf(blobId.value()), mailboxSession)
-            .flatMap(eventUid -> davClient.getCalendarObjectContainingVEvent(davUser, eventUid))
-            .flatMap(calendarObjectContainingVEvent ->
-                davClient.updateCalendarObject(davUser, calendarObjectContainingVEvent.uri(),
-                (calendarObject -> doUpdateAttendanceStatusInCalendarObject(calendarObject, davUser, partStat))))
-            .thenReturn(CalendarEventReplyResults$.MODULE$.done(blobId))
-            .onErrorResume(e -> Mono.just(CalendarEventReplyResults$.MODULE$.notDone(blobId, e, mailboxSession)));
+        return extractMessageId(blobId.value().toString())
+            .flatMap(messageId ->
+                Mono.fromDirect(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, session))
+                    .map(this::retrieveEventUid)
+                    .flatMap(eventUid -> doGetCalendarObjectContainingVEvent(davUser, eventUid))
+                    .flatMap(calendarObjectContainingVEvent ->
+                        updateCalendarObject(davUser, calendarObjectContainingVEvent.uri(), partStat))
+                    .thenReturn(CalendarEventReplyResults$.MODULE$.done(blobId))
+                    .onErrorResume(e -> Mono.just(CalendarEventReplyResults$.MODULE$.notDone(blobId, e, session))));
     }
 
-    private DavCalendarObject doUpdateAttendanceStatusInCalendarObject(DavCalendarObject calendarObject, DavUser davUser, PartStat partStat) {
+    private Mono<Void> updateCalendarObject(DavUser davUser, URI calendarObjectURI, PartStat partStat) {
+        return davClient.updateCalendarObject(davUser, calendarObjectURI,
+            (calendarObject -> createUpdatedCalendar(calendarObject, davUser, partStat)));
+    }
+
+    private Mono<DavCalendarObject> doGetCalendarObjectContainingVEvent(DavUser davUser, String eventUid) {
+        return davClient.getCalendarObjectContainingVEvent(davUser, eventUid)
+            .switchIfEmpty(
+                Mono.error(
+                    new RuntimeException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid))));
+    }
+
+    private DavCalendarObject createUpdatedCalendar(DavCalendarObject calendarObject, DavUser davUser, PartStat partStat) {
         Calendar updatedCalendarData = calendarObject.calendarData().copy();
         LOGGER.trace("Calendar to update: {}", calendarObject.calendarData());
 
@@ -223,14 +242,11 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
         return new DavCalendarObject(calendarObject.uri(), updatedCalendarData, calendarObject.eTag());
     }
 
-    private Mono<String> retrieveEventUid(String blobId, MailboxSession mailboxSession) {
-        return extractMessageId(blobId)
-            .flatMap(messageId ->
-                Mono.fromDirect(
-                    messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, mailboxSession)))
-            .flatMap(messageResult ->
-                Mono.justOrEmpty(findHeaderByName(messageResult, X_MEETING_UID_HEADER)))
-            .map(Header::getValue);
+    private String retrieveEventUid(MessageResult messageResult) {
+        return findHeaderByName(messageResult, X_MEETING_UID_HEADER)
+            .map(Header::getValue)
+            .orElseThrow(() ->
+                new RuntimeException("Unable to retrieve X_MEETING_UID_HEADER (VEVENT uid) from message with id '%s'".formatted(messageResult.getMessageId().serialize())));
     }
 
     private Optional<Header> findHeaderByName(MessageResult messageResult, String targetHeaderName) {
