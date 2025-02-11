@@ -109,7 +109,7 @@ public abstract class TeamMailboxSmtpContract {
             .addUser(andre.asString(), andrePassword);
 
         messageSender.authenticate(andre.asString(), andrePassword)
-            .sendMessageWithHeaders(andre.asString(), MARKETING_TEAM_MAILBOX.asMailAddress().asString(), "subject: test123\r\rcontent 123\r.\r");
+            .sendMessageWithHeaders(andre.asString(), MARKETING_TEAM_MAILBOX.asMailAddress().asString(), "From: " + andre.asString() + "\r\nsubject: test123\r\rcontent 123\r.\r");
 
         AWAIT_TEN_SECONDS.until(() -> server.getProbe(SpoolerProbe.class).processingFinished());
 
