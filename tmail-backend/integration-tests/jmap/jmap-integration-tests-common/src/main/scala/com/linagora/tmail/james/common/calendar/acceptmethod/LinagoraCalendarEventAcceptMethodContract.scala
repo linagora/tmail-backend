@@ -16,43 +16,39 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.common
+package com.linagora.tmail.james.common.calendar.acceptmethod
 
-import java.util.concurrent.TimeUnit
-
-import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.sendInvitationEmailToBobAndGetIcsBlobIds
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
-import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
-import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
+import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
-import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.{BeforeEach, Tag, Test}
+import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.Json
 
 trait LinagoraCalendarEventAcceptMethodContract {
 
-  @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
       .fluent
       .addDomain(DOMAIN.asString)
       .addDomain(_2_DOT_DOMAIN.asString()) // Alice domain
+      .addDomain("open-paas.org")
       .addUser(BOB.asString, BOB_PASSWORD)
       .addUser(ANDRE.asString, ANDRE_PASSWORD)
+      .addUser(ALICE.asString, ALICE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
@@ -62,12 +58,12 @@ trait LinagoraCalendarEventAcceptMethodContract {
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
   }
 
-  def randomBlobId: String
-
   @Test
   def acceptShouldSucceed(server: GuiceJamesServer): Unit = {
     val blobId: String =
       sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+
+    println(AccountId.from(BOB))
 
     val request: String =
       s"""{
@@ -854,228 +850,6 @@ trait LinagoraCalendarEventAcceptMethodContract {
   }
 
   @Test
-  @Tag(CategoryTags.BASIC_FEATURE)
-  def shouldSendReplyMailToInvitor(server: GuiceJamesServer): Unit = {
-    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-    val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAndreInviteBobIcsAttachment.eml", icsPartId = "3")
-
-    `given`
-      .body( s"""{
-                |  "using": [
-                |    "urn:ietf:params:jmap:core",
-                |    "com:linagora:params:calendar:event"],
-                |  "methodCalls": [[
-                |    "CalendarEvent/accept",
-                |    {
-                |      "accountId": "$ACCOUNT_ID",
-                |      "blobIds": [ "$blobId" ]
-                |    },
-                |    "c1"]]
-                |}""".stripMargin)
-    .when
-      .post
-    .`then`
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .body("", jsonEquals(
-        s"""{
-           |	"sessionState": "${SESSION_STATE.value}",
-           |	"methodResponses": [
-           |		[
-           |            "CalendarEvent/accept",
-           |            {
-           |                "accountId": "$ACCOUNT_ID",
-           |                "accepted": [ "$blobId" ]
-           |            },
-           |            "c1"
-           |        ]
-           |	]
-           |}""".stripMargin))
-
-    TimeUnit.SECONDS.sleep(1)
-
-    awaitAtMostTenSeconds.untilAsserted { () =>
-      val response: String =
-        `given`(buildAndreRequestSpecification(server))
-          .body( s"""{
-                    |    "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
-                    |    "methodCalls": [
-                    |        [
-                    |            "Email/query",
-                    |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
-                    |                "filter": {
-                    |                    "inMailbox": "${andreInboxId.serialize}"
-                    |                }
-                    |            },
-                    |            "c1"
-                    |        ],
-                    |        [
-                    |            "Email/get",
-                    |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
-                    |                "properties": [ "subject", "hasAttachment", "attachments", "preview" ],
-                    |                "#ids": {
-                    |                    "resultOf": "c1",
-                    |                    "name": "Email/query",
-                    |                    "path": "ids/*"
-                    |                }
-                    |            },
-                    |            "c2"
-                    |        ]
-                    |    ]
-                    |}""".stripMargin)
-        .when
-          .post
-        .`then`
-          .statusCode(SC_OK)
-          .contentType(JSON)
-          .extract
-          .body
-          .asString
-
-      assertThatJson(response)
-        .inPath("methodResponses[1][1].list[0]")
-        .isEqualTo(
-          s"""{
-             |    "subject": "ACCEPTED: Sprint planning #23 @ Wed Jan 11, 2017 (BOB <bob@domain.tld>)",
-             |    "preview": "BOB <bob@domain.tld> has accepted this invitation.",
-             |    "id": "$${json-unit.ignore}",
-             |    "hasAttachment": true,
-             |    "attachments": [
-             |        {
-             |            "charset": "UTF-8",
-             |            "size": 883,
-             |            "partId": "3",
-             |            "blobId": "$${json-unit.ignore}",
-             |            "type": "text/calendar"
-             |        },
-             |        {
-             |            "charset": "us-ascii",
-             |            "disposition": "attachment",
-             |            "size": 883,
-             |            "partId": "4",
-             |            "blobId": "$${json-unit.ignore}",
-             |            "name": "invite.ics",
-             |            "type": "application/ics"
-             |        }
-             |    ]
-             |}""".stripMargin)
-    }
-  }
-
-  @Test
-  def mailReplyShouldSupportI18nWhenLanguageRequest(server: GuiceJamesServer): Unit = {
-    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-    val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAndreInviteBobIcsAttachment.eml", icsPartId = "3")
-
-    `given`
-      .body( s"""{
-                |  "using": [
-                |    "urn:ietf:params:jmap:core",
-                |    "com:linagora:params:calendar:event"],
-                |  "methodCalls": [[
-                |    "CalendarEvent/accept",
-                |    {
-                |      "accountId": "$ACCOUNT_ID",
-                |      "blobIds": [ "$blobId" ],
-                |      "language": "fr"
-                |    },
-                |    "c1"]]
-                |}""".stripMargin)
-    .when
-      .post
-    .`then`
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .body("", jsonEquals(
-        s"""{
-           |	"sessionState": "${SESSION_STATE.value}",
-           |	"methodResponses": [
-           |		[
-           |            "CalendarEvent/accept",
-           |            {
-           |                "accountId": "$ACCOUNT_ID",
-           |                "accepted": [ "$blobId" ]
-           |            },
-           |            "c1"
-           |        ]
-           |	]
-           |}""".stripMargin))
-
-    awaitAtMostTenSeconds.untilAsserted { () =>
-      val response: String =
-        `given`(buildAndreRequestSpecification(server))
-          .body( s"""{
-                    |    "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
-                    |    "methodCalls": [
-                    |        [
-                    |            "Email/query",
-                    |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
-                    |                "filter": {
-                    |                    "inMailbox": "${andreInboxId.serialize}"
-                    |                }
-                    |            },
-                    |            "c1"
-                    |        ],
-                    |        [
-                    |            "Email/get",
-                    |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
-                    |                "properties": [ "subject", "hasAttachment", "attachments", "preview" ],
-                    |                "#ids": {
-                    |                    "resultOf": "c1",
-                    |                    "name": "Email/query",
-                    |                    "path": "ids/*"
-                    |                }
-                    |            },
-                    |            "c2"
-                    |        ]
-                    |    ]
-                    |}""".stripMargin)
-        .when
-          .post
-        .`then`
-          .statusCode(SC_OK)
-          .contentType(JSON)
-          .extract
-          .body
-          .asString
-
-      assertThatJson(response)
-        .inPath("methodResponses[1][1].list[0]")
-        .isEqualTo(
-          s"""{
-             |    "subject": "ACCEPTÉ: Sprint planning #23 @ Wed Jan 11, 2017 (BOB <bob@domain.tld>)",
-             |    "preview": "BOB <bob@domain.tld> a accepté cette invitation.",
-             |    "id": "$${json-unit.ignore}",
-             |    "hasAttachment": true,
-             |    "attachments": [
-             |        {
-             |            "charset": "UTF-8",
-             |            "size": 883,
-             |            "partId": "3",
-             |            "blobId": "$${json-unit.ignore}",
-             |            "type": "text/calendar"
-             |        },
-             |        {
-             |            "charset": "us-ascii",
-             |            "disposition": "attachment",
-             |            "size": 883,
-             |            "partId": "4",
-             |            "blobId": "$${json-unit.ignore}",
-             |            "name": "invite.ics",
-             |            "type": "application/ics"
-             |        }
-             |    ]
-             |}""".stripMargin)
-    }
-  }
-
-  @Test
   def shouldNotFoundWhenBlobIdIsNotPrefixedByMessageId(server: GuiceJamesServer): Unit = {
     val blobId: String =
       sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
@@ -1168,7 +942,34 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |]""".stripMargin)
   }
 
-  private def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
+  def _sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                                        icsPartIds: String*): Seq[String]
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartId: String): String = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartId) match {
+      case Seq(a) => (a)
+    }
+  }
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartIds: (String, String)): (String, String) = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2) match {
+      case Seq(a, b) => (a, b)
+    }
+  }
+
+  def sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
+                                               icsPartIds: (String, String, String)): (String, String, String) = {
+
+    _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
+      case Seq(a, b, c) => (a, b, c)
+    }
+  }
+
+  protected def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
     baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)

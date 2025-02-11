@@ -33,11 +33,12 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
-import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
+import com.linagora.tmail.james.common.calendar.acceptmethod.StandaloneLinagoraCalendarEventAcceptMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class DistributedLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
+public class DistributedLinagoraCalendarEventAcceptMethodTest extends
+    StandaloneLinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -62,9 +63,4 @@ public class DistributedLinagoraCalendarEventAcceptMethodTest implements Linagor
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule()))
         .build();
-
-    @Override
-    public String randomBlobId() {
-        return Uuids.timeBased().toString();
-    }
 }

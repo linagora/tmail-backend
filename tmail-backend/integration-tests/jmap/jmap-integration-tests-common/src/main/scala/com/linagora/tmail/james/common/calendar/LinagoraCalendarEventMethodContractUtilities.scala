@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.common
+package com.linagora.tmail.james.common.calendar
 
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.rfc8621.contract.Fixture.BOB
