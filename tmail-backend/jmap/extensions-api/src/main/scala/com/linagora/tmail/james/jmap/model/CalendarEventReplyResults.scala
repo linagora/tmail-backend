@@ -43,6 +43,12 @@ object CalendarEventReplyResults {
   def notDone(blobId: BlobId, throwable: Throwable, mailboxSession: MailboxSession): CalendarEventReplyResults =
     CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable, mailboxSession)))))
 
+  def done(blobId: BlobId): CalendarEventReplyResults =
+    CalendarEventReplyResults(done = BlobIds(Seq(blobId.value)))
+
+  def done(blobId: String): CalendarEventReplyResults =
+    done(BlobId.of(blobId).get)
+
   private def asSetError(throwable: Throwable, mailboxSession: MailboxSession): SetError = throwable match {
     case _: InvalidCalendarFileException | _: IllegalArgumentException =>
       LOGGER.info("Error when generate reply mail for {}: {}", mailboxSession.getUser.asString(), throwable.getMessage)
