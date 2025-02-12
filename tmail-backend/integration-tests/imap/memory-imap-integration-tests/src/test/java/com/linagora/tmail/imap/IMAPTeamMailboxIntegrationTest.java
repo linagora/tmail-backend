@@ -362,6 +362,10 @@ public class IMAPTeamMailboxIntegrationTest {
         assertThat(imapClient
             .sendCommand("LIST \"\" \"*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
+
+        assertThat(imapClient
+            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstw\"");
     }
 
     @Test
@@ -396,8 +400,10 @@ public class IMAPTeamMailboxIntegrationTest {
     @Test
     void topFolderCreatedByMemberAShouldBeAccessibleByOtherMemberB() throws Exception {
         // Alice: Verify that the team mailbox `marketing.new1` does not exist
-        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
-            .login(SECRETARY, SECRETARY_PASSWORD)
+        TestIMAPClient secretaryImapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(SECRETARY, SECRETARY_PASSWORD);
+
+        assertThat(secretaryImapClient
             .sendCommand("LIST \"\" \"*\""))
             .doesNotContain("\"#TeamMailbox.marketing.new1\"");
 
@@ -408,10 +414,13 @@ public class IMAPTeamMailboxIntegrationTest {
             .contains("CREATE completed");
 
         // Alice: Verify that the team mailbox `marketing.new1` exists
-        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
-            .login(SECRETARY, SECRETARY_PASSWORD)
+        assertThat(secretaryImapClient
             .sendCommand("LIST \"\" \"*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
+
+        assertThat(secretaryImapClient
+            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstw\"");
     }
 
     @Test
@@ -422,9 +431,10 @@ public class IMAPTeamMailboxIntegrationTest {
             .doesNotContain(OTHER3)
             .contains(MINISTER);
 
+        TestIMAPClient other3ImapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(OTHER3, OTHER3_PASSWORD);
         // Verify that the team mailbox `marketing.new1` does not list in the mailbox list of user `other3`
-        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
-            .login(OTHER3, OTHER3_PASSWORD)
+        assertThat(other3ImapClient
             .sendCommand("LIST \"\" \"*\""))
             .doesNotContain("\"#TeamMailbox.marketing.new1\"");
 
@@ -435,15 +445,16 @@ public class IMAPTeamMailboxIntegrationTest {
             .contains("CREATE completed");
 
         // When add the right `other3` to the team mailbox `marketing.new1`
-        server.getProbe(ACLProbeImpl.class)
-            .replaceRights(MARKETING_TEAM_MAILBOX.mailboxPath("new1"),
-                OTHER3.asString(),
-                MailboxACL.Rfc4314Rights.of(List.of(MailboxACL.Right.Lookup, MailboxACL.Right.Read)));
+        server.getProbe(TeamMailboxProbe.class)
+            .addMember(MARKETING_TEAM_MAILBOX, OTHER3);
 
         // Then the team mailbox `marketing.new1` should list in the mailbox list of user `other3`
-        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
-            .login(OTHER3, OTHER3_PASSWORD)
+        assertThat(other3ImapClient
             .sendCommand("LIST \"\" \"*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
+
+        assertThat(other3ImapClient
+            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstw\"");
     }
 }

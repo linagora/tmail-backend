@@ -28,9 +28,10 @@ import com.linagora.tmail.team.TeamMemberRole.{ManagerRole, MemberRole}
 import jakarta.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
+import org.apache.james.mailbox.MailboxManager.MailboxSearchFetchType
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
-import org.apache.james.mailbox.model.search.MailboxQuery
+import org.apache.james.mailbox.model.search.{MailboxQuery, PrefixedWildcard}
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SubscriptionManager}
 import org.apache.james.util.ReactorUtils
@@ -124,6 +125,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         case _: MailboxExistsException => SMono.empty
         case e => SMono.error(e)
       }
+      .flatMap(_ => addRightForMember(path, session.getUser, session, TeamMemberRole(ManagerRole)))
 
   override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] =
     deleteDefaultMailboxReliably(teamMailbox, createSession(teamMailbox))
@@ -164,9 +166,24 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .filter(teamMailboxExist => teamMailboxExist)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .flatMapIterable(_ => teamMailbox.defaultMailboxPaths)
+//      .flatMapMany(_ => listMailboxPaths(teamMailbox, session))
       .flatMap(mailboxPath => addRightForMember(mailboxPath, teamMailboxMember.username, session, teamMailboxMember.role)
         .`then`(subscribeForMember(mailboxPath, memberSession)))
       .`then`()
+  }
+
+  private def listMailboxPaths(teamMailbox: TeamMailbox, session: MailboxSession): SFlux[MailboxPath] = {
+    SFlux.fromPublisher(mailboxManager.search(MailboxQuery.builder
+        .namespace(TEAM_MAILBOX_NAMESPACE)
+        .expression(new PrefixedWildcard(teamMailbox.mailboxName.value.value))
+        .build, MailboxSearchFetchType.Minimal, session))
+      .map(_.getPath)
+      .collectSeq()
+      .map(e => {
+        println(e)
+        e
+      })
+      .flatMapIterable(e => e)
   }
 
   private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession, teamMailboxRole: TeamMemberRole): SMono[Unit] =
