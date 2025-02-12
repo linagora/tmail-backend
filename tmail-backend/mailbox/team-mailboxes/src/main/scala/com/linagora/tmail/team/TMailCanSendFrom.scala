@@ -41,7 +41,7 @@ class TMailCanSendFrom @Inject()(aliasReverseResolver: AliasReverseResolver, tea
   private def validTeamMailbox(connectedUser: Username, fromUser: Username): Boolean =
     TeamMailbox.asTeamMailbox(fromUser.asMailAddress()) match {
       case Some(teamMailbox) => SFlux(teamMailboxRepository.listMembers(teamMailbox))
-        .filter(connectedUser.equals(_))
+        .filter(teamMailboxMember => connectedUser.equals(teamMailboxMember.username))
         .hasElements
         .onErrorResume {
           case _: TeamMailboxNotFoundException => SMono.just(false)
@@ -54,7 +54,7 @@ class TMailCanSendFrom @Inject()(aliasReverseResolver: AliasReverseResolver, tea
   private def validTeamMailboxReactive(connectedUser: Username, fromUser: Username): SMono[Boolean] =
     TeamMailbox.asTeamMailbox(fromUser.asMailAddress()) match {
       case Some(teamMailbox) => SFlux(teamMailboxRepository.listMembers(teamMailbox))
-        .filter(connectedUser.equals(_))
+        .filter(teamMailboxMember => connectedUser.equals(teamMailboxMember.username))
         .hasElements
         .onErrorResume {
           case _: TeamMailboxNotFoundException => SMono.just(false)
