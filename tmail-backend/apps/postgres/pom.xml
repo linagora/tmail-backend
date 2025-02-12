@@ -177,6 +177,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>memory</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-healthcheck</artifactId>
         </dependency>
         <dependency>
@@ -220,12 +224,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>webadmin-rate-limit</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-linshare</artifactId>
-            <type>test-jar</type>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -279,7 +277,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>ch.qos.logback.contrib</groupId>
+            <groupId>com.linagora.tmail</groupId>
             <artifactId>logback-json-classic</artifactId>
         </dependency>
         <dependency>
