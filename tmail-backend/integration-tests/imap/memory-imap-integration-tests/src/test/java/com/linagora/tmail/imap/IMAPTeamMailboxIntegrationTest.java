@@ -20,7 +20,9 @@ package com.linagora.tmail.imap;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -444,7 +446,7 @@ public class IMAPTeamMailboxIntegrationTest {
             .sendCommand("CREATE #TeamMailbox.marketing.new1"))
             .contains("CREATE completed");
 
-        // When add the right `other3` to the team mailbox `marketing.new1`
+        // When add `other3` as the member of marketing team mailbox
         server.getProbe(TeamMailboxProbe.class)
             .addMember(MARKETING_TEAM_MAILBOX, OTHER3);
 
@@ -456,5 +458,101 @@ public class IMAPTeamMailboxIntegrationTest {
         assertThat(other3ImapClient
             .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
             .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstw\"");
+    }
+
+    @Test
+    void folderHasChildCreatedByMemberAShouldBeAccessibleByOtherMemberBWhenBeforeCreatedSubfolder() throws Exception {
+        // Secretary: Verify that the team mailbox `marketing.sub1.sub2.sub3` does not exist
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(SECRETARY, SECRETARY_PASSWORD)
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.sub1.sub2.sub3\"");
+
+        // When: Minister create the team mailbox `marketing.sub1.sub2.sub3` successfully
+        testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("CREATE #TeamMailbox.marketing.sub1.sub2.sub3");
+
+        // Then: Secretary should has correct access rights
+        assertSoftly(softly -> {
+            try {
+                TestIMAPClient secretaryImapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+                    .login(SECRETARY, SECRETARY_PASSWORD);
+
+                softly.assertThat(secretaryImapClient.sendCommand("LIST \"\" \"*\""))
+                    .contains("* LIST (\\HasChildren) \".\" \"#TeamMailbox.marketing\"")
+                    .contains("* LIST (\\HasChildren) \".\" \"#TeamMailbox.marketing.sub1\"")
+                    .contains("* LIST (\\HasChildren) \".\" \"#TeamMailbox.marketing.sub1.sub2\"")
+                    .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.sub1.sub2.sub3\"")
+                    .doesNotContain("* LIST (\\HasChildren) \".\" \"#TeamMailbox.sale");
+
+                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing"))
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing\" \"eiklprstw\"");
+
+                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1"))
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1\" \"eiklprstw\"");
+
+                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2"))
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2\" \"eiklprstw\"");
+
+                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2.sub3"))
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2.sub3\" \"eiklprstw\"");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    void folderHasChildCreatedByMemberAShouldBeAccessibleByOtherMemberBWhenAfterCreatedSubfolder(GuiceJamesServer server) throws Exception {
+        // Verify user `other3` is not a member of the team mailbox `marketing`
+        assertThat(CollectionConverters.asJava(server.getProbe(TeamMailboxProbe.class)
+            .listMembers(MARKETING_TEAM_MAILBOX)))
+            .doesNotContain(OTHER3)
+            .contains(MINISTER);
+
+        // other3: Verify that the team mailbox `marketing.sub1.sub2.sub3` does not exist
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(OTHER3, OTHER3_PASSWORD)
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.sub1.sub2.sub3\"");
+
+        // When: Minister create the team mailbox `marketing.sub1.sub2.sub3` successfully
+        testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("CREATE #TeamMailbox.marketing.sub1.sub2.sub3");
+
+        // When add `other3` as the member of marketing team mailbox
+        server.getProbe(TeamMailboxProbe.class)
+            .addMember(MARKETING_TEAM_MAILBOX, OTHER3);
+
+        // Then: Alice should has correct access rights
+        assertSoftly(softly -> {
+            try {
+                TestIMAPClient secretaryImapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+                    .login(OTHER3, OTHER3_PASSWORD);
+
+                softly.assertThat(secretaryImapClient.sendCommand("LIST \"\" \"*\""))
+                    .contains("* LIST (\\HasChildren) \".\" \"#TeamMailbox.marketing\"")
+                    .contains("* LIST (\\HasChildren) \".\" \"#TeamMailbox.marketing.sub1\"")
+                    .contains("* LIST (\\HasChildren) \".\" \"#TeamMailbox.marketing.sub1.sub2\"")
+                    .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.sub1.sub2.sub3\"")
+                    .doesNotContain("* LIST (\\HasChildren) \".\" \"#TeamMailbox.sale");
+
+                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing"))
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing\" \"eiklprstw\"");
+
+                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1"))
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1\" \"eiklprstw\"");
+
+                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2"))
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2\" \"eiklprstw\"");
+
+                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2.sub3"))
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2.sub3\" \"eiklprstw\"");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 }

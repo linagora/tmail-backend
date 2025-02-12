@@ -86,6 +86,7 @@ import reactor.core.publisher.Mono;
 public class TeamMailboxManagementRoutesTest {
     private static final String BASE_PATH = "/domains/%s/team-mailboxes";
     private static final String TEAM_MEMBER_BASE_PATH = BASE_PATH + "/%s/members";
+
     private static Stream<Arguments> namespaceInvalidSource() {
         return Stream.of(
             Arguments.of("namespace."),
@@ -102,6 +103,7 @@ public class TeamMailboxManagementRoutesTest {
             Arguments.of("@")
         );
     }
+
     private static Stream<Arguments> usernameInvalidSource() {
         return Stream.of(
             Arguments.of("@"),
@@ -132,7 +134,7 @@ public class TeamMailboxManagementRoutesTest {
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
         emailAddressContactSearchEngine = new InMemoryEmailAddressContactSearchEngine();
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, java.util.Set.of(new TeamMailboxAutocompleteCallback(emailAddressContactSearchEngine)));
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, resources.getMailboxManager().getMapperFactory(),java.util.Set.of(new TeamMailboxAutocompleteCallback(emailAddressContactSearchEngine)));
 
         UserEntityValidator validator = UserEntityValidator.aggregate(
             new DefaultUserEntityValidator(usersRepository),

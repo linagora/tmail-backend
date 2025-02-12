@@ -31,8 +31,9 @@ import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.MailboxManager.MailboxSearchFetchType
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
-import org.apache.james.mailbox.model.search.{MailboxQuery, PrefixedWildcard}
+import org.apache.james.mailbox.model.search.{ExactName, MailboxQuery, PrefixedWildcard}
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
+import org.apache.james.mailbox.store.MailboxSessionMapperFactory
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SubscriptionManager}
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
@@ -89,6 +90,7 @@ object TeamMailboxRepositoryImpl {
 
 class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
                                           subscriptionManager: SubscriptionManager,
+                                          mailboxSessionMapperFactory: MailboxSessionMapperFactory,
                                           teamMailboxCallbackSetJava: JavaSet[TeamMailboxCallback]) extends TeamMailboxRepository {
   private val teamMailboxCallbackSetScala: Set[TeamMailboxCallback] = teamMailboxCallbackSetJava.asScala.toSet
 
@@ -125,7 +127,6 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         case _: MailboxExistsException => SMono.empty
         case e => SMono.error(e)
       }
-      .flatMap(_ => addRightForMember(path, session.getUser, session, TeamMemberRole(ManagerRole)))
 
   override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] =
     deleteDefaultMailboxReliably(teamMailbox, createSession(teamMailbox))
@@ -165,26 +166,21 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
     SMono.fromPublisher(exists(teamMailbox))
       .filter(teamMailboxExist => teamMailboxExist)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
-      .flatMapIterable(_ => teamMailbox.defaultMailboxPaths)
-//      .flatMapMany(_ => listMailboxPaths(teamMailbox, session))
+      .flatMapMany(_ => listMailboxPaths(teamMailbox, session))
       .flatMap(mailboxPath => addRightForMember(mailboxPath, teamMailboxMember.username, session, teamMailboxMember.role)
         .`then`(subscribeForMember(mailboxPath, memberSession)))
       .`then`()
   }
 
-  private def listMailboxPaths(teamMailbox: TeamMailbox, session: MailboxSession): SFlux[MailboxPath] = {
-    SFlux.fromPublisher(mailboxManager.search(MailboxQuery.builder
+  private def listMailboxPaths(teamMailbox: TeamMailbox, session: MailboxSession): SFlux[MailboxPath] =
+     SFlux(mailboxSessionMapperFactory.getMailboxMapper(session)
+      .findMailboxWithPathLike(MailboxQuery.builder
         .namespace(TEAM_MAILBOX_NAMESPACE)
-        .expression(new PrefixedWildcard(teamMailbox.mailboxName.value.value))
-        .build, MailboxSearchFetchType.Minimal, session))
-      .map(_.getPath)
-      .collectSeq()
-      .map(e => {
-        println(e)
-        e
-      })
-      .flatMapIterable(e => e)
-  }
+        .expression(new PrefixedWildcard(teamMailbox.mailboxName.asString()))
+        .user(session.getUser)
+        .build
+        .asUserBound))
+      .map(_.generateAssociatedPath())
 
   private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession, teamMailboxRole: TeamMemberRole): SMono[Unit] =
     SMono(mailboxManager.applyRightsCommandReactive(path,
@@ -236,7 +232,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .flatMap(_ => SMono.fromPublisher(isUserInTeamMailbox(teamMailbox, user))
         .filter(userInTeamMailbox => userInTeamMailbox)
-        .flatMapIterable(_ => teamMailbox.defaultMailboxPaths)
+        .flatMapMany(_ => listMailboxPaths(teamMailbox, session))
         .flatMap(mailboxPath => removeRightForMember(mailboxPath, user, session)
           .`then`(unSubscribeForMember(mailboxPath, memberSession)))
         .`then`())

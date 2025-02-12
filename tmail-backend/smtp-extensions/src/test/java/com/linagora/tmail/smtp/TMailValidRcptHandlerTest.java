@@ -61,7 +61,7 @@ class TMailValidRcptHandlerTest {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(integrationResources.getMailboxManager().getMapperFactory(),
                 integrationResources.getMailboxManager().getMapperFactory(), integrationResources.getMailboxManager().getEventBus());
 
-        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager, java.util.Set.of(new TeamMailboxCallbackNoop()));
+        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager, integrationResources.getMailboxManager().getMapperFactory(), java.util.Set.of(new TeamMailboxCallbackNoop()));
 
         MemoryDomainList domainList = new MemoryDomainList(mock(DNSService.class));
         domainList.configure(DomainListConfiguration.DEFAULT);

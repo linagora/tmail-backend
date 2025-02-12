@@ -95,7 +95,7 @@ public class RecomputeQuotaTeamMailboxesRoutesTest {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, java.util.Set.of(new TeamMailboxAutocompleteCallback(new InMemoryEmailAddressContactSearchEngine())));
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, resources.getMailboxManager().getMapperFactory(), java.util.Set.of(new TeamMailboxAutocompleteCallback(new InMemoryEmailAddressContactSearchEngine())));
         TMailQuotaRootResolver tMailQuotaRootResolver = new TMailQuotaRootResolver(
             sessionProvider,
             mailboxSessionMapperFactory,

@@ -43,6 +43,7 @@ import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxCallbackNoop;
 import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
+
 import reactor.core.publisher.Mono;
 
 class NaiveTMailWithMailingListsValidRcptHandlerTest {
@@ -60,7 +61,7 @@ class NaiveTMailWithMailingListsValidRcptHandlerTest {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(integrationResources.getMailboxManager().getMapperFactory(),
                 integrationResources.getMailboxManager().getMapperFactory(), integrationResources.getMailboxManager().getEventBus());
 
-        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager, java.util.Set.of(new TeamMailboxCallbackNoop()));
+        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager, integrationResources.getMailboxManager().getMapperFactory(), java.util.Set.of(new TeamMailboxCallbackNoop()));
 
         MemoryDomainList domainList = new MemoryDomainList(mock(DNSService.class));
         domainList.configure(DomainListConfiguration.DEFAULT);
