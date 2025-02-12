@@ -496,7 +496,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$ACCOUNT_ID",
             |    "accepted": ["$acceptedEventBlobId"],
             |    "rejected": ["$rejectedEventBlobId", "$rejectedEventBlobId2"],
             |    "tentativelyAccepted": [],

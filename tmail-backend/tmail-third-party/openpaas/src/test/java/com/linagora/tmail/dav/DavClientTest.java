@@ -33,6 +33,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static com.linagora.tmail.dav.DavClient.MAX_CALENDAR_OBJECT_UPDATE_RETRIES;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_1;
