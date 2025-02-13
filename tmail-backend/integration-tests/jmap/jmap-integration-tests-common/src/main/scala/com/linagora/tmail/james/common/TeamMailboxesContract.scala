@@ -1148,7 +1148,7 @@ trait TeamMailboxesContract {
            |            {
            |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |                "notDestroyed": {
-             |                    "$id1": {
+           |                    "$id1": {
            |                        "type": "invalidArguments",
            |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.INBOX'"
            |                    }
@@ -2446,7 +2446,7 @@ trait TeamMailboxesContract {
       .body()
       .asString()
 
-    assertThatJson(updateResponse)
+    assertThatJson(response)
       .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState", "methodResponses[1][1].state")
       .isEqualTo(
         s"""{
@@ -2540,54 +2540,23 @@ trait TeamMailboxesContract {
            |                "updated": {"$messageId": null}
            |            },
            |            "c1"
+           |        ],
+           |        [
+           |            "Email/get",
+           |            {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "notFound": [],
+           |                "list": [
+           |                    {
+           |                        "mailboxIds":{"$id":true},
+           |                        "id": "$messageId"
+           |                    }
+           |                ]
+           |            },
+           |            "c2"
            |        ]
            |    ]
            |}""".stripMargin)
-
-    awaitAtMostTenSeconds.untilAsserted(() => {
-      val getResponse: String = `given`()
-        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-        .body(s"""{
-                 |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
-                 |  "methodCalls": [["Email/get", {
-                 |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-                 |      "ids": ["$messageId"],
-                 |      "properties":["mailboxIds"]
-                 |    }, "c2"]]
-                 |}""".stripMargin)
-      .when()
-        .post()
-      .`then`
-        .statusCode(SC_OK)
-        .contentType(JSON)
-        .extract()
-        .body()
-        .asString()
-
-      assertThatJson(getResponse)
-        .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
-        .isEqualTo(
-          s"""{
-             |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
-             |    "methodResponses": [
-             |        [
-             |            "Email/get",
-             |            {
-             |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-             |                "notFound": [],
-             |                "state": "$${json-unit.ignore}",
-             |                "list": [
-             |                    {
-             |                        "mailboxIds":{"$id":true},
-             |                        "id": "$messageId"
-             |                    }
-             |                ]
-             |            },
-             |            "c2"
-             |        ]
-             |    ]
-             |}""".stripMargin)
-    })
   }
 
   @Test
@@ -2609,19 +2578,26 @@ trait TeamMailboxesContract {
       .appendMessage(BOB.asString(), MailboxPath.inbox(BOB), AppendCommand.from(message))
       .getMessageId.serialize()
 
-    val updateResponse: String = `given`()
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+         |  "methodCalls": [["Email/set", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "update": {
+         |        "$messageId": {
+         |          "mailboxIds": { "$id": true }
+         |        }
+         |      }
+         |    }, "c1"], ["Email/get", {
+         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "ids": ["$messageId"],
+         |      "properties":["mailboxIds"]
+         |    }, "c2"]]
+         |}""".stripMargin
+
+    val response: String = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(s"""{
-               |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
-               |  "methodCalls": [["Email/set", {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-               |      "update": {
-               |        "$messageId": {
-               |          "mailboxIds": { "$id": true }
-               |        }
-               |      }
-               |    }, "c1"]]
-               |}""".stripMargin)
+      .body(request)
     .when()
       .post()
     .`then`
