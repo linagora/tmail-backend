@@ -34,7 +34,6 @@ import java.util.Optional;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BlobStoreDAOContract;
 import org.apache.james.blob.api.BucketName;
-import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreException;
 import org.apache.james.blob.api.TestBlobId;
 import org.apache.james.blob.objectstorage.aws.AwsS3AuthConfiguration;
@@ -62,7 +61,6 @@ import com.google.common.io.ByteSource;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
-import software.amazon.awssdk.core.exception.SdkClientException;
 
 public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOContract {
     static DockerAwsS3Container primaryS3 = new DockerAwsS3Container();
@@ -397,16 +395,6 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
         assertThatThrownBy(() -> Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, getThrowingInputStream())).block())
             .getCause()
             .isInstanceOf(IOException.class);
-    }
-
-    // TODO remove, after rebasing james-project/postgresql on james-project/master
-    @Test
-    @Override
-    public void saveShouldThrowWhenNullData() {
-        BlobStoreDAO store = testee();
-
-        assertThatThrownBy(() -> Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, (byte[]) null)).block())
-            .isInstanceOf(ObjectStoreException.class);
     }
 
     @Test
