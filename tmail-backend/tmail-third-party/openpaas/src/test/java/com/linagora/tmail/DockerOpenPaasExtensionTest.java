@@ -55,7 +55,7 @@ public class DockerOpenPaasExtensionTest {
             () -> assertThat("User lastname should not be null", user.lastname() != null),
             () -> assertThat("User lastname is not valid", user.lastname().matches("User_.*")),
             () -> assertThat("User email should not be null", user.email() != null),
-            () -> assertThat("User email sis not valid", user.email().matches("user_.*@open-paas.org")),
+            () -> assertThat("User email is not valid", user.email().matches("user_.*@open-paas.org")),
             () -> assertThat("User password should not be null", user.password() != null)
         );
     }
