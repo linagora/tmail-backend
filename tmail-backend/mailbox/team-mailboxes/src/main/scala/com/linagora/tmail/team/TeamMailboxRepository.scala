@@ -168,7 +168,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .flatMapMany(_ => listMailboxPaths(teamMailbox, session))
       .flatMap(mailboxPath => addRightForMember(mailboxPath, teamMailboxMember.username, session, teamMailboxMember.role)
-        .`then`(subscribeForMember(mailboxPath, memberSession)))
+        .`then`(subscribeForMember(mailboxPath, memberSession)), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
   }
 
