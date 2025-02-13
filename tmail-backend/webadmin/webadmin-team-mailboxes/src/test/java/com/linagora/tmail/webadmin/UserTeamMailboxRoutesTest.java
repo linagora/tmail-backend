@@ -74,7 +74,7 @@ public class UserTeamMailboxRoutesTest {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, java.util.Set.of(new TeamMailboxAutocompleteCallback(new InMemoryEmailAddressContactSearchEngine())));
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, resources.getMailboxManager().getMapperFactory(),java.util.Set.of(new TeamMailboxAutocompleteCallback(new InMemoryEmailAddressContactSearchEngine())));
         usersRepository = mock(UsersRepository.class);
         UserTeamMailboxRoutes userTeamMailboxRoutes = new UserTeamMailboxRoutes(teamMailboxRepository, new JsonTransformer(), usersRepository);
         webAdminServer = WebAdminUtils.createWebAdminServer(userTeamMailboxRoutes).start();

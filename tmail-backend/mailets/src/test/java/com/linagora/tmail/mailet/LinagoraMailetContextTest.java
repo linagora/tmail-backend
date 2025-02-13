@@ -112,7 +112,7 @@ public class LinagoraMailetContextTest implements JamesMailetContextContract {
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
 
-        teamMailboxRepository = new TeamMailboxRepositoryImpl(resources.getMailboxManager(), subscriptionManager, java.util.Set.of(new TeamMailboxCallbackNoop()));
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(resources.getMailboxManager(), subscriptionManager, resources.getMailboxManager().getMapperFactory(),java.util.Set.of(new TeamMailboxCallbackNoop()));
 
         LocalResources localResources = new LocalResourcesImpl(usersRepository, domainList, recipientRewriteTable);
         mailAddress = new MailAddress(USERMAIL.asString());

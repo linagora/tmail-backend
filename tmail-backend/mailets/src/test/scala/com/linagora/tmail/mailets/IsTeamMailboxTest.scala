@@ -42,7 +42,7 @@ class IsTeamMailboxTest {
     val subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager.getMapperFactory,
       resources.getMailboxManager.getMapperFactory, resources.getMailboxManager.getEventBus)
 
-    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, TeamMailboxCallbackNoop.asSet)
+    teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, resources.getMailboxManager.getMapperFactory, TeamMailboxCallbackNoop.asSet)
 
     testee = new IsTeamMailbox(teamMailboxRepository)
   }

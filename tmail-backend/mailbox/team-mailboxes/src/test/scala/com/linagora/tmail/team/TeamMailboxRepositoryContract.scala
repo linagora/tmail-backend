@@ -27,6 +27,7 @@ import org.apache.james.adapter.mailbox.{ACLUsernameChangeTaskStep, MailboxUsern
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
+import org.apache.james.mailbox.model.MailboxACL.EntryKey
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.store.StoreSubscriptionManager
@@ -169,7 +170,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(entriesRights)
         .hasSize(1)
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
     })
   }
 
@@ -196,7 +197,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
         .containsOnly(TeamMailboxMember.asMember(BOB))
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
     })
   }
 
@@ -230,7 +231,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(entriesRights.asScala.head._2.contains(MailboxACL.Right.Administer))
         .isTrue
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("ailprstw")
+        .isEqualTo("aeiklprstw")
     })
   }
 
@@ -247,7 +248,7 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
         .containsOnly(TeamMailboxMember.asManager(BOB))
       softly.assertThat(entriesRights.asScala.head._2.toString)
-        .isEqualTo("ailprstw")
+        .isEqualTo("aeiklprstw")
     })
   }
 
@@ -283,27 +284,170 @@ trait TeamMailboxRepositoryContract {
       softly.assertThat(inboxEntriesRights)
         .hasSize(1)
       softly.assertThat(inboxEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
 
       softly.assertThat(sentEntriesRights)
         .hasSize(1)
       softly.assertThat(sentEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
 
       softly.assertThat(outboxEntriesRights)
         .hasSize(1)
       softly.assertThat(outboxEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
 
       softly.assertThat(draftsEntriesRights)
         .hasSize(1)
       softly.assertThat(draftsEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
 
       softly.assertThat(trashEntriesRights)
         .hasSize(1)
       softly.assertThat(trashEntriesRights.asScala.head._2.toString)
-        .isEqualTo("ilprstw")
+        .isEqualTo("eiklprstw")
+    })
+  }
+
+  @Test
+  def shouldAddCorrectRightsForNewMemberWhenAfterCreatedSubfolder(): Unit = {
+    // Given marketing team mailbox & member Bob
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    // When Bob creates a subfolder of the team mailbox
+    val subFolder1: MailboxPath = TEAM_MAILBOX_MARKETING.mailboxPath("SubFolder1")
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
+    mailboxManager.createMailbox(subFolder1, bobSession)
+
+    // Add Andre as a member
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
+    val andreSession: MailboxSession = mailboxManager.createSystemSession(ANDRE)
+
+    // Then Andre should have the correct rights
+    val subFolder1EntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(subFolder1, andreSession).getEntries
+    val inboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.inboxPath, andreSession).getEntries
+    val sentEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.sentPath, andreSession).getEntries
+    val outboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), andreSession).getEntries
+    val draftsEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), andreSession).getEntries
+    val trashEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Trash"), andreSession).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(subFolder1EntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(inboxEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(sentEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(outboxEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(draftsEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(trashEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+    })
+  }
+
+  @Test
+  def shouldAddCorrectRightsForNewMemberWhenBeforeCreatedSubfolder(): Unit = {
+    // Given marketing team mailbox & member Bob, Andre
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
+
+    // When Bob creates a subfolder of the team mailbox
+    val subFolder1: MailboxPath = TEAM_MAILBOX_MARKETING.mailboxPath("SubFolder1")
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
+    mailboxManager.createMailbox(subFolder1, bobSession)
+
+    val andreSession: MailboxSession = mailboxManager.createSystemSession(ANDRE)
+
+    // Then Andre should have the correct rights
+    val subFolder1EntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(subFolder1, andreSession).getEntries
+    val inboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.inboxPath, andreSession).getEntries
+    val sentEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.sentPath, andreSession).getEntries
+    val outboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), andreSession).getEntries
+    val draftsEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), andreSession).getEntries
+    val trashEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Trash"), andreSession).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(subFolder1EntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(inboxEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(sentEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(outboxEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(draftsEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+
+      softly.assertThat(trashEntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+    })
+  }
+
+  @Test
+  def shouldAddCorrectRightsForMailboxHasChildWhenBeforeCreatedSubfolder(): Unit = {
+    // Given marketing team mailbox & member Bob, Andre
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
+
+    // When Bob creates a subfolder of the team mailbox
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
+    mailboxManager.createMailbox(TEAM_MAILBOX_MARKETING.mailboxPath("sub1.sub2.sub3"), bobSession)
+
+    val andreSession: MailboxSession = mailboxManager.createSystemSession(ANDRE)
+
+    // Then Andre should have the correct rights
+    val subFolder1EntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("sub1"), andreSession).getEntries
+    val subFolder2EntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("sub1.sub2"), andreSession).getEntries
+    val subFolder3EntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("sub1.sub2.sub3"), andreSession).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(subFolder1EntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+      softly.assertThat(subFolder2EntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+      softly.assertThat(subFolder3EntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+    })
+  }
+
+  @Test
+  def shouldAddCorrectRightsForMailboxHasChildWhenAfterCreatedSubfolder(): Unit = {
+    // Given marketing team mailbox & member Bob
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    // When Bob creates a subfolder of the team mailbox
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
+    mailboxManager.createMailbox(TEAM_MAILBOX_MARKETING.mailboxPath("sub1.sub2.sub3"), bobSession)
+
+    val andreSession: MailboxSession = mailboxManager.createSystemSession(ANDRE)
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
+
+    // Then Andre should have the correct rights
+    val subFolder1EntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("sub1"), andreSession).getEntries
+    val subFolder2EntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("sub1.sub2"), andreSession).getEntries
+    val subFolder3EntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("sub1.sub2.sub3"), andreSession).getEntries
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(subFolder1EntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+      softly.assertThat(subFolder2EntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
+      softly.assertThat(subFolder3EntriesRights.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
     })
   }
 
@@ -365,6 +509,32 @@ trait TeamMailboxRepositoryContract {
         .doesNotContain(TeamMailboxMember.asManager(BOB))
       softly.assertThat(entriesRights)
         .isEmpty()
+    })
+  }
+
+  @Test
+  def removeMemberShouldRevokeRightsFromCustomFolderOfTeamMailbox(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
+
+    val sub1Mailbox = TEAM_MAILBOX_MARKETING.mailboxPath("sub1")
+    val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
+    mailboxManager.createMailbox(sub1Mailbox, bobSession)
+
+    SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
+        .doesNotContain(TeamMailboxMember.asManager(BOB))
+
+      softly.assertThat(mailboxManager.listRights(sub1Mailbox, bobSession)
+          .getEntries.get(EntryKey.createUserEntryKey(BOB)) == null)
+        .isTrue
+
+      softly.assertThat(mailboxManager.listRights(sub1Mailbox, mailboxManager.createSystemSession(ANDRE))
+          .getEntries.get(EntryKey.createUserEntryKey(ANDRE)).toString)
+        .isEqualTo("eiklprstw")
     })
   }
 
@@ -582,7 +752,7 @@ class TeamMailboxRepositoryTest extends TeamMailboxRepositoryContract {
     val resource: InMemoryIntegrationResources = InMemoryIntegrationResources.defaultResources()
     inMemoryMailboxManager = resource.getMailboxManager
     subscriptionManager = new StoreSubscriptionManager(resource.getMailboxManager.getMapperFactory, resource.getMailboxManager.getMapperFactory, resource.getMailboxManager.getEventBus)
-    teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager, subscriptionManager, TeamMailboxCallbackNoop.asSet)
+    teamMailboxRepositoryImpl = new TeamMailboxRepositoryImpl(inMemoryMailboxManager, subscriptionManager, resource.getMailboxManager.getMapperFactory, TeamMailboxCallbackNoop.asSet)
   }
 
   @Test
