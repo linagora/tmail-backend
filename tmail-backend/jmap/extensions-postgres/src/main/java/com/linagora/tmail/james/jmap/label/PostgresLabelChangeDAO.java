@@ -17,6 +17,7 @@ import org.apache.james.jmap.api.change.State;
 import org.apache.james.jmap.api.model.AccountId;
 import org.jooq.Record;
 
+import com.linagora.tmail.james.jmap.model.LabelChange;
 import com.linagora.tmail.james.jmap.model.LabelId;
 
 import reactor.core.publisher.Flux;

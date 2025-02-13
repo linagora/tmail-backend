@@ -12,6 +12,8 @@ import org.apache.james.jmap.api.exception.ChangeNotFoundException;
 import org.apache.james.jmap.api.model.AccountId;
 
 import com.google.common.base.Preconditions;
+import com.linagora.tmail.james.jmap.model.LabelChange;
+import com.linagora.tmail.james.jmap.model.LabelChanges;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
