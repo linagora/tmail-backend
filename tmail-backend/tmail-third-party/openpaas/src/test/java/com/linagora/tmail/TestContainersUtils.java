@@ -26,34 +26,19 @@
 
 package com.linagora.tmail;
 
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
+import org.testcontainers.containers.ContainerState;
 
-public class DockerOpenPaasExtension implements ParameterResolver {
+import com.github.dockerjava.api.model.ContainerNetwork;
 
-    // Ensuring DockerOpenPaasSetupSingleton is loaded to classpath
-    private static DockerOpenPaasSetup dockerOpenPaasSetupSingleton = DockerOpenPaasSetupSingleton.singleton;
+public class TestContainersUtils {
 
-    @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return (parameterContext.getParameter().getType() == DockerOpenPaasSetup.class);
-    }
-
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return DockerOpenPaasSetupSingleton.singleton;
-    }
-
-    public DockerOpenPaasSetup getDockerOpenPaasSetupSingleton() {
-        return DockerOpenPaasSetupSingleton.singleton;
-    }
-
-    public OpenPaasUser newTestUser() {
-        return DockerOpenPaasSetupSingleton.singleton
-            .getOpenPaaSProvisioningService()
-            .createUser()
-            .block();
+    public static String getContainerPrivateIpAddress(ContainerState containerState) {
+        return containerState.getContainerInfo()
+            .getNetworkSettings()
+            .getNetworks()
+            .values()
+            .stream().findFirst()
+            .map(ContainerNetwork::getIpAddress)
+            .orElseThrow(() -> new IllegalStateException("Unable to retrieve ip address for container " + containerState.getContainerId()));
     }
 }

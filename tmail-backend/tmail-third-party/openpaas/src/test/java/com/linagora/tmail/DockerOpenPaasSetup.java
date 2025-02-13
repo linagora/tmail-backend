@@ -32,23 +32,18 @@ import java.time.Duration;
 import java.util.List;
 
 import org.junit.platform.commons.util.Preconditions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 public class DockerOpenPaasSetup {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DockerOpenPaasSetup.class);
-
     private final ComposeContainer environment;
-    private DockerOpenPaasPopulateService dockerOpenPaasPopulateService;
+    private OpenPaaSProvisioningService openPaaSProvisioningService;
 
     {
         try {
             environment = new ComposeContainer(
-                new File(
-                    DockerOpenPaasSetup.class.getResource("/docker-openpaas-setup.yml").toURI()))
+                new File(DockerOpenPaasSetup.class.getResource("/docker-openpaas-setup.yml").toURI()))
                 .waitingFor("openpaas", Wait.forLogMessage(".*Users currently connected.*", 1)
                     .withStartupTimeout(Duration.ofMinutes(3)));
         } catch (URISyntaxException e) {
@@ -58,7 +53,8 @@ public class DockerOpenPaasSetup {
 
     public void start() {
         environment.start();
-        dockerOpenPaasPopulateService = new DockerOpenPaasPopulateService();
+        openPaaSProvisioningService = new OpenPaaSProvisioningService(
+            "mongodb://%s:27017".formatted(TestContainersUtils.getContainerPrivateIpAddress(getMongoDBContainer())));
     }
 
     public void stop() {
@@ -77,7 +73,7 @@ public class DockerOpenPaasSetup {
         return environment.getContainerByServiceName("sabre_dav").orElseThrow();
     }
 
-    public ContainerState getMongoDDContainer() {
+    public ContainerState getMongoDBContainer() {
         return environment.getContainerByServiceName("mongo").orElseThrow();
     }
 
@@ -90,17 +86,16 @@ public class DockerOpenPaasSetup {
     }
 
     public List<ContainerState> getAllContainers() {
-        return List.of(
-            getOpenPaasContainer(),
+        return List.of(getOpenPaasContainer(),
             getRabbitMqContainer(),
             getSabreDavContainer(),
-            getMongoDDContainer(),
+            getMongoDBContainer(),
             getElasticsearchContainer(),
             getRedisContainer());
     }
 
-    public DockerOpenPaasPopulateService getDockerOpenPaasPopulateService() {
-        Preconditions.notNull(dockerOpenPaasPopulateService, "OpenPaas Populate Service not initialized");
-        return dockerOpenPaasPopulateService;
+    public OpenPaaSProvisioningService getOpenPaaSProvisioningService() {
+        Preconditions.notNull(openPaaSProvisioningService, "OpenPaas Provisioning Service not initialized");
+        return openPaaSProvisioningService;
     }
 }

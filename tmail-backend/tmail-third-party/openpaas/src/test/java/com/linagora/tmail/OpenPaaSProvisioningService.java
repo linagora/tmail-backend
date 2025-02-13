@@ -31,50 +31,44 @@ import static com.mongodb.client.model.Updates.push;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Logger;
 
 import org.bson.Document;
 
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
-import com.mongodb.reactivestreams.client.MongoCollection;
 import com.mongodb.reactivestreams.client.MongoDatabase;
 
 import reactor.core.publisher.Mono;
 
-public class DockerOpenPaasPopulateService {
+public class OpenPaaSProvisioningService {
+    private final MongoDatabase database;
 
-    private static final Logger LOGGER = Logger.getLogger(DockerOpenPaasPopulateService.class.getName());
+    public OpenPaaSProvisioningService(String mongoUri) {
+        MongoClient mongoClient = MongoClients.create(mongoUri);
+        database = mongoClient.getDatabase("esn_docker");
+    }
 
-    private final MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
-    private final MongoDatabase database = mongoClient.getDatabase("esn_docker");
-    private final MongoCollection<Document> usersCollection = database.getCollection("users");
-    private final MongoCollection<Document> domainsCollection = database.getCollection("domains");
-
-    private Document getOpenPaasDomain() {
-        return Mono.from(domainsCollection.find()
+    private Document openPaasDomain() {
+        return Mono.from(database.getCollection("domains").find()
             .filter(new Document("name", "open-paas.org"))
             .first()).block();
     }
 
-    private Mono<Document> joinDomain(Document user, Document domain) {
-        return Mono.from(usersCollection
-                .findOneAndUpdate(
-                    eq("_id", user.get("_id")),
-                    push("domains", new Document("domain_id", domain.get("_id")))));
-    }
-
-    public Mono<Document> createUser() {
+    public Mono<OpenPaasUser> createUser() {
         UUID randomUUID = UUID.randomUUID();
         Document userToSave = new Document()
                 .append("firstname", "User_" + randomUUID)
                 .append("lastname", "User_" + randomUUID)
                 .append("password", "secret")
+                .append("domains",  List.of(new Document("domain_id", openPaasDomain().get("_id"))))
                 .append("accounts", List.of(new Document()
                         .append("type", "email")
                         .append("emails", List.of("user_" + randomUUID + "@open-paas.org"))));
 
-        return Mono.from(usersCollection.insertOne(userToSave))
-            .then(joinDomain(userToSave, getOpenPaasDomain()));
+        return Mono.from(database.getCollection("users").insertOne(userToSave))
+            .flatMap(success ->
+                Mono.from(
+                    database.getCollection("users").find(new Document("_id", success.getInsertedId())).first()))
+            .map(OpenPaasUser::fromDocument);
     }
 }

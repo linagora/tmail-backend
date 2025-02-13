@@ -8,8 +8,6 @@ services:
   openpaas:
     hostname: esn
     image: linagora/esn:branch-1.11
-    ports:
-      - "8080:8080"
     environment:
       - SABRE_ENV=dev
       - PROVISION=true
@@ -40,8 +38,6 @@ services:
 
   redis:
     image: redis:latest
-    ports:
-      - "6379:6379"
     networks:
       - emaily
 
@@ -56,15 +52,11 @@ services:
 
   mongo:
     image: mongo
-    ports:
-      - "27017:27017"
     networks:
       - emaily
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:6.3.2
-    ports:
-      - "9200:9200"
     environment:
       - discovery.type=single-node
     networks:
@@ -73,8 +65,6 @@ services:
   sabre_dav:
     hostname: esn_sabre
     image: linagora/sabre:lng-12-02-2025
-    ports:
-      - "8001:80"
     environment:
       - SABRE_ENV=dev
       - SABRE_MONGO_HOST=mongo

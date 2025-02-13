@@ -42,7 +42,7 @@ public class DockerOpenPaasExtensionTest {
     @Test
     void allServersShouldStartSuccessfully() {
        assertTrue(dockerOpenPaasExtension.getDockerOpenPaasSetupSingleton().getAllContainers()
-           .stream().allMatch(this::checkContainerStarted));
+           .stream().allMatch(ContainerState::isRunning));
     }
 
     @Test
@@ -58,9 +58,5 @@ public class DockerOpenPaasExtensionTest {
             () -> assertThat("User email is not valid", user.email().matches("user_.*@open-paas.org")),
             () -> assertThat("User password should not be null", user.password() != null)
         );
-    }
-
-    boolean checkContainerStarted(ContainerState containerState) {
-        return containerState.isRunning();
     }
 }
