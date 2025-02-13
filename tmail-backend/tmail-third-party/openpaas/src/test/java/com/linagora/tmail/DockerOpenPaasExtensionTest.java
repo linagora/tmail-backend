@@ -41,7 +41,7 @@ public class DockerOpenPaasExtensionTest {
 
     @Test
     void allServersShouldStartSuccessfully() {
-       assertTrue(dockerOpenPaasExtension.getDockerOpenPaasSetup().getAllContainers()
+       assertTrue(dockerOpenPaasExtension.getDockerOpenPaasSetupSingleton().getAllContainers()
            .stream().allMatch(this::checkContainerStarted));
     }
 
@@ -51,8 +51,11 @@ public class DockerOpenPaasExtensionTest {
         assertAll(
             () -> assertThat("User id should not be null", user.id() != null),
             () -> assertThat("User firstname should not be null", user.firstname() != null),
+            () -> assertThat("User firstname is not valid", user.firstname().matches("User_.*")),
             () -> assertThat("User lastname should not be null", user.lastname() != null),
+            () -> assertThat("User lastname is not valid", user.lastname().matches("User_.*")),
             () -> assertThat("User email should not be null", user.email() != null),
+            () -> assertThat("User email sis not valid", user.email().matches("user_.*@open-paas.org")),
             () -> assertThat("User password should not be null", user.password() != null)
         );
     }
