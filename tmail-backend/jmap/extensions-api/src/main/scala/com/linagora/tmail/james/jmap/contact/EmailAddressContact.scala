@@ -28,12 +28,14 @@ import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.events.Event
 import org.apache.james.events.Event.EventId
 import org.apache.james.jmap.api.model.AccountId
+import org.apache.james.mime4j.dom.address.Mailbox
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.jdk.OptionConverters._
+import scala.util.Try
 
 case class InMemoryEmailAddressContactSearchEngineModule() extends AbstractModule {
   override def configure(): Unit = {
@@ -63,6 +65,13 @@ case class EmailAddressContact(id: UUID, fields: ContactFields)
 
 object ContactFields {
   def of(mailAddress: MailAddress, displayName: String): ContactFields = ContactFields(mailAddress, firstname = Option(displayName).getOrElse(""), surname = "")
+
+  def of(mailbox: Mailbox): ContactFields =
+    Try(new MailAddress(mailbox.getAddress))
+      .map(mailAddress => ContactFields.of(mailAddress, mailbox.getName)) match {
+      case scala.util.Success(value) => value.asInstanceOf[ContactFields]
+      case scala.util.Failure(_) => throw new IllegalArgumentException(s"Invalid mailAddress: ${mailbox.getAddress}")
+    }
 }
 
 case class ContactFields(address: MailAddress, firstname: String = "", surname: String = "") {
