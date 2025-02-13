@@ -3,6 +3,7 @@ package com.linagora.tmail;
 import java.io.File;
 import java.net.URISyntaxException;
 import java.time.Duration;
+import java.util.List;
 
 import static com.google.common.io.Resources.getResource;
 
@@ -12,16 +13,16 @@ import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.wait.strategy.Wait;
 
-public class DockerOpenPaasContainer {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DockerOpenPaasContainer.class);
+public class DockerOpenPaasSetup {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DockerOpenPaasSetup.class);
 
     private final ComposeContainer environment;
 
     {
         try {
             environment = new ComposeContainer(
-                new File(getResource("/docker-openpaas-setup.yml").toURI()))
-                .waitingFor("openpaas", Wait.forLogMessage("*Users currently connected*", 1)
+                new File(DockerOpenPaasSetup.class.getResource("/docker-openpaas-setup.yml").toURI()))
+                .waitingFor("openpaas", Wait.forLogMessage(".*Users currently connected.*", 1)
                     .withStartupTimeout(Duration.ofMinutes(3)));
         }
         catch (URISyntaxException e) {
@@ -45,7 +46,29 @@ public class DockerOpenPaasContainer {
         return environment.getContainerByServiceName("rabbitmq").orElseThrow();
     }
 
-    public ContainerState getSabreDav() {
+    public ContainerState getSabreDavContainer() {
         return environment.getContainerByServiceName("sabre_dav").orElseThrow();
+    }
+
+    public ContainerState getMongoDDContainer() {
+        return environment.getContainerByServiceName("mongo").orElseThrow();
+    }
+
+    public ContainerState getElasticsearchContainer() {
+        return environment.getContainerByServiceName("elasticsearch").orElseThrow();
+    }
+
+    public ContainerState getRedisContainer() {
+        return environment.getContainerByServiceName("redis").orElseThrow();
+    }
+
+    public List<ContainerState> getAllContainers() {
+        return List.of(
+            getOpenPaasContainer(),
+            getRabbitMqContainer(),
+            getSabreDavContainer(),
+            getMongoDDContainer(),
+            getElasticsearchContainer(),
+            getRedisContainer());
     }
 }
