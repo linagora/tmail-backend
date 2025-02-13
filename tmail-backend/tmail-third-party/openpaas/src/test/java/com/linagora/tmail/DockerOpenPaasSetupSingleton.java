@@ -26,44 +26,32 @@
 
 package com.linagora.tmail;
 
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
+public class DockerOpenPaasSetupSingleton {
+    public static final DockerOpenPaasSetup singleton = new DockerOpenPaasSetup();
+    private static final int MAX_TEST_PLAYED = 100;
 
-public class DockerOpenPaasExtension implements ParameterResolver, BeforeAllCallback {
+    private static int testsPlayedCount = 0;
 
-    @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws
-        ParameterResolutionException {
-        return (parameterContext.getParameter().getType() == DockerOpenPaasSetup.class);
+    static {
+        singleton.start();
     }
 
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return DockerOpenPaasSetupSingleton.singleton;
+    public static void incrementTestsPlayed() {
+        testsPlayedCount += 1;
     }
 
-    @Override
-    public void beforeAll(ExtensionContext context) {
-        DockerOpenPaasSetupSingleton.incrementTestsPlayed();
-        DockerOpenPaasSetupSingleton.restartIfMaxTestsPlayed();
+    /*
+     * Call this method to ensure that OpenPaas setup is restarted every MAX_TEST_PLAYED tests.
+     */
+    public static void restartIfMaxTestsPlayed() {
+        if (testsPlayedCount > MAX_TEST_PLAYED) {
+            testsPlayedCount = 0;
+            restart();
+        }
     }
 
-    public DockerOpenPaasSetup getDockerOpenPaasSetupSingleton() {
-        return DockerOpenPaasSetupSingleton.singleton;
-    }
-
-    public DockerOpenPaasPopulateService getDockerOpenPaasPopulateServiceSingleton() {
-        return DockerOpenPaasSetupSingleton.singleton.getDockerOpenPaasPopulateService();
-    }
-
-    public OpenPaasUser newTestUser() {
-        return DockerOpenPaasSetupSingleton.singleton
-            .getDockerOpenPaasPopulateService()
-            .createUser()
-            .map(OpenPaasUser::fromDocument)
-            .block();
+    private static void restart() {
+        singleton.stop();
+        singleton.start();
     }
 }

@@ -31,8 +31,7 @@ import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.List;
 
-import static com.google.common.io.Resources.getResource;
-
+import org.junit.platform.commons.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.ComposeContainer;
@@ -43,21 +42,23 @@ public class DockerOpenPaasSetup {
     private static final Logger LOGGER = LoggerFactory.getLogger(DockerOpenPaasSetup.class);
 
     private final ComposeContainer environment;
+    private DockerOpenPaasPopulateService dockerOpenPaasPopulateService;
 
     {
         try {
             environment = new ComposeContainer(
-                new File(DockerOpenPaasSetup.class.getResource("/docker-openpaas-setup.yml").toURI()))
+                new File(
+                    DockerOpenPaasSetup.class.getResource("/docker-openpaas-setup.yml").toURI()))
                 .waitingFor("openpaas", Wait.forLogMessage(".*Users currently connected.*", 1)
                     .withStartupTimeout(Duration.ofMinutes(3)));
-        }
-        catch (URISyntaxException e) {
-            throw new RuntimeException(e);
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("Failed to initialize OpenPaas Setup from docker compose.", e);
         }
     }
 
     public void start() {
         environment.start();
+        dockerOpenPaasPopulateService = new DockerOpenPaasPopulateService();
     }
 
     public void stop() {
@@ -96,5 +97,10 @@ public class DockerOpenPaasSetup {
             getMongoDDContainer(),
             getElasticsearchContainer(),
             getRedisContainer());
+    }
+
+    public DockerOpenPaasPopulateService getDockerOpenPaasPopulateService() {
+        Preconditions.notNull(dockerOpenPaasPopulateService, "OpenPaas Populate Service not initialized");
+        return dockerOpenPaasPopulateService;
     }
 }
