@@ -94,4 +94,3 @@ services:
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
     networks:
       - emaily
-      -
