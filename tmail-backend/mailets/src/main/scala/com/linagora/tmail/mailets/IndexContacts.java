@@ -25,6 +25,7 @@ import jakarta.inject.Named;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.AddressException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
@@ -51,7 +52,6 @@ import com.linagora.tmail.james.jmap.contact.TmailContactUserAddedEvent;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import spark.utils.StringUtils;
 
 /**
  * <p><b>IndexContacts</b> allows indexing user contacts locally by dispatching a <code>ContactUserAddedEvent</code> to the <code>eventBus</code>,
