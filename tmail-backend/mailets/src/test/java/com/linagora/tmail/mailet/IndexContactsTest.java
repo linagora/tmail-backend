@@ -239,6 +239,27 @@ class IndexContactsTest {
             .isEqualTo(attributeValue.value());
     }
 
+    @Test
+    void serviceShouldDispatchEventWhenEmailAttributeHasMailboxName() throws MessagingException {
+        mailet.init(MAILET_CONFIG);
+
+        FakeMail mail = FakeMail.builder()
+            .name("mail1")
+            .attribute(ATTRIBUTE_NAME.withValue(AttributeValue.of(
+                    """
+                        {
+                            "userEmail": "%s",
+                            "emails": ["%s"]
+                        }
+                        """.formatted(SENDER, "Name1 <" + RECIPIENT + ">")
+                ))
+            ).build();
+
+        mailet.service(mail);
+        assertThat(eventListener.receivedContacts())
+            .contains(new ContactFields(new MailAddress(RECIPIENT), "Name1", ""));
+    }
+
     private Optional<String> getAttributeValue(Mail mail) {
         return mail.getAttribute(ATTRIBUTE_NAME)
             .map(Attribute::getValue)

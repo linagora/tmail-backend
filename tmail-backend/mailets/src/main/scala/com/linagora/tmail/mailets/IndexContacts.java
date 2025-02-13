@@ -30,6 +30,8 @@ import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.RegistrationKey;
+import org.apache.james.mime4j.dom.address.Mailbox;
+import org.apache.james.mime4j.field.address.LenientAddressParser;
 import org.apache.james.transport.mailets.ContactExtractor;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeValue;
@@ -120,9 +122,16 @@ public class IndexContacts extends GenericMailet {
 
     private Flux<ContactFields> asContactFields(ImmutableList<String> emails) {
         return Flux.fromIterable(emails)
-            .map(Throwing.function(MailAddress::new))
-            .map(mailAddress -> new ContactFields(mailAddress, EMPTY_STRING, EMPTY_STRING))
+            .map(Throwing.function(this::emailAttributeToContactFields))
             .onErrorContinue((e, object) -> LOGGER.warn("Failed to parse email address", e));
+    }
+
+    private ContactFields emailAttributeToContactFields(String emailAttributeValue) throws MailetException {
+        return switch (LenientAddressParser.DEFAULT.parseAddress(emailAttributeValue)) {
+            case Mailbox mailbox -> ContactFields.of(mailbox);
+            case null, default ->
+                throw new MailetException("Can not parse Mailbox address from: " + emailAttributeValue);
+        };
     }
 
     private ContactExtractor.ExtractedContacts parseUserContacts(String attributeValue) throws MailetException {
