@@ -66,8 +66,8 @@ object FirebaseSubscriptionRepositoryContract {
   val INVALID_EXPIRE: ZonedDateTime = ZonedDateTime.now(CLOCK).minusDays(10)
   val VALID_EXPIRE: ZonedDateTime = ZonedDateTime.now(CLOCK).plusDays(2)
   val MAX_EXPIRE: ZonedDateTime = ZonedDateTime.now(CLOCK).plusDays(7)
-  val ALICE: Username = Username.of("alice")
-  val BOB: Username = Username.of("bob")
+  val ALICE: Username = Username.of("alice@domain.com")
+  val BOB: Username = Username.of("bob@domain.com")
   val SAMPLE_DEVICE_TOKEN_1 = FirebaseToken("dummy_device_token_1")
   val SAMPLE_DEVICE_TOKEN_2 = FirebaseToken("dummy_device_token_2")
 }

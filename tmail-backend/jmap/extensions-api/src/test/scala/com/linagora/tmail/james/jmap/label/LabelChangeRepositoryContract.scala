@@ -36,7 +36,7 @@ import reactor.core.scala.publisher.SMono
 import scala.jdk.CollectionConverters._
 
 object LabelChangeRepositoryContract {
-  val ACCOUNT_ID: AccountId = AccountId.fromUsername(Username.of("bob"))
+  val ACCOUNT_ID: AccountId = AccountId.fromUsername(Username.of("bob@domain.com"))
   val DATE: ZonedDateTime = ZonedDateTime.now
   val DEFAULT_NUMBER_OF_CHANGES: Limit = Limit.of(5)
   val labelChangeFunc: State.Factory => LabelChange = stateFactory => LabelChange(
