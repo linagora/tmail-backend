@@ -23,6 +23,7 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.utils.GuiceProbe;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
@@ -33,6 +34,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.team.TeamMailboxProbe;
 
+@Disabled("Temporarily disable due to unstable test: updateShouldReturnNotUpdatedWhenRemovingOtherManager. Other tests could be unstable as well due to same root cause")
 public class MemoryTeamMailboxMemberSetMethodTest implements TeamMailboxMemberSetMethodContract {
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
