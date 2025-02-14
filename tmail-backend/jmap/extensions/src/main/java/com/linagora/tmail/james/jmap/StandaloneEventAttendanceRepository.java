@@ -39,12 +39,12 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceResults;
-import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceResults$;
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer;
-import com.linagora.tmail.james.jmap.method.EventAttendanceStatusEntry;
+import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
+import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults$;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
+import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
 import reactor.core.publisher.Flux;

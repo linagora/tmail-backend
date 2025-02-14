@@ -16,22 +16,27 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.jmap;
+package com.linagora.tmail.dav;
 
-import java.util.Optional;
+import jakarta.inject.Inject;
 
-import org.apache.james.core.Username;
-import org.apache.james.jmap.mail.BlobIds;
-import org.reactivestreams.Publisher;
+import org.apache.james.core.MailAddress;
 
-import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceResults;
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
-import com.linagora.tmail.james.jmap.model.LanguageLocation;
+import com.linagora.tmail.api.OpenPaasRestClient;
 
-public interface EventAttendanceRepository {
-   Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, BlobIds calendarEventBlobIds);
-   
-   Publisher<CalendarEventReplyResults> setAttendanceStatus(Username username, AttendanceStatus attendanceStatus,
-                                                            BlobIds eventBlobIds,
-                                                            Optional<LanguageLocation> maybePreferredLanguage);
+import reactor.core.publisher.Mono;
+
+public class OpenPaasDavUserProvider implements DavUserProvider {
+    private final OpenPaasRestClient restClient;
+
+    @Inject
+    public OpenPaasDavUserProvider(OpenPaasRestClient restClient) {
+        this.restClient = restClient;
+    }
+
+    @Override
+    public Mono<DavUser> provide(MailAddress mailAddress) {
+        return restClient.searchOpenPaasUser(mailAddress.toString())
+            .map(DavUser::fromOpenPaasUser);
+    }
 }

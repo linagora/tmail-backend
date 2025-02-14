@@ -66,6 +66,10 @@ object CalendarEventParse {
 
 case class CalendarEventParsedList(value: List[CalendarEventParsed])
 
+case class CalendarEventNotDone(value: Map[UnparsedBlobId, SetError]) {
+  def merge(other: CalendarEventNotDone): CalendarEventNotDone = CalendarEventNotDone(this.value ++ other.value)
+}
+
 case class CalendarEventNotFound(value: Set[UnparsedBlobId]) {
   def merge(other: CalendarEventNotFound): CalendarEventNotFound = CalendarEventNotFound(this.value ++ other.value)
 }

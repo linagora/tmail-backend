@@ -21,8 +21,8 @@ package com.linagora.tmail.james.jmap
 import java.util
 import java.util.Optional
 
-import com.linagora.tmail.james.jmap.method.{CalendarEventAttendanceResults, CalendarEventReplyPerformer, EventAttendanceStatusEntry}
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer
+import com.linagora.tmail.james.jmap.model.{CalendarEventAttendanceResults, CalendarEventReplyRequest, EventAttendanceStatusEntry}
 import jakarta.mail.Flags
 import net.fortuna.ical4j.model.parameter.PartStat
 import org.apache.james.jmap.mail.{BlobId, BlobIds, PartId}
