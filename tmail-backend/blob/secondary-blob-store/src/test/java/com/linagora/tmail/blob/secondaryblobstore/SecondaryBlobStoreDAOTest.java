@@ -61,7 +61,6 @@ import com.google.common.io.ByteSource;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
-import software.amazon.awssdk.core.exception.SdkClientException;
 
 public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     static DockerAwsS3Container primaryS3 = new DockerAwsS3Container();

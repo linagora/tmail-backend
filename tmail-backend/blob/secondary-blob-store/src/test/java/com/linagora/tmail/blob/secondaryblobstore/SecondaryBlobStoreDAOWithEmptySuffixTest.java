@@ -34,7 +34,6 @@ import java.util.Optional;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BlobStoreDAOContract;
 import org.apache.james.blob.api.BucketName;
-import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreException;
 import org.apache.james.blob.api.TestBlobId;
 import org.apache.james.blob.objectstorage.aws.AwsS3AuthConfiguration;
@@ -62,7 +61,6 @@ import com.google.common.io.ByteSource;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
-import software.amazon.awssdk.core.exception.SdkClientException;
 
 public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOContract {
     static DockerAwsS3Container primaryS3 = new DockerAwsS3Container();

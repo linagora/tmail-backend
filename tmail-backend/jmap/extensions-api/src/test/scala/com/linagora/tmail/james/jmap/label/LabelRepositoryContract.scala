@@ -28,8 +28,8 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.CollectionConverters._
 
 object LabelRepositoryContract {
-  val ALICE: Username = Username.of("alice")
-  val BOB: Username = Username.of("bob")
+  val ALICE: Username = Username.of("alice@domain.com")
+  val BOB: Username = Username.of("bob@domain.com")
   val RED: Color = Color("#FF0000")
   val BLUE: Color = Color("#0000FF")
 }

@@ -69,11 +69,13 @@
         <module>jmap/extensions</module>
         <module>jmap/extensions-api</module>
         <module>jmap/extensions-cassandra</module>
+        <module>jmap/extensions-postgres</module>
         <module>jmap/extensions-opensearch</module>
         <module>jmap/extensions-rabbitmq</module>
 
         <module>rate-limiter/rate-limiter-api</module>
         <module>rate-limiter/rate-limiter-cassandra</module>
+        <module>rate-limiter/rate-limiter-postgres</module>
 
         <module>smtp-extensions</module>
 
@@ -149,6 +151,17 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>postgres</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>postgres</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>encrypted-mailbox-guice</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -191,6 +204,11 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-guice-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>secondary-blob-store</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -224,6 +242,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-rate-limiter-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-rate-limiter-postgres</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -284,9 +307,19 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jmap-extensions-postgres</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-server-data-cassandra</artifactId>
                 <type>test-jar</type>
+                <version>${james.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-data-jmap-postgres</artifactId>
                 <version>${james.version}</version>
             </dependency>
             <dependency>
@@ -319,6 +352,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>mailbox-encrypted-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>mailbox-encrypted-postgres</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

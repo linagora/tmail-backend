@@ -36,7 +36,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.CollectionConverters._
 
 object PublicAssetRepositoryContract {
-  val USERNAME: Username = Username.of("username1")
+  val USERNAME: Username = Username.of("username1@domain.com")
   val PUBLIC_ASSET_ID: PublicAssetId = PublicAssetId(UUID.fromString("1b06c9d0-18bd-11ef-b7f8-53e7505899cf"))
   val CONTENT_TYPE: ContentType = ContentType.of("image/png")
   val IMAGE_CONTENT_TYPE: ImageContentType = ImageContentType.from(CONTENT_TYPE).toOption.get
@@ -75,7 +75,7 @@ trait PublicAssetRepositoryContract {
       softly.assertThat(publicAsset.identityIds.asJava).containsExactlyInAnyOrder(CREATION_REQUEST.identityIds: _*)
       softly.assertThat(publicAsset.content().readAllBytes()).isEqualTo(ASSET_CONTENT)
       softly.assertThat(publicAsset.id.value).isNotNull
-      softly.assertThat(publicAsset.publicURI.value.toString).isEqualTo("http://localhost:8080/publicAsset/username1/" + publicAsset.id.value)
+      softly.assertThat(publicAsset.publicURI.value.toString).isEqualTo("http://localhost:8080/publicAsset/username1@domain.com/" + publicAsset.id.value)
     })
   }
 
@@ -94,7 +94,7 @@ trait PublicAssetRepositoryContract {
       softly.assertThat(storedPublicAsset.identityIds.asJava).containsExactlyInAnyOrder(CREATION_REQUEST.identityIds: _*)
       softly.assertThat(storedPublicAsset.content().readAllBytes()).isEqualTo(ASSET_CONTENT)
       softly.assertThat(storedPublicAsset.id.value).isNotNull
-      softly.assertThat(publicAsset.publicURI.value.toString).isEqualTo("http://localhost:8080/publicAsset/username1/" + publicAsset.id.value)
+      softly.assertThat(publicAsset.publicURI.value.toString).isEqualTo("http://localhost:8080/publicAsset/username1@domain.com/" + publicAsset.id.value)
     })
   }
 
