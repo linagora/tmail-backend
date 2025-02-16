@@ -36,7 +36,7 @@ public class OpenPaasDavUserProvider implements DavUserProvider {
 
     @Override
     public Mono<DavUser> provide(MailAddress mailAddress) {
-        return restClient.searchOpenPaasUser(mailAddress.toString())
-            .map(DavUser::fromOpenPaasUser);
+        return restClient.searchOpenPaasUserId(mailAddress.toString())
+            .map(openPaasUserId -> new DavUser(openPaasUserId, mailAddress.asString()));
     }
 }

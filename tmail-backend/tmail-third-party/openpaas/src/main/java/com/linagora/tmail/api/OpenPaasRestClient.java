@@ -85,18 +85,6 @@ public class OpenPaasRestClient {
             .onErrorResume(e -> Mono.error(new OpenPaasRestClientException("Failed to retrieve user mail using OpenPaas id " + openPaasUserId, e)));
     }
 
-    public Mono<UserSearchResponse> searchOpenPaasUser(String email) {
-        Preconditions.checkArgument(StringUtils.isNotEmpty(email), "Email cannot be empty");
-
-        return client.get()
-            .uri(String.format("/users?email=%s", email))
-            .responseSingle((statusCode, data) -> handleUserSearchResponse(email, statusCode, data))
-            .onErrorResume(e -> {
-                LOGGER.error("Failed to search OpenPaas user by email {}", email, e);
-                return Mono.empty();
-            });
-    }
-
     public Mono<String> searchOpenPaasUserId(String email) {
         Preconditions.checkArgument(StringUtils.isNotEmpty(email), "Email cannot be empty");
 
