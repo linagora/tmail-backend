@@ -18,10 +18,5 @@
 
 package com.linagora.tmail.dav;
 
-import com.linagora.tmail.contact.UserSearchResponse;
-
 public record DavUser(String userId, String username) {
-    public static DavUser fromOpenPaasUser(UserSearchResponse userSearchResponse) {
-        return new DavUser(userSearchResponse.id(), userSearchResponse.preferredEmail());
-    }
 }
