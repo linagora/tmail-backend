@@ -39,6 +39,11 @@ class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) e
     this
   }
 
+  def removeMember(teamMailbox: TeamMailbox, username: Username): TeamMailboxProbe = {
+    SMono(teamMailboxRepository.removeMember(teamMailbox, username)).block()
+    this
+  }
+
   def listMembers(teamMailbox: TeamMailbox): Seq[Username] =
     SFlux(teamMailboxRepository.listMembers(teamMailbox))
       .map(_.username)

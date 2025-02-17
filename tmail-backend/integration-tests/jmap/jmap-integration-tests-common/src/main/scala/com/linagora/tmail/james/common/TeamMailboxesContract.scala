@@ -63,6 +63,8 @@ import org.apache.james.webadmin.WebAdminUtils
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
+import org.hamcrest.Matchers
+import org.hamcrest.Matchers.{equalTo, hasSize}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsArray, Json}
 import sttp.capabilities.WebSockets
@@ -1268,18 +1270,11 @@ trait TeamMailboxesContract {
          |                  }
          |                }
          |           },
-         |       "c1"],
-         |           ["Mailbox/get",
-         |         {
-         |           "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |           "ids": ["#K39"]
-         |          },
-         |       "c2"]
-         |
+         |       "c1"]
          |    ]
          |}""".stripMargin
 
-    val response: String = `given`()
+     val childMailboxId: String = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
@@ -1288,86 +1283,318 @@ trait TeamMailboxesContract {
       .statusCode(SC_OK)
       .contentType(JSON)
       .extract()
-      .body()
-      .asString()
+      .path("methodResponses[0][1].created.K39.id")
+
+    awaitAtMostTenSeconds.untilAsserted(()=> {
+      val getResponse = `given`()
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(s"""{
+                 |    "using": [
+                 |      "urn:ietf:params:jmap:core",
+                 |      "urn:ietf:params:jmap:mail",
+                 |      "urn:apache:james:params:jmap:mail:shares"],
+                 |    "methodCalls": [
+                 |             ["Mailbox/get",
+                 |           {
+                 |             "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                 |             "ids": ["$childMailboxId"]
+                 |            },
+                 |         "c2"]
+                 |
+                 |      ]
+                 |  }""".stripMargin)
+      .when()
+        .post()
+      .`then`
+        .statusCode(SC_OK)
+        .extract()
+        .body()
+        .asString()
+
+      assertThatJson(getResponse)
+        .isEqualTo(
+          s"""
+             |{
+             |    "sessionState": "$${json-unit.ignore}",
+             |    "methodResponses": [
+             |      [
+             |        "Mailbox/get",
+             |        {
+             |          "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |          "state": "$${json-unit.ignore}",
+             |          "list": [
+             |            {
+             |              "id": "$childMailboxId",
+             |              "name": "ChildOfTopMailbox",
+             |              "parentId": "$marketingTeamMailboxId",
+             |              "sortOrder": 1000,
+             |              "totalEmails": 0,
+             |              "unreadEmails": 0,
+             |              "totalThreads": 0,
+             |              "unreadThreads": 0,
+             |              "myRights": {
+             |                "mayReadItems": true,
+             |                "mayAddItems": true,
+             |                "mayRemoveItems": true,
+             |                "maySetSeen": true,
+             |                "maySetKeywords": true,
+             |                "mayCreateChild": false,
+             |                "mayRename": false,
+             |                "mayDelete": true,
+             |                "maySubmit": false
+             |              },
+             |              "isSubscribed": true,
+             |              "namespace": "TeamMailbox[marketing@domain.tld]",
+             |              "rights": {
+             |                "bob@domain.tld": [ "e", "i", "l", "p", "r", "s", "t", "w", "x" ]
+             |              }
+             |            }
+             |          ],
+             |          "notFound": []
+             |        },
+             |        "c2"
+             |      ]
+             |    ]
+             |  }""".stripMargin)
+    })
+  }
+
+  @Test
+  def deleteCustomMailboxShouldSuccess(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val marketingTeamMailboxId = mailboxId(server, teamMailbox.mailboxPath)
+
+    val mailboxId1: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/set",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "create": {
+               |                  "K39" : {
+               |                    "name": "ChildOfTopMailbox",
+               |                    "parentId": "$marketingTeamMailboxId"
+               |                  }
+               |                }
+               |           },
+               |       "c1"]
+               |    ]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .extract()
+      .path("methodResponses[0][1].created.K39.id")
+
+    // Verify that bob has the right to delete the mailbox
+    awaitAtMostTenSeconds.untilAsserted(()=> {
+      `given`()
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(s"""{
+                 |    "using": [
+                 |      "urn:ietf:params:jmap:core",
+                 |      "urn:ietf:params:jmap:mail",
+                 |      "urn:apache:james:params:jmap:mail:shares"],
+                 |    "methodCalls": [
+                 |             ["Mailbox/get",
+                 |           {
+                 |             "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                 |             "ids": ["$mailboxId1"]
+                 |            },
+                 |         "c2"]
+                 |
+                 |      ]
+                 |  }""".stripMargin)
+      .when()
+        .post()
+      .`then`
+        .statusCode(SC_OK)
+        .body("methodResponses[0][1].list[0].myRights.mayDelete", equalTo(true))
+    })
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/set",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "destroy": ["$mailboxId1"]
+               |           },
+               |    "c1"
+               |       ]]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].destroyed", hasSize(1))
+      .body("methodResponses[0][1].destroyed[0]", equalTo(mailboxId1))
+  }
+
+  @Test
+  def deleteCustomMailboxShouldFailWhenNotAMember(server: GuiceJamesServer): Unit = {
+    // Given a team mailbox & bob as a member
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val marketingTeamMailboxId = mailboxId(server, teamMailbox.mailboxPath)
+
+    val mailboxId1: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/set",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "create": {
+               |                  "K39" : {
+               |                    "name": "ChildOfTopMailbox",
+               |                    "parentId": "$marketingTeamMailboxId"
+               |                  }
+               |                }
+               |           },
+               |       "c1"],
+               |           ["Mailbox/get",
+               |         {
+               |           "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |           "ids": ["#K39"]
+               |          },
+               |       "c2"]
+               |
+               |    ]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .extract()
+      .path("methodResponses[0][1].created.K39.id")
+
+    Thread.sleep(500)
+    // Removing bob from the team mailbox
+    server.getProbe(classOf[TeamMailboxProbe])
+      .removeMember(teamMailbox, BOB)
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body( s"""{
+                |  "using": [
+                |    "urn:ietf:params:jmap:core",
+                |    "urn:ietf:params:jmap:mail",
+                |    "urn:apache:james:params:jmap:mail:shares"],
+                |  "methodCalls": [[
+                |           "Mailbox/set",
+                |           {
+                |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                |                "destroy": ["$mailboxId1"]
+                |           },
+                |    "c1"
+                |       ]]
+                |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].notDestroyed." + mailboxId1 + ".type", Matchers.is("notFound"))
+  }
+
+  @Test
+  def deleteSystemDefaultTeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
+    // Given a team mailbox & bob as a member
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
+    val mailboxSystemIdMap: Map[String, String] = teamMailbox.defaultMailboxPaths
+      .map(mb => mb.getName)
+      .filter(name => !name.equals("marketing"))
+      .map(name => (name, mailboxProbe.getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), name).serialize()))
+      .toMap
+
+    val response = `given`().log().all()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body( s"""{
+                |  "using": [
+                |    "urn:ietf:params:jmap:core",
+                |    "urn:ietf:params:jmap:mail",
+                |    "urn:apache:james:params:jmap:mail:shares"],
+                |  "methodCalls": [[
+                |           "Mailbox/set",
+                |           {
+                |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                |                "destroy": ["${mailboxSystemIdMap.values.toList.mkString("\",\"")}"]
+                |           },
+                |    "c1"
+                |       ]]
+                |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .extract()
+      .body().asString()
 
     assertThatJson(response)
       .withOptions(IGNORING_ARRAY_ORDER)
       .isEqualTo(
-        s"""
-           |{
-           |    "sessionState": "$${json-unit.ignore}",
+        s"""{
+           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
            |    "methodResponses": [
-           |      [
-           |        "Mailbox/set",
-           |        {
-           |          "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |          "oldState": "$${json-unit.ignore}",
-           |          "newState": "$${json-unit.ignore}",
-           |          "created": {
-           |            "K39": {
-           |              "id": "$${json-unit.ignore}",
-           |              "sortOrder": 1000,
-           |              "totalEmails": 0,
-           |              "unreadEmails": 0,
-           |              "totalThreads": 0,
-           |              "unreadThreads": 0,
-           |              "myRights": {
-           |                "mayReadItems": true,
-           |                "mayAddItems": true,
-           |                "mayRemoveItems": true,
-           |                "maySetSeen": true,
-           |                "maySetKeywords": true,
-           |                "mayCreateChild": true,
-           |                "mayRename": true,
-           |                "mayDelete": true,
-           |                "maySubmit": true
-           |              },
-           |              "isSubscribed": true
-           |            }
-           |          }
-           |        },
-           |        "c1"
-           |      ],
-           |      [
-           |        "Mailbox/get",
-           |        {
-           |          "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |          "state": "$${json-unit.ignore}",
-           |          "list": [
+           |        [
+           |            "Mailbox/set",
            |            {
-           |              "id": "$${json-unit.ignore}",
-           |              "name": "ChildOfTopMailbox",
-           |              "parentId": "$marketingTeamMailboxId",
-           |              "sortOrder": 1000,
-           |              "totalEmails": 0,
-           |              "unreadEmails": 0,
-           |              "totalThreads": 0,
-           |              "unreadThreads": 0,
-           |              "myRights": {
-           |                "mayReadItems": true,
-           |                "mayAddItems": true,
-           |                "mayRemoveItems": true,
-           |                "maySetSeen": true,
-           |                "maySetKeywords": true,
-           |                "mayCreateChild": false,
-           |                "mayRename": false,
-           |                "mayDelete": false,
-           |                "maySubmit": false
-           |              },
-           |              "isSubscribed": true,
-           |              "namespace": "TeamMailbox[marketing@domain.tld]",
-           |              "rights": {
-           |                "bob@domain.tld": [ "e", "i", "l", "p", "r", "s", "t", "w" ]
-           |              }
-           |            }
-           |          ],
-           |          "notFound": []
-           |        },
-           |        "c2"
-           |      ]
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "oldState": "$${json-unit.ignore}",
+           |                "newState": "$${json-unit.ignore}",
+           |                "notDestroyed": {
+           |                    "${mailboxSystemIdMap("marketing.Drafts")}": {
+           |                        "type": "invalidArguments",
+           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Drafts'"
+           |                    },
+           |                    "${mailboxSystemIdMap("marketing.Sent")}": {
+           |                        "type": "invalidArguments",
+           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Sent'"
+           |                    },
+           |                    "${mailboxSystemIdMap("marketing.INBOX")}": {
+           |                        "type": "invalidArguments",
+           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.INBOX'"
+           |                    },
+           |                    "${mailboxSystemIdMap("marketing.Trash")}": {
+           |                        "type": "invalidArguments",
+           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Trash'"
+           |                    },
+           |                    "${mailboxSystemIdMap("marketing.Outbox")}": {
+           |                        "type": "invalidArguments",
+           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Outbox'"
+           |                    }
+           |                }
+           |            },
+           |            "c1"
+           |        ]
            |    ]
-           |  }""".stripMargin)
+           |}""".stripMargin)
   }
 
   @Test

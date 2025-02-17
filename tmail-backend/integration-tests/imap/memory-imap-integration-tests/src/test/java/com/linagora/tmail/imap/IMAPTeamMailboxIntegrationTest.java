@@ -24,6 +24,7 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,6 +43,8 @@ import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.TestIMAPClient;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -70,6 +73,12 @@ public class IMAPTeamMailboxIntegrationTest {
     static int imapPort;
     static final TeamMailbox MARKETING_TEAM_MAILBOX = TeamMailbox.apply(Domain.of(DOMAIN), TeamMailboxName.fromString("marketing").toOption().get());
     static final TeamMailbox SALE_TEAM_MAILBOX = TeamMailbox.apply(Domain.of(DOMAIN), TeamMailboxName.fromString("sale").toOption().get());
+    static final ConditionFactory calmlyAwait = Awaitility.with()
+        .pollInterval(Duration.ofMillis(100))
+        .and().with()
+        .pollDelay(Duration.ofMillis(10))
+        .during(Duration.ofSeconds(3))
+        .await();
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
@@ -365,9 +374,9 @@ public class IMAPTeamMailboxIntegrationTest {
             .sendCommand("LIST \"\" \"*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
 
-        assertThat(imapClient
+        calmlyAwait.untilAsserted(() -> assertThat(imapClient
             .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
-            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstw\"");
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstwx\""));
     }
 
     @Test
@@ -420,9 +429,9 @@ public class IMAPTeamMailboxIntegrationTest {
             .sendCommand("LIST \"\" \"*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
 
-        assertThat(secretaryImapClient
+        calmlyAwait.untilAsserted(() -> assertThat(secretaryImapClient
             .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
-            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstw\"");
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstwx\""));
     }
 
     @Test
@@ -455,9 +464,11 @@ public class IMAPTeamMailboxIntegrationTest {
             .sendCommand("LIST \"\" \"*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"");
 
-        assertThat(other3ImapClient
-            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
-            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstw\"");
+        calmlyAwait.untilAsserted(() -> {
+            assertThat(other3ImapClient
+                .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+                .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstwx\"");
+        });
     }
 
     @Test
@@ -486,17 +497,19 @@ public class IMAPTeamMailboxIntegrationTest {
                     .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.sub1.sub2.sub3\"")
                     .doesNotContain("* LIST (\\HasChildren) \".\" \"#TeamMailbox.sale");
 
-                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing"))
-                    .contains("* MYRIGHTS \"#TeamMailbox.marketing\" \"eiklprstw\"");
+                calmlyAwait.untilAsserted(() -> {
+                    softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing\" \"eiklprstw\"");
 
-                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1"))
-                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1\" \"eiklprstw\"");
+                    softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1\" \"eiklprstwx\"");
 
-                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2"))
-                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2\" \"eiklprstw\"");
+                    softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2\" \"eiklprstwx\"");
 
-                softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2.sub3"))
-                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2.sub3\" \"eiklprstw\"");
+                    softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2.sub3"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2.sub3\" \"eiklprstwx\"");
+                });
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -543,13 +556,222 @@ public class IMAPTeamMailboxIntegrationTest {
                     .contains("* MYRIGHTS \"#TeamMailbox.marketing\" \"eiklprstw\"");
 
                 softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1"))
-                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1\" \"eiklprstw\"");
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1\" \"eiklprstwx\"");
 
                 softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2"))
-                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2\" \"eiklprstw\"");
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2\" \"eiklprstwx\"");
 
                 softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2.sub3"))
-                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2.sub3\" \"eiklprstw\"");
+                    .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2.sub3\" \"eiklprstwx\"");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    void folderCreatedByTeamMemberCanBeDeleted() throws Exception {
+        // Bob: Create the team mailbox `marketing.new1` successfully
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        calmlyAwait.untilAsserted(() ->  assertThat(imapClient
+            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstwx"));
+
+        assertThat(imapClient
+            .sendCommand("DELETE #TeamMailbox.marketing.new1"))
+            .contains("DELETE completed");
+
+        assertThat(imapClient
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.new1\"");
+    }
+
+    @Test
+    void folderCreatedByMemberCanBeDeletedByOtherMemberWhenNewMember(GuiceJamesServer server) throws Exception {
+        // Verify user `other3` is not a member of the team mailbox `marketing`
+        assertThat(CollectionConverters.asJava(server.getProbe(TeamMailboxProbe.class)
+            .listMembers(MARKETING_TEAM_MAILBOX)))
+            .doesNotContain(OTHER3);
+
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        // When add `other3` as the member of marketing team mailbox
+        server.getProbe(TeamMailboxProbe.class)
+            .addMember(MARKETING_TEAM_MAILBOX, OTHER3);
+
+        TestIMAPClient other3Client = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        // Then other3 has DeleteMailbox rights to the team mailbox `marketing.new1`
+        calmlyAwait.untilAsserted(() ->  assertThat(other3Client
+            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstwx"));
+
+        // Then other3 can delete the team mailbox `marketing.new1`
+        assertThat(other3Client
+            .sendCommand("DELETE #TeamMailbox.marketing.new1"))
+            .contains("DELETE completed");
+
+        // Then the team mailbox `marketing.new1` should not list in the mailbox list of user `other3`
+        assertThat(other3Client
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.new1\"");
+    }
+
+    @Test
+    void folderCreatedByMemberCanBeDeletedByOtherMemberWhenPreviousMember(GuiceJamesServer server) throws Exception {
+        // Given add `other3` as the member of marketing team mailbox
+        server.getProbe(TeamMailboxProbe.class)
+            .addMember(MARKETING_TEAM_MAILBOX, OTHER3);
+
+        // other3: Verify that the team mailbox `marketing.new1` does not exist
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(OTHER3, OTHER3_PASSWORD)
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.new1\"");
+
+        // When: Minister create the team mailbox `marketing.new1` successfully
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        TestIMAPClient other3Client = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(OTHER3, OTHER3_PASSWORD);
+
+        // Then: other3 has DeleteMailbox right to the team mailbox `marketing.new1`
+        calmlyAwait.untilAsserted(() -> assertThat(other3Client.sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"eiklprstwx"));
+
+        assertThat(other3Client.sendCommand("DELETE #TeamMailbox.marketing.new1"))
+            .contains("DELETE completed");
+
+        assertThat(other3Client.sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.new1\"");
+    }
+
+    @Test
+    void canNotDeleteCustomMailboxWhenNotBelongMember(GuiceJamesServer server) throws Exception {
+        // Given: Minister create the team mailbox `marketing.new1` successfully
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        // Remove `minister` from the member of marketing team mailbox
+        server.getProbe(TeamMailboxProbe.class)
+            .removeMember(MARKETING_TEAM_MAILBOX, MINISTER);
+
+        calmlyAwait.untilAsserted(() -> assertThat(imapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("NO MYRIGHTS failed. Mailbox not found"));
+
+        assertThat(imapClient
+            .sendCommand("DELETE #TeamMailbox.marketing.new1"))
+            .contains("NO DELETE");
+    }
+
+    @Test
+    void folderHasChildCanBeDeletedByOtherMemberWhenNewMember() throws Exception {
+        // When: Minister create the team mailbox `marketing.sub1.sub2.sub3` successfully
+        testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("CREATE #TeamMailbox.marketing.sub1.sub2.sub3");
+
+        // Then: Secretary should has correct access rights
+        TestIMAPClient secretaryImapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(SECRETARY, SECRETARY_PASSWORD);
+
+        calmlyAwait.untilAsserted(() -> {
+            assertSoftly(softly -> {
+                try {
+                    softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1\" \"eiklprstwx\"");
+
+                    softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2\" \"eiklprstwx\"");
+
+                    softly.assertThat(secretaryImapClient.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2.sub3"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2.sub3\" \"eiklprstwx\"");
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        });
+
+        assertSoftly(softly -> {
+            try {
+                softly.assertThat(secretaryImapClient.sendCommand("DELETE #TeamMailbox.marketing.sub1"))
+                    .contains("OK DELETE completed");
+
+                softly.assertThat(secretaryImapClient.sendCommand("DELETE #TeamMailbox.marketing.sub1.sub2"))
+                    .contains("OK DELETE completed");
+
+                softly.assertThat(secretaryImapClient.sendCommand("DELETE #TeamMailbox.marketing.sub1.sub2.sub3"))
+                    .contains("OK DELETE completed");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    void folderHasChildCanBeDeletedByOtherMemberWhenOldMember(GuiceJamesServer server) throws Exception {
+        // Verify user `other3` is not a member of the team mailbox `marketing`
+        assertThat(CollectionConverters.asJava(server.getProbe(TeamMailboxProbe.class)
+            .listMembers(MARKETING_TEAM_MAILBOX)))
+            .doesNotContain(OTHER3)
+            .contains(MINISTER);
+
+        // When: Minister create the team mailbox `marketing.sub1.sub2.sub3` successfully
+        testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("CREATE #TeamMailbox.marketing.sub1.sub2.sub3");
+
+        // Add `other3` as the member of marketing team mailbox
+        server.getProbe(TeamMailboxProbe.class)
+            .addMember(MARKETING_TEAM_MAILBOX, OTHER3);
+
+        TestIMAPClient other3Client = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(SECRETARY, SECRETARY_PASSWORD);
+
+        calmlyAwait.untilAsserted(() -> {
+            assertSoftly(softly -> {
+                try {
+                    softly.assertThat(other3Client.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1\" \"eiklprstwx\"");
+
+                    softly.assertThat(other3Client.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2\" \"eiklprstwx\"");
+
+                    softly.assertThat(other3Client.sendCommand("MYRIGHTS #TeamMailbox.marketing.sub1.sub2.sub3"))
+                        .contains("* MYRIGHTS \"#TeamMailbox.marketing.sub1.sub2.sub3\" \"eiklprstwx\"");
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        });
+
+        assertSoftly(softly -> {
+            try {
+                softly.assertThat(other3Client.sendCommand("DELETE #TeamMailbox.marketing.sub1"))
+                    .contains("OK DELETE completed");
+
+                softly.assertThat(other3Client.sendCommand("DELETE #TeamMailbox.marketing.sub1.sub2"))
+                    .contains("OK DELETE completed");
+
+                softly.assertThat(other3Client.sendCommand("DELETE #TeamMailbox.marketing.sub1.sub2.sub3"))
+                    .contains("OK DELETE completed");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
