@@ -77,16 +77,27 @@ class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends J
 
   override def routes(): stream.Stream[JMAPRoute] =
     configuration.openIdUrl.map(url => stream.Stream.of(
-      JMAPRoute.builder
-        .endpoint(new Endpoint(HttpMethod.GET, s"/$ENDPOINT"))
-        .action((req, res) => this.generate(url)(req, res))
-        .corsHeaders,
-      corsEndpoint))
-      .getOrElse(stream.Stream.of(corsEndpoint))
+        JMAPRoute.builder
+          .endpoint(new Endpoint(HttpMethod.GET, s"/$ENDPOINT"))
+          .action((req, res) => this.generate(url)(req, res))
+          .corsHeaders,
+        JMAPRoute.builder
+          .endpoint(Endpoint.ofFixedPath(HttpMethod.GET, "/.well-known/openid-configuration"))
+          .action(JMAPRoutes.redirectTo(url.toString))
+          .corsHeaders,
+        oidcCorsEndpoint,
+        corsEndpoint))
+      .getOrElse(stream.Stream.of(oidcCorsEndpoint, corsEndpoint))
 
   private def corsEndpoint: JMAPRoute =
     JMAPRoute.builder
       .endpoint(new Endpoint(HttpMethod.OPTIONS, s"/$ENDPOINT"))
+      .action(JMAPRoutes.CORS_CONTROL)
+      .noCorsHeaders
+
+  private def oidcCorsEndpoint: JMAPRoute =
+    JMAPRoute.builder
+      .endpoint(new Endpoint(HttpMethod.OPTIONS, "/.well-known/openid-configuration"))
       .action(JMAPRoutes.CORS_CONTROL)
       .noCorsHeaders
 
