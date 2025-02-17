@@ -92,7 +92,7 @@ services:
 
   sabre_dav:
     hostname: esn_sabre
-    image: linagora/esn-sabre
+    image: linagora/sabre:lng-12-02-2025
     environment:
       - SABRE_ENV=dev
       - SABRE_MONGO_HOST=mongo
@@ -113,7 +113,7 @@ services:
     networks:
       - emaily
     healthcheck:
-      test: [ "CMD", "curl", "-f", "-u", "admin@open-paas.org:secret", "http://esn_sabre:80","-X", "PROPFIND" ]
+      test: [ "CMD", "curl", "-f", "-u", "admin&admin@open-paas.org:secret123", "http://esn_sabre:80","-X", "PROPFIND" ]
       start_period: 40s
       interval: 10s
       timeout: 10s
