@@ -19,10 +19,10 @@
 package com.linagora.tmail.dav;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
 
 import reactor.core.publisher.Mono;
 
 public interface DavUserProvider {
-
-    Mono<DavUser> provide(MailAddress address);
+    Mono<DavUser> provide(Username username);
 }

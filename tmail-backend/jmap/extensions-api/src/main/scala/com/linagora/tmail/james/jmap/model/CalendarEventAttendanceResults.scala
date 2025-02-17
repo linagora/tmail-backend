@@ -41,15 +41,13 @@ object CalendarEventAttendanceResults {
   def notDone(notParsable: CalendarEventNotParsable): CalendarEventAttendanceResults =
     CalendarEventAttendanceResults(notDone = Some(CalendarEventNotDone(notParsable.asSetErrorMap)))
 
-  def notDone(blobId: BlobId, throwable: Throwable, mailboxSession: MailboxSession): CalendarEventAttendanceResults =
-    CalendarEventAttendanceResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable, mailboxSession)))), done = List(), notFound = None)
+  def notDone(blobId: BlobId, throwable: Throwable): CalendarEventAttendanceResults =
+    CalendarEventAttendanceResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable)))), done = List(), notFound = None)
 
-  private def asSetError(throwable: Throwable, mailboxSession: MailboxSession): SetError = throwable match {
+  private def asSetError(throwable: Throwable): SetError = throwable match {
     case _: InvalidCalendarFileException | _: IllegalArgumentException =>
-      // LOGGER.info("Error when generate reply mail for {}: {}", mailboxSession.getUser.asString(), throwable.getMessage)
       SetError.invalidPatch(SetErrorDescription(throwable.getMessage))
     case _ =>
-      // LOGGER.error("serverFail to generate reply mail for {}", mailboxSession.getUser.asString(), throwable)
       SetError.serverFail(SetErrorDescription(throwable.getMessage))
   }
 }

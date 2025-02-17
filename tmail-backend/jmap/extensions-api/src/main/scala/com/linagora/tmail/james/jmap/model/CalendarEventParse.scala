@@ -362,7 +362,7 @@ object CalendarParticipantsField {
 }
 case class CalendarParticipantsField(list: Seq[CalendarAttendeeField] = Seq()) {
 
-  def findParticipantByMailTo(mailto:String): Option[CalendarAttendeeField] =
+  def findParticipantByMailTo(mailto: String): Option[CalendarAttendeeField] =
     list.find(_.mailto.exists(_.serialize() == mailto))
 }
 

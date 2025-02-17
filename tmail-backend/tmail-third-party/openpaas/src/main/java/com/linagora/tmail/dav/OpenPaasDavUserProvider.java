@@ -21,6 +21,7 @@ package com.linagora.tmail.dav;
 import jakarta.inject.Inject;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
 
 import com.linagora.tmail.api.OpenPaasRestClient;
 
@@ -35,8 +36,9 @@ public class OpenPaasDavUserProvider implements DavUserProvider {
     }
 
     @Override
-    public Mono<DavUser> provide(MailAddress mailAddress) {
-        return restClient.searchOpenPaasUserId(mailAddress.toString())
-            .map(openPaasUserId -> new DavUser(openPaasUserId, mailAddress.asString()));
+    public Mono<DavUser> provide(Username username) {
+        return restClient.searchOpenPaasUserId(username.asString())
+            .map(openPaasUserId -> new DavUser(openPaasUserId, username.asString()))
+            .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find user in Dav server with username '%s'".formatted(username.asString()))));
     }
 }

@@ -223,7 +223,7 @@ class DavClientTest {
 
     @Test
     void getCalendarObjectContainingVEventShouldSucceed() {
-        assertThat(client.getCalendarObjectContainingVEvent(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
+        assertThat(client.getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
@@ -239,7 +239,7 @@ class DavClientTest {
                     new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
                 .willReturn(notFound()));
 
-        assertThat(client.getCalendarObjectContainingVEvent(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
+        assertThat(client.getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
@@ -274,7 +274,7 @@ class DavClientTest {
                                 ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
-        assertThat(client.getCalendarObjectContainingVEvent(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
+        assertThat(client.getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(null);
     }
 

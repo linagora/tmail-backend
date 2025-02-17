@@ -40,8 +40,8 @@ object CalendarEventReplyResults {
   def notDone(notParsable: CalendarEventNotParsable): CalendarEventReplyResults =
     CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(notParsable.asSetErrorMap)))
 
-  def notDone(blobId: BlobId, throwable: Throwable, mailboxSession: MailboxSession): CalendarEventReplyResults =
-    CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable, mailboxSession)))))
+  def notDone(blobId: BlobId, throwable: Throwable, username: String): CalendarEventReplyResults =
+    CalendarEventReplyResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable, username)))))
 
   def done(blobId: BlobId): CalendarEventReplyResults =
     CalendarEventReplyResults(done = BlobIds(Seq(blobId.value)))
@@ -49,12 +49,12 @@ object CalendarEventReplyResults {
   def done(blobId: String): CalendarEventReplyResults =
     done(BlobId.of(blobId).get)
 
-  private def asSetError(throwable: Throwable, mailboxSession: MailboxSession): SetError = throwable match {
+  private def asSetError(throwable: Throwable, username: String): SetError = throwable match {
     case _: InvalidCalendarFileException | _: IllegalArgumentException =>
-      LOGGER.info("Error when generate reply mail for {}: {}", mailboxSession.getUser.asString(), throwable.getMessage)
+      LOGGER.info("Error when generate reply mail for {}: {}", username, throwable.getMessage)
       SetError.invalidPatch(SetErrorDescription(throwable.getMessage))
     case _ =>
-      LOGGER.error("serverFail to generate reply mail for {}", mailboxSession.getUser.asString(), throwable)
+      LOGGER.error("serverFail to generate reply mail for {}", username, throwable)
       SetError.serverFail(SetErrorDescription(throwable.getMessage))
   }
 }

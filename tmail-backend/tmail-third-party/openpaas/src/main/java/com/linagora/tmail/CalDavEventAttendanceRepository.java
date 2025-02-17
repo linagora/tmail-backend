@@ -18,13 +18,15 @@
 
 package com.linagora.tmail;
 
+import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
+
 import java.net.URI;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 import jakarta.inject.Inject;
-import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.core.Id;
@@ -52,7 +54,6 @@ import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
 import com.linagora.tmail.james.jmap.model.CalendarAttendeeField;
-import com.linagora.tmail.james.jmap.model.CalendarAttendeeParticipationStatus;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults$;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
@@ -68,16 +69,31 @@ import net.fortuna.ical4j.model.ComponentList;
 import net.fortuna.ical4j.model.RelationshipPropertyModifiers;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.parameter.PartStat;
-import net.fortuna.ical4j.model.property.Attendee;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import scala.collection.JavaConverters;
 import scala.jdk.CollectionConverters;
 
 public class CalDavEventAttendanceRepository implements EventAttendanceRepository {
+    private static Flux<Refined<String, Id.IdConstraint>> asFlux(BlobIds blobIds) {
+        return Flux.fromIterable(CollectionConverters.SeqHasAsJava(blobIds.value()).asJava());
+    }
+
+    private static BlobId asBlobId(Refined<String, Id.IdConstraint> blobId) {
+        try {
+            return BlobId.of(blobId.value()).get();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to convert Refined Id blobId '%s' to BlobId object".formatted(blobId), e);
+        }
+    }
+
+    private static String asBlobId(BlobId blobId) {
+        Preconditions.checkNotNull(blobId);
+        return blobId.value().toString();
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CalDavEventAttendanceRepository.class);
     private static final String X_MEETING_UID_HEADER = "X-MEETING-UID";
-    private static final int MAILTO_PREFIX_LENGTH = "MAILTO:".length();
 
     private final DavClient davClient;
     private final SessionProvider sessionProvider;
@@ -98,67 +114,43 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     }
 
     @Override
-    public Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username,
-                                                                         BlobIds calendarEventBlobIds) {
-        MailboxSession session = sessionProvider.createSystemSession(username);
-
-        return toDavUser(username).flatMapMany(davUser -> blobIdsAsFlux(calendarEventBlobIds)
-                    .flatMap(blobId -> getAttendanceStatusFromBlob(username, davUser, blobIdFromRefinedId(blobId), session), ReactorUtils.DEFAULT_CONCURRENCY)
-                    .reduce(CalendarEventAttendanceResults$.MODULE$.empty(), CalendarEventAttendanceResults$.MODULE$::merge));
+    public Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, BlobIds blobIds) {
+        return davUserProvider.provide(username)
+            .flatMapMany(davUser -> asFlux(blobIds)
+                .map(CalDavEventAttendanceRepository::asBlobId)
+                .flatMap(blobId -> resolveAttendanceStatus(davUser, blobId), DEFAULT_CONCURRENCY))
+            .reduce(CalendarEventAttendanceResults$.MODULE$.empty(), CalendarEventAttendanceResults$.MODULE$::merge);
     }
 
-    private Mono<CalendarEventAttendanceResults> getAttendanceStatusFromBlob(Username username, DavUser davUser,
-                                                                             BlobId blobId,
-                                                                             MailboxSession session) {
-        return fetchCalendarObject(blobId, davUser, session)
-            .map(calendarObject -> getAttendanceStatusFromCalendarObject(blobId, calendarObject, username, session))
+    private Mono<CalendarEventAttendanceResults> resolveAttendanceStatus(DavUser davUser, BlobId blobId) {
+        return fetchCalendarObject(blobId, davUser)
+            .map(this::parse)
+            .<EventAttendanceStatusEntry>handle((event, sink) -> getAttendanceStatus(blobId, davUser, event).ifPresent(sink::next))
+            .map(CalendarEventAttendanceResults$.MODULE$::done)
             .switchIfEmpty(Mono.just(CalendarEventAttendanceResults$.MODULE$.notFound(blobId)))
-            .onErrorResume(error -> Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(blobId, error, session)));
+            .onErrorResume(error -> Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(blobId, error)));
     }
 
-    private CalendarEventAttendanceResults getAttendanceStatusFromCalendarObject(BlobId blobId,
-                                                                                 DavCalendarObject calendarObject, Username username, MailboxSession mailboxSession) {
-
-        try {
-            List<CalendarEventParsed> events = JavaConverters.asJava(CalendarEventParsed.from(calendarObject.calendarData()));
-
-            if (events.isEmpty()) {
-                LOGGER.debug("No VEvents found in calendar object. Returning empty attendance results.");
-                return CalendarEventAttendanceResults.empty();
-            } else if (events.size() != 1) {
-                LOGGER.debug("Expected exactly one VEvent, but found {} entries. Using the first VEvent. " +
+    private CalendarEventParsed parse(DavCalendarObject calendarObject) {
+        List<CalendarEventParsed> events = JavaConverters.asJava(CalendarEventParsed.from(calendarObject.calendarData()));
+        if (events.isEmpty()) {
+            throw new RuntimeException("No VEvents found in calendar object. Returning empty attendance results.");
+        }
+        if (events.size() != 1) {
+            LOGGER.debug("Expected exactly one VEvent, but found {} entries. Using the first VEvent. " +
                     "This may indicate unhandled recurrent events or a malformed calendar object. VEvents: {}",
-                    events.size(), events);
-            }
-
-            return getAttendanceStatusFromCalendarEvent(blobId, username, events.getFirst());
-
-        } catch (Exception e) {
-            LOGGER.debug("Error parsing calendar data for blobId '{}'", blobId.value(), e);
-            return CalendarEventAttendanceResults$.MODULE$.notDone(blobId, e, mailboxSession);
+                events.size(), events);
         }
+        return events.getFirst();
     }
 
-    private CalendarEventAttendanceResults getAttendanceStatusFromCalendarEvent(BlobId blobId, Username username, CalendarEventParsed event) throws AddressException {
+    private Optional<EventAttendanceStatusEntry> getAttendanceStatus(BlobId blobId, DavUser davUser, CalendarEventParsed event) {
         return event.participants()
-            .findParticipantByMailTo(username.asMailAddress().toString())
+            .findParticipantByMailTo(davUser.username())
             .flatMap(CalendarAttendeeField::participationStatus)
-            .map(status -> CalendarEventAttendanceResults$.MODULE$.done(createEventAttendanceStatusEntry(blobId, status)))
-            .getOrElse(() -> CalendarEventAttendanceResults$.MODULE$.notFound(blobId));
-    }
-
-    private static EventAttendanceStatusEntry createEventAttendanceStatusEntry(BlobId blobId, CalendarAttendeeParticipationStatus attendanceStatus) {
-        return new EventAttendanceStatusEntry(blobIdToString(blobId), AttendanceStatus.fromCalendarAttendeeParticipationStatus(attendanceStatus).orElseThrow());
-    }
-
-    private Mono<DavUser> toDavUser(Username username) {
-        try {
-            return davUserProvider.provide(username.asMailAddress())
-                .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find user in Dav server with username '%s'".formatted(username.asString()))));
-        } catch (AddressException e) {
-            LOGGER.debug("Failed to get user DAV information", e);
-            return Mono.empty();
-        }
+            .map(status -> AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).orElseThrow())
+            .map(status -> new EventAttendanceStatusEntry(asBlobId(blobId),status))
+            .fold(Optional::empty, Optional::of);
     }
 
     @Override
@@ -166,107 +158,64 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
                                                                     AttendanceStatus attendanceStatus,
                                                                     BlobIds eventBlobIds,
                                                                     Optional<LanguageLocation> maybePreferredLanguage) {
-        MailboxSession session = sessionProvider.createSystemSession(username);
-
-        return toDavUser(username).flatMapMany(davUser -> blobIdsAsFlux(eventBlobIds)
-                    .flatMap(blobId -> updateAttendanceStatusForEventBlob(blobIdFromRefinedId(blobId), attendanceStatus, davUser, session)));
+        return davUserProvider.provide(username)
+            .flatMapMany(davUser -> asFlux(eventBlobIds)
+                .map(CalDavEventAttendanceRepository::asBlobId)
+                .flatMap(blobId -> updateAttendanceStatusForEventBlob(blobId, attendanceStatus, davUser), DEFAULT_CONCURRENCY));
     }
 
-    private Mono<CalendarEventReplyResults> updateAttendanceStatusForEventBlob(BlobId blobId, AttendanceStatus attendanceStatus, DavUser davUser, MailboxSession session) {
+    private Mono<CalendarEventReplyResults> updateAttendanceStatusForEventBlob(BlobId blobId, AttendanceStatus attendanceStatus, DavUser davUser) {
         PartStat partStat = attendanceStatus.toPartStat().orElseThrow();
-        return fetchCalendarObject(blobId, davUser, session)
-            .flatMap(targetCalendarObject -> updateCalendarObject(davUser, targetCalendarObject.uri(), partStat))
+        UnaryOperator<DavCalendarObject> calendarTransformation = updatedCalendarObject(davUser.username(), partStat);
+        return fetchCalendarObject(blobId, davUser)
+            .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), calendarTransformation))
             .thenReturn(CalendarEventReplyResults$.MODULE$.done(blobId))
-            .onErrorResume(e -> Mono.just(CalendarEventReplyResults$.MODULE$.notDone(blobId, e, session)));
+            .onErrorResume(e -> Mono.just(CalendarEventReplyResults$.MODULE$.notDone(blobId, e, davUser.username())));
     }
 
-    private Mono<Void> updateCalendarObject(DavUser davUser, URI calendarObjectURI, PartStat partStat) {
-        return davClient.updateCalendarObject(davUser, calendarObjectURI, calendarObject -> createUpdatedCalendar(calendarObject, davUser.username(), partStat));
+    private UnaryOperator<DavCalendarObject> updatedCalendarObject(String targetAttendeeEmail, PartStat partStat) {
+        return calendarObject -> {
+            LOGGER.trace("Calendar to update: {}", calendarObject.calendarData());
+            Calendar updatedCalendarData = calendarObject.calendarData().copy();
+
+            updatedCalendarData.setComponentList(new ComponentList<>(updatedCalendarData.<VEvent>getComponents(Component.VEVENT)
+                .stream()
+                .map(vEvent -> updatedVEvent(targetAttendeeEmail, partStat, vEvent))
+                .toList()));
+
+            LOGGER.trace("Calendar updated: {}", updatedCalendarData);
+
+            return new DavCalendarObject(calendarObject.uri(), updatedCalendarData, calendarObject.eTag());
+        };
     }
 
-    private Mono<DavCalendarObject> doGetCalendarObjectContainingVEvent(DavUser davUser, String eventUid) {
-        return davClient.getCalendarObjectContainingVEvent(davUser, eventUid)
-            .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid))));
-    }
-
-    private DavCalendarObject createUpdatedCalendar(DavCalendarObject calendarObject, String targetAttendeeEmail, PartStat partStat) {
-        Calendar updatedCalendarData = calendarObject.calendarData().copy();
-        LOGGER.trace("Calendar to update: {}", calendarObject.calendarData());
-
-        List<VEvent> updatedVEvents = updatedCalendarData.<VEvent>getComponents(Component.VEVENT)
-            .stream().map(vEvent ->
-                vEvent.getAttendees()
-                    .stream()
-                    .filter(attendee -> targetAttendeeEmail.equals(attendee.getCalAddress().toASCIIString().substring(MAILTO_PREFIX_LENGTH)))
-                    .findAny()
-                    .map(attendee -> createUpdatedVEvent(partStat, vEvent, attendee))
-                    .orElse(vEvent))
-            .toList();
-
-        updatedCalendarData.setComponentList(new ComponentList<>(updatedVEvents));
-
-        LOGGER.trace("Calendar updated: {}", updatedCalendarData);
-
-        return new DavCalendarObject(calendarObject.uri(), updatedCalendarData, calendarObject.eTag());
-    }
-
-    private static VEvent createUpdatedVEvent(PartStat partStat, VEvent vEvent, Attendee attendee) {
-        return (VEvent) vEvent.with(RelationshipPropertyModifiers.ATTENDEE, attendee.replace(partStat));
+    private static VEvent updatedVEvent(String targetAttendeeEmail, PartStat partStat, VEvent vEvent) {
+        return vEvent.getAttendees()
+            .stream()
+            .filter(attendee -> attendee.getCalAddress().toASCIIString().equalsIgnoreCase("mailto:" + targetAttendeeEmail))
+            .findAny()
+            .map(attendee -> (VEvent) vEvent.with(RelationshipPropertyModifiers.ATTENDEE, attendee.replace(partStat)))
+            .orElse(vEvent);
     }
 
     private String retrieveEventUid(MessageResult messageResult) {
-        return findHeaderByName(messageResult, X_MEETING_UID_HEADER)
-            .map(Header::getValue)
-            .orElseThrow(() -> new RuntimeException("Unable to retrieve X_MEETING_UID_HEADER (VEVENT uid) from message with id '%s'".formatted(messageResult.getMessageId().serialize())));
-    }
-
-    private Optional<Header> findHeaderByName(MessageResult messageResult, String targetHeaderName) {
         try {
             Iterator<Header> headers = messageResult.getHeaders().headers();
-            return Iterators.tryFind(headers, header -> header.getName().equals(targetHeaderName)).toJavaUtil();
+            return Iterators.tryFind(headers, header -> header.getName().equals(X_MEETING_UID_HEADER)).toJavaUtil()
+                .map(Header::getValue)
+                .orElseThrow(() -> new RuntimeException("Unable to retrieve X_MEETING_UID_HEADER (VEVENT uid) from message with id '%s'".formatted(messageResult.getMessageId().serialize())));
         } catch (Exception e) {
-            LOGGER.debug("Failed to find header '{}' in message '{}'", targetHeaderName, messageResult.getMessageId().serialize(), e);
-            return Optional.empty();
+            throw new RuntimeException("Failed reading messageResult headers", e);
         }
     }
 
-    private Mono<DavCalendarObject> fetchCalendarObject(BlobId blobId, DavUser davUser, MailboxSession session) {
-        return extractMessageId(blobIdToString(blobId))
-            .flatMap(messageId ->
-                Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, session))
-                    .map(this::retrieveEventUid)
-                    .flatMap(eventUid -> doGetCalendarObjectContainingVEvent(davUser, eventUid)));
-    }
+    private Mono<DavCalendarObject> fetchCalendarObject(BlobId blobId, DavUser davUser) {
+        MailboxSession session = sessionProvider.createSystemSession(Username.of(davUser.username()));
+        MessageId messageId = MessagePartBlobId.tryParse(messageIdFactory, blobId.value().value()).get().getMessageId();
 
-    private Mono<MessageId> extractMessageId(String blobId) {
-        return Mono.fromCallable(() -> MessagePartBlobId.tryParse(blobId)
-                .map(MessagePartBlobId::getMessageId)
-                .map(messageIdFactory::fromString)
-                .get());
-    }
-
-    private static BlobId blobIdFromString(String blobId) {
-        try {
-            return BlobId.of(blobId).get();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to convert string blobId '%s' to BlobId object".formatted(blobId), e);
-        }
-    }
-
-    private static BlobId blobIdFromRefinedId(Refined<String, Id.IdConstraint> blobId) {
-        try {
-            return BlobId.of(blobId.value()).get();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to convert Refined Id blobId '%s' to BlobId object".formatted(blobId), e);
-        }
-    }
-
-    private static String blobIdToString(BlobId blobId) {
-        Preconditions.checkNotNull(blobId);
-        return blobId.value().toString();
-    }
-
-    private static Flux<Refined<String, Id.IdConstraint>> blobIdsAsFlux(BlobIds blobIds) {
-        return Flux.fromIterable(CollectionConverters.SeqHasAsJava(blobIds.value()).asJava());
+        return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, session))
+            .map(this::retrieveEventUid)
+            .flatMap(eventUid -> davClient.getCalendarObject(davUser, eventUid)
+                .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid)))));
     }
 }

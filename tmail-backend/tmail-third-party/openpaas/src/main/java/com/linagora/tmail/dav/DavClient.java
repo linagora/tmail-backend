@@ -192,7 +192,7 @@ public class DavClient {
             });
     }
 
-    public Mono<DavCalendarObject> getCalendarObjectContainingVEvent(DavUser user, String eventUid) {
+    public Mono<DavCalendarObject> getCalendarObject(DavUser user, String eventUid) {
         Preconditions.checkNotNull(user, "Dav user should not be null");
         Preconditions.checkArgument(StringUtils.isNotEmpty(eventUid), "VEvent id should not be empty");
 
