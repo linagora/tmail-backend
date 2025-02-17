@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail;
+package com.linagora.tmail.dav;
 
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
@@ -41,10 +41,6 @@ import org.apache.james.mailbox.model.MessageResult;
 import org.reactivestreams.Publisher;
 
 import com.google.common.collect.Iterators;
-import com.linagora.tmail.dav.DavCalendarObject;
-import com.linagora.tmail.dav.DavClient;
-import com.linagora.tmail.dav.DavUser;
-import com.linagora.tmail.dav.DavUserProvider;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
