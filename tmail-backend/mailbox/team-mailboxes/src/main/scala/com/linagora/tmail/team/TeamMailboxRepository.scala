@@ -22,16 +22,15 @@ import java.util.{Set => JavaSet}
 
 import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
-import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{BASIC_TEAM_MAILBOX_RIGHTS, TEAM_MAILBOX_MANAGER_RIGHTS, TEAM_MAILBOX_MEMBER_RIGHTS, TEAM_MAILBOX_QUERY}
+import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{BASIC_TEAM_MAILBOX_RIGHTS, TEAM_MAILBOX_MANAGER_RIGHTS, TEAM_MAILBOX_MEMBER_RIGHTS, TEAM_MAILBOX_MEMBER_RIGHTS_DELETE, TEAM_MAILBOX_QUERY}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
 import com.linagora.tmail.team.TeamMemberRole.{ManagerRole, MemberRole}
 import jakarta.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
-import org.apache.james.mailbox.MailboxManager.MailboxSearchFetchType
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
 import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
-import org.apache.james.mailbox.model.search.{ExactName, MailboxQuery, PrefixedWildcard}
+import org.apache.james.mailbox.model.search.{MailboxQuery, PrefixedWildcard}
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, SubscriptionManager}
@@ -86,6 +85,9 @@ object TeamMailboxRepositoryImpl {
 
   val TEAM_MAILBOX_MANAGER_RIGHTS: MailboxACL.Rfc4314Rights = TEAM_MAILBOX_MEMBER_RIGHTS
     .union(new MailboxACL.Rfc4314Rights(Right.Administer))
+
+  val TEAM_MAILBOX_MEMBER_RIGHTS_DELETE: MailboxACL.Rfc4314Rights =
+    TEAM_MAILBOX_MANAGER_RIGHTS.union(new MailboxACL.Rfc4314Rights(Right.DeleteMailbox))
 }
 
 class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
@@ -204,7 +206,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
 
   private def rightsToAdd(teamMailboxRole: TeamMemberRole): MailboxACL.Rfc4314Rights =
     teamMailboxRole.value match {
-      case MemberRole => TEAM_MAILBOX_MEMBER_RIGHTS
+      case MemberRole => TEAM_MAILBOX_MEMBER_RIGHTS  // The `DeleteMailbox` right will be added in PropagateDeleteMailboxRightListener
       case ManagerRole => TEAM_MAILBOX_MANAGER_RIGHTS
     }
 
@@ -216,7 +218,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       path,
       MailboxACL.command
         .forUser(user)
-        .rights(TEAM_MAILBOX_MANAGER_RIGHTS)
+        .rights(TEAM_MAILBOX_MEMBER_RIGHTS_DELETE)
         .asRemoval(),
       session))
       .`then`()

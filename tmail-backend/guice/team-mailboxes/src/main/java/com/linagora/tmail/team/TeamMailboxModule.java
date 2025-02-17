@@ -19,6 +19,7 @@
 package com.linagora.tmail.team;
 
 import org.apache.james.UserEntityValidator;
+import org.apache.james.events.EventListener;
 import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.rrt.api.CanSendFrom;
@@ -43,6 +44,10 @@ public class TeamMailboxModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), UserEntityValidator.class)
             .addBinding()
             .to(TeamMailboxUserEntityValidator.class);
+
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
+            .addBinding()
+            .to(PropagateDeleteRightTeamMailboxListener.class);
 
         install(new TmailLocalResourcesModule());
     }
