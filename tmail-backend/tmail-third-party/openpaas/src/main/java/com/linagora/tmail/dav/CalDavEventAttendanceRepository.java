@@ -20,7 +20,6 @@ package com.linagora.tmail.dav;
 
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
@@ -35,12 +34,9 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.model.FetchGroup;
-import org.apache.james.mailbox.model.Header;
 import org.apache.james.mailbox.model.MessageId;
-import org.apache.james.mailbox.model.MessageResult;
 import org.reactivestreams.Publisher;
 
-import com.google.common.collect.Iterators;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
@@ -69,8 +65,6 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
             throw new RuntimeException("Failed to convert Refined Id blobId '%s' to BlobId object".formatted(blobId), e);
         }
     }
-
-    private static final String X_MEETING_UID_HEADER = "X-MEETING-UID";
 
     private final DavClient davClient;
     private final SessionProvider sessionProvider;
@@ -116,20 +110,9 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
         MessageId messageId = MessagePartBlobId.tryParse(messageIdFactory, blobId.value().value()).get().getMessageId();
 
         return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, session))
-            .map(this::retrieveEventUid)
+            .map(EventUid::fromMessageHeaders)
             .flatMap(eventUid -> davClient.getCalendarObject(davUser, eventUid)
                 .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid)))));
-    }
-
-    private String retrieveEventUid(MessageResult messageResult) {
-        try {
-            Iterator<Header> headers = messageResult.getHeaders().headers();
-            return Iterators.tryFind(headers, header -> header.getName().equals(X_MEETING_UID_HEADER)).toJavaUtil()
-                .map(Header::getValue)
-                .orElseThrow(() -> new RuntimeException("Unable to retrieve X_MEETING_UID_HEADER (VEVENT uid) from message with id '%s'".formatted(messageResult.getMessageId().serialize())));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed reading messageResult headers", e);
-        }
     }
 
     @Override

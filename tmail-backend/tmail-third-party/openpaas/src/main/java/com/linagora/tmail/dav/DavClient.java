@@ -192,9 +192,8 @@ public class DavClient {
             });
     }
 
-    public Mono<DavCalendarObject> getCalendarObject(DavUser user, String eventUid) {
+    public Mono<DavCalendarObject> getCalendarObject(DavUser user, EventUid eventUid) {
         Preconditions.checkNotNull(user, "Dav user should not be null");
-        Preconditions.checkArgument(StringUtils.isNotEmpty(eventUid), "VEvent id should not be empty");
 
         return findUserCalendars(user)
             .flatMap(calendarURI -> getCalendarObjectContainingVEventFromSpecificCalendar(calendarURI, eventUid, user.username())
@@ -207,7 +206,7 @@ public class DavClient {
             .next();
     }
 
-    private Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, String eventUid, String username) {
+    private Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, EventUid eventUid, String username) {
         return client.headers(headers -> calDavHeaders(username).apply(headers)
                     .add("Depth", "1"))
             .request(HttpMethod.valueOf("REPORT"))
@@ -216,7 +215,7 @@ public class DavClient {
             .responseSingle((response, responseContent) -> handleCalendarResponse(responseContent, response.status(), eventUid));
     }
 
-    private Mono<DavCalendarObject> handleCalendarResponse(ByteBufMono responseContent, HttpResponseStatus responseStatus, String eventUid) {
+    private Mono<DavCalendarObject> handleCalendarResponse(ByteBufMono responseContent, HttpResponseStatus responseStatus, EventUid eventUid) {
         if (responseStatus == HttpResponseStatus.MULTI_STATUS) {
             return responseContent.asString(StandardCharsets.UTF_8)
                 .map(content -> XMLUtil.parse(content, DavMultistatus.class))
@@ -224,7 +223,7 @@ public class DavClient {
                 .flatMap(Mono::justOrEmpty);
         }
         return Mono.error(new DavClientException(
-            String.format("Unexpected status code: %d when finding VCALENDAR object containing event: %s", responseStatus.code(), eventUid)));
+            String.format("Unexpected status code: %d when finding VCALENDAR object containing event: %s", responseStatus.code(), eventUid.value())));
     }
 
     private Optional<DavCalendarObject> extractCalendarObject(DavMultistatus multistatus) {
