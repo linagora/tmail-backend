@@ -25,6 +25,7 @@ import java.util.{Locale, TimeZone}
 
 import com.google.common.base.Preconditions
 import com.ibm.icu.util.{TimeZone => Icu4jTimeZone}
+import com.linagora.tmail.james.jmap.AttendanceStatus
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.EventStatus
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
@@ -607,4 +608,8 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                participants: CalendarParticipantsField = CalendarParticipantsField(),
                                extensionFields: CalendarExtensionFields = CalendarExtensionFields(),
                                recurrenceRules: RecurrenceRulesField = RecurrenceRulesField(Seq()),
-                               excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq()))
+                               excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq())) {
+  def getAttendanceStatus(username: String): Option[AttendanceStatus] = participants.findParticipantByMailTo(username)
+    .flatMap(_.participationStatus)
+    .map((status: CalendarAttendeeParticipationStatus) => AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).orElseThrow)
+}

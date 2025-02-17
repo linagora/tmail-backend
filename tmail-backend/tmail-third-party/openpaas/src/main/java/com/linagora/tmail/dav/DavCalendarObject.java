@@ -20,19 +20,29 @@ package com.linagora.tmail.dav;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.dav.xml.CalendarData;
 import com.linagora.tmail.dav.xml.DavResponse;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import net.fortuna.ical4j.model.Calendar;
+import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.ComponentList;
+import net.fortuna.ical4j.model.RelationshipPropertyModifiers;
+import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.parameter.PartStat;
+import scala.collection.JavaConverters;
 
 public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DavCalendarObject.class);
 
     public static Optional<DavCalendarObject> fromDavResponse(DavResponse davResponse) {
         return davResponse.getPropstat().getProp().getCalendarData()
@@ -53,4 +63,41 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
             .filter(Predicate.not(String::isBlank))
             .collect(Collectors.joining("\n"));
     }
+
+    public CalendarEventParsed parse() {
+        List<CalendarEventParsed> events = JavaConverters.asJava(CalendarEventParsed.from(calendarData()));
+        if (events.isEmpty()) {
+            throw new RuntimeException("No VEvents found in calendar object. Returning empty attendance results.");
+        }
+        if (events.size() != 1) {
+            LOGGER.debug("Expected exactly one VEvent, but found {} entries. Using the first VEvent. " +
+                    "This may indicate unhandled recurrent events or a malformed calendar object. VEvents: {}",
+                events.size(), events);
+        }
+        return events.getFirst();
+    }
+
+    public DavCalendarObject withPartStat(String targetAttendeeEmail, PartStat partStat) {
+        LOGGER.trace("Calendar to update: {}", calendarData());
+        Calendar updatedCalendarData = calendarData().copy();
+
+        updatedCalendarData.setComponentList(new ComponentList<>(updatedCalendarData.<VEvent>getComponents(Component.VEVENT)
+            .stream()
+            .map(vEvent -> updatedVEvent(targetAttendeeEmail, partStat, vEvent))
+            .toList()));
+
+        LOGGER.trace("Calendar updated: {}", updatedCalendarData);
+
+        return new DavCalendarObject(uri(), updatedCalendarData, eTag());
+    }
+
+    private VEvent updatedVEvent(String targetAttendeeEmail, PartStat partStat, VEvent vEvent) {
+        return vEvent.getAttendees()
+            .stream()
+            .filter(attendee -> attendee.getCalAddress().toASCIIString().equalsIgnoreCase("mailto:" + targetAttendeeEmail))
+            .findAny()
+            .map(attendee -> (VEvent) vEvent.with(RelationshipPropertyModifiers.ATTENDEE, attendee.replace(partStat)))
+            .orElse(vEvent);
+    }
+
 }
