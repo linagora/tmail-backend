@@ -77,8 +77,7 @@ public enum AttendanceStatus {
         return eventAttendanceFlags.stream().findAny();
     }
 
-    public static Optional<AttendanceStatus> fromCalendarAttendeeParticipationStatus(
-        CalendarAttendeeParticipationStatus status) {
+    public static Optional<AttendanceStatus> fromCalendarAttendeeParticipationStatus(CalendarAttendeeParticipationStatus status) {
         PartStat partstat = new PartStat.Factory().createParameter(status.value());
         return fromPartStat(partstat);
     }
