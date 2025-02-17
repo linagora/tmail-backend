@@ -1146,9 +1146,9 @@ trait TeamMailboxesContract {
            |            {
            |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |                "notDestroyed": {
-           |                    "$id1": {
-           |                        "type": "notFound",
-           |                        "description": "#TeamMailbox:team-mailbox@domain.tld:marketing.INBOX"
+             |                    "$id1": {
+           |                        "type": "invalidArguments",
+           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.INBOX'"
            |                    }
            |                }
            |            },
