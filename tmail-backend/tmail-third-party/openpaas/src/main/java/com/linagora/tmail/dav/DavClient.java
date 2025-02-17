@@ -164,8 +164,7 @@ public class DavClient {
             .responseSingle((response, responseContent) -> handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
     }
 
-    private static Mono<Void> handleCalendarObjectUpdateResponse(DavCalendarObject updatedCalendarObject,
-                                                   HttpClientResponse response) {
+    private static Mono<Void> handleCalendarObjectUpdateResponse(DavCalendarObject updatedCalendarObject, HttpClientResponse response) {
         if (response.status() == HttpResponseStatus.NO_CONTENT) {
             return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' updated successfully.", updatedCalendarObject.uri()));
         } else if (response.status() == HttpResponseStatus.PRECONDITION_FAILED) {
