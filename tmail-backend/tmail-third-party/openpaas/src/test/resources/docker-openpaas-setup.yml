@@ -60,6 +60,11 @@ services:
       - 15672:15672
     networks:
       - emaily
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
 
   mongo:
     image: mongo
