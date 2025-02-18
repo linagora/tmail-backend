@@ -99,7 +99,7 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
             .<AttendanceStatus>handle((event, sink) -> event.getAttendanceStatus(davUser.username())
                 .fold(Optional::<AttendanceStatus>empty, Optional::of)
                 .ifPresent(sink::next))
-            .map(status -> new EventAttendanceStatusEntry(blobId.value().value(),status))
+            .map(status -> new EventAttendanceStatusEntry(blobId.value().toString(),status))
             .map(CalendarEventAttendanceResults$.MODULE$::done)
             .switchIfEmpty(Mono.just(CalendarEventAttendanceResults$.MODULE$.notFound(blobId)))
             .onErrorResume(error -> Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(blobId, error)));
@@ -107,7 +107,7 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
 
     private Mono<DavCalendarObject> fetchCalendarObject(DavUser davUser, BlobId blobId) {
         MailboxSession session = sessionProvider.createSystemSession(Username.of(davUser.username()));
-        MessageId messageId = MessagePartBlobId.tryParse(messageIdFactory, blobId.value().value()).get().getMessageId();
+        MessageId messageId = MessagePartBlobId.tryParse(messageIdFactory, blobId.value().toString()).get().getMessageId();
 
         return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, session))
             .map(EventUid::fromMessageHeaders)
