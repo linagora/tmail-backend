@@ -41,6 +41,7 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
 import org.apache.james.mailbox.searchhighligt.SearchSnippet;
+import org.apache.james.mailbox.store.quota.DefaultQuotaChangeNotifier;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
@@ -166,6 +167,7 @@ import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
+import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
@@ -197,6 +199,14 @@ public class PostgresTmailServer {
         binder.bind(new TypeLiteral<Set<DTOModule<?, ? extends DTO>>>() {
             }).annotatedWith(Names.named(EventNestedTypes.EVENT_NESTED_TYPES_INJECTION_NAME))
             .toInstance(Set.of());
+
+    private static final Module QUOTA_USERNAME_SUPPLIER_MODULE = new AbstractModule() {
+        @Override
+        protected void configure() {
+            bind(TMailQuotaUsernameSupplier.class).in(Scopes.SINGLETON);
+            bind(DefaultQuotaChangeNotifier.UsernameSupplier.class).to(TMailQuotaUsernameSupplier.class);
+        }
+    };
 
     public static void main(String[] args) throws Exception {
         ExtraProperties.initialize();
@@ -325,7 +335,8 @@ public class PostgresTmailServer {
             new PostgresTicketStoreModule(),
             new TasksHeathCheckModule(),
             chooseEventBusModules(configuration),
-            new TMailIMAPModule());
+            new TMailIMAPModule(),
+            QUOTA_USERNAME_SUPPLIER_MODULE);
 
     private static final Module SCANNING_QUOTA_SEARCH_MODULE = new AbstractModule() {
         @Override

@@ -53,6 +53,7 @@ import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
 import org.apache.james.mailbox.searchhighligt.SearchSnippet;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
+import org.apache.james.mailbox.store.quota.DefaultQuotaChangeNotifier;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
@@ -208,6 +209,7 @@ import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
+import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
@@ -235,6 +237,14 @@ public class DistributedServer {
             bind(ListeningMessageSearchIndex.class).to(FakeMessageSearchIndex.class);
         }
     }
+
+    private static final Module QUOTA_USERNAME_SUPPLIER_MODULE = new AbstractModule() {
+        @Override
+        protected void configure() {
+            bind(TMailQuotaUsernameSupplier.class).in(Scopes.SINGLETON);
+            bind(DefaultQuotaChangeNotifier.UsernameSupplier.class).to(TMailQuotaUsernameSupplier.class);
+        }
+    };
 
     public static final Module WEBADMIN = Modules.combine(
         new CassandraRoutesModule(),
@@ -418,7 +428,8 @@ public class DistributedServer {
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(overrideEventBusModule(configuration))
-            .overrideWith(chooseDropListsModule(configuration));
+            .overrideWith(chooseDropListsModule(configuration))
+            .overrideWith(QUOTA_USERNAME_SUPPLIER_MODULE);
     }
 
     public static List<Module> chooseModules(SearchConfiguration searchConfiguration) {
