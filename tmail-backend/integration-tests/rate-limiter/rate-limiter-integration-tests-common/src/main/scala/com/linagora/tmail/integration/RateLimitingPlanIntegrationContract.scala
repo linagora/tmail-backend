@@ -128,7 +128,7 @@ trait RateLimitingPlanIntegrationContract {
     attachPlanToUser(createNewPlan(), SENDER1)
 
     messageSender(server).authenticate(SENDER1.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "subject: test123\r\rcontent 123\r.\r")
+      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "From: " + SENDER1.asString() + "\r\n\r\nsubject: test123\r\rcontent 123\r.\r")
 
     val imapClient: TestIMAPClient = testImapClient(server)
     imapClient.login(RECIPIENT1.asString(), PASSWORD)
@@ -144,7 +144,7 @@ trait RateLimitingPlanIntegrationContract {
 
     // accept
     messageSender(server).authenticate(SENDER1.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "subject: test1\r\rcontent 1\r.\r")
+      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "From: " + SENDER1.asString() + "\r\n\r\nsubject: test1\r\rcontent 1\r.\r")
 
     testImapClient(server).login(RECIPIENT1.asString(), PASSWORD)
       .select(INBOX)
@@ -152,7 +152,7 @@ trait RateLimitingPlanIntegrationContract {
 
     // exceed
     messageSender(server).authenticate(SENDER1.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT2.asString, "subject: test2\r\rcontent 2\r.\r")
+      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT2.asString, "From: " + SENDER1.asString() + "\r\n\r\nsubject: test2\r\rcontent 2\r.\r")
 
     awaitAtMostOneMinute.until(() => server.getProbe(classOf[MailRepositoryProbeImpl])
       .getRepositoryMailCount(getErrorRepository) == 1)
@@ -168,7 +168,7 @@ trait RateLimitingPlanIntegrationContract {
     attachPlanToUser(createNewPlan(), RECIPIENT1)
 
     messageSender(server).authenticate(SENDER1.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "subject: test123\r\rcontent 123\r.\r")
+      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "From: " + SENDER1.asString() + "\r\n\r\nsubject: test123\r\rcontent 123\r.\r")
 
     val imapClient: TestIMAPClient = testImapClient(server)
     imapClient.login(RECIPIENT1.asString(), PASSWORD)
@@ -183,7 +183,7 @@ trait RateLimitingPlanIntegrationContract {
     attachPlanToUser(createNewPlan(), RECIPIENT1)
     // accept
     messageSender(server).authenticate(SENDER1.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "subject: test1\r\rcontent 1\r.\r")
+      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "From: " + SENDER1.asString() + "\r\n\r\nsubject: test1\r\rcontent 1\r.\r")
 
     testImapClient(server).login(RECIPIENT1.asString(), PASSWORD)
       .select(INBOX)
@@ -191,7 +191,7 @@ trait RateLimitingPlanIntegrationContract {
 
     // exceed
     messageSender(server).authenticate(SENDER1.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "subject: test2\r\rcontent 2\r.\r")
+      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "From: " + SENDER1.asString() + "\r\n\r\nsubject: test2\r\rcontent 2\r.\r")
 
     awaitAtMostOneMinute.until(() => server.getProbe(classOf[MailRepositoryProbeImpl])
       .getRepositoryMailCount(getErrorRepository) == 1)
@@ -234,14 +234,14 @@ trait RateLimitingPlanIntegrationContract {
 
     // Checking sender1 with planA
     messageSender(server).authenticate(SENDER1.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "subject: test1\r\rcontent 1\r.\r")
+      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT1.asString, "From: " + SENDER1.asString() + "\r\n\r\nsubject: test1\r\rcontent 1\r.\r")
 
     testImapClient(server).login(RECIPIENT1.asString(), PASSWORD)
       .select(INBOX)
       .awaitMessage(awaitAtMostOneMinute)
 
     messageSender(server).authenticate(SENDER1.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT2.asString, "subject: test2\r\rcontent 2\r.\r")
+      .sendMessageWithHeaders(SENDER1.asString, RECIPIENT2.asString, "From: " + SENDER1.asString() + "\r\n\r\nsubject: test2\r\rcontent 2\r.\r")
 
     awaitAtMostOneMinute.until(() => server.getProbe(classOf[MailRepositoryProbeImpl])
       .getRepositoryMailCount(getErrorRepository) == 1)
@@ -255,14 +255,14 @@ trait RateLimitingPlanIntegrationContract {
     IntStream.range(0, countLimitPlanB)
       .forEach(index =>
         messageSender(server).authenticate(SENDER2.asString(), PASSWORD)
-          .sendMessageWithHeaders(SENDER2.asString, RECIPIENT3.asString, s"""subject: test3+$index\r\rcontent 3\r.\r"""))
+          .sendMessageWithHeaders(SENDER2.asString, RECIPIENT3.asString, s"""From: ${SENDER2.asString}\r\n\r\nsubject: test3+$index\r\rcontent 3\r.\r"""))
 
     awaitAtMostOneMinute.until(() => testImapClient(server)
       .login(RECIPIENT3, PASSWORD)
       .getMessageCount(INBOX) == countLimitPlanB)
 
     messageSender(server).authenticate(SENDER2.asString(), PASSWORD)
-      .sendMessageWithHeaders(SENDER2.asString, RECIPIENT3.asString, s"""subject: test4\r\rcontent 4\r.\r""")
+      .sendMessageWithHeaders(SENDER2.asString, RECIPIENT3.asString, s"""From: ${SENDER2.asString}\r\n\r\nsubject: test4\r\rcontent 4\r.\r""")
     awaitAtMostOneMinute.until(() => server.getProbe(classOf[MailRepositoryProbeImpl])
       .getRepositoryMailCount(getErrorRepository) == 2)
   }
