@@ -23,14 +23,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-import org.apache.james.jmap.mail.BlobId;
-import org.apache.james.jmap.mail.PartId;
 import org.apache.james.mailbox.model.MessageId;
 
 import com.google.common.base.Preconditions;
 
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 import scala.util.Failure;
 import scala.util.Success;
 import scala.util.Try;
@@ -50,13 +46,11 @@ public final class MessagePartBlobId {
     }
 
     public static Try<MessagePartBlobId> tryParse(MessageId.Factory messageIdFactory, String value) {
-        try {Preconditions.checkNotNull(value);
+        try {
+            Preconditions.checkNotNull(value);
             if (!MESSAGE_PART_BLOB_ID_PATTERN.asMatchPredicate().test(value)) {
-                throw new IllegalArgumentException(
-                    "Invalid BlobId '%s'. Blob id needs to match this format: {message_id}_{partId1}_{partId2}_..."
-                        .formatted(value));
+                throw new IllegalArgumentException("Invalid BlobId '%s'. Blob id needs to match this format: {message_id}_{partId1}_{partId2}_...".formatted(value));
             }
-
 
             String[] parts = value.split("_");
             MessageId messageId = messageIdFactory.fromString(parts[0]);

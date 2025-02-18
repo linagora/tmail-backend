@@ -121,7 +121,8 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
         return davUserProvider.provide(username)
             .flatMapMany(davUser -> asFlux(eventBlobIds)
                 .map(CalDavEventAttendanceRepository::asBlobId)
-                .flatMap(blobId -> setAttendanceStatus(davUser, blobId, attendanceStatus), DEFAULT_CONCURRENCY));
+                .flatMap(blobId -> setAttendanceStatus(davUser, blobId, attendanceStatus), DEFAULT_CONCURRENCY))
+            .reduce(CalendarEventReplyResults$.MODULE$.empty(), CalendarEventReplyResults$.MODULE$::merge);
     }
 
     private Mono<CalendarEventReplyResults> setAttendanceStatus(DavUser davUser, BlobId blobId, AttendanceStatus attendanceStatus) {
