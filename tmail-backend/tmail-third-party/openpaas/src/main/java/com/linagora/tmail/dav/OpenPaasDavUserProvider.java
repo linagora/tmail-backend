@@ -20,7 +20,6 @@ package com.linagora.tmail.dav;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 
 import com.linagora.tmail.api.OpenPaasRestClient;

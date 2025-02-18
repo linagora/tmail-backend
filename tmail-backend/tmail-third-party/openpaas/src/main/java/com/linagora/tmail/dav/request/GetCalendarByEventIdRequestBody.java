@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import org.apache.commons.text.StringEscapeUtils;
 
 import com.linagora.tmail.dav.EventUid;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
