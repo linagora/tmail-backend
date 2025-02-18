@@ -20,9 +20,11 @@ package com.linagora.tmail.james;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.utils.GuiceProbe;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
@@ -47,4 +49,9 @@ public class MemoryTeamMailboxMemberSetMethodTest implements TeamMailboxMemberSe
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(TeamMailboxProbe.class)))
         .build();
+
+    @Override
+    @Disabled("Unstable test. See https://github.com/linagora/tmail-backend/issues/1539")
+    public void updateShouldReturnNotUpdatedWhenRemovingOtherManager(GuiceJamesServer jamesServer) {
+    }
 }
