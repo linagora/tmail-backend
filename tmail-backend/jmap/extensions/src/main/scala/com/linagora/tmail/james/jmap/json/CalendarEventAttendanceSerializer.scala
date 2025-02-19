@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.method.{CalendarEventAttendanceGetRequest, CalendarEventAttendanceGetResponse, CalendarEventAttendanceResults}
+import com.linagora.tmail.james.jmap.method.{CalendarEventAttendanceGetRequest, CalendarEventAttendanceGetResponse}
 import com.linagora.tmail.james.jmap.model.{CalendarEventNotDone, CalendarEventNotFound}
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import play.api.libs.json.{JsResult, JsValue, Json, OWrites, Reads, Writes}

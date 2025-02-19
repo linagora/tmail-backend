@@ -120,7 +120,7 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarRe
         .`then`(SMono.just(CalendarEventReplyResults(done = BlobIds(Seq(blobId.value))))))
       .onErrorResume({
         case _: BlobNotFoundException => SMono.just(CalendarEventReplyResults.notFound(blobId))
-        case e => SMono.just(CalendarEventReplyResults.notDone(blobId, e, mailboxSession))
+        case e => SMono.just(CalendarEventReplyResults.notDone(blobId, e, mailboxSession.getUser.asString()))
       })
 
   private def getLanguageLocale(request: CalendarEventReplyRequest): Locale =

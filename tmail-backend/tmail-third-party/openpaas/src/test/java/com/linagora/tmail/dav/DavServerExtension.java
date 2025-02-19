@@ -51,9 +51,10 @@ import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 public class DavServerExtension extends WireMockExtension {
     public static final String ALICE_ID = "ALICE_ID";
     public static final String ALICE = "ALICE";
+    public static final DavUser ALICE_DAV_USER = new DavUser(ALICE_ID, ALICE);
     public static final String ALICE_CALENDAR_1 = "66e95872cf2c37001f0d2a09";
     public static final String ALICE_CALENDAR_2 = "0b4e80d7-7337-458f-852d-7ae8d72a74b2";
-    public static final String ALICE_VEVENT_1 = "ab3db856-a866-4a91-99a3-c84372eaee87";
+    public static final EventUid ALICE_VEVENT_1 = new EventUid("ab3db856-a866-4a91-99a3-c84372eaee87");
     public static final String ALICE_VEVENT_2 = "";
     public static final String ALICE_RECURRING_EVENT = "";
     public static final String ALICE_CALENDAR_OBJECT_1 = "/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/sabredav-c23db537-7162-4b8d-b034-ab9436304959.ics";

@@ -39,6 +39,7 @@ import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_1;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_2;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_OBJECT_1;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_CALENDAR_OBJECT_2;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_DAV_USER;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_ID;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_VEVENT_1;
 import static com.linagora.tmail.dav.DavServerExtension.createDelegatedBasicAuthenticationToken;
@@ -66,6 +67,7 @@ import ezvcard.parameter.EmailType;
 class DavClientTest {
     private static final String OPENPAAS_USER_NAME = "openpaasUserName1";
     private static final String OPENPAAS_USER_ID = "openpaasUserId1";
+    private static final DavUser OPEN_PAAS_DAV_USER = new DavUser(OPENPAAS_USER_ID, OPENPAAS_USER_NAME);
     private static final UnaryOperator<DavCalendarObject> DUMMY_CALENDAR_OBJECT_UPDATER = calendarObject -> calendarObject;
 
     @RegisterExtension
@@ -154,7 +156,7 @@ class DavClientTest {
 
     @Test
     void findUserCalendarsShouldSucceed() {
-        assertThat(client.findUserCalendars(ALICE_ID, ALICE).collectList().block())
+        assertThat(client.findUserCalendars(ALICE_DAV_USER).collectList().block())
             .hasSameElementsAs(
                 List.of(
                     URI.create("/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/"),
@@ -172,7 +174,7 @@ class DavClientTest {
                             new Body(ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
-        assertThat(client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
+        assertThat(client.findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .isEmpty();
     }
 
@@ -187,7 +189,7 @@ class DavClientTest {
                             new Body(ClassLoaderUtils.getSystemResourceAsByteArray("CALENDARS_CONTAINING_ONLY_INBOX_OUTBOX.xml")))
                         .withStatus(207)));
 
-        assertThat(client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
+        assertThat(client.findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .isEmpty();
     }
 
@@ -198,7 +200,7 @@ class DavClientTest {
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
                 .willReturn(ok()));
 
-        assertThatThrownBy(() -> client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
+        assertThatThrownBy(() -> client.findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .isInstanceOf(DavClientException.class);
     }
 
@@ -214,14 +216,14 @@ class DavClientTest {
                             new Body(ClassLoaderUtils.getSystemResourceAsByteArray("CALENDARS_WITH_ONE_INVALID_HREF.xml")))
                         .withStatus(207)));
 
-        assertThat(client.findUserCalendars(OPENPAAS_USER_ID, OPENPAAS_USER_NAME).collectList().block())
+        assertThat(client.findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .hasSameElementsAs(
                 List.of(URI.create("/calendars/ALICE_ID/0b4e80d7-7337-458f-852d-7ae8d72a74b2/")));
     }
 
     @Test
     void getCalendarObjectContainingVEventShouldSucceed() {
-        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
+        assertThat(client.getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
@@ -237,7 +239,7 @@ class DavClientTest {
                     new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
                 .willReturn(notFound()));
 
-        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
+        assertThat(client.getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
@@ -272,19 +274,19 @@ class DavClientTest {
                                 ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
-        assertThat(client.getCalendarObjectContainingVEvent(ALICE_ID, ALICE_VEVENT_1, ALICE).map(DavCalendarObject::calendarData).block())
+        assertThat(client.getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(null);
     }
 
     @Test
     void updateCalendarObjectShouldSucceed() {
-        assertThatCode(() -> client.updateCalendarObject(ALICE, URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
+        assertThatCode(() -> client.updateCalendarObject(ALICE_DAV_USER, URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .doesNotThrowAnyException();
     }
 
     @Test
     void updateCalendarObjectShouldFailsWhenHTTPStatusNot204() {
-        assertThatThrownBy(() -> client.updateCalendarObject(ALICE, URI.create(ALICE_CALENDAR_OBJECT_2), DUMMY_CALENDAR_OBJECT_UPDATER).block())
+        assertThatThrownBy(() -> client.updateCalendarObject(ALICE_DAV_USER, URI.create(ALICE_CALENDAR_OBJECT_2), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .isInstanceOf(DavClientException.class);
     }
 
@@ -296,7 +298,7 @@ class DavClientTest {
                 .withHeader("Accept", equalTo("application/xml"))
                 .willReturn(aResponse().withStatus(HttpStatus.SC_PRECONDITION_FAILED)));
 
-        assertThatThrownBy(() -> client.updateCalendarObject(ALICE, URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
+        assertThatThrownBy(() -> client.updateCalendarObject(ALICE_DAV_USER, URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .isInstanceOf(DavClientException.class);
 
         davServerExtension.verify(MAX_CALENDAR_OBJECT_UPDATE_RETRIES + 1,

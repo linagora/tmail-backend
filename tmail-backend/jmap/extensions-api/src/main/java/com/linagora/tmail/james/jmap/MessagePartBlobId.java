@@ -23,14 +23,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-import org.apache.james.jmap.mail.BlobId;
-import org.apache.james.jmap.mail.PartId;
 import org.apache.james.mailbox.model.MessageId;
 
 import com.google.common.base.Preconditions;
 
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 import scala.util.Failure;
 import scala.util.Success;
 import scala.util.Try;
@@ -40,36 +36,35 @@ public final class MessagePartBlobId {
         Pattern.compile("^[^_]+_\\d+(_\\d+)*$");
 
     private final String value;
-    private final String messageId;
+    private final MessageId messageId;
     private final List<Long> partIds;
 
-    public MessagePartBlobId(String value) {
-        Preconditions.checkNotNull(value);
-        if (!MESSAGE_PART_BLOB_ID_PATTERN.asMatchPredicate().test(value)) {
-            throw new IllegalArgumentException(
-                "Invalid BlobId '%s'. Blob id needs to match this format: {message_id}_{partId1}_{partId2}_..."
-                    .formatted(value));
-        }
-
+    private MessagePartBlobId(String value, MessageId messageId, List<Long> partIds) {
         this.value = value;
+        this.messageId = messageId;
+        this.partIds = partIds;
+    }
 
-        String[] parts = value.split("_");
-        this.messageId = parts[0];
-        this.partIds = Arrays.stream(parts)
+    public static Try<MessagePartBlobId> tryParse(MessageId.Factory messageIdFactory, String value) {
+        try {
+            Preconditions.checkNotNull(value);
+            if (!MESSAGE_PART_BLOB_ID_PATTERN.asMatchPredicate().test(value)) {
+                throw new IllegalArgumentException("Invalid BlobId '%s'. Blob id needs to match this format: {message_id}_{partId1}_{partId2}_...".formatted(value));
+            }
+
+            String[] parts = value.split("_");
+            MessageId messageId = messageIdFactory.fromString(parts[0]);
+            List<Long> partIds = Arrays.stream(parts)
                 .skip(1)
                 .map(Long::parseLong)
                 .toList();
-    }
-
-    public static Try<MessagePartBlobId> tryParse(String blobId) {
-        try {
-            return new Success<>(new MessagePartBlobId(blobId));
+            return new Success<>(new MessagePartBlobId(value, messageId, partIds));
         } catch (Exception e) {
             return new Failure<>(e);
         }
     }
 
-    public String getMessageId() {
+    public MessageId getMessageId() {
         return messageId;
     }
 
@@ -79,18 +74,6 @@ public final class MessagePartBlobId {
 
     public String getValue() {
         return value;
-    }
-
-    public Tuple2<MessageId, List<BlobId>> asMessageAndPartIds(MessageId.Factory messageIdFactory) {
-        return Tuples.of(messageIdFactory.fromString(messageId), toBlobIds(messageIdFactory));
-    }
-
-    private List<BlobId> toBlobIds(MessageId.Factory messageIdFactory) {
-        BlobId messageIdObject = BlobId.of(messageIdFactory.fromString(messageId)).get();
-        return partIds.stream()
-            .map(Object::toString)
-            .map(partId -> BlobId.of(messageIdObject, PartId.parse(partId).get()).get())
-            .toList();
     }
 
     @Override

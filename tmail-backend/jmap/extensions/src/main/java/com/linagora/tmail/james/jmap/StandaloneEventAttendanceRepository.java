@@ -39,12 +39,12 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceResults;
-import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceResults$;
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer;
-import com.linagora.tmail.james.jmap.method.EventAttendanceStatusEntry;
+import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
+import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults$;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
+import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
 import reactor.core.publisher.Flux;
@@ -88,7 +88,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                     .defaultIfEmpty(CalendarEventAttendanceResults$.MODULE$.notFound(BlobId.of(blobId).get())))
             .onErrorResume(Exception.class, (error) ->
                 Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(
-                    BlobId.of(blobId).get(), error, systemMailboxSession)));
+                    BlobId.of(blobId).get(), error)));
     }
 
     private Mono<CalendarEventAttendanceResults> getAttendanceStatusFromMessage(MessageResult messageResult, String blobId) {
@@ -132,9 +132,8 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
 
     private Mono<MessageId> extractMessageId(String blobId) {
         return Mono.fromCallable(() ->
-            MessagePartBlobId.tryParse(blobId)
+            MessagePartBlobId.tryParse(messageIdFactory, blobId)
                 .map(MessagePartBlobId::getMessageId)
-                .map(messageIdFactory::fromString)
                 .get());
     }
 

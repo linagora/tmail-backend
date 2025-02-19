@@ -16,22 +16,23 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.jmap;
+package com.linagora.tmail.james.jmap.model
 
-import java.util.Optional;
+import java.util.Locale
 
-import org.apache.james.core.Username;
-import org.apache.james.jmap.mail.BlobIds;
-import org.reactivestreams.Publisher;
+import scala.util.Try
 
-import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceResults;
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
-import com.linagora.tmail.james.jmap.model.LanguageLocation;
+object LanguageLocation {
+  def fromString(languageCode: String): Try[LanguageLocation] = detectLocale(languageCode).map(LanguageLocation.apply)
 
-public interface EventAttendanceRepository {
-   Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, BlobIds calendarEventBlobIds);
-   
-   Publisher<CalendarEventReplyResults> setAttendanceStatus(Username username, AttendanceStatus attendanceStatus,
-                                                            BlobIds eventBlobIds,
-                                                            Optional<LanguageLocation> maybePreferredLanguage);
+  def detectLocale(languageCode: String): Try[Locale] =
+    if (Locale.getISOLanguages.contains(languageCode)) {
+      Try(Locale.forLanguageTag(languageCode))
+    } else {
+      throw new IllegalArgumentException("The language must be a valid ISO language code")
+    }
+}
+
+case class LanguageLocation(language: Locale) {
+  def value: String = language.toLanguageTag
 }

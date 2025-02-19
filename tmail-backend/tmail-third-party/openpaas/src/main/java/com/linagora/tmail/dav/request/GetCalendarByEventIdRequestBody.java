@@ -22,10 +22,12 @@ import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.text.StringEscapeUtils;
 
+import com.linagora.tmail.dav.EventUid;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
-public record GetCalendarByEventIdRequestBody(String vEventUid) {
+public record GetCalendarByEventIdRequestBody(EventUid vEventUid) {
 
     public String value() {
         return """
@@ -45,7 +47,7 @@ public record GetCalendarByEventIdRequestBody(String vEventUid) {
                     </C:comp-filter>
                   </C:filter>
             </C:calendar-query>
-            """.formatted(StringEscapeUtils.escapeXml10(vEventUid));
+            """.formatted(StringEscapeUtils.escapeXml10(vEventUid.value()));
     }
 
     public ByteBuf asByteBuf() {

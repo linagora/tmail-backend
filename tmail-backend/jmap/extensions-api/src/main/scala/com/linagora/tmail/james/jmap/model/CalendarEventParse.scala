@@ -25,6 +25,7 @@ import java.util.{Locale, TimeZone}
 
 import com.google.common.base.Preconditions
 import com.ibm.icu.util.{TimeZone => Icu4jTimeZone}
+import com.linagora.tmail.james.jmap.AttendanceStatus
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.EventStatus
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
@@ -65,6 +66,10 @@ object CalendarEventParse {
 }
 
 case class CalendarEventParsedList(value: List[CalendarEventParsed])
+
+case class CalendarEventNotDone(value: Map[UnparsedBlobId, SetError]) {
+  def merge(other: CalendarEventNotDone): CalendarEventNotDone = CalendarEventNotDone(this.value ++ other.value)
+}
 
 case class CalendarEventNotFound(value: Set[UnparsedBlobId]) {
   def merge(other: CalendarEventNotFound): CalendarEventNotFound = CalendarEventNotFound(this.value ++ other.value)
@@ -358,7 +363,7 @@ object CalendarParticipantsField {
 }
 case class CalendarParticipantsField(list: Seq[CalendarAttendeeField] = Seq()) {
 
-  def findParticipantByMailTo(mailto:String): Option[CalendarAttendeeField] =
+  def findParticipantByMailTo(mailto: String): Option[CalendarAttendeeField] =
     list.find(_.mailto.exists(_.serialize() == mailto))
 }
 
@@ -603,4 +608,8 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                participants: CalendarParticipantsField = CalendarParticipantsField(),
                                extensionFields: CalendarExtensionFields = CalendarExtensionFields(),
                                recurrenceRules: RecurrenceRulesField = RecurrenceRulesField(Seq()),
-                               excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq()))
+                               excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq())) {
+  def getAttendanceStatus(username: String): Option[AttendanceStatus] = participants.findParticipantByMailTo(username)
+    .flatMap(_.participationStatus)
+    .map((status: CalendarAttendeeParticipationStatus) => AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).orElseThrow)
+}
