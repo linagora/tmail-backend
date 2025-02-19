@@ -1,4 +1,4 @@
 [submodule "james-project"]
 	path = james-project
 	url = https://github.com/apache/james-project
-	branch = postgresql
+	branch = master
