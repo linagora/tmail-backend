@@ -189,8 +189,13 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
             .hasSize(1);
     }
 
+    @Tag(BasicFeature.TAG)
     @Test
     void jmapPreviewShouldBeWellRemovedWhenDeleteMessage(GuiceJamesServer server) throws Exception {
+        StatementRecorder statementRecorder = server.getProbe(TestingSessionProbe.class)
+            .getTestingSession()
+            .recordStatements();
+
         server.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
             .addUser(JAMES_USER, PASSWORD);
@@ -218,5 +223,9 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
             .until(() -> server.getProbe(MessageFastViewProjectionProbe.class)
                 .retrieve(messageId)
                 .isEmpty());
+
+        assertThat(statementRecorder.listExecutedStatements(
+            StatementRecorder.Selector.preparedStatementStartingWith("DELETE FROM message_fast_view_projection")))
+            .hasSize(1);
     }
 }

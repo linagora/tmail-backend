@@ -51,7 +51,6 @@ import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
 import org.apache.james.backends.opensearch.ReadAliasName;
 import org.apache.james.backends.opensearch.WriteAliasName;
 import org.apache.james.core.Username;
-import org.apache.james.events.Group;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.RetryBackoffConfiguration;
@@ -85,8 +84,6 @@ import org.apache.james.mailbox.opensearch.query.CriterionConverter;
 import org.apache.james.mailbox.opensearch.query.QueryConverter;
 import org.apache.james.mailbox.opensearch.search.OpenSearchSearcher;
 import org.apache.james.mailbox.store.FakeAuthenticator;
-import org.apache.james.mailbox.store.FakeAuthorizator;
-import org.apache.james.mailbox.store.SessionProviderImpl;
 import org.apache.james.mailbox.store.StoreMailboxManager;
 import org.apache.james.mailbox.store.extractor.DefaultTextExtractor;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
@@ -138,7 +135,6 @@ class TMailComputeMessageFastViewProjectionListenerTest {
     StoreMailboxManager mailboxManager;
     MessageManager inboxMessageManager;
     MessageManager otherBoxMessageManager;
-    ExpungeMessageFastViewProjectionListener listener;
     MessageIdManager messageIdManager;
     MemoryEventDeadLetters eventDeadLetters;
     ReadAliasName readAliasName;
@@ -205,13 +201,6 @@ class TMailComputeMessageFastViewProjectionListenerTest {
         FakeAuthenticator authenticator = new FakeAuthenticator();
         authenticator.addUser(BOB, "12345");
 
-        SessionProviderImpl sessionProvider = new SessionProviderImpl(authenticator, FakeAuthorizator.defaultReject());
-
-        listener = spy(new ExpungeMessageFastViewProjectionListener(sessionProvider, messageIdManager,
-            messageFastViewProjection));
-
-        resources.getEventBus().register(listener);
-
         mailboxSession = MailboxSessionUtil.create(BOB);
 
         MailboxId inboxId = mailboxManager.createMailbox(BOB_INBOX_PATH, mailboxSession).get();
@@ -219,12 +208,6 @@ class TMailComputeMessageFastViewProjectionListenerTest {
 
         MailboxId otherBoxId = mailboxManager.createMailbox(BOB_OTHER_BOX_PATH, mailboxSession).get();
         otherBoxMessageManager = mailboxManager.getMailbox(otherBoxId, mailboxSession);
-    }
-
-    @Test
-    void deserializeMailboxAnnotationListenerGroup() throws Exception {
-        assertThat(Group.deserialize("com.linagora.tmail.event.ExpungeMessageFastViewProjectionListener$ExpungeMessageFastViewProjectionListenerGroup"))
-            .isEqualTo(new ExpungeMessageFastViewProjectionListener.ExpungeMessageFastViewProjectionListenerGroup());
     }
 
     @Test
@@ -358,22 +341,6 @@ class TMailComputeMessageFastViewProjectionListenerTest {
 
         assertThat(eventDeadLetters.failedIds(new OpenSearchListeningMessageSearchIndex.OpenSearchListeningMessageSearchIndexGroup()).collectList().block())
             .hasSize(1);
-    }
-
-    @Test
-    void shouldDeletePreviewWhenMessageDeletedAndNoLongerReferenced() throws Exception {
-        ComposedMessageId composedId = inboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.builder()
-                .build(ClassLoaderUtils.getSystemResourceAsSharedStream("fullMessage.eml")),
-            mailboxSession).getId();
-
-        assertThat(Mono.from(messageFastViewProjection.retrieve(composedId.getMessageId())).block())
-            .isNotNull();
-
-        inboxMessageManager.delete(ImmutableList.of(composedId.getUid()), mailboxSession);
-
-        assertThat(Mono.from(messageFastViewProjection.retrieve(composedId.getMessageId())).block())
-            .isNull();
     }
 
     @Test

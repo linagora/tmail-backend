@@ -32,9 +32,6 @@ public class TMailJMAPListenerModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), EventListener.GroupEventListener.class).addBinding().to(PropagateLookupRightListener.class);
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class).addBinding().to(MailboxChangeListener.class);
 
-        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
-            .addBinding()
-            .to(ExpungeMessageFastViewProjectionListener.class);
         Multibinder.newSetBinder(binder(), OpenSearchListeningMessageSearchIndex.Indexer.class)
             .addBinding()
             .to(ComputePreviewMessageIndexer.class);
