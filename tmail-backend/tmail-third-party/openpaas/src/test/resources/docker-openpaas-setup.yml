@@ -41,12 +41,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 15
+      disable: true
 
   redis:
     image: redis:latest
     networks:
       - emaily
     healthcheck:
+      disable: true
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
@@ -65,12 +67,14 @@ services:
       interval: 30s
       timeout: 30s
       retries: 3
+      disable: true
 
   mongo:
     image: mongo
     networks:
       - emaily
     healthcheck:
+      disable: true
       test:
         [
           "CMD",
@@ -91,6 +95,7 @@ services:
     networks:
       - emaily
     healthcheck:
+      disable: true
       test: [ "CMD", "curl", "-u", "admin@open-paas.org:secret", "-f", "http://esn:8080/api/healthcheck/elasticsearch" ]
       interval: 10s
       retries: 80
@@ -118,6 +123,7 @@ services:
     networks:
       - emaily
     healthcheck:
+      disable: true
       test: [ "CMD", "curl", "-f", "-u", "admin&admin@open-paas.org:secret123", "http://esn_sabre:80","-X", "PROPFIND" ]
       start_period: 40s
       interval: 10s
