@@ -15,15 +15,13 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.james.app;
+package com.linagora.tmail.james.jmap.perfs;
 
 import org.apache.james.mailbox.model.AttachmentId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.ParsedAttachment;
 import org.apache.james.mailbox.model.StringBackedAttachmentId;
 import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy;
-
-import com.linagora.tmail.james.jmap.perfs.TMailCleverParsedAttachment;
 
 public class TMailCleverAttachmentIdAssignationStrategy implements AttachmentIdAssignationStrategy {
     @Override
