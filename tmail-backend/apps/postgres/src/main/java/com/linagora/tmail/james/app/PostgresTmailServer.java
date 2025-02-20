@@ -19,7 +19,6 @@
 package com.linagora.tmail.james.app;
 
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
-import static org.apache.james.PostgresJamesServerMain.JMAP;
 
 import java.util.List;
 import java.util.Set;
@@ -30,10 +29,13 @@ import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.OpenSearchHighlightModule;
+import org.apache.james.PostgresJmapModule;
 import org.apache.james.backends.redis.RedisHealthCheck;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.JMAPListenerModule;
+import org.apache.james.jmap.JMAPModule;
+import org.apache.james.jmap.rfc8621.RFC8621MethodsModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxSession;
@@ -41,6 +43,8 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
 import org.apache.james.mailbox.searchhighligt.SearchSnippet;
+import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy;
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.quota.DefaultQuotaChangeNotifier;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
@@ -52,6 +56,7 @@ import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.RunArgumentsModule;
 import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
 import org.apache.james.modules.data.PostgresDLPConfigurationStoreModule;
+import org.apache.james.modules.data.PostgresDataJmapModule;
 import org.apache.james.modules.data.PostgresDataModule;
 import org.apache.james.modules.data.PostgresDelegationStoreModule;
 import org.apache.james.modules.data.PostgresEventStoreModule;
@@ -71,6 +76,8 @@ import org.apache.james.modules.mailbox.RLSSupportPostgresMailboxModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
 import org.apache.james.modules.plugins.QuotaMailingModule;
 import org.apache.james.modules.protocols.IMAPServerModule;
+import org.apache.james.modules.protocols.JMAPServerModule;
+import org.apache.james.modules.protocols.JmapEventBusModule;
 import org.apache.james.modules.protocols.LMTPServerModule;
 import org.apache.james.modules.protocols.ManageSieveServerModule;
 import org.apache.james.modules.protocols.POP3ServerModule;
@@ -157,6 +164,9 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
+import com.linagora.tmail.james.jmap.perfs.TMailCleverAttachmentIdAssignationStrategy;
+import com.linagora.tmail.james.jmap.perfs.TMailCleverBlobResolverModule;
+import com.linagora.tmail.james.jmap.perfs.TMailCleverMessageParser;
 import com.linagora.tmail.james.jmap.publicAsset.PostgresPublicAssetRepositoryModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
@@ -265,7 +275,13 @@ public class PostgresTmailServer {
         new WebAdminServerModule());
 
     public static final Module JMAP_LINAGORA = Modules.override(
-        JMAP,
+        new PostgresJmapModule(),
+        new PostgresDataJmapModule(),
+        new JmapEventBusModule(),
+        new JMAPServerModule(),
+        new JMAPModule(),
+        new RFC8621MethodsModule(),
+        new TMailCleverBlobResolverModule(),
         new TMailJMAPModule(),
         new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
@@ -302,7 +318,11 @@ public class PostgresTmailServer {
     private static final Module POSTGRES_SERVER_MODULE = Modules.combine(
         new BlobExportMechanismModule(),
         new PostgresDelegationStoreModule(),
-        new PostgresMailboxModule(),
+        Modules.override(new PostgresMailboxModule())
+            .with(binder -> {
+                binder.bind(AttachmentIdAssignationStrategy.class).to(TMailCleverAttachmentIdAssignationStrategy.class);
+                binder.bind(MessageParser.class).to(TMailCleverMessageParser.class);
+            }),
         new PostgresDeadLetterModule(),
         new PostgresDataModule(),
         new MailboxModule(),
