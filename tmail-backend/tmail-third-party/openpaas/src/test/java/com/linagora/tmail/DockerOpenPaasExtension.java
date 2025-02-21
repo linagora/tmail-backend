@@ -50,6 +50,18 @@ public class DockerOpenPaasExtension implements ParameterResolver {
         return DockerOpenPaasSetupSingleton.singleton;
     }
 
+    public String getOpenPaasServerIpAddress() {
+        return TestContainersUtils.getContainerPrivateIpAddress(getDockerOpenPaasSetupSingleton().getOpenPaasContainer());
+    }
+
+    public String getDavServerIpAddress() {
+        return TestContainersUtils.getContainerPrivateIpAddress(getDockerOpenPaasSetupSingleton().getSabreDavContainer());
+    }
+
+    public String getRabbitMqIpAddress() {
+        return TestContainersUtils.getContainerPrivateIpAddress(getDockerOpenPaasSetupSingleton().getRabbitMqContainer());
+    }
+
     public OpenPaasUser newTestUser() {
         return DockerOpenPaasSetupSingleton.singleton
             .getOpenPaaSProvisioningService()

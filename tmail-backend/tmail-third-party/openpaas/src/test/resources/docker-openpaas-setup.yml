@@ -1,4 +1,4 @@
-version: "2"
+version: "2.7"
 
 networks:
   emaily:
@@ -35,11 +35,24 @@ services:
       - sabre_dav
     networks:
       - emaily
+    healthcheck:
+      test: [ "CMD", "curl", "-u", "admin@open-paas.org:secret", "-f", "http://esn:8080/api/user" ]
+      start_period: 50s
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      disable: true
 
   redis:
     image: redis:latest
     networks:
       - emaily
+    healthcheck:
+      disable: true
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
 
   rabbitmq:
     image: rabbitmq:3.13.3-management
@@ -49,11 +62,31 @@ services:
       - 15672:15672
     networks:
       - emaily
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      disable: true
 
   mongo:
     image: mongo
     networks:
       - emaily
+    healthcheck:
+      disable: true
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'",
+        ]
+      start_period: 40s
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:6.3.2
@@ -61,6 +94,11 @@ services:
       - discovery.type=single-node
     networks:
       - emaily
+    healthcheck:
+      disable: true
+      test: [ "CMD", "curl", "-u", "admin@open-paas.org:secret", "-f", "http://esn:8080/api/healthcheck/elasticsearch" ]
+      interval: 10s
+      retries: 80
 
   sabre_dav:
     hostname: esn_sabre
@@ -84,3 +122,10 @@ services:
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
     networks:
       - emaily
+    healthcheck:
+      disable: true
+      test: [ "CMD", "curl", "-f", "-u", "admin&admin@open-paas.org:secret123", "http://esn_sabre:80","-X", "PROPFIND" ]
+      start_period: 40s
+      interval: 10s
+      timeout: 10s
+      retries: 10
