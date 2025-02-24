@@ -17,15 +17,15 @@
  ********************************************************************/
 package com.linagora.tmail.james.app;
 
-import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentMapper;
 import org.apache.james.mailbox.model.AttachmentId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.ParsedAttachment;
 import org.apache.james.mailbox.model.StringBackedAttachmentId;
+import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy;
 
 import com.linagora.tmail.james.jmap.perfs.TMailCleverParsedAttachment;
 
-public class TMailCleverAttachmentIdAssignationStrategy implements CassandraAttachmentMapper.AttachmentIdAssignationStrategy {
+public class TMailCleverAttachmentIdAssignationStrategy implements AttachmentIdAssignationStrategy {
     @Override
     public AttachmentId assign(ParsedAttachment parsedAttachment, MessageId messageId) {
         if (parsedAttachment instanceof TMailCleverParsedAttachment TMailCleverParsedAttachment) {
