@@ -47,11 +47,11 @@ import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
-import org.apache.james.mailbox.cassandra.mail.CassandraAttachmentMapper;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
 import org.apache.james.mailbox.searchhighligt.SearchSnippet;
+import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.quota.DefaultQuotaChangeNotifier;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
@@ -338,7 +338,7 @@ public class DistributedServer {
         new CassandraConsistencyTaskSerializationModule(),
         Modules.override(new CassandraMailboxModule())
             .with(binder -> {
-                binder.bind(CassandraAttachmentMapper.AttachmentIdAssignationStrategy.class).to(TMailCleverAttachmentIdAssignationStrategy.class);
+                binder.bind(AttachmentIdAssignationStrategy.class).to(TMailCleverAttachmentIdAssignationStrategy.class);
                 binder.bind(MessageParser.class).to(TMailCleverMessageParser.class);
             }),
         new MailboxModule(),
