@@ -65,7 +65,7 @@ import org.apache.james.modules.data.PostgresUsersRepositoryModule;
 import org.apache.james.modules.data.PostgresVacationModule;
 import org.apache.james.modules.data.SievePostgresRepositoryModules;
 import org.apache.james.modules.event.JMAPEventBusModule;
-import org.apache.james.modules.event.RabbitMQEventBusModule;
+import org.apache.james.modules.event.MailboxEventBusModule;
 import org.apache.james.modules.events.PostgresDeadLetterModule;
 import org.apache.james.modules.mailbox.DefaultEventModule;
 import org.apache.james.modules.mailbox.OpenSearchClientModule;
@@ -403,7 +403,7 @@ public class PostgresTmailServer {
                 new RabbitMQEmailAddressContactModule(),
                 new ScheduledReconnectionHandler.Module(),
                 Modules.override(new DefaultEventModule())
-                    .with(new RabbitMQEventBusModule()),
+                    .with(new MailboxEventBusModule()),
                 new DistributedTaskSerializationModule(),
                 RABBITMQ_EVENT_BUS_FEATURE_MODULE);
         };

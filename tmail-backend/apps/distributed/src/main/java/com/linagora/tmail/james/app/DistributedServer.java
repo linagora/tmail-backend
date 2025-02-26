@@ -75,7 +75,7 @@ import org.apache.james.modules.data.CassandraSieveRepositoryModule;
 import org.apache.james.modules.data.CassandraUsersRepositoryModule;
 import org.apache.james.modules.data.CassandraVacationModule;
 import org.apache.james.modules.event.JMAPEventBusModule;
-import org.apache.james.modules.event.RabbitMQEventBusModule;
+import org.apache.james.modules.event.MailboxEventBusModule;
 import org.apache.james.modules.eventstore.CassandraEventStoreModule;
 import org.apache.james.modules.mailbox.CassandraBlobStoreDependenciesModule;
 import org.apache.james.modules.mailbox.CassandraDeletedMessageVaultModule;
@@ -367,10 +367,8 @@ public class DistributedServer {
             new DistributedEmailAddressContactEventModule(),
             new DistributedEmailAddressContactEventDeadLettersModule(),
             new DistributedTaskSerializationModule(),
-            new JMAPEventBusModule(),
             new RabbitMQDisconnectorModule(),
             new RabbitMQEmailAddressContactModule(),
-            new RabbitMQEventBusModule(),
             new RabbitMQModule(),
             new RabbitMQMailQueueModule(),
             new RabbitMailQueueRoutesModule(),
@@ -588,7 +586,8 @@ public class DistributedServer {
             }
             case RABBITMQ -> {
                 LOGGER.info("Using RabbitMQ for Event Bus user notifications");
-                return Modules.EMPTY_MODULE;
+                return Modules.combine(new MailboxEventBusModule(),
+                    new JMAPEventBusModule());
             }
             default -> throw new NotImplementedException();
         }
