@@ -25,6 +25,9 @@ import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.mailbox.MessageIdManager;
+import org.apache.james.mailbox.SessionProvider;
+import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,10 +38,13 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.dav.CalDavEventAttendanceRepository;
 import com.linagora.tmail.dav.CardDavAddContactProcessor;
 import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.DavUserProvider;
+import com.linagora.tmail.dav.OpenPaasDavUserProvider;
+import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.contact.ContactAddIndexingProcessor;
-
 
 public class OpenPaasModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasModule.class);
@@ -83,6 +89,23 @@ public class OpenPaasModule extends AbstractModule {
             Preconditions.checkArgument(openPaasConfiguration.davConfiguration().isPresent(),
                 "OpenPaasConfiguration should have dav configuration");
             return new DavClient(openPaasConfiguration.davConfiguration().get());
+        }
+
+        @Provides
+        @Singleton
+        public EventAttendanceRepository provideCalDavEventAttendanceRepository(DavClient davClient,
+                                                                                SessionProvider sessionProvider,
+                                                                                MessageId.Factory messageIdFactory,
+                                                                                MessageIdManager messageIdManager,
+                                                                                DavUserProvider davUserProvider) {
+            return new CalDavEventAttendanceRepository(davClient, sessionProvider, messageIdFactory,
+                messageIdManager, davUserProvider);
+        }
+
+        @Provides
+        @Singleton
+        public DavUserProvider provideDavUserProvider(OpenPaasRestClient openPaasClient) {
+            return new OpenPaasDavUserProvider(openPaasClient);
         }
     }
 }
