@@ -26,9 +26,6 @@
 
 package com.linagora.tmail;
 
-import static com.mongodb.client.model.Filters.eq;
-import static com.mongodb.client.model.Updates.push;
-
 import java.util.List;
 import java.util.UUID;
 
