@@ -777,4 +777,258 @@ public class IMAPTeamMailboxIntegrationTest {
             }
         });
     }
+
+    @Test
+    void shouldRenameCustomFolderWithinSameTeamMailbox() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        // Given
+        assertThat(imapClient
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("\"#TeamMailbox.marketing.new1\"")
+            .doesNotContain("\"#TeamMailbox.marketing.new2\"");
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        awaitToUpdateRightsByListener(imapClient, "#TeamMailbox.marketing.new1");
+
+        // When
+        assertThat(imapClient.sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new2"))
+            .contains("OK RENAME completed");
+
+        // Then
+        assertThat(imapClient
+            .sendCommand("LIST \"\" \"*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new2\"")
+            .doesNotContain("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1");
+    }
+
+    @Test
+    void shouldMoveCustomFolderToAnotherTeamMailbox() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        // Given
+        assertThat(imapClient
+            .sendCommand("LIST \"\" \"*\""))
+            .doesNotContain("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.sale.fromMarketing\"");
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        awaitToUpdateRightsByListener(imapClient, "#TeamMailbox.marketing.new1");
+
+        // When
+        assertThat(imapClient
+            .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.sale.fromMarketing"))
+            .contains("OK RENAME completed");
+
+        // Then
+        assertThat(imapClient
+            .sendCommand("LIST \"\" \"*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.sale.fromMarketing\"")
+            .doesNotContain("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1");
+    }
+
+    @Test
+    void shouldRetainMessagesAfterMailboxRename(GuiceJamesServer server) throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        server.getProbe(MailboxProbeImpl.class)
+            .appendMessage(MINISTER.asString(), MARKETING_TEAM_MAILBOX.mailboxPath("new1"),
+            MessageManager.AppendCommand.from(Message.Builder.of()
+                .setSubject("Mail in marketing team mailbox")
+                .setBody("This is content of teammailbox", StandardCharsets.UTF_8)
+                .build()));
+
+        assertThat(imapClient.sendCommand("STATUS #TeamMailbox.marketing.new1 (MESSAGES)"))
+            .contains("* STATUS \"#TeamMailbox.marketing.new1\" (MESSAGES 1)");
+
+        awaitToUpdateRightsByListener(imapClient, "#TeamMailbox.marketing.new1");
+
+        assertThat(imapClient
+            .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new2"))
+            .contains("OK RENAME completed");
+
+        // Then
+        assertThat(imapClient.sendCommand("STATUS #TeamMailbox.marketing.new1 (MESSAGES)"))
+            .contains("NO STATUS failed. Mailbox not found");
+
+        assertThat(imapClient.sendCommand("STATUS #TeamMailbox.marketing.new2 (MESSAGES)"))
+            .contains("* STATUS \"#TeamMailbox.marketing.new2\" (MESSAGES 1)");
+
+        imapClient.sendCommand("SELECT #TeamMailbox.marketing.new2");
+        assertThat(imapClient.sendCommand("FETCH 1 BODY[TEXT]"))
+            .contains("This is content of teammailbox");
+    }
+
+    @Test
+    void shouldKeepRightsWhenRenameMailbox(GuiceJamesServer server) throws Exception {
+        server.getProbe(TeamMailboxProbe.class)
+            .removeMember(MARKETING_TEAM_MAILBOX, MINISTER)
+            .addManager(MARKETING_TEAM_MAILBOX, MINISTER);
+
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        calmlyAwait.untilAsserted(() -> assertThat(imapClient
+            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new1\" \"aeiklprstwx\""));
+
+        assertThat(imapClient.sendCommand("SETACL #TeamMailbox.marketing.new1 minister@domain.tld alrx"))
+            .contains("OK SETACL completed");
+
+        assertThat(imapClient
+            .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new2"))
+            .contains("OK RENAME completed");
+
+        assertThat(imapClient
+            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new2"))
+            .contains("* MYRIGHTS \"#TeamMailbox.marketing.new2\" \"alrx\"");
+    }
+
+    @Test
+    void shouldFailToRenameMailboxWhenNotMember(GuiceJamesServer server) throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        server.getProbe(TeamMailboxProbe.class)
+            .removeMember(MARKETING_TEAM_MAILBOX, MINISTER);
+
+        calmlyAwait.untilAsserted(() -> assertThat(imapClient
+            .sendCommand("MYRIGHTS #TeamMailbox.marketing.new1"))
+            .contains("NO MYRIGHTS failed. Mailbox not found"));
+
+        assertThat(imapClient
+            .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new2"))
+            .contains("NO RENAME processing failed");
+    }
+
+    @Test
+    void shouldFailToRenameSystemTeamMailbox() throws Exception {
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("RENAME #TeamMailbox.marketing.INBOX #TeamMailbox.marketing.new1"))
+            .contains("NO RENAME processing failed");
+    }
+
+    @Test
+    void shouldFailToRenameToExistingMailbox() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new2"))
+            .contains("CREATE completed");
+
+        assertThat(imapClient
+            .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new2"))
+            .contains("NO RENAME failed. Mailbox already exists");
+    }
+
+    @Test
+    void shouldAllowOtherMemberToRenameCustomFolder() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        awaitToUpdateRightsByListener(imapClient, "#TeamMailbox.marketing.new1");
+
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(SECRETARY, SECRETARY_PASSWORD)
+            .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new2"))
+            .contains("OK RENAME completed");
+    }
+
+    @Test
+    void canRenameTopFolderToChildFolder() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        awaitToUpdateRightsByListener(imapClient, "#TeamMailbox.marketing.new1");
+
+        assertThat(imapClient
+            .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new1.child1"))
+            .contains("OK RENAME completed");
+    }
+
+    @Test
+    void canNotRenameChildFolderToTopFolder() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1.child1"))
+            .contains("CREATE completed");
+
+        awaitToUpdateRightsByListener(imapClient, "#TeamMailbox.marketing.new1.child1");
+
+        assertThat(imapClient
+            .sendCommand("RENAME #TeamMailbox.marketing.new1.child1 #TeamMailbox.marketing.new1"))
+            .contains("NO RENAME failed. Mailbox already exists");
+    }
+
+    @Test
+    void canMoveCustomTeamMailboxToOwner() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE #TeamMailbox.marketing.new1"))
+            .contains("CREATE completed");
+
+        awaitToUpdateRightsByListener(imapClient, "#TeamMailbox.marketing.new1");
+
+        assertThat(imapClient
+            .sendCommand("RENAME #TeamMailbox.marketing.new1 marketingOwner"))
+            .contains("OK RENAME completed");
+    }
+
+    @Test
+    void canMoveOwnerMailboxToCustomMailbox() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD);
+
+        assertThat(imapClient
+            .sendCommand("CREATE marketingOwner"))
+            .contains("CREATE completed");
+
+        assertThat(imapClient
+            .sendCommand("RENAME marketingOwner #TeamMailbox.marketing.new1"))
+            .contains("OK RENAME completed");
+    }
+
+    private void awaitToUpdateRightsByListener(TestIMAPClient imapClient, String mailboxPath) {
+        calmlyAwait.untilAsserted(() -> assertThat(imapClient
+            .sendCommand("MYRIGHTS " + mailboxPath))
+            .contains("* MYRIGHTS \"" + mailboxPath + "\" \"eiklprstwx\""));
+    }
 }
