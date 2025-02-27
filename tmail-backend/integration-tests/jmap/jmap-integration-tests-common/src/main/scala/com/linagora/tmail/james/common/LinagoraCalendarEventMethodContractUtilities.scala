@@ -22,11 +22,12 @@ import java.io.{InputStreamReader, StringWriter, Writer}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 import java.util.{Base64, Optional}
+
 import com.samskivert.mustache.{Mustache, Template}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.AccountId
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ALICE, BOB}
+import org.apache.james.jmap.rfc8621.contract.Fixture.BOB
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.modules.MailboxProbeImpl

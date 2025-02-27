@@ -18,8 +18,10 @@
 
 package com.linagora.tmail.james.common
 
+import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract.{ANDRE_USER, DEFAULT_INVITATION_DATA}
-import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendInvitationEmailToBobAndGetIcsBlobIds, sendDynamicInvitationEmailAndGetIcsBlobIds}
+import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendDynamicInvitationEmailAndGetIcsBlobIds, sendInvitationEmailToBobAndGetIcsBlobIds}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -42,8 +44,6 @@ import org.hamcrest.Matchers
 import org.junit.jupiter.api.{Tag, Test}
 import play.api.libs.json.Json
 
-import java.util.concurrent.TimeUnit
-
 object LinagoraCalendarEventAcceptMethodContract {
   private val DEFAULT_INVITATION_DATA: InvitationEmailData = InvitationEmailData(
     sender = User("ALICE", ALICE.asString(), ALICE_PASSWORD),
@@ -51,6 +51,7 @@ object LinagoraCalendarEventAcceptMethodContract {
 
   private val ANDRE_USER: User = User("ANDRE", ANDRE.asString(), ANDRE_PASSWORD)
 }
+
 trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
 
