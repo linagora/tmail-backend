@@ -60,10 +60,10 @@ object LinagoraCalendarEventMethodContractUtilities {
     .and.`with`.pollDelay(org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS)
     .await
 
-  def _template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
-                                                         invitationEmailData: InvitationEmailData, icsPartIds: String*): Seq[String] = {
+  def _sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
+                                                  invitationEmailData: InvitationEmailData, icsPartIds: String*): Seq[String] = {
 
-    def searchReceiverInboxForNewMessages(): Optional[MessageId] = 
+    def searchReceiverInboxForNewMessages(): Optional[MessageId] =
       server.getProbe(classOf[MailboxProbeImpl])
         .searchMessage(
           MultimailboxesSearchQuery.from(
@@ -93,23 +93,23 @@ object LinagoraCalendarEventMethodContractUtilities {
     icsPartIds.map(partId => s"${messageId.serialize()}_$partId")
   }
 
-  def template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String, invitationEmailData: InvitationEmailData, icsPartId: String): String = 
+  def sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String, invitationEmailData: InvitationEmailData, icsPartId: String): String =
 
-    _template_sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartId) match {
+    _sendDynamicInvitationEmailAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartId) match {
       case Seq(a) => (a)
     }
 
-  def template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
-                                                        invitationEmailData: InvitationEmailData, icsPartIds: (String, String)): (String, String) = 
+  def sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
+                                                 invitationEmailData: InvitationEmailData, icsPartIds: (String, String)): (String, String) =
 
-    _template_sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartIds._1, icsPartIds._2) match {
+    _sendDynamicInvitationEmailAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartIds._1, icsPartIds._2) match {
       case Seq(a, b) => (a, b)
     }
 
-  def template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
-                                                        invitationEmailData: InvitationEmailData, icsPartIds: (String, String, String)): (String, String, String) = 
+  def sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
+                                                 invitationEmailData: InvitationEmailData, icsPartIds: (String, String, String)): (String, String, String) =
 
-    _template_sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
+    _sendDynamicInvitationEmailAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
       case Seq(a, b, c) => (a, b, c)
     }
 

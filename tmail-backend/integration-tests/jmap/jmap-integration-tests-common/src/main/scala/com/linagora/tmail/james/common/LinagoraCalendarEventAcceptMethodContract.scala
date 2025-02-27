@@ -18,8 +18,8 @@
 
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract.DEFAULT_INVITATION_DATA
-import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendInvitationEmailToBobAndGetIcsBlobIds, template_sendInvitationEmailToBobAndGetIcsBlobIds}
+import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract.{ANDRE_USER, DEFAULT_INVITATION_DATA}
+import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendInvitationEmailToBobAndGetIcsBlobIds, sendDynamicInvitationEmailAndGetIcsBlobIds}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -48,6 +48,8 @@ object LinagoraCalendarEventAcceptMethodContract {
   private val DEFAULT_INVITATION_DATA: InvitationEmailData = InvitationEmailData(
     sender = User("ALICE", ALICE.asString(), ALICE_PASSWORD),
     receiver = User("BOB", BOB.asString(), BOB_PASSWORD))
+
+  private val ANDRE_USER: User = User("ANDRE", ANDRE.asString(), ANDRE_PASSWORD)
 }
 trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
@@ -73,7 +75,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
     val blobId: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     val request: String =
@@ -130,7 +132,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
          |      "blobIds": [ "$missingMethodIcsBlobId" ]
          |    },
          |    "c1"]]
@@ -154,7 +156,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
            |        "notAccepted": {
            |            "$missingMethodIcsBlobId": {
            |                "type": "invalidPatch",
@@ -181,7 +183,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
          |      "blobIds": [ "$missingOrganizerIcsBlobId" ]
          |    },
          |    "c1"]]
@@ -205,7 +207,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
            |        "notAccepted": {
            |            "$missingOrganizerIcsBlobId": {
            |                "type": "invalidPatch",
@@ -232,7 +234,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
          |      "blobIds": [ "$missingAttendeeIcsBlobId" ]
          |    },
          |    "c1"]]
@@ -256,7 +258,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
            |        "accepted": [ "$missingAttendeeIcsBlobId" ]
            |    },
            |    "c1"
@@ -278,7 +280,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
          |      "blobIds": [ "$missingVEventIcsBlobId" ]
          |    },
          |    "c1"]]
@@ -302,7 +304,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
            |        "notAccepted": {
            |            "$missingVEventIcsBlobId": {
            |                "type": "invalidPatch",
@@ -329,7 +331,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
          |      "blobIds": [ "$notFoundBlobId" ]
          |    },
          |    "c1"]]
@@ -352,7 +354,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
            |        "notFound": [ "$notFoundBlobId" ]
            |    }, "c1"
            |]""".stripMargin)
@@ -363,7 +365,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
     val notParsableBlobId: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "2")
 
     val request: String =
@@ -414,7 +416,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
     val (notAcceptedId, notFoundBlobId, blobId) =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartIds = ("2", "99999", "3"))
 
     val request: String =
@@ -591,7 +593,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
       .addUser(ANDRE.asString(), ANDRE_PASSWORD)
 
     val blobId: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     val request: String =
@@ -608,7 +610,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |    "c1"]]
          |}""".stripMargin
 
-    val response = `given`(buildRequestSpecification(server, DEFAULT_INVITATION_DATA.sender))
+    val response = `given`(buildRequestSpecification(server, ANDRE_USER))
       .body(request)
     .when
       .post
@@ -641,12 +643,11 @@ trait LinagoraCalendarEventAcceptMethodContract {
       .addUser(ANDRE.asString(), ANDRE_PASSWORD)
 
     val blobId: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
 
-    val bobAccountId = ACCOUNT_ID
     val request: String =
       s"""{
          |  "using": [
@@ -655,13 +656,13 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$bobAccountId",
+         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
          |}""".stripMargin
 
-    val response = `given`(buildRequestSpecification(server, User(ANDRE.getLocalPart, ANDRE.asString(), ANDRE_PASSWORD)))
+    val response = `given`(buildRequestSpecification(server, ANDRE_USER))
       .body(request)
     .when
       .post
@@ -679,7 +680,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
            |        "accepted": [ "$blobId" ]
            |    },
            |    "c1"
@@ -702,7 +703,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
          |      "blobIds":  $blogIdsJson
          |    },
          |    "c1"]]
@@ -792,7 +793,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
     val blobId: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     `given`
@@ -821,7 +822,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
     val blobId: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     val response =  `given`
@@ -866,7 +867,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
     val blobId: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     val request: String =
@@ -917,7 +918,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
     val senderInboxId = server.getProbe(classOf[MailboxProbeImpl])
       .createMailbox(MailboxPath.inbox(DEFAULT_INVITATION_DATA.sender.username))
 
-    val blobId = template_sendInvitationEmailToBobAndGetIcsBlobIds(
+    val blobId = sendDynamicInvitationEmailAndGetIcsBlobIds(
       server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     `given`
@@ -1029,9 +1030,11 @@ trait LinagoraCalendarEventAcceptMethodContract {
   def mailReplyShouldSupportI18nWhenLanguageRequest(server: GuiceJamesServer): Unit = {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
-    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
-    val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAndreInviteBobIcsAttachment.eml", icsPartId = "3")
+    val senderInboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(MailboxPath.inbox(DEFAULT_INVITATION_DATA.sender.username))
+
+    val blobId = sendDynamicInvitationEmailAndGetIcsBlobIds(
+      server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     `given`
       .body( s"""{
@@ -1041,7 +1044,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
                 |  "methodCalls": [[
                 |    "CalendarEvent/accept",
                 |    {
-                |      "accountId": "$ACCOUNT_ID",
+                |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
                 |      "blobIds": [ "$blobId" ],
                 |      "language": "fr"
                 |    },
@@ -1059,7 +1062,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |		[
            |            "CalendarEvent/accept",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
            |                "accepted": [ "$blobId" ]
            |            },
            |            "c1"
@@ -1069,16 +1072,16 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
     awaitAtMostTenSeconds.untilAsserted { () =>
       val response: String =
-        `given`(buildRequestSpecification(server, User(ANDRE.getLocalPart, ANDRE.asString(), ANDRE_PASSWORD)))
+        `given`(buildRequestSpecification(server, DEFAULT_INVITATION_DATA.sender))
           .body( s"""{
                     |    "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
                     |    "methodCalls": [
                     |        [
                     |            "Email/query",
                     |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "accountId": "${DEFAULT_INVITATION_DATA.sender.accountId}",
                     |                "filter": {
-                    |                    "inMailbox": "${andreInboxId.serialize}"
+                    |                    "inMailbox": "${senderInboxId.serialize}"
                     |                }
                     |            },
                     |            "c1"
@@ -1086,7 +1089,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
                     |        [
                     |            "Email/get",
                     |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "accountId": "${DEFAULT_INVITATION_DATA.sender.accountId}",
                     |                "properties": [ "subject", "hasAttachment", "attachments", "preview" ],
                     |                "#ids": {
                     |                    "resultOf": "c1",
@@ -1118,7 +1121,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 883,
+             |            "size": 882,
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -1126,7 +1129,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |        {
              |            "charset": "us-ascii",
              |            "disposition": "attachment",
-             |            "size": 883,
+             |            "size": 882,
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
@@ -1142,7 +1145,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
     val blobId: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
     val blobIdWithoutMessageId: String = "abcd123"
 
@@ -1191,10 +1194,10 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, DEFAULT_INVITATION_DATA)
 
     val blobIdFromMessage1: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
     val blobIdFromMessage2: String =
-      template_sendInvitationEmailToBobAndGetIcsBlobIds(
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
 
     val request: String =
