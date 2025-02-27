@@ -63,12 +63,11 @@ object LinagoraCalendarEventMethodContractUtilities {
   def _template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
                                                          invitationEmailData: InvitationEmailData, icsPartIds: String*): Seq[String] = {
 
-    def searchReceiverInboxForNewMessages(): Optional[MessageId] = {
+    def searchReceiverInboxForNewMessages(): Optional[MessageId] = 
       server.getProbe(classOf[MailboxProbeImpl])
         .searchMessage(
           MultimailboxesSearchQuery.from(
             SearchQuery.of(SearchQuery.all)).build, invitationEmailData.receiver.username.asString(), 1).stream().findAny()
-    }
 
     val templateAsString = ClassLoaderUtils.getSystemResourceAsString(invitationEmailTemplate)
 
