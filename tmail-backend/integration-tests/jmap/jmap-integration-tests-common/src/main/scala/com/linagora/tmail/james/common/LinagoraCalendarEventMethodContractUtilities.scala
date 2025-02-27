@@ -102,20 +102,18 @@ object LinagoraCalendarEventMethodContractUtilities {
   }
 
   def template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
-                                                        invitationEmailData: InvitationEmailData, icsPartIds: (String, String)): (String, String) = {
+                                                        invitationEmailData: InvitationEmailData, icsPartIds: (String, String)): (String, String) = 
 
     _template_sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartIds._1, icsPartIds._2) match {
       case Seq(a, b) => (a, b)
     }
-  }
 
   def template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
-                                                        invitationEmailData: InvitationEmailData, icsPartIds: (String, String, String)): (String, String, String) = {
+                                                        invitationEmailData: InvitationEmailData, icsPartIds: (String, String, String)): (String, String, String) = 
 
     _template_sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
       case Seq(a, b, c) => (a, b, c)
     }
-  }
 
   private def _sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEml: String,
                                                 icsPartIds: String*): Seq[String] = {
