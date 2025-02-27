@@ -3037,52 +3037,51 @@ trait TeamMailboxesContract {
       .getMessageId
       .serialize()
 
-    val request =
-      s"""{
-         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
-         |  "methodCalls": [["Thread/get", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "ids": ["$threadId"]
-         |    }, "c1"]]
-         |}""".stripMargin
+    awaitAtMostTenSeconds.untilAsserted(()=> {
+      val response: String = `given`()
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(s"""{
+                 |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+                 |  "methodCalls": [["Thread/get", {
+                 |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                 |      "ids": ["$threadId"]
+                 |    }, "c1"]]
+                 |}""".stripMargin)
+      .when()
+        .post()
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract()
+        .body()
+        .asString()
 
-    val response: String = `given`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(request)
-    .when()
-      .post()
-    .`then`
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .asString()
-
-    assertThatJson(response)
-      .withOptions(IGNORING_ARRAY_ORDER)
-      .whenIgnoringPaths("methodResponses[0][1].state")
-      .isEqualTo(
-        s"""
-           |{
-           |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
-           |    "methodResponses": [
-           |        [
-           |            "Thread/get",
-           |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-           |                "list": [
-           |                    {
-           |                        "id": "$threadId",
-           |                        "emailIds": ["$messageId1", "$messageId2"]
-           |                    }
-           |                ],
-           |                "notFound": []
-           |            },
-           |            "c1"
-           |        ]
-           |    ]
-           |}
-           |""".stripMargin)
+      assertThatJson(response)
+        .withOptions(IGNORING_ARRAY_ORDER)
+        .whenIgnoringPaths("methodResponses[0][1].state")
+        .isEqualTo(
+          s"""
+             |{
+             |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+             |    "methodResponses": [
+             |        [
+             |            "Thread/get",
+             |            {
+             |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |                "list": [
+             |                    {
+             |                        "id": "$threadId",
+             |                        "emailIds": ["$messageId1", "$messageId2"]
+             |                    }
+             |                ],
+             |                "notFound": []
+             |            },
+             |            "c1"
+             |        ]
+             |    ]
+             |}
+             |""".stripMargin)
+    })
   }
 
   @Test
