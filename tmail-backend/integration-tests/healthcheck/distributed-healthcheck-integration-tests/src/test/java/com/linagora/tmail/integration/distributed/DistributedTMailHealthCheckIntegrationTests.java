@@ -93,4 +93,24 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
 
         assertThat(listComponentNames).containsExactlyInAnyOrder("IMAPHealthCheck", "Cassandra backend");
     }
+
+    @Test
+    void rabbitEventBusConsumerHealthCheckShouldWork(GuiceJamesServer jamesServer) {
+        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
+        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
+
+        List<String> listComponentNames =
+            given()
+                .queryParam("check", "EventbusConsumers-mailboxEvent")
+                .when()
+                .get("/healthcheck")
+                .then()
+                .statusCode(HttpStatus.OK_200)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList("checks.componentName", String.class);
+
+        assertThat(listComponentNames).containsExactlyInAnyOrder("EventbusConsumers-mailboxEvent");
+    }
 }
