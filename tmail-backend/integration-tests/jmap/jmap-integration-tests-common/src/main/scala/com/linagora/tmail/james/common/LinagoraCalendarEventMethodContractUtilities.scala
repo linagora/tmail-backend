@@ -93,12 +93,11 @@ object LinagoraCalendarEventMethodContractUtilities {
     icsPartIds.map(partId => s"${messageId.serialize()}_$partId")
   }
 
-  def template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String, invitationEmailData: InvitationEmailData, icsPartId: String): String = {
+  def template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String, invitationEmailData: InvitationEmailData, icsPartId: String): String = 
 
     _template_sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartId) match {
       case Seq(a) => (a)
     }
-  }
 
   def template_sendInvitationEmailToBobAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
                                                         invitationEmailData: InvitationEmailData, icsPartIds: (String, String)): (String, String) = 
