@@ -37,11 +37,11 @@ import org.testcontainers.containers.ContainerState;
 public class DockerOpenPaasExtensionTest {
 
     @RegisterExtension
-    static DockerOpenPaasExtension dockerOpenPaasExtension = new DockerOpenPaasExtension();
+    static DockerOpenPaasExtension dockerOpenPaasExtension = new DockerOpenPaasExtension(DockerOpenPaasSetupSingleton.singleton);
 
     @Test
     void allServersShouldStartSuccessfully() {
-       assertTrue(dockerOpenPaasExtension.getDockerOpenPaasSetupSingleton().getAllContainers()
+       assertTrue(dockerOpenPaasExtension.getDockerOpenPaasSetup().getAllContainers()
            .stream().allMatch(ContainerState::isRunning));
     }
 

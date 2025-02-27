@@ -32,9 +32,11 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
 public class DockerOpenPaasExtension implements ParameterResolver {
+    private final DockerOpenPaasSetup dockerOpenPaasSetup;
 
-    // Ensuring DockerOpenPaasSetupSingleton is loaded to classpath
-    private static DockerOpenPaasSetup dockerOpenPaasSetupSingleton = DockerOpenPaasSetupSingleton.singleton;
+    public DockerOpenPaasExtension(DockerOpenPaasSetup dockerOpenPaasSetup) {
+        this.dockerOpenPaasSetup = dockerOpenPaasSetup;
+    }
 
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
@@ -43,11 +45,11 @@ public class DockerOpenPaasExtension implements ParameterResolver {
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return DockerOpenPaasSetupSingleton.singleton;
+        return dockerOpenPaasSetup;
     }
 
-    public DockerOpenPaasSetup getDockerOpenPaasSetupSingleton() {
-        return DockerOpenPaasSetupSingleton.singleton;
+    public DockerOpenPaasSetup getDockerOpenPaasSetup() {
+        return dockerOpenPaasSetup;
     }
 
     public OpenPaasUser newTestUser() {

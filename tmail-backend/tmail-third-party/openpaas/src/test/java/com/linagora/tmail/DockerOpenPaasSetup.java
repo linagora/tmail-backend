@@ -65,12 +65,24 @@ public class DockerOpenPaasSetup {
         return environment.getContainerByServiceName("openpaas").orElseThrow();
     }
 
+    public String getOpenPaasIpAddress() {
+        return TestContainersUtils.getContainerPrivateIpAddress(getOpenPaasContainer());
+    }
+
     public ContainerState getRabbitMqContainer() {
         return environment.getContainerByServiceName("rabbitmq").orElseThrow();
     }
 
+    public String getRabbitMqIpAddress() {
+        return TestContainersUtils.getContainerPrivateIpAddress(getRabbitMqContainer());
+    }
+
     public ContainerState getSabreDavContainer() {
         return environment.getContainerByServiceName("sabre_dav").orElseThrow();
+    }
+
+    public String getSabreDavIpAddress() {
+        return TestContainersUtils.getContainerPrivateIpAddress(getSabreDavContainer());
     }
 
     public ContainerState getMongoDBContainer() {
