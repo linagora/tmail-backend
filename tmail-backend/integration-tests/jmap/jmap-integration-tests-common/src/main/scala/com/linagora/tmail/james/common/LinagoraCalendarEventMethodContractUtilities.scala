@@ -78,8 +78,6 @@ object LinagoraCalendarEventMethodContractUtilities {
 
     val mail = emailTemplate.execute(invitationEmailData)
 
-    println(mail)
-
     new SMTPMessageSender(invitationEmailData.sender.username.getDomainPart.get().asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)
       .authenticate(invitationEmailData.sender.username.asString(), invitationEmailData.sender.password)
