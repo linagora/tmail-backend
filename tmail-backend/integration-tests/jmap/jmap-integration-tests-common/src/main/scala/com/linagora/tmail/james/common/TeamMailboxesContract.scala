@@ -33,6 +33,7 @@ import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
+import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
@@ -64,7 +65,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.hamcrest.Matchers
-import org.hamcrest.Matchers.{equalTo, hasSize}
+import org.hamcrest.Matchers.{containsString, equalTo, hasKey, hasSize}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsArray, Json}
 import sttp.capabilities.WebSockets
@@ -1092,8 +1093,8 @@ trait TeamMailboxesContract {
            |      "accountId":"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |      "notUpdated":{
            |        "$id1":{
-           |          "type":"notFound",
-           |          "description":"#TeamMailbox:team-mailbox@domain.tld:marketing"
+           |          "type":"forbidden",
+           |          "description":"Invalid change to a delegated mailbox"
            |        }
            |      }
            |    },
@@ -1339,7 +1340,7 @@ trait TeamMailboxesContract {
              |                "maySetSeen": true,
              |                "maySetKeywords": true,
              |                "mayCreateChild": false,
-             |                "mayRename": false,
+             |                "mayRename": true,
              |                "mayDelete": true,
              |                "maySubmit": false
              |              },
@@ -1598,7 +1599,7 @@ trait TeamMailboxesContract {
   }
 
   @Test
-  def movingATeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
+  def movingASystemMailboxOfTeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
@@ -1651,8 +1652,8 @@ trait TeamMailboxesContract {
            |      "accountId":"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |      "notUpdated":{
            |        "$id1":{
-           |          "type":"notFound",
-           |          "description":"#TeamMailbox:team-mailbox@domain.tld:marketing.Sent.INBOX"
+           |          "type":"forbidden",
+           |          "description":"Invalid change to a delegated mailbox"
            |        }
            |      }
            |    },
@@ -1723,7 +1724,7 @@ trait TeamMailboxesContract {
            |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
            |                "notUpdated": {
            |                    "$id1": {
-           |                        "type": "invalidArguments",
+           |                        "type": "forbidden",
            |                        "description": "Invalid change to a delegated mailbox"
            |                    }
            |                }
@@ -3512,6 +3513,439 @@ trait TeamMailboxesContract {
            |			},
            |			"c1"]]
            |}""".stripMargin)
+  }
+
+  @Test
+  def shouldRenameCustomMailboxSuccessByMember(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val teamMailboxId: String = mailboxId(server, teamMailbox.mailboxPath)
+
+    val childMailboxId: String = createTeamMailbox(teamMailboxId,"ChildOfTopMailbox" )
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/set",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "update": {
+               |                    "$childMailboxId": {
+               |                      "name": "newChild1"
+               |                    }
+               |                }
+               |           },
+               |    "c1"
+               |       ]]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].updated", hasKey(childMailboxId))
+
+    val response : String = given()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/get",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "ids": ["$childMailboxId"]
+               |           },
+               |    "c1"
+               |       ]]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .withOptions(IGNORING_ARRAY_ORDER)
+      .whenIgnoringPaths("methodResponses[0][1].state",
+        "methodResponses[1][1].state",
+        "methodResponses[0][1].newState",
+        "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""
+          |{
+          |    "sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
+          |    "methodResponses": [
+          |        [
+          |            "Mailbox/get",
+          |            {
+          |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+          |                "state": "2eb3e9ee-45d7-429d-b8d8-9a9a0c44d577",
+          |                "list": [
+          |                    {
+          |                        "id": "$childMailboxId",
+          |                        "name": "newChild1",
+          |                        "parentId": "$teamMailboxId",
+          |                        "sortOrder": 1000,
+          |                        "totalEmails": 0,
+          |                        "unreadEmails": 0,
+          |                        "totalThreads": 0,
+          |                        "unreadThreads": 0,
+          |                        "myRights": {
+          |                            "mayReadItems": true,
+          |                            "mayAddItems": true,
+          |                            "mayRemoveItems": true,
+          |                            "maySetSeen": true,
+          |                            "maySetKeywords": true,
+          |                            "mayCreateChild": false,
+          |                            "mayRename": true,
+          |                            "mayDelete": true,
+          |                            "maySubmit": false
+          |                        },
+          |                        "isSubscribed": true,
+          |                        "namespace": "TeamMailbox[marketing@domain.tld]",
+          |                        "rights": {
+          |                            "bob@domain.tld": [ "e", "i", "l", "p", "r", "s", "t", "w", "x" ]
+          |                       }
+          |                    }
+          |                ],
+          |                "notFound": [
+          |                    
+          |                ]
+          |            },
+          |            "c1"
+          |        ]
+          |    ]
+          |}""".stripMargin)
+  }
+
+  @Test
+  def shouldNotRenameMailboxWhenUserIsNotMember(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val teamMailboxId: String = mailboxId(server, teamMailbox.mailboxPath)
+
+    val childMailboxId: String = createTeamMailbox(teamMailboxId,"ChildOfTopMailbox" )
+
+    server.getProbe(classOf[TeamMailboxProbe])
+      .removeMember(teamMailbox, BOB)
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/set",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "update": {
+               |                    "$childMailboxId": {
+               |                      "name": "newChild1"
+               |                    }
+               |                }
+               |           },
+               |    "c1"
+               |       ]]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].notUpdated", hasKey(childMailboxId))
+      .body("methodResponses[0][1].notUpdated." + childMailboxId, jsonEquals(
+        s"""{
+           |  "type": "notFound",
+           |  "description": "$childMailboxId can not be found"
+           |}""".stripMargin))
+  }
+
+  @Test
+  def shouldNotRenameToExistMailboxPath(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    val teamMailboxId: String = mailboxId(server, teamMailbox.mailboxPath)
+    val childMailboxId1: String = createTeamMailbox(teamMailboxId, "ChildOfTopMailbox")
+    val existMailboxName = "ChildOfTopMailboxExist"
+    val childMailboxId2: String = createTeamMailbox(teamMailboxId, existMailboxName)
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "urn:ietf:params:jmap:mail",
+           |    "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [[
+           |           "Mailbox/set",
+           |           {
+           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "update": {
+           |                    "$childMailboxId1": {
+           |                      "name": "$existMailboxName"
+           |                    }
+           |                }
+           |           },
+           |    "c1"
+           |       ]]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].notUpdated", hasKey(childMailboxId1));
+  }
+
+  @Test
+  def shouldMoveMailboxToAnotherTeamMailboxSuccessByMember(server: GuiceJamesServer): Unit = {
+    val marketingMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val saleMailbox = TeamMailbox(DOMAIN, TeamMailboxName("sale"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(marketingMailbox)
+      .create(saleMailbox)
+      .addMember(marketingMailbox, BOB)
+      .addMember(saleMailbox, BOB)
+
+    val marketingMailboxId: String = mailboxId(server, marketingMailbox.mailboxPath)
+    val saleMailboxId: String = mailboxId(server, saleMailbox.mailboxPath)
+
+    val childMarketingMailboxId: String = createTeamMailbox(marketingMailboxId, "child1")
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/set",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "update": {
+               |                  "$childMarketingMailboxId": {
+               |                      "parentId": "$saleMailboxId"
+               |                   }
+               |                }
+               |           },
+               |       "c1"]
+               |    ]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].updated", hasKey(childMarketingMailboxId))
+  }
+
+  @Test
+  def shouldMoveCustomFolderFromTeamMailboxToOwnerMailbox(server: GuiceJamesServer): Unit = {
+    val marketingMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(marketingMailbox)
+      .addMember(marketingMailbox, BOB)
+
+    val marketingMailboxId: String = mailboxId(server, marketingMailbox.mailboxPath)
+    val childMarketingMailboxId: String = createTeamMailbox(marketingMailboxId, "child1")
+
+    val inboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(MailboxPath.inbox(BOB)).serialize()
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/set",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "update": {
+               |                  "$childMarketingMailboxId": {
+               |                      "parentId": "$inboxId",
+               |                      "name": "newName1"
+               |                   }
+               |                }
+               |           },
+               |       "c1"]
+               |    ]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].updated", hasKey(childMarketingMailboxId))
+
+    given()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/get",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "ids": ["$childMarketingMailboxId"]
+               |           },
+               |    "c1"
+               |       ]]
+               |}""".stripMargin)
+      .when()
+      .post()
+      .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].list[0].name", equalTo("newName1"))
+      .body("methodResponses[0][1].list[0].namespace", equalTo("Personal"))
+      .body("methodResponses[0][1].list[0].parentId", equalTo(inboxId))
+  }
+
+  @Test
+  def shouldMoveOwnerMailboxToCustomFolderInTeamMailbox(server: GuiceJamesServer): Unit = {
+    val marketingMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(marketingMailbox)
+      .addMember(marketingMailbox, BOB)
+
+    val marketingMailboxId: String = mailboxId(server, marketingMailbox.mailboxPath)
+    val ownerMailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(MailboxPath.inbox(BOB).child("childOfOwner", '.')).serialize()
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/set",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "update": {
+               |                  "$ownerMailboxId": {
+               |                      "parentId": "$marketingMailboxId",
+               |                      "name": "newName1",
+               |                      "sharedWith": {
+               |                        "${BOB.asString()}": ["l", "r"]
+               |                      }
+               |                   }
+               |                }
+               |           },
+               |       "c1"]
+               |    ]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].updated", hasKey(ownerMailboxId))
+
+    Thread.sleep(2000)
+
+    given()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": [
+               |    "urn:ietf:params:jmap:core",
+               |    "urn:ietf:params:jmap:mail",
+               |    "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |           "Mailbox/get",
+               |           {
+               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "ids": ["$ownerMailboxId"]
+               |           },
+               |    "c1"
+               |       ]]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].list[0].name", equalTo("newName1"))
+      .body("methodResponses[0][1].list[0].namespace", equalTo("TeamMailbox[marketing@domain.tld]"))
+      .body("methodResponses[0][1].list[0].parentId", equalTo(marketingMailboxId))
+  }
+
+  private def createTeamMailbox(parentId: String, name: String): String = {
+    val mailboxId: String = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
+               |  "methodCalls": [[
+               |    "Mailbox/set",
+               |    {
+               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "create": { "K39": { "name": "$name", "parentId": "$parentId" } }
+               |    },
+               |    "c1"
+               |  ]]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .extract()
+      .path("methodResponses[0][1].created.K39.id")
+
+    awaitToUpdateRightByListener(mailboxId)
+    mailboxId
+  }
+
+  private def awaitToUpdateRightByListener(mailboxId: String) = {
+    // Verify that bob has the right to delete the mailbox
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      `given`()
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(
+          s"""{
+             |    "using": [
+             |      "urn:ietf:params:jmap:core",
+             |      "urn:ietf:params:jmap:mail",
+             |      "urn:apache:james:params:jmap:mail:shares"],
+             |    "methodCalls": [
+             |             ["Mailbox/get",
+             |           {
+             |             "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |             "ids": ["$mailboxId"]
+             |            },
+             |         "c2"]
+             |
+             |      ]
+             |  }""".stripMargin)
+      .when()
+        .post()
+      .`then`
+        .statusCode(SC_OK)
+        .body("methodResponses[0][1].list[0].myRights.mayDelete", equalTo(true))
+    })
   }
 
   private def authenticatedRequest(server: GuiceJamesServer): RequestT[Identity, Either[String, String], Any] = {
