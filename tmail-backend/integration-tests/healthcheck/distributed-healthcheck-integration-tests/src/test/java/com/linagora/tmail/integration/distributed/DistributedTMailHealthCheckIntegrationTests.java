@@ -20,6 +20,7 @@ package com.linagora.tmail.integration.distributed;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 import java.util.List;
 
@@ -27,6 +28,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.core.healthcheck.ResultStatus;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.utils.WebAdminGuiceProbe;
@@ -95,22 +97,16 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
     }
 
     @Test
-    void rabbitEventBusConsumerHealthCheckShouldWork(GuiceJamesServer jamesServer) {
+    public void rabbitEventBusConsumerHealthCheckShouldWork(GuiceJamesServer jamesServer) {
         WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
 
-        List<String> listComponentNames =
-            given()
-                .queryParam("check", "EventbusConsumers-mailboxEvent")
-                .when()
-                .get("/healthcheck")
-                .then()
-                .statusCode(HttpStatus.OK_200)
-                .extract()
-                .body()
-                .jsonPath()
-                .getList("checks.componentName", String.class);
-
-        assertThat(listComponentNames).containsExactlyInAnyOrder("EventbusConsumers-mailboxEvent");
+        given()
+            .queryParam("check", "EventbusConsumers-mailboxEvent")
+        .when()
+            .get("/healthcheck")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("status", equalTo(ResultStatus.HEALTHY.getValue()));
     }
 }

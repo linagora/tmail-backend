@@ -318,8 +318,8 @@ public class ScheduledReconnectionHandler implements Startable {
     public static final ImmutableList<String> QUEUES_TO_MONITOR = new ImmutableList.Builder<String>()
         .add("JamesMailQueue-workqueue-spool",
         "JamesMailQueue-workqueue-outgoing",
-        "mailboxEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
-        "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
+        "mailboxEvent-workQueue-org.apache.james.events.GroupRegistrationHandlerGroup",
+        "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandlerGroup",
         "deleted-message-vault-work-queue",
         "openpaas-contacts-queue-add",
         "openpaas-contacts-queue-update",
