@@ -44,9 +44,9 @@ case class User(name: String, email: String, password: String) {
   lazy val accountId: String = AccountId.from(username).right.get.id.value
 }
 
-case class InvitationEmailData(sender: User, receiver: User)
+case class EventInvitation(sender: User, receiver: User)
 
-object InvitationEmailData {
+object EventInvitation {
   def base64Encode: Mustache.Lambda = (frag: Template#Fragment, out: Writer) => {
     val writer = new StringWriter
     frag.execute(writer)
@@ -62,7 +62,7 @@ object LinagoraCalendarEventMethodContractUtilities {
     .await
 
   def _sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
-                                                  invitationEmailData: InvitationEmailData, icsPartIds: String*): Seq[String] = {
+                                                  invitationEmailData: EventInvitation, icsPartIds: String*): Seq[String] = {
 
     def searchReceiverInboxForNewMessages(): Optional[MessageId] =
       server.getProbe(classOf[MailboxProbeImpl])
@@ -92,21 +92,21 @@ object LinagoraCalendarEventMethodContractUtilities {
     icsPartIds.map(partId => s"${messageId.serialize()}_$partId")
   }
 
-  def sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String, invitationEmailData: InvitationEmailData, icsPartId: String): String =
+  def sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String, invitationEmailData: EventInvitation, icsPartId: String): String =
 
     _sendDynamicInvitationEmailAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartId) match {
       case Seq(a) => (a)
     }
 
   def sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
-                                                 invitationEmailData: InvitationEmailData, icsPartIds: (String, String)): (String, String) =
+                                                 invitationEmailData: EventInvitation, icsPartIds: (String, String)): (String, String) =
 
     _sendDynamicInvitationEmailAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartIds._1, icsPartIds._2) match {
       case Seq(a, b) => (a, b)
     }
 
   def sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
-                                                 invitationEmailData: InvitationEmailData, icsPartIds: (String, String, String)): (String, String, String) =
+                                                 invitationEmailData: EventInvitation, icsPartIds: (String, String, String)): (String, String, String) =
 
     _sendDynamicInvitationEmailAndGetIcsBlobIds(server, invitationEmailTemplate, invitationEmailData, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
       case Seq(a, b, c) => (a, b, c)

@@ -25,14 +25,17 @@ import java.util.UUID;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.common.DefaultEventInvitationParameterResolver;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
+@ExtendWith(DefaultEventInvitationParameterResolver.class)
 public class MemoryLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension

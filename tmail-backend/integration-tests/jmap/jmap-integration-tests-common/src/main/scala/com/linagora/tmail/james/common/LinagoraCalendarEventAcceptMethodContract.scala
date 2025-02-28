@@ -45,7 +45,7 @@ import org.junit.jupiter.api.{Tag, Test}
 import play.api.libs.json.Json
 
 object LinagoraCalendarEventAcceptMethodContract {
-  private val DEFAULT_INVITATION_DATA: InvitationEmailData = InvitationEmailData(
+  private val DEFAULT_INVITATION_DATA: EventInvitation = EventInvitation(
     sender = User("ALICE", ALICE.asString(), ALICE_PASSWORD),
     receiver = User("BOB", BOB.asString(), BOB_PASSWORD))
 
@@ -55,11 +55,11 @@ object LinagoraCalendarEventAcceptMethodContract {
 trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
 
-  private def setupServer(server: GuiceJamesServer, invitation: InvitationEmailData) = {
+  private def setupServer(server: GuiceJamesServer, invitation: EventInvitation) = {
     server.getProbe(classOf[DataProbeImpl])
       .fluent
-      .addDomain(invitation.sender.username.getDomainPart.get().asString())
-      .addDomain(invitation.receiver.username.getDomainPart.get().asString())
+      .addDomainIfNotExists(invitation.sender.username.getDomainPart.get().asString())
+      .addDomainIfNotExists(invitation.receiver.username.getDomainPart.get().asString())
       .addUser(invitation.sender.username.asString(), invitation.sender.password)
       .addUser(invitation.receiver.username.asString(), invitation.receiver.password)
 
@@ -72,12 +72,12 @@ trait LinagoraCalendarEventAcceptMethodContract {
   }
 
   @Test
-  def acceptShouldSucceed(server: GuiceJamesServer): Unit = {
-    setupServer(server, DEFAULT_INVITATION_DATA)
+  def acceptShouldSucceed(server: GuiceJamesServer, invitationEmailData: EventInvitation): Unit = {
+    setupServer(server, invitationEmailData)
 
     val blobId: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
-        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", invitationEmailData, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -87,7 +87,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
+         |      "accountId": "${invitationEmailData.receiver.accountId}",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -111,7 +111,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
+           |        "accountId": "${invitationEmailData.receiver.accountId}",
            |        "accepted": [ "$blobId" ]
            |    },
            |    "c1"
