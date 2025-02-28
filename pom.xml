@@ -19,6 +19,7 @@
         <module>james-project</module>
         <module>logback-contrib</module>
         <module>tmail-backend</module>
+        <module>tmail-backend/integration-tests/jmap/distributed-jmap-openpaas-integration-tests</module>
     </modules>
 
     <dependencyManagement>
