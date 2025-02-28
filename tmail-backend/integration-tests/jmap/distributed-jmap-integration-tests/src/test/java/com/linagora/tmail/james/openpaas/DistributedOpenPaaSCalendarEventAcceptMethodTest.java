@@ -16,35 +16,38 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james;
-
-import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerExtension;
-import org.apache.james.SearchConfiguration;
-import org.apache.james.backends.redis.RedisExtension;
-import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
-import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
-import org.apache.james.mailbox.model.MessageId;
-import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.junit.jupiter.api.extension.RegisterExtension;
+package com.linagora.tmail.james.openpaas;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.linagora.tmail.DockerOpenPaasExtension;
+import com.linagora.tmail.DockerOpenPaasSetupSingleton;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
+import com.linagora.tmail.OpenPaasSetupTestModule;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.james.app.CassandraExtension;
-import com.linagora.tmail.james.app.DistributedJamesConfiguration;
-import com.linagora.tmail.james.app.DistributedServer;
-import com.linagora.tmail.james.app.EventBusKeysChoice;
-import com.linagora.tmail.james.app.RabbitMQExtension;
-import com.linagora.tmail.james.common.DownloadAllContract;
+import com.linagora.tmail.james.app.*;
+import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+import org.apache.james.JamesServerBuilder;
+import org.apache.james.JamesServerExtension;
+import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-public class DistributedDownloadAllRouteTest implements DownloadAllContract {
-    public static final CassandraMessageId.Factory MESSAGE_ID_FACTORY = new CassandraMessageId.Factory();
+@ExtendWith(OpenPaasEventInvitationParameterResolver.class)
+public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
+    @RegisterExtension
+    @Order(1)
+    static DockerOpenPaasExtension openPaasExtension = new DockerOpenPaasExtension(
+        DockerOpenPaasSetupSingleton.singleton);
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+    @Order(2)
+    static JamesServerExtension
+        testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
@@ -58,20 +61,20 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .openPassModuleChooserConfiguration(
-                        new OpenPaasModuleChooserConfiguration(true, false, false))
-            .searchConfiguration(SearchConfiguration.scanning())
+                new OpenPaasModuleChooserConfiguration(true, true, true))
             .build())
+        .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new DelegationProbeModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule())
+            .overrideWith(new OpenPaasSetupTestModule()))
         .build();
 
     @Override
-    public MessageId randomMessageId() {
-        return MESSAGE_ID_FACTORY.of(Uuids.timeBased());
+    public String randomBlobId() {
+        return Uuids.timeBased().toString();
     }
 }
