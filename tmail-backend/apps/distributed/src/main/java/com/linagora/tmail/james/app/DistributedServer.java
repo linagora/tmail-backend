@@ -36,7 +36,7 @@ import org.apache.james.OpenSearchHighlightModule;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisHealthCheck;
 import org.apache.james.core.healthcheck.HealthCheck;
-import org.apache.james.events.RabbitMQEventBus;
+import org.apache.james.events.EventBus;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.JMAPListenerModule;
@@ -502,7 +502,7 @@ public class DistributedServer {
 
     private static class FirebaseListenerDistributedModule extends AbstractModule {
         @ProvidesIntoSet
-        InitializationOperation registerFirebaseListener(@Named(InjectionKeys.JMAP) RabbitMQEventBus instance, FirebasePushListener firebasePushListener) {
+        InitializationOperation registerFirebaseListener(@Named(InjectionKeys.JMAP) EventBus instance, FirebasePushListener firebasePushListener) {
             return InitilizationOperationBuilder
                 .forClass(FirebasePushListenerRegister.class)
                 .init(() -> instance.register(firebasePushListener));
