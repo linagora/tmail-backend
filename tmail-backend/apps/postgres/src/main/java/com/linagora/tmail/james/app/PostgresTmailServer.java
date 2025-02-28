@@ -30,6 +30,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
 import org.apache.james.OpenSearchHighlightModule;
 import org.apache.james.PostgresJmapModule;
+import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisHealthCheck;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
@@ -134,6 +135,7 @@ import com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreM
 import com.linagora.tmail.encrypted.postgres.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
+import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactModule;
@@ -449,7 +451,7 @@ public class PostgresTmailServer {
 
     private static Module chooseJmapModule(PostgresTmailConfiguration configuration) {
         if (configuration.jmapEnabled()) {
-            return Modules.combine(chooseJmapEventBusModule(configuration), new JMAPListenerModule());
+            return Modules.combine(chooseJmapEventBusModule(configuration), chooseJmapListenerModule(configuration));
         }
         return binder -> {
         };
@@ -460,6 +462,13 @@ public class PostgresTmailServer {
             return new JMAPEventBusModule();
         }
         return Modules.EMPTY_MODULE;
+    }
+
+    private static Module chooseJmapListenerModule(PostgresTmailConfiguration configuration) {
+        if (configuration.searchConfiguration().getImplementation().equals(SearchConfiguration.Implementation.OpenSearch)) {
+            return new TMailJMAPListenerModule();
+        }
+        return new JMAPListenerModule();
     }
 
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
