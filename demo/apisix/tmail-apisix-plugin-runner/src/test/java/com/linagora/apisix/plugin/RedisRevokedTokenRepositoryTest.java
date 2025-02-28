@@ -23,9 +23,9 @@ import io.lettuce.core.api.sync.RedisStringCommands;
 class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
     static final String REDIS_PASSWORD = "redisSecret1";
 
-    static GenericContainer<?> REDIS_CONTAINER = new GenericContainer<>(DockerImageName.parse("bitnami/redis:7.0.4-debian-11-r25"))
-        .withEnv("REDIS_PASSWORD", REDIS_PASSWORD)
-        .withExposedPorts(6379);
+    static GenericContainer<?> REDIS_CONTAINER = new GenericContainer<>(DockerImageName.parse("apache/kvrocks:2.11.1"))
+        .withCommand("--requirepass", REDIS_PASSWORD)
+        .withExposedPorts(6666);
     RedisRevokedTokenRepository testee;
 
     @BeforeAll
@@ -41,7 +41,7 @@ class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract 
     @BeforeEach
     void beforeEach() {
         RedisStringCommands<String, String> redisStringCommands = AppConfiguration.initRedisCommandStandalone(
-            String.format("%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(6379)),
+            String.format("%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(6666)),
             REDIS_PASSWORD, Duration.ofSeconds(3));
         testee = new RedisRevokedTokenRepository(redisStringCommands, IGNORE_REDIS_ERRORS);
     }
@@ -50,7 +50,7 @@ class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract 
     void afterEach() throws IOException, InterruptedException {
         ContainerHelper.unPause(REDIS_CONTAINER);
 
-        REDIS_CONTAINER.execInContainer("redis-cli", "-a", REDIS_PASSWORD, "flushall");
+        REDIS_CONTAINER.execInContainer("redis-cli", "-p", "6666", "-a", REDIS_PASSWORD, "flushall");
         TimeUnit.MILLISECONDS.sleep(100);
     }
 
@@ -87,7 +87,7 @@ class RedisRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract 
     void existsShouldThrowWhenIgnoreWasNotConfiguredAndRedisError() throws InterruptedException {
         boolean ignoreRedisErrors = false;
         testee = new RedisRevokedTokenRepository(AppConfiguration.initRedisCommandStandalone(
-            String.format("%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(6379)),
+            String.format("%s:%d", REDIS_CONTAINER.getHost(), REDIS_CONTAINER.getMappedPort(6666)),
             REDIS_PASSWORD, Duration.ofSeconds(3)), ignoreRedisErrors);
         ContainerHelper.pause(REDIS_CONTAINER);
         TimeUnit.SECONDS.sleep(1);
