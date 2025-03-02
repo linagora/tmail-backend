@@ -43,6 +43,7 @@ import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
+@ExtendWith(OpenPaasEventInvitationParameterResolver.class)
 public class DistributedLinagoraCalendarEventAcceptMethodTest2 implements LinagoraCalendarEventAcceptMethodContract {
     @RegisterExtension
     @Order(1)

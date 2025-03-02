@@ -72,12 +72,12 @@ trait LinagoraCalendarEventAcceptMethodContract {
   }
 
   @Test
-  def acceptShouldSucceed(server: GuiceJamesServer): Unit = {
-    setupServer(server, DEFAULT_INVITATION_DATA)
+  def acceptShouldSucceed(server: GuiceJamesServer, invitationEmailData: InvitationEmailData): Unit = {
+    setupServer(server, invitationEmailData)
 
     val blobId: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
-        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", DEFAULT_INVITATION_DATA, icsPartId = "3")
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", invitationEmailData, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -87,7 +87,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
+         |      "accountId": "${invitationEmailData.receiver.accountId}",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -111,7 +111,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "${DEFAULT_INVITATION_DATA.receiver.accountId}",
+           |        "accountId": "${invitationEmailData.receiver.accountId}",
            |        "accepted": [ "$blobId" ]
            |    },
            |    "c1"
