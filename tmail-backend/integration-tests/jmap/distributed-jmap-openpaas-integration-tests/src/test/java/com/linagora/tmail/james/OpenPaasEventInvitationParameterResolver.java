@@ -7,7 +7,7 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 
 import com.linagora.tmail.DockerOpenPaasSetupSingleton;
 import com.linagora.tmail.OpenPaasUser;
-import com.linagora.tmail.james.common.InvitationEmailData;
+import com.linagora.tmail.james.common.EventInvitation;
 import com.linagora.tmail.james.common.User;
 
 public class OpenPaasEventInvitationParameterResolver implements ParameterResolver {
@@ -15,7 +15,7 @@ public class OpenPaasEventInvitationParameterResolver implements ParameterResolv
     @Override
     public boolean supportsParameter(ParameterContext parameterContext,
                                      ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext.getParameter().getType() == InvitationEmailData.class;
+        return parameterContext.getParameter().getType() == EventInvitation.class;
     }
 
     @Override
@@ -24,7 +24,7 @@ public class OpenPaasEventInvitationParameterResolver implements ParameterResolv
         OpenPaasUser sender = newOpenPaasUser();
         OpenPaasUser receiver = newOpenPaasUser();
 
-        return new InvitationEmailData(asUser(sender), asUser(receiver));
+        return new EventInvitation(asUser(sender), asUser(receiver));
     }
 
     private OpenPaasUser newOpenPaasUser() {

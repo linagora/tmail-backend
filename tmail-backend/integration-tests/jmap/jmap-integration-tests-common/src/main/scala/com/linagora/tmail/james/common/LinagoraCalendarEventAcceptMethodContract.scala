@@ -45,7 +45,7 @@ import org.junit.jupiter.api.{Tag, Test}
 import play.api.libs.json.Json
 
 object LinagoraCalendarEventAcceptMethodContract {
-  private val DEFAULT_INVITATION_DATA: InvitationEmailData = InvitationEmailData(
+  private val DEFAULT_INVITATION_DATA: EventInvitation = EventInvitation(
     sender = User("ALICE", ALICE.asString(), ALICE_PASSWORD),
     receiver = User("BOB", BOB.asString(), BOB_PASSWORD))
 
@@ -55,7 +55,7 @@ object LinagoraCalendarEventAcceptMethodContract {
 trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
 
-  private def setupServer(server: GuiceJamesServer, invitation: InvitationEmailData) = {
+  private def setupServer(server: GuiceJamesServer, invitation: EventInvitation) = {
     server.getProbe(classOf[DataProbeImpl])
       .fluent
       .addDomain(invitation.sender.username.getDomainPart.get().asString())
@@ -72,7 +72,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
   }
 
   @Test
-  def acceptShouldSucceed(server: GuiceJamesServer, invitationEmailData: InvitationEmailData): Unit = {
+  def acceptShouldSucceed(server: GuiceJamesServer, invitationEmailData: EventInvitation): Unit = {
     setupServer(server, invitationEmailData)
 
     val blobId: String =

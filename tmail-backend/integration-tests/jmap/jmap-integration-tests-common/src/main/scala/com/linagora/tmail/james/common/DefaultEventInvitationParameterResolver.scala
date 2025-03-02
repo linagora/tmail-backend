@@ -6,10 +6,10 @@ import org.junit.jupiter.api.extension.{ExtensionContext, ParameterContext, Para
 class DefaultEventInvitationParameterResolver extends ParameterResolver {
 
   override def supportsParameter(parameterContext: ParameterContext, extensionContext: ExtensionContext): Boolean =
-    parameterContext.getParameter.getType eq classOf[InvitationEmailData]
+    parameterContext.getParameter.getType eq classOf[EventInvitation]
 
   override def resolveParameter(parameterContext: ParameterContext, extensionContext: ExtensionContext): AnyRef =
-    InvitationEmailData(
+    EventInvitation(
       sender = User("ALICE", ALICE.asString(), ALICE_PASSWORD),
       receiver = User("BOB", BOB.asString(), BOB_PASSWORD))
 }
