@@ -1,3 +1,21 @@
+/********************************************************************
+ *  As a subpart of Twake Mail, this file is edited by Linagora.    *
+ *                                                                  *
+ *  https://twake-mail.com/                                         *
+ *  https://linagora.com                                            *
+ *                                                                  *
+ *  This file is subject to The Affero Gnu Public License           *
+ *  version 3.                                                      *
+ *                                                                  *
+ *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
+ *                                                                  *
+ *  This program is distributed in the hope that it will be         *
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
+ *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
+ *  PURPOSE. See the GNU Affero General Public License for          *
+ *  more details.                                                   *
+ ********************************************************************/
+
 package com.linagora.tmail.james;
 
 import org.apache.james.JamesServerBuilder;
@@ -5,9 +23,15 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.linagora.tmail.DockerOpenPaasExtension;
+import com.linagora.tmail.DockerOpenPaasSetupSingleton;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
+import com.linagora.tmail.OpenPaasSetupTestModule;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -21,6 +45,12 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedLinagoraCalendarEventAcceptMethodTest2 implements LinagoraCalendarEventAcceptMethodContract {
     @RegisterExtension
+    @Order(1)
+    static DockerOpenPaasExtension openPaasExtension = new DockerOpenPaasExtension(
+        DockerOpenPaasSetupSingleton.singleton);
+
+    @RegisterExtension
+    @Order(2)
     static JamesServerExtension
         testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
@@ -35,6 +65,8 @@ public class DistributedLinagoraCalendarEventAcceptMethodTest2 implements Linago
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .openPassModuleChooserConfiguration(
+                new OpenPaasModuleChooserConfiguration(true, true, true))
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
@@ -42,7 +74,8 @@ public class DistributedLinagoraCalendarEventAcceptMethodTest2 implements Linago
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule())
+            .overrideWith(new OpenPaasSetupTestModule()))
         .build();
 
     @Override
