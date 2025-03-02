@@ -22,8 +22,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -46,7 +44,7 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
 
     public static Optional<DavCalendarObject> fromDavResponse(DavResponse davResponse) {
         return davResponse.getPropstat().getProp().getCalendarData()
-            .map(DavCalendarObject::normalizeVCalendarData)
+            .map(CalendarData::getValue)
             .map(calendarData -> CalendarEventParsed.parseICal4jCalendar(
                 IOUtils.toInputStream(calendarData, StandardCharsets.UTF_8)))
             .map(calendar ->
@@ -54,14 +52,6 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
                     davResponse.getHref().getValue().map(URI::create).orElseThrow(() ->
                         new DavClientException("Unable to find calendar object Href in dav response: " + davResponse)),
                     calendar, davResponse.getPropstat().getProp().getETag().orElse("ETag_NOT_FOUND")));
-    }
-
-    private static String normalizeVCalendarData(CalendarData calendarData) {
-        return calendarData.getValue()
-            .lines()
-            .map(String::trim)
-            .filter(Predicate.not(String::isBlank))
-            .collect(Collectors.joining("\n"));
     }
 
     public CalendarEventParsed parse() {
