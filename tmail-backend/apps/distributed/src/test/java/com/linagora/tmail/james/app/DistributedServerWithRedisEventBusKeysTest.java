@@ -107,7 +107,7 @@ class DistributedServerWithRedisEventBusKeysTest implements JamesServerConcreteC
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
 
         given()
-            .queryParam("check", "EventbusConsumers-mailboxEvent")
+            .queryParam("check", "EventbusConsumers-mailboxEvent", "EventbusConsumers-jmapEvent")
         .when()
             .get("/healthcheck")
         .then()
