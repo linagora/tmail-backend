@@ -105,6 +105,7 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
         this.redisEventBusConfiguration = redisEventBusConfiguration;
     }
 
+    @Override
     public void start() {
         if (!isRunning && !isStopping) {
 
@@ -119,6 +120,11 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
             keyRegistrationHandler.start();
             isRunning = true;
         }
+    }
+
+    @Override
+    public void restart() {
+        groupRegistrationHandler.restart();
     }
 
     @VisibleForTesting
@@ -218,4 +224,6 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
     public Collection<Group> listRegisteredGroups() {
         return groupRegistrationHandler.registeredGroups();
     }
+
+
 }
