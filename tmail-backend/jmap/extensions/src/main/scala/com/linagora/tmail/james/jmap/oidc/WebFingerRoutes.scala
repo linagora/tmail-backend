@@ -73,6 +73,7 @@ object WebFingerRoutes {
 
 class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends JMAPRoutes {
   private val ENDPOINT: String = ".well-known/webfinger"
+  private val OPENID_CONFIGURATION_ENDPOINT = ".well-known/openid-configuration"
   private val REL = new URI("http://openid.net/specs/connect/1.0/issuer").toURL
 
   override def routes(): stream.Stream[JMAPRoute] =
@@ -82,8 +83,8 @@ class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends J
           .action((req, res) => this.generate(url)(req, res))
           .corsHeaders,
         JMAPRoute.builder
-          .endpoint(Endpoint.ofFixedPath(HttpMethod.GET, "/.well-known/openid-configuration"))
-          .action(JMAPRoutes.redirectTo(url.toString))
+          .endpoint(Endpoint.ofFixedPath(HttpMethod.GET, s"/$OPENID_CONFIGURATION_ENDPOINT"))
+          .action(JMAPRoutes.redirectTo(s"${url.toString}/$OPENID_CONFIGURATION_ENDPOINT"))
           .corsHeaders,
         oidcCorsEndpoint,
         corsEndpoint))
