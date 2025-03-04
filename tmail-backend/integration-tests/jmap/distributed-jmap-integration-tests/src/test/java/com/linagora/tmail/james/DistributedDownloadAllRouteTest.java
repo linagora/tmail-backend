@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james;
 
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
@@ -56,6 +57,8 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .openPassModuleChooserConfiguration(
+                        new OpenPaasModuleChooserConfiguration(true, false, false))
             .searchConfiguration(SearchConfiguration.scanning())
             .build())
         .extension(new CassandraExtension())

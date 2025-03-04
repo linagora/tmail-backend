@@ -1,14 +1,13 @@
-package com.linagora.tmail.james;
-
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
+package com.linagora.tmail.james.openpaas;
 
 import com.linagora.tmail.DockerOpenPaasSetupSingleton;
 import com.linagora.tmail.OpenPaasUser;
 import com.linagora.tmail.james.common.EventInvitation;
 import com.linagora.tmail.james.common.User;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.junit.jupiter.api.extension.ParameterResolver;
 
 public class OpenPaasEventInvitationParameterResolver implements ParameterResolver {
 

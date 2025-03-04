@@ -16,8 +16,18 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james;
+package com.linagora.tmail.james.openpaas;
 
+import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.linagora.tmail.DockerOpenPaasExtension;
+import com.linagora.tmail.DockerOpenPaasSetupSingleton;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
+import com.linagora.tmail.OpenPaasSetupTestModule;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.james.app.*;
+import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
@@ -27,24 +37,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.datastax.oss.driver.api.core.uuid.Uuids;
-import com.linagora.tmail.DockerOpenPaasExtension;
-import com.linagora.tmail.DockerOpenPaasSetupSingleton;
-import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import com.linagora.tmail.OpenPaasSetupTestModule;
-import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.james.app.CassandraExtension;
-import com.linagora.tmail.james.app.DistributedJamesConfiguration;
-import com.linagora.tmail.james.app.DistributedServer;
-import com.linagora.tmail.james.app.DockerOpenSearchExtension;
-import com.linagora.tmail.james.app.EventBusKeysChoice;
-import com.linagora.tmail.james.app.RabbitMQExtension;
-import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
-import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
-
 @ExtendWith(OpenPaasEventInvitationParameterResolver.class)
-public class DistributedLinagoraCalendarEventAcceptMethodTest2 implements LinagoraCalendarEventAcceptMethodContract {
+public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
     @RegisterExtension
     @Order(1)
     static DockerOpenPaasExtension openPaasExtension = new DockerOpenPaasExtension(
