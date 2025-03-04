@@ -35,7 +35,7 @@ class RedisEventBusClientFactory @Singleton() @Inject()
         masterReplicaRedisConfiguration.useSSL, masterReplicaRedisConfiguration.mayBeSSLConfiguration, masterReplicaRedisConfiguration.ioThreads, masterReplicaRedisConfiguration.workerThreads))
     case clusterRedisConfiguration: ClusterRedisConfiguration => redisClientFactory.createClusterClient(clusterRedisConfiguration)
     case sentinelRedisConfiguration: SentinelRedisConfiguration =>
-      redisClientFactory.createStandaloneClient(new StandaloneRedisConfiguration(sentinelRedisConfiguration.redisURI,
+      redisClientFactory.createSentinelClient(new StandaloneRedisConfiguration(sentinelRedisConfiguration.redisURI,
         sentinelRedisConfiguration.useSSL, sentinelRedisConfiguration.mayBeSSLConfiguration, sentinelRedisConfiguration.ioThreads, sentinelRedisConfiguration.workerThreads))
   }
 
