@@ -25,7 +25,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                dir("tmail-backend") {
+                dir("twake-calendar-side-service") {
                     sh 'mvn -B surefire:test'
                 }
             }
@@ -39,58 +39,10 @@ pipeline {
                 }
             }
         }
-        stage('Deliver Docker images') {
-          when {
-            anyOf {
-              branch 'master'
-              buildingTag()
-            }
-          }
-          steps {
-            script {
-              env.DOCKER_TAG = 'branch-master'
-              if (env.TAG_NAME) {
-                env.DOCKER_TAG = env.TAG_NAME
-              }
-
-              echo "Docker tag: ${env.DOCKER_TAG}"
-              // build and push docker images
-              dir("tmail-backend") {
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=distributed-$DOCKER_TAG -pl apps/distributed -X'
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=memory-$DOCKER_TAG -pl apps/memory -X'
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=postgresql-$DOCKER_TAG -pl apps/postgres -X'
-              }
-            }
-          }
-          post {
-              always {
-                  script {
-                      if (env.BRANCH_NAME == "master") {
-                          emailext(
-                                  subject: "[${currentBuild.result}]: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]'",
-                                  body: """
-${currentBuild.result}: Job '${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]:
-Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANCH_NAME}] [${env.BUILD_NUMBER}]</a>'"
-""",
-                                  to: "openpaas-james@linagora.com"
-                          )
-                      }
-                  }
-              }
-          }
-        }
     }
     post {
         always {
             deleteDir() /* clean up our workspace */
-        }
-        success {
-            script {
-                if (env.BRANCH_NAME == "master") {
-                    build (job: 'Gatling Imap build/master', propagate: false, wait: false)
-                    build (job: 'James Gatling build/master', propagate: false, wait: false)
-                }
-            }
         }
     }
 }
