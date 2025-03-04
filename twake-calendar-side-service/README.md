@@ -90,6 +90,10 @@ In addition to this target architecture, in order to allow easy deployment of ou
 Regarding observability, we intend Twake Calendar Side Service to be on par with Twake Mail: structured JSON logs 
 collected via [Loki](https://grafana.com/oss/loki/), metrics gathered by [Prometheus](https://prometheus.io/). 
 
+Implemented APIs:
+ - WebAdmin heathcheck routes
+ - Metrics
+
 ## Credits
 
 Developed with <3 at [LINAGORA](https://linagora.com) !

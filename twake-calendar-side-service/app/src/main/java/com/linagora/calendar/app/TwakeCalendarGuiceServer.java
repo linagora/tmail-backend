@@ -96,9 +96,9 @@ public class TwakeCalendarGuiceServer {
             injector.getInstance(InitializationOperations.class).initModules();
             injector.getInstance(StartUpChecksPerformer.class).performCheck();
             isStartedProbe.notifyStarted();
-            LOGGER.info("JAMES server started in: {}ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
+            LOGGER.info("Twake Calendar side server started in: {}ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
         } catch (Throwable e) {
-            LOGGER.error("Fatal error while starting James", e);
+            LOGGER.error("Fatal error while starting Twake Calendar side server", e);
             if (SHOULD_EXIT_ON_STARTUP_ERROR) {
                 System.exit(1);
             } else {
