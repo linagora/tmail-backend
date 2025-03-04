@@ -109,6 +109,8 @@ public class OpenPaasAmqpForwardAttribute extends GenericMailet {
                     return Mono.empty();
                 })
             .block();
+
+        isInitialized = true;
     }
 
     @Override
