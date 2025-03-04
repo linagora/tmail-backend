@@ -29,13 +29,11 @@ import java.util.stream.Stream;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import jakarta.mail.MessagingException;
 
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.mailet.Attribute;
 import org.apache.mailet.AttributeValue;
 import org.apache.mailet.Mail;
-import org.apache.mailet.MailetConfig;
 import org.apache.mailet.MailetException;
 import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
@@ -73,12 +71,22 @@ import reactor.rabbitmq.Sender;
 public class OpenPaasAmqpForwardAttribute extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasAmqpForwardAttribute.class);
 
-    private final Sender sender;
+    private boolean isInitialized = false;
+    private Sender sender;
+    private OpenPaasRabbitMQChannelPoolHolder openPaasRabbitMQChannelPoolHolder;
+
     private OpenPaasAmqpForwardAttributeConfig config;
 
     @Inject
-    public OpenPaasAmqpForwardAttribute(OpenPaasRabbitMQChannelPoolHolder openPaasRabbitMQChannelPoolHolder)
-        throws MailetException {
+    public OpenPaasAmqpForwardAttribute(OpenPaasRabbitMQChannelPoolHolder openPaasRabbitMQChannelPoolHolder) {
+        this.openPaasRabbitMQChannelPoolHolder = openPaasRabbitMQChannelPoolHolder;
+    }
+
+    private void initializeMailetLazly() throws MailetException {
+        if (isInitialized) {
+            return;
+        }
+
         ReactorRabbitMQChannelPool openPaasRabbitChannelPool =
             openPaasRabbitMQChannelPoolHolder.get().orElseThrow(() ->
                 new MailetException(
@@ -86,12 +94,8 @@ public class OpenPaasAmqpForwardAttribute extends GenericMailet {
         openPaasRabbitChannelPool.start();
 
         sender = openPaasRabbitChannelPool.getSender();
-    }
 
-    @Override
-    public void init(MailetConfig newConfig) throws MessagingException {
-        super.init(newConfig);
-        config = OpenPaasAmqpForwardAttributeConfig.from(newConfig);
+        config = OpenPaasAmqpForwardAttributeConfig.from(getMailetConfig());
 
         ExchangeSpecification exchangeSpecification =
             ExchangeSpecification.exchange(config.exchange().name())
@@ -105,10 +109,13 @@ public class OpenPaasAmqpForwardAttribute extends GenericMailet {
                     return Mono.empty();
                 })
             .block();
+
+        isInitialized = true;
     }
 
     @Override
     public void service(Mail mail) throws MailetException {
+        initializeMailetLazly();
         mail.getAttribute(config.attribute())
             .map(Throwing.function(this::getAttributeContent).sneakyThrow())
             .ifPresent(this::sendContent);
@@ -163,6 +170,7 @@ public class OpenPaasAmqpForwardAttribute extends GenericMailet {
         @com.google.inject.Inject(optional = true)
         @Named(OpenPaasModule.OPENPAAS_INJECTION_KEY)
         ReactorRabbitMQChannelPool openPaasRabbitChannelPool;
+
 
         public Optional<ReactorRabbitMQChannelPool> get() {
             return Optional.ofNullable(openPaasRabbitChannelPool);

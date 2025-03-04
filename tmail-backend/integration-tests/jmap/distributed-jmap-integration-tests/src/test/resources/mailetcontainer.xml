@@ -82,7 +82,7 @@
                 <rawSource>rawIcalendar2</rawSource>
                 <onMailetException>ignore</onMailetException>
             </mailet>
-            <mailet match="SenderIsLocal" class="com.linagora.tmail.mailet.OpenPaasAmqpForwardAttribute">
+            <mailet match="com.linagora.tmail.mailet.IsOpenPaasRabbitMqSetup" class="com.linagora.tmail.mailet.OpenPaasAmqpForwardAttribute">
                 <attribute>icalendarAsJson2</attribute>
                 <exchange>james:events</exchange>
                 <exchange_type>fanout</exchange_type>
