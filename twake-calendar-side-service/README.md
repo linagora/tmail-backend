@@ -18,9 +18,27 @@ We aim for a pragmatic approach by reusing most of the tooling that made Twake m
 
 ## Running it
 
+### Compile and run with CLI
+
+Requires maven 3.9.6 + and JDK 21
+
+In order to compile the application, run:
+
+```bash
+mvn clean install --am --pl :twake-calendar-side-service-app -DskipTests
+```
+
+Then run it with:
+
+```bash
+java -cp twake-calendar-side-service/app/target/twake-calendar-side-service-app-1.0.0-SNAPSHOT.jar com.linagora.calendar.app.TwakeCalendarMain
+```
+
+### Run with docker
+
 TODO
 
-There is currently no way to run Twake Calendar side service but as soon as it is available we will document it here!
+There is currently no way to run Twake Calendar side service with docker but as soon as it is available we will document it here!
 
 ## Configuring it
 

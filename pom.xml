@@ -19,6 +19,7 @@
         <module>james-project</module>
         <module>logback-contrib</module>
         <module>tmail-backend</module>
+        <module>twake-calendar-side-service</module>
     </modules>
 
     <dependencyManagement>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~  As a subpart of Twake Mail, this file is edited by Linagora.   ~
+  ~                                                                 ~
+  ~  https://twake-mail.com/                                        ~
+  ~  https://linagora.com                                           ~
+  ~                                                                 ~
+  ~  This file is subject to The Affero Gnu Public License          ~
+  ~  version 3.                                                     ~
+  ~                                                                 ~
+  ~  https://www.gnu.org/licenses/agpl-3.0.en.html                  ~
+  ~                                                                 ~
+  ~  This program is distributed in the hope that it will be        ~
+  ~  useful, but WITHOUT ANY WARRANTY; without even the implied     ~
+  ~  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR        ~
+  ~  PURPOSE. See the GNU Affero General Public License for         ~
+  ~  more details.                                                  ~
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.linagora.tmail</groupId>
+        <artifactId>tmail-backend-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>twake-calendar-side-service</artifactId>
+    <packaging>pom</packaging>
+
+    <name>Twake Calendar Side service</name>
+    <description>Twake Calendar Side service for Sabre DAV. This rewrites OpenPaaS backend for substitution.</description>
+    <inceptionYear>2025</inceptionYear>
+
+    <modules>
+        <module>app</module>
+    </modules>
+
+    <properties>
+        <james.groupId>org.apache.james</james.groupId>
+        <james.version>3.9.0-SNAPSHOT</james.version>
+        <scala.base>2.13</scala.base>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-project</artifactId>
+                <version>${james.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>${james.groupId}</groupId>
+                <artifactId>james-server-guice</artifactId>
+                <version>${james.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>
