@@ -58,8 +58,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
   private def setupServer(server: GuiceJamesServer, invitation: EventInvitation) = {
     server.getProbe(classOf[DataProbeImpl])
       .fluent
-      .addDomain(invitation.sender.username.getDomainPart.get().asString())
-      .addDomain(invitation.receiver.username.getDomainPart.get().asString())
+      .addDomainIfNotExists(invitation.sender.username.getDomainPart.get().asString())
+      .addDomainIfNotExists(invitation.receiver.username.getDomainPart.get().asString())
       .addUser(invitation.sender.username.asString(), invitation.sender.password)
       .addUser(invitation.receiver.username.asString(), invitation.receiver.password)
 
