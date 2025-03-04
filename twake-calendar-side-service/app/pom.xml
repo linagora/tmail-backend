@@ -31,6 +31,10 @@
     <name>Twake Calendar :: Side service :: App</name>
 
     <dependencies>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-common</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

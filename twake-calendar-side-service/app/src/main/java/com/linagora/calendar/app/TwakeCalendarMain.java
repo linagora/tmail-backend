@@ -18,8 +18,12 @@
 
 package com.linagora.calendar.app;
 
+import org.apache.james.ExtraProperties;
+
 public class TwakeCalendarMain {
     public static void main(String[] args) {
+        ExtraProperties.initialize();
+
         System.out.println("Hello world!");
     }
 }
