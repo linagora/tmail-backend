@@ -35,6 +35,10 @@
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>logback-json-classic</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
