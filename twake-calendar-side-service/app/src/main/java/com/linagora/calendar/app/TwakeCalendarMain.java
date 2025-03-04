@@ -21,7 +21,21 @@ package com.linagora.calendar.app;
 import org.apache.james.ExtraProperties;
 
 public class TwakeCalendarMain {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        main(createServer(TwakeCalendarConfiguration.builder()
+            .useWorkingDirectoryEnvProperty()
+            .build()));
+    }
+
+    static void main(TwakeCalendarGuiceServer server) throws Exception {
+        server.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
+    }
+
+    public static TwakeCalendarGuiceServer createServer(TwakeCalendarConfiguration configuration) {
         ExtraProperties.initialize();
+
+        return TwakeCalendarGuiceServer.forConfiguration(configuration);
     }
 }
