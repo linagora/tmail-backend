@@ -75,6 +75,7 @@
             </mailet>
             <mailet match="All" class="ICALToHeader">
                 <attribute>icalendar2</attribute>
+                <onMailetException>ignore</onMailetException>
             </mailet>
             <mailet match="SenderIsLocal" class="org.apache.james.transport.mailets.ICALToJsonAttribute">
                 <source>icalendar2</source>

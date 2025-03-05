@@ -22,8 +22,9 @@ public class OpenPaasEventInvitationParameterResolver implements ParameterResolv
                                    ExtensionContext extensionContext) throws ParameterResolutionException {
         OpenPaasUser sender = newOpenPaasUser();
         OpenPaasUser receiver = newOpenPaasUser();
+        OpenPaasUser joker = newOpenPaasUser();
 
-        return new EventInvitation(asUser(sender), asUser(receiver));
+        return new EventInvitation(asUser(sender), asUser(receiver), asUser(joker));
     }
 
     private OpenPaasUser newOpenPaasUser() {
