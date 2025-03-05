@@ -3,6 +3,9 @@
 
 Allows users to reply to calendar event invitations. They can respond with Accept, Deny, or Tentative statuses, corresponding to three methods: `CalendarEvent/accept`, `CalendarEvent/reject`, and `CalendarEvent/maybe`, respectively.
 
+A user can also reply to a counter change suggested by a participant of an event he organized, by accepting it if he desires so,
+with the following method: `CalendarEventCounter/accept`.
+
 == Additions to the capability object
 
 Servers supporting the calendar event parse extension need
@@ -16,12 +19,15 @@ The associated object sample:
 ....
 {
     "replySupportedLanguage": ["en", "fr"],
-    "supportFreeBusyQuery": true
+    "supportFreeBusyQuery": true,
+    "counterSupport": true
 }
 ....
 
 - The `replySupportedLanguage` object contains a list of languages supported by the application for determining email templates.
 - The `supportFreeBusyQuery` object is a boolean value that indicates whether the server supports the freeBusy query in the response of the `CalendarEventAttendance/get` method.
+- The `counterSupport` property is a Boolean. `True` if TMail is deployed alongside the OpenPaas calendar, `False` if deployed in standalone.
+When `True`, the `CalendarEventCounter/accept` method is made available.
 
 == CalendarEvent/accept
 
@@ -40,7 +46,7 @@ The response object contains the following arguments:
 - *notFound*: `Id[]|null` A list of blob ids given that could not be found, or `null` if none.
 - *notAccepted*: `Id[SetError]|null`  A map of the blobId to a SetError object for each calendar event that failed to reply, or null if all successful.
 
-== Example
+=== Example
 
 The client makes a request to accept a calendar event invitation:
 
@@ -125,7 +131,7 @@ The associated `supportFreeBusyQuery` capability property is needed for the serv
 
 Note: The sum of sizes of arrays `list`, `notFound` and `notDone` must be equal to the size of `blobIds`, otherwise the server must return an error.
 
-== Example
+=== Example
 
 The client makes a request to get the attendance status of calendar event invitations `1_5` that was previously accepted and `1_3` that was rejected:
 
@@ -223,3 +229,74 @@ If the event query get a scheduling conflict, `isFree` property will be `false`
 ----
 
 In this response, the server has detected events "1_5" conflict with another event in the same time slot.
+
+== CalendarEventCounter/accept
+
+This method allows the client to accept a calendar event counter from a participant.
+The CalendarEventCounter/accept method takes the following arguments:
+
+- *accountId*: `Id` The id of the account to use.
+- *blobIds*: `Id[]` The ids correspond to the blob of calendar event counter files that the user intends to accept.
+They must be validated to ensure they can be parsed using the `CalendarEvent/parse` method for verification.
+Note that contrary to `CalendarEvent/accept`, here we are parsing an .ics file with a `METHOD:COUNTER` field, and not `METHOD:REQUEST`.
+- *language*: `String`. Optional, Default is `en`. The language tag that the client wants the server to use when determining the email template.
+
+The response object contains the following arguments:
+
+- *accountId*: `Id` The id of the account used for the call.
+- *accepted*: `Id[CalendarEvent[]]|null` A list of ids of the calendar event counters that were successfully accepted, or `null` if none.
+- *notFound*: `Id[]|null` A list of blob ids given that could not be found, or `null` if none.
+- *notAccepted*: `Id[SetError]|null`  A map of the blobId to a SetError object for each calendar event counter that failed to reply, or null if all successful.
+
+Note that the `counterSupport` property defined with the capability `com:linagora:params:calendar:event` must be true for this method to be available.
+
+=== Example
+
+The client makes a request to accept a calendar event counter:
+
+....
+{
+	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:calendar:event"],
+	"methodCalls": [
+        [ "CalendarEventCounter/accept", {
+            "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            "blobIds": ["0f9f65ab-dc7b-4146-850f-7f59921a4a76"]
+        }, "c1"]
+	]
+}
+....
+
+The server responds:
+
+```
+[[ "CalendarEventCounter/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "accepted": [ "0f9f65ab-dc7b-4146-850f-7f59921a4a76" ],
+}, "c1" ]]
+```
+
+In the case that a blob id is not found, the server would respond:
+
+```
+[[ "CalendarEventCounter/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "notFound": [ "0f9f65ab-dc7b-4146-850f-7f59921a4a76" ]
+}, "c1" ]]
+```
+
+If the blob id has been found but can't parse or reply to the email, the server would respond:
+
+```
+[[ "CalendarEventCounter/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "notAccepted": {
+        "0f9f65ab-dc7b-4146-850f-7f59921a4a76": {
+            "type": "invalidPatch",
+            "description": "The calendar must have COUNTER as a method"
+        }
+    }
+}, "c1" ]]
+```
