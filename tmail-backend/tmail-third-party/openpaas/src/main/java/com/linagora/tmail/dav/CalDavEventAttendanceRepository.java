@@ -31,6 +31,8 @@ import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.BlobId;
+import org.apache.james.jmap.routes.BlobNotFoundException;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.model.FetchGroup;
@@ -42,6 +44,7 @@ import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
+import com.linagora.tmail.james.jmap.calendar.BlobCalendarResolver;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
@@ -71,17 +74,20 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     private final MessageId.Factory messageIdFactory;
     private final MessageIdManager messageIdManager;
     private final DavUserProvider davUserProvider;
+    private final BlobCalendarResolver blobCalendarResolver;
 
     @Inject
     public CalDavEventAttendanceRepository(DavClient davClient,
                                            SessionProvider sessionProvider, MessageId.Factory messageIdFactory,
                                            MessageIdManager messageIdManager,
-                                           DavUserProvider davUserProvider) {
+                                           DavUserProvider davUserProvider,
+                                           BlobCalendarResolver blobCalendarResolver) {
         this.davClient = davClient;
         this.sessionProvider = sessionProvider;
         this.messageIdFactory = messageIdFactory;
         this.messageIdManager = messageIdManager;
         this.davUserProvider = davUserProvider;
+        this.blobCalendarResolver = blobCalendarResolver;
     }
 
     @Override
@@ -140,10 +146,17 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     }
 
     private Mono<CalendarEventReplyResults> setAttendanceStatus(DavUser davUser, BlobId blobId, AttendanceStatus attendanceStatus) {
+        MailboxSession session = sessionProvider.createSystemSession(Username.of(davUser.username()));
         UnaryOperator<DavCalendarObject> calendarTransformation = calendarObject -> calendarObject.withPartStat(davUser.username(), attendanceStatus.toPartStat());
-        return fetchCalendarObject(davUser, blobId)
-            .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), calendarTransformation))
-            .thenReturn(ReplyResults().done(blobId))
-            .onErrorResume(e -> Mono.just(ReplyResults().notDone(blobId, e, davUser.username())));
+        return blobCalendarResolver.resolveRequestCalendar(blobId, session).asJava()
+            .flatMap(calendar -> fetchCalendarObject(davUser, blobId)
+                .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), calendarTransformation))
+                .thenReturn(ReplyResults().done(blobId))
+                .onErrorResume(e -> Mono.just(ReplyResults().notDone(blobId, e, davUser.username()))))
+            .onErrorResume((e ->
+                switch (e) {
+                    case BlobNotFoundException b -> Mono.just(ReplyResults().notFound(blobId));
+                    default -> Mono.just(ReplyResults().notDone(blobId, e, davUser.username()));
+            }));
     }
 }
