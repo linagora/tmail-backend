@@ -35,8 +35,8 @@ class RedisEventBusClientFactory @Singleton() @Inject()
         masterReplicaRedisConfiguration.useSSL, masterReplicaRedisConfiguration.mayBeSSLConfiguration, masterReplicaRedisConfiguration.ioThreads, masterReplicaRedisConfiguration.workerThreads))
     case clusterRedisConfiguration: ClusterRedisConfiguration => redisClientFactory.createClusterClient(clusterRedisConfiguration)
     case sentinelRedisConfiguration: SentinelRedisConfiguration =>
-      redisClientFactory.createSentinelClient(new StandaloneRedisConfiguration(sentinelRedisConfiguration.redisURI,
-        sentinelRedisConfiguration.useSSL, sentinelRedisConfiguration.mayBeSSLConfiguration, sentinelRedisConfiguration.ioThreads, sentinelRedisConfiguration.workerThreads))
+      redisClientFactory.createSentinelClient(new SentinelRedisConfiguration(sentinelRedisConfiguration.redisURI,
+        sentinelRedisConfiguration.useSSL, sentinelRedisConfiguration.mayBeSSLConfiguration, sentinelRedisConfiguration.readFrom, sentinelRedisConfiguration.ioThreads, sentinelRedisConfiguration.workerThreads))
   }
 
   def createRedisPubSubCommand(): RedisPubSubReactiveCommands[String, String] = rawRedisClient match {
