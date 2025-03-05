@@ -48,9 +48,22 @@ public class DatabaseCombinedUserRequireModule<T extends UsersDAO> extends Abstr
 
     @Provides
     @Singleton
+    public OpenPaasConfiguration provideOpenPaasConfiguration(DockerOpenPaasSetup dockerOpenPaasSetup, DavConfiguration davConfiguration) {
+        return new OpenPaasConfiguration(
+            dockerOpenPaasSetup.getOpenPaasIpAddress().resolve("/api"),
+            "admin@open-paas.org",
+            "secret",
+            TRUST_ALL_SSL_CERTS,
+            Optional.of(new OpenPaasConfiguration.ContactConsumerConfiguration(
+                ImmutableList.of(AmqpUri.from(dockerOpenPaasSetup.rabbitMqUri())),
+                OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED)),
+            Optional.of(davConfiguration));
+    }
+
+    @Provides
+    @Singleton
     @Named(CombinedUserDAO.DATABASE_INJECT_NAME)
     public UsersDAO provideDatabaseCombinedUserDAO(Injector injector) {
         return injector.getInstance(typeUserDAOClass);
     }
-
 }
