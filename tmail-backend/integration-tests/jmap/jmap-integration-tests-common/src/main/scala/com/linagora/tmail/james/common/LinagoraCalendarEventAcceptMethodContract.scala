@@ -317,8 +317,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
   def shouldReturnNotFoundResultWhenBlobIdDoesNotExist(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
     setupServer(server, eventInvitation)
 
-    val notFoundBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingMethod.eml", icsPartId = "88888")
+    val notFoundBlobId: String = sendDynamicInvitationEmailAndGetIcsBlobIds(server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "88888")
 
     val request: String =
       s"""{
@@ -637,13 +636,14 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
     server.getProbe(classOf[DataProbeImpl])
       .fluent
+      .addDomain(ANDRE.getDomainPart.get().asString())
       .addUser(ANDRE.asString(), ANDRE_PASSWORD)
 
     val blobId: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
-    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(eventInvitation.receiver.username, ANDRE)
 
     val request: String =
       s"""{
