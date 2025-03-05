@@ -38,6 +38,7 @@ public class IsOpenPaasRabbitMqSetup extends GenericMatcher {
         OpenPaasAmqpForwardAttribute.OpenPaasRabbitMQChannelPoolHolder openPaasRabbitMQChannelPoolHolder) {
         this.openPaasRabbitMQChannelPoolHolder = openPaasRabbitMQChannelPoolHolder;
     }
+
     @Override
     public Collection<MailAddress> match(Mail mail) throws MessagingException {
         if (openPaasRabbitMQChannelPoolHolder.get().isPresent()) {
