@@ -300,3 +300,18 @@ If the blob id has been found but can't parse or reply to the email, the server 
     }
 }, "c1" ]]
 ```
+
+When the `CalendarEventCounter/accept` method is not supported (`counterSupport` property of the capability is false):
+
+```
+[[ "CalendarEventCounter/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "notAccepted": {
+        "0f9f65ab-dc7b-4146-850f-7f59921a4a76": {
+            "type": "unknownMethod",
+            "description": "The method is not supported"
+        }
+    }
+}, "c1" ]]
+```
