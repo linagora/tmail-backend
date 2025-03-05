@@ -28,9 +28,10 @@ import com.github.mustachejava.{DefaultMustacheFactory, MustacheFactory}
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
+import com.linagora.tmail.james.jmap.calendar.BlobCalendarResolver
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, LOGGER}
-import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarParticipantsField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException}
+import com.linagora.tmail.james.jmap.model._
 import eu.timepit.refined.auto._
 import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Named}
@@ -46,7 +47,7 @@ import org.apache.james.core.builder.MimeMessageBuilder.BodyPartBuilder
 import org.apache.james.filesystem.api.FileSystem
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import org.apache.james.jmap.method.EmailSubmissionSetMethod.MAIL_METADATA_USERNAME_ATTRIBUTE
-import org.apache.james.jmap.routes.{BlobNotFoundException, BlobResolvers}
+import org.apache.james.jmap.routes.BlobNotFoundException
 import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.queue.api.MailQueueFactory.SPOOL
@@ -59,7 +60,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
-import scala.util.{Failure, Success, Try, Using}
+import scala.util.{Failure, Success, Try}
 
 object CalendarEventReplyPerformer {
   val I18N_MAIL_TEMPLATE_LOCATION_PROPERTY: String = "calendarEvent.reply.mailTemplateLocation"
@@ -125,25 +126,6 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarRe
 
   private def getLanguageLocale(request: CalendarEventReplyRequest): Locale =
     request.language.map(_.language).getOrElse(CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT)
-}
-
-class BlobCalendarResolver @Inject()(blobResolvers: BlobResolvers) {
-  def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession): SMono[Calendar] = {
-    blobResolvers.resolve(blobId, mailboxSession)
-      .flatMap(blob =>
-        Using(blob.content)(CalendarEventParsed.parseICal4jCalendar).toEither
-          .flatMap(calendar => validate(calendar))
-          .fold(error => SMono.error[Calendar](InvalidCalendarFileException(blobId, error)), SMono.just))
-  }
-
-  private def validate(calendar: Calendar): Either[IllegalArgumentException, Calendar] =
-    if (calendar.getComponents("VEVENT").isEmpty) {
-      Left(new IllegalArgumentException("The calendar file must contain VEVENT component"))
-    } else if (Option(calendar.getMethod).map(_.getValue).orNull != "REQUEST") {
-      Left(new IllegalArgumentException("The calendar must have REQUEST as a method"))
-    } else {
-      Right(calendar)
-    }
 }
 
 object CalendarEventReplySupportedLanguage {
