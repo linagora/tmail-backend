@@ -52,7 +52,7 @@ public class OpenPaasSetupTestModule extends AbstractModule {
     @Singleton
     public OpenPaasConfiguration provideOpenPaasConfiguration(DockerOpenPaasSetup dockerOpenPaasSetup, DavConfiguration davConfiguration) {
         return new OpenPaasConfiguration(
-            dockerOpenPaasSetup.getOpenPaasIpAddress(),
+            dockerOpenPaasSetup.getOpenPaasIpAddress().resolve("/api"),
             "admin@open-paas.org",
             "secret",
             TRUST_ALL_SSL_CERTS,
