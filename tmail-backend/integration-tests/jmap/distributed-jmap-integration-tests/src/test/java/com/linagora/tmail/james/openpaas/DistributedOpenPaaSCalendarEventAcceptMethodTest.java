@@ -25,14 +25,18 @@ import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.OpenPaasSetupTestModule;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.*;
+import com.linagora.tmail.james.common.EventInvitation;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -72,6 +76,18 @@ public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements Linagor
             .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule())
             .overrideWith(new OpenPaasSetupTestModule()))
         .build();
+
+    @Override
+    @Disabled("Email sending is handled by OpenPaaS; we do not test OpenPaaS internals.")
+    public void shouldSendReplyMailToInvitor(GuiceJamesServer server, EventInvitation eventInvitation) {
+
+    }
+
+    @Override
+    @Disabled("Email sending is handled by OpenPaaS; we do not test OpenPaaS internals.")
+    public void mailReplyShouldSupportI18nWhenLanguageRequest(GuiceJamesServer server, EventInvitation eventInvitation) {
+
+    }
 
     @Override
     public String randomBlobId() {
