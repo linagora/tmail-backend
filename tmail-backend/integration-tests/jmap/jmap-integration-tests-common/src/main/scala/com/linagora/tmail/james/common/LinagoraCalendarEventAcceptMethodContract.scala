@@ -265,7 +265,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, eventInvitation)
 
     val missingVEventIcsBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingVEVENT.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithIcsMissingVEVENT.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
