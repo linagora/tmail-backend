@@ -38,6 +38,7 @@ import com.mongodb.reactivestreams.client.MongoDatabase;
 import reactor.core.publisher.Mono;
 
 public class OpenPaaSProvisioningService {
+    public static final String USER_PASSWORD_DEFAULT = "$2a$05$m.puixylA7FAPR593aS6n.UR3dFGeAtO9GnvXbVoFyiCqWxUHC2fa"; // secret
     private final MongoDatabase database;
 
     public OpenPaaSProvisioningService(String mongoUri) {
@@ -56,7 +57,7 @@ public class OpenPaaSProvisioningService {
         Document userToSave = new Document()
                 .append("firstname", "User_" + randomUUID)
                 .append("lastname", "User_" + randomUUID)
-                .append("password", "secret")
+                .append("password", USER_PASSWORD_DEFAULT)
                 .append("domains",  List.of(new Document("domain_id", openPaasDomain().get("_id"))))
                 .append("accounts", List.of(new Document()
                         .append("type", "email")

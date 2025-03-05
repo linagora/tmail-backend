@@ -54,12 +54,12 @@ public class OpenPaasSetupTestModule extends AbstractModule {
     @Singleton
     public OpenPaasConfiguration provideOpenPaasConfiguration(DockerOpenPaasSetup dockerOpenPaasSetup, DavConfiguration davConfiguration) {
         return new OpenPaasConfiguration(
-            Throwing.supplier(() -> URI.create("http://%s:8080".formatted(dockerOpenPaasSetup.getOpenPaasIpAddress()))).sneakyThrow().get(),
+            dockerOpenPaasSetup.getOpenPaasIpAddress(),
             "admin@open-paas.org",
             "secret",
             TRUST_ALL_SSL_CERTS,
             Optional.of(new OpenPaasConfiguration.ContactConsumerConfiguration(
-                ImmutableList.of(AmqpUri.from("amqp://%s:5672".formatted(dockerOpenPaasSetup.getRabbitMqIpAddress()))),
+                ImmutableList.of(AmqpUri.from(dockerOpenPaasSetup.rabbitMqUri())),
                 OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED)),
             Optional.of(davConfiguration));
     }
@@ -69,7 +69,7 @@ public class OpenPaasSetupTestModule extends AbstractModule {
     public DavConfiguration provideDavConfiguration(DockerOpenPaasSetup dockerOpenPaasSetup) {
         return new DavConfiguration(
             new UsernamePasswordCredentials("admin", "secret123"),
-            Throwing.supplier(() -> URI.create("http://%s:80".formatted(dockerOpenPaasSetup.getSabreDavIpAddress()))).sneakyThrow().get(),
+            dockerOpenPaasSetup.getSabreDavIpAddress(),
             Optional.of(TRUST_ALL_SSL_CERTS),
             Optional.empty());
     }

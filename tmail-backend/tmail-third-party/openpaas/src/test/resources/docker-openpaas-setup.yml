@@ -70,6 +70,7 @@ services:
     image: mongo
     networks:
       - emaily
+    command: ["mongod", "--bind_ip", "0.0.0.0"]
     healthcheck:
       test:
         [
