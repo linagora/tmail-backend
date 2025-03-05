@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract.ANDRE_USER
 import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendDynamicInvitationEmailAndGetIcsBlobIds, sendInvitationEmailToBobAndGetIcsBlobIds}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -44,10 +43,6 @@ import play.api.libs.json.Json
 
 import java.util.concurrent.TimeUnit
 
-object LinagoraCalendarEventAcceptMethodContract {
-  private val ANDRE_USER: User = User("ANDRE", ANDRE.asString(), ANDRE_PASSWORD)
-}
-
 trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
 
@@ -56,8 +51,10 @@ trait LinagoraCalendarEventAcceptMethodContract {
       .fluent
       .addDomain(eventInvitation.sender.username.getDomainPart.get().asString())
       .addDomain(eventInvitation.receiver.username.getDomainPart.get().asString())
+      .addDomain(eventInvitation.joker.username.getDomainPart.get().asString())
       .addUser(eventInvitation.sender.username.asString(), eventInvitation.sender.password)
       .addUser(eventInvitation.receiver.username.asString(), eventInvitation.receiver.password)
+      .addUser(eventInvitation.joker.username.asString(), eventInvitation.joker.password)
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(eventInvitation.receiver.username, eventInvitation.receiver.password)))
@@ -585,10 +582,6 @@ trait LinagoraCalendarEventAcceptMethodContract {
   def shouldNotFoundWhenDoesNotHavePermission(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
     setupServer(server, eventInvitation)
 
-    server.getProbe(classOf[DataProbeImpl])
-      .fluent
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
-
     val blobId: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
@@ -601,13 +594,13 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$ANDRE_ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.joker.accountId}",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
          |}""".stripMargin
 
-    val response = `given`(buildRequestSpecification(server, ANDRE_USER))
+    val response = `given`(buildRequestSpecification(server, eventInvitation.joker))
       .body(request)
     .when
       .post
@@ -624,7 +617,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
         s"""[
            |    "CalendarEvent/accept",
            |    {
-           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.joker.accountId}",
            |        "notFound": [ "$blobId" ]
            |    },
            |    "c1"
@@ -635,16 +628,11 @@ trait LinagoraCalendarEventAcceptMethodContract {
   def shouldSucceedWhenDelegated(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
     setupServer(server, eventInvitation)
 
-    server.getProbe(classOf[DataProbeImpl])
-      .fluent
-      .addDomain(ANDRE.getDomainPart.get().asString())
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
-
     val blobId: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
-    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(eventInvitation.receiver.username, ANDRE)
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(eventInvitation.receiver.username, eventInvitation.joker.username)
 
     val request: String =
       s"""{
@@ -660,7 +648,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
          |    "c1"]]
          |}""".stripMargin
 
-    val response = `given`(buildRequestSpecification(server, ANDRE_USER))
+    val response = `given`(buildRequestSpecification(server, eventInvitation.joker))
       .body(request)
     .when
       .post

@@ -1,6 +1,6 @@
 package com.linagora.tmail.james.common
 
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ALICE, ALICE_PASSWORD, BOB, BOB_PASSWORD}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ALICE, ALICE_PASSWORD, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD}
 import org.junit.jupiter.api.extension.{ExtensionContext, ParameterContext, ParameterResolver}
 
 class DefaultEventInvitationParameterResolver extends ParameterResolver {
@@ -11,5 +11,6 @@ class DefaultEventInvitationParameterResolver extends ParameterResolver {
   override def resolveParameter(parameterContext: ParameterContext, extensionContext: ExtensionContext): AnyRef =
     EventInvitation(
       sender = User("ALICE", ALICE.asString(), ALICE_PASSWORD),
-      receiver = User("BOB", BOB.asString(), BOB_PASSWORD))
+      receiver = User("BOB", BOB.asString(), BOB_PASSWORD),
+      joker = User("ANDRE", ANDRE.asString(), ANDRE_PASSWORD))
 }

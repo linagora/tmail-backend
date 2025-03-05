@@ -44,7 +44,7 @@ case class User(name: String, email: String, password: String) {
   lazy val accountId: String = AccountId.from(username).right.get.id.value
 }
 
-case class EventInvitation(sender: User, receiver: User)
+case class EventInvitation(sender: User, receiver: User, joker: User)
 
 object EventInvitation {
   def base64Encode: Mustache.Lambda = (frag: Template#Fragment, out: Writer) => {
