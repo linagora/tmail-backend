@@ -15,11 +15,13 @@ The associated object sample:
 
 ....
 {
-    "replySupportedLanguage": ["en", "fr"]
+    "replySupportedLanguage": ["en", "fr"],
+    "supportFreeBusyQuery": true
 }
 ....
 
-The replySupportedLanguage object contains a list of languages supported by the application for determining email templates.
+- The replySupportedLanguage object contains a list of languages supported by the application for determining email templates.
+- The supportFreeBusyQuery object is a boolean value that indicates whether the server supports the `freeBusyConflicts` property in the response of the `CalendarEventAttendance/get` method.
 
 == CalendarEvent/accept
 
