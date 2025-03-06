@@ -199,11 +199,9 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
     if (mailboxIds.size != 1) {
       SMono.just(EmailSetCreationFailure(clientId, new IllegalArgumentException("mailboxIds need to have size 1")))
     } else {
-      SMono.fromCallable(() => request.toMime4JMessage(blobResolvers, htmlTextExtractor, mailboxSession))
-        .flatMap(either => either.fold(error => SMono.just(EmailSetCreationFailure(clientId, error)),
-          message => append(clientId, request, message, mailboxSession, mailboxIds)))
+      request.toMime4JMessage(blobResolvers, htmlTextExtractor, mailboxSession)
+        .flatMap(message => append(clientId, request, message, mailboxSession, mailboxIds))
         .onErrorResume(e => SMono.just[EmailSetCreationResult](EmailSetCreationFailure(clientId, e)))
-        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
     }
   }
 
