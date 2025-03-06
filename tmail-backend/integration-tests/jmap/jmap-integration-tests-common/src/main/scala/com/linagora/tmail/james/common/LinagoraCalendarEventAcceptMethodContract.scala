@@ -168,7 +168,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, eventInvitation)
 
     val missingOrganizerIcsBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingOrginizer.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithIcsMissingOrginizer.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -219,7 +220,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, eventInvitation)
 
     val missingAttendeeIcsBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingAttendee.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithIcsMissingAttendee.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -725,7 +727,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, eventInvitation)
 
     val (blobId1, blobId2) =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithTwoInvalidIcsAttachments.eml", icsPartIds = ("5", "3"))
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithTwoInvalidIcsAttachments.eml.mustache", eventInvitation, icsPartIds = ("5", "3"))
 
     val request: String =
       s"""{
