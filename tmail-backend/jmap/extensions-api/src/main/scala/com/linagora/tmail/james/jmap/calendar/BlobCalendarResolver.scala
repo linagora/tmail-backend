@@ -29,13 +29,12 @@ import reactor.core.scala.publisher.SMono
 import scala.util.Using
 
 class BlobCalendarResolver @Inject()(blobResolvers: BlobResolvers) {
-  def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession): SMono[Calendar] = {
+  def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession): SMono[Calendar] = 
     blobResolvers.resolve(blobId, mailboxSession)
       .flatMap(blob =>
         Using(blob.content)(CalendarEventParsed.parseICal4jCalendar).toEither
           .flatMap(calendar => validate(calendar))
           .fold(error => SMono.error[Calendar](InvalidCalendarFileException(blobId, error)), SMono.just))
-  }
 
   private def validate(calendar: Calendar): Either[IllegalArgumentException, Calendar] =
     if (calendar.getComponents("VEVENT").isEmpty) {

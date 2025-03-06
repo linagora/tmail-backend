@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.common
 
+import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendDynamicInvitationEmailAndGetIcsBlobIds, sendInvitationEmailToBobAndGetIcsBlobIds}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -40,8 +42,6 @@ import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.{Tag, Test}
 import play.api.libs.json.Json
-
-import java.util.concurrent.TimeUnit
 
 trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
@@ -168,7 +168,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, eventInvitation)
 
     val missingOrganizerIcsBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingOrginizer.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithIcsMissingOrginizer.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -219,7 +220,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, eventInvitation)
 
     val missingAttendeeIcsBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingAttendee.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithIcsMissingAttendee.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -725,7 +727,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
     setupServer(server, eventInvitation)
 
     val (blobId1, blobId2) =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithTwoInvalidIcsAttachments.eml", icsPartIds = ("5", "3"))
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithTwoInvalidIcsAttachments.eml.mustache", eventInvitation, icsPartIds = ("5", "3"))
 
     val request: String =
       s"""{
@@ -994,7 +997,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 882,
+             |            "size": 874,
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -1002,7 +1005,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |        {
              |            "charset": "us-ascii",
              |            "disposition": "attachment",
-             |            "size": 882,
+             |            "size": 874,
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
@@ -1108,7 +1111,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 882,
+             |            "size": 874,
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -1116,7 +1119,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |        {
              |            "charset": "us-ascii",
              |            "disposition": "attachment",
-             |            "size": 882,
+             |            "size": 874,
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
@@ -1183,6 +1186,8 @@ trait LinagoraCalendarEventAcceptMethodContract {
     val blobIdFromMessage1: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
+    // Ensure messages come in the correct order
+    Thread.sleep(500)
     val blobIdFromMessage2: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
