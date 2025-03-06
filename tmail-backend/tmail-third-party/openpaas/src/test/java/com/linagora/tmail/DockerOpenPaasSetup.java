@@ -125,7 +125,7 @@ public class DockerOpenPaasSetup {
         return environment.getContainerByServiceName(DockerService.SABRE_DAV.serviceName()).orElseThrow();
     }
 
-    public URI getSabreDavIpAddress() {
+    public URI getSabreDavURI() {
         return Throwing.supplier(() -> new URIBuilder()
             .setScheme("http")
             .setHost(getHost(DockerService.SABRE_DAV))

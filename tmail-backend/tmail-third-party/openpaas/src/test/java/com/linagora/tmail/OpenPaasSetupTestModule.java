@@ -28,12 +28,10 @@ package com.linagora.tmail;
 
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 
-import java.net.URI;
 import java.util.Optional;
 
 import org.apache.http.auth.UsernamePasswordCredentials;
 
-import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -69,7 +67,7 @@ public class OpenPaasSetupTestModule extends AbstractModule {
     public DavConfiguration provideDavConfiguration(DockerOpenPaasSetup dockerOpenPaasSetup) {
         return new DavConfiguration(
             new UsernamePasswordCredentials("admin", "secret123"),
-            dockerOpenPaasSetup.getSabreDavIpAddress(),
+            dockerOpenPaasSetup.getSabreDavURI(),
             Optional.of(TRUST_ALL_SSL_CERTS),
             Optional.empty());
     }
