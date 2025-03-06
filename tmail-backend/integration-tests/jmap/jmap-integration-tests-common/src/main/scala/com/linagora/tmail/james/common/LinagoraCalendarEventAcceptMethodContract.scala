@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.common
 
+import java.util.concurrent.TimeUnit
+
 import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendDynamicInvitationEmailAndGetIcsBlobIds, sendInvitationEmailToBobAndGetIcsBlobIds}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -40,8 +42,6 @@ import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.{Tag, Test}
 import play.api.libs.json.Json
-
-import java.util.concurrent.TimeUnit
 
 trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
