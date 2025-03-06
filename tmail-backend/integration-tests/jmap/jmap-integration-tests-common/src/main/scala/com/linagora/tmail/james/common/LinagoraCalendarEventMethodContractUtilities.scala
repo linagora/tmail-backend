@@ -29,6 +29,7 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.rfc8621.contract.Fixture.BOB
 import org.apache.james.mailbox.MessageManager.AppendCommand
+import org.apache.james.mailbox.model.SearchQuery.Sort.{Order, SortClause}
 import org.apache.james.mailbox.model.{MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.modules.protocols.SmtpGuiceProbe
@@ -68,7 +69,8 @@ object LinagoraCalendarEventMethodContractUtilities {
       server.getProbe(classOf[MailboxProbeImpl])
         .searchMessage(
           MultimailboxesSearchQuery.from(
-            SearchQuery.of(SearchQuery.all)).build, eventInvitation.receiver.username.asString(), 1).stream().findAny()
+            SearchQuery.allSortedWith(new SearchQuery.Sort(SortClause.Arrival, Order.REVERSE))).build,
+          eventInvitation.receiver.username.asString(), 1).stream().findFirst()
 
     val templateAsString = ClassLoaderUtils.getSystemResourceAsString(invitationEmailTemplate)
 
@@ -77,8 +79,6 @@ object LinagoraCalendarEventMethodContractUtilities {
       .compile(templateAsString)
 
     val mail = emailTemplate.execute(eventInvitation)
-
-    println("MAIL: " + mail)
 
     new SMTPMessageSender(eventInvitation.sender.username.getDomainPart.get().asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)

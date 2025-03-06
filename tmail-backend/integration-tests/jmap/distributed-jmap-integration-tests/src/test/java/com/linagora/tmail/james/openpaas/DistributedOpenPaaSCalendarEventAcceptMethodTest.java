@@ -78,15 +78,32 @@ public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements Linagor
         .build();
 
     @Override
-    @Disabled("Email sending is handled by OpenPaaS; we do not test OpenPaaS internals.")
+    @Disabled("Email sending is handled by Dav server; we do not test Dav server internals.")
     public void shouldSendReplyMailToInvitor(GuiceJamesServer server, EventInvitation eventInvitation) {
 
     }
 
     @Override
-    @Disabled("Email sending is handled by OpenPaaS; we do not test OpenPaaS internals.")
+    @Disabled("Email sending is handled by Dav server; we do not test Dav server internals.")
     public void mailReplyShouldSupportI18nWhenLanguageRequest(GuiceJamesServer server, EventInvitation eventInvitation) {
 
+    }
+
+    @Override
+    @Disabled("The DAV server rejects an ICS if it has missing attendee thus this test is invalid")
+    public void acceptAMissingAttendeeIcsShouldReturnAccepted(GuiceJamesServer server, EventInvitation eventInvitation) {
+    }
+
+
+    @Override
+    @Disabled("The DAV server can handle an ICS missing an organizer like a normal ICS")
+    public void acceptAMissingOrganizerIcsShouldReturnNotAccept(GuiceJamesServer server, EventInvitation eventInvitation) {
+
+    }
+
+    @Override
+    @Disabled("This test validates the logic in CalendarEventReplyGenerator, which is not used for CalDav.")
+    public void shouldNotCreatedWhenInvalidIcsPayload(GuiceJamesServer server, EventInvitation eventInvitation) {
     }
 
     @Override
