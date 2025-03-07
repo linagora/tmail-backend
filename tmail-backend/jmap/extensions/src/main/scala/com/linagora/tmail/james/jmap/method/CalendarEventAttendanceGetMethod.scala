@@ -65,37 +65,25 @@ case class CalendarEventAttendanceGetRequest(accountId: AccountId,
 
 object CalendarEventAttendanceGetResponse {
   def from(accountId: AccountId, results: CalendarEventAttendanceResults): CalendarEventAttendanceGetResponse = {
-    val (accepted, rejected, tentativelyAccepted, needsAction) =
-      results.done.foldLeft((List.empty[BlobId], List.empty[BlobId], List.empty[BlobId], List.empty[BlobId])) {
-        case ((accepted, rejected, tentativelyAccepted, needsAction), entry) =>
-          val refinedBlobId = refineV[IdConstraint](entry.blobId).fold(
-            _ => BlobId("invalid"),  // Fallback for invalid values
-            validBlobId => BlobId(validBlobId)
-          )
-          entry.eventAttendanceStatus match {
-            case AttendanceStatus.Accepted => (refinedBlobId :: accepted, rejected, tentativelyAccepted, needsAction)
-            case AttendanceStatus.Declined => (accepted, refinedBlobId :: rejected, tentativelyAccepted, needsAction)
-            case AttendanceStatus.Tentative => (accepted, rejected, refinedBlobId :: tentativelyAccepted, needsAction)
-            case AttendanceStatus.NeedsAction => (accepted, rejected, tentativelyAccepted, refinedBlobId :: needsAction)
-          }
-      }
+    val list: List[CalendarEventAttendanceRecord] = results.done.map { entry =>
+      val refinedBlobId = refineV[IdConstraint](entry.blobId).fold(
+        _ => BlobId("invalid"), // Fallback for invalid values
+        validBlobId => BlobId(validBlobId))
+      CalendarEventAttendanceRecord(refinedBlobId, entry.eventAttendanceStatus)
+    }
 
     CalendarEventAttendanceGetResponse(
       accountId,
-      accepted,
-      rejected,
-      tentativelyAccepted,
-      needsAction,
+      list,
       results.notFound,
       results.notDone)
   }
 }
 
+case class CalendarEventAttendanceRecord(blobId: BlobId, eventAttendanceStatus: AttendanceStatus)
+
 case class CalendarEventAttendanceGetResponse(accountId: AccountId,
-                                              accepted: List[BlobId] = List(),
-                                              rejected: List[BlobId] = List(),
-                                              tentativelyAccepted: List[BlobId] = List(),
-                                              needsAction: List[BlobId] = List(),
+                                              list: List[CalendarEventAttendanceRecord] = List(),
                                               notFound: Option[CalendarEventNotFound] = Option.empty,
                                               notDone: Option[CalendarEventNotDone] = Option.empty) extends WithAccountId
 
