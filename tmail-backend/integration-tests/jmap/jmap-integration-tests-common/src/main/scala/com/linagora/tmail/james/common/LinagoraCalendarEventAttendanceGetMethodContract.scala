@@ -79,10 +79,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
             |  "CalendarEventAttendance/get",
             |  {
             |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-            |    "accepted": ["$blobId"],
-            |    "rejected": [],
-            |    "tentativelyAccepted": [],
-            |    "needsAction": []
+            |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "accepted" } ]
             |  },
             |  "c1"
             |]""".stripMargin
@@ -129,10 +126,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
             |  "CalendarEventAttendance/get",
             |  {
             |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-            |    "accepted": [],
-            |    "rejected": ["$blobId"],
-            |    "tentativelyAccepted": [],
-            |    "needsAction": []
+            |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "rejected" } ]
             |  },
             |  "c1"
             |]""".stripMargin
@@ -179,10 +173,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
             |  "CalendarEventAttendance/get",
             |  {
             |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-            |    "accepted": [],
-            |    "rejected": [],
-            |    "tentativelyAccepted": ["$blobId"],
-            |    "needsAction": []
+            |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "tentativelyAccepted" } ]
             |  },
             |  "c1"
             |]""".stripMargin)
@@ -226,10 +217,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
             |  "CalendarEventAttendance/get",
             |  {
             |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-            |    "accepted": [],
-            |    "rejected": [],
-            |    "tentativelyAccepted": [],
-            |    "needsAction": ["$blobId"]
+            |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "needsAction" } ]
             |  },
             |  "c1"
             |]""".stripMargin)
@@ -358,10 +346,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
             |  "CalendarEventAttendance/get",
             |  {
             |    "accountId": "$ANDRE_ACCOUNT_ID",
-            |    "accepted": [],
-            |    "rejected": [],
-            |    "tentativelyAccepted": [],
-            |    "needsAction": [],
+            |    "list": [],
             |    "notFound": ["$blobId"]
             |  },
             |  "c1"
@@ -497,11 +482,25 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
             |  "CalendarEventAttendance/get",
             |  {
             |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-            |    "accepted": ["$acceptedEventBlobId"],
-            |    "rejected": ["$rejectedEventBlobId", "$rejectedEventBlobId2"],
-            |    "tentativelyAccepted": [],
-            |    "needsAction": ["$needsActionEventBlobId"],
-            |    "notFound": ["$notFoundBlobId"]
+            |    "list": [
+            |      {
+            |        "blobId": "$acceptedEventBlobId",
+            |        "eventAttendanceStatus": "accepted"
+            |      },
+            |      {
+            |        "blobId": "$rejectedEventBlobId",
+            |        "eventAttendanceStatus": "rejected"
+            |      },
+            |      {
+            |        "blobId": "$needsActionEventBlobId",
+            |        "eventAttendanceStatus": "needsAction"
+            |      },
+            |      {
+            |        "blobId": "$rejectedEventBlobId2",
+            |        "eventAttendanceStatus": "rejected"
+            |      }
+            |    ],
+            |    "notFound": [ "$notFoundBlobId" ]
             |  },
             |  "c1"
             |]""".stripMargin)
@@ -548,15 +547,12 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
-           |    "CalendarEventAttendance/get",
-           |    {
+           |  "CalendarEventAttendance/get",
+           |  {
            |    "accountId": "$ACCOUNT_ID",
-           |    "accepted": ["$blobId"],
-           |    "rejected": [],
-           |    "tentativelyAccepted": [],
-           |    "needsAction": []
-           |    },
-           |    "c1"
+           |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "accepted" } ]
+           |  },
+           |  "c1"
            |]""".stripMargin)
   }
 
