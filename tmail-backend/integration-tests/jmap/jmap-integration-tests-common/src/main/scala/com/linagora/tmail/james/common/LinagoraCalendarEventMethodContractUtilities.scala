@@ -26,6 +26,7 @@ import java.util.{Base64, Optional}
 import com.samskivert.mustache.{Mustache, Template}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.requestSpecification
+import io.restassured.specification.RequestSpecification
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.AccountId
@@ -172,4 +173,11 @@ object LinagoraCalendarEventMethodContractUtilities {
 
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(eventInvitation.receiver.username))
   }
+
+  def buildRequestSpecification(server: GuiceJamesServer, user: User): RequestSpecification =
+    baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(user.username, user.password)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build
+
 }

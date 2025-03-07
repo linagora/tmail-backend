@@ -20,11 +20,9 @@ package com.linagora.tmail.james.common
 
 import java.util.concurrent.TimeUnit
 
-import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendDynamicInvitationEmailAndGetIcsBlobIds, setupServer}
-import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
+import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{buildRequestSpecification, sendDynamicInvitationEmailAndGetIcsBlobIds, setupServer}
 import io.restassured.RestAssured.`given`
 import io.restassured.http.ContentType.JSON
-import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
@@ -32,8 +30,6 @@ import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
-import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.MailboxPath
@@ -1212,10 +1208,4 @@ trait LinagoraCalendarEventAcceptMethodContract {
            |    "c1"
            |]""".stripMargin)
   }
-
-  private def buildRequestSpecification(server: GuiceJamesServer, user: User): RequestSpecification =
-    baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(user.username, user.password)))
-      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .build
 }
