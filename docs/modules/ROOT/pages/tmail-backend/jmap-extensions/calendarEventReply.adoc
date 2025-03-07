@@ -239,7 +239,6 @@ The CalendarEventCounter/accept method takes the following arguments:
 - *blobIds*: `Id[]` The ids correspond to the blob of calendar event counter files that the user intends to accept.
 They must be validated to ensure they can be parsed using the `CalendarEvent/parse` method for verification.
 Note that contrary to `CalendarEvent/accept`, here we are parsing an .ics file with a `METHOD:COUNTER` field, and not `METHOD:REQUEST`.
-- *language*: `String`. Optional, Default is `en`. The language tag that the client wants the server to use when determining the email template.
 
 The response object contains the following arguments:
 
