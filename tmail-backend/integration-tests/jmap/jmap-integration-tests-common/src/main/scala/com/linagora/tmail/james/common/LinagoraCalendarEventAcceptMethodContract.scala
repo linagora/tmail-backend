@@ -885,8 +885,9 @@ trait LinagoraCalendarEventAcceptMethodContract {
     val senderInboxId = server.getProbe(classOf[MailboxProbeImpl])
       .createMailbox(MailboxPath.inbox(eventInvitation.sender.username))
 
-    val blobId = sendDynamicInvitationEmailAndGetIcsBlobIds(
-      server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
+    val blobId =
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     `given`
       .body( s"""{
