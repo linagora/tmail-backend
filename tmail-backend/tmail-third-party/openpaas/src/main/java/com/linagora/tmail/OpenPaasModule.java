@@ -23,6 +23,8 @@ import java.io.FileNotFoundException;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
+import javax.net.ssl.SSLException;
+
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.mailbox.MessageIdManager;
@@ -71,7 +73,7 @@ public class OpenPaasModule extends AbstractModule {
     }
 
     @Provides
-    public OpenPaasRestClient provideOpenPaasRestCLient(OpenPaasConfiguration openPaasConfiguration) {
+    public OpenPaasRestClient provideOpenPaasRestCLient(OpenPaasConfiguration openPaasConfiguration) throws SSLException {
         return new OpenPaasRestClient(openPaasConfiguration);
     }
 
@@ -85,7 +87,7 @@ public class OpenPaasModule extends AbstractModule {
 
         @Provides
         @Singleton
-        public DavClient provideDavClient(OpenPaasConfiguration openPaasConfiguration) {
+        public DavClient provideDavClient(OpenPaasConfiguration openPaasConfiguration) throws SSLException {
             Preconditions.checkArgument(openPaasConfiguration.davConfiguration().isPresent(),
                 "OpenPaasConfiguration should have dav configuration");
             return new DavClient(openPaasConfiguration.davConfiguration().get());

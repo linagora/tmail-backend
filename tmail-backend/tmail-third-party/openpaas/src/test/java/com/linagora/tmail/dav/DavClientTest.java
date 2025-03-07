@@ -24,6 +24,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 
+import javax.net.ssl.SSLException;
+
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -76,7 +78,7 @@ class DavClientTest {
     private DavClient client;
 
     @BeforeEach
-    void setup() {
+    void setup() throws SSLException {
         System.setProperty("MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF_IN_MILLS", "10");
         client = new DavClient(davServerExtension.getDavConfiguration());
     }
