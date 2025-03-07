@@ -997,7 +997,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 882,
+             |            "size": 874,
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -1005,7 +1005,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |        {
              |            "charset": "us-ascii",
              |            "disposition": "attachment",
-             |            "size": 882,
+             |            "size": 874,
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
@@ -1111,7 +1111,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 882,
+             |            "size": 874,
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -1119,7 +1119,7 @@ trait LinagoraCalendarEventAcceptMethodContract {
              |        {
              |            "charset": "us-ascii",
              |            "disposition": "attachment",
-             |            "size": 882,
+             |            "size": 874,
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
