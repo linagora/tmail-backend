@@ -32,7 +32,7 @@ public class ChannelLogoutController {
             .flatMap(ChannelLogoutController::extractSidFromLogoutToken)
             .ifPresentOrElse(sid -> {
                 logger.debug("Add new revoked token has sid: " + sid);
-                tokenRepository.add(sid);
+                tokenRepository.add(sid).block();
             }, () -> logger.warn("`{}` is missing or invalid in request", TOKEN_PARAM));
 
         return ResponseEntity.ok().build();
