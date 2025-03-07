@@ -26,7 +26,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.common.LinagoraCalendarEventRejectMethodContract;
 
-public class PostgresLinagoraCalendarEventRejectMethodTest implements LinagoraCalendarEventRejectMethodContract {
+public class PostgresLinagoraCalendarEventRejectMethodTest extends LinagoraCalendarEventRejectMethodContract {
 
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION.apply(new DelegationProbeModule())
