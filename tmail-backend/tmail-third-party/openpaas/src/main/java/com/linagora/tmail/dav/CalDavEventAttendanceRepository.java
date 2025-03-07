@@ -44,7 +44,7 @@ import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
-import com.linagora.tmail.james.jmap.calendar.BlobCalendarResolver;
+import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
@@ -74,20 +74,20 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     private final MessageId.Factory messageIdFactory;
     private final MessageIdManager messageIdManager;
     private final DavUserProvider davUserProvider;
-    private final BlobCalendarResolver blobCalendarResolver;
+    private final CalendarResolver calendarResolver;
 
     @Inject
     public CalDavEventAttendanceRepository(DavClient davClient,
                                            SessionProvider sessionProvider, MessageId.Factory messageIdFactory,
                                            MessageIdManager messageIdManager,
                                            DavUserProvider davUserProvider,
-                                           BlobCalendarResolver blobCalendarResolver) {
+                                           CalendarResolver calendarResolver) {
         this.davClient = davClient;
         this.sessionProvider = sessionProvider;
         this.messageIdFactory = messageIdFactory;
         this.messageIdManager = messageIdManager;
         this.davUserProvider = davUserProvider;
-        this.blobCalendarResolver = blobCalendarResolver;
+        this.calendarResolver = calendarResolver;
     }
 
     @Override
@@ -148,7 +148,7 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     private Mono<CalendarEventReplyResults> setAttendanceStatus(DavUser davUser, BlobId blobId, AttendanceStatus attendanceStatus) {
         MailboxSession session = sessionProvider.createSystemSession(Username.of(davUser.username()));
         UnaryOperator<DavCalendarObject> calendarTransformation = calendarObject -> calendarObject.withPartStat(davUser.username(), attendanceStatus.toPartStat());
-        return blobCalendarResolver.resolveRequestCalendar(blobId, session).asJava()
+        return calendarResolver.resolveRequestCalendar(blobId, session).asJava()
             .flatMap(calendar -> fetchCalendarObject(davUser, blobId)
                 .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), calendarTransformation))
                 .thenReturn(ReplyResults().done(blobId))
