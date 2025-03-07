@@ -38,6 +38,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.DavConfiguration;
+import com.linagora.tmail.dav.cal.FreeBusyRequest;
+import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 import com.linagora.tmail.dav.xml.DavMultistatus;
@@ -277,5 +279,24 @@ public class DavClient {
             LOGGER.trace("Found an invalid calendar href in Dav server response '{}'", href);
             return Optional.empty();
         }
+    }
+
+    public Mono<FreeBusyResponse> freeBusyQuery(DavUser user, FreeBusyRequest request) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, "application/json")
+                .add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(user.username()))))
+            .request(HttpMethod.POST)
+            .uri("/dav/api/calendars/freebusy")
+            .send(Mono.just(Unpooled.wrappedBuffer(request.serializeAsBytes())))
+            .responseSingle((response, byteBufMono) -> {
+                if (response.status() == HttpResponseStatus.OK) {
+                    return byteBufMono.asByteArray().map(FreeBusyResponse::deserialize);
+                }
+                return byteBufMono.asString(StandardCharsets.UTF_8)
+                    .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+                    .flatMap(body -> Mono.error(new DavClientException(
+                        String.format("Unexpected status code: %d when querying freebusy for user: %s. Response body: %s",
+                            response.status().code(), user.userId(), body)
+                    )));
+            });
     }
 }
