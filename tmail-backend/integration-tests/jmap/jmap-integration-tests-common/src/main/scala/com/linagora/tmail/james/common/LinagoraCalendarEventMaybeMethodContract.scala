@@ -20,11 +20,9 @@ package com.linagora.tmail.james.common
 
 import java.util.concurrent.TimeUnit
 
-import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.sendInvitationEmailToBobAndGetIcsBlobIds
-import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
-import io.restassured.RestAssured.{`given`, requestSpecification}
+import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{buildRequestSpecification, sendDynamicInvitationEmailAndGetIcsBlobIds, sendInvitationEmailToBobAndGetIcsBlobIds, setupServer}
+import io.restassured.RestAssured.`given`
 import io.restassured.http.ContentType.JSON
-import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
@@ -32,42 +30,24 @@ import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
-import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
-import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.{BeforeEach, Tag, Test}
+import org.junit.jupiter.api.{Tag, Test}
 import play.api.libs.json.Json
 
 trait LinagoraCalendarEventMaybeMethodContract {
-
-  @BeforeEach
-  def setUp(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[DataProbeImpl])
-      .fluent
-      .addDomain(DOMAIN.asString)
-      .addDomain(_2_DOT_DOMAIN.asString)
-      .addUser(BOB.asString, BOB_PASSWORD)
-      .addUser(ANDRE.asString, ANDRE_PASSWORD)
-
-    requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
-      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .build
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
-  }
-
   def randomBlobId: String
 
   @Test
-  def maybeShouldSucceed(server: GuiceJamesServer): Unit = {
+  def maybeShouldSucceed(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -77,7 +57,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -101,7 +81,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "maybe": [ "$blobId" ]
            |    },
            |    "c1"
@@ -109,9 +89,12 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldReturnNotFoundResultWhenBlobIdDoesNotExist(server: GuiceJamesServer): Unit = {
+  def shouldReturnNotFoundResultWhenBlobIdDoesNotExist(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val notFoundBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithIcsMissingMethod.eml", icsPartId = "88888")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "88888")
 
     val request: String =
       s"""{
@@ -121,7 +104,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "$notFoundBlobId" ]
          |    },
          |    "c1"]]
@@ -144,16 +127,19 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "notFound": [ "$notFoundBlobId" ]
            |    }, "c1"
            |]""".stripMargin)
   }
 
   @Test
-  def shouldReturnNotMaybeWhenNotAnICS(server: GuiceJamesServer): Unit = {
+  def shouldReturnNotMaybeWhenNotAnICS(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val notParsableBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "2")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "2")
 
     val request: String =
       s"""{
@@ -163,7 +149,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "$notParsableBlobId" ]
          |    },
          |    "c1"]]
@@ -186,7 +172,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "notMaybe": {
            |            "$notParsableBlobId": {
            |                "type": "invalidPatch",
@@ -199,9 +185,12 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldSucceedWhenMixSeveralCases(server: GuiceJamesServer): Unit = {
+  def shouldSucceedWhenMixSeveralCases(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val (notAcceptedId, notFoundBlobId, blobId) =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartIds = ("2", "999999", "3"))
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartIds = ("2", "999999", "3"))
 
     val request: String =
       s"""{
@@ -211,7 +200,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "$notAcceptedId", "$blobId", "$notFoundBlobId" ]
          |    },
          |    "c1"]]
@@ -235,7 +224,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "maybe": [
            |            "$blobId"
            |        ],
@@ -254,14 +243,16 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldReturnUnknownMethodWhenMissingOneCapability(): Unit = {
+  def shouldReturnUnknownMethodWhenMissingOneCapability(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val request: String =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core"],
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "123" ]
          |    },
          |    "c1"]]
@@ -291,14 +282,16 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldReturnUnknownMethodWhenMissingAllCapabilities(): Unit = {
+  def shouldReturnUnknownMethodWhenMissingAllCapabilities(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val request: String =
       s"""{
          |  "using": [],
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "123" ]
          |    },
          |    "c1"]]
@@ -328,7 +321,9 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldFailWhenWrongAccountId(): Unit = {
+  def shouldFailWhenWrongAccountId(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val request: String =
       s"""{
          |  "using": [
@@ -367,9 +362,12 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldNotFoundWhenDoesNotHavePermission(server: GuiceJamesServer): Unit = {
+  def shouldNotFoundWhenDoesNotHavePermission(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -379,13 +377,13 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ANDRE_ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.joker.accountId}",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
          |}""".stripMargin
 
-    val response = `given`(buildAndreRequestSpecification(server))
+    val response = `given`(buildRequestSpecification(server, eventInvitation.joker))
       .body(request)
     .when
       .post
@@ -402,7 +400,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.joker.accountId}",
            |        "notFound": [ "$blobId" ]
            |    },
            |    "c1"
@@ -410,13 +408,15 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldSucceedWhenDelegated(server: GuiceJamesServer): Unit = {
+  def shouldSucceedWhenDelegated(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
-    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(eventInvitation.receiver.username, eventInvitation.joker.username)
 
-    val bobAccountId = ACCOUNT_ID
     val request: String =
       s"""{
          |  "using": [
@@ -425,13 +425,13 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$bobAccountId",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
          |}""".stripMargin
 
-    val response = `given`(buildAndreRequestSpecification(server))
+    val response = `given`(buildRequestSpecification(server, eventInvitation.joker))
       .body(request)
     .when
       .post
@@ -449,7 +449,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "maybe": [ "$blobId" ]
            |    },
            |    "c1"
@@ -457,7 +457,9 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldFailWhenNumberOfBlobIdsTooLarge(): Unit = {
+  def shouldFailWhenNumberOfBlobIdsTooLarge(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobIds: Array[String] = Range.inclusive(1, 999)
       .map(_ + "")
       .toArray
@@ -470,7 +472,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds":  $blogIdsJson
          |    },
          |    "c1"]]
@@ -501,9 +503,12 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldNotMaybeWhenInvalidIcsPayload(server: GuiceJamesServer): Unit = {
+  def shouldNotMaybeWhenInvalidIcsPayload(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val (blobId1, blobId2) =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithTwoInvalidIcsAttachments.eml", icsPartIds = ("5", "3"))
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithTwoInvalidIcsAttachments.eml.mustache", eventInvitation, icsPartIds = ("5", "3"))
 
     val request: String =
       s"""{
@@ -513,7 +518,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "$blobId1", "$blobId2" ]
          |    },
          |    "c1"]]
@@ -537,7 +542,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "notMaybe": {
            |            "$blobId2": {
            |                "type": "invalidPatch",
@@ -554,9 +559,12 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldFailWhenInvalidLanguage(server: GuiceJamesServer): Unit = {
+  def shouldFailWhenInvalidLanguage(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     `given`
       .body(s"""{
@@ -566,7 +574,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
                |  "methodCalls": [[
                |    "CalendarEvent/maybe",
                |    {
-               |      "accountId": "$ACCOUNT_ID",
+               |      "accountId": "${eventInvitation.receiver.accountId}",
                |      "blobIds": [ "$blobId" ],
                |      "language": "invalid"
                |    },
@@ -580,9 +588,12 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldFailWhenUnsupportedLanguage(server: GuiceJamesServer): Unit = {
+  def shouldFailWhenUnsupportedLanguage(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     val response =  `given`
       .body(s"""{
@@ -592,7 +603,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
                |  "methodCalls": [[
                |    "CalendarEvent/maybe",
                |    {
-               |      "accountId": "$ACCOUNT_ID",
+               |      "accountId": "${eventInvitation.receiver.accountId}",
                |      "blobIds": [ "$blobId" ],
                |      "language": "vi"
                |    },
@@ -622,9 +633,12 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldSupportSpecialValidLanguages(server: GuiceJamesServer): Unit = {
+  def shouldSupportSpecialValidLanguages(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -634,7 +648,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "$blobId" ],
          |      "language": "en"
          |    },
@@ -659,7 +673,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "maybe": [ "$blobId" ]
            |    },
            |    "c1"
@@ -668,10 +682,13 @@ trait LinagoraCalendarEventMaybeMethodContract {
 
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
-  def shouldSendReplyMailToInvitor(server: GuiceJamesServer): Unit = {
-    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
+  def shouldSendReplyMailToInvitor(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
+    val senderInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(eventInvitation.sender.username))
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAndreInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     `given`
       .body( s"""{
@@ -681,7 +698,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
                 |  "methodCalls": [[
                 |    "CalendarEvent/maybe",
                 |    {
-                |      "accountId": "$ACCOUNT_ID",
+                |      "accountId": "${eventInvitation.receiver.accountId}",
                 |      "blobIds": [ "$blobId" ]
                 |    },
                 |    "c1"]]
@@ -698,7 +715,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
            |		[
            |            "CalendarEvent/maybe",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "${eventInvitation.receiver.accountId}",
            |                "maybe": [ "$blobId" ]
            |            },
            |            "c1"
@@ -710,16 +727,16 @@ trait LinagoraCalendarEventMaybeMethodContract {
 
     awaitAtMostTenSeconds.untilAsserted { () =>
       val response: String =
-        `given`(buildAndreRequestSpecification(server))
+        `given`(buildRequestSpecification(server, eventInvitation.sender))
           .body( s"""{
                     |    "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
                     |    "methodCalls": [
                     |        [
                     |            "Email/query",
                     |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "accountId": "${eventInvitation.sender.accountId}",
                     |                "filter": {
-                    |                    "inMailbox": "${andreInboxId.serialize}"
+                    |                    "inMailbox": "${senderInboxId.serialize}"
                     |                }
                     |            },
                     |            "c1"
@@ -727,7 +744,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
                     |        [
                     |            "Email/get",
                     |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "accountId": "${eventInvitation.sender.accountId}",
                     |                "properties": [ "subject", "hasAttachment", "attachments", "preview" ],
                     |                "#ids": {
                     |                    "resultOf": "c1",
@@ -759,7 +776,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 884,
+             |            "size": 875,
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -767,7 +784,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
              |        {
              |            "charset": "us-ascii",
              |            "disposition": "attachment",
-             |            "size": 884,
+             |            "size": 875,
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
@@ -779,10 +796,13 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def mailReplyShouldSupportI18nWhenLanguageRequest(server: GuiceJamesServer): Unit = {
-    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
+  def mailReplyShouldSupportI18nWhenLanguageRequest(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
+    val senderInboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(eventInvitation.sender.username))
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAndreInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     `given`
       .body( s"""{
@@ -792,7 +812,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
                 |  "methodCalls": [[
                 |    "CalendarEvent/maybe",
                 |    {
-                |      "accountId": "$ACCOUNT_ID",
+                |      "accountId": "${eventInvitation.receiver.accountId}",
                 |      "blobIds": [ "$blobId" ],
                 |      "language": "fr"
                 |    },
@@ -810,7 +830,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
            |		[
            |            "CalendarEvent/maybe",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "${eventInvitation.receiver.accountId}",
            |                "maybe": [ "$blobId" ]
            |            },
            |            "c1"
@@ -820,16 +840,16 @@ trait LinagoraCalendarEventMaybeMethodContract {
 
     awaitAtMostTenSeconds.untilAsserted { () =>
       val response: String =
-        `given`(buildAndreRequestSpecification(server))
+        `given`(buildRequestSpecification(server, eventInvitation.sender))
           .body( s"""{
                     |    "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
                     |    "methodCalls": [
                     |        [
                     |            "Email/query",
                     |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "accountId": "${eventInvitation.sender.accountId}",
                     |                "filter": {
-                    |                    "inMailbox": "${andreInboxId.serialize}"
+                    |                    "inMailbox": "${senderInboxId.serialize}"
                     |                }
                     |            },
                     |            "c1"
@@ -837,7 +857,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
                     |        [
                     |            "Email/get",
                     |            {
-                    |                "accountId": "$ANDRE_ACCOUNT_ID",
+                    |                "accountId": "${eventInvitation.sender.accountId}",
                     |                "properties": [ "subject", "hasAttachment", "attachments", "preview" ],
                     |                "#ids": {
                     |                    "resultOf": "c1",
@@ -869,7 +889,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 884,
+             |            "size": 875,
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -877,7 +897,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
              |        {
              |            "charset": "us-ascii",
              |            "disposition": "attachment",
-             |            "size": 884,
+             |            "size": 875,
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
@@ -889,9 +909,13 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldNotFoundWhenBlobIdIsNotPrefixedByMessageId(server: GuiceJamesServer): Unit = {
+  def shouldNotFoundWhenBlobIdIsNotPrefixedByMessageId(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
+
     val blobIdWithoutMessageId: String = "abcd123"
 
     val request: String =
@@ -902,7 +926,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": ["$blobIdWithoutMessageId", "$blobId"]
          |    },
          |    "c1"]]
@@ -926,7 +950,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "maybe": ["$blobId"],
            |        "notFound": ["$blobIdWithoutMessageId"]
            |    },
@@ -935,11 +959,15 @@ trait LinagoraCalendarEventMaybeMethodContract {
   }
 
   @Test
-  def shouldSucceedWhenCalendarBlobsComeFromDifferentMessages(server: GuiceJamesServer): Unit = {
+  def shouldSucceedWhenCalendarBlobsComeFromDifferentMessages(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
+    setupServer(server, eventInvitation)
+
     val blobIdFromMessage1: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
     val blobIdFromMessage2: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+      sendDynamicInvitationEmailAndGetIcsBlobIds(
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
 
     val request: String =
       s"""{
@@ -949,7 +977,7 @@ trait LinagoraCalendarEventMaybeMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "${eventInvitation.receiver.accountId}",
          |      "blobIds": [ "$blobIdFromMessage1", "$blobIdFromMessage2" ]
          |    },
          |    "c1"]]
@@ -974,16 +1002,11 @@ trait LinagoraCalendarEventMaybeMethodContract {
         s"""[
            |    "CalendarEvent/maybe",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "${eventInvitation.receiver.accountId}",
            |        "maybe": [ "$blobIdFromMessage1", "$blobIdFromMessage2" ]
            |    },
            |    "c1"
            |]""".stripMargin)
   }
 
-  private def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
-    baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
-      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .build
 }
