@@ -15,11 +15,13 @@ The associated object sample:
 
 ....
 {
-    "replySupportedLanguage": ["en", "fr"]
+    "replySupportedLanguage": ["en", "fr"],
+    "supportFreeBusyQuery": true
 }
 ....
 
-The replySupportedLanguage object contains a list of languages supported by the application for determining email templates.
+- The `replySupportedLanguage` object contains a list of languages supported by the application for determining email templates.
+- The `supportFreeBusyQuery` object is a boolean value that indicates whether the server supports the freeBusy query in the response of the `CalendarEventAttendance/get` method.
 
 == CalendarEvent/accept
 
@@ -107,16 +109,21 @@ The CalendarEventAttendance/get method takes the following arguments:
 The response object contains the following arguments:
 
 - *accountId*: `Id` The id of the account used for the call.
-- *accepted*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were successfully accepted, or `null` if none.
-- *rejected*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were successfully rejected, or `null` if none.
-- *tentativelyAccepted*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were tentatively accepted successfully (user chose maybe as a response for his attendance), or `null` if none.
-- *needsAction*: `Id[CalendarEvent[]]|null` A list of ids of the calendar events that were neither accepted, rejected nor tentatively accepted by user thus they need action, or `null` if none.
+- *list*: `CalendarEventAttendance[]` A list of attendance records.
 - *notFound*: `Id[]|null` A list of blob ids given that could not be found, or `null` if none.
 - *notDone*: `Id[SetError]|null`  A map of the blobId to a SetError object for each calendar event that failed to reply, or null if all successful.
 
+The `CalendarEventAttendance` object is defined as follows:
+
+- *blobId*: `Id` (required) The id of the blob of the calendar event.
+- *attendanceStatus*: `String` (required) The attendance status of the user for the calendar event. Possible values are: `accepted`, `rejected`, `tentativelyAccepted`, `needsAction`.
+- *isFree*: `Boolean` A boolean value indicating whether the user is free at the time of the event. `true` if the user is free, `false` otherwise.
+
 The associated `replySupportedLanguage` capability property is not needed for this method to function.
 
-Note: The sum of sizes of arrays `accepted`, `rejected`, `tentativelyAccepted`, `needsAction` and `notFound` must be equal to the size of `blobIds`, otherwise the server must return an error.
+The associated `supportFreeBusyQuery` capability property is needed for the server to return the `isFree` property.
+
+Note: The sum of sizes of arrays `list`, `notFound` and `notDone` must be equal to the size of `blobIds`, otherwise the server must return an error.
 
 == Example
 
@@ -138,13 +145,22 @@ The server responds:
 
 [source]
 ----
+
 [[ "CalendarEventAttendance/get",
 {
     "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-    "accepted": [ "1_5" ],
-    "rejected": [ "1_3" ],
-    "tentativelyAccepted": [],
-    "needsAction": []
+    "list" : [
+      {
+        "blobId": "1_3",
+        "attendanceStatus": "rejected",
+        "isFree": true
+      },
+      {
+        "blobId": "1_5",
+        "attendanceStatus": "accepted",
+        "isFree":  true
+      }
+    ]
 }, "c1" ]]
 ----
 
@@ -155,10 +171,7 @@ In the case that a blob id is not found or not accessible for current user, the 
 [[ "CalendarEventAttendance/get",
 {
     "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-    "accepted": [],
-    "rejected": [],
-    "tentativelyAccepted": [],
-    "needsAction": []
+    "list" : [],
     "notFound": ["0f9f65ab-dc7b-4146-850f-6e4881093965" ]
 }, "c1" ]]
 ----
@@ -170,11 +183,8 @@ If the blob id was in an invalid format, the server would respond:
 [[ "CalendarEventAttendance/get",
 {
     "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-    "accepted": [],
-    "rejected": [],
-    "tentativelyAccepted": [],
-    "needsAction": [],
-    notDone: {
+    "list" : [],
+    "notDone": {
         "BAD_BLOB_ID": {
             "type": "invalidArguments",
             "description": "Invalid BlobId 'BAD_BLOB_ID'. Blob id needs to match this format: {message_id}_{partId1}_{partId2}_..."
@@ -195,3 +205,21 @@ If the number of blob ids in the request exceeds the limit (currently 16), the s
     "c1"
 ]
 ----
+
+If the event query get a scheduling conflict, `isFree` property will be `false`
+
+----
+[[ "CalendarEventAttendance/get",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "list" : [
+      {
+        "blobId": "1_5",
+        "attendanceStatus": "needsAction",
+        "isFree":  false
+      }
+    ]
+}, "c1" ]]
+----
+
+In this response, the server has detected events "1_5" conflict with another event in the same time slot.
