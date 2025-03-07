@@ -24,17 +24,20 @@ import java.util.concurrent.TimeUnit
 import java.util.{Base64, Optional}
 
 import com.samskivert.mustache.{Mustache, Template}
+import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
+import io.restassured.RestAssured.requestSpecification
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.AccountId
-import org.apache.james.jmap.rfc8621.contract.Fixture.BOB
+import org.apache.james.jmap.http.UserCredential
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.SearchQuery.Sort.{Order, SortClause}
 import org.apache.james.mailbox.model.{MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.modules.protocols.SmtpGuiceProbe
 import org.apache.james.util.ClassLoaderUtils
-import org.apache.james.utils.SMTPMessageSender
+import org.apache.james.utils.{DataProbeImpl, SMTPMessageSender}
 import org.awaitility.Awaitility
 import org.awaitility.core.ConditionFactory
 
@@ -150,5 +153,23 @@ object LinagoraCalendarEventMethodContractUtilities {
     _sendInvitationEmailToBobAndGetIcsBlobIds(server, invitationEml, icsPartIds._1, icsPartIds._2, icsPartIds._3) match {
       case Seq(a, b, c) => (a, b, c)
     }
+  }
+
+  def setupServer(server: GuiceJamesServer, eventInvitation: EventInvitation) = {
+    server.getProbe(classOf[DataProbeImpl])
+      .fluent
+      .addDomain(eventInvitation.sender.username.getDomainPart.get().asString())
+      .addDomain(eventInvitation.receiver.username.getDomainPart.get().asString())
+      .addDomain(eventInvitation.joker.username.getDomainPart.get().asString())
+      .addUser(eventInvitation.sender.username.asString(), eventInvitation.sender.password)
+      .addUser(eventInvitation.receiver.username.asString(), eventInvitation.receiver.password)
+      .addUser(eventInvitation.joker.username.asString(), eventInvitation.joker.password)
+
+    requestSpecification = baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(eventInvitation.receiver.username, eventInvitation.receiver.password)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build
+
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(eventInvitation.receiver.username))
   }
 }

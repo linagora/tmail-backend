@@ -20,9 +20,9 @@ package com.linagora.tmail.james.common
 
 import java.util.concurrent.TimeUnit
 
-import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendDynamicInvitationEmailAndGetIcsBlobIds, sendInvitationEmailToBobAndGetIcsBlobIds}
+import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.{sendDynamicInvitationEmailAndGetIcsBlobIds, setupServer}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
-import io.restassured.RestAssured.{`given`, requestSpecification}
+import io.restassured.RestAssured.`given`
 import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
@@ -38,31 +38,12 @@ import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
-import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.{Tag, Test}
 import play.api.libs.json.Json
 
 trait LinagoraCalendarEventAcceptMethodContract {
   def randomBlobId: String
-
-  private def setupServer(server: GuiceJamesServer, eventInvitation: EventInvitation) = {
-    server.getProbe(classOf[DataProbeImpl])
-      .fluent
-      .addDomain(eventInvitation.sender.username.getDomainPart.get().asString())
-      .addDomain(eventInvitation.receiver.username.getDomainPart.get().asString())
-      .addDomain(eventInvitation.joker.username.getDomainPart.get().asString())
-      .addUser(eventInvitation.sender.username.asString(), eventInvitation.sender.password)
-      .addUser(eventInvitation.receiver.username.asString(), eventInvitation.receiver.password)
-      .addUser(eventInvitation.joker.username.asString(), eventInvitation.joker.password)
-
-    requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(eventInvitation.receiver.username, eventInvitation.receiver.password)))
-      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .build
-
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(eventInvitation.receiver.username))
-  }
 
   @Test
   def acceptShouldSucceed(server: GuiceJamesServer, eventInvitation: EventInvitation): Unit = {
