@@ -35,6 +35,8 @@ import java.util.stream.IntStream;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import jakarta.mail.internet.AddressException;
 
+import javax.net.ssl.SSLException;
+
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
@@ -71,7 +73,7 @@ class OpenPaasContactsConsumerTest {
     private OpenPaasContactsConsumer consumer;
 
     @BeforeEach
-    void setup() throws URISyntaxException {
+    void setup() throws URISyntaxException, SSLException {
         OpenPaasConfiguration openPaasConfiguration = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
             WireMockOpenPaaSServerExtension.ALICE_ID,
