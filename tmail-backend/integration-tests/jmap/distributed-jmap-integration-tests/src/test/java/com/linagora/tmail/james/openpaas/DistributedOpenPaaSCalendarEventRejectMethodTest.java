@@ -16,35 +16,48 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james;
+package com.linagora.tmail.james.openpaas;
 
-import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
-import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
-import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.linagora.tmail.DockerOpenPaasExtension;
+import com.linagora.tmail.DockerOpenPaasSetupSingleton;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
+import com.linagora.tmail.OpenPaasSetupTestModule;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
-import com.linagora.tmail.james.common.DownloadAllContract;
+import com.linagora.tmail.james.common.EventInvitation;
+import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
+import com.linagora.tmail.james.common.LinagoraCalendarEventRejectMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class DistributedDownloadAllRouteTest implements DownloadAllContract {
-    public static final CassandraMessageId.Factory MESSAGE_ID_FACTORY = new CassandraMessageId.Factory();
+@ExtendWith(OpenPaasEventInvitationParameterResolver.class)
+public class DistributedOpenPaaSCalendarEventRejectMethodTest implements LinagoraCalendarEventRejectMethodContract {
+    @RegisterExtension
+    @Order(1)
+    static DockerOpenPaasExtension openPaasExtension = new DockerOpenPaasExtension(
+        DockerOpenPaasSetupSingleton.singleton);
 
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+    @Order(2)
+    static JamesServerExtension
+        testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
@@ -57,19 +70,38 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .searchConfiguration(SearchConfiguration.scanning())
+            .openPassModuleChooserConfiguration(
+                new OpenPaasModuleChooserConfiguration(true, true, true))
             .build())
+        .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new DelegationProbeModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule())
+            .overrideWith(new OpenPaasSetupTestModule()))
         .build();
 
     @Override
-    public MessageId randomMessageId() {
-        return MESSAGE_ID_FACTORY.of(Uuids.timeBased());
+    @Disabled("Email sending is handled by Dav server; we do not test Dav server internals.")
+    public void shouldSendReplyMailToInvitor(GuiceJamesServer server, EventInvitation eventInvitation) {
+
+    }
+
+    @Override
+    @Disabled("Email sending is handled by Dav server; we do not test Dav server internals.")
+    public void mailReplyShouldSupportI18nWhenLanguageRequest(GuiceJamesServer server, EventInvitation eventInvitation) {
+
+    }
+
+    @Override
+    @Disabled("This test validates the logic in CalendarEventReplyGenerator, which is not used for CalDav.")
+    public void shouldNotCreatedWhenInvalidIcsPayload(GuiceJamesServer server, EventInvitation eventInvitation) {
+    }
+
+    @Override
+    public String randomBlobId() {
+        return Uuids.timeBased().toString();
     }
 }
