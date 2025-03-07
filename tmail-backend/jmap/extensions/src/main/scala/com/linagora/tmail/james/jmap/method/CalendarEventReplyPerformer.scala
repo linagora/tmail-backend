@@ -28,7 +28,7 @@ import com.github.mustachejava.{DefaultMustacheFactory, MustacheFactory}
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
-import com.linagora.tmail.james.jmap.calendar.BlobCalendarResolver
+import com.linagora.tmail.james.jmap.calendar.CalendarResolver
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, LOGGER}
 import com.linagora.tmail.james.jmap.model._
@@ -68,7 +68,7 @@ object CalendarEventReplyPerformer {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[CalendarEventReplyPerformer])
 }
 
-class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarResolver,
+class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: CalendarResolver,
                                             mailQueueFactory: MailQueueFactory[_ <: MailQueue],
                                             fileSystem: FileSystem,
                                             @Named("jmap") jmapConfiguration: Configuration,

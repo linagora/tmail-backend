@@ -28,8 +28,8 @@ import reactor.core.scala.publisher.SMono
 
 import scala.util.Using
 
-class BlobCalendarResolver @Inject()(blobResolvers: BlobResolvers) {
-  def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession): SMono[Calendar] = 
+class CalendarResolver @Inject()(blobResolvers: BlobResolvers) {
+  def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession): SMono[Calendar] =
     blobResolvers.resolve(blobId, mailboxSession)
       .flatMap(blob =>
         Using(blob.content)(CalendarEventParsed.parseICal4jCalendar).toEither
