@@ -32,7 +32,8 @@ import java.net.URISyntaxException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
+import javax.net.ssl.SSLException;
+
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
@@ -49,6 +50,7 @@ import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
@@ -71,7 +73,7 @@ class OpenPaasContactsConsumerTest {
     private OpenPaasContactsConsumer consumer;
 
     @BeforeEach
-    void setup() throws URISyntaxException {
+    void setup() throws URISyntaxException, SSLException {
         OpenPaasConfiguration openPaasConfiguration = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
             WireMockOpenPaaSServerExtension.ALICE_ID,

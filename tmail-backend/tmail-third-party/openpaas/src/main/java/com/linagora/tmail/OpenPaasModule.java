@@ -20,6 +20,8 @@ package com.linagora.tmail;
 
 import java.io.FileNotFoundException;
 
+import javax.net.ssl.SSLException;
+
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
@@ -71,7 +73,7 @@ public class OpenPaasModule extends AbstractModule {
     }
 
     @Provides
-    public OpenPaasRestClient provideOpenPaasRestCLient(OpenPaasConfiguration openPaasConfiguration) {
+    public OpenPaasRestClient provideOpenPaasRestCLient(OpenPaasConfiguration openPaasConfiguration) throws SSLException {
         return new OpenPaasRestClient(openPaasConfiguration);
     }
 
@@ -85,7 +87,7 @@ public class OpenPaasModule extends AbstractModule {
 
         @Provides
         @Singleton
-        public DavClient provideDavClient(OpenPaasConfiguration openPaasConfiguration) {
+        public DavClient provideDavClient(OpenPaasConfiguration openPaasConfiguration) throws SSLException {
             Preconditions.checkArgument(openPaasConfiguration.davConfiguration().isPresent(),
                 "OpenPaasConfiguration should have dav configuration");
             return new DavClient(openPaasConfiguration.davConfiguration().get());

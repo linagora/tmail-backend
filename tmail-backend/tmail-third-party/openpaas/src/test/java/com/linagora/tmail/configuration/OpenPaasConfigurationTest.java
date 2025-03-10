@@ -196,7 +196,7 @@ class OpenPaasConfigurationTest {
         configuration.addProperty("openpaas.admin.user", "jhon_doe");
         configuration.addProperty("openpaas.admin.password", "123");
 
-        assertThat( OpenPaasConfiguration.from(configuration).contactConsumerConfiguration())
+        assertThat(OpenPaasConfiguration.from(configuration).contactConsumerConfiguration())
             .isEmpty();
     }
 

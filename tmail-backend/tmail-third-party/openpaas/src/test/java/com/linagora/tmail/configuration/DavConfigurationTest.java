@@ -52,8 +52,8 @@ class DavConfigurationTest {
         DavConfiguration expected = new DavConfiguration(
             new UsernamePasswordCredentials("jhon_doe", "123"),
             new URI("http://localhost:8080"),
-            Optional.of(true)
-            , Optional.of(Duration.ofMillis(500)));
+            Optional.of(true),
+            Optional.of(Duration.ofMillis(500)));
 
         assertThat(DavConfiguration.from(configuration))
             .isEqualTo(expected);
