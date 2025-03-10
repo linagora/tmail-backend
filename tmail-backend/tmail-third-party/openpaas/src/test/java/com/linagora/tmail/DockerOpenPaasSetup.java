@@ -89,7 +89,7 @@ public class DockerOpenPaasSetup {
     }
 
     public void start() {
-        environment.start();
+        // environment.start();
         openPaaSProvisioningService = new OpenPaaSProvisioningService(getMongoDbIpAddress().toString());
     }
 
@@ -102,11 +102,12 @@ public class DockerOpenPaasSetup {
     }
 
     public URI getOpenPaasIpAddress() {
-        return Throwing.supplier(() -> new URIBuilder()
-            .setScheme("http")
-            .setHost(getHost(DockerService.OPENPAAS))
-            .setPort(getPort(DockerService.OPENPAAS))
-            .build()).get();
+        return Throwing.supplier(() -> URI.create("http://172.18.0.7:8080")).get();
+//        return Throwing.supplier(() -> new URIBuilder()
+//            .setScheme("http")
+//            .setHost(getHost(DockerService.OPENPAAS))
+//            .setPort(getPort(DockerService.OPENPAAS))
+//            .build()).get();
     }
 
     public ContainerState getRabbitMqContainer() {
@@ -114,11 +115,12 @@ public class DockerOpenPaasSetup {
     }
 
     public URI rabbitMqUri() {
-        return Throwing.supplier(() -> new URIBuilder()
-            .setScheme("amqp")
-            .setHost(getHost(DockerService.RABBITMQ))
-            .setPort(getPort(DockerService.RABBITMQ))
-            .build()).get();
+        return Throwing.supplier(() -> URI.create("amqp://172.18.0.2:5672")).get();
+//        return Throwing.supplier(() -> new URIBuilder()
+//            .setScheme("amqp")
+//            .setHost(getHost(DockerService.RABBITMQ))
+//            .setPort(getPort(DockerService.RABBITMQ))
+//            .build()).get();
     }
 
     public ContainerState getSabreDavContainer() {
@@ -126,11 +128,12 @@ public class DockerOpenPaasSetup {
     }
 
     public URI getSabreDavURI() {
-        return Throwing.supplier(() -> new URIBuilder()
-            .setScheme("http")
-            .setHost(getHost(DockerService.SABRE_DAV))
-            .setPort(getPort(DockerService.SABRE_DAV))
-            .build()).get();
+        return Throwing.supplier(() -> URI.create("http://172.18.0.5:80")).get();
+//        return Throwing.supplier(() -> new URIBuilder()
+//            .setScheme("http")
+//            .setHost(getHost(DockerService.SABRE_DAV))
+//            .setPort(getPort(DockerService.SABRE_DAV))
+//            .build()).get();
     }
 
     public ContainerState getMongoDBContainer() {
@@ -138,11 +141,12 @@ public class DockerOpenPaasSetup {
     }
 
     public URI getMongoDbIpAddress() {
-        return Throwing.supplier(() -> new URIBuilder()
-            .setScheme("mongodb")
-            .setHost(getHost(DockerService.MONGO))
-            .setPort(getPort(DockerService.MONGO))
-            .build()).get();
+        return Throwing.supplier(() -> URI.create("mongodb://172.18.0.4:27017")).get();
+//        return Throwing.supplier(() -> new URIBuilder()
+//            .setScheme("mongodb")
+//            .setHost(getHost(DockerService.MONGO))
+//            .setPort(getPort(DockerService.MONGO))
+//            .build()).get();
     }
 
     public ContainerState getElasticsearchContainer() {
