@@ -46,6 +46,7 @@ import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUserProvider;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
+import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.contact.ContactAddIndexingProcessor;
 
 public class OpenPaasModule extends AbstractModule {
@@ -99,9 +100,10 @@ public class OpenPaasModule extends AbstractModule {
                                                                                 SessionProvider sessionProvider,
                                                                                 MessageId.Factory messageIdFactory,
                                                                                 MessageIdManager messageIdManager,
-                                                                                DavUserProvider davUserProvider) {
+                                                                                DavUserProvider davUserProvider,
+                                                                                CalendarResolver calendarResolver) {
             return new CalDavEventAttendanceRepository(davClient, sessionProvider, messageIdFactory,
-                messageIdManager, davUserProvider);
+                messageIdManager, davUserProvider, calendarResolver);
         }
 
         @Provides

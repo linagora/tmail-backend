@@ -16,27 +16,19 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james;
+package com.linagora.tmail.james.common
 
-import static com.linagora.tmail.james.TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION;
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ALICE, ALICE_PASSWORD, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD}
+import org.junit.jupiter.api.extension.{ExtensionContext, ParameterContext, ParameterResolver}
 
-import org.apache.james.JamesServerExtension;
-import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.RegisterExtension;
+class DefaultEventInvitationParameterResolver extends ParameterResolver {
 
-import com.linagora.tmail.james.common.DefaultEventInvitationParameterResolver;
-import com.linagora.tmail.james.common.LinagoraCalendarEventRejectMethodContract;
+  override def supportsParameter(parameterContext: ParameterContext, extensionContext: ExtensionContext): Boolean =
+    parameterContext.getParameter.getType eq classOf[EventInvitation]
 
-@ExtendWith(DefaultEventInvitationParameterResolver.class)
-public class PostgresLinagoraCalendarEventRejectMethodTest implements LinagoraCalendarEventRejectMethodContract {
-
-    @RegisterExtension
-    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION.apply(new DelegationProbeModule())
-        .build();
-
-    @Override
-    public String randomBlobId() {
-        return TmailJmapBase.randomBlobId();
-    }
+  override def resolveParameter(parameterContext: ParameterContext, extensionContext: ExtensionContext): AnyRef =
+    EventInvitation(
+      sender = User("ALICE", ALICE.asString(), ALICE_PASSWORD),
+      receiver = User("BOB", BOB.asString(), BOB_PASSWORD),
+      joker = User("ANDRE", ANDRE.asString(), ANDRE_PASSWORD))
 }
