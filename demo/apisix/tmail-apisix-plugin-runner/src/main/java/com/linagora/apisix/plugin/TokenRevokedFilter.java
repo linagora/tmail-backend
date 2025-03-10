@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import reactor.core.publisher.Mono;
+
 @Component
 public class TokenRevokedFilter implements PluginFilter {
     private final Logger logger = LoggerFactory.getLogger("RevokedTokenPlugin");
@@ -29,25 +31,32 @@ public class TokenRevokedFilter implements PluginFilter {
     @Override
     public void filter(HttpRequest request, HttpResponse response, PluginFilterChain chain) {
         logger.debug("Received a new request");
-        sidFilter(request, response);
-        chain.filter(request, response);
+        sidFilter(request, response)
+            .doFinally(any -> chain.filter(request, response))
+            .subscribe();
     }
 
-    private void sidFilter(HttpRequest request, HttpResponse response) {
-        Optional.ofNullable(request.getHeader("Authorization"))
+    private Mono<Void> sidFilter(HttpRequest request, HttpResponse response) {
+        return Optional.ofNullable(request.getHeader("Authorization"))
             .or(() -> Optional.ofNullable(request.getHeader("authorization")))
             .map(String::trim)
             .map(bearerToken -> bearerToken.startsWith("Bearer ") ? bearerToken.substring(7) : bearerToken)
             .flatMap(ChannelLogoutController::extractSidFromLogoutToken)
-            .ifPresent(sid -> {
-                boolean existSid = tokenRepository.exist(sid);
+            .map(sid -> validateSid(request, response, sid))
+            .orElse(Mono.empty());
+    }
+
+    private Mono<Void> validateSid(HttpRequest request, HttpResponse response, String sid) {
+        return tokenRepository.exist(sid)
+            .doOnNext(existSid -> {
                 if (existSid) {
                     logger.info("Token has been revoked, Sid: " + sid);
                     makeUnAuthorizedRequest(request, response);
                 } else {
                     logger.debug("Token valid, Sid: " + sid);
                 }
-            });
+            })
+            .then();
     }
 
     public static void makeUnAuthorizedRequest(HttpRequest request, HttpResponse response) {
