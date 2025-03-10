@@ -23,6 +23,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.stream.Collectors;
 
+import javax.net.ssl.SSLException;
+
 import jakarta.mail.internet.AddressException;
 
 import org.apache.commons.lang3.StringUtils;
@@ -37,6 +39,7 @@ import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.contact.UserSearchResponse;
 
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.core.publisher.Mono;
@@ -53,7 +56,7 @@ public class OpenPaasRestClient {
     private final ObjectMapper deserializer = new ObjectMapper();
     private final UserSearchResponse.Deserializer userSearchResponseDeserializer = new UserSearchResponse.Deserializer();
 
-    public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) {
+    public OpenPaasRestClient(OpenPaasConfiguration openPaasConfiguration) throws SSLException {
         URI apiUrl = openPaasConfiguration.apirUri();
         String user = openPaasConfiguration.adminUsername();
         String password = openPaasConfiguration.adminPassword();
@@ -61,15 +64,15 @@ public class OpenPaasRestClient {
         this.client = createHttpClient(openPaasConfiguration, apiUrl, user, password);
     }
 
-    private HttpClient createHttpClient(OpenPaasConfiguration openPaasConfiguration, URI apiUrl, String user, String password) {
+    private HttpClient createHttpClient(OpenPaasConfiguration openPaasConfiguration, URI apiUrl, String user, String password) throws SSLException {
         HttpClient baseHttpClient = HttpClient.create()
             .baseUrl(apiUrl.toString())
             .headers(headers -> headers.add(AUTHORIZATION_HEADER, HttpUtils.createBasicAuthenticationToken(user, password)))
             .responseTimeout(RESPONSE_TIMEOUT);
 
         if (openPaasConfiguration.trustAllSslCerts()) {
-            return baseHttpClient.secure(sslContextSpec -> sslContextSpec.sslContext(
-                SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)));
+            SslContext sslContext = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+            return baseHttpClient.secure(sslContextSpec -> sslContextSpec.sslContext(sslContext));
         }
 
         return baseHttpClient;

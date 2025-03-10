@@ -26,9 +26,9 @@ import java.util.Optional;
 import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.Test;
 
-import ezvcard.parameter.EmailType;
-
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
+
+import ezvcard.parameter.EmailType;
 
 public class CardDavCreationObjectRequestTest {
 
