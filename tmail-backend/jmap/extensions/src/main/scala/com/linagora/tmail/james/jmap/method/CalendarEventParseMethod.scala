@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.method
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.json.CalendarEventSerializer
+import com.linagora.tmail.james.jmap.method.CalendarCapabilityProperties.CALENDAR_EVENT_VERSION
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
 import com.linagora.tmail.james.jmap.model.{CalendarEventParse, CalendarEventParseRequest, CalendarEventParseResponse, CalendarEventParseResults, CalendarEventParsed, InvalidCalendarFileException}
 import eu.timepit.refined.auto._
@@ -42,6 +43,10 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.util.Using
 
+object CalendarCapabilityProperties {
+  val CALENDAR_EVENT_VERSION = 2;
+}
+
 case class CalendarCapabilityFactory(supportedLanguage: CalendarEventReplySupportedLanguage) extends CapabilityFactory {
   override def create(urlPrefixes: UrlPrefixes): Capability = CalendarCapability(CalendarCapabilityProperties(supportedLanguage.valueAsStringSet))
 
@@ -53,7 +58,7 @@ final case class CalendarCapability(properties: CalendarCapabilityProperties) ex
 }
 
 case class CalendarCapabilityProperties(replySupportedLanguage: Set[String]) extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj("replySupportedLanguage" -> replySupportedLanguage, "version" -> 2)
+  override def jsonify(): JsObject = Json.obj("replySupportedLanguage" -> replySupportedLanguage, "version" -> CALENDAR_EVENT_VERSION)
 }
 
 class CalendarCapabilitiesModule extends AbstractModule {
