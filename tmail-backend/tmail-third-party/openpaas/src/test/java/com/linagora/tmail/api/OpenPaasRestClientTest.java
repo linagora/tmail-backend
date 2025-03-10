@@ -30,6 +30,8 @@ import java.util.Optional;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import jakarta.mail.internet.AddressException;
 
+import javax.net.ssl.SSLException;
+
 import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +49,7 @@ public class OpenPaasRestClientTest {
     OpenPaasRestClient restClient;
 
     @BeforeEach
-    void setup() {
+    void setup() throws SSLException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
             WireMockOpenPaaSServerExtension.ALICE_ID,
@@ -73,7 +75,7 @@ public class OpenPaasRestClientTest {
     }
 
     @Test
-    void shouldThrowExceptionOnErrorStatusCode() throws URISyntaxException {
+    void shouldThrowExceptionOnErrorStatusCode() throws SSLException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
             WireMockOpenPaaSServerExtension.ALICE_ID,

@@ -27,6 +27,8 @@ import java.util.function.UnaryOperator;
 
 import jakarta.inject.Inject;
 
+import javax.net.ssl.SSLException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.james.util.ReactorUtils;
@@ -36,6 +38,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.DavConfiguration;
+import com.linagora.tmail.dav.cal.FreeBusyRequest;
+import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 import com.linagora.tmail.dav.xml.DavMultistatus;
@@ -48,6 +52,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.core.publisher.Flux;
@@ -75,17 +80,18 @@ public class DavClient {
             .orElse(Duration.ofMillis(100));
 
     @Inject
-    public DavClient(DavConfiguration config) {
+    public DavClient(DavConfiguration config) throws SSLException {
         this.config = config;
         this.client = createHttpClient(config.trustAllSslCerts().orElse(false));
     }
 
-    private HttpClient createHttpClient(boolean trustAllSslCerts) {
+    private HttpClient createHttpClient(boolean trustAllSslCerts) throws SSLException {
         HttpClient client = HttpClient.create()
             .baseUrl(config.baseUrl().toString())
             .responseTimeout(config.responseTimeout().orElse(DEFAULT_RESPONSE_TIMEOUT));
         if (trustAllSslCerts) {
-            return client.secure(sslContextSpec -> sslContextSpec.sslContext(SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)));
+            SslContext sslContext = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+            return client.secure(sslContextSpec -> sslContextSpec.sslContext(sslContext));
         }
         return client;
     }
@@ -273,5 +279,24 @@ public class DavClient {
             LOGGER.trace("Found an invalid calendar href in Dav server response '{}'", href);
             return Optional.empty();
         }
+    }
+
+    public Mono<FreeBusyResponse> freeBusyQuery(DavUser user, FreeBusyRequest request) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, "application/json")
+                .add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(user.username()))))
+            .request(HttpMethod.POST)
+            .uri("/dav/api/calendars/freebusy")
+            .send(Mono.just(Unpooled.wrappedBuffer(request.serializeAsBytes())))
+            .responseSingle((response, byteBufMono) -> {
+                if (response.status() == HttpResponseStatus.OK) {
+                    return byteBufMono.asByteArray().map(FreeBusyResponse::deserialize);
+                }
+                return byteBufMono.asString(StandardCharsets.UTF_8)
+                    .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+                    .flatMap(body -> Mono.error(new DavClientException(
+                        String.format("Unexpected status code: %d when querying freebusy for user: %s. Response body: %s",
+                            response.status().code(), user.userId(), body)
+                    )));
+            });
     }
 }
