@@ -53,7 +53,7 @@ final case class CalendarCapability(properties: CalendarCapabilityProperties) ex
 }
 
 case class CalendarCapabilityProperties(replySupportedLanguage: Set[String]) extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj("replySupportedLanguage" -> replySupportedLanguage)
+  override def jsonify(): JsObject = Json.obj("replySupportedLanguage" -> replySupportedLanguage, "version" -> 2)
 }
 
 class CalendarCapabilitiesModule extends AbstractModule {
