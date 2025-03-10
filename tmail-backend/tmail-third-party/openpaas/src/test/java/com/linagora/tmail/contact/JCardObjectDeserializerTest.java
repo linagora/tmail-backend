@@ -184,6 +184,20 @@ class JCardObjectDeserializerTest {
     }
 
     @Test
+    void shouldParseEmailAddressWhenMailToPrefix() throws AddressException {
+        JCardObject cardObject = deserialize("""
+            [
+             "vcard",
+               [
+                 [ "email",   {}, "text", "mailto:jhon@doe.com" ]
+               ]
+            ]
+            """);
+
+        assertThat(cardObject.mailAddresses().getFirst()).isEqualTo(new MailAddress("jhon@doe.com"));
+    }
+
+    @Test
     void shouldThrowOnBadPayload() {
         assertThatThrownBy(() -> deserialize("BAD_PAYLOAD"));
     }

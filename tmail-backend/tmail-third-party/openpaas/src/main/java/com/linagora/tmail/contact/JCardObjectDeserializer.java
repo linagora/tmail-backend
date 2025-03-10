@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import jakarta.mail.internet.AddressException;
@@ -50,6 +51,7 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
     private static final int PROPERTY_NAME_INDEX = 0;
     private static final int PROPERTIES_ARRAY_INDEX = 1;
     private static final int TEXT_PROPERTY_VALUE_INDEX = 3;
+    private static final String MAILTO_PREFIX = "mailto:";
 
     public JCardObjectDeserializer() {
         this(null);
@@ -78,6 +80,7 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
 
         List<MailAddress> mailAddresses = jCardProperties.get(EMAIL)
             .stream()
+            .map(sanitizeMailToPrefixIfNeeded())
             .flatMap(email -> {
                 try {
                     return Stream.of(new MailAddress(email));
@@ -89,6 +92,10 @@ public class JCardObjectDeserializer extends StdDeserializer<JCardObject> {
             .toList();
 
         return new JCardObject(getFormattedName(jCardProperties), mailAddresses);
+    }
+
+    private Function<String, String> sanitizeMailToPrefixIfNeeded() {
+        return email -> email.startsWith(MAILTO_PREFIX) ? email.substring(MAILTO_PREFIX.length()) : email;
     }
 
     private static Multimap<String, String> collectJCardProperties(Iterator<JsonNode> propertiesIterator) {
