@@ -18,12 +18,6 @@
 
 package com.linagora.tmail.dav;
 
-import java.net.URI;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.UnaryOperator;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -48,6 +42,14 @@ import static com.linagora.tmail.dav.DavServerExtension.report;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+
+import java.net.URI;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.UnaryOperator;
+
+import javax.net.ssl.SSLException;
 
 import org.apache.http.HttpStatus;
 import org.apache.james.core.MailAddress;
@@ -76,7 +78,7 @@ class DavClientTest {
     private DavClient client;
 
     @BeforeEach
-    void setup() {
+    void setup() throws SSLException {
         System.setProperty("MIN_CALENDAR_OBJECT_UPDATE_RETRY_BACKOFF_IN_MILLS", "10");
         client = new DavClient(davServerExtension.getDavConfiguration());
     }

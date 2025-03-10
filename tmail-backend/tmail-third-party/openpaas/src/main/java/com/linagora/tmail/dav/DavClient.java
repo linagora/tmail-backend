@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 
+import javax.net.ssl.SSLException;
+
 import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
@@ -48,6 +50,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.core.publisher.Flux;
@@ -75,17 +78,18 @@ public class DavClient {
             .orElse(Duration.ofMillis(100));
 
     @Inject
-    public DavClient(DavConfiguration config) {
+    public DavClient(DavConfiguration config) throws SSLException {
         this.config = config;
         this.client = createHttpClient(config.trustAllSslCerts().orElse(false));
     }
 
-    private HttpClient createHttpClient(boolean trustAllSslCerts) {
+    private HttpClient createHttpClient(boolean trustAllSslCerts) throws SSLException {
         HttpClient client = HttpClient.create()
             .baseUrl(config.baseUrl().toString())
             .responseTimeout(config.responseTimeout().orElse(DEFAULT_RESPONSE_TIMEOUT));
         if (trustAllSslCerts) {
-            return client.secure(sslContextSpec -> sslContextSpec.sslContext(SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)));
+            SslContext sslContext = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+            return client.secure(sslContextSpec -> sslContextSpec.sslContext(sslContext));
         }
         return client;
     }

@@ -30,7 +30,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.UUID;
 
-import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import jakarta.inject.Singleton;
 import jakarta.mail.MessagingException;
 
@@ -61,6 +60,7 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavServerExtension;
+import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.mailet.CardDavCollectedContact;
 

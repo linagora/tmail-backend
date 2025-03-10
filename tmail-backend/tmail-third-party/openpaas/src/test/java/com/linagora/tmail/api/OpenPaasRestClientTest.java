@@ -23,11 +23,8 @@ import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_RE
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Optional;
+import javax.net.ssl.SSLException;
 
-import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.MailAddress;
@@ -38,6 +35,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 
 public class OpenPaasRestClientTest {
     public static final String BAD_USER_ID = "BAD_ID";
@@ -47,7 +45,7 @@ public class OpenPaasRestClientTest {
     OpenPaasRestClient restClient;
 
     @BeforeEach
-    void setup() {
+    void setup() throws SSLException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
             WireMockOpenPaaSServerExtension.ALICE_ID,
@@ -73,7 +71,7 @@ public class OpenPaasRestClientTest {
     }
 
     @Test
-    void shouldThrowExceptionOnErrorStatusCode() throws URISyntaxException {
+    void shouldThrowExceptionOnErrorStatusCode() throws SSLException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
             WireMockOpenPaaSServerExtension.ALICE_ID,
