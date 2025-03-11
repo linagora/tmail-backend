@@ -30,8 +30,7 @@ import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, LOGGER}
-import com.linagora.tmail.james.jmap.model.{AttendeeReply, CalendarAttendeeField, CalendarEndField, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyGenerator, CalendarEventReplyRequest, CalendarEventReplyResults, CalendarLocationField, CalendarOrganizerField, CalendarParticipantsField, CalendarStartField, CalendarTitleField, InvalidCalendarFileException}
-import eu.timepit.refined.auto._
+import com.linagora.tmail.james.jmap.model._
 import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Named}
 import jakarta.mail.internet.{InternetAddress, MimeMessage, MimeMultipart}
@@ -88,28 +87,19 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarRe
   @PreDestroy
   def dispose: Unit = Try(queue.close()).recover(e => LOGGER.debug("error closing queue", e))
 
-  def process(request: CalendarEventReplyRequest, mailboxSession: MailboxSession, partStat: PartStat): SMono[CalendarEventReplyResults] = {
-    val language: Locale = getLanguageLocale(request)
+  def process(blobIds: Seq[BlobId],
+              requestLanguage: Option[LanguageLocation],
+              partStat: PartStat,
+              mailboxSession: MailboxSession): SMono[CalendarEventReplyResults] = {
+    val language: Locale = getLanguageLocale(requestLanguage)
     Preconditions.checkArgument(supportedLanguage.isSupported(language), s"The language only supports ${supportedLanguage.value}".asInstanceOf[Object])
 
     SMono.fromCallable(() => usersRepository.getMailAddressFor(mailboxSession.getUser))
       .map(mailAddress => AttendeeReply(mailAddress, partStat))
-      .flatMapMany(attendeeReply => SMono.fromCallable(() => extractParsedBlobIds(request))
-        .flatMapMany { case (notParsable: CalendarEventNotParsable, parsedBlobId: Seq[BlobId]) =>
-          SFlux.fromIterable(parsedBlobId)
-            .flatMap(blobId => generateReplyMailAndTryEnqueue(blobId, mailboxSession, attendeeReply, language))
-            .mergeWith(SFlux.just(CalendarEventReplyResults.notDone(notParsable)))
-        })
+      .flatMapMany(attendeeReply => SFlux.fromIterable(blobIds)
+        .flatMap(blobId => generateReplyMailAndTryEnqueue(blobId, mailboxSession, attendeeReply, language)))
       .reduce(CalendarEventReplyResults.empty)(CalendarEventReplyResults.merge)
   }
-
-  private def extractParsedBlobIds(request: CalendarEventReplyRequest): (CalendarEventNotParsable, Seq[BlobId]) =
-    request.blobIds.value.foldLeft((CalendarEventNotParsable(Set.empty), Seq.empty[BlobId])) { (resultBuilder, unparsedBlobId) =>
-      BlobId.of(unparsedBlobId) match {
-        case Success(blobId) => (resultBuilder._1, resultBuilder._2 :+ blobId)
-        case Failure(_) => (resultBuilder._1.merge(CalendarEventNotParsable(Set(unparsedBlobId))), resultBuilder._2)
-      }
-    }
 
   private def generateReplyMailAndTryEnqueue(blobId: BlobId, mailboxSession: MailboxSession, attendeeReply: AttendeeReply, language: Locale): SMono[CalendarEventReplyResults] =
     blobCalendarResolver.resolveRequestCalendar(blobId, mailboxSession)
@@ -123,8 +113,8 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: BlobCalendarRe
         case e => SMono.just(CalendarEventReplyResults.notDone(blobId, e, mailboxSession.getUser.asString()))
       })
 
-  private def getLanguageLocale(request: CalendarEventReplyRequest): Locale =
-    request.language.map(_.language).getOrElse(CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT)
+  private def getLanguageLocale(requestLanguage: Option[LanguageLocation]): Locale =
+    requestLanguage.map(_.language).getOrElse(CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT)
 }
 
 class BlobCalendarResolver @Inject()(blobResolvers: BlobResolvers) {

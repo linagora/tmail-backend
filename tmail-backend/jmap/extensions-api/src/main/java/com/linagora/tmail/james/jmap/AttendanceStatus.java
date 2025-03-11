@@ -82,12 +82,12 @@ public enum AttendanceStatus {
         return fromPartStat(partstat);
     }
 
-    public Optional<PartStat> toPartStat() {
+    public PartStat toPartStat() {
         return switch (this) {
-            case Accepted -> Optional.of(PartStat.ACCEPTED);
-            case Declined -> Optional.of(PartStat.DECLINED);
-            case Tentative -> Optional.of(PartStat.TENTATIVE);
-            case NeedsAction -> Optional.of(PartStat.NEEDS_ACTION);
+            case Accepted -> PartStat.ACCEPTED;
+            case Declined -> PartStat.DECLINED;
+            case Tentative -> PartStat.TENTATIVE;
+            case NeedsAction -> PartStat.NEEDS_ACTION;
         };
     }
 
