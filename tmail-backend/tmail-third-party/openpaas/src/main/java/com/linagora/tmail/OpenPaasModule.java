@@ -19,6 +19,7 @@
 package com.linagora.tmail;
 
 import java.io.FileNotFoundException;
+import java.util.function.Function;
 
 import javax.net.ssl.SSLException;
 
@@ -36,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
+import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.linagora.tmail.api.OpenPaasRestClient;
@@ -78,6 +80,17 @@ public class OpenPaasModule extends AbstractModule {
     }
 
     public static class DavModule extends AbstractModule {
+
+        public static final Boolean CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY = true;
+
+        public static Function<Boolean, Module> CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE = supportFreeBusyQuery -> new AbstractModule() {
+            @Provides
+            @Singleton
+            @Named("calendarEventSupportFreeBusyQuery")
+            Boolean provideSupportFreeBusyQuery() {
+                return supportFreeBusyQuery;
+            }
+        };
 
         @Override
         protected void configure() {
