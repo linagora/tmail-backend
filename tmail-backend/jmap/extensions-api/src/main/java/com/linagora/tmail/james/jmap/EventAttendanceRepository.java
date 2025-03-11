@@ -18,21 +18,22 @@
 
 package com.linagora.tmail.james.jmap;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.james.core.Username;
-import org.apache.james.jmap.mail.BlobIds;
+import org.apache.james.jmap.mail.BlobId;
 import org.reactivestreams.Publisher;
-
 
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
 public interface EventAttendanceRepository {
-   Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, BlobIds calendarEventBlobIds);
+
+   Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, List<BlobId> blobIds);
    
    Publisher<CalendarEventReplyResults> setAttendanceStatus(Username username, AttendanceStatus attendanceStatus,
-                                                            BlobIds eventBlobIds,
+                                                            List<BlobId> eventBlobIds,
                                                             Optional<LanguageLocation> maybePreferredLanguage);
 }

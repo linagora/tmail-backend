@@ -50,6 +50,7 @@ class TMailJMAPModule extends AbstractModule {
   def providePublicAssetTotalSizeLimit(jmapExtensionConfiguration: JMAPExtensionConfiguration): PublicAssetTotalSizeLimit = jmapExtensionConfiguration.publicAssetTotalSizeLimit
 
   @Provides
+  @Singleton
   def provideEventAttendanceRepository(messageIdManager: MessageIdManager, sessionProvider: SessionProvider, calendarEventReplyPerformer: CalendarEventReplyPerformer, messageIdFactory: MessageId.Factory): EventAttendanceRepository =
     new StandaloneEventAttendanceRepository(messageIdManager, sessionProvider, calendarEventReplyPerformer, messageIdFactory)
 }

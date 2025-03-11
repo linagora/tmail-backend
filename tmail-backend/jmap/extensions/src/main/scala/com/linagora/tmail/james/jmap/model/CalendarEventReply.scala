@@ -18,23 +18,24 @@
 
 package com.linagora.tmail.james.jmap.model
 
-import java.util.Locale
-
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.LOGGER
-import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
-import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{AccountId, SetError}
+import eu.timepit.refined.auto._
+import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.WithAccountId
-import org.apache.james.mailbox.MailboxSession
 
-import scala.util.Try
-
-
+import scala.util.{Failure, Success}
 
 object CalendarEventReplyRequest {
   val MAXIMUM_NUMBER_OF_BLOB_IDS: Int = 16
+
+  def extractParsedBlobIds(request: CalendarEventReplyRequest): (CalendarEventNotParsable, Seq[BlobId]) =
+    request.blobIds.value.foldLeft((CalendarEventNotParsable(Set.empty), Seq.empty[BlobId])) { (resultBuilder, unparsedBlobId) =>
+      BlobId.of(unparsedBlobId) match {
+        case Success(blobId) => (resultBuilder._1, resultBuilder._2 :+ blobId)
+        case Failure(_) => (resultBuilder._1.merge(CalendarEventNotParsable(Set(unparsedBlobId))), resultBuilder._2)
+      }
+    }
 }
 
 case class CalendarEventReplyRequest(accountId: AccountId,
@@ -99,7 +100,6 @@ object CalendarEventReplyMaybeResponse {
   def from(accountId: AccountId, results: CalendarEventReplyResults): CalendarEventReplyMaybeResponse =
     CalendarEventReplyMaybeResponse(accountId, results.done, results.notFound, results.notDone)
 }
-
 
 case class CalendarEventReplyMaybeResponse(accountId: AccountId,
                                            maybe: BlobIds,

@@ -3,7 +3,7 @@ package com.linagora.tmail.james.jmap.method
 import com.linagora.tmail.james.jmap.json.CalendarEventAttendanceSerializer
 import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceGetRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
-import com.linagora.tmail.james.jmap.model.{CalendarEventAttendanceResults, CalendarEventNotDone, CalendarEventNotFound, CalendarEventNotParsable, InvalidCalendarFileException}
+import com.linagora.tmail.james.jmap.model.{CalendarEventAttendanceResults, CalendarEventNotDone, CalendarEventNotFound, CalendarEventNotParsable}
 import com.linagora.tmail.james.jmap.{AttendanceStatus, EventAttendanceRepository}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.refineV
@@ -11,8 +11,7 @@ import jakarta.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{AccountId, Invocation, SessionTranslator, SetError}
+import org.apache.james.jmap.core.{AccountId, Invocation, SessionTranslator}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.mail.{BlobId, BlobIds, RequestTooLargeException}
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId, WithAccountId}
@@ -23,6 +22,9 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.SMono
 
+import scala.jdk.CollectionConverters._
+import scala.util.{Failure, Success}
+
 class CalendarEventAttendanceGetMethod @Inject()(val eventAttendanceRepository: EventAttendanceRepository,
                                        val metricFactory: MetricFactory,
                                        val sessionSupplier: SessionSupplier,
@@ -32,13 +34,17 @@ class CalendarEventAttendanceGetMethod @Inject()(val eventAttendanceRepository: 
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_CALENDAR)
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: CalendarEventAttendanceGetRequest): Publisher[InvocationWithContext] =
-    SMono.fromDirect(eventAttendanceRepository.getAttendanceStatus(mailboxSession.getUser, request.blobIds))
-      .map(result => CalendarEventAttendanceGetResponse.from(request.accountId, result))
-      .map(response => Invocation(
-        methodName,
-        Arguments(CalendarEventAttendanceSerializer.serializeEventAttendanceGetResponse(response).as[JsObject]),
-        invocation.invocation.methodCallId))
-      .map(InvocationWithContext(_, invocation.processingContext))
+    CalendarEventAttendanceGetRequest.extractParsedBlobIds(request) match {
+      case (notParsable: CalendarEventNotParsable, blobIdList: Seq[BlobId]) =>
+        SMono(eventAttendanceRepository.getAttendanceStatus(mailboxSession.getUser, blobIdList.asJava))
+          .map(result => CalendarEventAttendanceResults.merge(result, CalendarEventAttendanceResults.notDone(notParsable)))
+          .map(result => CalendarEventAttendanceGetResponse.from(request.accountId, result))
+          .map(response => Invocation(
+            methodName,
+            Arguments(CalendarEventAttendanceSerializer.serializeEventAttendanceGetResponse(response).as[JsObject]),
+            invocation.invocation.methodCallId))
+          .map(InvocationWithContext(_, invocation.processingContext))
+    }
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, CalendarEventAttendanceGetRequest] =
     CalendarEventAttendanceSerializer.deserializeEventAttendanceGetRequest(invocation.arguments.value)
@@ -48,6 +54,14 @@ class CalendarEventAttendanceGetMethod @Inject()(val eventAttendanceRepository: 
 
 object CalendarEventAttendanceGetRequest {
   val MAXIMUM_NUMBER_OF_BLOB_IDS: Int = 16
+
+  def extractParsedBlobIds(request: CalendarEventAttendanceGetRequest): (CalendarEventNotParsable, Seq[BlobId]) =
+    request.blobIds.value.foldLeft((CalendarEventNotParsable(Set.empty), Seq.empty[BlobId])) { (resultBuilder, unparsedBlobId) =>
+      BlobId.of(unparsedBlobId) match {
+        case Success(blobId) => (resultBuilder._1, resultBuilder._2 :+ blobId)
+        case Failure(_) => (resultBuilder._1.merge(CalendarEventNotParsable(Set(unparsedBlobId))), resultBuilder._2)
+      }
+    }
 }
 
 case class CalendarEventAttendanceGetRequest(accountId: AccountId,

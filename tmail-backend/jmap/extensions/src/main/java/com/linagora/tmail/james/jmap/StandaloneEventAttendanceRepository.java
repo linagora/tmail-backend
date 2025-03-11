@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.jmap;
 
+import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -25,9 +27,7 @@ import jakarta.inject.Inject;
 import jakarta.mail.Flags;
 
 import org.apache.james.core.Username;
-import org.apache.james.jmap.core.AccountId;
 import org.apache.james.jmap.mail.BlobId;
-import org.apache.james.jmap.mail.BlobIds;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
@@ -41,16 +41,13 @@ import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
-import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults$;
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyRequest;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
-import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import scala.collection.JavaConverters;
 import scala.compat.java8.OptionConverters;
+import scala.jdk.javaapi.CollectionConverters;
 
 public class StandaloneEventAttendanceRepository implements EventAttendanceRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneEventAttendanceRepository.class);
@@ -70,54 +67,48 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
     }
 
     @Override
-    public Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, BlobIds calendarEventBlobIds) {
-        LOGGER.trace("Getting attendance status for user '{}' and message '{}'", username,
-            calendarEventBlobIds);
+    public Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, List<BlobId> calendarEventBlobIds) {
+        LOGGER.trace("Getting attendance status for user '{}' and message '{}'", username, calendarEventBlobIds);
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
-        return Flux.fromIterable(JavaConverters.seqAsJavaList(calendarEventBlobIds.value()))
-            .flatMap(blobId -> getAttendanceStatusFromEventBlob(blobId.value(), systemMailboxSession))
-            .reduce(CalendarEventAttendanceResults$.MODULE$.empty(), CalendarEventAttendanceResults$.MODULE$::merge);
+        return Flux.fromIterable(calendarEventBlobIds)
+            .flatMap(blobId -> getAttendanceStatusFromEventBlob(blobId, systemMailboxSession))
+            .reduce(CalendarEventAttendanceResults::merge);
     }
 
-    private Mono<CalendarEventAttendanceResults> getAttendanceStatusFromEventBlob(String blobId, MailboxSession systemMailboxSession) {
-        return extractMessageId(blobId)
+    private Mono<CalendarEventAttendanceResults> getAttendanceStatusFromEventBlob(BlobId blobId, MailboxSession systemMailboxSession) {
+        return extractMessageId(blobId.value().toString())
             .flatMap(messageId ->
                 Mono.fromDirect(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, systemMailboxSession))
-                    .flatMap(messageResult -> getAttendanceStatusFromMessage(messageResult, blobId))
-                    .defaultIfEmpty(CalendarEventAttendanceResults$.MODULE$.notFound(BlobId.of(blobId).get())))
-            .onErrorResume(Exception.class, (error) ->
-                Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(
-                    BlobId.of(blobId).get(), error)));
+                    .flatMap(messageResult -> getAttendanceStatusFromMessage(messageResult, blobId.value().toString()))
+                    .defaultIfEmpty(AttendanceResult().notFound(blobId)))
+            .onErrorResume(Exception.class, (error) -> Mono.just(AttendanceResult().notDone(blobId, error)));
     }
 
     private Mono<CalendarEventAttendanceResults> getAttendanceStatusFromMessage(MessageResult messageResult, String blobId) {
         return Mono.just(messageResult.getFlags())
             .flatMap(userFlags ->
                 Mono.justOrEmpty(AttendanceStatus.fromMessageFlags(userFlags))
-                    .map(attendanceStatus ->
-                        CalendarEventAttendanceResults$.MODULE$.done(
-                            new EventAttendanceStatusEntry(blobId, attendanceStatus))))
+                    .map(attendanceStatus -> AttendanceResult().done(blobId, attendanceStatus)))
             .defaultIfEmpty(handleMissingEventAttendanceFlag(blobId));
     }
 
     private CalendarEventAttendanceResults handleMissingEventAttendanceFlag(String blobId) {
         LOGGER.debug("""
-                No event attendance flag found for blob: {}.
-                Defaulting to NeedsAction
-                """, blobId);
-        return CalendarEventAttendanceResults$.MODULE$.done(
-            new EventAttendanceStatusEntry(blobId, AttendanceStatus.NeedsAction));
+            No event attendance flag found for blob: {}.
+            Defaulting to NeedsAction
+            """, blobId);
+        return AttendanceResult().done(blobId, AttendanceStatus.NeedsAction);
     }
 
     @Override
     public Publisher<CalendarEventReplyResults> setAttendanceStatus(Username username, AttendanceStatus attendanceStatus,
-                                                                    BlobIds calendarEventBlobIds,
+                                                                    List<BlobId> calendarEventBlobIds,
                                                                     Optional<LanguageLocation> maybePreferredLanguage) {
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
-        return Flux.fromIterable(JavaConverters.seqAsJavaList(calendarEventBlobIds.value()))
-            .flatMap(blobId -> extractMessageId(blobId.value()))
+        return Flux.fromIterable(calendarEventBlobIds)
+            .flatMap(blobId -> extractMessageId(blobId.value().toString()))
             .onErrorContinue((throwable, o) -> LOGGER.debug("Failed to extract message id from blob id: {}", o, throwable))
             .collectList()
             .flatMap(messageIds ->
@@ -127,7 +118,7 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                             messageResult,
                             attendanceStatus,
                             systemMailboxSession)).then())
-            .then(tryToSendReplyEmail(username, calendarEventBlobIds, maybePreferredLanguage, systemMailboxSession, attendanceStatus));
+            .then(doSendReplyEmail(systemMailboxSession, calendarEventBlobIds, maybePreferredLanguage, attendanceStatus));
     }
 
     private Mono<MessageId> extractMessageId(String blobId) {
@@ -137,32 +128,15 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                 .get());
     }
 
-    private Mono<CalendarEventReplyResults> tryToSendReplyEmail(Username username,
-                                                                BlobIds eventBlobIds,
-                                                                Optional<LanguageLocation> maybePreferredLanguage,
-                                                                MailboxSession systemMailboxSession,
-                                                                AttendanceStatus attendanceStatus) {
-        return Mono.just(AccountId.from(username))
-            .flatMap(accountIdEither ->
-                accountIdEither.fold(
-                    exception ->
-                        Mono.error(new IllegalArgumentException("Failed to get account id from username: " + username, exception)),
-                    accountId ->
-                        doSendReplyEmail(accountId, systemMailboxSession, eventBlobIds, maybePreferredLanguage, attendanceStatus)));
-    }
-
-    private Mono<CalendarEventReplyResults> doSendReplyEmail(AccountId accountId,
-                                                             MailboxSession session,
-                                                             BlobIds eventBlobIds,
+    private Mono<CalendarEventReplyResults> doSendReplyEmail(MailboxSession session,
+                                                             List<BlobId> eventBlobIds,
                                                              Optional<LanguageLocation> maybePreferredLanguage,
                                                              AttendanceStatus attendanceStatus) {
-        return Mono.justOrEmpty(attendanceStatus.toPartStat())
-            .switchIfEmpty(Mono.error(new IllegalArgumentException("Invalid attendance status: " + attendanceStatus)))
-            .flatMap(partStat -> Mono.from(
-                    calendarEventReplyPerformer.process(
-                        new CalendarEventReplyRequest(accountId, eventBlobIds,
-                        OptionConverters.toScala(maybePreferredLanguage)),
-                        session, partStat)));
+        return Mono.from(calendarEventReplyPerformer.process(
+            CollectionConverters.asScala(eventBlobIds).toSeq(),
+            OptionConverters.toScala(maybePreferredLanguage),
+            attendanceStatus.toPartStat(),
+            session));
     }
 
     private Flux<Void> updateEventAttendanceFlags(MessageResult message, AttendanceStatus attendanceStatus,

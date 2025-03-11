@@ -22,9 +22,10 @@ import com.linagora.tmail.james.jmap.AttendanceStatus
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.mail.BlobId
-import org.apache.james.mailbox.MailboxSession
 
 object CalendarEventAttendanceResults {
+  val AttendanceResult: CalendarEventAttendanceResults.type = this
+
   def merge(r1: CalendarEventAttendanceResults, r2: CalendarEventAttendanceResults): CalendarEventAttendanceResults =
     CalendarEventAttendanceResults(
       done = r1.done ++ r2.done,
@@ -38,8 +39,14 @@ object CalendarEventAttendanceResults {
   def done(eventAttendanceEntry: EventAttendanceStatusEntry): CalendarEventAttendanceResults =
     CalendarEventAttendanceResults(List(eventAttendanceEntry))
 
+  def done(blobId: String, eventAttendanceStatus: AttendanceStatus): CalendarEventAttendanceResults =
+    done(EventAttendanceStatusEntry(blobId, eventAttendanceStatus))
+
   def notDone(notParsable: CalendarEventNotParsable): CalendarEventAttendanceResults =
-    CalendarEventAttendanceResults(notDone = Some(CalendarEventNotDone(notParsable.asSetErrorMap)))
+    notParsable.value match {
+      case set if set.isEmpty => CalendarEventAttendanceResults()
+      case _ => CalendarEventAttendanceResults(notDone = Some(CalendarEventNotDone(notParsable.asSetErrorMap)))
+    }
 
   def notDone(blobId: BlobId, throwable: Throwable): CalendarEventAttendanceResults =
     CalendarEventAttendanceResults(notDone = Some(CalendarEventNotDone(Map(blobId.value -> asSetError(throwable)))), done = List(), notFound = None)
@@ -56,4 +63,4 @@ case class CalendarEventAttendanceResults(done: List[EventAttendanceStatusEntry]
                                           notFound: Option[CalendarEventNotFound] = Option.empty,
                                           notDone: Option[CalendarEventNotDone] = Option.empty)
 
-case class EventAttendanceStatusEntry(blobId: String, eventAttendanceStatus:AttendanceStatus)
+case class EventAttendanceStatusEntry(blobId: String, eventAttendanceStatus: AttendanceStatus)

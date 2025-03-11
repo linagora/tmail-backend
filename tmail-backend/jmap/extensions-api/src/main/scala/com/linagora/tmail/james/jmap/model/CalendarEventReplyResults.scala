@@ -27,6 +27,8 @@ import org.slf4j.{Logger, LoggerFactory}
 object CalendarEventReplyResults {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[CalendarEventReplyResults])
 
+  val ReplyResults: CalendarEventReplyResults.type = this
+
   def merge(r1: CalendarEventReplyResults, r2: CalendarEventReplyResults): CalendarEventReplyResults =
     CalendarEventReplyResults(
       done = BlobIds(r1.done.value ++ r2.done.value),

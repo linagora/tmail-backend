@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.dav;
 
+import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
+import static com.linagora.tmail.james.jmap.model.CalendarEventReplyResults.ReplyResults;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.util.List;
@@ -27,10 +29,7 @@ import java.util.function.UnaryOperator;
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
-import org.apache.james.jmap.core.Id;
 import org.apache.james.jmap.mail.BlobId;
-import org.apache.james.jmap.mail.BlobIds;
-import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.model.FetchGroup;
@@ -41,30 +40,14 @@ import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
-import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults$;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults$;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
-import eu.timepit.refined.api.Refined;
-import net.fortuna.ical4j.model.parameter.PartStat;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import scala.jdk.CollectionConverters;
 
 public class CalDavEventAttendanceRepository implements EventAttendanceRepository {
-    private static Flux<Refined<String, Id.IdConstraint>> asFlux(BlobIds blobIds) {
-        return Flux.fromIterable(CollectionConverters.SeqHasAsJava(blobIds.value()).asJava());
-    }
-
-    private static BlobId asBlobId(Refined<String, Id.IdConstraint> blobId) {
-        try {
-            return BlobId.of(blobId.value()).get();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to convert Refined Id blobId '%s' to BlobId object".formatted(blobId), e);
-        }
-    }
 
     private final DavClient davClient;
     private final SessionProvider sessionProvider;
@@ -85,12 +68,11 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     }
 
     @Override
-    public Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, BlobIds blobIds) {
+    public Publisher<CalendarEventAttendanceResults> getAttendanceStatus(Username username, List<BlobId> blobIds) {
         return davUserProvider.provide(username)
-            .flatMapMany(davUser -> asFlux(blobIds)
-                .map(CalDavEventAttendanceRepository::asBlobId)
+            .flatMapMany(davUser -> Flux.fromIterable(blobIds)
                 .flatMap(blobId -> getAttendanceStatus(davUser, blobId), DEFAULT_CONCURRENCY))
-            .reduce(CalendarEventAttendanceResults$.MODULE$.empty(), CalendarEventAttendanceResults$.MODULE$::merge);
+            .reduce(CalendarEventAttendanceResults::merge);
     }
 
     private Mono<CalendarEventAttendanceResults> getAttendanceStatus(DavUser davUser, BlobId blobId) {
@@ -99,38 +81,38 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
             .<AttendanceStatus>handle((event, sink) -> event.getAttendanceStatus(davUser.username())
                 .fold(Optional::<AttendanceStatus>empty, Optional::of)
                 .ifPresent(sink::next))
-            .map(status -> new EventAttendanceStatusEntry(blobId.value().toString(),status))
-            .map(CalendarEventAttendanceResults$.MODULE$::done)
-            .switchIfEmpty(Mono.just(CalendarEventAttendanceResults$.MODULE$.notFound(blobId)))
-            .onErrorResume(error -> Mono.just(CalendarEventAttendanceResults$.MODULE$.notDone(blobId, error)));
+            .map(status -> new EventAttendanceStatusEntry(blobId.value().toString(), status))
+            .map(AttendanceResult()::done)
+            .switchIfEmpty(Mono.just(AttendanceResult().notFound(blobId)))
+            .onErrorResume(error -> Mono.just(AttendanceResult().notDone(blobId, error)));
     }
 
     private Mono<DavCalendarObject> fetchCalendarObject(DavUser davUser, BlobId blobId) {
-        MailboxSession session = sessionProvider.createSystemSession(Username.of(davUser.username()));
-        MessageId messageId = MessagePartBlobId.tryParse(messageIdFactory, blobId.value().toString()).get().getMessageId();
-
-        return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, session))
-            .map(EventUid::fromMessageHeaders)
+        return getCalendarEventUidByBlobId(davUser, MessagePartBlobId.tryParse(messageIdFactory, blobId.value().toString()).get())
             .flatMap(eventUid -> davClient.getCalendarObject(davUser, eventUid)
                 .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid)))));
     }
 
+    private Mono<EventUid> getCalendarEventUidByBlobId(DavUser davUser, MessagePartBlobId messagePartBlobId) {
+        return Mono.from(messageIdManager.getMessagesReactive(List.of(messagePartBlobId.getMessageId()),
+                FetchGroup.HEADERS, sessionProvider.createSystemSession(Username.of(davUser.username()))))
+            .map(EventUid::fromMessageHeaders);
+    }
+
     @Override
     public Publisher<CalendarEventReplyResults> setAttendanceStatus(Username username, AttendanceStatus attendanceStatus,
-                                                                    BlobIds eventBlobIds, Optional<LanguageLocation> language) {
+                                                                    List<BlobId> eventBlobIds, Optional<LanguageLocation> language) {
         return davUserProvider.provide(username)
-            .flatMapMany(davUser -> asFlux(eventBlobIds)
-                .map(CalDavEventAttendanceRepository::asBlobId)
+            .flatMapMany(davUser -> Flux.fromIterable(eventBlobIds)
                 .flatMap(blobId -> setAttendanceStatus(davUser, blobId, attendanceStatus), DEFAULT_CONCURRENCY))
-            .reduce(CalendarEventReplyResults$.MODULE$.empty(), CalendarEventReplyResults$.MODULE$::merge);
+            .reduce(CalendarEventReplyResults::merge);
     }
 
     private Mono<CalendarEventReplyResults> setAttendanceStatus(DavUser davUser, BlobId blobId, AttendanceStatus attendanceStatus) {
-        PartStat partStat = attendanceStatus.toPartStat().orElseThrow();
-        UnaryOperator<DavCalendarObject> calendarTransformation = calendarObject -> calendarObject.withPartStat(davUser.username(), partStat);
+        UnaryOperator<DavCalendarObject> calendarTransformation = calendarObject -> calendarObject.withPartStat(davUser.username(), attendanceStatus.toPartStat());
         return fetchCalendarObject(davUser, blobId)
             .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), calendarTransformation))
-            .thenReturn(CalendarEventReplyResults$.MODULE$.done(blobId))
-            .onErrorResume(e -> Mono.just(CalendarEventReplyResults$.MODULE$.notDone(blobId, e, davUser.username())));
+            .thenReturn(ReplyResults().done(blobId))
+            .onErrorResume(e -> Mono.just(ReplyResults().notDone(blobId, e, davUser.username())));
     }
 }
