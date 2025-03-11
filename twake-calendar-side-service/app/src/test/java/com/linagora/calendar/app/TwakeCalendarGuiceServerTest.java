@@ -33,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.calendar.restapi.RestApiServerProbe;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
@@ -59,7 +60,7 @@ class TwakeCalendarGuiceServerTest  {
     void shouldExposeWebAdminHealthcheck() {
         String body = given()
         .when()
-            .get("/healthcheck").prettyPeek()
+            .get("/healthcheck")
         .then()
             .extract()
             .body()
@@ -83,12 +84,33 @@ class TwakeCalendarGuiceServerTest  {
     void shouldExposeMetrics() {
         String body = given()
         .when()
-            .get("/metrics").prettyPeek()
+            .get("/metrics")
         .then()
             .extract()
             .body()
             .asString();
 
         assertThat(body).contains("jvm_threads_runnable_count");
+    }
+
+    @Test
+    void shouldExposeCalendarRestApi(TwakeCalendarGuiceServer server) {
+        RestAssured.requestSpecification =  new RequestSpecBuilder()
+            .setContentType(ContentType.JSON)
+            .setAccept(ContentType.JSON)
+            .setConfig(newConfig().encoderConfig(encoderConfig().defaultContentCharset(StandardCharsets.UTF_8)))
+            .setPort(server.getProbe(RestApiServerProbe.class).getPort().getValue())
+            .setBasePath("/")
+            .build();
+
+        String body = given()
+            .when()
+            .get("/api/theme/anything")
+        .then()
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("{\"logos\":{},\"colors\":{}}");
     }
 }

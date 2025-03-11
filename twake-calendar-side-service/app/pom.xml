@@ -32,6 +32,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>calendar-rest-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-common</artifactId>
         </dependency>
