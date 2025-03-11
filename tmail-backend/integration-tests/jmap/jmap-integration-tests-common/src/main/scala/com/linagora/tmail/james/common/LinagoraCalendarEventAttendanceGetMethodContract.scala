@@ -16,6 +16,7 @@ import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
+import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Test}
 import play.api.libs.json.Json
 
@@ -554,6 +555,17 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
            |  },
            |  "c1"
            |]""".stripMargin)
+  }
+
+  @Test
+  def getSessionShouldReturnRightVersionOfCalenderEventCapability(): Unit = {
+    `given`()
+    .when()
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities.\"com:linagora:params:calendar:event\".version", Matchers.is(2))
   }
 
   private def acceptInvitation(blobId: String) = {
