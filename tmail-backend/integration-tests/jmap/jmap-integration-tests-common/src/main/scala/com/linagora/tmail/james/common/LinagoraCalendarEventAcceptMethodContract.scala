@@ -50,9 +50,11 @@ trait LinagoraCalendarEventAcceptMethodContract {
     server.getProbe(classOf[DataProbeImpl])
       .fluent
       .addDomain(eventInvitation.sender.username.getDomainPart.get().asString())
+      .addDomain(eventInvitation.senderTwo.username.getDomainPart.get().asString())
       .addDomain(eventInvitation.receiver.username.getDomainPart.get().asString())
       .addDomain(eventInvitation.joker.username.getDomainPart.get().asString())
       .addUser(eventInvitation.sender.username.asString(), eventInvitation.sender.password)
+      .addUser(eventInvitation.senderTwo.username.asString(), eventInvitation.senderTwo.password)
       .addUser(eventInvitation.receiver.username.asString(), eventInvitation.receiver.password)
       .addUser(eventInvitation.joker.username.asString(), eventInvitation.joker.password)
 
@@ -1185,12 +1187,10 @@ trait LinagoraCalendarEventAcceptMethodContract {
 
     val blobIdFromMessage1: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
-        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
-    // Ensure messages come in the correct order
-    Thread.sleep(500)
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation.sender, eventInvitation.receiver, icsPartId = "3")
     val blobIdFromMessage2: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
-        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
+        server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation.senderTwo, eventInvitation.receiver, icsPartId = "3")
 
     val request: String =
       s"""{
