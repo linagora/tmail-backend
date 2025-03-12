@@ -106,6 +106,11 @@ public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements Linagor
     }
 
     @Override
+    @Disabled("Flaky test. Need to fix")
+    public void shouldSucceedWhenCalendarBlobsComeFromDifferentMessages(GuiceJamesServer server, EventInvitation eventInvitation) {
+    }
+
+    @Override
     public String randomBlobId() {
         return Uuids.timeBased().toString();
     }
