@@ -33,8 +33,8 @@ public record OpenPaasModuleChooserConfiguration(boolean enabled,
                                                  boolean shouldEnableDavServerInteraction,
                                                  boolean contactsConsumerEnabled) {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasModuleChooserConfiguration.class);
+    public static final OpenPaasModuleChooserConfiguration DISABLED = new OpenPaasModuleChooserConfiguration(false, false, false);
     public static final boolean ENABLED = true;
-    public static final boolean DISABLED = false;
     public static final boolean ENABLE_CONTACTS_CONSUMER = true;
     public static final boolean ENABLE_DAV = true;
 
@@ -49,7 +49,7 @@ public record OpenPaasModuleChooserConfiguration(boolean enabled,
             return new OpenPaasModuleChooserConfiguration(ENABLED, isDavConfigured, contactsConsumerEnabled);
         } catch (FileNotFoundException e) {
             LOGGER.info("OpenPaas module is turned off.");
-            return new OpenPaasModuleChooserConfiguration(DISABLED, !ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER);
+            return DISABLED;
         }
     }
 }
