@@ -50,8 +50,7 @@ public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements Linagor
 
     @RegisterExtension
     @Order(2)
-    static JamesServerExtension
-        testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()

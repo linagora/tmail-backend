@@ -1186,8 +1186,6 @@ trait LinagoraCalendarEventAcceptMethodContract {
     val blobIdFromMessage1: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")
-    // Ensure messages come in the correct order
-    Thread.sleep(500)
     val blobIdFromMessage2: String =
       sendDynamicInvitationEmailAndGetIcsBlobIds(
         server, "template/emailWithAliceInviteBobIcsAttachment.eml.mustache", eventInvitation, icsPartId = "3")

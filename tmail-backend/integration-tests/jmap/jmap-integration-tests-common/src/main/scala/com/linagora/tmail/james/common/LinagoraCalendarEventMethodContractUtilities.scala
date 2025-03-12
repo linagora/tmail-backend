@@ -21,7 +21,7 @@ package com.linagora.tmail.james.common
 import java.io.{InputStreamReader, StringWriter, Writer}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
-import java.util.{Base64, Optional}
+import java.util.{Base64, Optional, UUID}
 
 import com.samskivert.mustache.{Mustache, Template}
 import org.apache.james.GuiceJamesServer
@@ -47,7 +47,9 @@ case class User(name: String, email: String, password: String) {
 
 case class EventInvitation(sender: User, receiver: User, joker: User)
 
-object EventInvitation {
+case class EmailData(sender: User, receiver: User, mimeMessageId: String)
+
+object EmailData {
   def base64Encode: Mustache.Lambda = (frag: Template#Fragment, out: Writer) => {
     val writer = new StringWriter
     frag.execute(writer)
@@ -64,35 +66,37 @@ object LinagoraCalendarEventMethodContractUtilities {
 
   def _sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String,
                                                   eventInvitation: EventInvitation, icsPartIds: String*): Seq[String] = {
-
-    def searchReceiverInboxForNewMessages(): Optional[MessageId] =
-      server.getProbe(classOf[MailboxProbeImpl])
-        .searchMessage(
-          MultimailboxesSearchQuery.from(
-            SearchQuery.allSortedWith(new SearchQuery.Sort(SortClause.Arrival, Order.REVERSE))).build,
-          eventInvitation.receiver.username.asString(), 1).stream().findFirst()
-
     val templateAsString = ClassLoaderUtils.getSystemResourceAsString(invitationEmailTemplate)
 
     val emailTemplate = Mustache.compiler
       .withLoader((name: String) => new InputStreamReader(ClassLoaderUtils.getSystemResourceAsSharedStream("template/" + name)))
       .compile(templateAsString)
 
-    val mail = emailTemplate.execute(eventInvitation)
+    val mimeMessageId = UUID.randomUUID().toString
+    val mail = emailTemplate.execute(EmailData(eventInvitation.sender, eventInvitation.receiver, mimeMessageId))
 
     new SMTPMessageSender(eventInvitation.sender.username.getDomainPart.get().asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)
       .authenticate(eventInvitation.sender.username.asString(), eventInvitation.sender.password)
       .sendMessageWithHeaders(eventInvitation.sender.username.asString(), eventInvitation.receiver.username.asString(), mail)
 
+    var maybeMessageId: Optional[MessageId] = Optional.empty()
     CALMLY_AWAIT.atMost(5, TimeUnit.SECONDS)
       .dontCatchUncaughtExceptions()
-      .until(() => searchReceiverInboxForNewMessages().isPresent)
+      .until(() => {
+        maybeMessageId = searchReceiverInboxForNewMessages(server, eventInvitation, mimeMessageId)
+        maybeMessageId.isPresent
+      })
 
-    val messageId = searchReceiverInboxForNewMessages().get()
-
-    icsPartIds.map(partId => s"${messageId.serialize()}_$partId")
+    icsPartIds.map(partId => s"${maybeMessageId.get().serialize()}_$partId")
   }
+
+  private def searchReceiverInboxForNewMessages(server: GuiceJamesServer, eventInvitation: EventInvitation, mimeMessageId: String): Optional[MessageId] =
+    server.getProbe(classOf[MailboxProbeImpl])
+      .searchMessage(
+        MultimailboxesSearchQuery.from(
+          SearchQuery.of(SearchQuery.mimeMessageID(mimeMessageId))).build,
+        eventInvitation.receiver.username.asString(), 1).stream().findFirst()
 
   def sendDynamicInvitationEmailAndGetIcsBlobIds(server: GuiceJamesServer, invitationEmailTemplate: String, eventInvitation: EventInvitation, icsPartId: String): String =
 
