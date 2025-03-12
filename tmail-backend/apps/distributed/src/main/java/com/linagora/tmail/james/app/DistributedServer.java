@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.app;
 
+import static com.linagora.tmail.OpenPaasModule.DavModule.CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY;
+import static com.linagora.tmail.OpenPaasModule.DavModule.CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE;
 import static org.apache.james.JamesServerMain.LOGGER;
 
 import java.io.FileNotFoundException;
@@ -529,12 +531,13 @@ public class DistributedServer {
             if (openPaasModuleChooserConfiguration.shouldEnableDavServerInteraction()) {
                 moduleBuilder.add(new OpenPaasModule.DavModule());
             }
+            moduleBuilder.add(CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE.apply(openPaasModuleChooserConfiguration.shouldEnableDavServerInteraction()));
             if (openPaasModuleChooserConfiguration.contactsConsumerEnabled()) {
                 moduleBuilder.add(new OpenPaasContactsConsumerModule());
             }
             return moduleBuilder.build();
         }
-        return List.of();
+        return List.of(CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE.apply(!CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY));
     }
 
     private static List<Module> chooseRedisRateLimiterModule(DistributedJamesConfiguration configuration) {

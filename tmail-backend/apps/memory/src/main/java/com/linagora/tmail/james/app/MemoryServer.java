@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.app;
 
+import static com.linagora.tmail.OpenPaasModule.DavModule.CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY;
+import static com.linagora.tmail.OpenPaasModule.DavModule.CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE;
 import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 import static org.apache.james.JamesServerMain.LOGGER;
 import static org.apache.james.MemoryJamesServerMain.JMAP;
@@ -270,6 +272,7 @@ public class MemoryServer {
             if (moduleChooserConfiguration.shouldEnableDavServerInteraction()) {
                 moduleBuilder.add(new OpenPaasModule.DavModule());
             }
+            moduleBuilder.add(CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE.apply(moduleChooserConfiguration.shouldEnableDavServerInteraction()));
             if (moduleChooserConfiguration.contactsConsumerEnabled()) {
                 moduleBuilder.add(Modules.override(new OpenPaasContactsConsumerModule())
                     .with(new AbstractModule() {
@@ -287,7 +290,7 @@ public class MemoryServer {
             }
             return moduleBuilder.build();
         }
-        return List.of();
+        return List.of(CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE.apply(!CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY));
     }
 
     private static Module chooseDropListsModule(MemoryConfiguration configuration) {

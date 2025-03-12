@@ -26,7 +26,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALEND
 import com.linagora.tmail.james.jmap.model.{CalendarEventParse, CalendarEventParseRequest, CalendarEventParseResponse, CalendarEventParseResults, CalendarEventParsed, InvalidCalendarFileException}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
-import jakarta.inject.Inject
+import jakarta.inject.{Inject, Named}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, Properties, SessionTranslator, UrlPrefixes}
@@ -47,8 +47,9 @@ object CalendarCapabilityProperties {
   val CALENDAR_EVENT_VERSION = 2;
 }
 
-case class CalendarCapabilityFactory(supportedLanguage: CalendarEventReplySupportedLanguage) extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = CalendarCapability(CalendarCapabilityProperties(supportedLanguage.valueAsStringSet))
+case class CalendarCapabilityFactory(supportedLanguage: CalendarEventReplySupportedLanguage,
+                                     supportFreeBusyQuery: Boolean) extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability = CalendarCapability(CalendarCapabilityProperties(supportedLanguage.valueAsStringSet, supportFreeBusyQuery))
 
   override def id(): CapabilityIdentifier = LINAGORA_CALENDAR
 }
@@ -57,13 +58,21 @@ final case class CalendarCapability(properties: CalendarCapabilityProperties) ex
   val identifier: CapabilityIdentifier = LINAGORA_CALENDAR
 }
 
-case class CalendarCapabilityProperties(replySupportedLanguage: Set[String]) extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj("replySupportedLanguage" -> replySupportedLanguage, "version" -> CALENDAR_EVENT_VERSION)
+case class CalendarCapabilityProperties(replySupportedLanguage: Set[String],
+                                        supportFreeBusyQuery: Boolean) extends CapabilityProperties {
+  override def jsonify(): JsObject =
+    Json.obj(
+      "replySupportedLanguage" -> replySupportedLanguage,
+      "version" -> CALENDAR_EVENT_VERSION,
+      "supportFreeBusyQuery" -> supportFreeBusyQuery)
 }
 
 class CalendarCapabilitiesModule extends AbstractModule {
+
   @ProvidesIntoSet
-  private def capability(supportedLanguage: CalendarEventReplySupportedLanguage): CapabilityFactory = CalendarCapabilityFactory(supportedLanguage)
+  private def capability(supportedLanguage: CalendarEventReplySupportedLanguage,
+                         @Named("calendarEventSupportFreeBusyQuery") supportFreeBusyQuery: Boolean): CapabilityFactory =
+    CalendarCapabilityFactory(supportedLanguage, supportFreeBusyQuery)
 }
 
 class CalendarEventMethodModule extends AbstractModule {

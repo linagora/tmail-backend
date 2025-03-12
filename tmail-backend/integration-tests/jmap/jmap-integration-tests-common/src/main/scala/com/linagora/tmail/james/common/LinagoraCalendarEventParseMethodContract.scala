@@ -21,9 +21,11 @@ package com.linagora.tmail.james.common
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets
 
+import com.google.common.collect.ImmutableList
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
+import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
@@ -42,6 +44,7 @@ import org.apache.james.mime4j.message.{BodyPartBuilder, MultipartBuilder}
 import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
 import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
+import org.hamcrest.Matchers.{equalTo, hasKey}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.Json
 
@@ -64,21 +67,17 @@ trait LinagoraCalendarEventParseMethodContract {
   def randomBlobId: String
 
   @Test
-  def shouldReturnCapabilityInSessionRoute(): Unit = {
-    val response: String = `given`()
+  def shouldReturnCapabilityInSessionRoute(): Unit =
+    `given`()
       .when()
       .get("/session")
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
-      .extract()
-      .body()
-      .asString()
-
-    assertThatJson(response)
-      .inPath("capabilities[\"com:linagora:params:calendar:event\"]")
-      .isEqualTo("{\"replySupportedLanguage\":[\"en\",\"fr\"],\"version\":2}")
-  }
+      .body("capabilities.'com:linagora:params:calendar:event'", hasKey("supportFreeBusyQuery"))
+      .body("capabilities.'com:linagora:params:calendar:event'.version", equalTo(2))
+      .body("capabilities.'com:linagora:params:calendar:event'.replySupportedLanguage", jsonEquals("[\"en\",\"fr\"]")
+        .withOptions(ImmutableList.of(IGNORING_ARRAY_ORDER)))
 
   @Test
   def parseShouldSucceed(): Unit = {
