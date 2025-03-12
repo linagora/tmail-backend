@@ -95,13 +95,7 @@ class TwakeCalendarGuiceServerTest  {
 
     @Test
     void shouldExposeCalendarRestApi(TwakeCalendarGuiceServer server) {
-        RestAssured.requestSpecification =  new RequestSpecBuilder()
-            .setContentType(ContentType.JSON)
-            .setAccept(ContentType.JSON)
-            .setConfig(newConfig().encoderConfig(encoderConfig().defaultContentCharset(StandardCharsets.UTF_8)))
-            .setPort(server.getProbe(RestApiServerProbe.class).getPort().getValue())
-            .setBasePath("/")
-            .build();
+        targetRestAPI(server);
 
         String body = given()
             .when()
@@ -112,5 +106,26 @@ class TwakeCalendarGuiceServerTest  {
             .asString();
 
         assertThatJson(body).isEqualTo("{\"logos\":{},\"colors\":{}}");
+    }
+
+    @Test
+    void shouldExposeLogoEndpoint(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        given()
+            .when()
+            .get("/api/themes/anything/logo")
+        .then()
+            .statusCode(200); // Follows the redirect;
+    }
+
+    private static void targetRestAPI(TwakeCalendarGuiceServer server) {
+        RestAssured.requestSpecification =  new RequestSpecBuilder()
+            .setContentType(ContentType.JSON)
+            .setAccept(ContentType.JSON)
+            .setConfig(newConfig().encoderConfig(encoderConfig().defaultContentCharset(StandardCharsets.UTF_8)))
+            .setPort(server.getProbe(RestApiServerProbe.class).getPort().getValue())
+            .setBasePath("/")
+            .build();
     }
 }

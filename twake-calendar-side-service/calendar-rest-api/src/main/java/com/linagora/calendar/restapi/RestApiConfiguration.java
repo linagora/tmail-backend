@@ -19,6 +19,8 @@
 package com.linagora.calendar.restapi;
 
 import java.io.FileNotFoundException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
@@ -26,6 +28,7 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.util.Port;
 import org.apache.james.utils.PropertiesProvider;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 
 public class RestApiConfiguration {
@@ -36,6 +39,7 @@ public class RestApiConfiguration {
 
     public static class Builder {
         private Optional<Port> port = Optional.empty();
+        private Optional<URL> calendarSpaUrl = Optional.empty();
 
         private Builder() {
 
@@ -46,9 +50,28 @@ public class RestApiConfiguration {
             return this;
         }
 
+        public Builder port(Optional<Port> port) {
+            this.port = port;
+            return this;
+        }
+
+        public Builder calendarSpaUrl(URL url) {
+            this.calendarSpaUrl = Optional.of(url);
+            return this;
+        }
+
+        public Builder calendarSpaUrl(Optional<URL> url) {
+            this.calendarSpaUrl = url;
+            return this;
+        }
+
 
         public RestApiConfiguration build() {
-            return new RestApiConfiguration(port);
+            try {
+                return new RestApiConfiguration(port, calendarSpaUrl.orElse(new URL("https://e-calendrier.avocat.fr")));
+            } catch (MalformedURLException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -58,20 +81,31 @@ public class RestApiConfiguration {
     }
 
     public static RestApiConfiguration parseConfiguration(Configuration configuration) {
-        return Optional.ofNullable(configuration.getInteger("rest.api.port", null))
-            .map(port -> RestApiConfiguration.builder().port(Port.of(port)))
-            .orElse(RestApiConfiguration.builder())
+        Optional<Port> port = Optional.ofNullable(configuration.getInteger("rest.api.port", null))
+            .map(Port::of);
+        Optional<URL> url = Optional.ofNullable(configuration.getString("spa.calendar.url", null))
+            .map(Throwing.function(URL::new));
+
+        return RestApiConfiguration.builder()
+            .port(port)
+            .calendarSpaUrl(url)
             .build();
     }
 
     private final Optional<Port> port;
+    private final URL calendarSpaUrl;
 
     @VisibleForTesting
-    RestApiConfiguration(Optional<Port> port) {
+    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl) {
         this.port = port;
+        this.calendarSpaUrl = clandarSpaUrl;
     }
 
     public Optional<Port> getPort() {
         return port;
+    }
+
+    public URL getCalendarSpaUrl() {
+        return calendarSpaUrl;
     }
 }

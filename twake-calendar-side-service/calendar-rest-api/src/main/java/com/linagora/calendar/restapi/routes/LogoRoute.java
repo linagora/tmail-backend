@@ -16,29 +16,39 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.calendar.restapi;
+package com.linagora.calendar.restapi.routes;
 
 import java.util.stream.Stream;
+
+import jakarta.inject.Inject;
 
 import org.apache.james.jmap.Endpoint;
 import org.apache.james.jmap.JMAPRoute;
 import org.apache.james.jmap.JMAPRoutes;
 
+import com.linagora.calendar.restapi.RestApiConfiguration;
+
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import reactor.core.publisher.Mono;
 
-public class ThemeRoute implements JMAPRoutes {
+public class LogoRoute implements JMAPRoutes {
+    private final RestApiConfiguration configuration;
+
+    @Inject
+    public LogoRoute(RestApiConfiguration configuration) {
+        this.configuration = configuration;
+    }
+
     @Override
     public Stream<JMAPRoute> routes() {
         return Stream.of(
             JMAPRoute.builder()
-                .endpoint(new Endpoint(HttpMethod.GET, "/api/theme/{domainId}"))
-                .action((req, res) -> res.status(HttpResponseStatus.OK)
-                    .header(HttpHeaderNames.CONTENT_TYPE, "application/json")
+                .endpoint(new Endpoint(HttpMethod.GET, "/api/themes/{domainId}/logo"))
+                .action((req, res) -> res.status(HttpResponseStatus.MOVED_PERMANENTLY)
+                    .header(HttpHeaderNames.LOCATION, configuration.getCalendarSpaUrl().toString() + "/assets/images/white-logo.svg")
                     .header("Cache-Control", "public, max-age=86400")
-                    .sendString(Mono.just("{\"logos\":{},\"colors\":{}}")))
+                    .send())
                 .corsHeaders());
     }
 }

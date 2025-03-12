@@ -30,8 +30,11 @@ import org.apache.james.utils.PropertiesProvider;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.calendar.restapi.routes.LogoRoute;
+import com.linagora.calendar.restapi.routes.ThemeRoute;
 
 public class RestApiModule extends AbstractModule {
     @Override
@@ -41,10 +44,12 @@ public class RestApiModule extends AbstractModule {
 
         Multibinder<JMAPRoutes> routes = Multibinder.newSetBinder(binder(), JMAPRoutes.class);
         routes.addBinding().to(ThemeRoute.class);
+        routes.addBinding().to(LogoRoute.class);
     }
 
     @Provides
-    RestApiConfiguration provideConf(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
+    @Singleton
+    RestApiConfiguration provideConf(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
             return RestApiConfiguration.parseConfiguration(propertiesProvider);
         } catch (FileNotFoundException e) {
