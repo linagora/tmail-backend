@@ -41,6 +41,7 @@ public class RestApiConfiguration {
         private Optional<Port> port = Optional.empty();
         private Optional<URL> calendarSpaUrl = Optional.empty();
         private Optional<URL> openpaasBackendURL = Optional.empty();
+        private Optional<Boolean> openpaasBackendTrustAllCerts = Optional.empty();
 
         private Builder() {
 
@@ -76,11 +77,17 @@ public class RestApiConfiguration {
             return this;
         }
 
+        public Builder openpaasBackendTrustAllCerts(Optional<Boolean> url) {
+            this.openpaasBackendTrustAllCerts = url;
+            return this;
+        }
+
         public RestApiConfiguration build() {
             try {
                 return new RestApiConfiguration(port,
                     calendarSpaUrl.orElse(new URL("https://e-calendrier.avocat.fr")),
-                    openpaasBackendURL.orElse(new URL("https://openpaas.linagora.com")));
+                    openpaasBackendURL.orElse(new URL("https://openpaas.linagora.com")),
+                    openpaasBackendTrustAllCerts.orElse(false));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -99,23 +106,27 @@ public class RestApiConfiguration {
             .map(Throwing.function(URL::new));
         Optional<URL> openpaasBackendURL = Optional.ofNullable(configuration.getString("openpaas.backend.url", null))
             .map(Throwing.function(URL::new));
+        Optional<Boolean> openpaasBackendTrustAllCerts = Optional.ofNullable(configuration.getBoolean("openpaas.backend.trust.all.certificates", null));
 
         return RestApiConfiguration.builder()
             .port(port)
             .calendarSpaUrl(calendarSpaUrl)
             .openpaasBackendURL(openpaasBackendURL)
+            .openpaasBackendTrustAllCerts(openpaasBackendTrustAllCerts)
             .build();
     }
 
     private final Optional<Port> port;
     private final URL calendarSpaUrl;
     private final URL openpaasBackendURL;
+    private final boolean openpaasBackendTrustAllCerts;
 
     @VisibleForTesting
-    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL) {
+    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL, boolean openpaasBackendTrustAllCerts) {
         this.port = port;
         this.calendarSpaUrl = clandarSpaUrl;
         this.openpaasBackendURL = openpaasBackendURL;
+        this.openpaasBackendTrustAllCerts = openpaasBackendTrustAllCerts;
     }
 
     public Optional<Port> getPort() {
@@ -128,5 +139,9 @@ public class RestApiConfiguration {
 
     public URL getOpenpaasBackendURL() {
         return openpaasBackendURL;
+    }
+
+    public boolean openpaasBackendTrustAllCerts() {
+        return openpaasBackendTrustAllCerts;
     }
 }

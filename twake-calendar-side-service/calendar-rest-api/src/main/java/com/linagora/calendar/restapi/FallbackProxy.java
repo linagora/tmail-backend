@@ -18,6 +18,8 @@
 
 package com.linagora.calendar.restapi;
 
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.server.HttpServerRequest;
@@ -29,7 +31,16 @@ public class FallbackProxy {
 
     public FallbackProxy(RestApiConfiguration configuration) {
         this.configuration = configuration;
-        client = HttpClient.create();
+        this.client = createClient();
+
+    }
+
+    private HttpClient createClient() {
+        if (configuration.openpaasBackendTrustAllCerts()) {
+                return HttpClient.create().secure(sslContextSpec -> sslContextSpec.sslContext(
+                    SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)));
+        }
+        return HttpClient.create();
     }
 
     public Mono<Void> forwardRequest(HttpServerRequest request, HttpServerResponse response) {
