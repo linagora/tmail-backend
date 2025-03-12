@@ -19,7 +19,6 @@
 package com.linagora.calendar.restapi;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
-import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static reactor.netty.Metrics.HTTP_CLIENT_PREFIX;
 import static reactor.netty.Metrics.URI;
 
@@ -51,6 +50,7 @@ public class CalendarRestApiServer implements Startable  {
 
     private final List<JMAPRoute> routes;
     private final RestApiConfiguration configuration;
+    private final FallbackProxy fallbackProxy;
     private Optional<DisposableServer> server;
 
     @Inject
@@ -58,6 +58,7 @@ public class CalendarRestApiServer implements Startable  {
         this.routes = jmapRoutes.stream().flatMap(JMAPRoutes::routes).collect(Collectors.toList());
         this.configuration = configuration;
         this.server = Optional.empty();
+        this.fallbackProxy = new FallbackProxy(configuration);
     }
 
     public void start() {
@@ -87,7 +88,7 @@ public class CalendarRestApiServer implements Startable  {
                 .filter(jmapRoute -> jmapRoute.matches(request))
                 .map(JMAPRoute::getAction)
                 .findFirst()
-                .orElse((req, res) -> res.status(NOT_FOUND).send());
+                .orElse(fallbackProxy::forwardRequest);
         } catch (IllegalArgumentException e) {
             return (req, res) -> res.status(BAD_REQUEST).send();
         }

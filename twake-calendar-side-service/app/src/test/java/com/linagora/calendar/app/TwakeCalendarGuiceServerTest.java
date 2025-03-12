@@ -119,6 +119,18 @@ class TwakeCalendarGuiceServerTest  {
             .statusCode(200); // Follows the redirect;
     }
 
+    @Test
+    void shouldProxyCalls(TwakeCalendarGuiceServer server) {
+        // Manually tested for real content with my Linagora credentials
+        targetRestAPI(server);
+
+        given()
+            .when()
+            .get("/api/user/profile")
+        .then()
+            .statusCode(401); // Not authenticated on openpaas.linagora.com
+    }
+
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {
         RestAssured.requestSpecification =  new RequestSpecBuilder()
             .setContentType(ContentType.JSON)
