@@ -40,6 +40,7 @@ public class RestApiConfiguration {
     public static class Builder {
         private Optional<Port> port = Optional.empty();
         private Optional<URL> calendarSpaUrl = Optional.empty();
+        private Optional<URL> openpaasBackendURL = Optional.empty();
 
         private Builder() {
 
@@ -65,10 +66,21 @@ public class RestApiConfiguration {
             return this;
         }
 
+        public Builder openpaasBackendURL(URL url) {
+            this.openpaasBackendURL = Optional.of(url);
+            return this;
+        }
+
+        public Builder openpaasBackendURL(Optional<URL> url) {
+            this.openpaasBackendURL = url;
+            return this;
+        }
 
         public RestApiConfiguration build() {
             try {
-                return new RestApiConfiguration(port, calendarSpaUrl.orElse(new URL("https://e-calendrier.avocat.fr")));
+                return new RestApiConfiguration(port,
+                    calendarSpaUrl.orElse(new URL("https://e-calendrier.avocat.fr")),
+                    openpaasBackendURL.orElse(new URL("https://openpaas.linagora.com")));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -83,22 +95,27 @@ public class RestApiConfiguration {
     public static RestApiConfiguration parseConfiguration(Configuration configuration) {
         Optional<Port> port = Optional.ofNullable(configuration.getInteger("rest.api.port", null))
             .map(Port::of);
-        Optional<URL> url = Optional.ofNullable(configuration.getString("spa.calendar.url", null))
+        Optional<URL> calendarSpaUrl = Optional.ofNullable(configuration.getString("spa.calendar.url", null))
+            .map(Throwing.function(URL::new));
+        Optional<URL> openpaasBackendURL = Optional.ofNullable(configuration.getString("openpaas.backend.url", null))
             .map(Throwing.function(URL::new));
 
         return RestApiConfiguration.builder()
             .port(port)
-            .calendarSpaUrl(url)
+            .calendarSpaUrl(calendarSpaUrl)
+            .openpaasBackendURL(openpaasBackendURL)
             .build();
     }
 
     private final Optional<Port> port;
     private final URL calendarSpaUrl;
+    private final URL openpaasBackendURL;
 
     @VisibleForTesting
-    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl) {
+    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL) {
         this.port = port;
         this.calendarSpaUrl = clandarSpaUrl;
+        this.openpaasBackendURL = openpaasBackendURL;
     }
 
     public Optional<Port> getPort() {
@@ -107,5 +124,9 @@ public class RestApiConfiguration {
 
     public URL getCalendarSpaUrl() {
         return calendarSpaUrl;
+    }
+
+    public URL getOpenpaasBackendURL() {
+        return openpaasBackendURL;
     }
 }
