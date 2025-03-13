@@ -26,6 +26,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -53,6 +54,7 @@ public class DistributedLinagoraCalendarEventMaybeMethodTest implements Linagora
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .openPassModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.DISABLED)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
