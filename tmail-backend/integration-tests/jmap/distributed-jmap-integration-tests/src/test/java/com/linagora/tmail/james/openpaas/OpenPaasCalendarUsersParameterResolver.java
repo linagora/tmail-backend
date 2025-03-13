@@ -18,32 +18,33 @@
 
 package com.linagora.tmail.james.openpaas;
 
-import com.linagora.tmail.DockerOpenPaasSetupSingleton;
-import com.linagora.tmail.OpenPaasUser;
-import com.linagora.tmail.james.common.EventInvitation;
-import com.linagora.tmail.james.common.User;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
-public class OpenPaasEventInvitationParameterResolver implements ParameterResolver {
+import com.linagora.tmail.DockerOpenPaasSetupSingleton;
+import com.linagora.tmail.OpenPaasUser;
+import com.linagora.tmail.james.common.CalendarUsers;
+import com.linagora.tmail.james.common.User;
+
+public class OpenPaasCalendarUsersParameterResolver implements ParameterResolver {
 
     @Override
     public boolean supportsParameter(ParameterContext parameterContext,
                                      ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext.getParameter().getType() == EventInvitation.class;
+        return parameterContext.getParameter().getType() == CalendarUsers.class;
     }
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext,
                                    ExtensionContext extensionContext) throws ParameterResolutionException {
-        OpenPaasUser sender = newOpenPaasUser();
-        OpenPaasUser senderTwo = newOpenPaasUser();
-        OpenPaasUser receiver = newOpenPaasUser();
-        OpenPaasUser joker = newOpenPaasUser();
+        OpenPaasUser userOne = newOpenPaasUser();
+        OpenPaasUser userTwo = newOpenPaasUser();
+        OpenPaasUser userThree = newOpenPaasUser();
+        OpenPaasUser userFour = newOpenPaasUser();
 
-        return new EventInvitation(asUser(sender), asUser(senderTwo), asUser(receiver), asUser(joker));
+        return new CalendarUsers(asUser(userOne), asUser(userTwo), asUser(userThree), asUser(userFour));
     }
 
     private OpenPaasUser newOpenPaasUser() {

@@ -25,10 +25,10 @@ import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.james.common.DefaultEventInvitationParameterResolver;
+import com.linagora.tmail.james.common.DefaultCalendarUsersParameterResolver;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
 
-@ExtendWith(DefaultEventInvitationParameterResolver.class)
+@ExtendWith(DefaultCalendarUsersParameterResolver.class)
 public class PostgresLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension

@@ -35,12 +35,12 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
-import com.linagora.tmail.james.common.DefaultEventInvitationParameterResolver;
+import com.linagora.tmail.james.common.DefaultCalendarUsersParameterResolver;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-@ExtendWith(DefaultEventInvitationParameterResolver.class)
+@ExtendWith(DefaultCalendarUsersParameterResolver.class)
 public class DistributedLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension

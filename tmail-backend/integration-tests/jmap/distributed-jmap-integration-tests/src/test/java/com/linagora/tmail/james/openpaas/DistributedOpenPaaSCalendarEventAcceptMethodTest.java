@@ -18,18 +18,6 @@
 
 package com.linagora.tmail.james.openpaas;
 
-import com.datastax.oss.driver.api.core.uuid.Uuids;
-import com.linagora.tmail.DockerOpenPaasExtension;
-import com.linagora.tmail.DockerOpenPaasSetupSingleton;
-import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import com.linagora.tmail.OpenPaasSetupTestModule;
-import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.james.app.*;
-import com.linagora.tmail.james.common.EventInvitation;
-import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
-import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
-
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -41,7 +29,24 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-@ExtendWith(OpenPaasEventInvitationParameterResolver.class)
+import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.linagora.tmail.DockerOpenPaasExtension;
+import com.linagora.tmail.DockerOpenPaasSetupSingleton;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
+import com.linagora.tmail.OpenPaasSetupTestModule;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedJamesConfiguration;
+import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.DockerOpenSearchExtension;
+import com.linagora.tmail.james.app.EventBusKeysChoice;
+import com.linagora.tmail.james.app.RabbitMQExtension;
+import com.linagora.tmail.james.common.CalendarUsers;
+import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
+import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+
+@ExtendWith(OpenPaasCalendarUsersParameterResolver.class)
 public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
     @RegisterExtension
     @Order(1)
@@ -78,31 +83,31 @@ public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements Linagor
 
     @Override
     @Disabled("Email sending is handled by Dav server; we do not test Dav server internals.")
-    public void shouldSendReplyMailToInvitor(GuiceJamesServer server, EventInvitation eventInvitation) {
+    public void shouldSendReplyMailToInvitor(GuiceJamesServer server, CalendarUsers calendarUsers) {
 
     }
 
     @Override
     @Disabled("Email sending is handled by Dav server; we do not test Dav server internals.")
-    public void mailReplyShouldSupportI18nWhenLanguageRequest(GuiceJamesServer server, EventInvitation eventInvitation) {
+    public void mailReplyShouldSupportI18nWhenLanguageRequest(GuiceJamesServer server, CalendarUsers calendarUsers) {
 
     }
 
     @Override
     @Disabled("The DAV server rejects an ICS if it has missing attendee thus this test is invalid")
-    public void acceptAMissingAttendeeIcsShouldReturnAccepted(GuiceJamesServer server, EventInvitation eventInvitation) {
+    public void acceptAMissingAttendeeIcsShouldReturnAccepted(GuiceJamesServer server, CalendarUsers calendarUsers) {
     }
 
 
     @Override
     @Disabled("The DAV server can handle an ICS missing an organizer like a normal ICS")
-    public void acceptAMissingOrganizerIcsShouldReturnNotAccept(GuiceJamesServer server, EventInvitation eventInvitation) {
+    public void acceptAMissingOrganizerIcsShouldReturnNotAccept(GuiceJamesServer server, CalendarUsers calendarUsers) {
 
     }
 
     @Override
     @Disabled("This test validates the logic in CalendarEventReplyGenerator, which is not used for CalDav.")
-    public void shouldNotCreatedWhenInvalidIcsPayload(GuiceJamesServer server, EventInvitation eventInvitation) {
+    public void shouldNotCreatedWhenInvalidIcsPayload(GuiceJamesServer server, CalendarUsers calendarUsers) {
     }
 
     @Override

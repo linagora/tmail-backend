@@ -30,12 +30,12 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.james.common.DefaultEventInvitationParameterResolver;
+import com.linagora.tmail.james.common.DefaultCalendarUsersParameterResolver;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-@ExtendWith(DefaultEventInvitationParameterResolver.class)
+@ExtendWith(DefaultCalendarUsersParameterResolver.class)
 public class MemoryLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension
