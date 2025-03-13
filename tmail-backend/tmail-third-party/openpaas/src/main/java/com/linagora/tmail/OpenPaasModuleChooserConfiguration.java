@@ -33,10 +33,11 @@ public record OpenPaasModuleChooserConfiguration(boolean enabled,
                                                  boolean shouldEnableDavServerInteraction,
                                                  boolean contactsConsumerEnabled) {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasModuleChooserConfiguration.class);
+    private static final boolean ENABLED = true;
     public static final OpenPaasModuleChooserConfiguration DISABLED = new OpenPaasModuleChooserConfiguration(false, false, false);
-    public static final boolean ENABLED = true;
-    public static final boolean ENABLE_CONTACTS_CONSUMER = true;
-    public static final boolean ENABLE_DAV = true;
+    public static final OpenPaasModuleChooserConfiguration ENABLED_DAV = new OpenPaasModuleChooserConfiguration(true, true, false);
+    public static final OpenPaasModuleChooserConfiguration ENABLED_CONSUMER = new OpenPaasModuleChooserConfiguration(true, false, true);
+    public static final OpenPaasModuleChooserConfiguration ENABLED_DAV_AND_CONSUMER = new OpenPaasModuleChooserConfiguration(true, true, true);
 
     public static OpenPaasModuleChooserConfiguration parse(PropertiesProvider propertiesProvider) throws
         ConfigurationException {

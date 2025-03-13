@@ -68,8 +68,7 @@ public class DistributedOpenPaaSCalendarEventAcceptMethodTest implements Linagor
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .openPassModuleChooserConfiguration(
-                new OpenPaasModuleChooserConfiguration(true, true, true))
+            .openPassModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_DAV_AND_CONSUMER)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
