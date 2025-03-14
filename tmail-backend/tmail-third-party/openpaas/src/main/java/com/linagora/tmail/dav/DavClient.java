@@ -35,9 +35,12 @@ import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.DavConfiguration;
+import com.linagora.tmail.dav.cal.FreeBusyRequest;
+import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 import com.linagora.tmail.dav.xml.DavMultistatus;
@@ -53,6 +56,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import net.fortuna.ical4j.model.Calendar;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
@@ -66,9 +70,11 @@ public class DavClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
     private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String COLLECTED_ADDRESS_BOOK_PATH = "/addressbooks/%s/collected/%s.vcf";
+    private static final String CALENDAR_PATH = "/calendars/";
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String ACCEPT_XML = "application/xml";
     private static final String CONTENT_TYPE_VCARD = "application/vcard";
+    private static final String CONTENT_TYPE_JSON = "application/json";
 
     private final HttpClient client;
     private final DavConfiguration config;
@@ -94,9 +100,10 @@ public class DavClient {
         return client;
     }
 
-    private UsernamePasswordCredentials createDelegatedCredentials(String username) {
-        return new UsernamePasswordCredentials(config.adminCredential().getUserName() + "&" + username,
-            config.adminCredential().getPassword());
+    private String authenticationToken(String username) {
+        return HttpUtils.createBasicAuthenticationToken(new UsernamePasswordCredentials(
+            config.adminCredential().getUserName() + "&" + username,
+            config.adminCredential().getPassword()));
     }
 
     public Mono<Boolean> existsCollectedContact(String username, String userId, String collectedId) {
@@ -132,7 +139,7 @@ public class DavClient {
 
     private UnaryOperator<HttpHeaders> addCardDavHeaders(String username) {
         return headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_VCARD_JSON)
-            .add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username)));
+            .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username));
     }
 
     private Mono<Void> handleContactCreationResponse(HttpClientResponse response, String userId, CardDavCreationObjectRequest request) {
@@ -160,12 +167,34 @@ public class DavClient {
     private Mono<Void> doUpdateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
         return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                 .add(HttpHeaderNames.IF_MATCH, updatedCalendarObject.eTag())
-                .add(HttpHeaderNames.AUTHORIZATION,
-                    HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username))))
+                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
             .request(HttpMethod.PUT)
             .uri(updatedCalendarObject.uri().toString())
             .send(Mono.just(Unpooled.wrappedBuffer(updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
             .responseSingle((response, responseContent) -> handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
+    }
+
+    @VisibleForTesting
+    public Mono<Void> createCalendar(String username, URI uri, Calendar calendarData) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "text/plain")
+                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+            .request(HttpMethod.PUT)
+            .uri(uri.toString())
+            .send(Mono.just(Unpooled.wrappedBuffer(calendarData.toString().getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, responseContent) -> {
+                switch (response.status().code()) {
+                    case 201:
+                        return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' created successfully.", uri));
+                    default:
+                        return responseContent.asString(StandardCharsets.UTF_8)
+                            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+                            .flatMap(responseBody -> Mono.error(new DavClientException("""
+                                Unexpected status code: %d when create calendar object '%s'
+                                %s
+                                """.formatted(response.status().code(), uri.toString(), responseBody))));
+
+                }
+            });
     }
 
     private static Mono<Void> handleCalendarObjectUpdateResponse(DavCalendarObject updatedCalendarObject, HttpClientResponse response) {
@@ -181,7 +210,7 @@ public class DavClient {
     }
 
     public Mono<DavCalendarObject> getCalendarObjectByUri(DavUser user, URI uri) {
-        return client.headers(headers -> headers.add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(user.username()))))
+        return client.headers(headers -> headers.add(HttpHeaderNames.AUTHORIZATION, authenticationToken(user.username())))
             .request(HttpMethod.GET)
             .uri(uri.toString())
             .responseSingle((response, responseContent) -> {
@@ -239,7 +268,7 @@ public class DavClient {
     public Flux<URI> findUserCalendars(DavUser user) {
         return client.headers(headers -> calDavHeaders(user.username()).apply(headers))
             .request(HttpMethod.valueOf("PROPFIND"))
-            .uri("/calendars/" + user.userId())
+            .uri(CALENDAR_PATH + user.userId())
             .responseSingle((response, byteBufMono) -> {
                 if (response.status() == HttpResponseStatus.MULTI_STATUS) {
                     return byteBufMono.asString(StandardCharsets.UTF_8)
@@ -256,7 +285,7 @@ public class DavClient {
 
     private UnaryOperator<HttpHeaders> calDavHeaders(String username) {
         return headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
-            .add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(createDelegatedCredentials(username)));
+            .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username));
     }
 
     private List<URI> extractCalendarURIsFromResponse(DavMultistatus multistatus) {
@@ -277,5 +306,24 @@ public class DavClient {
             LOGGER.trace("Found an invalid calendar href in Dav server response '{}'", href);
             return Optional.empty();
         }
+    }
+
+    public Mono<FreeBusyResponse> freeBusyQuery(DavUser user, FreeBusyRequest request) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, CONTENT_TYPE_JSON)
+                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(user.username())))
+            .request(HttpMethod.POST)
+            .uri(CALENDAR_PATH + "freebusy")
+            .send(Mono.just(Unpooled.wrappedBuffer(request.serializeAsBytes())))
+            .responseSingle((response, byteBufMono) -> {
+                if (response.status() == HttpResponseStatus.OK) {
+                    return byteBufMono.asByteArray().map(FreeBusyResponse::deserialize);
+                }
+                return byteBufMono.asString(StandardCharsets.UTF_8)
+                    .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+                    .flatMap(body -> Mono.error(new DavClientException(
+                        String.format("Unexpected status code: %d when querying freebusy for user: %s. Response body: %s",
+                            response.status().code(), user.userId(), body)
+                    )));
+            });
     }
 }
