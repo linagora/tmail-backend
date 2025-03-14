@@ -22,9 +22,15 @@ import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.rrt.api.AliasReverseResolver;
+import org.apache.james.rrt.api.CanSendFrom;
 import org.apache.james.rrt.api.RecipientRewriteTable;
+import org.apache.james.rrt.lib.AliasReverseResolverImpl;
+import org.apache.james.rrt.lib.CanSendFromImpl;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
+import org.apache.james.user.api.DelegationStore;
 import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.memory.MemoryDelegationStore;
 import org.apache.james.user.memory.MemoryUsersRepository;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.InitializationOperation;
@@ -46,6 +52,13 @@ public class MemoryUserModule extends AbstractModule {
         // Needed in order to satisfy domain routes binding
         bind(MemoryRecipientRewriteTable.class).in(Scopes.SINGLETON);
         bind(RecipientRewriteTable.class).to(MemoryRecipientRewriteTable.class);
+        // Needed in order to satisfy users routes binding
+        bind(MemoryDelegationStore.class).in(Scopes.SINGLETON);
+        bind(DelegationStore.class).to(MemoryDelegationStore.class);
+        bind(AliasReverseResolverImpl.class).in(Scopes.SINGLETON);
+        bind(AliasReverseResolver.class).to(AliasReverseResolverImpl.class);
+        bind(CanSendFromImpl.class).in(Scopes.SINGLETON);
+        bind(CanSendFrom.class).to(CanSendFromImpl.class);
 
         Multibinder.newSetBinder(binder(), GuiceProbe.class).addBinding().to(CalendarDataProbe.class);
     }

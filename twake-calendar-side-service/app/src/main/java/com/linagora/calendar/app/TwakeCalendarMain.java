@@ -35,11 +35,14 @@ import org.apache.james.task.Task;
 import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.user.api.DeleteUserDataTaskStep;
 import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.UserCondition;
 import org.apache.james.webadmin.dropwizard.MetricsRoutes;
 import org.apache.james.webadmin.routes.DomainsRoutes;
+import org.apache.james.webadmin.routes.UserRoutes;
 
 import com.google.inject.Module;
 import com.google.inject.TypeLiteral;
+import com.google.inject.multibindings.MapBinder;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
@@ -48,12 +51,13 @@ import com.linagora.calendar.restapi.RestApiModule;
 
 public class TwakeCalendarMain {
     public static final Module WEBADMIN = Modules.combine(
-        // TODO add users Route
         new WebAdminServerModule(),
         new NoJwtModule(),
         binder -> Multibinder.newSetBinder(binder, Routes.class).addBinding().to(MetricsRoutes.class),
         binder -> Multibinder.newSetBinder(binder, Routes.class).addBinding().to(DomainsRoutes.class),
+        binder -> Multibinder.newSetBinder(binder, Routes.class).addBinding().to(UserRoutes.class),
         binder -> Multibinder.newSetBinder(binder, DeleteUserDataTaskStep.class),
+        binder -> MapBinder.newMapBinder(binder, String.class, UserCondition.class),
         binder -> binder.bind(UserEntityValidator.class).toInstance(UserEntityValidator.NOOP),
         binder -> Multibinder.newSetBinder(binder, CertificateReloadable.Factory.class),
         binder -> Multibinder.newSetBinder(binder, new TypeLiteral<TaskDTOModule<? extends Task, ? extends TaskDTO>>() {}),

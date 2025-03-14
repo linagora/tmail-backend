@@ -105,6 +105,20 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldExposeWebAdminUsers() {
+        String body = given()
+        .when()
+            .get("/users")
+        .then()
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+            [{"username":"btellier@linagora.com"}]""");
+    }
+
+    @Test
     void shouldExposeMetrics() {
         String body = given()
         .when()
