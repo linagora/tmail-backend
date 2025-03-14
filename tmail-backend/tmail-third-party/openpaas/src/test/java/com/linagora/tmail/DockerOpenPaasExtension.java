@@ -26,16 +26,29 @@
 
 package com.linagora.tmail;
 
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
-public class DockerOpenPaasExtension implements ParameterResolver {
-    private final DockerOpenPaasSetup dockerOpenPaasSetup;
+import com.google.inject.AbstractModule;
+import com.google.inject.Module;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
-    public DockerOpenPaasExtension(DockerOpenPaasSetup dockerOpenPaasSetup) {
-        this.dockerOpenPaasSetup = dockerOpenPaasSetup;
+public record DockerOpenPaasExtension(DockerOpenPaasSetup dockerOpenPaasSetup) implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
+
+    @Override
+    public void beforeAll(ExtensionContext extensionContext) {
+        dockerOpenPaasSetup.start();
+    }
+
+    @Override
+    public void afterAll(ExtensionContext extensionContext) {
+        dockerOpenPaasSetup.stop();
     }
 
     @Override
@@ -48,14 +61,22 @@ public class DockerOpenPaasExtension implements ParameterResolver {
         return dockerOpenPaasSetup;
     }
 
-    public DockerOpenPaasSetup getDockerOpenPaasSetup() {
-        return dockerOpenPaasSetup;
-    }
-
     public OpenPaasUser newTestUser() {
-        return DockerOpenPaasSetupSingleton.singleton
+        return dockerOpenPaasSetup
             .getOpenPaaSProvisioningService()
             .createUser()
             .block();
     }
+
+    public Module openpaasModule() {
+        return new AbstractModule() {
+
+            @Provides
+            @Singleton
+            public OpenPaasConfiguration provideOpenPaasServerExtension() {
+                return dockerOpenPaasSetup().openPaasConfiguration();
+            }
+        };
+    }
+
 }

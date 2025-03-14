@@ -41,7 +41,7 @@ public class DockerOpenPaasExtensionTest {
 
     @Test
     void allServersShouldStartSuccessfully() {
-       assertTrue(dockerOpenPaasExtension.getDockerOpenPaasSetup().getAllContainers()
+       assertTrue(dockerOpenPaasExtension.dockerOpenPaasSetup().getAllContainers()
            .stream().allMatch(ContainerState::isRunning));
     }
 

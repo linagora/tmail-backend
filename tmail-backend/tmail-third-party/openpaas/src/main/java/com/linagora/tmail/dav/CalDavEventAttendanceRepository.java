@@ -24,6 +24,7 @@ import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 import jakarta.inject.Inject;
@@ -36,18 +37,34 @@ import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MessageId;
 import org.reactivestreams.Publisher;
 
+import com.linagora.tmail.dav.cal.FreeBusyRequest;
+import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
+import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import scala.jdk.javaapi.OptionConverters;
 
 public class CalDavEventAttendanceRepository implements EventAttendanceRepository {
+
+    public enum FreeBusyStatus {
+        BUSY,
+        FREE;
+
+        static FreeBusyStatus isBusy(boolean isBusy) {
+            if (isBusy) {
+                return BUSY;
+            }
+            return FREE;
+        }
+    }
 
     private final DavClient davClient;
     private final SessionProvider sessionProvider;
@@ -78,17 +95,18 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
     private Mono<CalendarEventAttendanceResults> getAttendanceStatus(DavUser davUser, BlobId blobId) {
         return fetchCalendarObject(davUser, blobId)
             .map(DavCalendarObject::parse)
-            .<AttendanceStatus>handle((event, sink) -> event.getAttendanceStatus(davUser.username())
-                .fold(Optional::<AttendanceStatus>empty, Optional::of)
-                .ifPresent(sink::next))
-            .map(status -> new EventAttendanceStatusEntry(blobId.value().toString(), status))
+            .flatMap(calendarEventParsed ->
+                Mono.justOrEmpty(OptionConverters.toJava(calendarEventParsed.getAttendanceStatus(davUser.username())))
+                    .flatMap(attendanceStatus -> freeBusyQuery(davUser, calendarEventParsed)
+                        .map(freeBusyStatus -> EventAttendanceStatusEntry.of(blobId, attendanceStatus, FreeBusyStatus.FREE.equals(freeBusyStatus)))))
             .map(AttendanceResult()::done)
             .switchIfEmpty(Mono.just(AttendanceResult().notFound(blobId)))
             .onErrorResume(error -> Mono.just(AttendanceResult().notDone(blobId, error)));
     }
 
     private Mono<DavCalendarObject> fetchCalendarObject(DavUser davUser, BlobId blobId) {
-        return getCalendarEventUidByBlobId(davUser, MessagePartBlobId.tryParse(messageIdFactory, blobId.value().toString()).get())
+        return Mono.fromCallable(() -> MessagePartBlobId.tryParse(messageIdFactory, blobId.value().toString()).get())
+            .flatMap(messagePartBlobId -> getCalendarEventUidByBlobId(davUser, messagePartBlobId))
             .flatMap(eventUid -> davClient.getCalendarObject(davUser, eventUid)
                 .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid)))));
     }
@@ -97,6 +115,19 @@ public class CalDavEventAttendanceRepository implements EventAttendanceRepositor
         return Mono.from(messageIdManager.getMessagesReactive(List.of(messagePartBlobId.getMessageId()),
                 FetchGroup.HEADERS, sessionProvider.createSystemSession(Username.of(davUser.username()))))
             .map(EventUid::fromMessageHeaders);
+    }
+
+    public Mono<FreeBusyStatus> freeBusyQuery(DavUser davUser, CalendarEventParsed calendarEventParsed) {
+        Function<FreeBusyResponse, Boolean> isBusyFunction = freeBusyResponse -> freeBusyResponse.users()
+            .stream().anyMatch(user -> user.calendars()
+                .stream().anyMatch(FreeBusyResponse.Calendar::isBusy));
+
+        return Mono.justOrEmpty(FreeBusyRequest.tryFromCalendarEventParsed(calendarEventParsed))
+            .map(builder -> builder.user(davUser.userId()).build())
+            .flatMap(request -> davClient.freeBusyQuery(davUser, request))
+            .map(isBusyFunction)
+            .map(FreeBusyStatus::isBusy)
+            .defaultIfEmpty(FreeBusyStatus.FREE);
     }
 
     @Override

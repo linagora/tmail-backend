@@ -63,4 +63,10 @@ case class CalendarEventAttendanceResults(done: List[EventAttendanceStatusEntry]
                                           notFound: Option[CalendarEventNotFound] = Option.empty,
                                           notDone: Option[CalendarEventNotDone] = Option.empty)
 
-case class EventAttendanceStatusEntry(blobId: String, eventAttendanceStatus: AttendanceStatus)
+object EventAttendanceStatusEntry {
+  def of(blobId: BlobId, eventAttendanceStatus: AttendanceStatus, isFree: Boolean): EventAttendanceStatusEntry = EventAttendanceStatusEntry(blobId.value.value, eventAttendanceStatus, Some(isFree))
+}
+
+case class EventAttendanceStatusEntry(blobId: String,
+                                      eventAttendanceStatus: AttendanceStatus,
+                                      isFree: Option[Boolean] = None)
