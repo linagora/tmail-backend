@@ -20,6 +20,7 @@ package com.linagora.calendar.app;
 
 import org.apache.james.ExtraProperties;
 import org.apache.james.json.DTOConverter;
+import org.apache.james.modules.server.DNSServiceModule;
 import org.apache.james.modules.server.NoJwtModule;
 import org.apache.james.modules.server.TaskManagerModule;
 import org.apache.james.modules.server.WebAdminServerModule;
@@ -38,10 +39,13 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
+import com.linagora.calendar.app.modules.MemoryUserModule;
 import com.linagora.calendar.restapi.RestApiModule;
 
 public class TwakeCalendarMain {
     public static final Module WEBADMIN = Modules.combine(
+        // TODO add domain route
+        // TODO add users Route
         new WebAdminServerModule(),
         new NoJwtModule(),
         binder -> Multibinder.newSetBinder(binder, Routes.class).addBinding().to(MetricsRoutes.class),
@@ -70,6 +74,8 @@ public class TwakeCalendarMain {
 
         return TwakeCalendarGuiceServer.forConfiguration(configuration)
             .combineWith(Modules.combine(
+                new DNSServiceModule(),
+                new MemoryUserModule(), // TODO LDAP Module chooser
                 new RestApiModule(),
                 new TaskManagerModule(),
                 WEBADMIN));

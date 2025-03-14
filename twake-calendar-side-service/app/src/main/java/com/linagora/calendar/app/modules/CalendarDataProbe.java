@@ -16,38 +16,41 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.calendar.restapi.routes;
+package com.linagora.calendar.app.modules;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.jmap.Endpoint;
-import org.apache.james.jmap.http.Authenticator;
-import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.core.Domain;
+import org.apache.james.core.Username;
+import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.user.api.UsersRepository;
+import org.apache.james.utils.GuiceProbe;
 
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import reactor.core.publisher.Mono;
-import reactor.netty.http.server.HttpServerRequest;
-import reactor.netty.http.server.HttpServerResponse;
+public class CalendarDataProbe implements GuiceProbe {
+    private final UsersRepository usersRepository;
+    private final DomainList domainList;
 
-public class ThemeRoute extends CalendarRoute {
     @Inject
-    public ThemeRoute(Authenticator authenticator) {
-        super(authenticator);
+    public CalendarDataProbe(UsersRepository usersRepository, DomainList domainList) {
+        this.usersRepository = usersRepository;
+        this.domainList = domainList;
     }
 
-    @Override
-    Endpoint endpoint() {
-        return new Endpoint(HttpMethod.GET, "/api/theme/{domainId}");
+    public CalendarDataProbe addDomain(Domain domain) {
+        try {
+            domainList.addDomain(domain);
+            return this;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    @Override
-    Mono<Void> handleRequest(HttpServerRequest req, HttpServerResponse res, MailboxSession session) {
-        return res.status(HttpResponseStatus.OK)
-            .header(HttpHeaderNames.CONTENT_TYPE, "application/json")
-            .header("Cache-Control", "public, max-age=86400")
-            .sendString(Mono.just("{\"logos\":{},\"colors\":{}}"))
-            .then();
+    public CalendarDataProbe addUser(Username username, String password) {
+        try {
+            usersRepository.addUser(username, password);
+            return this;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -19,9 +19,13 @@
 package com.linagora.calendar.restapi;
 
 import java.io.FileNotFoundException;
+import java.util.Set;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.jmap.JMAPRoutes;
+import org.apache.james.jmap.http.AuthenticationStrategy;
+import org.apache.james.jmap.http.Authenticator;
+import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -33,6 +37,7 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.calendar.restapi.auth.BasicAuthenticationStrategy;
 import com.linagora.calendar.restapi.routes.LogoRoute;
 import com.linagora.calendar.restapi.routes.ThemeRoute;
 
@@ -45,6 +50,15 @@ public class RestApiModule extends AbstractModule {
         Multibinder<JMAPRoutes> routes = Multibinder.newSetBinder(binder(), JMAPRoutes.class);
         routes.addBinding().to(ThemeRoute.class);
         routes.addBinding().to(LogoRoute.class);
+
+        Multibinder<AuthenticationStrategy> authenticationStrategies = Multibinder.newSetBinder(binder(), AuthenticationStrategy.class);
+        authenticationStrategies.addBinding().to(BasicAuthenticationStrategy.class);
+    }
+
+    @Provides
+    @Singleton
+    Authenticator provideAuth(MetricFactory metricFactory, Set<AuthenticationStrategy> authenticationStrategies) {
+        return Authenticator.of(metricFactory, authenticationStrategies);
     }
 
     @Provides

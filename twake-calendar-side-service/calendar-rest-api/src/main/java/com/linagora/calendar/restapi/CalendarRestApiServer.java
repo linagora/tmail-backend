@@ -19,6 +19,8 @@
 package com.linagora.calendar.restapi;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
+import static io.netty.handler.codec.http.HttpResponseStatus.UNAUTHORIZED;
 import static reactor.netty.Metrics.HTTP_CLIENT_PREFIX;
 import static reactor.netty.Metrics.URI;
 
@@ -33,12 +35,15 @@ import jakarta.inject.Inject;
 
 import org.apache.james.jmap.JMAPRoute;
 import org.apache.james.jmap.JMAPRoutes;
+import org.apache.james.jmap.exceptions.UnauthorizedException;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.util.Port;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.config.MeterFilter;
+import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 import reactor.netty.http.server.HttpServerRequest;
@@ -47,6 +52,7 @@ public class CalendarRestApiServer implements Startable  {
     public static final boolean REACTOR_NETTY_METRICS_ENABLE = Boolean.parseBoolean(System.getProperty("james.jmap.reactor.netty.metrics.enabled", "false"));
     private static final int REACTOR_NETTY_METRICS_MAX_URI_TAGS = 100;
     private static final int RANDOM_PORT = 0;
+    private static final Logger LOGGER = LoggerFactory.getLogger(CalendarRestApiServer.class);
 
     private final List<JMAPRoute> routes;
     private final RestApiConfiguration configuration;
@@ -66,7 +72,21 @@ public class CalendarRestApiServer implements Startable  {
             .port(configuration.getPort()
                 .map(Port::getValue)
                 .orElse(RANDOM_PORT))
-            .handle((request, response) -> handleVersionRoute(request).handleRequest(request, response))
+            .handle((request, response) -> Mono.from(handleVersionRoute(request)
+                .handleRequest(request, response))
+                .onErrorResume(e -> {
+                    if (e instanceof IllegalArgumentException) {
+                        LOGGER.info("Invalid request", e);
+                        return response.status(BAD_REQUEST).send();
+                    }
+                    if (e instanceof UnauthorizedException) {
+                        LOGGER.info("Wrong authentication", e);
+                        return response.status(UNAUTHORIZED).send();
+                    }
+
+                    LOGGER.error("Unexpected error", e);
+                    return response.status(INTERNAL_SERVER_ERROR).send();
+                }))
             .wiretap(wireTapEnabled())
             .metrics(REACTOR_NETTY_METRICS_ENABLE, Function.identity())
             .bindNow());

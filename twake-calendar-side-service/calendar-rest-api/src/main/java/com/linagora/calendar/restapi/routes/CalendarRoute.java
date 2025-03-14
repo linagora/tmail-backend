@@ -18,36 +18,40 @@
 
 package com.linagora.calendar.restapi.routes;
 
+import java.util.stream.Stream;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.jmap.Endpoint;
+import org.apache.james.jmap.JMAPRoute;
+import org.apache.james.jmap.JMAPRoutes;
 import org.apache.james.jmap.http.Authenticator;
 import org.apache.james.mailbox.MailboxSession;
 
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
-public class ThemeRoute extends CalendarRoute {
+public abstract class CalendarRoute implements JMAPRoutes {
+
+    abstract Endpoint endpoint();
+
+    abstract Mono<Void> handleRequest(HttpServerRequest request, HttpServerResponse response, MailboxSession session);
+
+    private final Authenticator authenticator;
+
     @Inject
-    public ThemeRoute(Authenticator authenticator) {
-        super(authenticator);
+    protected CalendarRoute(Authenticator authenticator) {
+        this.authenticator = authenticator;
     }
 
     @Override
-    Endpoint endpoint() {
-        return new Endpoint(HttpMethod.GET, "/api/theme/{domainId}");
-    }
-
-    @Override
-    Mono<Void> handleRequest(HttpServerRequest req, HttpServerResponse res, MailboxSession session) {
-        return res.status(HttpResponseStatus.OK)
-            .header(HttpHeaderNames.CONTENT_TYPE, "application/json")
-            .header("Cache-Control", "public, max-age=86400")
-            .sendString(Mono.just("{\"logos\":{},\"colors\":{}}"))
-            .then();
+    public Stream<JMAPRoute> routes() {
+        return Stream.of(
+            JMAPRoute.builder()
+                .endpoint(endpoint())
+                .action((req, res) -> authenticator.authenticate(req)
+                    .flatMap(session -> handleRequest(req, res, session)))
+                .corsHeaders());
     }
 }

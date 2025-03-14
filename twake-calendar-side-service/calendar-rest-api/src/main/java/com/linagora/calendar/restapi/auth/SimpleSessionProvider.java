@@ -16,38 +16,27 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.calendar.restapi.routes;
+package com.linagora.calendar.restapi.auth;
+
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.jmap.Endpoint;
-import org.apache.james.jmap.http.Authenticator;
+import org.apache.james.core.Username;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.store.RandomMailboxSessionIdGenerator;
 
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import reactor.core.publisher.Mono;
-import reactor.netty.http.server.HttpServerRequest;
-import reactor.netty.http.server.HttpServerResponse;
+import com.google.common.collect.ImmutableList;
 
-public class ThemeRoute extends CalendarRoute {
+public class SimpleSessionProvider {
+    private final RandomMailboxSessionIdGenerator idGenerator;
+
     @Inject
-    public ThemeRoute(Authenticator authenticator) {
-        super(authenticator);
+    public SimpleSessionProvider(RandomMailboxSessionIdGenerator idGenerator) {
+        this.idGenerator = idGenerator;
     }
 
-    @Override
-    Endpoint endpoint() {
-        return new Endpoint(HttpMethod.GET, "/api/theme/{domainId}");
-    }
-
-    @Override
-    Mono<Void> handleRequest(HttpServerRequest req, HttpServerResponse res, MailboxSession session) {
-        return res.status(HttpResponseStatus.OK)
-            .header(HttpHeaderNames.CONTENT_TYPE, "application/json")
-            .header("Cache-Control", "public, max-age=86400")
-            .sendString(Mono.just("{\"logos\":{},\"colors\":{}}"))
-            .then();
+    public MailboxSession createSession(Username username) {
+        return new MailboxSession(MailboxSession.SessionId.of(idGenerator.nextId()), username, Optional.of(username), ImmutableList.of(), '.', MailboxSession.SessionType.User);
     }
 }

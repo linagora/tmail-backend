@@ -27,18 +27,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 
+import org.apache.james.core.Domain;
+import org.apache.james.core.Username;
 import org.apache.james.util.Port;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.calendar.app.modules.CalendarDataProbe;
 import com.linagora.calendar.restapi.RestApiServerProbe;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 
 class TwakeCalendarGuiceServerTest  {
+    public static final Domain DOMAIN = Domain.of("linagora.com");
+    public static final String PASSWORD = "secret";
+    public static final Username USERNAME = Username.of("btellier@linagora.com");
+
     @RegisterExtension
     static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(TwakeCalendarConfiguration.builder()
         .configurationFromClasspath());
@@ -54,6 +61,9 @@ class TwakeCalendarGuiceServerTest  {
             .setPort(port.getValue())
             .setBasePath("/")
             .build();
+
+        server.getProbe(CalendarDataProbe.class).addDomain(DOMAIN)
+            .addUser(USERNAME, PASSWORD);
     }
 
     @Test
@@ -98,9 +108,11 @@ class TwakeCalendarGuiceServerTest  {
         targetRestAPI(server);
 
         String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
             .when()
             .get("/api/theme/anything")
         .then()
+            .statusCode(200)
             .extract()
             .body()
             .asString();
@@ -113,10 +125,35 @@ class TwakeCalendarGuiceServerTest  {
         targetRestAPI(server);
 
         given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
             .when()
             .get("/api/themes/anything/logo")
         .then()
             .statusCode(200); // Follows the redirect;
+    }
+
+    @Test
+    void shouldRejectNonExistingUsers(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        given()
+            .auth().basic("notFound@linagora.com", PASSWORD)
+            .when()
+            .get("/api/themes/anything/logo")
+        .then()
+            .statusCode(401); // Follows the redirect;
+    }
+
+    @Test
+    void shouldRejectBadPassword(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        given()
+            .auth().basic(USERNAME.asString(), "notGood")
+            .when()
+            .get("/api/themes/anything/logo")
+        .then()
+            .statusCode(401); // Follows the redirect;
     }
 
     @Test
