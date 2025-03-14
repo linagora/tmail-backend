@@ -83,7 +83,7 @@ object CalendarEventAttendanceGetResponse {
       val refinedBlobId = refineV[IdConstraint](entry.blobId).fold(
         _ => BlobId("invalid"), // Fallback for invalid values
         validBlobId => BlobId(validBlobId))
-      CalendarEventAttendanceRecord(refinedBlobId, entry.eventAttendanceStatus)
+      CalendarEventAttendanceRecord(refinedBlobId, entry.eventAttendanceStatus, entry.isFree)
     }
 
     CalendarEventAttendanceGetResponse(
@@ -94,7 +94,9 @@ object CalendarEventAttendanceGetResponse {
   }
 }
 
-case class CalendarEventAttendanceRecord(blobId: BlobId, eventAttendanceStatus: AttendanceStatus)
+case class CalendarEventAttendanceRecord(blobId: BlobId,
+                                         eventAttendanceStatus: AttendanceStatus,
+                                         isFree: Option[Boolean] = None)
 
 case class CalendarEventAttendanceGetResponse(accountId: AccountId,
                                               list: List[CalendarEventAttendanceRecord] = List(),

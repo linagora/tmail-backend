@@ -1,50 +1,84 @@
+/********************************************************************
+ *  As a subpart of Twake Mail, this file is edited by Linagora.    *
+ *                                                                  *
+ *  https://twake-mail.com/                                         *
+ *  https://linagora.com                                            *
+ *                                                                  *
+ *  This file is subject to The Affero Gnu Public License           *
+ *  version 3.                                                      *
+ *                                                                  *
+ *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
+ *                                                                  *
+ *  This program is distributed in the hope that it will be         *
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
+ *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
+ *  PURPOSE. See the GNU Affero General Public License for          *
+ *  more details.                                                   *
+ ********************************************************************/
+
 package com.linagora.tmail.james.common
 
-import com.linagora.tmail.james.common.LinagoraCalendarEventMethodContractUtilities.sendInvitationEmailToBobAndGetIcsBlobIds
+import java.time.ZonedDateTime
+
+import com.linagora.tmail.james.common.LinagoraCalendarEventAttendanceGetMethodContract.bobAccountId
+import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
+import net.fortuna.ical4j.model.parameter.PartStat
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
-import org.apache.http.HttpStatus.SC_OK
+import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
-import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.mailbox.DefaultMailboxes
+import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.{BeforeEach, Test}
+import org.junit.jupiter.api.{Assumptions, BeforeEach, Test}
 import play.api.libs.json.Json
 
+object LinagoraCalendarEventAttendanceGetMethodContract {
+  var bobAccountId: String = _
+}
+
 trait LinagoraCalendarEventAttendanceGetMethodContract {
+
+  def supportFreeBusyQuery: Boolean
+  def bobCredential: UserCredential
+  def aliceCredential: UserCredential
+  def andreCredential: UserCredential
+
+  def pushCalendarToDav(userCredential: UserCredential, calendar: CalendarEventHelper): Unit = {}
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
       .fluent
       .addDomain(_2_DOT_DOMAIN.asString)
-      .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString, BOB_PASSWORD)
-      .addUser(ALICE.asString, ALICE_PASSWORD)
-      .addUser(ANDRE.asString, ANDRE_PASSWORD)
+      .addDomain(bobCredential.username.getDomainPart.get().asString())
+      .addUser(bobCredential.username.asString(), bobCredential.password)
+      .addUser(aliceCredential.username.asString(), aliceCredential.password)
+      .addUser(andreCredential.username.asString(), andreCredential.password)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(bobCredential))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build
 
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobCredential.username))
+    bobAccountId = getAccountId(bobCredential, server)
   }
 
   @Test
   def shouldReturnAccepted(server: GuiceJamesServer): Unit = {
-    val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
-
+    val blobId: String = createNewEmailWithCalendarAttachment(server)
     acceptInvitation(blobId)
 
     val request: String =
@@ -55,7 +89,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -74,23 +108,128 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         .asString
 
     assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].list[*].isFree")
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$bobAccountId",
             |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "accepted" } ]
             |  },
             |  "c1"
-            |]""".stripMargin
-    )
+            |]""".stripMargin)
+  }
+
+  @Test
+  def shouldReturnIsFreeTrueWhenTimeSlotDoesNotConflicts(server: GuiceJamesServer): Unit = {
+    Assumptions.assumeTrue(supportFreeBusyQuery, "This test is only relevant when freebusy is supported")
+    val blobId: String = createNewEmailWithCalendarAttachment(server)
+
+    val response =
+      `given`
+        .body(s"""{
+                 |  "using": [
+                 |    "urn:ietf:params:jmap:core",
+                 |    "com:linagora:params:calendar:event"],
+                 |  "methodCalls": [[
+                 |    "CalendarEventAttendance/get",
+                 |    {
+                 |      "accountId": "$bobAccountId",
+                 |      "blobIds": [ "$blobId" ]
+                 |    },
+                 |    "c1"]]
+                 |}""".stripMargin)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""|[
+            |    "CalendarEventAttendance/get",
+            |    {
+            |        "accountId": "$bobAccountId",
+            |        "list": [
+            |            {
+            |                "blobId": "$blobId",
+            |                "eventAttendanceStatus": "needsAction",
+            |                "isFree": true
+            |            }
+            |        ]
+            |    },
+            |    "c1"
+            |]""".stripMargin)
+  }
+
+  @Test
+  def shouldReturnIsFreeFalseWhenWhenTimeSlotConflicts(server: GuiceJamesServer): Unit = {
+    Assumptions.assumeTrue(supportFreeBusyQuery, "This test is only relevant when freebusy is supported")
+
+    // Given a calendar event A, and accepted it
+    val startDateOfEventA: ZonedDateTime = ZonedDateTime.parse("2025-03-14T14:00:00Z")
+    val endDateOfEventA: ZonedDateTime = startDateOfEventA.plusHours(2)
+    val calendarEventA = new CalendarEventHelper(bobCredential.username.asString(), PartStat.NEEDS_ACTION, startDateOfEventA, endDateOfEventA)
+    val blobIdA: String = createNewEmailWithCalendarAttachment(server, calendarEventA)
+    acceptInvitation(blobIdA)
+
+    // And a calendar event B has the conflict with time slot with event A
+    val startDateOfEventB: ZonedDateTime = startDateOfEventA.plusHours(1)
+    assertThat(startDateOfEventB.isBefore(endDateOfEventA)).isTrue
+    val calendarEventB = new CalendarEventHelper(bobCredential.username.asString(), PartStat.NEEDS_ACTION, startDateOfEventB, startDateOfEventB.plusHours(1))
+    val blobIdB: String = createNewEmailWithCalendarAttachment(server, calendarEventB)
+
+    val response =
+      `given`
+        .body(s"""{
+                 |  "using": [
+                 |    "urn:ietf:params:jmap:core",
+                 |    "com:linagora:params:calendar:event"],
+                 |  "methodCalls": [[
+                 |    "CalendarEventAttendance/get",
+                 |    {
+                 |      "accountId": "$bobAccountId",
+                 |      "blobIds": [ "$blobIdB" ]
+                 |    },
+                 |    "c1"]]
+                 |}""".stripMargin)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""|[
+            |    "CalendarEventAttendance/get",
+            |    {
+            |        "accountId": "$bobAccountId",
+            |        "list": [
+            |            {
+            |                "blobId": "$blobIdB",
+            |                "eventAttendanceStatus": "needsAction",
+            |                "isFree": false
+            |            }
+            |        ]
+            |    },
+            |    "c1"
+            |]""".stripMargin)
   }
 
   @Test
   def shouldReturnRejected(server: GuiceJamesServer): Unit = {
-    val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val blobId: String = createNewEmailWithCalendarAttachment(server)
 
     rejectInvitation(blobId)
 
@@ -102,7 +241,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -121,12 +260,13 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         .asString
 
     assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].list[*].isFree")
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$bobAccountId",
             |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "rejected" } ]
             |  },
             |  "c1"
@@ -136,8 +276,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
 
   @Test
   def shouldReturnMaybe(server: GuiceJamesServer): Unit = {
-    val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val blobId: String = createNewEmailWithCalendarAttachment(server)
 
     maybeInvitation(blobId)
 
@@ -149,7 +288,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -168,12 +307,13 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         .asString
 
     assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].list[*].isFree")
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$bobAccountId",
             |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "tentativelyAccepted" } ]
             |  },
             |  "c1"
@@ -182,8 +322,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
 
   @Test
   def shouldReturnNeedsActionWhenNoEventAttendanceFlagAttachedToMail(server: GuiceJamesServer): Unit = {
-    val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val blobId: String = createNewEmailWithCalendarAttachment(server)
 
     val request: String =
       s"""{
@@ -193,7 +332,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -212,12 +351,13 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         .asString
 
     assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].list[*].isFree")
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$bobAccountId",
             |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "needsAction" } ]
             |  },
             |  "c1"
@@ -238,7 +378,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": $blobIdsJson
          |    },
          |    "c1"]]
@@ -311,8 +451,9 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
 
   @Test
   def shouldNotFoundWhenDoesNotHavePermission(server: GuiceJamesServer): Unit = {
-    val blobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val blobId: String = createNewEmailWithCalendarAttachment(server)
+
+    val andreAccountId: String = getAccountId(andreCredential, server)
 
     val request: String =
       s"""{
@@ -322,7 +463,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ANDRE_ACCOUNT_ID",
+         |      "accountId": "$andreAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -346,7 +487,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "$ANDRE_ACCOUNT_ID",
+            |    "accountId": "$andreAccountId",
             |    "list": [],
             |    "notFound": ["$blobId"]
             |  },
@@ -362,7 +503,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "123" ]
          |    },
          |    "c1"]]
@@ -400,7 +541,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "123" ]
          |    },
          |    "c1"]]
@@ -432,20 +573,16 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
 
   @Test
   def shouldSucceedWhenMixSeveralCases(server: GuiceJamesServer): Unit = {
-    val acceptedEventBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val acceptedEventBlobId: String = createNewEmailWithCalendarAttachment(server)
     acceptInvitation(acceptedEventBlobId)
 
-    val rejectedEventBlobId: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val rejectedEventBlobId: String = createNewEmailWithCalendarAttachment(server)
     rejectInvitation(rejectedEventBlobId)
 
-    val rejectedEventBlobId2: String =
-      sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val rejectedEventBlobId2: String = createNewEmailWithCalendarAttachment(server)
     rejectInvitation(rejectedEventBlobId2)
 
-    val needsActionEventBlobId: String =
-    sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val needsActionEventBlobId: String = createNewEmailWithCalendarAttachment(server)
 
     val notFoundBlobId = "99999_99999"
 
@@ -457,7 +594,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEventAttendance/get",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$acceptedEventBlobId", "$rejectedEventBlobId", "$needsActionEventBlobId", "$rejectedEventBlobId2", "$notFoundBlobId" ]
          |    },
          |    "c1"]]
@@ -477,12 +614,13 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
 
     assertThatJson(response)
       .when(Option.IGNORING_ARRAY_ORDER)
+      .whenIgnoringPaths("methodResponses[0][1].list[*].isFree")
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""|[
             |  "CalendarEventAttendance/get",
             |  {
-            |    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+            |    "accountId": "$bobAccountId",
             |    "list": [
             |      {
             |        "blobId": "$acceptedEventBlobId",
@@ -509,14 +647,12 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
 
   @Test
   def shouldSucceedWhenDelegated(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(bobCredential.username, andreCredential.username)
 
-    val blobId: String =
-    sendInvitationEmailToBobAndGetIcsBlobIds(server, "emailWithAliceInviteBobIcsAttachment.eml", icsPartId = "3")
+    val blobId: String = createNewEmailWithCalendarAttachment(server)
 
     acceptInvitation(blobId)
 
-    val bobAccountId = ACCOUNT_ID
     val request: String =
       s"""{
          |  "using": [
@@ -544,13 +680,14 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
         .asString
 
     assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].list[*].isFree")
       .withOptions(IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
            |  "CalendarEventAttendance/get",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "list": [ { "blobId": "$blobId", "eventAttendanceStatus": "accepted" } ]
            |  },
            |  "c1"
@@ -577,7 +714,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/accept",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -601,7 +738,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/reject",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -625,7 +762,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/maybe",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -645,8 +782,111 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
 
   private def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
     baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(andreCredential))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build
 
+  // return calendar messagePart blobId
+  private def createNewEmailWithCalendarAttachment(server: GuiceJamesServer,
+                                                   calendar: CalendarEventHelper = new CalendarEventHelper(
+                                                     bobCredential.username.asString(),
+                                                     PartStat.NEEDS_ACTION,
+                                                     ZonedDateTime.now(),
+                                                     ZonedDateTime.now().plusHours(1))): String = {
+
+    // upload calendar attachment
+    val uploadBlobId: String = `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .contentType("text/plain")
+      .body(calendar.asByte)
+      .when
+      .post(s"/upload/$bobAccountId")
+      .`then`
+      .statusCode(SC_CREATED)
+      .extract
+      .path("blobId")
+
+    // create email with calendar attachment
+    val bobMailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(MailboxConstants.USER_NAMESPACE, bobCredential.username.asString, DefaultMailboxes.INBOX)
+
+    val eventMessagePartBlobId: String = `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(
+        s"""{
+           |  "using": [ "urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail" ],
+           |  "methodCalls": [
+           |    [
+           |      "Email/set",
+           |      {
+           |        "accountId": "$bobAccountId",
+           |        "create": {
+           |          "aaaaaa": {
+           |            "mailboxIds": {
+           |              "${bobMailboxId.serialize}": true
+           |            },
+           |            "header:X-MEETING-UID:asText": "${calendar.uid}",
+           |            "subject": "World domination",
+           |            "textBody": [ { "partId": "a49d", "type": "text/plain" } ],
+           |            "bodyValues": {
+           |              "a49d": {
+           |                "value": "Calendar Description",
+           |                "isTruncated": false,
+           |                "isEncodingProblem": false
+           |              }
+           |            },
+           |            "attachments": [
+           |              {
+           |                "blobId": "$uploadBlobId",
+           |                "size": 808,
+           |                "name": "invite.ics",
+           |                "type": "text/calendar",
+           |                "disposition": "attachment"
+           |              }
+           |            ]
+           |          }
+           |        }
+           |      },
+           |      "c1"
+           |    ],
+           |    [
+           |      "Email/get",
+           |      {
+           |        "accountId": "$bobAccountId",
+           |        "ids": [ "#aaaaaa" ],
+           |        "properties": [
+           |          "attachments"
+           |        ]
+           |      },
+           |      "c2"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .path("methodResponses[1][1].list[0].attachments[0].blobId")
+
+    if (supportFreeBusyQuery) {
+      pushCalendarToDav(bobCredential, calendar)
+    }
+    eventMessagePartBlobId
+  }
+
+  private def getAccountId(userCredential: UserCredential, server: GuiceJamesServer): String =
+    `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(userCredential))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build())
+      .get("/session")
+    .`then`()
+      .statusCode(200)
+      .contentType(JSON)
+      .extract
+      .body
+      .path("primaryAccounts[\"urn:ietf:params:jmap:core\"]")
 }
