@@ -23,7 +23,6 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
@@ -35,13 +34,11 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
-import com.linagora.tmail.james.common.DefaultCalendarUsersParameterResolver;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-@ExtendWith(DefaultCalendarUsersParameterResolver.class)
-public class DistributedLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
+public class DistributedLinagoraCalendarEventAcceptMethodTest extends LinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->

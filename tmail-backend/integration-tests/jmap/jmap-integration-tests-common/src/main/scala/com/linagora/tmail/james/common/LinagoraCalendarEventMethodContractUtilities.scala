@@ -40,14 +40,12 @@ import org.awaitility.core.ConditionFactory
 
 import scala.util.Using
 
+case class EmailData(sender: User, receiver: User, mimeMessageId: String, calendarUid: String)
+
 case class User(name: String, email: String, password: String) {
   lazy val username: Username = Username.of(email);
   lazy val accountId: String = AccountId.from(username).right.get.id.value
 }
-
-case class CalendarUsers(userOne: User, userTwo: User, userThree: User, userFour: User)
-
-case class EmailData(sender: User, receiver: User, mimeMessageId: String)
 
 object EmailData {
   def base64Encode: Mustache.Lambda = (frag: Template#Fragment, out: Writer) => {
@@ -90,7 +88,7 @@ object LinagoraCalendarEventMethodContractUtilities {
       .compile(templateAsString)
 
     val mimeMessageId = UUID.randomUUID().toString
-    val mail = emailTemplate.execute(EmailData(sender, receiver, mimeMessageId))
+    val mail = emailTemplate.execute(EmailData(sender, receiver, mimeMessageId, mimeMessageId))
 
     new SMTPMessageSender(sender.username.getDomainPart.get().asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)

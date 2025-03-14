@@ -22,14 +22,11 @@ import static com.linagora.tmail.james.TmailJmapBase.JAMES_SERVER_EXTENSION_FUNC
 
 import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.james.common.DefaultCalendarUsersParameterResolver;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
 
-@ExtendWith(DefaultCalendarUsersParameterResolver.class)
-public class PostgresLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
+public class PostgresLinagoraCalendarEventAcceptMethodTest extends LinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION.apply(new DelegationProbeModule())
