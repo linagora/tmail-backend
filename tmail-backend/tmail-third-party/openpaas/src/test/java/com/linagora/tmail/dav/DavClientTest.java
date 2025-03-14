@@ -20,9 +20,11 @@ package com.linagora.tmail.dav;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.serverError;
@@ -44,6 +46,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -60,6 +63,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.tomakehurst.wiremock.http.Body;
+import com.linagora.tmail.dav.cal.FreeBusyRequest;
+import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
@@ -308,5 +313,64 @@ class DavClientTest {
                 urlEqualTo(ALICE_CALENDAR_OBJECT_1))
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
                 .withHeader("Accept", equalTo("application/xml")));
+    }
+
+    @Test
+    void freeBusyQueryShouldSuccess() {
+        davServerExtension.stubFor(
+            post("/calendars/freebusy")
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/json"))
+                .withRequestBody(equalToJson("""
+                    {
+                        "start": "20250308T023500Z",
+                        "end": "20250308T031500Z",
+                        "users": [
+                            "67c913533f46f500576ed03e"
+                        ],
+                        "uids": [
+                            "b787cb16-fbe8-478f-8877-c699f9e314d8"
+                        ]
+                    }"""))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body("""
+                                {
+                                    "start": "20250308T023500Z",
+                                    "end": "20250308T031500Z",
+                                    "users": [
+                                        {
+                                            "id": "67c913533f46f500576ed03e",
+                                            "calendars": [
+                                                {
+                                                    "id": "67c913533f46f500576ed03e",
+                                                    "busy": [
+                                                        {
+                                                            "uid": "2213afbb-d7c4-48fd-a7a4-919c56b745b0",
+                                                            "start": "20250308T023000Z",
+                                                            "end": "20250308T030000Z"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }"""))
+                        .withStatus(200)));
+
+        FreeBusyRequest freeBusyRequest = FreeBusyRequest.builder()
+            .start(Instant.parse("2025-03-08T02:35:00Z"))
+            .end(Instant.parse("2025-03-08T03:15:00Z"))
+            .user("67c913533f46f500576ed03e")
+            .uid("b787cb16-fbe8-478f-8877-c699f9e314d8")
+            .build();
+
+        FreeBusyResponse freeBusyResponse = client.freeBusyQuery(ALICE_DAV_USER, freeBusyRequest).block();
+        assertThat(freeBusyResponse.users().getFirst().calendars().getFirst().busy())
+            .containsExactlyInAnyOrder( new FreeBusyResponse.BusyTime(
+                "2213afbb-d7c4-48fd-a7a4-919c56b745b0",
+                Instant.parse("2025-03-08T02:30:00Z"),
+                Instant.parse("2025-03-08T03:00:00Z")));
     }
 }
