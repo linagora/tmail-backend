@@ -55,9 +55,6 @@ services:
   rabbitmq:
     image: rabbitmq:3.13.3-management
     hostname: esn-rabbit
-    ports:
-      - 5672:5672
-      - 15672:15672
     networks:
       - emaily
     healthcheck:

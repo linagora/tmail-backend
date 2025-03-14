@@ -26,12 +26,16 @@
 
 package com.linagora.tmail;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
+
 import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.utils.URIBuilder;
 import org.junit.platform.commons.util.Preconditions;
 import org.testcontainers.containers.ComposeContainer;
@@ -39,8 +43,14 @@ import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
+import com.linagora.tmail.configuration.DavConfiguration;
+import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 public class DockerOpenPaasSetup {
+
+    public static final DockerOpenPaasSetup SINGLETON = new DockerOpenPaasSetup();
+
     enum DockerService {
         OPENPAAS("openpaas", 8080),
         RABBITMQ("rabbitmq", 5672),
@@ -66,6 +76,12 @@ public class DockerOpenPaasSetup {
             return port;
         }
     }
+
+    public static final String DAV_ADMIN = "admin";
+    public static final String DAV_ADMIN_PASSWORD = "secret123";
+    public static final String OPENPAAS_ADMIN_USERNAME = "admin@open-paas.org";
+    public static final String OPENPAAS_ADMIN_PASSWORD = "secret";
+    private static final boolean TRUST_ALL_SSL_CERTS = true;
 
     private final ComposeContainer environment;
     private OpenPaaSProvisioningService openPaaSProvisioningService;
@@ -174,4 +190,25 @@ public class DockerOpenPaasSetup {
     private Integer getPort(DockerService dockerService) {
         return environment.getServicePort(dockerService.serviceName(), dockerService.port());
     }
+
+    public DavConfiguration davConfiguration() {
+        return new DavConfiguration(
+            new UsernamePasswordCredentials(DAV_ADMIN, DAV_ADMIN_PASSWORD),
+            getSabreDavURI(),
+            Optional.of(TRUST_ALL_SSL_CERTS),
+            Optional.empty());
+    }
+
+    public OpenPaasConfiguration openPaasConfiguration() {
+        return new OpenPaasConfiguration(
+            URI.create(getOpenPaasIpAddress().toString() + "/api"),
+            OPENPAAS_ADMIN_USERNAME,
+            OPENPAAS_ADMIN_PASSWORD,
+            TRUST_ALL_SSL_CERTS,
+            Optional.of(new OpenPaasConfiguration.ContactConsumerConfiguration(
+                ImmutableList.of(AmqpUri.from(rabbitMqUri())),
+                OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED)),
+            Optional.of(davConfiguration()));
+    }
+
 }

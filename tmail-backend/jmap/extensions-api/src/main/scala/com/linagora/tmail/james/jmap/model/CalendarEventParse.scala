@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.model
 import java.io.InputStream
 import java.time.temporal.Temporal
 import java.time.{Duration, _}
-import java.util.{Locale, TimeZone}
+import java.util.{Locale, Optional, TimeZone}
 
 import com.google.common.base.Preconditions
 import com.ibm.icu.util.{TimeZone => Icu4jTimeZone}
@@ -612,4 +612,8 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
   def getAttendanceStatus(username: String): Option[AttendanceStatus] = participants.findParticipantByMailTo(username)
     .flatMap(_.participationStatus)
     .map((status: CalendarAttendeeParticipationStatus) => AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).orElseThrow)
+
+  def uidAsString(): Optional[String] = uid.map(_.value).toJava
+  def startAsJava(): Optional[ZonedDateTime] = start.map(_.value).toJava
+  def endAsJava(): Optional[ZonedDateTime] = end.map(_.value).toJava
 }
