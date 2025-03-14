@@ -22,8 +22,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -39,14 +37,14 @@ import net.fortuna.ical4j.model.ComponentList;
 import net.fortuna.ical4j.model.RelationshipPropertyModifiers;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.parameter.PartStat;
-import scala.collection.JavaConverters;
+import scala.jdk.javaapi.CollectionConverters;
 
 public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
     private static final Logger LOGGER = LoggerFactory.getLogger(DavCalendarObject.class);
 
     public static Optional<DavCalendarObject> fromDavResponse(DavResponse davResponse) {
         return davResponse.getPropstat().getProp().getCalendarData()
-            .map(DavCalendarObject::normalizeVCalendarData)
+            .map(CalendarData::getValue)
             .map(calendarData -> CalendarEventParsed.parseICal4jCalendar(
                 IOUtils.toInputStream(calendarData, StandardCharsets.UTF_8)))
             .map(calendar ->
@@ -56,16 +54,8 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
                     calendar, davResponse.getPropstat().getProp().getETag().orElse("ETag_NOT_FOUND")));
     }
 
-    private static String normalizeVCalendarData(CalendarData calendarData) {
-        return calendarData.getValue()
-            .lines()
-            .map(String::trim)
-            .filter(Predicate.not(String::isBlank))
-            .collect(Collectors.joining("\n"));
-    }
-
     public CalendarEventParsed parse() {
-        List<CalendarEventParsed> events = JavaConverters.asJava(CalendarEventParsed.from(calendarData()));
+        List<CalendarEventParsed> events = CollectionConverters.asJava(CalendarEventParsed.from(calendarData()));
         if (events.isEmpty()) {
             throw new RuntimeException("No VEvents found in calendar object. Returning empty attendance results.");
         }
