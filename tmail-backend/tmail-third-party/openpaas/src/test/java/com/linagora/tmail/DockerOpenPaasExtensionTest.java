@@ -37,7 +37,7 @@ import org.testcontainers.containers.ContainerState;
 public class DockerOpenPaasExtensionTest {
 
     @RegisterExtension
-    static DockerOpenPaasExtension dockerOpenPaasExtension = new DockerOpenPaasExtension(DockerOpenPaasSetupSingleton.singleton);
+    static DockerOpenPaasExtension dockerOpenPaasExtension = new DockerOpenPaasExtension(DockerOpenPaasSetup.SINGLETON);
 
     @Test
     void allServersShouldStartSuccessfully() {
