@@ -33,9 +33,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.DockerOpenPaasExtension;
-import com.linagora.tmail.DockerOpenPaasSetupSingleton;
+import com.linagora.tmail.DockerOpenPaasSetup;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import com.linagora.tmail.OpenPaasSetupTestModule;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -51,8 +50,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 public class DistributedOpenPaaSCalendarEventAcceptMethodTest extends LinagoraCalendarEventAcceptMethodContract {
     @RegisterExtension
     @Order(1)
-    static DockerOpenPaasExtension openPaasExtension = new DockerOpenPaasExtension(
-        DockerOpenPaasSetupSingleton.singleton);
+    static DockerOpenPaasExtension openPaasExtension = new DockerOpenPaasExtension(DockerOpenPaasSetup.SINGLETON);
 
     @RegisterExtension
     @Order(2)
@@ -78,7 +76,7 @@ public class DistributedOpenPaaSCalendarEventAcceptMethodTest extends LinagoraCa
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule())
-            .overrideWith(new OpenPaasSetupTestModule()))
+            .overrideWith(openPaasExtension.openpaasModule()))
         .build();
 
     @Override
@@ -121,7 +119,7 @@ public class DistributedOpenPaaSCalendarEventAcceptMethodTest extends LinagoraCa
     }
 
     private User createUser() {
-        return DockerOpenPaasSetupSingleton.singleton
+        return DockerOpenPaasSetup.SINGLETON
             .getOpenPaaSProvisioningService()
             .createUser()
             .map(openPaasUser -> new User(openPaasUser.firstname() + " " + openPaasUser.lastname(),
