@@ -53,6 +53,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-webadmin-data</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.linagora.tmail</groupId>
             <artifactId>logback-json-classic</artifactId>
         </dependency>

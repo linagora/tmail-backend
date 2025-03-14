@@ -91,6 +91,20 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldExposeWebAdminDomains() {
+        String body = given()
+        .when()
+            .get("/domains")
+        .then()
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+            ["localhost","linagora.com"]""");
+    }
+
+    @Test
     void shouldExposeMetrics() {
         String body = given()
         .when()

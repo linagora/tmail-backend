@@ -13,6 +13,8 @@
     <properties>
         <target.jdk>21</target.jdk>
         <jib.base.image>eclipse-temurin:23-jre-noble</jib.base.image>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
     </properties>
 
     <modules>
