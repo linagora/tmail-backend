@@ -166,7 +166,6 @@
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-reactivestreams</artifactId>
             <scope>test</scope>
-            <version>5.3.1</version>
         </dependency>
     </dependencies>
 
