@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.blob.blobid.list.cassandra
 
+import java.time.Duration
+
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql.PreparedStatement
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
@@ -25,7 +27,11 @@ import com.linagora.tmail.blob.blobid.list.cassandra.BlobIdListTable._
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.blob.api.BlobId
+import org.apache.james.util.DurationParser
 import reactor.core.scala.publisher.SMono
+object CassandraBlobIdListDAO {
+  val ttl: Duration = DurationParser.parse(System.getProperty("tmail.blob.id.list.ttl", "1800s"));
+}
 
 class CassandraBlobIdListDAO @Inject()(session: CqlSession) {
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
@@ -33,6 +39,7 @@ class CassandraBlobIdListDAO @Inject()(session: CqlSession) {
   private val insertStatement: PreparedStatement =
     session.prepare(insertInto(TABLE_NAME)
       .value(BLOB_ID, bindMarker(BLOB_ID))
+      .usingTtl(CassandraBlobIdListDAO.ttl.getSeconds.intValue())
       .build())
 
   private val selectStatement: PreparedStatement =
