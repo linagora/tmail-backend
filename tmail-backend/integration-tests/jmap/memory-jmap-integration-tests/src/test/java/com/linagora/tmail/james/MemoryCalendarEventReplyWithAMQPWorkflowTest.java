@@ -18,9 +18,6 @@
 
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLED;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_DAV;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CONTACTS_CONSUMER;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
@@ -82,7 +79,7 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
                 .workingDirectory(tmpDir)
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-                .openPaasModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED, !ENABLE_DAV, ENABLE_CONTACTS_CONSUMER))
+                .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_CONSUMER)
                 .build();
         })
         .server(configuration -> MemoryServer.createServer(configuration)

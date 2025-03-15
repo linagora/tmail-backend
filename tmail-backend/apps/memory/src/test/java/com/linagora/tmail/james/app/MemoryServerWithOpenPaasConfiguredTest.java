@@ -18,9 +18,6 @@
 
 package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLED;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_DAV;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CONTACTS_CONSUMER;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,7 +68,7 @@ class MemoryServerWithOpenPaasConfiguredTest {
                 .configurationFromClasspath()
                 .mailbox(new MailboxConfiguration(false))
                 .usersRepository(DEFAULT)
-                .openPaasModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED, !ENABLE_DAV, ENABLE_CONTACTS_CONSUMER))
+                .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_CONSUMER)
                 .build())
             .server(configuration -> MemoryServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
@@ -100,8 +97,7 @@ class MemoryServerWithOpenPaasConfiguredTest {
                 .configurationFromClasspath()
                 .mailbox(new MailboxConfiguration(false))
                 .usersRepository(DEFAULT)
-                .openPaasModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED,
-                    ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER))
+                .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_DAV)
                 .build())
             .server(configuration -> MemoryServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())

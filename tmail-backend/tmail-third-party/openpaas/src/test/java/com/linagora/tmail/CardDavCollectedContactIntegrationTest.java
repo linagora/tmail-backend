@@ -36,6 +36,7 @@ import jakarta.mail.MessagingException;
 import org.apache.james.MemoryJamesServerMain;
 import org.apache.james.core.Username;
 import org.apache.james.core.builder.MimeMessageBuilder;
+import org.apache.james.jmap.routes.BlobResolver;
 import org.apache.james.mailets.TemporaryJamesServer;
 import org.apache.james.mailets.configuration.CommonProcessors;
 import org.apache.james.mailets.configuration.MailetConfiguration;
@@ -56,6 +57,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.dav.CardDavUtils;
@@ -63,6 +65,8 @@ import com.linagora.tmail.dav.DavServerExtension;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.mailet.CardDavCollectedContact;
+
+import reactor.core.publisher.Mono;
 
 public class CardDavCollectedContactIntegrationTest {
     private static final Username ALICE = Username.of("alice@" + DEFAULT_DOMAIN);
@@ -106,6 +110,11 @@ public class CardDavCollectedContactIntegrationTest {
                         WireMockOpenPaaSServerExtension.GOOD_PASSWORD,
                         false,
                         davServerExtension.getDavConfiguration());
+                }
+
+                @ProvidesIntoSet
+                public BlobResolver provideFakeBlobResolver() {
+                    return (blobId, mailboxSession) -> Mono.empty();
                 }
             })
             .withMailetContainer(TemporaryJamesServer.defaultMailetContainerConfiguration()

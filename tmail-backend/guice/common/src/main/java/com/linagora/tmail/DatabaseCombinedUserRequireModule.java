@@ -52,5 +52,4 @@ public class DatabaseCombinedUserRequireModule<T extends UsersDAO> extends Abstr
     public UsersDAO provideDatabaseCombinedUserDAO(Injector injector) {
         return injector.getInstance(typeUserDAOClass);
     }
-
 }

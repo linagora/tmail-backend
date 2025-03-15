@@ -152,6 +152,21 @@
             <scope>test</scope>
             <type>test-jar</type>
         </dependency>
+        <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>tmail-openpaas</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>tmail-openpaas</artifactId>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-reactivestreams</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

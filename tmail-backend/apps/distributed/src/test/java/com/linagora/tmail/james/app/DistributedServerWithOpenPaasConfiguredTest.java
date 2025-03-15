@@ -18,9 +18,6 @@
 
 package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLED;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_DAV;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CONTACTS_CONSUMER;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -74,7 +71,7 @@ public class DistributedServerWithOpenPaasConfiguredTest {
                 .searchConfiguration(SearchConfiguration.openSearch())
                 .usersRepository(UsersRepositoryModuleChooser.Implementation.COMBINED)
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
-                .openPassModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED, !ENABLE_DAV, ENABLE_CONTACTS_CONSUMER))
+                .openPassModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_CONSUMER)
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))
@@ -110,8 +107,7 @@ public class DistributedServerWithOpenPaasConfiguredTest {
                 .searchConfiguration(SearchConfiguration.openSearch())
                 .usersRepository(UsersRepositoryModuleChooser.Implementation.COMBINED)
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
-                .openPassModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED,
-                    ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER))
+                .openPassModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_DAV)
                 .build())
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))

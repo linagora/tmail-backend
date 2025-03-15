@@ -36,7 +36,6 @@ import static org.apache.james.mailets.configuration.Constants.PASSWORD;
 import static org.apache.james.mailets.configuration.Constants.awaitAtMostOneMinute;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,7 +64,6 @@ import org.apache.james.transport.matchers.SMTPAuthSuccessful;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.SMTPMessageSender;
 import org.apache.james.utils.TestIMAPClient;
-import org.apache.mailet.MailetException;
 import org.apache.mailet.base.test.FakeMail;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -197,20 +195,10 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
             String exchangeName = "collector:email" + UUID.randomUUID();
             String routingKey = "routing1" + UUID.randomUUID();
 
-            MailetConfiguration amqpForwardAttributeMailet = MailetConfiguration.builder()
-                .matcher(All.class)
-                .mailet(OpenPaasAmqpForwardAttribute.class)
-                .addProperty(OpenPaasAmqpForwardAttributeConfig.EXCHANGE_PARAMETER_NAME,
-                    exchangeName)
-                .addProperty(OpenPaasAmqpForwardAttributeConfig.EXCHANGE_TYPE_PARAMETER_NAME,
-                    BuiltinExchangeType.FANOUT.getType())
-                .addProperty(OpenPaasAmqpForwardAttributeConfig.ATTRIBUTE_PARAMETER_NAME,
-                    EXTRACT_ATTRIBUTE)
-                .build();
-
             setUpJamesServer(temporaryFolder, exchangeName);
 
             Channel channel = rabbitMQConnection.createChannel();
+            channel.exchangeDeclare(exchangeName, BuiltinExchangeType.FANOUT, true, true, null);
             String queueName = channel.queueDeclare().getQueue();
             channel.queueBind(queueName, exchangeName, routingKey);
 
@@ -349,51 +337,6 @@ class OpenPaasAmqpForwardAttributeIntegrationTest {
                 "emails" : [ "to@james.org"]
                 }
                 """);
-        }
-    }
-
-    @Nested
-    class WithoutOpenPaasModule {
-        void setUpJamesServer(@TempDir File temporaryFolder) throws Exception {
-            MailetConfiguration amqpForwardAttribute = MailetConfiguration
-                .builder()
-                .matcher(All.class)
-                .mailet(OpenPaasAmqpForwardAttribute.class)
-                .addProperty(OpenPaasAmqpForwardAttributeConfig.EXCHANGE_PARAMETER_NAME, "dummy_exchange")
-                .addProperty(OpenPaasAmqpForwardAttributeConfig.EXCHANGE_TYPE_PARAMETER_NAME,
-                    BuiltinExchangeType.FANOUT.getType())
-                .addProperty(OpenPaasAmqpForwardAttributeConfig.ATTRIBUTE_PARAMETER_NAME,
-                    EXTRACT_ATTRIBUTE).build();
-
-            jamesServer = TemporaryJamesServer.builder()
-                .withBase(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE)
-                .withOverrides(new InMemoryEmailAddressContactSearchEngineModule())
-                .withMailetContainer(TemporaryJamesServer.defaultMailetContainerConfiguration()
-                    .postmaster(SENDER)
-                    .putProcessor(
-                        ProcessorConfiguration.transport()
-                            .addMailet(MailetConfiguration.builder()
-                                .matcher(SMTPAuthSuccessful.class)
-                                .mailet(ContactExtractor.class)
-                                .addProperty(ContactExtractor.Configuration.ATTRIBUTE,
-                                    EXTRACT_ATTRIBUTE))
-                            .addMailet(amqpForwardAttribute)
-                            .addMailetsFrom(CommonProcessors.deliverOnlyTransport())))
-                .build(temporaryFolder);
-
-            jamesServer.start();
-        }
-
-        @Test
-        void serverShouldCrashWhenMailetLoadedButOpenPaasModuleNotEnabled(
-            @TempDir File temporaryFolder) {
-            // It is hard to detect/catch 'System.exit()' so we set the property to false to avoid the system exit.
-            System.setProperty("james.exit.on.startup.error", "false");
-
-            assertThatThrownBy(() -> setUpJamesServer(temporaryFolder))
-                .hasRootCauseInstanceOf(MailetException.class)
-                .hasRootCauseMessage(
-                    "Failed to initialize mailet. OpenPaasModule is required to this mailet to function correctly.");
         }
     }
 }

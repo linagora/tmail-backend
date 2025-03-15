@@ -16,24 +16,35 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james;
+package com.linagora.tmail.mailet;
 
-import static com.linagora.tmail.james.TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION;
+import java.util.Collection;
+import java.util.Collections;
 
-import org.apache.james.JamesServerExtension;
-import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import jakarta.inject.Inject;
+import jakarta.mail.MessagingException;
 
-import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract;
+import org.apache.james.core.MailAddress;
+import org.apache.mailet.Mail;
+import org.apache.mailet.base.GenericMatcher;
 
-public class PostgresLinagoraCalendarEventAcceptMethodTest extends LinagoraCalendarEventAcceptMethodContract {
+public class IsOpenPaasRabbitMqSetup extends GenericMatcher {
 
-    @RegisterExtension
-    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION.apply(new DelegationProbeModule())
-        .build();
+    private final OpenPaasAmqpForwardAttribute.OpenPaasRabbitMQChannelPoolHolder
+        openPaasRabbitMQChannelPoolHolder;
+
+    @Inject
+    public IsOpenPaasRabbitMqSetup(
+        OpenPaasAmqpForwardAttribute.OpenPaasRabbitMQChannelPoolHolder openPaasRabbitMQChannelPoolHolder) {
+        this.openPaasRabbitMQChannelPoolHolder = openPaasRabbitMQChannelPoolHolder;
+    }
 
     @Override
-    public String randomBlobId() {
-        return TmailJmapBase.randomBlobId();
+    public Collection<MailAddress> match(Mail mail) throws MessagingException {
+        if (openPaasRabbitMQChannelPoolHolder.get().isPresent()) {
+            return mail.getRecipients();
+        }
+        return Collections.emptyList();
     }
+
 }

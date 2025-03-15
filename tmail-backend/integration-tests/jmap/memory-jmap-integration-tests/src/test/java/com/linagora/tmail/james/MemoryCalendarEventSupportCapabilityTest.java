@@ -18,9 +18,6 @@
 
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLED;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CONTACTS_CONSUMER;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_DAV;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
 import java.io.File;
@@ -83,10 +80,10 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
 
     private static Pair<OpenPaasModuleChooserConfiguration, Module> getOpenPaasModuleChooserConfigurationModule(boolean supportFreeBusyQuery) {
         if (supportFreeBusyQuery) {
-            return Pair.of(new OpenPaasModuleChooserConfiguration(ENABLED, ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER),
+            return Pair.of(OpenPaasModuleChooserConfiguration.ENABLED_DAV,
                 new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty()));
         }
-        return Pair.of(new OpenPaasModuleChooserConfiguration(!ENABLED, !ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER),
+        return Pair.of(OpenPaasModuleChooserConfiguration.DISABLED,
             Modules.EMPTY_MODULE);
     }
 }

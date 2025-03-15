@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.BlobId;
 import org.apache.james.jmap.mail.PartId;
+import org.apache.james.jmap.routes.BlobResolvers;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.exception.MailboxException;
@@ -50,11 +51,13 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.dav.CalDavEventAttendanceRepository;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper;
+import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
@@ -88,7 +91,8 @@ public class CalDavEventAttendanceRepositoryTest {
             resources.getMailboxManager().getSessionProvider(),
             resources.getMessageIdFactory(),
             resources.getMessageIdManager(),
-            new OpenPaasDavUserProvider(openPaasRestClient));
+            new OpenPaasDavUserProvider(openPaasRestClient),
+            new CalendarResolver(new BlobResolvers(ImmutableSet.of())));
 
         setupNewTestUser();
     }

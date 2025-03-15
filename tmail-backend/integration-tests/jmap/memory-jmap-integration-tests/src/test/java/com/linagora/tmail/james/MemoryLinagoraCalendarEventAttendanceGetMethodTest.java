@@ -18,9 +18,6 @@
 
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLED;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_CONTACTS_CONSUMER;
-import static com.linagora.tmail.OpenPaasModuleChooserConfiguration.ENABLE_DAV;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,14 +35,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 import com.linagora.tmail.DockerOpenPaasExtension;
 import com.linagora.tmail.DockerOpenPaasSetup;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.OpenPaasUser;
-import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
@@ -106,7 +99,7 @@ public class MemoryLinagoraCalendarEventAttendanceGetMethodTest {
                 .configurationFromClasspath()
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-                .openPaasModuleChooserConfiguration(new OpenPaasModuleChooserConfiguration(ENABLED, ENABLE_DAV, !ENABLE_CONTACTS_CONSUMER))
+                .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_DAV)
                 .build())
             .server(configuration -> MemoryServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule())
