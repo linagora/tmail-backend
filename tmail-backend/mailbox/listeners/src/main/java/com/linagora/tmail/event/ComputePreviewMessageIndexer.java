@@ -19,6 +19,7 @@
 package com.linagora.tmail.event;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 
@@ -53,17 +54,21 @@ public class ComputePreviewMessageIndexer implements OpenSearchListeningMessageS
     }
 
     @Override
-    public Mono<Void> added(MailboxSession session, MailboxEvents.Added addedEvent, Mailbox mailbox, MailboxMessage message) {
-        if (!addedEvent.isAppended()) {
-            return Mono.empty();
-        }
-        return Mono.fromCallable(() -> ResultUtils.loadMessageResult(message, FetchGroup.FULL_CONTENT))
-            .subscribeOn(Schedulers.parallel())
-            .flatMap(Throwing.function(messageResult -> Mono.fromCallable(() -> Pair.of(message.getMessageId(),
-                    computeFastViewPrecomputedProperties(messageResult)))
-                .subscribeOn(Schedulers.parallel())))
-            .flatMap(messageIdToPreview -> Mono.from(messageFastViewProjection.store(messageIdToPreview.getKey(), messageIdToPreview.getValue())))
-            .then();
+    public Mono<Void> added(MailboxSession session, Optional<MailboxEvents.Added> addedEventOptional, Mailbox mailbox, MailboxMessage message) {
+        return Mono.justOrEmpty(addedEventOptional)
+            .flatMap(addedEvent -> {
+                if (!addedEvent.isAppended()) {
+                    return Mono.empty();
+                }
+                return Mono.fromCallable(() -> ResultUtils.loadMessageResult(message, FetchGroup.FULL_CONTENT))
+                    .subscribeOn(Schedulers.parallel())
+                    .flatMap(Throwing.function(messageResult -> Mono.fromCallable(() -> Pair.of(message.getMessageId(),
+                            computeFastViewPrecomputedProperties(messageResult)))
+                        .subscribeOn(Schedulers.parallel())))
+                    .flatMap(messageIdToPreview -> Mono.from(messageFastViewProjection.store(messageIdToPreview.getKey(), messageIdToPreview.getValue())))
+                    .then();
+            }
+        );
     }
 
     @VisibleForTesting
