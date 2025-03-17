@@ -35,7 +35,6 @@ import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.DavConfiguration;
@@ -65,16 +64,16 @@ import reactor.netty.http.client.HttpClientResponse;
 import reactor.util.retry.Retry;
 
 public class DavClient {
-    public static final int MAX_CALENDAR_OBJECT_UPDATE_RETRIES = 5;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
     private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String COLLECTED_ADDRESS_BOOK_PATH = "/addressbooks/%s/collected/%s.vcf";
-    private static final String CALENDAR_PATH = "/calendars/";
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String ACCEPT_XML = "application/xml";
     private static final String CONTENT_TYPE_VCARD = "application/vcard";
     private static final String CONTENT_TYPE_JSON = "application/json";
+
+    public static final int MAX_CALENDAR_OBJECT_UPDATE_RETRIES = 5;
+    public static final String CALENDAR_PATH = "/calendars/";
 
     private final HttpClient client;
     private final DavConfiguration config;
@@ -174,7 +173,6 @@ public class DavClient {
             .responseSingle((response, responseContent) -> handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
     }
 
-    @VisibleForTesting
     public Mono<Void> createCalendar(String username, URI uri, Calendar calendarData) {
         return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "text/plain")
                 .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
@@ -190,6 +188,27 @@ public class DavClient {
                             .switchIfEmpty(Mono.just(StringUtils.EMPTY))
                             .flatMap(responseBody -> Mono.error(new DavClientException("""
                                 Unexpected status code: %d when create calendar object '%s'
+                                %s
+                                """.formatted(response.status().code(), uri.toString(), responseBody))));
+
+                }
+            });
+    }
+
+    public Mono<Void> deleteCalendar(String username, URI uri) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "text/plain")
+                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+            .request(HttpMethod.DELETE)
+            .uri(uri.toString())
+            .responseSingle((response, responseContent) -> {
+                switch (response.status().code()) {
+                    case 204:
+                        return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' has been deleted successfully.", uri));
+                    default:
+                        return responseContent.asString(StandardCharsets.UTF_8)
+                            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+                            .flatMap(responseBody -> Mono.error(new DavClientException("""
+                                Unexpected status code: %d when deleting calendar object '%s'
                                 %s
                                 """.formatted(response.status().code(), uri.toString(), responseBody))));
 
