@@ -26,15 +26,21 @@ import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
+import org.apache.james.server.core.configuration.FileConfigurationProvider;
+import org.apache.james.server.core.filesystem.FileSystemImpl;
 
-public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories) implements Configuration {
+import com.github.fge.lambdas.Throwing;
+
+public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, UserChoice userChoice) implements Configuration {
     public static class Builder {
         private Optional<String> rootDirectory;
         private Optional<ConfigurationPath> configurationPath;
+        private Optional<UserChoice> userChoice;
 
         private Builder() {
             rootDirectory = Optional.empty();
             configurationPath = Optional.empty();
+            userChoice = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -44,6 +50,11 @@ public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, Ja
 
         public Builder workingDirectory(File file) {
             rootDirectory = Optional.of(file.getAbsolutePath());
+            return this;
+        }
+
+        public Builder userChoice(UserChoice choice) {
+            userChoice = Optional.of(choice);
             return this;
         }
 
@@ -69,12 +80,29 @@ public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, Ja
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
                 .orElseThrow(() -> new MissingArgumentException("Server needs a working.directory env entry")));
-
+            FileSystemImpl fileSystem = new FileSystemImpl(directories);
+            FileConfigurationProvider configurationProvider = new FileConfigurationProvider(fileSystem, Basic.builder()
+                .configurationPath(configurationPath)
+                .workingDirectory(directories.getRootDirectory())
+                .build());
+            UserChoice userChoice = this.userChoice.orElseGet(Throwing.supplier(() -> {
+                var configuration = configurationProvider.getConfiguration("usersrepository");
+                if (configuration.isEmpty()) {
+                    return UserChoice.MEMORY;
+                }
+                return UserChoice.LDAP;
+            }));
 
             return new TwakeCalendarConfiguration(
                 configurationPath,
-                directories);
+                directories,
+                userChoice);
         }
+    }
+
+    enum UserChoice {
+        LDAP,
+        MEMORY
     }
 
     public static Builder builder() {

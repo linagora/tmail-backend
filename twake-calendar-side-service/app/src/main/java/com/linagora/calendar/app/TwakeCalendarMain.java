@@ -18,9 +18,9 @@
 
 package com.linagora.calendar.app;
 
-
 import org.apache.james.ExtraProperties;
 import org.apache.james.UserEntityValidator;
+import org.apache.james.data.LdapUsersRepositoryModule;
 import org.apache.james.json.DTOConverter;
 import org.apache.james.modules.server.DNSServiceModule;
 import org.apache.james.modules.server.NoJwtModule;
@@ -85,9 +85,16 @@ public class TwakeCalendarMain {
         return TwakeCalendarGuiceServer.forConfiguration(configuration)
             .combineWith(Modules.combine(
                 new DNSServiceModule(),
-                new MemoryUserModule(), // TODO LDAP Module chooser
+                chooseUsersModule(configuration.userChoice()),
                 new RestApiModule(),
                 new TaskManagerModule(),
                 WEBADMIN));
+    }
+
+    public static Module chooseUsersModule(TwakeCalendarConfiguration.UserChoice userChoice) {
+        return switch (userChoice) {
+            case MEMORY -> new MemoryUserModule();
+            case LDAP -> Modules.override(new MemoryUserModule()).with(new LdapUsersRepositoryModule());
+        };
     }
 }

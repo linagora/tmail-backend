@@ -18,6 +18,8 @@
 
 package com.linagora.calendar.app;
 
+import java.util.List;
+
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -26,21 +28,27 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.rules.TemporaryFolder;
 
+import com.google.common.collect.ImmutableList;
+import com.google.inject.Module;
+
 public class TwakeCalendarExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
     private final TwakeCalendarConfiguration.Builder configuration;
 
     private TwakeCalendarGuiceServer server;
     private TemporaryFolder temporaryFolder = new TemporaryFolder();
+    private List<Module> overrides;
 
-    public TwakeCalendarExtension(TwakeCalendarConfiguration.Builder configuration) {
+    public TwakeCalendarExtension(TwakeCalendarConfiguration.Builder configuration, Module... overrides) {
         this.configuration = configuration;
+        this.overrides = ImmutableList.copyOf(overrides);
     }
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
         temporaryFolder.create();
-        server = TwakeCalendarMain.createServer(configuration.workingDirectory(temporaryFolder.newFolder()).build());
+        server = TwakeCalendarMain.createServer(configuration.workingDirectory(temporaryFolder.newFolder()).build())
+            .overrideWith(overrides);
         server.start();
     }
 
