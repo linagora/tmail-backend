@@ -33,7 +33,7 @@ import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class MemoryLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
+public class MemoryLinagoraCalendarEventAcceptMethodTest extends LinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension
     static JamesServerExtension

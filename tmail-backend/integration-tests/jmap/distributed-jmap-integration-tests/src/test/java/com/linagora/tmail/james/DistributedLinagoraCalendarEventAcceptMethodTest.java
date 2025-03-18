@@ -26,6 +26,7 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -37,7 +38,7 @@ import com.linagora.tmail.james.common.LinagoraCalendarEventAcceptMethodContract
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class DistributedLinagoraCalendarEventAcceptMethodTest implements LinagoraCalendarEventAcceptMethodContract {
+public class DistributedLinagoraCalendarEventAcceptMethodTest extends LinagoraCalendarEventAcceptMethodContract {
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -53,6 +54,7 @@ public class DistributedLinagoraCalendarEventAcceptMethodTest implements Linagor
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .openPassModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.DISABLED)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
