@@ -21,6 +21,8 @@ package com.linagora.tmail.james.jmap.calendar
 import com.linagora.tmail.james.jmap.model.{CalendarEventParsed, InvalidCalendarFileException}
 import jakarta.inject.Inject
 import net.fortuna.ical4j.model.Calendar
+import net.fortuna.ical4j.model.property.Method
+import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import org.apache.james.jmap.mail.BlobId
 import org.apache.james.jmap.routes.BlobResolvers
 import org.apache.james.mailbox.MailboxSession
@@ -29,17 +31,22 @@ import reactor.core.scala.publisher.SMono
 import scala.util.Using
 
 class CalendarResolver @Inject()(blobResolvers: BlobResolvers) {
+
   def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession): SMono[Calendar] =
+    resolveRequestCalendar(blobId, mailboxSession, Some(ImmutableMethod.REQUEST))
+
+  def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession,
+                             expectedMethod: Option[Method]): SMono[Calendar] =
     blobResolvers.resolve(blobId, mailboxSession)
       .flatMap(blob =>
         Using(blob.content)(CalendarEventParsed.parseICal4jCalendar).toEither
-          .flatMap(calendar => validate(calendar))
+          .flatMap(calendar => validate(calendar, expectedMethod))
           .fold(error => SMono.error[Calendar](InvalidCalendarFileException(blobId, error)), SMono.just))
 
-  private def validate(calendar: Calendar): Either[IllegalArgumentException, Calendar] =
+  private def validate(calendar: Calendar, expectedMethod: Option[Method]): Either[IllegalArgumentException, Calendar] =
     if (calendar.getComponents("VEVENT").isEmpty) {
       Left(new IllegalArgumentException("The calendar file must contain VEVENT component"))
-    } else if (Option(calendar.getMethod).map(_.getValue).orNull != "REQUEST") {
+    } else if (expectedMethod.isDefined && Option(calendar.getMethod).map(_.getValue).orNull != expectedMethod.get.getValue) {
       Left(new IllegalArgumentException("The calendar must have REQUEST as a method"))
     } else {
       Right(calendar)

@@ -103,8 +103,13 @@ class CalendarEventMethodModule extends AbstractModule {
       .addBinding()
       .to(classOf[CalendarEventAttendanceGetMethod])
 
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[CalendarEventCounterAcceptMethod])
+
     bind(classOf[CalendarEventReplyPerformer]).in(Scopes.SINGLETON)
     bind(classOf[CalendarEventReplySupportedLanguage]).in(Scopes.SINGLETON)
+    bind(classOf[CalendarEventCounterPerformer]).in(Scopes.SINGLETON)
   }
 
   @ProvidesIntoSet
