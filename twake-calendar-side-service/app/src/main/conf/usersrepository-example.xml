@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
+<!-- Rename this file to usersrepository.xml in order to activate the LDAP user provider -->
 <usersrepository name="LocalUsers" class="org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository" ldapHost="ldap://myldapserver:389"
                  principal="uid=ldapUser,ou=system" credentials="password" userBase="ou=People,o=myorg.com,ou=system"
                  userObjectClass="inetOrgPerson"
-                 userIdAttribute="uid">
+                 userIdAttribute="mail">
     <algorithm>SHA-512</algorithm>
     <enableVirtualHosting>true</enableVirtualHosting>
 </usersrepository>

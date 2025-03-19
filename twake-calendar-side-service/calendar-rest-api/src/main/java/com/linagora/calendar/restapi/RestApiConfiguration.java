@@ -69,8 +69,8 @@ public class RestApiConfiguration {
             return this;
         }
 
-        public Builder jwtValidity(Optional<String> jwtValidity) {
-            this.jwtPublicPath = jwtPublicPath;
+        public Builder jwtValidity(Optional<Duration> jwtValidity) {
+            this.jwtValidity = jwtValidity;
             return this;
         }
 
@@ -135,6 +135,8 @@ public class RestApiConfiguration {
         Optional<String> jwtPrivateKey = Optional.ofNullable(configuration.getString("jwt.key.private", null));
         Optional<List<String>> jwtPublicKey = Optional.ofNullable(configuration.getString("jwt.key.public", null))
             .map(s -> Splitter.on(',').splitToList(s));
+        Optional<Duration> jwtValidity = Optional.ofNullable(configuration.getString("jwt.key.validity", null))
+            .map(Duration::parse);
 
         return RestApiConfiguration.builder()
             .port(port)
@@ -143,6 +145,7 @@ public class RestApiConfiguration {
             .openpaasBackendTrustAllCerts(openpaasBackendTrustAllCerts)
             .jwtPublicPath(jwtPublicKey)
             .jwtPrivatePath(jwtPrivateKey)
+            .jwtValidity(jwtValidity)
             .build();
     }
 

@@ -35,7 +35,6 @@ public class JwtSigner {
         this.clock = clock;
         this.tokenValidity = tokenValidity;
         this.key = key;
-        System.out.println(key.getClass());
     }
 
     public String generate(String sub) {
