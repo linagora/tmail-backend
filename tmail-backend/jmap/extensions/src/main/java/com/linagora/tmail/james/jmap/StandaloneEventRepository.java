@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap;
 
 import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,8 +50,8 @@ import reactor.core.publisher.Mono;
 import scala.compat.java8.OptionConverters;
 import scala.jdk.javaapi.CollectionConverters;
 
-public class StandaloneEventAttendanceRepository implements EventAttendanceRepository {
-    private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneEventAttendanceRepository.class);
+public class StandaloneEventRepository implements CalendarEventRepository {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneEventRepository.class);
 
     private final MessageIdManager messageIdManager;
     private final SessionProvider sessionProvider;
@@ -58,8 +59,8 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
     private final MessageId.Factory messageIdFactory;
 
     @Inject
-    public StandaloneEventAttendanceRepository(MessageIdManager messageIdManager, SessionProvider sessionProvider,
-                                               CalendarEventReplyPerformer calendarEventReplyPerformer, MessageId.Factory messageIdFactory) {
+    public StandaloneEventRepository(MessageIdManager messageIdManager, SessionProvider sessionProvider,
+                                     CalendarEventReplyPerformer calendarEventReplyPerformer, MessageId.Factory messageIdFactory) {
         this.messageIdManager = messageIdManager;
         this.sessionProvider = sessionProvider;
         this.calendarEventReplyPerformer = calendarEventReplyPerformer;
@@ -159,5 +160,10 @@ public class StandaloneEventAttendanceRepository implements EventAttendanceRepos
                 List.of(message.getMailboxId()),
                 session)
         );
+    }
+
+    @Override
+    public Publisher<Void> rescheduledTiming(Username username, String eventUid, ZonedDateTime startDate, ZonedDateTime endDate) {
+        return Mono.error(new UnsupportedOperationException("Rescheduled timing is not supported."));
     }
 }
