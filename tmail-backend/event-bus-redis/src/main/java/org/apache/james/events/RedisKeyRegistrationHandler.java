@@ -34,6 +34,7 @@ import org.apache.james.util.StructuredLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 
 import io.lettuce.core.api.reactive.RedisSetReactiveCommands;
@@ -46,7 +47,7 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 
-class RedisKeyRegistrationHandler {
+public class RedisKeyRegistrationHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisKeyRegistrationHandler.class);
 
     private final EventBusId eventBusId;
@@ -177,7 +178,7 @@ class RedisKeyRegistrationHandler {
             return Mono.empty();
         }
 
-        List<Event> events = toEvent(keyChannelMessage.eventAsJson());
+        List<Event> events = toEvents(keyChannelMessage.eventAsJson());
 
         return Flux.fromIterable(listenersToCall)
             .flatMap(listener -> executeListener(listener, events, registrationKey), EventBus.EXECUTION_RATE)
@@ -200,7 +201,8 @@ class RedisKeyRegistrationHandler {
             listener.getExecutionMode().equals(EventListener.ExecutionMode.SYNCHRONOUS);
     }
 
-    private List<Event> toEvent(String eventAsJson) {
+    @VisibleForTesting
+    public List<Event> toEvents(String eventAsJson) {
         // if the json is an array, we have multiple events
         if (StringUtils.trim(eventAsJson).startsWith("[")) {
             return eventSerializer.asEvents(eventAsJson);

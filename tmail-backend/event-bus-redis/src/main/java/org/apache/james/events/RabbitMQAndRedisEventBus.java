@@ -225,5 +225,9 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
         return groupRegistrationHandler.registeredGroups();
     }
 
+    @VisibleForTesting
+    public RedisKeyRegistrationHandler getKeyRegistrationHandler() {
+        return keyRegistrationHandler;
+    }
 
 }
