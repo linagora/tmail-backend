@@ -23,8 +23,8 @@ import static com.linagora.tmail.rate.limiter.api.postgres.table.PostgresRateLim
 
 import java.util.UUID;
 
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresIndex;
-import org.apache.james.backends.postgres.PostgresModule;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.jooq.Field;
 import org.jooq.JSON;
@@ -57,7 +57,7 @@ public interface PostgresRateLimitPlanModule {
                 .on(TABLE_NAME, PLAN_ID));
     }
 
-    PostgresModule MODULE = PostgresModule.builder()
+    PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
         .addTable(TABLE)
         .addIndex(PLAN_ID_INDEX)
         .build();

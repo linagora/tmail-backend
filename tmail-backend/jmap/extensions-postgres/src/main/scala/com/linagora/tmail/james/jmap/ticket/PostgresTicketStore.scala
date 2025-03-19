@@ -27,7 +27,7 @@ import com.google.inject.{AbstractModule, Scopes}
 import jakarta.inject.Inject
 import org.apache.james.backends.postgres.PostgresCommons.{LOCAL_DATE_TIME_ZONED_DATE_TIME_FUNCTION, ZONED_DATE_TIME_TO_LOCAL_DATE_TIME}
 import org.apache.james.backends.postgres.utils.PostgresExecutor
-import org.apache.james.backends.postgres.{PostgresCommons, PostgresIndex, PostgresModule, PostgresTable}
+import org.apache.james.backends.postgres.{PostgresCommons, PostgresDataDefinition, PostgresIndex, PostgresTable}
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UTCDate
 import org.jooq.impl.{DSL, SQLDataType}
@@ -62,7 +62,7 @@ object PostgresTicketStore {
     .createIndexStep((dslContext: DSLContext, indexName: String) => dslContext.createIndexIfNotExists(indexName)
       .on(TICKET_TABLE_NAME, CREATED_DATE))
 
-  val MODULE: PostgresModule = PostgresModule.builder()
+  val MODULE: PostgresDataDefinition = PostgresDataDefinition.builder()
     .addTable(TICKET_TABLE)
     .addIndex(TTL_INDEX)
     .build()
@@ -103,7 +103,7 @@ class PostgresTicketStoreModule extends AbstractModule {
     bind(classOf[PostgresTicketStore]).in(Scopes.SINGLETON)
     bind(classOf[TicketStore]).to(classOf[PostgresTicketStore])
 
-    Multibinder.newSetBinder(binder, classOf[PostgresModule])
+    Multibinder.newSetBinder(binder, classOf[PostgresDataDefinition])
       .addBinding().toInstance(PostgresTicketStore.MODULE)
   }
 }

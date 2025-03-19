@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.encrypted.postgres;
 
-import org.apache.james.backends.postgres.PostgresModule;
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.user.api.DeleteUserDataTaskStep;
 import org.apache.james.user.api.UsernameChangeTaskStep;
 
@@ -35,7 +35,7 @@ public class PostgresKeystoreModule extends AbstractModule {
         bind(KeystoreManager.class).to(PostgresKeystoreManager.class);
         bind(PostgresKeystoreManager.class).in(Scopes.SINGLETON);
 
-        Multibinder<PostgresModule> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresModule.class);
+        Multibinder<PostgresDataDefinition> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresDataDefinition.class);
         postgresDataDefinitions.addBinding().toInstance(com.linagora.tmail.encrypted.postgres.table.PostgresKeystoreModule.MODULE);
 
         Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class).addBinding().to(PGPKeysUsernameChangeTaskStep.class);

@@ -21,8 +21,8 @@ package com.linagora.tmail.james.jmap.label;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresIndex;
-import org.apache.james.backends.postgres.PostgresModule;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -83,7 +83,7 @@ public interface PostgresLabelModule {
                 .on(TABLE_NAME, USERNAME));
     }
 
-    PostgresModule MODULE = PostgresModule.builder()
+    PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
         .addTable(LabelChangeTable.TABLE, LabelTable.TABLE)
         .addIndex(LabelChangeTable.INDEX, LabelTable.USERNAME_INDEX)
         .build();

@@ -20,8 +20,8 @@ package com.linagora.tmail.james.jmap.label;
 
 import java.time.ZonedDateTime;
 
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresExtension;
-import org.apache.james.backends.postgres.PostgresModule;
 import org.apache.james.jmap.api.change.State;
 import org.apache.james.jmap.postgres.change.PostgresStateFactory;
 import org.apache.james.utils.UpdatableTickingClock;
@@ -33,7 +33,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepositoryCont
 class PostgresLabelChangeRepositoryTest implements LabelChangeRepositoryContract {
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.withRowLevelSecurity(
-        PostgresModule.aggregateModules(PostgresLabelModule.MODULE));
+        PostgresDataDefinition.aggregateModules(PostgresLabelModule.MODULE));
 
     private PostgresLabelChangeRepository labelChangeRepository;
 

@@ -1,6 +1,6 @@
 package com.linagora.tmail.blob.blobid.list.postgres
 
-import org.apache.james.backends.postgres.{PostgresModule, PostgresTable}
+import org.apache.james.backends.postgres.{PostgresDataDefinition, PostgresTable}
 import org.jooq.impl.{DSL, SQLDataType}
 import org.jooq.{Field, Record, Table}
 
@@ -16,7 +16,7 @@ object PostgresBlobIdListModule {
     .supportsRowLevelSecurity
     .build
 
-  val MODULE: PostgresModule = PostgresModule
+  val MODULE: PostgresDataDefinition = PostgresDataDefinition
     .builder
     .addTable(TABLE)
     .build

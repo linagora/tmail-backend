@@ -21,8 +21,8 @@ package com.linagora.tmail.encrypted.postgres.table;
 import static com.linagora.tmail.encrypted.postgres.table.PostgresKeystoreModule.PostgresKeystoreTable.TABLE;
 import static com.linagora.tmail.encrypted.postgres.table.PostgresKeystoreModule.PostgresKeystoreTable.USERNAME_INDEX;
 
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresIndex;
-import org.apache.james.backends.postgres.PostgresModule;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.jooq.Field;
 import org.jooq.Name;
@@ -55,7 +55,7 @@ public interface PostgresKeystoreModule {
                 .on(TABLE_NAME, USERNAME));
     }
 
-    PostgresModule MODULE = PostgresModule.builder()
+    PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
         .addTable(TABLE)
         .addIndex(USERNAME_INDEX)
         .build();

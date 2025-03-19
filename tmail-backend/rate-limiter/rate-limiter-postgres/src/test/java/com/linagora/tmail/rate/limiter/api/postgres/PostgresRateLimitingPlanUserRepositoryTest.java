@@ -18,8 +18,8 @@
 
 package com.linagora.tmail.rate.limiter.api.postgres;
 
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresExtension;
-import org.apache.james.backends.postgres.PostgresModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -31,7 +31,7 @@ import com.linagora.tmail.rate.limiter.api.postgres.table.PostgresRateLimitPlanU
 class PostgresRateLimitingPlanUserRepositoryTest implements RateLimitingPlanUserRepositoryContract {
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.withRowLevelSecurity(
-        PostgresModule.aggregateModules(PostgresRateLimitPlanUserTable.MODULE()));
+        PostgresDataDefinition.aggregateModules(PostgresRateLimitPlanUserTable.MODULE()));
 
     private PostgresRateLimitingPlanUserRepository repository;
 

@@ -22,7 +22,7 @@ import static com.linagora.tmail.encrypted.postgres.table.PostgresEncryptedEmail
 
 import java.util.UUID;
 
-import org.apache.james.backends.postgres.PostgresModule;
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.jooq.Field;
 import org.jooq.Name;
@@ -60,7 +60,7 @@ public interface PostgresEncryptedEmailStoreModule {
             .build();
     }
 
-    PostgresModule MODULE = PostgresModule.builder()
+    PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
         .addTable(TABLE)
         .build();
 }

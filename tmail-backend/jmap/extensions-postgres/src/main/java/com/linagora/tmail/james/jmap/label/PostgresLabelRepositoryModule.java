@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.label;
 
-import org.apache.james.backends.postgres.PostgresModule;
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.user.api.DeleteUserDataTaskStep;
 import org.apache.james.user.api.UsernameChangeTaskStep;
 
@@ -29,7 +29,7 @@ import com.google.inject.multibindings.Multibinder;
 public class PostgresLabelRepositoryModule extends AbstractModule {
     @Override
     protected void configure() {
-        Multibinder<PostgresModule> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresModule.class);
+        Multibinder<PostgresDataDefinition> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresDataDefinition.class);
         postgresDataDefinitions.addBinding().toInstance(PostgresLabelModule.MODULE);
 
         bind(LabelRepository.class).to(PostgresLabelRepository.class);
