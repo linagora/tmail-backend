@@ -48,8 +48,12 @@ object CalendarCapabilityProperties {
 }
 
 case class CalendarCapabilityFactory(supportedLanguage: CalendarEventReplySupportedLanguage,
-                                     supportFreeBusyQuery: Boolean) extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = CalendarCapability(CalendarCapabilityProperties(supportedLanguage.valueAsStringSet, supportFreeBusyQuery))
+                                     supportFreeBusyQuery: Boolean,
+                                     counterSupport: Boolean) extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability = CalendarCapability(CalendarCapabilityProperties(
+    replySupportedLanguage = supportedLanguage.valueAsStringSet,
+    supportFreeBusyQuery = supportFreeBusyQuery,
+    counterSupport = counterSupport))
 
   override def id(): CapabilityIdentifier = LINAGORA_CALENDAR
 }
@@ -59,20 +63,25 @@ final case class CalendarCapability(properties: CalendarCapabilityProperties) ex
 }
 
 case class CalendarCapabilityProperties(replySupportedLanguage: Set[String],
-                                        supportFreeBusyQuery: Boolean) extends CapabilityProperties {
+                                        supportFreeBusyQuery: Boolean,
+                                        counterSupport: Boolean) extends CapabilityProperties {
   override def jsonify(): JsObject =
     Json.obj(
       "replySupportedLanguage" -> replySupportedLanguage,
       "version" -> CALENDAR_EVENT_VERSION,
-      "supportFreeBusyQuery" -> supportFreeBusyQuery)
+      "supportFreeBusyQuery" -> supportFreeBusyQuery,
+      "counterSupport" -> counterSupport)
 }
 
 class CalendarCapabilitiesModule extends AbstractModule {
 
   @ProvidesIntoSet
   private def capability(supportedLanguage: CalendarEventReplySupportedLanguage,
-                         @Named("calendarEventSupportFreeBusyQuery") supportFreeBusyQuery: Boolean): CapabilityFactory =
-    CalendarCapabilityFactory(supportedLanguage, supportFreeBusyQuery)
+                         @Named("calDavSupport") calDavSupport: Boolean): CapabilityFactory =
+    CalendarCapabilityFactory(
+      supportedLanguage = supportedLanguage,
+      supportFreeBusyQuery = calDavSupport,
+      counterSupport = calDavSupport)
 }
 
 class CalendarEventMethodModule extends AbstractModule {

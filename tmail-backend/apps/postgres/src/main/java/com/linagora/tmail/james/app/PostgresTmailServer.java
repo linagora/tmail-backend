@@ -18,8 +18,8 @@
 
 package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.OpenPaasModule.DavModule.CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY;
-import static com.linagora.tmail.OpenPaasModule.DavModule.CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE;
+import static com.linagora.tmail.OpenPaasModule.DavModule.CALDAV_SUPPORTED;
+import static com.linagora.tmail.OpenPaasModule.DavModule.CALDAV_SUPPORT_MODULE_PROVIDER;
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 
 import java.util.List;
@@ -252,7 +252,7 @@ public class PostgresTmailServer {
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
-            .overrideWith(CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE.apply(!CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY));
+            .overrideWith(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED));
     }
 
     private static final Module WEBADMIN = Modules.combine(
