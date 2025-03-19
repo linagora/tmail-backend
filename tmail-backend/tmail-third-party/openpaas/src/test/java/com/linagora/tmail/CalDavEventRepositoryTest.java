@@ -19,11 +19,16 @@
 package com.linagora.tmail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -53,10 +58,15 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.api.OpenPaasRestClient;
-import com.linagora.tmail.dav.CalDavEventAttendanceRepository;
+import com.linagora.tmail.dav.CalDavEventRepository;
+import com.linagora.tmail.dav.DavCalendarObject;
 import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.DavClientException;
+import com.linagora.tmail.dav.DavUser;
+import com.linagora.tmail.dav.EventUid;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper;
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
@@ -67,7 +77,7 @@ import reactor.core.publisher.Mono;
 import scala.jdk.javaapi.CollectionConverters;
 import scala.jdk.javaapi.OptionConverters;
 
-public class CalDavEventAttendanceRepositoryTest {
+public class CalDavEventRepositoryTest {
 
     @RegisterExtension
     static DockerOpenPaasExtension dockerOpenPaasExtension = new DockerOpenPaasExtension(DockerOpenPaasSetup.SINGLETON);
@@ -75,7 +85,7 @@ public class CalDavEventAttendanceRepositoryTest {
     private static OpenPaasUser openPaasUser;
 
     private DavClient davClient;
-    private CalDavEventAttendanceRepository testee;
+    private CalDavEventRepository testee;
     private InMemoryIntegrationResources resources;
     private MailboxId mailboxId;
     private Username testUser;
@@ -87,7 +97,7 @@ public class CalDavEventAttendanceRepositoryTest {
         OpenPaasRestClient openPaasRestClient = new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration());
 
         resources = InMemoryIntegrationResources.defaultResources();
-        testee = new CalDavEventAttendanceRepository(davClient,
+        testee = new CalDavEventRepository(davClient,
             resources.getMailboxManager().getSessionProvider(),
             resources.getMessageIdFactory(),
             resources.getMessageIdManager(),
@@ -296,5 +306,111 @@ public class CalDavEventAttendanceRepositoryTest {
         assertThat(calendarEventAttendanceResults.done().size()).isEqualTo(1);
         assertThat(OptionConverters.toJava(CollectionConverters.asJava(calendarEventAttendanceResults.done()).getFirst().isFree()))
             .isEqualTo(Optional.of(false));
+    }
+
+    @Test
+    void rescheduledTimingShouldChangeEvent() {
+        String eventUidA = UUID.randomUUID().toString();
+        String calendarWithFrancesTimeZone = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUidA + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
+            "DTEND;TZID=Europe/Paris:20250314T170000\n" +
+            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "DTSTAMP:20250313T113032\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        davClient.createCalendar(openPaasUser.email(),
+                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
+            .block();
+
+        ZonedDateTime proposedStartDate = LocalDateTime.parse("20250320T160000", DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))
+            .atZone(ZoneId.of("Europe/Paris"));
+        ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
+
+        assertThatCode(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
+            .doesNotThrowAnyException();
+
+        DavCalendarObject davCalendarObject = davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
+
+        String updatedCalendar = davCalendarObject.calendarData().toString();
+        assertThat(updatedCalendar).contains("DTSTART;TZID=Europe/Paris:20250320T160000");
+        assertThat(updatedCalendar).contains("DTEND;TZID=Europe/Paris:20250320T180000");
+    }
+
+    @Test
+    void rescheduledTimingShouldThrowWhenIdempotent() {
+        String eventUidA = UUID.randomUUID().toString();
+        String calendarWithFrancesTimeZone = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUidA + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
+            "DTEND;TZID=Europe/Paris:20250314T170000\n" +
+            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "DTSTAMP:20250313T113032\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        davClient.createCalendar(openPaasUser.email(),
+                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
+            .block();
+
+        ZonedDateTime proposedStartDate = LocalDateTime.parse("20250320T160000", DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))
+            .atZone(ZoneId.of("Europe/Paris"));
+        ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
+
+        assertThatCode(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
+            .doesNotThrowAnyException();
+
+        assertThatThrownBy(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
+            .isInstanceOf(CalendarEventModifier.NoUpdateRequiredException.class);
+    }
+
+    @Test
+    void rescheduledTimingShouldThrowWhenEventNotFound() {
+        String nonExistentEventUid = UUID.randomUUID().toString();
+
+        ZonedDateTime proposedStartDate = ZonedDateTime.now();
+        ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
+
+        assertThatThrownBy(() -> testee.rescheduledTiming(testUser, nonExistentEventUid, proposedStartDate, proposedEndDate).block())
+            .isInstanceOf(DavClientException.class)
+            .hasMessageContaining("Could not find calendar object");
+    }
+
+    @Test
+    void rescheduledTimingShouldThrowWhenUserIsNotOrganizer() {
+        String eventUidA = UUID.randomUUID().toString();
+        String organizerEmail = UUID.randomUUID() + "@example.com";
+        String calendarWithDifferentOrganizer = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUidA + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
+            "DTEND;TZID=Europe/Paris:20250314T170000\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + organizerEmail + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "DTSTAMP:20250313T113032\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        davClient.createCalendar(openPaasUser.email(),
+                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithDifferentOrganizer.getBytes(StandardCharsets.UTF_8))))
+            .block();
+
+        ZonedDateTime proposedStartDate = ZonedDateTime.now();
+        ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
+
+        assertThatThrownBy(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Cannot reschedule event");
     }
 }
