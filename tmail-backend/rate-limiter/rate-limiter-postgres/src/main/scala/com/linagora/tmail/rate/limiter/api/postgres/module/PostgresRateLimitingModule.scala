@@ -24,7 +24,7 @@ import com.linagora.tmail.rate.limiter.api.postgres.PostgresRateLimitingPlanRepo
 import com.linagora.tmail.rate.limiter.api.postgres.repository.PostgresRateLimitingPlanUserRepository
 import com.linagora.tmail.rate.limiter.api.postgres.table.{PostgresRateLimitPlanModule, PostgresRateLimitPlanUserTable}
 import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanRepository, RateLimitingPlanUserRepository, RateLimitingPlanUsernameChangeTaskStep}
-import org.apache.james.backends.postgres.PostgresModule
+import org.apache.james.backends.postgres.PostgresDataDefinition
 import org.apache.james.user.api.UsernameChangeTaskStep
 
 class PostgresRateLimitingModule() extends AbstractModule {
@@ -35,7 +35,7 @@ class PostgresRateLimitingModule() extends AbstractModule {
     bind(classOf[RateLimitingPlanUserRepository]).to(classOf[PostgresRateLimitingPlanUserRepository])
     bind(classOf[RateLimitingPlanRepository]).to(classOf[PostgresRateLimitingPlanRepository])
 
-    val postgresRateLimitingDataDefinitions = Multibinder.newSetBinder(binder, classOf[PostgresModule])
+    val postgresRateLimitingDataDefinitions = Multibinder.newSetBinder(binder, classOf[PostgresDataDefinition])
     postgresRateLimitingDataDefinitions.addBinding().toInstance(PostgresRateLimitPlanUserTable.MODULE)
     postgresRateLimitingDataDefinitions.addBinding().toInstance(PostgresRateLimitPlanModule.MODULE)
 

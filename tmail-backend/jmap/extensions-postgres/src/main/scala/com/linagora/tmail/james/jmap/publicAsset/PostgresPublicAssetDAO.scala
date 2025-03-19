@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.publicAsset
 import java.util.UUID
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor
-import org.apache.james.backends.postgres.{PostgresIndex, PostgresModule, PostgresTable}
+import org.apache.james.backends.postgres.{PostgresDataDefinition, PostgresIndex, PostgresTable}
 import org.apache.james.blob.api.BlobId
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.{IdentityId, Size}
@@ -63,7 +63,7 @@ object PublicAssetTable {
     .createIndexStep((dslContext, indexName) => dslContext.createIndexIfNotExists(indexName)
       .on(TABLE_NAME, USER))
 
-  val MODULE: PostgresModule = PostgresModule.builder()
+  val MODULE: PostgresDataDefinition = PostgresDataDefinition.builder()
     .addTable(PublicAssetTable.TABLE)
     .addIndex(PublicAssetTable.USERNAME_INDEX)
     .build()

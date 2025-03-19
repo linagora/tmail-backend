@@ -3,11 +3,11 @@ package com.linagora.tmail.blob.blobid.list.postgres
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.blob.blobid.list.BlobIdList
-import org.apache.james.backends.postgres.PostgresModule
+import org.apache.james.backends.postgres.PostgresDataDefinition
 
 class PostgresBlobIdListGuiceModule extends AbstractModule {
   override def configure(): Unit = {
-    Multibinder.newSetBinder(binder, classOf[PostgresModule])
+    Multibinder.newSetBinder(binder, classOf[PostgresDataDefinition])
       .addBinding
       .toInstance(PostgresBlobIdListModule.MODULE)
     

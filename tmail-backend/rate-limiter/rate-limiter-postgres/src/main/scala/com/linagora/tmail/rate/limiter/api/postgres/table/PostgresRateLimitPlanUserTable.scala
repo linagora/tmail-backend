@@ -20,7 +20,7 @@ package com.linagora.tmail.rate.limiter.api.postgres.table
 
 import java.util.UUID
 
-import org.apache.james.backends.postgres.{PostgresIndex, PostgresModule, PostgresTable}
+import org.apache.james.backends.postgres.{PostgresDataDefinition, PostgresIndex, PostgresTable}
 import org.jooq.impl.{DSL, SQLDataType}
 import org.jooq.{Field, Record, Table}
 
@@ -41,7 +41,7 @@ object PostgresRateLimitPlanUserTable {
     .createIndexStep((dslContext, indexName) => dslContext.createIndexIfNotExists(indexName)
       .on(TABLE_NAME, PLAN_ID))
 
-  val MODULE: PostgresModule = PostgresModule
+  val MODULE: PostgresDataDefinition = PostgresDataDefinition
       .builder
       .addTable(TABLE)
       .addIndex(PLAN_ID_INDEX)

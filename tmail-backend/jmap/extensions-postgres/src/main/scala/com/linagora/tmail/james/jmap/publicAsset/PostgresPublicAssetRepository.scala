@@ -24,7 +24,7 @@ import java.net.URI
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import jakarta.inject.{Inject, Named}
-import org.apache.james.backends.postgres.PostgresModule
+import org.apache.james.backends.postgres.PostgresDataDefinition
 import org.apache.james.backends.postgres.utils.PostgresExecutor
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.core.Username
@@ -106,7 +106,7 @@ class PostgresPublicAssetRepositoryModule extends AbstractModule {
     bind(classOf[PostgresPublicAssetRepository]).in(Scopes.SINGLETON)
     bind(classOf[PublicAssetRepository]).to(classOf[PostgresPublicAssetRepository])
 
-    Multibinder.newSetBinder(binder, classOf[PostgresModule])
+    Multibinder.newSetBinder(binder, classOf[PostgresDataDefinition])
       .addBinding().toInstance(PublicAssetTable.MODULE)
   }
 }

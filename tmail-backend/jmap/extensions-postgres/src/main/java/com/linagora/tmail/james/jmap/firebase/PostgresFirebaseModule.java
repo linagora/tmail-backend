@@ -22,8 +22,8 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import org.apache.james.backends.postgres.PostgresCommons;
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresIndex;
-import org.apache.james.backends.postgres.PostgresModule;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -70,7 +70,7 @@ public interface PostgresFirebaseModule {
                 .on(TABLE_NAME, USER, ID));
     }
 
-    PostgresModule MODULE = PostgresModule.builder()
+    PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
         .addTable(FirebaseSubscriptionTable.TABLE)
         .addIndex(FirebaseSubscriptionTable.USERNAME_INDEX, FirebaseSubscriptionTable.USERNAME_ID_INDEX)
         .build();

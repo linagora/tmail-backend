@@ -1,7 +1,7 @@
 package com.linagora.tmail.blob.blobid.list.postgres;
 
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresExtension;
-import org.apache.james.backends.postgres.PostgresModule;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
@@ -18,7 +18,7 @@ import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 public class PostgresSingleSaveBlobStoreTest implements SingleSaveBlobStoreContract {
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.withoutRowLevelSecurity(
-        PostgresModule.aggregateModules(PostgresBlobIdListModule.MODULE()));
+        PostgresDataDefinition.aggregateModules(PostgresBlobIdListModule.MODULE()));
 
     private PostgresBlobIdList postgresBlobIdList;
     private BlobStoreDAO blobStoreDAO;

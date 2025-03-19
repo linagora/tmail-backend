@@ -18,8 +18,8 @@
 
 package com.linagora.tmail.james.jmap.firebase;
 
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresExtension;
-import org.apache.james.backends.postgres.PostgresModule;
 import org.apache.james.jmap.api.change.TypeStateFactory;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +30,7 @@ import scala.jdk.javaapi.CollectionConverters;
 class PostgresFirebaseSubscriptionRepositoryTest implements FirebaseSubscriptionRepositoryContract {
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.withRowLevelSecurity(
-        PostgresModule.aggregateModules(PostgresFirebaseModule.MODULE));
+        PostgresDataDefinition.aggregateModules(PostgresFirebaseModule.MODULE));
 
     private UpdatableTickingClock clock;
     private FirebaseSubscriptionRepository firebaseSubscriptionRepository;

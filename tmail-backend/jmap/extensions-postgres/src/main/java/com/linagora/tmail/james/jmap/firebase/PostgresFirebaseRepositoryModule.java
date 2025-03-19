@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.firebase;
 
-import org.apache.james.backends.postgres.PostgresModule;
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.user.api.DeleteUserDataTaskStep;
 
 import com.google.inject.AbstractModule;
@@ -28,7 +28,7 @@ import com.google.inject.multibindings.Multibinder;
 public class PostgresFirebaseRepositoryModule extends AbstractModule {
     @Override
     protected void configure() {
-        Multibinder<PostgresModule> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresModule.class);
+        Multibinder<PostgresDataDefinition> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresDataDefinition.class);
         postgresDataDefinitions.addBinding().toInstance(PostgresFirebaseModule.MODULE);
 
         bind(FirebaseSubscriptionRepository.class).to(PostgresFirebaseSubscriptionRepository.class);
