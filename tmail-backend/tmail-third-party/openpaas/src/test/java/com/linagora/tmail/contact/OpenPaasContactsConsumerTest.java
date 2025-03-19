@@ -61,7 +61,6 @@ import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
 class OpenPaasContactsConsumerTest {
-
     @RegisterExtension
     static WireMockOpenPaaSServerExtension openPaasServerExtension = new WireMockOpenPaaSServerExtension();
 
@@ -154,7 +153,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .hasSize(1));
     }
@@ -181,7 +180,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -214,7 +213,7 @@ class OpenPaasContactsConsumerTest {
             """);
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
-            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+            assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                 .collectList().block())
                 .map(EmailAddressContact::fields)
                 .containsExactlyInAnyOrder(
@@ -244,7 +243,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
                 assertThat(
-                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                                 .collectList().block())
                         .hasSize(1)
                         .map(EmailAddressContact::fields)
@@ -272,7 +271,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
                 assertThat(
-                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                                 .collectList().block())
                         .hasSize(1)
                         .map(EmailAddressContact::fields)
@@ -305,7 +304,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
                 assertThat(
-                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                                 .collectList().block())
                         .hasSize(1)
                         .map(EmailAddressContact::fields)
@@ -333,7 +332,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
                 assertThat(
-                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                                 .collectList().block())
                         .hasSize(2)
                         .map(EmailAddressContact::fields)
@@ -366,7 +365,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
                 assertThat(
-                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                        Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                                 .collectList().block())
                         .hasSize(0));
     }
@@ -393,7 +392,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block()).isEmpty());
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD,"""
@@ -414,7 +413,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .hasSize(1));
     }
@@ -440,7 +439,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -474,7 +473,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .isEmpty());
 
@@ -496,7 +495,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .hasSize(1));
     }
@@ -506,7 +505,7 @@ class OpenPaasContactsConsumerTest {
         throws AddressException {
         consumer.start();
 
-        indexJohnDoe(WireMockOpenPaaSServerExtension.ALICE_EMAIL);
+        indexJohnDoe(WireMockOpenPaaSServerExtension.ALICE);
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
@@ -529,7 +528,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -541,7 +540,7 @@ class OpenPaasContactsConsumerTest {
     void givenDisplayNameFromOpenPaasIsEmptyThenStoredDisplayNameShouldPersist() {
         consumer.start();
 
-        ContactFields indexedContact = indexJohnDoe(WireMockOpenPaaSServerExtension.ALICE_EMAIL);
+        ContactFields indexedContact = indexJohnDoe(WireMockOpenPaaSServerExtension.ALICE);
 
         sendMessage(OpenPaasContactsConsumer.EXCHANGE_NAME_ADD, """
             {
@@ -561,7 +560,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -596,7 +595,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "jhon", 10))
                     .collectList().block())
                 .hasSize(1));
     }
@@ -628,7 +627,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "jhon", 10))
                     .collectList().block())
                 .hasSize(1));
     }
@@ -656,7 +655,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "jhon", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -690,7 +689,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "jhon", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -789,7 +788,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "jhon", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "jhon", 10))
                     .collectList().block())
                 .hasSize(1)
                 .map(EmailAddressContact::fields)
@@ -841,7 +840,7 @@ class OpenPaasContactsConsumerTest {
 
         await().timeout(TEN_SECONDS).untilAsserted(() ->
             assertThat(
-                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+                Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
                     .collectList().block())
                 .hasSize(1));
     }
@@ -864,7 +863,7 @@ class OpenPaasContactsConsumerTest {
             """);
 
        Thread.sleep(500);
-        assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE_EMAIL), "john", 10))
+        assertThat(Flux.from(searchEngine.autoComplete(AccountId.fromString(WireMockOpenPaaSServerExtension.ALICE), "john", 10))
             .collectList().block())
             .hasSize(0);
     }
