@@ -250,7 +250,7 @@ object CalendarTimeZoneField {
       .map(_.getValue)
       .flatMap(string => extractZoneId(string))
 
-  private def getZoneIdFromStartDate(calendarEvent: VEvent): Option[ZoneId] =
+  def getZoneIdFromStartDate(calendarEvent: VEvent): Option[ZoneId] =
     Option(calendarEvent.getDateTimeStart[Temporal]())
       .flatMap(date => date.getParameter[TzId](Parameter.TZID).toScala)
       .map(_.getValue)
