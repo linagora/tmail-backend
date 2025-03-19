@@ -49,6 +49,9 @@ public class RestApiConfiguration {
         private Optional<URL> calendarSpaUrl = Optional.empty();
         private Optional<URL> openpaasBackendURL = Optional.empty();
         private Optional<Boolean> openpaasBackendTrustAllCerts = Optional.empty();
+        private Optional<URL> oidcIntrospectionUrl = Optional.empty();
+        private Optional<String> oidcIntrospectionAuth = Optional.empty();
+        private Optional<String> oidcIntrospectionClaim = Optional.empty();
 
         private Builder() {
 
@@ -99,8 +102,23 @@ public class RestApiConfiguration {
             return this;
         }
 
-        public Builder openpaasBackendTrustAllCerts(Optional<Boolean> url) {
-            this.openpaasBackendTrustAllCerts = url;
+        public Builder openpaasBackendTrustAllCerts(Optional<Boolean> openpaasBackendTrustAllCerts) {
+            this.openpaasBackendTrustAllCerts = openpaasBackendTrustAllCerts;
+            return this;
+        }
+
+        public Builder oidcIntrospectionUrl(Optional<URL> url) {
+            this.oidcIntrospectionUrl = url;
+            return this;
+        }
+
+        public Builder oidcIntrospectionAuth(Optional<String> auth) {
+            this.oidcIntrospectionAuth = auth;
+            return this;
+        }
+
+        public Builder oidcIntrospectionClaim(Optional<String> claim) {
+            this.oidcIntrospectionClaim = claim;
             return this;
         }
 
@@ -112,7 +130,10 @@ public class RestApiConfiguration {
                     openpaasBackendTrustAllCerts.orElse(false),
                     jwtPrivatePath.orElse("classpath://jwt_privatekey"),
                     jwtPublicPath.orElse(ImmutableList.of("classpath://jwt_publickey")),
-                    jwtValidity.orElse(Duration.ofHours(12)));
+                    jwtValidity.orElse(Duration.ofHours(12)),
+                    oidcIntrospectionUrl.orElse(new URL("http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/token/introspect")),
+                    oidcIntrospectionAuth,
+                    oidcIntrospectionClaim.orElse("email"));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -137,6 +158,10 @@ public class RestApiConfiguration {
             .map(s -> Splitter.on(',').splitToList(s));
         Optional<Duration> jwtValidity = Optional.ofNullable(configuration.getString("jwt.key.validity", null))
             .map(Duration::parse);
+        Optional<URL> oidcIntrospectionUrl = Optional.ofNullable(configuration.getString("oidc.introspection.url", null))
+            .map(Throwing.function(URL::new));
+        Optional<String> oidcIntrospectionAuth = Optional.ofNullable(configuration.getString("oidc.introspection.auth", null));
+        Optional<String> oidcIntrospectionClaim = Optional.ofNullable(configuration.getString("oidc.introspection.claim", null));
 
         return RestApiConfiguration.builder()
             .port(port)
@@ -146,6 +171,9 @@ public class RestApiConfiguration {
             .jwtPublicPath(jwtPublicKey)
             .jwtPrivatePath(jwtPrivateKey)
             .jwtValidity(jwtValidity)
+            .oidcIntrospectionUrl(oidcIntrospectionUrl)
+            .oidcIntrospectionAuth(oidcIntrospectionAuth)
+            .oidcIntrospectionClaim(oidcIntrospectionClaim)
             .build();
     }
 
@@ -156,10 +184,14 @@ public class RestApiConfiguration {
     private final String jwtPrivatePath;
     private final List<String> jwtPublicPath;
     private final Duration jwtValidity;
+    private final URL oidcIntrospectionUrl;
+    private final Optional<String> oidcIntrospectionAuth;
+    private final String oidcIntrospectionClaim;
 
     @VisibleForTesting
     RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL, boolean openpaasBackendTrustAllCerts,
-                         String jwtPrivatePath, List<String> jwtPublicPath, Duration jwtValidity) {
+                         String jwtPrivatePath, List<String> jwtPublicPath, Duration jwtValidity, URL oidcIntrospectionUrl,
+                         Optional<String> oidcIntrospectionAuth, String oidcIntrospectionClaim) {
         this.port = port;
         this.calendarSpaUrl = clandarSpaUrl;
         this.openpaasBackendURL = openpaasBackendURL;
@@ -167,6 +199,9 @@ public class RestApiConfiguration {
         this.jwtPrivatePath = jwtPrivatePath;
         this.jwtPublicPath = jwtPublicPath;
         this.jwtValidity = jwtValidity;
+        this.oidcIntrospectionUrl = oidcIntrospectionUrl;
+        this.oidcIntrospectionAuth = oidcIntrospectionAuth;
+        this.oidcIntrospectionClaim = oidcIntrospectionClaim;
     }
 
     public Optional<Port> getPort() {
@@ -195,5 +230,17 @@ public class RestApiConfiguration {
 
     public Duration getJwtValidity() {
         return jwtValidity;
+    }
+
+    public URL getOidcIntrospectionUrl() {
+        return oidcIntrospectionUrl;
+    }
+
+    public Optional<String> getOidcIntrospectionAuth() {
+        return oidcIntrospectionAuth;
+    }
+
+    public String getOidcIntrospectionClaim() {
+        return oidcIntrospectionClaim;
     }
 }

@@ -25,15 +25,21 @@ import static io.restassured.config.RestAssuredConfig.newConfig;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
+import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 import org.apache.james.util.Port;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.mockserver.integration.ClientAndServer;
+import org.mockserver.model.HttpRequest;
+import org.mockserver.model.HttpResponse;
 
 import com.linagora.calendar.app.modules.CalendarDataProbe;
 import com.linagora.calendar.restapi.RestApiServerProbe;
@@ -45,11 +51,24 @@ class TwakeCalendarGuiceServerTest  {
     public static final Domain DOMAIN = Domain.of("linagora.com");
     public static final String PASSWORD = "secret";
     public static final Username USERNAME = Username.of("btellier@linagora.com");
+    private static final String INTROSPECTION_TOKEN_URI_PATH = "/token/introspect";
+
+    private static ClientAndServer mockServer = ClientAndServer.startClientAndServer(0);
+
+    private static IntrospectionEndpoint getIntrospectionTokenEndpoint() {
+        try {
+            return new IntrospectionEndpoint(new URI(String.format("http://127.0.0.1:%s%s", mockServer.getLocalPort(), INTROSPECTION_TOKEN_URI_PATH)).toURL(),
+                Optional.empty());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @RegisterExtension
     static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(TwakeCalendarConfiguration.builder()
         .configurationFromClasspath()
-        .userChoice(TwakeCalendarConfiguration.UserChoice.MEMORY));
+        .userChoice(TwakeCalendarConfiguration.UserChoice.MEMORY),
+        binder -> binder.bind(IntrospectionEndpoint.class).toProvider(TwakeCalendarGuiceServerTest::getIntrospectionTokenEndpoint));
 
     @BeforeEach
     void setUp(TwakeCalendarGuiceServer server) {
@@ -190,6 +209,31 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldAuthenticateWithOidc(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+        String activeResponse = "{" +
+            "    \"exp\": 1652868271," +
+            "    \"nbf\": 0," +
+            "    \"iat\": 1652867971," +
+            "    \"jti\": \"41ee3cc3-b908-4870-bff2-34b895b9fadf\"," +
+            "    \"aud\": \"account\"," +
+            "    \"typ\": \"Bearer\"," +
+            "    \"acr\": \"1\"," +
+            "    \"scope\": \"email\"," +
+            "    \"email\": \"btellier@linagora.com\"," +
+            "    \"active\": true" +
+            "}";
+        updateMockerServerSpecifications(activeResponse, 200);
+
+        given()
+            .header("Authorization", "Bearer oidc_opac_token")
+        .when()
+            .get("/api/theme/anything")
+        .then()
+            .statusCode(200);
+    }
+
+    @Test
     void shouldExposeLogoEndpoint(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 
@@ -245,5 +289,13 @@ class TwakeCalendarGuiceServerTest  {
             .setPort(server.getProbe(RestApiServerProbe.class).getPort().getValue())
             .setBasePath("/")
             .build();
+    }
+
+    private void updateMockerServerSpecifications(String response, int statusResponse) {
+        mockServer
+            .when(HttpRequest.request().withPath(INTROSPECTION_TOKEN_URI_PATH))
+            .respond(HttpResponse.response().withStatusCode(statusResponse)
+                .withHeader("Content-Type", "application/json")
+                .withBody(response, StandardCharsets.UTF_8));
     }
 }
