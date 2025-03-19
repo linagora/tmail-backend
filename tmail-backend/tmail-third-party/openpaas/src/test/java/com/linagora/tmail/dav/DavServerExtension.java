@@ -20,6 +20,8 @@ package com.linagora.tmail.dav;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
+import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
@@ -50,7 +52,7 @@ import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 
 public class DavServerExtension extends WireMockExtension {
     public static final String ALICE_ID = "ALICE_ID";
-    public static final String ALICE = "ALICE";
+    public static final String ALICE = "alice@james.org";
     public static final DavUser ALICE_DAV_USER = new DavUser(ALICE_ID, ALICE);
     public static final String ALICE_CALENDAR_1 = "66e95872cf2c37001f0d2a09";
     public static final String ALICE_CALENDAR_2 = "0b4e80d7-7337-458f-852d-7ae8d72a74b2";
@@ -59,9 +61,6 @@ public class DavServerExtension extends WireMockExtension {
     public static final String ALICE_RECURRING_EVENT = "";
     public static final String ALICE_CALENDAR_OBJECT_1 = "/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/sabredav-c23db537-7162-4b8d-b034-ab9436304959.ics";
     public static final String ALICE_CALENDAR_OBJECT_2 = "/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/random-stuff.ics";
-
-    public static final String BOB_ID = "BOB_ID";
-    public static final String BOB = "BOB";
 
     public static final String DAV_ADMIN = "admin";
     public static final String DAV_ADMIN_PASSWORD = "secret123";
@@ -171,6 +170,32 @@ public class DavServerExtension extends WireMockExtension {
                 .willReturn(noContent()));
     }
 
+    public void addMockOfFindingUserCalendars(String openPassUid, String username) {
+        stubFor(
+            propfind("/calendars/" + openPassUid)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(username)))
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(
+                            new Body(
+                                ClassLoaderUtils.getSystemResourceAsByteArray("BOB_PROPFIND_CALENDARS_RESPONSE.xml")))
+                        .withStatus(207)));
+    }
+
+    public void addMockOfCreatingCalendarObject(String uri, String username) {
+        stubFor(
+            put(uri)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(username)))
+                .willReturn(created()));
+    }
+
+    public void addMockOfDeletingCalendarObject(String uri, String username) {
+        stubFor(
+            delete(uri)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(username)))
+                .willReturn(noContent()));
+    }
+
     public void assertCollectedContactExistsWasCalled(String openPassUserName, String openPassUserId, String collectedContactUid, int times) {
         verify(times,
             getRequestedFor(
@@ -190,6 +215,21 @@ public class DavServerExtension extends WireMockExtension {
                 .withHeader("Content-Type", equalTo("application/vcard")));
     }
 
+    public void assertMockOfCreatingCalendarObjectWasCalled(String uri, String username, int times) {
+        verify(times,
+            putRequestedFor(urlEqualTo(uri))
+                .withHeader("Authorization",
+                    equalTo(createDelegatedBasicAuthenticationToken(username))));
+    }
+
+    public void assertMockOfDeletingCalendarObjectWasCalled(String uri, String username, int times) {
+        verify(times,
+            deleteRequestedFor(
+                urlEqualTo(uri))
+                .withHeader("Authorization",
+                    equalTo(createDelegatedBasicAuthenticationToken(username))));
+    }
+
     public DavConfiguration getDavConfiguration() {
         return new DavConfiguration(
             new UsernamePasswordCredentials(DAV_ADMIN, DAV_ADMIN_PASSWORD),
@@ -202,11 +242,11 @@ public class DavServerExtension extends WireMockExtension {
         return HttpUtils.createBasicAuthenticationToken(DAV_ADMIN + "&" + username, DAV_ADMIN_PASSWORD);
     }
 
-    static MappingBuilder propfind(String url) {
+    public static MappingBuilder propfind(String url) {
         return request("PROPFIND", new UrlPattern(equalTo(url), !USE_REGEX));
     }
 
-    static MappingBuilder report(String url) {
+    public static MappingBuilder report(String url) {
         return request("REPORT", new UrlPattern(equalTo(url), !USE_REGEX));
     }
 }

@@ -61,7 +61,6 @@ import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.dav.CalDavEventRepository;
 import com.linagora.tmail.dav.DavCalendarObject;
 import com.linagora.tmail.dav.DavClient;
-import com.linagora.tmail.dav.DavClientException;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.EventUid;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
@@ -413,5 +412,30 @@ public class CalDavEventRepositoryTest {
         assertThatThrownBy(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Cannot reschedule event");
+    }
+
+    @Test
+     void davClientShouldCreateNewCalendar() {
+        ZonedDateTime startDateOfEventA = ZonedDateTime.parse("2025-03-14T14:00:00Z");
+        ZonedDateTime endDateOfEventA = startDateOfEventA.plusHours(2);
+        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + calendarEventA.uid() + ".ics");
+        davClient.createCalendar(openPaasUser.email(), davCalendarUri, calendarEventA.asCalendar()).block();
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(calendarEventA.uid())).block();
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void davClientShouldDeleteCalendar() {
+        ZonedDateTime startDateOfEventA = ZonedDateTime.parse("2025-03-14T14:00:00Z");
+        ZonedDateTime endDateOfEventA = startDateOfEventA.plusHours(2);
+        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + calendarEventA.uid() + ".ics");
+        davClient.createCalendar(openPaasUser.email(), davCalendarUri, calendarEventA.asCalendar()).block();
+        davClient.deleteCalendar(openPaasUser.email(), davCalendarUri).block();
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(calendarEventA.uid())).block();
+        assertThat(result).isNull();
     }
 }

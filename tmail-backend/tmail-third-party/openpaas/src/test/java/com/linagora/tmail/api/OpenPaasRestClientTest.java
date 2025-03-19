@@ -62,7 +62,7 @@ public class OpenPaasRestClientTest {
     void shouldReturnUserMailAddressWhenUserIdAndAuthenticationTokenIsCorrect()
         throws AddressException {
         assertThat(restClient.retrieveMailAddress(WireMockOpenPaaSServerExtension.ALICE_ID).block())
-            .isEqualTo(new MailAddress(WireMockOpenPaaSServerExtension.ALICE_EMAIL));
+            .isEqualTo(new MailAddress(WireMockOpenPaaSServerExtension.ALICE));
     }
 
     @Test
@@ -89,7 +89,7 @@ public class OpenPaasRestClientTest {
 
     @Test
     void searchOpenPaasUserIdShouldReturnUserIdWhenUserExists() {
-        assertThat(restClient.searchOpenPaasUserId(WireMockOpenPaaSServerExtension.ALICE_EMAIL).block())
+        assertThat(restClient.searchOpenPaasUserId(WireMockOpenPaaSServerExtension.ALICE).block())
             .isEqualTo(WireMockOpenPaaSServerExtension.ALICE_ID);
     }
 

@@ -58,32 +58,6 @@
             <mailet match="All" class="RemoveMimeHeader">
                 <name>bcc</name>
             </mailet>
-            <!-- ICAL pipeline for EventCaleandar response -->
-            <mailet match="SenderIsLocal" class="StripAttachment">
-                <mimeType>text/calendar</mimeType>
-                <attribute>rawIcalendar2</attribute>
-                <onMailetException>ignore</onMailetException>
-            </mailet>
-            <mailet match="SenderIsLocal" class="MimeDecodingMailet">
-                <attribute>rawIcalendar2</attribute>
-                <onMailetException>ignore</onMailetException>
-            </mailet>
-            <mailet match="SenderIsLocal" class="ICalendarParser">
-                <sourceAttribute>rawIcalendar2</sourceAttribute>
-                <destinationAttribute>icalendar2</destinationAttribute>
-                <onMailetException>ignore</onMailetException>
-            </mailet>
-            <mailet match="All" class="ICALToHeader">
-                <attribute>icalendar2</attribute>
-                <onMailetException>ignore</onMailetException>
-            </mailet>
-            <mailet match="SenderIsLocal" class="org.apache.james.transport.mailets.ICALToJsonAttribute">
-                <source>icalendar2</source>
-                <destination>icalendarAsJson2</destination>
-                <rawSource>rawIcalendar2</rawSource>
-                <onMailetException>ignore</onMailetException>
-            </mailet>
-            <!-- End of ICAL pipeline -->
             <mailet match="All" class="RecipientRewriteTable">
                 <errorProcessor>rrt-error</errorProcessor>
             </mailet>
