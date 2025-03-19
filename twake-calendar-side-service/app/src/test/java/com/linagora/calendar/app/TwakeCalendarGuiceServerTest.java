@@ -48,7 +48,8 @@ class TwakeCalendarGuiceServerTest  {
 
     @RegisterExtension
     static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(TwakeCalendarConfiguration.builder()
-        .configurationFromClasspath());
+        .configurationFromClasspath()
+        .userChoice(TwakeCalendarConfiguration.UserChoice.MEMORY));
 
     @BeforeEach
     void setUp(TwakeCalendarGuiceServer server) {
@@ -146,6 +147,46 @@ class TwakeCalendarGuiceServerTest  {
             .asString();
 
         assertThatJson(body).isEqualTo("{\"logos\":{},\"colors\":{}}");
+    }
+
+    @Test
+    void shouldGenerateTokens(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .when()
+            .post("/api/jwt/generate")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThat(body).startsWith("\"eyJ");
+    }
+
+    @Test
+    void shouldAuthenticateWithTokens(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .when()
+            .post("/api/jwt/generate")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+        String unquoted = body.substring(1, body.length() - 1);
+
+        given()
+            .header("Authorization", "Bearer " + unquoted)
+        .when()
+            .get("/api/theme/anything")
+        .then()
+            .statusCode(200);
     }
 
     @Test

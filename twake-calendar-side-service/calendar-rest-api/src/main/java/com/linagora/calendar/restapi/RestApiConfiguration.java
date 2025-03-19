@@ -21,6 +21,8 @@ package com.linagora.calendar.restapi;
 import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
@@ -30,6 +32,8 @@ import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
 
 public class RestApiConfiguration {
 
@@ -39,6 +43,9 @@ public class RestApiConfiguration {
 
     public static class Builder {
         private Optional<Port> port = Optional.empty();
+        private Optional<String> jwtPrivatePath = Optional.empty();
+        private Optional<List<String>> jwtPublicPath = Optional.empty();
+        private Optional<Duration> jwtValidity = Optional.empty();
         private Optional<URL> calendarSpaUrl = Optional.empty();
         private Optional<URL> openpaasBackendURL = Optional.empty();
         private Optional<Boolean> openpaasBackendTrustAllCerts = Optional.empty();
@@ -49,6 +56,21 @@ public class RestApiConfiguration {
 
         public Builder port(Port port) {
             this.port = Optional.of(port);
+            return this;
+        }
+
+        public Builder jwtPrivatePath(Optional<String> jwtPrivatePath) {
+            this.jwtPrivatePath = jwtPrivatePath;
+            return this;
+        }
+
+        public Builder jwtPublicPath(Optional<List<String>> jwtPublicPath) {
+            this.jwtPublicPath = jwtPublicPath;
+            return this;
+        }
+
+        public Builder jwtValidity(Optional<String> jwtValidity) {
+            this.jwtPublicPath = jwtPublicPath;
             return this;
         }
 
@@ -87,7 +109,10 @@ public class RestApiConfiguration {
                 return new RestApiConfiguration(port,
                     calendarSpaUrl.orElse(new URL("https://e-calendrier.avocat.fr")),
                     openpaasBackendURL.orElse(new URL("https://openpaas.linagora.com")),
-                    openpaasBackendTrustAllCerts.orElse(false));
+                    openpaasBackendTrustAllCerts.orElse(false),
+                    jwtPrivatePath.orElse("classpath://jwt_privatekey"),
+                    jwtPublicPath.orElse(ImmutableList.of("classpath://jwt_publickey")),
+                    jwtValidity.orElse(Duration.ofHours(12)));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -107,12 +132,17 @@ public class RestApiConfiguration {
         Optional<URL> openpaasBackendURL = Optional.ofNullable(configuration.getString("openpaas.backend.url", null))
             .map(Throwing.function(URL::new));
         Optional<Boolean> openpaasBackendTrustAllCerts = Optional.ofNullable(configuration.getBoolean("openpaas.backend.trust.all.certificates", null));
+        Optional<String> jwtPrivateKey = Optional.ofNullable(configuration.getString("jwt.key.private", null));
+        Optional<List<String>> jwtPublicKey = Optional.ofNullable(configuration.getString("jwt.key.public", null))
+            .map(s -> Splitter.on(',').splitToList(s));
 
         return RestApiConfiguration.builder()
             .port(port)
             .calendarSpaUrl(calendarSpaUrl)
             .openpaasBackendURL(openpaasBackendURL)
             .openpaasBackendTrustAllCerts(openpaasBackendTrustAllCerts)
+            .jwtPublicPath(jwtPublicKey)
+            .jwtPrivatePath(jwtPrivateKey)
             .build();
     }
 
@@ -120,13 +150,20 @@ public class RestApiConfiguration {
     private final URL calendarSpaUrl;
     private final URL openpaasBackendURL;
     private final boolean openpaasBackendTrustAllCerts;
+    private final String jwtPrivatePath;
+    private final List<String> jwtPublicPath;
+    private final Duration jwtValidity;
 
     @VisibleForTesting
-    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL, boolean openpaasBackendTrustAllCerts) {
+    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL, boolean openpaasBackendTrustAllCerts,
+                         String jwtPrivatePath, List<String> jwtPublicPath, Duration jwtValidity) {
         this.port = port;
         this.calendarSpaUrl = clandarSpaUrl;
         this.openpaasBackendURL = openpaasBackendURL;
         this.openpaasBackendTrustAllCerts = openpaasBackendTrustAllCerts;
+        this.jwtPrivatePath = jwtPrivatePath;
+        this.jwtPublicPath = jwtPublicPath;
+        this.jwtValidity = jwtValidity;
     }
 
     public Optional<Port> getPort() {
@@ -143,5 +180,17 @@ public class RestApiConfiguration {
 
     public boolean openpaasBackendTrustAllCerts() {
         return openpaasBackendTrustAllCerts;
+    }
+
+    public String getJwtPrivatePath() {
+        return jwtPrivatePath;
+    }
+
+    public List<String> getJwtPublicPath() {
+        return jwtPublicPath;
+    }
+
+    public Duration getJwtValidity() {
+        return jwtValidity;
     }
 }
