@@ -77,17 +77,8 @@
                 <attribute>icalendar2</attribute>
                 <onMailetException>ignore</onMailetException>
             </mailet>
-            <mailet match="SenderIsLocal" class="org.apache.james.transport.mailets.ICALToJsonAttribute">
+            <mailet match="All" class="com.linagora.tmail.mailet.CalDavCollect">
                 <source>icalendar2</source>
-                <destination>icalendarAsJson2</destination>
-                <rawSource>rawIcalendar2</rawSource>
-                <onMailetException>ignore</onMailetException>
-            </mailet>
-            <mailet match="com.linagora.tmail.mailet.IsOpenPaasRabbitMqSetup" class="com.linagora.tmail.mailet.OpenPaasAmqpForwardAttribute">
-                <attribute>icalendarAsJson2</attribute>
-                <exchange>james:events</exchange>
-                <exchange_type>fanout</exchange_type>
-                <routing_key>icalendar_routing_key2</routing_key>
             </mailet>
             <!-- End of ICAL pipeline -->
             <mailet match="All" class="RecipientRewriteTable">
