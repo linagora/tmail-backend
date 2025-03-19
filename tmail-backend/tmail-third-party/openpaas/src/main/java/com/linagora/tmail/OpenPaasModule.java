@@ -42,11 +42,12 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
-import com.linagora.tmail.dav.CalDavEventAttendanceRepository;
+import com.linagora.tmail.dav.CalDavEventRepository;
 import com.linagora.tmail.dav.CardDavAddContactProcessor;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUserProvider;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
+import com.linagora.tmail.james.jmap.CalendarEventRepository;
 import com.linagora.tmail.james.jmap.EventAttendanceRepository;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.contact.ContactAddIndexingProcessor;
@@ -82,16 +83,17 @@ public class OpenPaasModule extends AbstractModule {
 
     public static class DavModule extends AbstractModule {
 
-        public static final Boolean CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY = true;
+        public static final Boolean CALDAV_SUPPORTED = true;
 
-        public static Function<Boolean, Module> CALENDAR_EVENT_SUPPORT_FREE_BUSY_QUERY_MODULE = supportFreeBusyQuery -> new AbstractModule() {
-            @Provides
-            @Singleton
-            @Named("calendarEventSupportFreeBusyQuery")
-            Boolean provideSupportFreeBusyQuery() {
-                return supportFreeBusyQuery;
-            }
-        };
+        public static final Function<Boolean, Module> CALDAV_SUPPORT_MODULE_PROVIDER =
+            calDavSupport -> new AbstractModule() {
+                @Provides
+                @Singleton
+                @Named("calDavSupport")
+                Boolean provideCalDavSupport() {
+                    return calDavSupport;
+                }
+            };
 
         @Override
         protected void configure() {
@@ -109,14 +111,20 @@ public class OpenPaasModule extends AbstractModule {
 
         @Provides
         @Singleton
-        public EventAttendanceRepository provideCalDavEventAttendanceRepository(DavClient davClient,
-                                                                                SessionProvider sessionProvider,
-                                                                                MessageId.Factory messageIdFactory,
-                                                                                MessageIdManager messageIdManager,
-                                                                                DavUserProvider davUserProvider,
-                                                                                CalendarResolver calendarResolver) {
-            return new CalDavEventAttendanceRepository(davClient, sessionProvider, messageIdFactory,
+        public CalendarEventRepository provideCalDavEventRepository(DavClient davClient,
+                                                                    SessionProvider sessionProvider,
+                                                                    MessageId.Factory messageIdFactory,
+                                                                    MessageIdManager messageIdManager,
+                                                                    DavUserProvider davUserProvider,
+                                                                    CalendarResolver calendarResolver) {
+            return new CalDavEventRepository(davClient, sessionProvider, messageIdFactory,
                 messageIdManager, davUserProvider, calendarResolver);
+        }
+
+        @Provides
+        @Singleton
+        public EventAttendanceRepository provideCalDavEventAttendanceRepository(CalendarEventRepository calendarEventRepository) {
+            return calendarEventRepository;
         }
 
         @Provides

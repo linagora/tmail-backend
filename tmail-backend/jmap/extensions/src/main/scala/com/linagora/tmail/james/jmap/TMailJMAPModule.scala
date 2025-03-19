@@ -51,6 +51,11 @@ class TMailJMAPModule extends AbstractModule {
 
   @Provides
   @Singleton
-  def provideEventAttendanceRepository(messageIdManager: MessageIdManager, sessionProvider: SessionProvider, calendarEventReplyPerformer: CalendarEventReplyPerformer, messageIdFactory: MessageId.Factory): EventAttendanceRepository =
-    new StandaloneEventAttendanceRepository(messageIdManager, sessionProvider, calendarEventReplyPerformer, messageIdFactory)
+  def provideEventAttendanceRepository(calendarEventRepository: CalendarEventRepository): EventAttendanceRepository =
+    calendarEventRepository
+
+  @Provides
+  @Singleton
+  def provideCalendarEventRepository(messageIdManager: MessageIdManager, sessionProvider: SessionProvider, calendarEventReplyPerformer: CalendarEventReplyPerformer, messageIdFactory: MessageId.Factory): CalendarEventRepository =
+    new StandaloneEventRepository(messageIdManager, sessionProvider, calendarEventReplyPerformer, messageIdFactory)
 }

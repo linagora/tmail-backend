@@ -31,12 +31,12 @@ import org.junit.jupiter.api.{AfterEach, Test}
 
 trait CalendarEventSupportCapabilityContract {
 
-  def startJmapServer(supportFreeBusyQuery: Boolean): GuiceJamesServer
+  def startJmapServer(calDavSupport: Boolean): GuiceJamesServer
 
   def stopJmapServer(): Unit
 
-  private def setUpJmapServer(supportFreeBusyQuery:Boolean): Unit = {
-    val server = startJmapServer(supportFreeBusyQuery)
+  private def setUpJmapServer(calDavSupport: Boolean): Unit = {
+    val server = startJmapServer(calDavSupport)
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
@@ -51,9 +51,8 @@ trait CalendarEventSupportCapabilityContract {
   def tearDown(): Unit = stopJmapServer()
 
   @Test
-  def shouldEnableSupportFreeBusyQueryWhenConfigured(): Unit = {
-    val supportFreeBusyQuery = true
-    setUpJmapServer(supportFreeBusyQuery)
+  def shouldEnableSupportFreeBusyQueryWhenCalDavIsConfigured(): Unit = {
+    setUpJmapServer(calDavSupport = true)
 
     `given`()
       .when()
@@ -67,9 +66,8 @@ trait CalendarEventSupportCapabilityContract {
   }
 
   @Test
-  def shouldDisableSupportFreeBusyQueryWhenNotConfigured(): Unit = {
-    val supportFreeBusyQuery = false
-    setUpJmapServer(supportFreeBusyQuery)
+  def shouldDisableSupportFreeBusyQueryWhenCalDavIsNotConfigured(): Unit = {
+    setUpJmapServer(calDavSupport = false)
 
     `given`()
       .when()
@@ -80,5 +78,35 @@ trait CalendarEventSupportCapabilityContract {
       .contentType(JSON)
       .body("capabilities.'com:linagora:params:calendar:event'", hasKey("supportFreeBusyQuery"))
       .body("capabilities.'com:linagora:params:calendar:event'.supportFreeBusyQuery", equalTo(false))
+  }
+
+  @Test
+  def shouldEnableSupportCounterQueryWhenCalDavIsConfigured(): Unit = {
+    setUpJmapServer(calDavSupport = true)
+
+    `given`()
+      .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities.'com:linagora:params:calendar:event'", hasKey("counterSupport"))
+      .body("capabilities.'com:linagora:params:calendar:event'.counterSupport", equalTo(true))
+  }
+
+  @Test
+  def shouldDisableSupportCounterQueryWhenCalDavIsNotConfigured(): Unit = {
+    setUpJmapServer(calDavSupport = false)
+
+    `given`()
+      .when()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities.'com:linagora:params:calendar:event'", hasKey("counterSupport"))
+      .body("capabilities.'com:linagora:params:calendar:event'.counterSupport", equalTo(false))
   }
 }

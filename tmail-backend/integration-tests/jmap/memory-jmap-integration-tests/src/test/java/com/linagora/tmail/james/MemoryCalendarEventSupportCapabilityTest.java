@@ -54,8 +54,8 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
     private GuiceJamesServer guiceJamesServer;
 
     @Override
-    public GuiceJamesServer startJmapServer(boolean supportFreeBusyQuery) {
-        Pair<OpenPaasModuleChooserConfiguration, Module> openPaasModuleChooserConfigurationPair = getOpenPaasModuleChooserConfigurationModule(supportFreeBusyQuery);
+    public GuiceJamesServer startJmapServer(boolean calDavSupport) {
+        Pair<OpenPaasModuleChooserConfiguration, Module> openPaasModuleChooserConfigurationPair = getOpenPaasModuleChooserConfigurationModule(calDavSupport);
 
         guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
@@ -78,8 +78,8 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
         }
     }
 
-    private static Pair<OpenPaasModuleChooserConfiguration, Module> getOpenPaasModuleChooserConfigurationModule(boolean supportFreeBusyQuery) {
-        if (supportFreeBusyQuery) {
+    private static Pair<OpenPaasModuleChooserConfiguration, Module> getOpenPaasModuleChooserConfigurationModule(boolean calDavSupport) {
+        if (calDavSupport) {
             return Pair.of(OpenPaasModuleChooserConfiguration.ENABLED_DAV,
                 new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty()));
         }
