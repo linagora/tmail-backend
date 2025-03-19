@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.calendar
 import java.time.temporal.Temporal
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.util
+import java.util.function.Consumer
 
 import com.google.common.base.Preconditions.{checkArgument => require}
 import com.google.common.collect.ImmutableList
@@ -39,18 +40,20 @@ object CalendarEventModifier {
 
   def modifyEventTiming(originalCalendar: Calendar,
                         newStartDate: ZonedDateTime,
-                        newEndDate: ZonedDateTime): Calendar = {
-    preValidate(originalCalendar, newStartDate, newEndDate)
+                        newEndDate: ZonedDateTime,
+                        validator: Consumer[VEvent] = (_: VEvent) => {}): Calendar = {
+    validateBeforeUpdate(originalCalendar, newStartDate, newEndDate)
 
     val newCalendar = originalCalendar.copy()
     val vEvent = newCalendar.getComponent[VEvent](Component.VEVENT).get()
+    validator.accept(vEvent)
     updateEvent(vEvent, newStartDate, newEndDate)
 
-    postValidate(newCalendar)
+    validateAfterUpdate(newCalendar)
     newCalendar
   }
 
-  private def preValidate(originalCalendar: Calendar,
+  private def validateBeforeUpdate(originalCalendar: Calendar,
                           newStartDate: ZonedDateTime,
                           newEndDate: ZonedDateTime): Unit = {
     require(!newEndDate.isBefore(newStartDate), "The end date must be after the start date".asInstanceOf[Object])
@@ -61,7 +64,7 @@ object CalendarEventModifier {
     }
   }
 
-  private def postValidate(calendar: Calendar): Unit = {
+  private def validateAfterUpdate(calendar: Calendar): Unit = {
     val validationResult: ValidationResult = calendar.validate()
     require(!validationResult.hasErrors,
       s"Invalidate calendar event: ${validationResult.getEntries.asScala.toSeq.map(error => s"${error.getContext} : ${error.getMessage}").mkString(";")}".asInstanceOf[Object])
