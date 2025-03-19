@@ -65,6 +65,7 @@ import com.linagora.tmail.dav.DavClientException;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.EventUid;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
+import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
@@ -381,8 +382,8 @@ public class CalDavEventRepositoryTest {
         ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
 
         assertThatThrownBy(() -> testee.rescheduledTiming(testUser, nonExistentEventUid, proposedStartDate, proposedEndDate).block())
-            .isInstanceOf(DavClientException.class)
-            .hasMessageContaining("Could not find calendar object");
+            .isInstanceOf(CalendarEventNotFoundException.class)
+            .hasMessageContaining("Calendar event not found");
     }
 
     @Test
