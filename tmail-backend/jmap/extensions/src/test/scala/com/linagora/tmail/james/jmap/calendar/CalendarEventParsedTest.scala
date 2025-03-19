@@ -536,6 +536,37 @@ class CalendarEventParsedTest {
     }
   }
 
+  @Test
+  def parseCounterEventShouldSucceed(): Unit = {
+    val icsPayload =
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//Example Corp//NONSGML Event//EN
+        |METHOD:COUNTER
+        |BEGIN:VEVENT
+        |UID:123456789@example.com
+        |DTSTAMP:20250318T120000Z
+        |DTSTART:20250320T150000Z
+        |DTEND:20250320T160000Z
+        |SUMMARY:Proposed New Time
+        |ORGANIZER:mailto:organizer@example.com
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:attendee@example.com
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    SoftAssertions.assertSoftly(softly => {
+      assertThat(calendarEventParsed.method.get.value)
+        .isEqualTo("COUNTER")
+      softly.assertThat(calendarEventParsed.start.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+        .isEqualTo("2025-03-20T15:00:00Z")
+      assertThat(calendarEventParsed.end.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+        .isEqualTo("2025-03-20T16:00:00Z")
+    })
+  }
+
   def icsPayloadWith(additionalField: String): String =
     s"""BEGIN:VCALENDAR
        |VERSION:2.0
