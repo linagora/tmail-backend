@@ -52,11 +52,9 @@ There is currently no way to run Twake Calendar side service with docker but as 
 
 ## Configuring it
 
-TODO
+Please refer to the [sample configuration](app/src/main/conf).
 
-We are initializing the project so we can't configure it yet.
-
-When it will be possible we will document this in this section.
+We will soon provide more details here.
 
 ## Contributing
 
@@ -90,9 +88,7 @@ In addition to this target architecture, in order to allow easy deployment of ou
 Regarding observability, we intend Twake Calendar Side Service to be on par with Twake Mail: structured JSON logs 
 collected via [Loki](https://grafana.com/oss/loki/), metrics gathered by [Prometheus](https://prometheus.io/). 
 
-Implemented APIs:
- - WebAdmin heathcheck routes
- - Metrics
+Implemented Webadmin APIs: metrics, heathcheck, users and domain routes
 
 ## Credits
 
