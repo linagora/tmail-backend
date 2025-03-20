@@ -30,6 +30,7 @@ import jakarta.inject.Inject;
 
 import org.apache.james.utils.GuiceProbe;
 
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 
 public class ScheduledReconnectionHandlerProbe implements GuiceProbe {
@@ -42,5 +43,9 @@ public class ScheduledReconnectionHandlerProbe implements GuiceProbe {
 
     public boolean restartNeeded() {
         return scheduledReconnectionHandler.restartNeeded();
+    }
+
+    public ImmutableList<String> getQueuesToMonitor() {
+        return scheduledReconnectionHandler.getQueuesToMonitor();
     }
 }

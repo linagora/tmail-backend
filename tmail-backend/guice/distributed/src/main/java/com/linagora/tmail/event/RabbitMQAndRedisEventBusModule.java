@@ -18,11 +18,13 @@
 
 package com.linagora.tmail.event;
 
+import static com.linagora.tmail.ScheduledReconnectionHandler.Module.EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY;
 import static com.linagora.tmail.event.DistributedEmailAddressContactEventModule.EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.JMAP_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.MAILBOX_EVENT_NAMING_STRATEGY;
 
 import java.io.FileNotFoundException;
+import java.util.Set;
 
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -246,5 +248,14 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
             LOGGER.info("Missing `redis.properties` configuration file -> using default RedisEventBusConfiguration");
             return RedisEventBusConfiguration.DEFAULT;
         }
+    }
+
+    @Provides
+    @Named(EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY)
+    @Singleton
+    Set<String> redisEventBusGroupQueuesToMonitor() {
+        return ImmutableSet.of(
+            "mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+            "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
     }
 }
