@@ -68,14 +68,14 @@ import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 import reactor.util.retry.Retry;
 
-class TmailGroupRegistrationHandler {
+public class TmailGroupRegistrationHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(TmailGroupRegistrationHandler.class);
 
     public static class GroupRegistrationHandlerGroup extends Group {
 
     }
 
-    static final Group GROUP = new GroupRegistrationHandlerGroup();
+    public static final Group GROUP = new GroupRegistrationHandlerGroup();
 
     private final NamingStrategy namingStrategy;
     private final Map<Group, GroupRegistration> groupRegistrations;

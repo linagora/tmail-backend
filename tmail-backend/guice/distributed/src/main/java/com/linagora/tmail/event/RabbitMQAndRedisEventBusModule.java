@@ -51,6 +51,7 @@ import org.apache.james.events.RedisEventBusConfiguration;
 import org.apache.james.events.RegistrationKey;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.RoutingKeyConverter;
+import org.apache.james.events.TmailGroupRegistrationHandler;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.change.Factory;
 import org.apache.james.jmap.change.JmapEventSerializer;
@@ -117,7 +118,8 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @ProvidesIntoSet
     HealthCheck healthCheck(RabbitMQAndRedisEventBus eventBus, NamingStrategy namingStrategy,
                             SimpleConnectionPool connectionPool) {
-        return new RabbitEventBusConsumerHealthCheck(eventBus, namingStrategy, connectionPool);
+        return new RabbitEventBusConsumerHealthCheck(eventBus, namingStrategy, connectionPool,
+            TmailGroupRegistrationHandler.GROUP);
     }
 
     @ProvidesIntoSet
@@ -189,7 +191,8 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @ProvidesIntoSet
     HealthCheck healthCheck(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus eventBus,
                             SimpleConnectionPool connectionPool) {
-        return new RabbitEventBusConsumerHealthCheck(eventBus, JMAP_NAMING_STRATEGY, connectionPool);
+        return new RabbitEventBusConsumerHealthCheck(eventBus, JMAP_NAMING_STRATEGY, connectionPool,
+            TmailGroupRegistrationHandler.GROUP);
     }
 
     @ProvidesIntoSet
