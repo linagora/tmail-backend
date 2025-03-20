@@ -165,6 +165,7 @@ import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStor
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
+import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
@@ -590,7 +591,8 @@ public class DistributedServer {
             case RABBITMQ -> {
                 LOGGER.info("Using RabbitMQ for Event Bus user notifications");
                 return Modules.combine(new MailboxEventBusModule(),
-                    new JMAPEventBusModule());
+                    new JMAPEventBusModule(),
+                    new EmailAddressContactRabbitMQEventBusModule());
             }
             default -> throw new NotImplementedException();
         }
