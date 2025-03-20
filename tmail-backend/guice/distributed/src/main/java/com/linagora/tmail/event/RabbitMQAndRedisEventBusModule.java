@@ -42,7 +42,6 @@ import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusReconnectionHandler;
 import org.apache.james.events.EventDeadLetters;
-import org.apache.james.events.KeyReconnectionHandler;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
@@ -129,11 +128,6 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         return new EventBusReconnectionHandler(eventBus);
     }
 
-    @ProvidesIntoSet
-    SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(NamingStrategy namingStrategy, EventBusId eventBusId, RabbitMQConfiguration configuration) {
-        return new KeyReconnectionHandler(namingStrategy, eventBusId, configuration);
-    }
-
     @Provides
     @Singleton
     private RedisConfiguration redisConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
@@ -183,11 +177,6 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @ProvidesIntoSet
     SimpleConnectionPool.ReconnectionHandler provideJMAPReconnectionHandler(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus eventBus) {
         return new EventBusReconnectionHandler(eventBus);
-    }
-
-    @ProvidesIntoSet
-    SimpleConnectionPool.ReconnectionHandler provideJMAPReconnectionHandler(@Named(InjectionKeys.JMAP) EventBusId eventBusId, RabbitMQConfiguration configuration) {
-        return new KeyReconnectionHandler(JMAP_NAMING_STRATEGY, eventBusId, configuration);
     }
 
     @ProvidesIntoSet
