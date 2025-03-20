@@ -25,6 +25,7 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.jmap.JMAPRoutes;
 import org.apache.james.jmap.http.AuthenticationStrategy;
 import org.apache.james.jmap.http.Authenticator;
+import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.InitializationOperation;
@@ -39,6 +40,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.calendar.restapi.auth.BasicAuthenticationStrategy;
 import com.linagora.calendar.restapi.auth.JwtAuthenticationStrategy;
+import com.linagora.calendar.restapi.auth.OidcAuthenticationStrategy;
 import com.linagora.calendar.restapi.routes.JwtRoutes;
 import com.linagora.calendar.restapi.routes.LogoRoute;
 import com.linagora.calendar.restapi.routes.ThemeRoute;
@@ -57,6 +59,7 @@ public class RestApiModule extends AbstractModule {
         Multibinder<AuthenticationStrategy> authenticationStrategies = Multibinder.newSetBinder(binder(), AuthenticationStrategy.class);
         authenticationStrategies.addBinding().to(BasicAuthenticationStrategy.class);
         authenticationStrategies.addBinding().to(JwtAuthenticationStrategy.class);
+        authenticationStrategies.addBinding().to(OidcAuthenticationStrategy.class);
     }
 
     @Provides
@@ -80,5 +83,10 @@ public class RestApiModule extends AbstractModule {
         return InitilizationOperationBuilder
             .forClass(CalendarRestApiServer.class)
             .init(server::start);
+    }
+
+    @Provides
+    IntrospectionEndpoint provideIntrospectionEndpoint(RestApiConfiguration configuration) {
+        return new IntrospectionEndpoint(configuration.getOidcIntrospectionUrl(), configuration.getOidcIntrospectionAuth());
     }
 }
