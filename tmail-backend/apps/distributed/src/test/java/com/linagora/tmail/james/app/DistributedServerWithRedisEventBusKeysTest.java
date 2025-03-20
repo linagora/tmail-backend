@@ -21,6 +21,7 @@ package com.linagora.tmail.james.app;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -111,12 +112,12 @@ class DistributedServerWithRedisEventBusKeysTest implements JamesServerConcreteC
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
 
         given()
-            .queryParam("check", "EventbusConsumers-mailboxEvent", "EventbusConsumers-jmapEvent")
         .when()
             .get("/healthcheck")
         .then()
             .statusCode(HttpStatus.OK_200)
-            .body("status", equalTo(ResultStatus.HEALTHY.getValue()));
+            .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
+            .body("checks.componentName", hasItems("EventbusConsumers-mailboxEvent", "EventbusConsumers-jmapEvent"));
     }
 
     @Test
