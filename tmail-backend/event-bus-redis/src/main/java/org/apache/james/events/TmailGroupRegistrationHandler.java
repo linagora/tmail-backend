@@ -71,6 +71,10 @@ import reactor.util.retry.Retry;
 class TmailGroupRegistrationHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(TmailGroupRegistrationHandler.class);
 
+    public static class GroupRegistrationHandlerGroup extends Group {
+
+    }
+
     static final Group GROUP = new GroupRegistrationHandlerGroup();
 
     private final NamingStrategy namingStrategy;
