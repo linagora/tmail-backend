@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.ScheduledReconnectionHandler.QUEUES_TO_MONITOR;
 import static com.linagora.tmail.ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.ENABLED;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -37,6 +36,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.rabbitmq.DockerRabbitMQ;
+import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.vault.VaultConfiguration;
 import org.assertj.core.api.SoftAssertions;
@@ -86,9 +86,52 @@ class SchedulerReconnectionHandlerIntegrationTest {
         ImmutableList.of(AmqpUri.from(Throwing.supplier(() -> rabbitMQExtension.dockerRabbitMQ().amqpUri()).get())),
         OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
 
-    @Nested
-    class DeletedMessageVaultQueueEnabled {
+    abstract class DeletedMessageVaultQueueEnabledContractTests {
 
+        abstract DockerRabbitMQ rabbitMQ();
+
+        @BeforeEach
+        void setUp(GuiceJamesServer jamesServer) {
+            // ensure all the consumers for vital queues started well
+            CALMLY_AWAIT.atMost(20, SECONDS)
+                .untilAsserted(() -> SoftAssertions.assertSoftly(softly -> jamesServer.getProbe(ScheduledReconnectionHandlerProbe.class)
+                    .getQueuesToMonitor()
+                    .forEach(queueName -> softly.assertThat(consumerCount(rabbitMQ(), queueName))
+                        .isGreaterThanOrEqualTo(1L))));
+        }
+
+        @Test
+        void shouldRestartDeletedMessageVaultConsumerIfConsumerDisconnected(GuiceJamesServer jamesServer) {
+            // Disconnect consumer of `deleted-message-vault-work-queue`
+            jamesServer.getProbe(DeletedMessageVaultWorkQueueProbe.class).stop();
+            assertThat(consumerCount(rabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
+                .isZero();
+
+            // Await for `deleted-message-vault-work-queue` consumer to reconnect
+            CALMLY_AWAIT.atMost(20, SECONDS)
+                .untilAsserted(() -> assertThat(consumerCount(rabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
+                    .isEqualTo(1L));
+        }
+
+        @Test
+        void allMonitoredConsumersShouldStayHealthyAfterAReconnectionTriggered(GuiceJamesServer jamesServer) {
+            // Disconnect consumer of `deleted-message-vault-work-queue`
+            jamesServer.getProbe(DeletedMessageVaultWorkQueueProbe.class).stop();
+            assertThat(consumerCount(rabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
+                .isZero();
+
+            // All consumers should stay healthy after the reconnection caused by `deleted-message-vault-work-queue`
+            CALMLY_AWAIT.atMost(20, SECONDS)
+                .untilAsserted(() -> SoftAssertions.assertSoftly(softly ->
+                    jamesServer.getProbe(ScheduledReconnectionHandlerProbe.class)
+                        .getQueuesToMonitor()
+                        .forEach(queueName -> softly.assertThat(consumerCount(rabbitMQ(), queueName))
+                            .isGreaterThanOrEqualTo(1L))));
+        }
+    }
+
+    @Nested
+    class RabbitMQEventBus extends DeletedMessageVaultQueueEnabledContractTests {
         @RegisterExtension
         static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
 
@@ -116,6 +159,7 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(DeletedMessageVaultWorkQueueProbe.class))
                 .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)
                     .toInstance(new ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration(ENABLED, FAST_RECONNECTION_HANDLER_INTERVAL)))
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(ScheduledReconnectionHandlerProbe.class))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
             .extension(new DockerOpenSearchExtension())
             .extension(new CassandraExtension())
@@ -123,50 +167,74 @@ class SchedulerReconnectionHandlerIntegrationTest {
             .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
             .build();
 
-        @BeforeEach
-        void setUp() {
-            // ensure all the consumers for vital queues started well
-            CALMLY_AWAIT.atMost(10, SECONDS)
-                .untilAsserted(() -> SoftAssertions.assertSoftly(softly -> QUEUES_TO_MONITOR
-                    .forEach(queueName -> softly.assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), queueName))
-                    .isGreaterThanOrEqualTo(1L))));
+        @Override
+        DockerRabbitMQ rabbitMQ() {
+            return rabbitMQExtension.dockerRabbitMQ();
         }
 
         @Test
-        void shouldRestartDeletedMessageVaultConsumerIfConsumerDisconnected(GuiceJamesServer jamesServer) {
-            // Disconnect consumer of `deleted-message-vault-work-queue`
-            jamesServer.getProbe(DeletedMessageVaultWorkQueueProbe.class).stop();
-            assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
-                .isZero();
+        void shouldMonitorJamesEventBusGroupQueues(GuiceJamesServer jamesServer) {
+            assertThat(jamesServer.getProbe(ScheduledReconnectionHandlerProbe.class)
+                .getQueuesToMonitor())
+                .contains("mailboxEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup");
+        }
+    }
 
-            // Await for `deleted-message-vault-work-queue` consumer to reconnect
-            CALMLY_AWAIT.atMost(20, SECONDS)
-                .untilAsserted(() -> assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
-                    .isEqualTo(1L));
+    @Nested
+    class RedisEventBus extends DeletedMessageVaultQueueEnabledContractTests {
+        @RegisterExtension
+        static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
+
+        @RegisterExtension
+        static JamesServerExtension testExtension =  new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+            DistributedJamesConfiguration.builder()
+                .workingDirectory(tmpDir)
+                .configurationFromClasspath()
+                .blobStore(BlobStoreConfiguration.builder()
+                    .s3()
+                    .noSecondaryS3BlobStore()
+                    .disableCache()
+                    .deduplication()
+                    .noCryptoConfig()
+                    .enableSingleSave())
+                .searchConfiguration(SearchConfiguration.openSearch())
+                .mailbox(new MailboxConfiguration(false))
+                .eventBusKeysChoice(EventBusKeysChoice.REDIS)
+                .vaultConfiguration(VaultConfiguration.ENABLED_WORKQUEUE)
+                .build())
+            .server(configuration -> DistributedServer.createServer(configuration)
+                .overrideWith(new LinagoraTestJMAPServerModule())
+                .overrideWith(getOpenPaasModule(openPaasServerExtension, rabbitMQExtension))
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(DeletedMessageVaultWorkQueueProbe.class))
+                .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)
+                    .toInstance(new ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration(ENABLED, FAST_RECONNECTION_HANDLER_INTERVAL)))
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(ScheduledReconnectionHandlerProbe.class))
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
+            .extension(new DockerOpenSearchExtension())
+            .extension(new CassandraExtension())
+            .extension(rabbitMQExtension)
+            .extension(new RedisExtension())
+            .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
+            .build();
+
+        @Override
+        DockerRabbitMQ rabbitMQ() {
+            return rabbitMQExtension.dockerRabbitMQ();
         }
 
         @Test
-        void allMonitoredConsumersShouldStayHealthyAfterAReconnectionTriggered(GuiceJamesServer jamesServer) {
-            // Disconnect consumer of `deleted-message-vault-work-queue`
-            jamesServer.getProbe(DeletedMessageVaultWorkQueueProbe.class).stop();
-            assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), DELETED_MESSAGE_VAULT_QUEUE))
-                .isZero();
-
-            // All consumers should stay healthy after the reconnection caused by `deleted-message-vault-work-queue`
-            CALMLY_AWAIT.atMost(20, SECONDS)
-                .untilAsserted(() -> SoftAssertions.assertSoftly(softly ->
-                    QUEUES_TO_MONITOR.forEach(queueName -> softly.assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), queueName))
-                        .isGreaterThanOrEqualTo(1L))));
+        void shouldMonitorTMailEventBusGroupQueues(GuiceJamesServer jamesServer) {
+            assertThat(jamesServer.getProbe(ScheduledReconnectionHandlerProbe.class)
+                .getQueuesToMonitor())
+                .contains("mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
         }
     }
 
     @Nested
     class DeletedMessageVaultQueueDisabled {
-        public static final List<String> QUEUES_TO_MONITOR_EXCEPT_DELETED_MESSAGE_VAULT = QUEUES_TO_MONITOR
-            .stream()
-            .filter(s -> !s.equals(DELETED_MESSAGE_VAULT_QUEUE))
-            .toList();
-
         @RegisterExtension
         static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
 
@@ -202,10 +270,16 @@ class SchedulerReconnectionHandlerIntegrationTest {
             .build();
 
         @BeforeEach
-        void setUp() {
+        void setUp(GuiceJamesServer jamesServer) {
             // ensure all the consumers for vital queues started well
-            CALMLY_AWAIT.atMost(10, SECONDS)
-                .untilAsserted(() -> SoftAssertions.assertSoftly(softly -> QUEUES_TO_MONITOR_EXCEPT_DELETED_MESSAGE_VAULT
+            List<String> queuesToMonitorExceptDeletedMessageVaultQueue = jamesServer.getProbe(ScheduledReconnectionHandlerProbe.class)
+                .getQueuesToMonitor()
+                .stream()
+                .filter(s -> !s.equals(DELETED_MESSAGE_VAULT_QUEUE))
+                .toList();
+
+            CALMLY_AWAIT.atMost(20, SECONDS)
+                .untilAsserted(() -> SoftAssertions.assertSoftly(softly -> queuesToMonitorExceptDeletedMessageVaultQueue
                     .forEach(queueName -> softly.assertThat(consumerCount(rabbitMQExtension.dockerRabbitMQ(), queueName))
                     .isGreaterThanOrEqualTo(1L))));
         }
