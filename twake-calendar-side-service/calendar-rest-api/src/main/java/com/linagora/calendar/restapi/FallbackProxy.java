@@ -23,6 +23,8 @@ import java.util.function.Consumer;
 import jakarta.inject.Inject;
 
 import org.apache.james.jmap.http.Authenticator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.linagora.calendar.restapi.routes.JwtSigner;
 
@@ -37,6 +39,7 @@ import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
 public class FallbackProxy {
+    public static final Logger LOGGER = LoggerFactory.getLogger(FallbackProxy.class);
     private final HttpClient client;
     private final Authenticator authenticator;
     private final RestApiConfiguration configuration;
@@ -60,6 +63,7 @@ public class FallbackProxy {
     }
 
     public Mono<Void> forwardRequest(HttpServerRequest request, HttpServerResponse response) {
+        LOGGER.warn("Proxying {}", request.uri());
         return request.receive().aggregate().asByteArray()
             .switchIfEmpty(Mono.just("".getBytes()))
             .flatMap(payload -> handleAuthIfNeeded(request)
