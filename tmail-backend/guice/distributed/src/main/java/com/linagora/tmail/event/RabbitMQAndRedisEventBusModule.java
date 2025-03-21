@@ -103,6 +103,11 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
+    EventBus registerMailboxEventBusToDeadLetterRedeliverService(EventBus eventBus) {
+        return eventBus;
+    }
+
+    @ProvidesIntoSet
     InitializationOperation workQueue(RabbitMQAndRedisEventBus instance,
                                       RedisEventBusClientFactory redisEventBusClientFactory,
                                       RoutingKeyConverter routingKeyConverter) {
@@ -162,6 +167,11 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Named(InjectionKeys.JMAP)
     EventBus provideJmapEventBus(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus rabbitMQAndRedisEventBus) {
         return rabbitMQAndRedisEventBus;
+    }
+
+    @ProvidesIntoSet
+    EventBus registerJmapEventBusToDeadLettersRedeliverService(@Named(InjectionKeys.JMAP) EventBus eventBus) {
+        return eventBus;
     }
 
     @ProvidesIntoSet
