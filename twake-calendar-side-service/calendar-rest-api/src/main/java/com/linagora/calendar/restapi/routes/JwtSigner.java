@@ -69,6 +69,7 @@ public class JwtSigner {
             return new JwtSigner(clock, configuration.getJwtValidity(), loadPrivateKey(file.toPath()));
         }
     }
+    
     private final Clock clock;
     private final Duration tokenValidity;
     private final Key key;
