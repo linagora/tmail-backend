@@ -18,6 +18,8 @@
 
 package com.linagora.calendar.restapi;
 
+import java.util.function.Consumer;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.jmap.http.Authenticator;
@@ -25,6 +27,7 @@ import org.apache.james.jmap.http.Authenticator;
 import com.linagora.calendar.restapi.routes.JwtSigner;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.core.publisher.Mono;
@@ -59,20 +62,30 @@ public class FallbackProxy {
     public Mono<Void> forwardRequest(HttpServerRequest request, HttpServerResponse response) {
         return request.receive().aggregate().asByteArray()
             .switchIfEmpty(Mono.just("".getBytes()))
-            .flatMap(payload -> authenticator.authenticate(request)
-                .flatMap(session -> Mono.fromCallable(() -> jwtSigner.generate(session.getUser().asString())).subscribeOn(Schedulers.parallel())
-                        .flatMap(token -> client.headers(headers -> {
-                                headers.add(HttpHeaderNames.AUTHORIZATION, "Bearer " + token);
-                                headers.add(HttpHeaderNames.CONTENT_TYPE, "application/json");
-                            })
-                            .request(request.method())
-                            .uri(configuration.getOpenpaasBackendURL().toString() + request.uri())
-                            .send((req, out) -> out.sendByteArray(Mono.just(payload)))
-                            .response((res, in) -> {
-                                response.status(res.status());
-                                response.headers(res.responseHeaders());
-                                return response.sendByteArray(in.asByteArray());
-                            })
-                            .then())));
+            .flatMap(payload -> handleAuthIfNeeded(request)
+                .flatMap(headerTransformation -> client.headers(headers -> {
+                        headerTransformation.accept(headers);
+                        headers.add(HttpHeaderNames.CONTENT_TYPE, "application/json");
+                    })
+                    .request(request.method())
+                    .uri(configuration.getOpenpaasBackendURL().toString() + request.uri())
+                    .send((req, out) -> out.sendByteArray(Mono.just(payload)))
+                    .response((res, in) -> {
+                        response.status(res.status());
+                        response.headers(res.responseHeaders());
+                        return response.sendByteArray(in.asByteArray());
+                    })
+                    .then()));
+    }
+
+    private Mono<Consumer<HttpHeaders>> handleAuthIfNeeded(HttpServerRequest request) {
+        if (request.requestHeaders().contains(HttpHeaderNames.AUTHORIZATION)) {
+            return authenticator.authenticate(request)
+                .flatMap(session -> Mono.fromCallable(() -> jwtSigner.generate(session.getUser().asString())).subscribeOn(Schedulers.parallel()))
+                .map(token -> headers -> headers.add(HttpHeaderNames.AUTHORIZATION, "Bearer " + token));
+        }
+        return Mono.just(headers -> {
+
+        });
     }
 }
