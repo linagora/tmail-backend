@@ -254,7 +254,7 @@ class TwakeCalendarGuiceServerTest  {
             .when()
             .get("/api/themes/anything/logo")
         .then()
-            .statusCode(401); // Follows the redirect;
+            .statusCode(401);
     }
 
     @Test
@@ -266,7 +266,18 @@ class TwakeCalendarGuiceServerTest  {
             .when()
             .get("/api/themes/anything/logo")
         .then()
-            .statusCode(401); // Follows the redirect;
+            .statusCode(401);
+    }
+
+    @Test
+    void shouldRejectWhenNoAuth(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        given()
+            .when()
+            .get("/api/themes/anything/logo")
+        .then()
+            .statusCode(401);
     }
 
     @Test
@@ -275,7 +286,8 @@ class TwakeCalendarGuiceServerTest  {
         targetRestAPI(server);
 
         given()
-            .when()
+            .auth().basic(USERNAME.asString(), PASSWORD)
+        .when()
             .get("/api/user/profile")
         .then()
             .statusCode(401); // Not authenticated on openpaas.linagora.com
