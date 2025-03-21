@@ -31,6 +31,7 @@ import org.apache.james.jmap.http.AuthenticationChallenge;
 import org.apache.james.jmap.http.AuthenticationScheme;
 import org.apache.james.jmap.http.AuthenticationStrategy;
 import org.apache.james.jwt.DefaultCheckTokenClient;
+import org.apache.james.jwt.userinfo.UserInfoCheckException;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.metrics.api.MetricFactory;
 
@@ -68,9 +69,10 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
             .flatMap(token -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("userinfo-lookup",
                     checkTokenClient.userInfo(userInfoURL, token))))
             .map(x -> x.claimByPropertyName(configuration.getOidcClaim())
-                .orElseThrow(() -> new UnauthorizedException("Invalid OIDC token: introspection needs to include email claim")))
+                .orElseThrow(() -> new UnauthorizedException("Invalid OIDC token: userinfo needs to include email claim")))
             .map(Username::of)
-            .map(Throwing.function(sessionProvider::createSession));
+            .map(Throwing.function(sessionProvider::createSession))
+            .onErrorResume(UserInfoCheckException.class, e -> Mono.error(new UnauthorizedException("Invalid OIDC token: userinfo failed", e)));
     }
 
     @Override
