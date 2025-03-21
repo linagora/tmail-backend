@@ -29,6 +29,7 @@ import org.apache.james.jmap.http.AuthenticationChallenge;
 import org.apache.james.jmap.http.AuthenticationScheme;
 import org.apache.james.jmap.http.AuthenticationStrategy;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.util.ReactorUtils;
 
@@ -71,11 +72,13 @@ public class BasicAuthenticationStrategy implements AuthenticationStrategy {
 
     private final UsersRepository usersRepository;
     private final SimpleSessionProvider sessionProvider;
+    private final MetricFactory metricFactory;
 
     @Inject
-    public BasicAuthenticationStrategy(UsersRepository usersRepository, SimpleSessionProvider sessionProvider) {
+    public BasicAuthenticationStrategy(UsersRepository usersRepository, SimpleSessionProvider sessionProvider, MetricFactory metricFactory) {
         this.usersRepository = usersRepository;
         this.sessionProvider = sessionProvider;
+        this.metricFactory = metricFactory;
     }
 
     @Override
@@ -83,8 +86,15 @@ public class BasicAuthenticationStrategy implements AuthenticationStrategy {
         return Mono.fromCallable(() -> authHeaders(httpRequest))
             .map(BasicAuthenticationStrategy::parseUserCredentials)
             .handle(ReactorUtils.publishIfPresent())
-            .flatMap(creds -> Mono.fromCallable(() -> usersRepository.test(creds.username(), creds.password()).orElseThrow(() -> new UnauthorizedException("Wrong credentials provided"))).subscribeOn(Schedulers.boundedElastic()))
+            .flatMap(this::authenticate)
             .map(sessionProvider::createSession);
+    }
+
+    private Mono<Username> authenticate(UserCredentials creds) {
+        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("basic-auth",
+            Mono.fromCallable(() -> usersRepository.test(creds.username(), creds.password())
+                .orElseThrow(() -> new UnauthorizedException("Wrong credentials provided")))
+                .subscribeOn(Schedulers.boundedElastic())));
     }
 
     @Override

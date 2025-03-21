@@ -23,12 +23,12 @@ import jakarta.inject.Inject;
 import org.apache.james.jmap.Endpoint;
 import org.apache.james.jmap.http.Authenticator;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.metrics.api.MetricFactory;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
@@ -36,8 +36,8 @@ public class JwtRoutes extends CalendarRoute {
     private final JwtSigner jwtSigner;
 
     @Inject
-    public JwtRoutes(Authenticator authenticator, JwtSigner jwtSigner) {
-        super(authenticator);
+    public JwtRoutes(Authenticator authenticator, JwtSigner jwtSigner, MetricFactory metricFactory) {
+        super(authenticator, metricFactory);
         this.jwtSigner = jwtSigner;
     }
 
@@ -50,8 +50,7 @@ public class JwtRoutes extends CalendarRoute {
     Mono<Void> handleRequest(HttpServerRequest request, HttpServerResponse response, MailboxSession session) {
         return response.status(HttpResponseStatus.OK)
             .header(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8")
-            .sendString(Mono.fromCallable(() -> jwtSigner.generate(session.getUser().asString())).subscribeOn(Schedulers.parallel())
-                .map(JwtRoutes::quote))
+            .sendString(jwtSigner.generate(session.getUser().asString()).map(JwtRoutes::quote))
             .then();
     }
 

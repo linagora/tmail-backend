@@ -23,6 +23,7 @@ import jakarta.inject.Inject;
 import org.apache.james.jmap.Endpoint;
 import org.apache.james.jmap.http.Authenticator;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.metrics.api.MetricFactory;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
@@ -33,8 +34,8 @@ import reactor.netty.http.server.HttpServerResponse;
 
 public class ThemeRoute extends CalendarRoute {
     @Inject
-    public ThemeRoute(Authenticator authenticator) {
-        super(authenticator);
+    public ThemeRoute(Authenticator authenticator, MetricFactory metricFactory) {
+        super(authenticator, metricFactory);
     }
 
     @Override

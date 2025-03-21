@@ -32,6 +32,7 @@ import org.apache.james.jmap.http.AuthenticationScheme;
 import org.apache.james.jmap.http.AuthenticationStrategy;
 import org.apache.james.jwt.DefaultCheckTokenClient;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.metrics.api.MetricFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableMap;
@@ -44,12 +45,15 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
 
     private final DefaultCheckTokenClient checkTokenClient;
     private final SimpleSessionProvider sessionProvider;
+    private final MetricFactory metricFactory;
     private final URL userInfoURL;
     private final RestApiConfiguration configuration;
 
     @Inject
-    public OidcAuthenticationStrategy(SimpleSessionProvider sessionProvider, RestApiConfiguration configuration, @Named("userInfo") URL userInfoURL) {
+    public OidcAuthenticationStrategy(SimpleSessionProvider sessionProvider, RestApiConfiguration configuration,
+                                      @Named("userInfo") URL userInfoURL, MetricFactory metricFactory) {
         this.sessionProvider = sessionProvider;
+        this.metricFactory = metricFactory;
         this.checkTokenClient = new DefaultCheckTokenClient();
         this.configuration = configuration;
         this.userInfoURL = userInfoURL;
@@ -61,7 +65,8 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
             .filter(header -> header.startsWith(AUTHORIZATION_HEADER_PREFIX))
             .map(header -> header.substring(AUTHORIZATION_HEADER_PREFIX.length()))
             .filter(token -> !token.startsWith("eyJ")) // Heuristic for detecting JWT
-            .flatMap(token -> Mono.from(checkTokenClient.userInfo(userInfoURL, token)))
+            .flatMap(token -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("userinfo-lookup",
+                    checkTokenClient.userInfo(userInfoURL, token))))
             .map(x -> x.claimByPropertyName(configuration.getOidcClaim())
                 .orElseThrow(() -> new UnauthorizedException("Invalid OIDC token: introspection needs to include email claim")))
             .map(Username::of)
