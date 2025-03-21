@@ -42,6 +42,7 @@ import com.linagora.calendar.restapi.auth.BasicAuthenticationStrategy;
 import com.linagora.calendar.restapi.auth.JwtAuthenticationStrategy;
 import com.linagora.calendar.restapi.auth.OidcAuthenticationStrategy;
 import com.linagora.calendar.restapi.routes.JwtRoutes;
+import com.linagora.calendar.restapi.routes.JwtSigner;
 import com.linagora.calendar.restapi.routes.LogoRoute;
 import com.linagora.calendar.restapi.routes.ThemeRoute;
 
@@ -88,5 +89,11 @@ public class RestApiModule extends AbstractModule {
     @Provides
     IntrospectionEndpoint provideIntrospectionEndpoint(RestApiConfiguration configuration) {
         return new IntrospectionEndpoint(configuration.getOidcIntrospectionUrl(), configuration.getOidcIntrospectionAuth());
+    }
+
+    @Provides
+    @Singleton
+    JwtSigner signer(JwtSigner.Factory factory) throws Exception {
+        return factory.instancaiate();
     }
 }

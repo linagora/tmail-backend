@@ -18,15 +18,58 @@
 
 package com.linagora.calendar.restapi.routes;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.Key;
+import java.security.PrivateKey;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
+
+import jakarta.inject.Inject;
+
+import org.apache.james.filesystem.api.FileSystem;
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.util.io.pem.PemReader;
+
+import com.linagora.calendar.restapi.RestApiConfiguration;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
 public class JwtSigner {
+    public static class Factory {
+        public static PrivateKey loadPrivateKey(Path pemFilePath) throws Exception {
+            // Read PEM file content
+            try (PEMParser pemParser = new PEMParser(new PemReader(Files.newBufferedReader(pemFilePath)))) {
+                Object o = pemParser.readObject();
+                if (o instanceof PEMKeyPair keyPair) {
+                    return new JcaPEMKeyConverter().getPrivateKey(keyPair.getPrivateKeyInfo());
+                }
+                throw new RuntimeException("Invalid key of class " + o.getClass());
+            }
+        }
+
+        private final RestApiConfiguration configuration;
+        private final Clock clock;
+        private final FileSystem fileSystem;
+
+        @Inject
+        public Factory(RestApiConfiguration configuration,  Clock clock, FileSystem fileSystem) {
+            this.configuration = configuration;
+            this.clock = clock;
+            this.fileSystem = fileSystem;
+        }
+
+        public JwtSigner instancaiate() throws Exception {
+            File file = fileSystem.getFile(configuration.getJwtPrivatePath());
+            return new JwtSigner(clock, configuration.getJwtValidity(), loadPrivateKey(file.toPath()));
+        }
+    }
+    
     private final Clock clock;
     private final Duration tokenValidity;
     private final Key key;
