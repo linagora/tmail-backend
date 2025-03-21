@@ -42,6 +42,7 @@ import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusReconnectionHandler;
 import org.apache.james.events.EventDeadLetters;
+import org.apache.james.events.EventSerializer;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
@@ -182,6 +183,11 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
                 instance.start();
                 instance.register(pushListener);
             });
+    }
+
+    @ProvidesIntoSet
+    EventSerializer registerJmapEventSerializers(JmapEventSerializer jmapEventSerializer) {
+        return jmapEventSerializer;
     }
 
     @ProvidesIntoSet
