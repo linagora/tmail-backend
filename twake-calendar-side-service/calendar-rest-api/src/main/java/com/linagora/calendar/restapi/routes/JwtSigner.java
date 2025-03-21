@@ -30,6 +30,7 @@ import java.util.Date;
 import jakarta.inject.Inject;
 
 import org.apache.james.filesystem.api.FileSystem;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
@@ -48,6 +49,9 @@ public class JwtSigner {
                 Object o = pemParser.readObject();
                 if (o instanceof PEMKeyPair keyPair) {
                     return new JcaPEMKeyConverter().getPrivateKey(keyPair.getPrivateKeyInfo());
+                }
+                if (o instanceof PrivateKeyInfo priveKey) {
+                    return new JcaPEMKeyConverter().getPrivateKey(priveKey);
                 }
                 throw new RuntimeException("Invalid key of class " + o.getClass());
             }
