@@ -57,22 +57,22 @@ public class FallbackProxy {
     }
 
     public Mono<Void> forwardRequest(HttpServerRequest request, HttpServerResponse response) {
-        return authenticator.authenticate(request)
-            .flatMap(session -> Mono.fromCallable(() -> jwtSigner.generate(session.getUser().asString())).subscribeOn(Schedulers.parallel()))
-            .flatMap(token -> client.headers(headers -> headers.add(request.requestHeaders()))
-                .request(request.method())
-                .uri(configuration.getOpenpaasBackendURL().toString() + request.uri())
-                .send((req, out) -> out.send(request.receive().retain()))
-                .response((res, in) -> {
-                    response.status(res.status());
-                    response.addHeader(HttpHeaderNames.AUTHORIZATION, "Bearer " + token);
-                    res.responseHeaders().forEach(entry -> {
-                            if (!entry.getKey().equalsIgnoreCase("Authorization")) {
-                                response.addHeader(entry.getKey(), entry.getValue());
-                            }
-                        });
-                    return response.send(in.retain());
-                })
-                .then());
+        return request.receive().aggregate().asByteArray()
+            .switchIfEmpty(Mono.just("".getBytes()))
+            .flatMap(payload -> authenticator.authenticate(request)
+                .flatMap(session -> Mono.fromCallable(() -> jwtSigner.generate(session.getUser().asString())).subscribeOn(Schedulers.parallel())
+                        .flatMap(token -> client.headers(headers -> {
+                                headers.add(HttpHeaderNames.AUTHORIZATION, "Bearer " + token);
+                                headers.add(HttpHeaderNames.CONTENT_TYPE, "application/json");
+                            })
+                            .request(request.method())
+                            .uri(configuration.getOpenpaasBackendURL().toString() + request.uri())
+                            .send((req, out) -> out.sendByteArray(Mono.just(payload)))
+                            .response((res, in) -> {
+                                response.status(res.status());
+                                response.headers(res.responseHeaders());
+                                return response.sendByteArray(in.asByteArray());
+                            })
+                            .then())));
     }
 }
