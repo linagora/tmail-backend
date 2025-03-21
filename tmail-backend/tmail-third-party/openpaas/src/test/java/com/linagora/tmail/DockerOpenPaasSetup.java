@@ -30,7 +30,6 @@ import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QU
 
 import java.io.File;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +40,7 @@ import org.junit.platform.commons.util.Preconditions;
 import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.MountableFile;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
@@ -87,21 +87,17 @@ public class DockerOpenPaasSetup {
     private OpenPaaSProvisioningService openPaaSProvisioningService;
 
     {
-        try {
-            environment = new ComposeContainer(
-                new File(DockerOpenPaasSetup.class.getResource("/docker-openpaas-setup.yml").toURI()))
-                .withExposedService(DockerService.OPENPAAS.serviceName(), DockerService.OPENPAAS.port())
-                .withExposedService(DockerService.RABBITMQ.serviceName(), DockerService.RABBITMQ.port())
-                .withExposedService(DockerService.RABBITMQ_ADMIN.serviceName(), DockerService.RABBITMQ_ADMIN.port())
-                .withExposedService(DockerService.SABRE_DAV.serviceName(), DockerService.SABRE_DAV.port())
-                .withExposedService(DockerService.MONGO.serviceName(), DockerService.MONGO.port())
-                .withExposedService(DockerService.ELASTICSEARCH.serviceName(), DockerService.ELASTICSEARCH.port())
-                .withExposedService(DockerService.REDIS.serviceName(), DockerService.REDIS.port())
-                .waitingFor("openpaas", Wait.forLogMessage(".*Users currently connected.*", 1)
-                    .withStartupTimeout(Duration.ofMinutes(3)));
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("Failed to initialize OpenPaas Setup from docker compose.", e);
-        }
+        MountableFile mountableFile = MountableFile.forClasspathResource("docker-openpaas-setup.yml");
+        environment = new ComposeContainer(new File(mountableFile.getFilesystemPath()))
+            .withExposedService(DockerService.OPENPAAS.serviceName(), DockerService.OPENPAAS.port())
+            .withExposedService(DockerService.RABBITMQ.serviceName(), DockerService.RABBITMQ.port())
+            .withExposedService(DockerService.RABBITMQ_ADMIN.serviceName(), DockerService.RABBITMQ_ADMIN.port())
+            .withExposedService(DockerService.SABRE_DAV.serviceName(), DockerService.SABRE_DAV.port())
+            .withExposedService(DockerService.MONGO.serviceName(), DockerService.MONGO.port())
+            .withExposedService(DockerService.ELASTICSEARCH.serviceName(), DockerService.ELASTICSEARCH.port())
+            .withExposedService(DockerService.REDIS.serviceName(), DockerService.REDIS.port())
+            .waitingFor("openpaas", Wait.forLogMessage(".*Users currently connected.*", 1)
+                .withStartupTimeout(Duration.ofMinutes(3)));
     }
 
     public void start() {
