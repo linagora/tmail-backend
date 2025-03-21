@@ -28,7 +28,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterators;
 
 public record EventUid(String value) {
-    private static final String X_MEETING_UID_HEADER = "X-MEETING-UID";
+    public static final String X_MEETING_UID_HEADER = "X-MEETING-UID";
 
     public static EventUid fromMessageHeaders(MessageResult messageResult) {
         try {

@@ -35,7 +35,6 @@ import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.DavConfiguration;
@@ -66,11 +65,11 @@ import reactor.util.retry.Retry;
 
 public class DavClient {
     public static final int MAX_CALENDAR_OBJECT_UPDATE_RETRIES = 5;
+    public static final String CALENDAR_PATH = "/calendars/";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
     private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String COLLECTED_ADDRESS_BOOK_PATH = "/addressbooks/%s/collected/%s.vcf";
-    private static final String CALENDAR_PATH = "/calendars/";
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String ACCEPT_XML = "application/xml";
     private static final String CONTENT_TYPE_VCARD = "application/vcard";
@@ -174,7 +173,6 @@ public class DavClient {
             .responseSingle((response, responseContent) -> handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
     }
 
-    @VisibleForTesting
     public Mono<Void> createCalendar(String username, URI uri, Calendar calendarData) {
         return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "text/plain")
                 .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))

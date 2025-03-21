@@ -39,7 +39,7 @@ public class WireMockOpenPaaSServerExtension extends WireMockExtension {
     public static final String BAD_PASSWORD = "BAD_PASSWORD";
     public static final String GOOD_PASSWORD = "GOOD_PASSWORD";
     public static final String ERROR_MAIL = "error@lina.com";
-    public static final String ALICE_EMAIL = "adoe@linagora.com";
+    public static final String ALICE = DavServerExtension.ALICE;
     public static final String NOTFOUND_EMAIL = "notfound@lina.com";
 
     public WireMockOpenPaaSServerExtension(Builder builder) {
@@ -75,9 +75,9 @@ public class WireMockOpenPaaSServerExtension extends WireMockExtension {
                     "  \"_id\":  \"ALICE_ID\",\n" +
                     "  \"firstname\": \"Alice\",\n" +
                     "  \"lastname\": \"DOE\",\n" +
-                    "  \"preferredEmail\": \"adoe@linagora.com\",\n" +
+                    "  \"preferredEmail\": \"alice@james.org\",\n" +
                     "  \"emails\": [\n" +
-                    "    \"adoe@linagora.com\"\n" +
+                    "    \"alice@james.org\"\n" +
                     "  ],\n" +
                     "  \"domains\": [\n" +
                     "    {\n" +
@@ -97,7 +97,7 @@ public class WireMockOpenPaaSServerExtension extends WireMockExtension {
                     "      },\n" +
                     "      \"hosted\": true,\n" +
                     "      \"emails\": [\n" +
-                    "        \"adoe@linagora.com\"\n" +
+                    "        \"alice@james.org\"\n" +
                     "      ],\n" +
                     "      \"preferredEmailIndex\": 0,\n" +
                     "      \"type\": \"email\"\n" +
@@ -144,7 +144,7 @@ public class WireMockOpenPaaSServerExtension extends WireMockExtension {
                         "      },\n" +
                         "      \"hosted\": true,\n" +
                         "      \"emails\": [\n" +
-                        "        \"adoe@linagora.com\"\n" +
+                        "        \"alice@james.org\"\n" +
                         "      ],\n" +
                         "      \"preferredEmailIndex\": 0,\n" +
                         "      \"type\": \"email\"\n" +
@@ -160,7 +160,7 @@ public class WireMockOpenPaaSServerExtension extends WireMockExtension {
                         "  \"followers\": 0,\n" +
                         "  \"followings\": 0\n" +
                         "}")));
-        setSearchEmailExist(ALICE_EMAIL, ALICE_ID);
+        setSearchEmailExist(ALICE, ALICE_ID);
         setSearchEmailNotFound(NOTFOUND_EMAIL);
 
         stubFor(get(urlEqualTo("/users?email=" + ERROR_MAIL))

@@ -50,7 +50,7 @@ import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
 
 public class DavServerExtension extends WireMockExtension {
     public static final String ALICE_ID = "ALICE_ID";
-    public static final String ALICE = "ALICE";
+    public static final String ALICE = "alice@james.org";
     public static final DavUser ALICE_DAV_USER = new DavUser(ALICE_ID, ALICE);
     public static final String ALICE_CALENDAR_1 = "66e95872cf2c37001f0d2a09";
     public static final String ALICE_CALENDAR_2 = "0b4e80d7-7337-458f-852d-7ae8d72a74b2";
@@ -171,6 +171,13 @@ public class DavServerExtension extends WireMockExtension {
                 .willReturn(noContent()));
     }
 
+    public void addMockOfCreatingCalendarObject(String uri) {
+        stubFor(
+            put(uri)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(created()));
+    }
+
     public void assertCollectedContactExistsWasCalled(String openPassUserName, String openPassUserId, String collectedContactUid, int times) {
         verify(times,
             getRequestedFor(
@@ -188,6 +195,14 @@ public class DavServerExtension extends WireMockExtension {
                 .withHeader("Authorization",
                     equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
                 .withHeader("Content-Type", equalTo("application/vcard")));
+    }
+
+    public void assertMockOfCreatingCalendarObjectWasCalled(String uri, int times) {
+        verify(times,
+            putRequestedFor(
+                urlEqualTo(uri))
+                .withHeader("Authorization",
+                    equalTo(createDelegatedBasicAuthenticationToken(ALICE))));
     }
 
     public DavConfiguration getDavConfiguration() {
