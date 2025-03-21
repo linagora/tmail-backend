@@ -18,24 +18,11 @@
 
 package com.linagora.calendar.restapi.routes;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.PrivateKey;
-import java.time.Clock;
-
 import jakarta.inject.Inject;
 
-import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.jmap.Endpoint;
 import org.apache.james.jmap.http.Authenticator;
 import org.apache.james.mailbox.MailboxSession;
-import org.bouncycastle.openssl.PEMKeyPair;
-import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-import org.bouncycastle.util.io.pem.PemReader;
-
-import com.linagora.calendar.restapi.RestApiConfiguration;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
@@ -46,25 +33,12 @@ import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
 public class JwtRoutes extends CalendarRoute {
-
     private final JwtSigner jwtSigner;
 
-    public static PrivateKey loadPrivateKey(Path pemFilePath) throws Exception {
-        // Read PEM file content
-        try (PEMParser pemParser = new PEMParser(new PemReader(Files.newBufferedReader(pemFilePath)))) {
-            Object o = pemParser.readObject();
-            if (o instanceof PEMKeyPair keyPair) {
-                return new JcaPEMKeyConverter().getPrivateKey(keyPair.getPrivateKeyInfo());
-            }
-            throw new RuntimeException("Invalid key of class " + o.getClass());
-        }
-    }
-
     @Inject
-    public JwtRoutes(Authenticator authenticator, RestApiConfiguration configuration, Clock clock, FileSystem fileSystem) throws Exception {
+    public JwtRoutes(Authenticator authenticator, JwtSigner jwtSigner) {
         super(authenticator);
-        File file = fileSystem.getFile(configuration.getJwtPrivatePath());
-        jwtSigner = new JwtSigner(clock, configuration.getJwtValidity(), loadPrivateKey(file.toPath()));
+        this.jwtSigner = jwtSigner;
     }
 
     @Override

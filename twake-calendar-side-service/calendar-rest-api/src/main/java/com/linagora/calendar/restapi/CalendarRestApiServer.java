@@ -60,11 +60,11 @@ public class CalendarRestApiServer implements Startable  {
     private Optional<DisposableServer> server;
 
     @Inject
-    public CalendarRestApiServer(Set<JMAPRoutes> jmapRoutes, RestApiConfiguration configuration) {
+    public CalendarRestApiServer(Set<JMAPRoutes> jmapRoutes, FallbackProxy fallbackProxy, RestApiConfiguration configuration) {
         this.routes = jmapRoutes.stream().flatMap(JMAPRoutes::routes).collect(Collectors.toList());
         this.configuration = configuration;
         this.server = Optional.empty();
-        this.fallbackProxy = new FallbackProxy(configuration);
+        this.fallbackProxy = fallbackProxy;
     }
 
     public void start() {
