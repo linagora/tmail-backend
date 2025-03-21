@@ -24,12 +24,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.http.UserCredential;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.apache.james.mailbox.inmemory.InMemoryMessageId;
+import org.apache.james.mailbox.model.MessageId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -118,6 +121,11 @@ public class MemoryCalendarEventCounterAcceptMethodTest implements CalendarEvent
 
         return davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUid)).block()
             .calendarData();
+    }
+
+    @Override
+    public MessageId randomMessageId() {
+        return InMemoryMessageId.of(ThreadLocalRandom.current().nextInt(100000) + 100);
     }
 
 }

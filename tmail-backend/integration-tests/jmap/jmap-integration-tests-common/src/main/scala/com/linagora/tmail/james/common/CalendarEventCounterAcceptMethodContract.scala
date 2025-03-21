@@ -20,7 +20,7 @@ package com.linagora.tmail.james.common
 
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
-import java.util.{Random, UUID}
+import java.util.UUID
 
 import com.linagora.tmail.james.common.LinagoraCalendarEventAttendanceGetMethodContract.bobAccountId
 import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper
@@ -37,7 +37,7 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, _2_DOT_DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.mailbox.DefaultMailboxes
-import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath}
+import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath, MessageId}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
@@ -52,6 +52,8 @@ trait CalendarEventCounterAcceptMethodContract {
   def pushCalendarToDav(userCredential: UserCredential, eventUid: String, calendar: Calendar): Unit = {}
 
   def getCalendarFromDav(userCredential: UserCredential, eventUid: String): Calendar
+
+  def randomMessageId: MessageId
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -212,8 +214,8 @@ trait CalendarEventCounterAcceptMethodContract {
            |    "accepted": [],
            |    "notAccepted": {
            |      "$counterEventBlobId": {
-           |        "type": "serverFail",
-           |        "description": "$${json-unit.ignore}"
+           |        "type": "eventNotFound",
+           |        "description": "The event you counter is not yet on your calendar"
            |      }
            |    }
            |  },
@@ -224,7 +226,7 @@ trait CalendarEventCounterAcceptMethodContract {
 
   @Test
   def shouldReturnNotFoundWhenBlobIdDoesNotExists() : Unit = {
-    val counterBlobId: String = new Random().nextInt(1_000_000) + ""
+    val counterBlobId: String = randomMessageId.serialize()
 
     val response: String =
       `given`
@@ -278,7 +280,7 @@ trait CalendarEventCounterAcceptMethodContract {
     val acceptBlobId: String = createNewEmailWithCalendarAttachment(server, eventUid, acceptCounterEvent)
 
     // And: A non-existent blob ID that should be marked as not found
-    val nonExistentBlobId: String = new Random().nextInt(1_000_000) + ""
+    val nonExistentBlobId: String = randomMessageId.serialize()
 
     // And: A counter event that will be rejected
     val eventUid2: String = UUID.randomUUID().toString
@@ -326,8 +328,8 @@ trait CalendarEventCounterAcceptMethodContract {
            |    "notFound": [ "$nonExistentBlobId" ],
            |    "notAccepted": {
            |      "$notAcceptBlobId": {
-           |        "type": "serverFail",
-           |        "description": "$${json-unit.ignore}"
+           |        "type": "eventNotFound",
+           |        "description": "The event you counter is not yet on your calendar"
            |      }
            |    }
            |  },
@@ -619,8 +621,8 @@ trait CalendarEventCounterAcceptMethodContract {
            |        "accepted": [],
            |        "notAccepted": {
            |            "$uploadBlobId": {
-           |                "type": "invalidPatch",
-           |                "description": "$${json-unit.ignore}"
+           |                "type": "invalidArguments",
+           |                "description": "The calendar file is not valid"
            |            }
            |        }
            |    },

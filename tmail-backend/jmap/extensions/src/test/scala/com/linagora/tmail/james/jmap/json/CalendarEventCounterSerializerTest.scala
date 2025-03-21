@@ -56,8 +56,7 @@ class CalendarEventCounterSerializerTest {
       accountId = AccountId.from(Username.of("bob")).toOption.get,
       accepted = BlobIds(Seq("2c9f1b12-b35a-43e6-9af2-0106fb53a943")),
       notFound = Some(CalendarEventNotFound(Set(Id.validate("1111111-b35a-43e6-9af2-0106fb53a943").toOption.get))),
-      notAccepted = Some(CalendarEventNotDone(Map(Id.validate("456").toOption.get -> SetError.invalidArguments(SetErrorDescription("Invalid ICS")))))
-    )
+      notAccepted = Some(CalendarEventNotDone(Map(Id.validate("456").toOption.get -> SetError.invalidArguments(SetErrorDescription("Invalid ICS"))))))
 
     assertThat(testee.serialize(response))
       .isEqualTo(Json.parse(

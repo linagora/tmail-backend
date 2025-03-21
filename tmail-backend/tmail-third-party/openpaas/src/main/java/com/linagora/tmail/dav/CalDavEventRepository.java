@@ -45,6 +45,7 @@ import com.google.common.base.Preconditions;
 import com.linagora.tmail.dav.cal.FreeBusyRequest;
 import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
+import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.CalendarEventRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
@@ -176,7 +177,7 @@ public class CalDavEventRepository implements CalendarEventRepository {
 
         return davUserProvider.provide(username)
             .flatMap(davUser -> davClient.getCalendarObject(davUser, new EventUid(eventUid))
-                .switchIfEmpty(Mono.error(new DavClientException("Could not find calendar object for user '%s' and eventUid '%s'".formatted(username.asString(), eventUid))))
+                .switchIfEmpty(Mono.error(new CalendarEventNotFoundException(username.asString(), eventUid)))
                 .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), updateEventTimingOperator)));
     }
 

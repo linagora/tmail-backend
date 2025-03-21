@@ -21,15 +21,15 @@ package com.linagora.tmail.james.jmap.method
 import java.time.ZonedDateTime
 
 import com.google.common.base.Preconditions.{checkArgument => require}
-import com.linagora.tmail.james.jmap.CalendarEventRepository
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults.LOGGER
-import com.linagora.tmail.james.jmap.model.{CalendarEventNotDone, CalendarEventNotFound, CalendarEventNotParsable, CalendarEventParsed, CalendarEventReplyResults, InvalidCalendarFileException}
+import com.linagora.tmail.james.jmap.model._
+import com.linagora.tmail.james.jmap.{CalendarEventNotFoundException, CalendarEventRepository}
+import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import org.apache.james.jmap.core.SetError
-import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.SetError.{SetErrorDescription, invalidArgumentValue}
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import org.apache.james.jmap.routes.BlobNotFoundException
 import org.apache.james.mailbox.MailboxSession
@@ -59,17 +59,17 @@ object EventCounterAcceptedResults {
       case _ => EventCounterAcceptedResults(notDone = Some(CalendarEventNotDone(notParsable.asSetErrorMap)))
     }
 
-  private def asSetError(throwable: Throwable, username: String): SetError = throwable match {
-    case _: IllegalArgumentException =>
-      LOGGER.info("Error when accept counter event for {}: {}", username, throwable.getMessage)
-      SetError.invalidArguments(SetErrorDescription(throwable.getMessage))
-    case _: BlobNotFoundException => SetError.notFound(SetErrorDescription(throwable.getMessage))
-    case _: InvalidCalendarFileException | _: IllegalArgumentException =>
-      LOGGER.info("Error when accept counter event for {}: {}", username, throwable.getMessage)
-      SetError.invalidPatch(SetErrorDescription(throwable.getMessage))
-    case _ =>
-      LOGGER.error("serverFail to accept counter event for {}", username, throwable)
-      SetError.serverFail(SetErrorDescription(throwable.getMessage))
+  private def asSetError(throwable: Throwable, username: String): SetError = {
+    LOGGER.info("Error when accept counter event for {}: {}", username, throwable.getMessage)
+    throwable match {
+      case _: BlobNotFoundException => SetError.notFound(SetErrorDescription(throwable.getMessage))
+      case _: InvalidCalendarFileException => SetError(invalidArgumentValue, SetErrorDescription("The calendar file is not valid"), None)
+      case _: CalendarEventNotFoundException => SetError("eventNotFound", SetErrorDescription("The event you counter is not yet on your calendar"), None)
+      case _: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(throwable.getMessage))
+      case _ =>
+        LOGGER.error("serverFail to accept counter event for {}", username, throwable)
+        SetError.serverFail(SetErrorDescription(throwable.getMessage))
+    }
   }
 }
 
@@ -96,7 +96,6 @@ class CalendarEventCounterPerformer @Inject()(calendarEventRepository: CalendarE
       .switchIfEmpty(SMono.just(EventCounterAcceptedResults.notFound(blobId)))
       .onErrorResume({
         case _: BlobNotFoundException => SMono.just(EventCounterAcceptedResults.notFound(blobId))
-        case error: InvalidCalendarFileException => SMono.just(EventCounterAcceptedResults.notDone(blobId, error, mailboxSession.getUser.asString()))
         case error => SMono.just(EventCounterAcceptedResults.notDone(blobId, error, mailboxSession.getUser.asString()))
       })
 
