@@ -250,7 +250,7 @@ object CalendarTimeZoneField {
       .map(_.getValue)
       .flatMap(string => extractZoneId(string))
 
-  private def getZoneIdFromStartDate(calendarEvent: VEvent): Option[ZoneId] =
+  def getZoneIdFromStartDate(calendarEvent: VEvent): Option[ZoneId] =
     Option(calendarEvent.getDateTimeStart[Temporal]())
       .flatMap(date => date.getParameter[TzId](Parameter.TZID).toScala)
       .map(_.getValue)
@@ -282,7 +282,9 @@ object CalendarOrganizerField {
             .map(_.getSchemeSpecificPart)
             .map(new MailAddress(_))))
 }
-case class CalendarOrganizerField(name: Option[String], mailto: Option[MailAddress])
+case class CalendarOrganizerField(name: Option[String], mailto: Option[MailAddress]) {
+  def asMailAddressString(): Option[String] = mailto.map(_.asString())
+}
 
 object CalendarAttendeeName {
   private val ATTENDEE_PARAMETER_PRIMARY: String = "NAME"

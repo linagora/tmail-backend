@@ -43,10 +43,10 @@ import reactor.core.scala.publisher.SMono
 
 import scala.util.Random
 
-class StandaloneEventAttendanceRepositoryTest {
+class StandaloneEventRepositoryTest {
   var calendarEventReplyPerformer: CalendarEventReplyPerformer = _
   var session: MailboxSession = _
-  var testee: StandaloneEventAttendanceRepository = _
+  var testee: StandaloneEventRepository = _
   var messageIdManagerTestSystem: MessageIdManagerTestSystem = _
   var mailbox: Mailbox = _
 
@@ -62,7 +62,7 @@ class StandaloneEventAttendanceRepositoryTest {
       any(classOf[MailboxSession])))
       .thenReturn(SMono.empty)
 
-    testee = new StandaloneEventAttendanceRepository(messageIdManagerTestSystem.getMessageIdManager, messageIdManagerTestSystem.getMailboxManager.getSessionProvider, calendarEventReplyPerformer, new TestMessageId.Factory)
+    testee = new StandaloneEventRepository(messageIdManagerTestSystem.getMessageIdManager, messageIdManagerTestSystem.getMailboxManager.getSessionProvider, calendarEventReplyPerformer, new TestMessageId.Factory)
     session = MailboxSessionUtil.create(ALICE)
     mailbox = messageIdManagerTestSystem.createMailbox(MailboxFixture.INBOX_ALICE, session)
   }
