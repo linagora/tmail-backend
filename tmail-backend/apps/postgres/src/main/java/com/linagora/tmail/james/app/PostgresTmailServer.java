@@ -137,6 +137,7 @@ import com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreM
 import com.linagora.tmail.encrypted.postgres.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
+import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
@@ -392,6 +393,7 @@ public class PostgresTmailServer {
 
     private static final Module RABBITMQ_EVENT_BUS_FEATURE_MODULE = Modules.combine(
         new DistributedEmailAddressContactEventModule(),
+        new EmailAddressContactRabbitMQEventBusModule(),
         new PostgresEmailAddressContactEventDeadLettersModule());
 
     public static Module chooseEventBusModules(PostgresTmailConfiguration configuration) {

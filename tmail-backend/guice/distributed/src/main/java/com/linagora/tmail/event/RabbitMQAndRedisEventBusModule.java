@@ -18,11 +18,13 @@
 
 package com.linagora.tmail.event;
 
+import static com.linagora.tmail.ScheduledReconnectionHandler.Module.EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY;
 import static com.linagora.tmail.event.DistributedEmailAddressContactEventModule.EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.JMAP_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.MAILBOX_EVENT_NAMING_STRATEGY;
 
 import java.io.FileNotFoundException;
+import java.util.Set;
 
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -40,7 +42,7 @@ import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusReconnectionHandler;
 import org.apache.james.events.EventDeadLetters;
-import org.apache.james.events.KeyReconnectionHandler;
+import org.apache.james.events.EventSerializer;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
@@ -51,6 +53,7 @@ import org.apache.james.events.RedisEventBusConfiguration;
 import org.apache.james.events.RegistrationKey;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.RoutingKeyConverter;
+import org.apache.james.events.TmailGroupRegistrationHandler;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.change.Factory;
 import org.apache.james.jmap.change.JmapEventSerializer;
@@ -101,6 +104,11 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
+    EventBus registerMailboxEventBusToDeadLetterRedeliverService(EventBus eventBus) {
+        return eventBus;
+    }
+
+    @ProvidesIntoSet
     InitializationOperation workQueue(RabbitMQAndRedisEventBus instance,
                                       RedisEventBusClientFactory redisEventBusClientFactory,
                                       RoutingKeyConverter routingKeyConverter) {
@@ -117,17 +125,13 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @ProvidesIntoSet
     HealthCheck healthCheck(RabbitMQAndRedisEventBus eventBus, NamingStrategy namingStrategy,
                             SimpleConnectionPool connectionPool) {
-        return new RabbitEventBusConsumerHealthCheck(eventBus, namingStrategy, connectionPool);
+        return new RabbitEventBusConsumerHealthCheck(eventBus, namingStrategy, connectionPool,
+            TmailGroupRegistrationHandler.GROUP);
     }
 
     @ProvidesIntoSet
     SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(RabbitMQAndRedisEventBus eventBus) {
         return new EventBusReconnectionHandler(eventBus);
-    }
-
-    @ProvidesIntoSet
-    SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(NamingStrategy namingStrategy, EventBusId eventBusId, RabbitMQConfiguration configuration) {
-        return new KeyReconnectionHandler(namingStrategy, eventBusId, configuration);
     }
 
     @Provides
@@ -167,6 +171,11 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
+    EventBus registerJmapEventBusToDeadLettersRedeliverService(@Named(InjectionKeys.JMAP) EventBus eventBus) {
+        return eventBus;
+    }
+
+    @ProvidesIntoSet
     InitializationOperation workQueue(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus instance, PushListener pushListener) {
         return InitilizationOperationBuilder
             .forClass(RabbitMQAndRedisEventBus.class)
@@ -177,19 +186,20 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
+    EventSerializer registerJmapEventSerializers(JmapEventSerializer jmapEventSerializer) {
+        return jmapEventSerializer;
+    }
+
+    @ProvidesIntoSet
     SimpleConnectionPool.ReconnectionHandler provideJMAPReconnectionHandler(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus eventBus) {
         return new EventBusReconnectionHandler(eventBus);
     }
 
     @ProvidesIntoSet
-    SimpleConnectionPool.ReconnectionHandler provideJMAPReconnectionHandler(@Named(InjectionKeys.JMAP) EventBusId eventBusId, RabbitMQConfiguration configuration) {
-        return new KeyReconnectionHandler(JMAP_NAMING_STRATEGY, eventBusId, configuration);
-    }
-
-    @ProvidesIntoSet
     HealthCheck healthCheck(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus eventBus,
                             SimpleConnectionPool connectionPool) {
-        return new RabbitEventBusConsumerHealthCheck(eventBus, JMAP_NAMING_STRATEGY, connectionPool);
+        return new RabbitEventBusConsumerHealthCheck(eventBus, JMAP_NAMING_STRATEGY, connectionPool,
+            TmailGroupRegistrationHandler.GROUP);
     }
 
     @ProvidesIntoSet
@@ -243,5 +253,14 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
             LOGGER.info("Missing `redis.properties` configuration file -> using default RedisEventBusConfiguration");
             return RedisEventBusConfiguration.DEFAULT;
         }
+    }
+
+    @Provides
+    @Named(EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY)
+    @Singleton
+    Set<String> redisEventBusGroupQueuesToMonitor() {
+        return ImmutableSet.of(
+            "mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+            "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
     }
 }

@@ -58,11 +58,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.google.inject.name.Named;
 
 import feign.Client;
 import feign.Feign;
@@ -80,6 +84,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+@Singleton
 public class ScheduledReconnectionHandler implements Startable {
     public record ScheduledReconnectionHandlerConfiguration(boolean enabled, Duration interval) {
         public static final boolean ENABLED = true;
@@ -101,6 +106,8 @@ public class ScheduledReconnectionHandler implements Startable {
     }
 
     public static class Module extends AbstractModule {
+        public static final String EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY = "GROUP_QUEUES_TO_MONITOR";
+
         @Provides
         ScheduledReconnectionHandlerConfiguration configuration(PropertiesProvider propertiesProvider) throws ConfigurationException {
             return ScheduledReconnectionHandlerConfiguration.parse(propertiesProvider);
@@ -111,6 +118,15 @@ public class ScheduledReconnectionHandler implements Startable {
             return InitilizationOperationBuilder
                 .forClass(ScheduledReconnectionHandler.class)
                 .init(scheduledReconnectionHandler::start);
+        }
+
+        @Provides
+        @Named(EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY)
+        @Singleton
+        Set<String> rabbitMQEventBusGroupQueuesToMonitor() {
+            return ImmutableSet.of(
+                "mailboxEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup");
         }
     }
 
@@ -315,11 +331,9 @@ public class ScheduledReconnectionHandler implements Startable {
 
     }
 
-    public static final ImmutableList<String> QUEUES_TO_MONITOR = new ImmutableList.Builder<String>()
+    private static final ImmutableList<String> STATIC_QUEUES_TO_MONITOR = new ImmutableList.Builder<String>()
         .add("JamesMailQueue-workqueue-spool",
         "JamesMailQueue-workqueue-outgoing",
-        "mailboxEvent-workQueue-org.apache.james.events.GroupRegistrationHandlerGroup",
-        "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandlerGroup",
         "deleted-message-vault-work-queue",
         "openpaas-contacts-queue-add",
         "openpaas-contacts-queue-update",
@@ -334,20 +348,31 @@ public class ScheduledReconnectionHandler implements Startable {
     private final RabbitMQConfiguration configuration;
     private final SimpleConnectionPool connectionPool;
     private final ScheduledReconnectionHandlerConfiguration scheduledReconnectionHandlerConfiguration;
+    private final ImmutableList<String> queuesToMonitor;
     private Disposable disposable;
 
     @Inject
     public ScheduledReconnectionHandler(Set<SimpleConnectionPool.ReconnectionHandler> reconnectionHandlers,
                                         RabbitMQConfiguration configuration,
                                         SimpleConnectionPool connectionPool,
-                                        ScheduledReconnectionHandlerConfiguration scheduledReconnectionHandlerConfiguration) {
+                                        ScheduledReconnectionHandlerConfiguration scheduledReconnectionHandlerConfiguration,
+                                        @Named(Module.EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY) Set<String> eventBusGroupQueuesToMonitor) {
         this.reconnectionHandlers = reconnectionHandlers;
         this.mqManagementAPI = RabbitMQManagementAPI.from(configuration);
         this.configuration = configuration;
         this.connectionPool = connectionPool;
         this.scheduledReconnectionHandlerConfiguration = scheduledReconnectionHandlerConfiguration;
+        this.queuesToMonitor = ImmutableList.<String>builder()
+            .addAll(STATIC_QUEUES_TO_MONITOR)
+            .addAll(eventBusGroupQueuesToMonitor)
+            .build();
     }
-    
+
+    @VisibleForTesting
+    public ImmutableList<String> getQueuesToMonitor() {
+        return queuesToMonitor;
+    }
+
     public void start() {
         if (scheduledReconnectionHandlerConfiguration.enabled()) {
             disposable = Flux.interval(scheduledReconnectionHandlerConfiguration.interval())
@@ -376,7 +401,7 @@ public class ScheduledReconnectionHandler implements Startable {
     }
     
     public boolean restartNeeded() {
-        return QUEUES_TO_MONITOR.stream()
+        return queuesToMonitor.stream()
             .anyMatch(this::restartNeeded);
     }
 

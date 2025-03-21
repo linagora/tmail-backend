@@ -207,6 +207,15 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
     }
 
     @Test
+    void groupQueuesNameShouldRemainUnchanged() {
+        // to detect breaking change on Group queues name
+        assertThat(new NamingStrategy(new EventBusName("mailboxEvent"))
+            .workQueue(TmailGroupRegistrationHandler.GROUP)
+            .asString())
+            .isEqualTo("mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+    }
+
+    @Test
     void eventProcessingShouldNotCrashOnInvalidMessage() {
         EventCollector listener = new EventCollector();
         GroupA registeredGroup = new GroupA();
