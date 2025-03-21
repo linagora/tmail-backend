@@ -30,6 +30,7 @@ import java.util.Date;
 import jakarta.inject.Inject;
 
 import org.apache.james.filesystem.api.FileSystem;
+import org.apache.james.metrics.api.MetricFactory;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
@@ -40,6 +41,8 @@ import com.linagora.calendar.restapi.RestApiConfiguration;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class JwtSigner {
     public static class Factory {
@@ -60,37 +63,42 @@ public class JwtSigner {
         private final RestApiConfiguration configuration;
         private final Clock clock;
         private final FileSystem fileSystem;
+        private final MetricFactory metricFactory;
 
         @Inject
-        public Factory(RestApiConfiguration configuration,  Clock clock, FileSystem fileSystem) {
+        public Factory(RestApiConfiguration configuration, Clock clock, FileSystem fileSystem, MetricFactory metricFactory) {
             this.configuration = configuration;
             this.clock = clock;
             this.fileSystem = fileSystem;
+            this.metricFactory = metricFactory;
         }
 
         public JwtSigner instancaiate() throws Exception {
             File file = fileSystem.getFile(configuration.getJwtPrivatePath());
-            return new JwtSigner(clock, configuration.getJwtValidity(), loadPrivateKey(file.toPath()));
+            return new JwtSigner(clock, configuration.getJwtValidity(), loadPrivateKey(file.toPath()), metricFactory);
         }
     }
     
     private final Clock clock;
     private final Duration tokenValidity;
     private final Key key;
+    private final MetricFactory metricFactory;
 
-    public JwtSigner(Clock clock, Duration tokenValidity, Key key) {
+    public JwtSigner(Clock clock, Duration tokenValidity, Key key, MetricFactory metricFactory) {
         this.clock = clock;
         this.tokenValidity = tokenValidity;
         this.key = key;
+        this.metricFactory = metricFactory;
     }
 
-    public String generate(String sub) {
-        return Jwts.builder()
+    public Mono<String> generate(String sub) {
+        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("jwt-signer", Mono.fromCallable(() -> Jwts.builder()
             .setHeaderParam("typ", "JWT")
             .claim("sub", sub)
             .signWith(key, SignatureAlgorithm.RS256)
             .setIssuedAt(Date.from(clock.instant()))
             .setExpiration(Date.from(clock.instant().plus(tokenValidity)))
-            .compact();
+            .compact())))
+            .subscribeOn(Schedulers.parallel());
     }
 }

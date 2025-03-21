@@ -20,13 +20,12 @@ package com.linagora.calendar.restapi.routes;
 
 import java.util.stream.Stream;
 
-import jakarta.inject.Inject;
-
 import org.apache.james.jmap.Endpoint;
 import org.apache.james.jmap.JMAPRoute;
 import org.apache.james.jmap.JMAPRoutes;
 import org.apache.james.jmap.http.Authenticator;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.metrics.api.MetricFactory;
 
 import reactor.core.publisher.Mono;
 import reactor.netty.http.server.HttpServerRequest;
@@ -39,10 +38,11 @@ public abstract class CalendarRoute implements JMAPRoutes {
     abstract Mono<Void> handleRequest(HttpServerRequest request, HttpServerResponse response, MailboxSession session);
 
     private final Authenticator authenticator;
+    private final MetricFactory metricFactory;
 
-    @Inject
-    protected CalendarRoute(Authenticator authenticator) {
+    protected CalendarRoute(Authenticator authenticator, MetricFactory metricFactory) {
         this.authenticator = authenticator;
+        this.metricFactory = metricFactory;
     }
 
     @Override
@@ -51,7 +51,7 @@ public abstract class CalendarRoute implements JMAPRoutes {
             JMAPRoute.builder()
                 .endpoint(endpoint())
                 .action((req, res) -> authenticator.authenticate(req)
-                    .flatMap(session -> handleRequest(req, res, session)))
+                    .flatMap(session -> Mono.from(metricFactory.decoratePublisherWithTimerMetric(this.getClass().getSimpleName(), handleRequest(req, res, session)))))
                 .corsHeaders());
     }
 }

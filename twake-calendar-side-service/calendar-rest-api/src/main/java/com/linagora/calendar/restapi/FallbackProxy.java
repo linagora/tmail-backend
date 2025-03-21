@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 import jakarta.inject.Inject;
 
 import org.apache.james.jmap.http.Authenticator;
+import org.apache.james.metrics.api.MetricFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +34,6 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
@@ -44,14 +44,15 @@ public class FallbackProxy {
     private final Authenticator authenticator;
     private final RestApiConfiguration configuration;
     private final JwtSigner jwtSigner;
+    private final MetricFactory metricFactory;
 
     @Inject
-    public FallbackProxy(Authenticator authenticator, RestApiConfiguration configuration, JwtSigner jwtSigner) {
+    public FallbackProxy(Authenticator authenticator, RestApiConfiguration configuration, JwtSigner jwtSigner, MetricFactory metricFactory) {
         this.authenticator = authenticator;
         this.configuration = configuration;
         this.jwtSigner = jwtSigner;
+        this.metricFactory = metricFactory;
         this.client = createClient();
-
     }
 
     private HttpClient createClient() {
@@ -67,25 +68,27 @@ public class FallbackProxy {
         return request.receive().aggregate().asByteArray()
             .switchIfEmpty(Mono.just("".getBytes()))
             .flatMap(payload -> handleAuthIfNeeded(request)
-                .flatMap(headerTransformation -> client.headers(headers -> {
-                        headerTransformation.accept(headers);
-                        headers.add(HttpHeaderNames.CONTENT_TYPE, "application/json");
-                    })
-                    .request(request.method())
-                    .uri(configuration.getOpenpaasBackendURL().toString() + request.uri())
-                    .send((req, out) -> out.sendByteArray(Mono.just(payload)))
-                    .response((res, in) -> {
-                        response.status(res.status());
-                        response.headers(res.responseHeaders());
-                        return response.sendByteArray(in.asByteArray());
-                    })
-                    .then()));
+                .flatMap(headerTransformation ->
+                    Mono.from(metricFactory.decoratePublisherWithTimerMetric("fallbackProxy",
+                            client.headers(headers -> {
+                                    headerTransformation.accept(headers);
+                                    headers.add(HttpHeaderNames.CONTENT_TYPE, "application/json");
+                                })
+                                .request(request.method())
+                                .uri(configuration.getOpenpaasBackendURL().toString() + request.uri())
+                                .send((req, out) -> out.sendByteArray(Mono.just(payload)))
+                                .response((res, in) -> {
+                                    response.status(res.status());
+                                    response.headers(res.responseHeaders());
+                                    return response.sendByteArray(in.asByteArray());
+                                })))
+                        .then()));
     }
 
     private Mono<Consumer<HttpHeaders>> handleAuthIfNeeded(HttpServerRequest request) {
         if (request.requestHeaders().contains(HttpHeaderNames.AUTHORIZATION)) {
             return authenticator.authenticate(request)
-                .flatMap(session -> Mono.fromCallable(() -> jwtSigner.generate(session.getUser().asString())).subscribeOn(Schedulers.parallel()))
+                .flatMap(session -> jwtSigner.generate(session.getUser().asString()))
                 .map(token -> headers -> headers.add(HttpHeaderNames.AUTHORIZATION, "Bearer " + token));
         }
         return Mono.just(headers -> {

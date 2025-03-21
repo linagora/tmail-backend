@@ -23,6 +23,7 @@ import jakarta.inject.Inject;
 import org.apache.james.jmap.Endpoint;
 import org.apache.james.jmap.http.Authenticator;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.metrics.api.MetricFactory;
 
 import com.linagora.calendar.restapi.RestApiConfiguration;
 
@@ -37,9 +38,8 @@ public class LogoRoute extends CalendarRoute {
     private final RestApiConfiguration configuration;
 
     @Inject
-    public LogoRoute(RestApiConfiguration configuration,
-                     Authenticator authenticator) {
-        super(authenticator);
+    public LogoRoute(RestApiConfiguration configuration, Authenticator authenticator, MetricFactory metricFactory) {
+        super(authenticator, metricFactory);
         this.configuration = configuration;
     }
 
