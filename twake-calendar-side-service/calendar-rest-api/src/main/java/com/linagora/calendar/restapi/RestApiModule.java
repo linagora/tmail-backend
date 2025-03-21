@@ -19,13 +19,15 @@
 package com.linagora.calendar.restapi;
 
 import java.io.FileNotFoundException;
+import java.net.URL;
 import java.util.Set;
+
+import jakarta.inject.Named;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.jmap.JMAPRoutes;
 import org.apache.james.jmap.http.AuthenticationStrategy;
 import org.apache.james.jmap.http.Authenticator;
-import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.InitializationOperation;
@@ -87,8 +89,9 @@ public class RestApiModule extends AbstractModule {
     }
 
     @Provides
-    IntrospectionEndpoint provideIntrospectionEndpoint(RestApiConfiguration configuration) {
-        return new IntrospectionEndpoint(configuration.getOidcIntrospectionUrl(), configuration.getOidcIntrospectionAuth());
+    @Named("userInfo")
+    URL provideIntrospectionEndpoint(RestApiConfiguration configuration) {
+        return configuration.getOidcIntrospectionUrl();
     }
 
     @Provides
