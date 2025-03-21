@@ -68,6 +68,8 @@ import reactor.rabbitmq.Sender;
  * <p>
  * @see OpenPaasAmqpForwardAttributeConfig
  */
+
+@Deprecated
 public class OpenPaasAmqpForwardAttribute extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasAmqpForwardAttribute.class);
 

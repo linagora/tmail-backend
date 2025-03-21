@@ -77,7 +77,7 @@
                 <attribute>icalendar2</attribute>
                 <onMailetException>ignore</onMailetException>
             </mailet>
-            <mailet match="All" class="com.linagora.tmail.mailet.CalDavCollect">
+            <mailet match="com.linagora.tmail.mailet.IsOpenPaasAndDavSetup" class="com.linagora.tmail.mailet.CalDavCollect">
                 <source>icalendar2</source>
             </mailet>
             <!-- End of ICAL pipeline -->

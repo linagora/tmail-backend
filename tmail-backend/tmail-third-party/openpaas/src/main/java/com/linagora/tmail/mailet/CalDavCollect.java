@@ -22,6 +22,7 @@ import static com.linagora.tmail.dav.DavClient.CALENDAR_PATH;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -31,6 +32,7 @@ import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeUtils;
 import org.apache.mailet.AttributeValue;
 import org.apache.mailet.Mail;
+import org.apache.mailet.MailetException;
 import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,30 +50,52 @@ import net.fortuna.ical4j.model.property.Uid;
 import reactor.core.publisher.Mono;
 
 public class CalDavCollect extends GenericMailet {
+    public static final class CalendarClients {
+        @com.google.inject.Inject(optional = true)
+        DavClient davClient;
+
+        @com.google.inject.Inject(optional = true)
+        DavUserProvider davUserProvider;
+
+        public Optional<DavClient> getDavClient() {
+            return Optional.ofNullable(davClient);
+        }
+
+        public Optional<DavUserProvider> getDavUserProvider() {
+            return Optional.ofNullable(davUserProvider);
+        }
+    }
+
     public static final String SOURCE_ATTRIBUTE_NAME = "source";
     public static final String DEFAULT_SOURCE_ATTRIBUTE_NAME = "calendars";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CalDavCollect.class);
     private static final Class<Map<String, AttributeValue<Calendar>>> MAP_STRING_CALENDAR_CLASS = (Class<Map<String, AttributeValue<Calendar>>>) (Object) Map.class;
 
-    private final DavClient davClient;
-    private final DavUserProvider davUserProvider;
-
+    private final CalendarClients calendarClients;
+    private DavClient davClient;
+    private DavUserProvider davUserProvider;
     private AttributeName sourceAttributeName;
 
     @Inject
-    public CalDavCollect(DavClient davClient, DavUserProvider davUserProvider) {
-        this.davClient = davClient;
-        this.davUserProvider = davUserProvider;
+    public CalDavCollect(CalendarClients calendarClients) {
+        this.calendarClients = calendarClients;
     }
 
-    @Override
-    public void init() throws MessagingException {
+    public void initialize() throws MessagingException {
         sourceAttributeName = AttributeName.of(getInitParameter(SOURCE_ATTRIBUTE_NAME, DEFAULT_SOURCE_ATTRIBUTE_NAME));
+        davClient = calendarClients.getDavClient().orElseThrow(() ->
+            new MailetException(
+                "Failed to initialize mailet. OpenPaasModule is required to this mailet to function correctly."));
+        davUserProvider = calendarClients.getDavUserProvider().orElseThrow(() ->
+            new MailetException(
+                "Failed to initialize mailet. OpenPaasModule is required to this mailet to function correctly."));
     }
 
     @Override
     public void service(Mail mail) throws MessagingException {
+        initialize();
+
         try {
             AttributeUtils.getValueAndCastFromMail(mail, sourceAttributeName, MAP_STRING_CALENDAR_CLASS)
                 .ifPresent(calendars -> calendars.values()

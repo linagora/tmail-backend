@@ -28,21 +28,18 @@ import org.apache.james.core.MailAddress;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMatcher;
 
-@Deprecated
-public class IsOpenPaasRabbitMqSetup extends GenericMatcher {
+public class IsOpenPaasAndDavSetup extends GenericMatcher {
 
-    private final OpenPaasAmqpForwardAttribute.OpenPaasRabbitMQChannelPoolHolder
-        openPaasRabbitMQChannelPoolHolder;
+    private final CalDavCollect.CalendarClients calendarClients;
 
     @Inject
-    public IsOpenPaasRabbitMqSetup(
-        OpenPaasAmqpForwardAttribute.OpenPaasRabbitMQChannelPoolHolder openPaasRabbitMQChannelPoolHolder) {
-        this.openPaasRabbitMQChannelPoolHolder = openPaasRabbitMQChannelPoolHolder;
+    public IsOpenPaasAndDavSetup(CalDavCollect.CalendarClients calendarClients) {
+        this.calendarClients = calendarClients;
     }
 
     @Override
     public Collection<MailAddress> match(Mail mail) throws MessagingException {
-        if (openPaasRabbitMQChannelPoolHolder.get().isPresent()) {
+        if (calendarClients.getDavClient().isPresent()) {
             return mail.getRecipients();
         }
         return Collections.emptyList();
