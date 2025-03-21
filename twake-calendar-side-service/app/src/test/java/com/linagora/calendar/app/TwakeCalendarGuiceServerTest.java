@@ -26,12 +26,11 @@ import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
-import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 import org.apache.james.util.Port;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +40,7 @@ import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 
+import com.google.inject.name.Names;
 import com.linagora.calendar.app.modules.CalendarDataProbe;
 import com.linagora.calendar.restapi.RestApiServerProbe;
 import io.restassured.RestAssured;
@@ -51,14 +51,13 @@ class TwakeCalendarGuiceServerTest  {
     public static final Domain DOMAIN = Domain.of("linagora.com");
     public static final String PASSWORD = "secret";
     public static final Username USERNAME = Username.of("btellier@linagora.com");
-    private static final String INTROSPECTION_TOKEN_URI_PATH = "/token/introspect";
+    private static final String USERINFO_TOKEN_URI_PATH = "/token/introspect";
 
     private static ClientAndServer mockServer = ClientAndServer.startClientAndServer(0);
 
-    private static IntrospectionEndpoint getIntrospectionTokenEndpoint() {
+    private static URL getUserInfoTokenEndpoint() {
         try {
-            return new IntrospectionEndpoint(new URI(String.format("http://127.0.0.1:%s%s", mockServer.getLocalPort(), INTROSPECTION_TOKEN_URI_PATH)).toURL(),
-                Optional.empty());
+            return new URI(String.format("http://127.0.0.1:%s%s", mockServer.getLocalPort(), USERINFO_TOKEN_URI_PATH)).toURL();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -68,7 +67,7 @@ class TwakeCalendarGuiceServerTest  {
     static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(TwakeCalendarConfiguration.builder()
         .configurationFromClasspath()
         .userChoice(TwakeCalendarConfiguration.UserChoice.MEMORY),
-        binder -> binder.bind(IntrospectionEndpoint.class).toProvider(TwakeCalendarGuiceServerTest::getIntrospectionTokenEndpoint));
+        binder -> binder.bind(URL.class).annotatedWith(Names.named("userInfo")).toProvider(TwakeCalendarGuiceServerTest::getUserInfoTokenEndpoint));
 
     @BeforeEach
     void setUp(TwakeCalendarGuiceServer server) {
@@ -292,7 +291,7 @@ class TwakeCalendarGuiceServerTest  {
 
     private void updateMockerServerSpecifications(String response, int statusResponse) {
         mockServer
-            .when(HttpRequest.request().withPath(INTROSPECTION_TOKEN_URI_PATH))
+            .when(HttpRequest.request().withPath(USERINFO_TOKEN_URI_PATH))
             .respond(HttpResponse.response().withStatusCode(statusResponse)
                 .withHeader("Content-Type", "application/json")
                 .withBody(response, StandardCharsets.UTF_8));
