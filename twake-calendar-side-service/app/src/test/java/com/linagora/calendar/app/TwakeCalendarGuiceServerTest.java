@@ -157,7 +157,7 @@ class TwakeCalendarGuiceServerTest  {
         String body = given()
             .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
             .when()
-            .get("/api/theme/anything")
+            .get("/api/themes/anything")
         .then()
             .statusCode(200)
             .extract()
@@ -202,7 +202,7 @@ class TwakeCalendarGuiceServerTest  {
         given()
             .header("Authorization", "Bearer " + unquoted)
         .when()
-            .get("/api/theme/anything")
+            .get("/api/themes/anything")
         .then()
             .statusCode(200);
     }
@@ -227,7 +227,7 @@ class TwakeCalendarGuiceServerTest  {
         given()
             .header("Authorization", "Bearer oidc_opac_token")
         .when()
-            .get("/api/theme/anything")
+            .get("/api/themes/anything")
         .then()
             .statusCode(200);
     }
@@ -285,6 +285,7 @@ class TwakeCalendarGuiceServerTest  {
 
         String body = given()
             .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("[{\"name\":\"core\",\"keys\":[\"davserver\"]}]")
         .when()
             .post("/api/configurations")
         .then()
@@ -294,13 +295,17 @@ class TwakeCalendarGuiceServerTest  {
             .asString();
 
         assertThatJson(body).isEqualTo("""
-    [{"name":"core","configurations":[
-      {"name":"davserver",
+    [
+    {"name":"core","configurations":[
+     {"name":"davserver",
        "value":{
          "backend":{"url":"https://dav.linagora.com"},
-         "frontend":{"url":"https://dav.linagora.com"
+         "frontend":{"url":"https://dav.linagora.com"}
+        }
        }
-    }}]}]""");
+      ]
+     }
+    ]""");
     }
 
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {
