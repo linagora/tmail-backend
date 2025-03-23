@@ -308,6 +308,25 @@ class TwakeCalendarGuiceServerTest  {
     ]""");
     }
 
+    @Test
+    void shouldServeHomePageConfiguration(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("[{\"name\":\"core\",\"keys\":[\"homePage\"]}]")
+        .when()
+            .post("/api/configurations")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+    [{"name":"core","configurations":[{"name":"homePage","value": null}]}]""");
+    }
+
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {
         RestAssured.requestSpecification =  new RequestSpecBuilder()
             .setContentType(ContentType.JSON)
