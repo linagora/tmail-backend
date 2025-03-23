@@ -48,6 +48,7 @@ public class RestApiConfiguration {
         private Optional<Duration> jwtValidity = Optional.empty();
         private Optional<URL> calendarSpaUrl = Optional.empty();
         private Optional<URL> openpaasBackendURL = Optional.empty();
+        private Optional<URL> davdURL = Optional.empty();
         private Optional<Boolean> openpaasBackendTrustAllCerts = Optional.empty();
         private Optional<URL> oidcUserInfoUrl = Optional.empty();
         private Optional<String> oidcIntrospectionClaim = Optional.empty();
@@ -101,6 +102,11 @@ public class RestApiConfiguration {
             return this;
         }
 
+        public Builder davURL(Optional<URL> url) {
+            this.davdURL = url;
+            return this;
+        }
+
         public Builder openpaasBackendTrustAllCerts(Optional<Boolean> openpaasBackendTrustAllCerts) {
             this.openpaasBackendTrustAllCerts = openpaasBackendTrustAllCerts;
             return this;
@@ -121,6 +127,7 @@ public class RestApiConfiguration {
                 return new RestApiConfiguration(port,
                     calendarSpaUrl.orElse(new URL("https://e-calendrier.avocat.fr")),
                     openpaasBackendURL.orElse(new URL("https://openpaas.linagora.com")),
+                    davdURL.orElse(new URL("https://dav.linagora.com")),
                     openpaasBackendTrustAllCerts.orElse(false),
                     jwtPrivatePath.orElse("classpath://jwt_privatekey"),
                     jwtPublicPath.orElse(ImmutableList.of("classpath://jwt_publickey")),
@@ -145,6 +152,8 @@ public class RestApiConfiguration {
             .map(Throwing.function(URL::new));
         Optional<URL> openpaasBackendURL = Optional.ofNullable(configuration.getString("openpaas.backend.url", null))
             .map(Throwing.function(URL::new));
+        Optional<URL> davURL = Optional.ofNullable(configuration.getString("dav.url", "https://dav.linagora.com"))
+            .map(Throwing.function(URL::new));
         Optional<Boolean> openpaasBackendTrustAllCerts = Optional.ofNullable(configuration.getBoolean("openpaas.backend.trust.all.certificates", null));
         Optional<String> jwtPrivateKey = Optional.ofNullable(configuration.getString("jwt.key.private", null));
         Optional<List<String>> jwtPublicKey = Optional.ofNullable(configuration.getString("jwt.key.public", null))
@@ -159,6 +168,7 @@ public class RestApiConfiguration {
             .port(port)
             .calendarSpaUrl(calendarSpaUrl)
             .openpaasBackendURL(openpaasBackendURL)
+            .davURL(davURL)
             .openpaasBackendTrustAllCerts(openpaasBackendTrustAllCerts)
             .jwtPublicPath(jwtPublicKey)
             .jwtPrivatePath(jwtPrivateKey)
@@ -171,6 +181,7 @@ public class RestApiConfiguration {
     private final Optional<Port> port;
     private final URL calendarSpaUrl;
     private final URL openpaasBackendURL;
+    private final URL davURL;
     private final boolean openpaasBackendTrustAllCerts;
     private final String jwtPrivatePath;
     private final List<String> jwtPublicPath;
@@ -179,12 +190,13 @@ public class RestApiConfiguration {
     private final String oidcClaim;
 
     @VisibleForTesting
-    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL, boolean openpaasBackendTrustAllCerts,
+    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL, URL davURL, boolean openpaasBackendTrustAllCerts,
                          String jwtPrivatePath, List<String> jwtPublicPath, Duration jwtValidity, URL oidcIntrospectionUrl,
                          String oidcIntrospectionClaim) {
         this.port = port;
         this.calendarSpaUrl = clandarSpaUrl;
         this.openpaasBackendURL = openpaasBackendURL;
+        this.davURL = davURL;
         this.openpaasBackendTrustAllCerts = openpaasBackendTrustAllCerts;
         this.jwtPrivatePath = jwtPrivatePath;
         this.jwtPublicPath = jwtPublicPath;
@@ -227,5 +239,9 @@ public class RestApiConfiguration {
 
     public String getOidcClaim() {
         return oidcClaim;
+    }
+
+    public URL getDavURL() {
+        return davURL;
     }
 }

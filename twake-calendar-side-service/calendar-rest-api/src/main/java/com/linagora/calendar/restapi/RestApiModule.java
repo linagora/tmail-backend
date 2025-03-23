@@ -40,13 +40,16 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.calendar.restapi.api.ConfigurationEntryResolver;
 import com.linagora.calendar.restapi.auth.BasicAuthenticationStrategy;
 import com.linagora.calendar.restapi.auth.JwtAuthenticationStrategy;
 import com.linagora.calendar.restapi.auth.OidcAuthenticationStrategy;
+import com.linagora.calendar.restapi.routes.ConfigurationRoute;
 import com.linagora.calendar.restapi.routes.JwtRoutes;
 import com.linagora.calendar.restapi.routes.JwtSigner;
 import com.linagora.calendar.restapi.routes.LogoRoute;
 import com.linagora.calendar.restapi.routes.ThemeRoute;
+import com.linagora.calendar.restapi.routes.configuration.DavConfigurationEntryResolver;
 
 public class RestApiModule extends AbstractModule {
     @Override
@@ -58,11 +61,15 @@ public class RestApiModule extends AbstractModule {
         routes.addBinding().to(ThemeRoute.class);
         routes.addBinding().to(LogoRoute.class);
         routes.addBinding().to(JwtRoutes.class);
+        routes.addBinding().to(ConfigurationRoute.class);
 
         Multibinder<AuthenticationStrategy> authenticationStrategies = Multibinder.newSetBinder(binder(), AuthenticationStrategy.class);
         authenticationStrategies.addBinding().to(BasicAuthenticationStrategy.class);
         authenticationStrategies.addBinding().to(JwtAuthenticationStrategy.class);
         authenticationStrategies.addBinding().to(OidcAuthenticationStrategy.class);
+
+        Multibinder<ConfigurationEntryResolver> configurationEntryResolvers = Multibinder.newSetBinder(binder(), ConfigurationEntryResolver.class);
+        configurationEntryResolvers.addBinding().to(DavConfigurationEntryResolver.class);
     }
 
     @Provides
