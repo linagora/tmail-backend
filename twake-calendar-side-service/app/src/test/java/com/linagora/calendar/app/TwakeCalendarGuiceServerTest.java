@@ -279,6 +279,30 @@ class TwakeCalendarGuiceServerTest  {
             .statusCode(401);
     }
 
+    @Test
+    void shouldServeDavConfiguration(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+        .when()
+            .post("/api/configurations")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+    [{"name":"core","configurations":[
+      {"name":"davserver",
+       "value":{
+         "backend":{"url":"https://dav.linagora.com"},
+         "frontend":{"url":"https://dav.linagora.com"
+       }
+    }}]}]""");
+    }
+
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {
         RestAssured.requestSpecification =  new RequestSpecBuilder()
             .setContentType(ContentType.JSON)
