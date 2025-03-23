@@ -40,7 +40,7 @@ public class ThemeRoute extends CalendarRoute {
 
     @Override
     Endpoint endpoint() {
-        return new Endpoint(HttpMethod.GET, "/api/theme/{domainId}");
+        return new Endpoint(HttpMethod.GET, "/api/themes/{domainId}");
     }
 
     @Override
