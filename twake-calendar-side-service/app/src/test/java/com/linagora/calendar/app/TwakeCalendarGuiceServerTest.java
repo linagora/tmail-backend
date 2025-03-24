@@ -327,6 +327,25 @@ class TwakeCalendarGuiceServerTest  {
     [{"name":"core","configurations":[{"name":"homePage","value": null}]}]""");
     }
 
+    @Test
+    void shouldServeAllowDomainAdminToManageUserEmailsConfiguration(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("[{\"name\":\"core\",\"keys\":[\"allowDomainAdminToManageUserEmails\"]}]")
+        .when()
+            .post("/api/configurations")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+    [{"name":"core","configurations":[{"name":"allowDomainAdminToManageUserEmails","value": null}]}]""");
+    }
+
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {
         RestAssured.requestSpecification =  new RequestSpecBuilder()
             .setContentType(ContentType.JSON)
