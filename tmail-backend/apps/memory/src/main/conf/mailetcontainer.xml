@@ -92,7 +92,18 @@
             <mailet match="All" class="Sieve"/>
             <mailet match="All" class="AddDeliveredToHeader"/>
             <mailet match="All" class="org.apache.james.jmap.mailet.filter.JMAPFiltering"/>
-            <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery"/>
+            <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
+        <consume>false</consume>
+    </mailet>
+
+    <!-- Put the AIBotMailet after LocalDelivery so the GPT reply would come after the asking question -->
+    <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@localhost"
+            class="com.linagora.tmail.mailet.AIBotMailet">
+        <apiKey>demo</apiKey>
+        <botAddress>gpt@localhost</botAddress>
+        <model>lucie-7b-instruct-v1.1</model>
+        <baseURL>https://chat.lucie.exemple.com/v1</baseURL>
+    </mailet>
         </processor>
 
         <processor state="relay" enableJmx="true">
