@@ -39,6 +39,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.CalendarEventSupportCapabilityContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.openpaas.OpenpaasTestUtils;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSupportCapabilityContract {
@@ -59,7 +60,7 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
 
         guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
-                .configurationFromClasspath()
+                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir))
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .openPaasModuleChooserConfiguration(openPaasModuleChooserConfigurationPair.getKey())
