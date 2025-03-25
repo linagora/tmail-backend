@@ -346,6 +346,20 @@ class TwakeCalendarGuiceServerTest  {
     [{"name":"core","configurations":[{"name":"allowDomainAdminToManageUserEmails","value": null}]}]""");
     }
 
+    @Test
+    void shouldServeAvatars(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD).log().all()
+            .queryParam("email", "btellier@linagora.com")
+        .when()
+            .get("/api/avatars")
+        .then()
+            .statusCode(200)
+            .header("Content-Type", "image/png");
+    }
+
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {
         RestAssured.requestSpecification =  new RequestSpecBuilder()
             .setContentType(ContentType.JSON)
