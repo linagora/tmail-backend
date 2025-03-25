@@ -25,14 +25,16 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 import javax.imageio.ImageIO;
 
 import jakarta.inject.Inject;
 
 import org.apache.james.jmap.Endpoint;
-import org.apache.james.jmap.http.Authenticator;
-import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.jmap.JMAPRoute;
+import org.apache.james.jmap.JMAPRoutes;
 import org.apache.james.metrics.api.MetricFactory;
 
 import com.google.common.base.Preconditions;
@@ -45,28 +47,40 @@ import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
-public class AvatarRoute extends CalendarRoute {
+public class AvatarRoute implements JMAPRoutes {
+    private final MetricFactory metricFactory;
+
     @Inject
-    public AvatarRoute(Authenticator authenticator, MetricFactory metricFactory) {
-        super(authenticator, metricFactory);
+    public AvatarRoute(MetricFactory metricFactory) {
+        this.metricFactory = metricFactory;
     }
 
-    @Override
     Endpoint endpoint() {
         return Endpoint.ofFixedPath(HttpMethod.GET, "/api/avatars");
     }
 
     @Override
-    Mono<Void> handleRequest(HttpServerRequest request, HttpServerResponse response, MailboxSession session) {
+    public Stream<JMAPRoute> routes() {
+        return Stream.of(
+            JMAPRoute.builder()
+                .endpoint(endpoint())
+                .action((req, res) -> Mono.from(metricFactory.decoratePublisherWithTimerMetric(this.getClass().getSimpleName(), generateAvatar(req, res))))
+                .corsHeaders());
+    }
+
+    Mono<Void> generateAvatar(HttpServerRequest request, HttpServerResponse response) {
         String email = extractEmail(request);
         Preconditions.checkArgument(!email.isEmpty(), "Empty email ");
 
-        return Mono.fromCallable(() -> response
-            .status(200)
-            .header(HttpHeaderNames.CONTENT_TYPE, "image/png")
-            .header("Cache-Control", "max-age=1800, public")
-            .sendByteArray(Mono.just(generateLetterImage(email.charAt(0))))).subscribeOn(Schedulers.boundedElastic())
-            .then();
+        return Mono.fromCallable(() ->  generateLetterImage(email.toUpperCase(Locale.US).charAt(0)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .flatMap(data -> response
+                    .status(200)
+                    .header(HttpHeaderNames.CONTENT_TYPE, "image/png")
+                    .header("Content-Length", String.valueOf(data.length))
+                    .header("Cache-Control", "max-age=1800, public")
+                    .sendByteArray(Mono.just(data))
+                .then());
     }
 
     private static String extractEmail(HttpServerRequest request) {
@@ -92,7 +106,8 @@ public class AvatarRoute extends CalendarRoute {
         g.fillRect(0, 0, width, height);
 
         // Set font and color for the letter
-        g.setFont(new Font("Arial", Font.BOLD, 36));
+        Font font = new Font(Font.SANS_SERIF, Font.BOLD, 36);
+        g.setFont(font);
         g.setColor(Color.WHITE);
 
         // Get font metrics to center the text

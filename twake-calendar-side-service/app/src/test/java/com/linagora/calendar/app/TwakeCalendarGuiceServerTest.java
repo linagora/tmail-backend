@@ -351,7 +351,6 @@ class TwakeCalendarGuiceServerTest  {
         targetRestAPI(server);
 
         given()
-            .auth().preemptive().basic(USERNAME.asString(), PASSWORD).log().all()
             .queryParam("email", "btellier@linagora.com")
         .when()
             .get("/api/avatars")
