@@ -19,6 +19,7 @@ Sample `mailetcontainer.xml` configuration:
         <apiKey>demo</apiKey>
         <botAddress>gpt@localhost</botAddress>
         <model>lucie-7b-instruct-v1.1</model>
+        <baseURL>https://chat.lucie.exemple.com/v1</baseURL>
     </mailet>
 </processor>
 ```
