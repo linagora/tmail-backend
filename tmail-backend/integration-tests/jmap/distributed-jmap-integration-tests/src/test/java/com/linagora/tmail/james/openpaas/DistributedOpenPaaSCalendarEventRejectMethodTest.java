@@ -59,7 +59,7 @@ public class DistributedOpenPaaSCalendarEventRejectMethodTest extends LinagoraCa
         testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
-            .configurationFromClasspath()
+            .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir))
             .blobStore(BlobStoreConfiguration.builder()
                 .s3()
                 .noSecondaryS3BlobStore()

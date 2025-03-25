@@ -22,16 +22,12 @@ import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QU
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.net.URI;
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.inject.Singleton;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
@@ -50,6 +46,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraCalendarEventReplyWithAMQPWorkflowContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.openpaas.OpenpaasTestUtils;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.rabbitmq.client.BuiltinExchangeType;
 
@@ -62,32 +59,18 @@ public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCal
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(
-        tmpDir -> {
-            // Copy all resources to the james configuration folder
-            Path confPath = tmpDir.toPath().resolve("conf");
-            Throwing.runnable(() -> FileUtils.copyDirectory(new File(ClassLoader.getSystemClassLoader().getResource(".").getFile()),
-                confPath.toFile())).run();
-
-            // Write content of mailetcontainer_with_amqpforward_openpass.xml to mailetcontainer.xml.
-            Throwing.runnable(() ->
-                FileUtils.copyToFile(
-                    new FileInputStream(confPath.resolve("mailetcontainer_with_amqpforward_openpass.xml").toFile()),
-                    confPath.resolve("mailetcontainer.xml").toFile()
-                )).run();
-
-            return MemoryConfiguration.builder()
-                .workingDirectory(tmpDir)
-                .usersRepository(DEFAULT)
-                .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-                .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_CONSUMER)
-                .build();
-        })
+        tmpDir -> MemoryConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir))
+            .usersRepository(DEFAULT)
+            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_CONSUMER)
+            .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(
                 new LinagoraTestJMAPServerModule(),
                 new DelegationProbeModule(),
-                provideOpenPaasConfigurationModule(amqpExtension.getAmqpUri()))
-        )
+                provideOpenPaasConfigurationModule(amqpExtension.getAmqpUri())))
         .build();
 
     @Override
