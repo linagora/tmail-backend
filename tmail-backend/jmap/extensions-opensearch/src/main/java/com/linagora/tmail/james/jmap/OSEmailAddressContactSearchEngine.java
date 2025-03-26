@@ -95,12 +95,12 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         SearchRequest checkDuplicatedContactOnDomainIndexRequest = new SearchRequest.Builder()
             .index(configuration.getDomainContactReadAliasName().getValue())
             .query(QueryBuilders.bool()
-                .must(QueryBuilders.multiMatch().fields(EMAIL).query(fields.address().asString()).build()._toQuery())
+                .must(QueryBuilders.multiMatch().fields(EMAIL).query(fields.address().asString()).build().toQuery())
                 .should(QueryBuilders.term().field(DOMAIN).value(new FieldValue.Builder().stringValue(Username.of(accountId.getIdentifier()).getDomainPart()
                     .map(Domain::asString)
-                    .orElse("")).build()).build()._toQuery())
+                    .orElse("")).build()).build().toQuery())
                 .minimumShouldMatch("1")
-                .build()._toQuery())
+                .build().toQuery())
             .build();
 
         return Throwing.supplier(() -> client.search(checkDuplicatedContactOnDomainIndexRequest)).sneakyThrow()
@@ -169,22 +169,22 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .map(mailPart -> QueryBuilders.match()
                 .field((EMAIL))
                 .query(new FieldValue.Builder().stringValue(part).build())
-                .build()._toQuery())
+                .build().toQuery())
             .orElse(QueryBuilders.multiMatch().fields(ALL_SEARCH_FIELDS)
-                .query(part).build()._toQuery());
+                .query(part).build().toQuery());
 
         return QueryBuilders.bool()
             .must(partQuery)
             .should(QueryBuilders.term().field(ACCOUNT_ID)
                 .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())
-                .build()._toQuery())
+                .build().toQuery())
             .should(QueryBuilders.term().field(DOMAIN)
                 .value(new FieldValue.Builder().stringValue(Username.of(accountId.getIdentifier()).getDomainPart()
                     .map(Domain::asString)
                     .orElse("")).build())
-                .build()._toQuery())
+                .build().toQuery())
             .minimumShouldMatch("1")
-            .build()._toQuery();
+            .build().toQuery();
     }
 
     @Override
@@ -193,10 +193,10 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .index(configuration.getUserContactReadAliasName().getValue())
             .scroll(TIMEOUT)
             .query(QueryBuilders.bool()
-                .should(QueryBuilders.term().field(ACCOUNT_ID).value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build()).build()._toQuery())
+                .should(QueryBuilders.term().field(ACCOUNT_ID).value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build()).build().toQuery())
                 .minimumShouldMatch("1")
                 .build()
-                ._toQuery())
+                .toQuery())
             .build();
 
         return new ScrolledSearch(client, request)
@@ -210,10 +210,10 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .index(configuration.getDomainContactReadAliasName().getValue())
             .scroll(TIMEOUT)
             .query(QueryBuilders.bool()
-                .should(QueryBuilders.term().field(DOMAIN).value(new FieldValue.Builder().stringValue(domain.asString()).build()).build()._toQuery())
+                .should(QueryBuilders.term().field(DOMAIN).value(new FieldValue.Builder().stringValue(domain.asString()).build()).build().toQuery())
                 .minimumShouldMatch("1")
                 .build()
-                ._toQuery())
+                .toQuery())
             .build();
 
         return new ScrolledSearch(client, request)
@@ -226,7 +226,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         SearchRequest request = new SearchRequest.Builder()
             .index(configuration.getDomainContactReadAliasName().getValue())
             .scroll(TIMEOUT)
-            .query(QueryBuilders.matchAll().build()._toQuery())
+            .query(QueryBuilders.matchAll().build().toQuery())
             .build();
 
         return new ScrolledSearch(client, request)

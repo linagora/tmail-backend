@@ -91,9 +91,9 @@ public class OSEmailAddressContactSearchTest implements EmailAddressContactSearc
                 .field((matchQuery.field()))
                 .query(new FieldValue.Builder().stringValue(matchQuery.value()).build())
                 .build()
-                ._toQuery();
+                .toQuery();
         } else {
-            return QueryBuilders.matchAll().build()._toQuery();
+            return QueryBuilders.matchAll().build().toQuery();
         }
     }
 
