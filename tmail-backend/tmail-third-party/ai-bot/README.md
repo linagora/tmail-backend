@@ -29,27 +29,21 @@ To start the AiBot [in memory], follow the steps below:
 
 ###  Clean Install
 
-Run the following Maven command to perform a clean install, you can skip tests:
+Run the following Maven command to compile the extension JAR:
+
 
 ```bash
-mvn clean install -DskipTests --am --pl :memory
+mvn clean install -DskipTests --am --pl :ai-bot
 ```
 
 To run AiBot in memory using Docker, use the following command:
 
 ```bash
 docker run \
-  --mount type=bind,source="/path/to/jwt_publickey",target="/root/conf/jwt_publickey" \
-  --mount type=bind,source="/path/to/jwt_privatekey",target="/root/conf/jwt_privatekey" \
-  --volume "/path/to/extensions-jars:/root/extensions-jars" \
-  linagora/tmail-backend-memory
+  --mount type=bind,source="sample_conf/jwt_publickey",target="/root/conf/jwt_publickey" \
+  --mount type=bind,source="sample_conf/jwt_privatekey",target="/root/conf/jwt_privatekey" \
+  --mount type=bind,source="sample_conf/mailetcontainer.xml",target="/root/conf/mailetcontainer.xml" \
+  --volume "target/xyz.jar:/root/extensions-jars/xyz.jar" \
+  linagora/tmail-backend:memory-branch-master
 ```
 
-**Replace Paths**
-
-
-/path/to/jwt_publickey: Replace with the actual path to your JWT public key file.
-
-/path/to/jwt_privatekey: Replace with the actual path to your JWT private key file.
-
-/path/to/extensions-jars: Replace with the path to your extensions jars directory.
