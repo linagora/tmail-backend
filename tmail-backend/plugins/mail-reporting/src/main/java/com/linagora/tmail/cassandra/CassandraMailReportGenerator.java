@@ -31,7 +31,7 @@ import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.backends.cassandra.init.CassandraTableManager;
 import org.apache.james.backends.cassandra.init.CassandraTypesProvider;
 import org.apache.james.backends.cassandra.init.configuration.JamesExecutionProfiles;
@@ -65,7 +65,7 @@ public class CassandraMailReportGenerator implements MailReportGenerator, UserDe
     public static final CqlIdentifier DATE = CqlIdentifier.fromCql("date");
     public static final CqlIdentifier SIZE = CqlIdentifier.fromCql("size");
     public static final int TTL = (int) DurationParser.parse(System.getProperty("mu.report.retention", "365d")).getSeconds();
-    public static final CassandraModule MODULE = CassandraModule.builder()
+    public static final CassandraDataDefinition MODULE = CassandraDataDefinition.builder()
         .table(TABLE_NAME)
         .comment("MU sent and received mail audit trail")
         .options(options -> options.withGcGraceSeconds(0))

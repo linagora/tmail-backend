@@ -18,8 +18,7 @@
 
 package com.linagora.tmail.james.jmap.publicAsset
 
-import java.time.Instant
-import java.util.{Optional, UUID}
+import java.util.UUID
 
 import com.datastax.oss.driver.api.core.`type`.DataTypes
 import com.datastax.oss.driver.api.core.`type`.DataTypes.{BIGINT, TEXT, frozenSetOf, listOf}
@@ -31,7 +30,7 @@ import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.james.jmap.publicAsset.CassandraPublicAssetTable.{ASSET_ID, BLOB_ID, CONTENT_TYPE, FROZEN_OF_UUIDS_CODEC, IDENTITY_IDS, LIST_OF_TIME_UUIDS_CODEC, PUBLIC_URI, SIZE, TABLE_NAME, USER}
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.blob.api.BlobId
 import org.apache.james.core.Username
@@ -51,7 +50,7 @@ object CassandraPublicAssetTable {
   val CONTENT_TYPE: CqlIdentifier = CqlIdentifier.fromCql("content_type")
   val IDENTITY_IDS: CqlIdentifier = CqlIdentifier.fromCql("identity_ids")
 
-  val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
+  val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(TABLE_NAME)
     .comment("Hold user public assets metadata")
     .statement(statement => _ => statement
       .withPartitionKey(USER, TEXT)

@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.MetricableBlobStore;
@@ -55,7 +55,7 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
-        CassandraModule.aggregateModules(CassandraEncryptedEmailStoreModule.MODULE()));
+        CassandraDataDefinition.aggregateModules(CassandraEncryptedEmailStoreModule.MODULE()));
 
     @RegisterExtension
     MetricableBlobStoreExtension metricsTestExtension = new MetricableBlobStoreExtension();

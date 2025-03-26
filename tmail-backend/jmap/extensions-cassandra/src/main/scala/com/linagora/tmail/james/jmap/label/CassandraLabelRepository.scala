@@ -24,7 +24,7 @@ import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Scopes}
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
 import org.apache.james.jmap.mail.Keyword
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
@@ -70,9 +70,9 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRe
 
 case class CassandraLabelRepositoryModule() extends AbstractModule {
   override def configure(): Unit = {
-    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+    Multibinder.newSetBinder(binder, classOf[CassandraDataDefinition])
       .addBinding().toInstance(CassandraLabelTable.MODULE)
-    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+    Multibinder.newSetBinder(binder, classOf[CassandraDataDefinition])
       .addBinding().toInstance(CassandraLabelChangeTable.MODULE)
 
     bind(classOf[CassandraLabelDAO]).in(Scopes.SINGLETON)

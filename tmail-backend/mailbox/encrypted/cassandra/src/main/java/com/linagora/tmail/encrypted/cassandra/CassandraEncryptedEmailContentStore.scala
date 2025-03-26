@@ -27,7 +27,7 @@ import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStor
 import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailStoreModule
 import com.linagora.tmail.encrypted.{AttachmentNotFoundException, EncryptedEmailContent, EncryptedEmailContentStore, EncryptedEmailDetailedView, EncryptedEmailFastView, MessageNotFoundException}
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId
@@ -41,7 +41,7 @@ case class EncryptedEmailContentStoreCassandraModule() extends AbstractModule {
 
     bind(classOf[EncryptedEmailContentStore]).to(classOf[CassandraEncryptedEmailContentStore])
 
-    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+    Multibinder.newSetBinder(binder, classOf[CassandraDataDefinition])
       .addBinding()
       .toInstance(CassandraEncryptedEmailStoreModule.MODULE)
   }

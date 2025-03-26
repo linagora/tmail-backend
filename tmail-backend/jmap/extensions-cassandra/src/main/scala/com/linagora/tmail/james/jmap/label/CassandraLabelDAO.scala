@@ -27,7 +27,7 @@ import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, delete
 import com.datastax.oss.driver.api.querybuilder.relation.Relation.column
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelId}
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.core.Username
 import org.apache.james.jmap.mail.Keyword
@@ -40,7 +40,7 @@ object CassandraLabelTable {
   val DISPLAY_NAME: CqlIdentifier = CqlIdentifier.fromCql("display_name")
   val COLOR: CqlIdentifier = CqlIdentifier.fromCql("color")
 
-  val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
+  val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(TABLE_NAME)
     .comment("Hold user JMAP labels")
     .statement(statement => _ => statement
       .withPartitionKey(USER, TEXT)

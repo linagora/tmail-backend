@@ -27,20 +27,20 @@ import java.time.ZonedDateTime;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.jmap.api.change.State;
 import org.apache.james.jmap.cassandra.change.CassandraStateFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.james.jmap.model.LabelChange;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import com.linagora.tmail.james.jmap.model.LabelChange;
-
 public class CassandraLabelChangeRepositoryTest implements LabelChangeRepositoryContract {
-    static final CassandraModule MODULE = CassandraLabelChangeTable.MODULE();
+    static final CassandraDataDefinition MODULE = CassandraLabelChangeTable.MODULE();
 
     private CassandraLabelChangeDAO cassandraLabelChangeDAO;
     private CassandraLabelChangeRepository cassandraLabelChangeRepository;

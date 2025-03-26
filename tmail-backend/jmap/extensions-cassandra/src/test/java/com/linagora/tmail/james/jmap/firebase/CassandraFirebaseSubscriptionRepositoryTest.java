@@ -20,7 +20,7 @@ package com.linagora.tmail.james.jmap.firebase;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.jmap.api.change.TypeStateFactory;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +29,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import scala.jdk.javaapi.CollectionConverters;
 
 public class CassandraFirebaseSubscriptionRepositoryTest implements FirebaseSubscriptionRepositoryContract {
-    static final CassandraModule MODULE = CassandraFirebaseSubscriptionTable.MODULE();
+    static final CassandraDataDefinition MODULE = CassandraFirebaseSubscriptionTable.MODULE();
 
     private UpdatableTickingClock clock;
     private FirebaseSubscriptionRepository firebaseSubscriptionRepository;

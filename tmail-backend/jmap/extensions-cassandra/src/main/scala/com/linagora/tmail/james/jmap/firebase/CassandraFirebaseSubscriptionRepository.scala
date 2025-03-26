@@ -27,7 +27,7 @@ import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.{evaluateExpiresTime, isInThePast}
 import com.linagora.tmail.james.jmap.model.{DeviceClientIdInvalidException, ExpireTimeInvalidException, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseSubscriptionNotFoundException, TokenInvalidException}
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.user.api.DeleteUserDataTaskStep
@@ -42,7 +42,7 @@ case class CassandraFirebaseSubscriptionRepositoryModule() extends AbstractModul
     bind(classOf[CassandraFirebaseSubscriptionRepository]).in(Scopes.SINGLETON)
     bind(classOf[FirebaseSubscriptionRepository]).to(classOf[CassandraFirebaseSubscriptionRepository])
 
-    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+    Multibinder.newSetBinder(binder, classOf[CassandraDataDefinition])
       .addBinding().toInstance(CassandraFirebaseSubscriptionTable.MODULE)
 
     bind(classOf[CassandraFirebaseSubscriptionDAO]).in(Scopes.SINGLETON)

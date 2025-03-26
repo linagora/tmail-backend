@@ -23,11 +23,11 @@ import com.datastax.oss.driver.api.querybuilder.SchemaBuilder
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder.RowsPerPartition.rows
 import com.datastax.oss.driver.api.querybuilder.schema.compaction.TimeWindowCompactionStrategy
 import com.linagora.tmail.blob.blobid.list.cassandra.BlobIdListTable.{BLOB_ID, TABLE_NAME}
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.backends.cassandra.utils.CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION
 
 object CassandraBlobIdListModule {
-  val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
+  val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(TABLE_NAME)
     .comment("Holds BlobId list definition")
     .options(options => options
       .withCompaction(SchemaBuilder.timeWindowCompactionStrategy.withCompactionWindow(1, TimeWindowCompactionStrategy.CompactionWindowUnit.HOURS))

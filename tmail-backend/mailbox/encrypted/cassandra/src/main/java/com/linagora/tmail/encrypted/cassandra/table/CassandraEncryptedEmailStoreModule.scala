@@ -20,11 +20,11 @@ package com.linagora.tmail.encrypted.cassandra.table
 
 import com.datastax.oss.driver.api.core.`type`.DataTypes
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder.RowsPerPartition.rows
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.backends.cassandra.utils.CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION
 
 object CassandraEncryptedEmailStoreModule {
-  val MODULE: CassandraModule = CassandraModule.table(EncryptedEmailTable.TABLE_NAME)
+  val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(EncryptedEmailTable.TABLE_NAME)
     .comment("Holds content of encrypted email in order to ease the JMAP display")
     .options(options => options
       .withCaching(true, rows(DEFAULT_CACHED_ROW_PER_PARTITION)))

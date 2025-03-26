@@ -25,7 +25,7 @@ import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
 import jakarta.inject.{Inject, Named}
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.IdentityId
@@ -104,7 +104,7 @@ case class CassandraPublicAssetRepositoryModule() extends AbstractModule {
     bind(classOf[CassandraPublicAssetRepository]).in(Scopes.SINGLETON)
     bind(classOf[PublicAssetRepository]).to(classOf[CassandraPublicAssetRepository])
 
-    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+    Multibinder.newSetBinder(binder, classOf[CassandraDataDefinition])
       .addBinding().toInstance(CassandraPublicAssetTable.MODULE)
 
     bind(classOf[CassandraPublicAssetDAO]).in(Scopes.SINGLETON)

@@ -20,7 +20,7 @@ package com.linagora.tmail.rate.limiter.api.cassandra;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -32,7 +32,7 @@ import com.linagora.tmail.rate.limiter.api.cassandra.table.CassandraRateLimitPla
 public class CassandraRateLimitingPlanUserRepositoryTest implements RateLimitingPlanUserRepositoryContract {
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
-        CassandraModule.aggregateModules(CassandraRateLimitPlanUserTable.MODULE()));
+        CassandraDataDefinition.aggregateModules(CassandraRateLimitPlanUserTable.MODULE()));
 
     private CassandraRateLimitingPlanUserRepository repository;
 

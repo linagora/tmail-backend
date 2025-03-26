@@ -28,7 +28,7 @@ import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseToken}
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.TypeStateFactory
@@ -46,7 +46,7 @@ object CassandraFirebaseSubscriptionTable {
   val TYPES: CqlIdentifier = CqlIdentifier.fromCql("types")
   val TOKEN: CqlIdentifier = CqlIdentifier.fromCql("fcm_token")
 
-  val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
+  val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(TABLE_NAME)
     .comment("Hold user firebase push subscriptions data")
     .statement(statement => types => statement
       .withPartitionKey(USER, TEXT)
