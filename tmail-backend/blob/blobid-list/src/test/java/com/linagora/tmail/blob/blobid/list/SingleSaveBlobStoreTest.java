@@ -20,8 +20,8 @@ package com.linagora.tmail.blob.blobid.list;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.backends.cassandra.components.CassandraModule;
-import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
+import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDataDefinition;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
@@ -39,8 +39,8 @@ public class SingleSaveBlobStoreTest implements SingleSaveBlobStoreContract {
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
-            CassandraModule.aggregateModules(CassandraBlobIdListModule.MODULE(),
-                    CassandraSchemaVersionModule.MODULE));
+        CassandraDataDefinition.aggregateModules(CassandraBlobIdListModule.MODULE(),
+                    CassandraSchemaVersionDataDefinition.MODULE));
 
     private CassandraBlobIdList cassandraBlobIdList;
     private BlobStoreDAO blobStoreDAO;

@@ -20,18 +20,18 @@ package com.linagora.tmail.james.jmap.ticket;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.backends.cassandra.components.CassandraModule;
-import org.apache.james.backends.cassandra.init.CassandraZonedDateTimeModule;
-import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
+import org.apache.james.backends.cassandra.init.CassandraZonedDateTimeDataDefinition;
+import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDataDefinition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 public class CassandraTicketStoreTest implements TicketStoreContract {
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
-        CassandraModule.aggregateModules(
-            CassandraSchemaVersionModule.MODULE,
-            CassandraZonedDateTimeModule.MODULE,
+        CassandraDataDefinition.aggregateModules(
+            CassandraSchemaVersionDataDefinition.MODULE,
+            CassandraZonedDateTimeDataDefinition.MODULE,
             CassandraTicketStore.module()));
 
     private CassandraTicketStore testee;

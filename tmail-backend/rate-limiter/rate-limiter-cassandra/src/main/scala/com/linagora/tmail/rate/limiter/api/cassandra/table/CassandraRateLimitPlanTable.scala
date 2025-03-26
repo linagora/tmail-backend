@@ -19,7 +19,7 @@
 package com.linagora.tmail.rate.limiter.api.cassandra.table
 
 import com.datastax.oss.driver.api.core.`type`.DataTypes
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 
 object CassandraRateLimitPlanTable {
   val TABLE_NAME: String = "rate_limit_plan"
@@ -28,7 +28,7 @@ object CassandraRateLimitPlanTable {
   val OPERATION_LIMITATION_NAME: String = "operation_limitation_name"
   val RATE_LIMITATIONS: String = "rate_limitations"
 
-  val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
+  val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(TABLE_NAME)
     .comment("Hold Rate Limiting Plan - Use to management.")
     .statement(statement => types => statement
       .withPartitionKey(PLAN_ID, DataTypes.UUID)

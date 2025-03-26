@@ -27,7 +27,7 @@ import com.linagora.tmail.encrypted.cassandra.table.CassandraKeystoreModule
 import com.linagora.tmail.encrypted.{KeyId, KeystoreManager, PGPKeysUserDeletionTaskStep, PGPKeysUsernameChangeTaskStep, PublicKey}
 import com.linagora.tmail.pgp.Encrypter
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.reactivestreams.Publisher
@@ -42,7 +42,7 @@ case class KeystoreCassandraModule() extends AbstractModule {
 
     bind(classOf[KeystoreManager]).to(classOf[CassandraKeystoreManager])
 
-    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+    Multibinder.newSetBinder(binder, classOf[CassandraDataDefinition])
       .addBinding()
       .toInstance(CassandraKeystoreModule.MODULE)
 

@@ -28,7 +28,7 @@ import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, insert
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder.RowsPerPartition.rows
 import com.linagora.tmail.james.jmap.model.{LabelChange, LabelId}
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
 import org.apache.james.backends.cassandra.utils.CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION
 import org.apache.james.jmap.api.change.State
@@ -47,7 +47,7 @@ object CassandraLabelChangeTable {
   val UPDATED: CqlIdentifier = CqlIdentifier.fromCql("updated")
   val DESTROYED: CqlIdentifier = CqlIdentifier.fromCql("destroyed")
 
-  val MODULE: CassandraModule = CassandraModule.table(TABLE_NAME)
+  val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(TABLE_NAME)
     .comment("Hold JMAP label changes")
     .options(options => options
       .withClusteringOrder(STATE, ASC)

@@ -36,7 +36,7 @@ import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.cassandra.CassandraRepositoryConfiguration;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
-import org.apache.james.user.cassandra.CassandraUsersRepositoryModule;
+import org.apache.james.user.cassandra.CassandraUsersRepositoryDataDefinition;
 import org.apache.james.user.ldap.DockerLdapSingleton;
 import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapGenericContainer;
@@ -65,7 +65,7 @@ public class CombinedUsersRepositoryTest {
     }
 
     @RegisterExtension
-    static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(CassandraUsersRepositoryModule.MODULE);
+    static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(CassandraUsersRepositoryDataDefinition.MODULE);
 
     @Nested
     class WhenEnableVirtualHosting implements CombinedUsersRepositoryContract.WithVirtualHostingContract {

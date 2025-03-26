@@ -28,12 +28,12 @@ package com.linagora.tmail.james.jmap.settings;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 public class CassandraJmapSettingsRepositoryTest implements JmapSettingsRepositoryContract {
-    private static final CassandraModule MODULE = CassandraJmapSettingsTable.MODULE();
+    private static final CassandraDataDefinition MODULE = CassandraJmapSettingsTable.MODULE();
     private CassandraJmapSettingsRepository cassandraJmapSettingsRepository;
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(MODULE);

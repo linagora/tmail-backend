@@ -23,8 +23,8 @@ import java.util.Optional;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
-import org.apache.james.backends.cassandra.components.CassandraModule;
-import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
+import org.apache.james.backends.cassandra.versions.CassandraSchemaVersionDataDefinition;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -41,7 +41,7 @@ public class CacheCassandraRateLimitingPlanRepositoryTest implements RateLimitin
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
-        CassandraModule.aggregateModules(CassandraRateLimitPlanTable.MODULE(), CassandraSchemaVersionModule.MODULE));
+        CassandraDataDefinition.aggregateModules(CassandraRateLimitPlanTable.MODULE(), CassandraSchemaVersionDataDefinition.MODULE));
 
     private CacheRateLimitingPlan repository;
 

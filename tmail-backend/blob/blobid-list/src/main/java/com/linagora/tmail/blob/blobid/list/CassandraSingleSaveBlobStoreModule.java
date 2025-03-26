@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.blob.blobid.list;
 
-import org.apache.james.backends.cassandra.components.CassandraModule;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
@@ -31,7 +31,7 @@ public class CassandraSingleSaveBlobStoreModule extends AbstractModule {
     protected void configure() {
         install(new BlobIdListCassandraModule());
 
-        Multibinder.newSetBinder(binder(), CassandraModule.class)
+        Multibinder.newSetBinder(binder(), CassandraDataDefinition.class)
             .addBinding()
             .toInstance(CassandraBlobIdListModule.MODULE());
     }

@@ -23,7 +23,7 @@ import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsStateFactory.INITIAL
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.components.CassandraModule
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UuidState
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
@@ -61,7 +61,7 @@ class CassandraJmapSettingsRepository @Inject()(dao: CassandraJmapSettingsDAO) e
 
 case class CassandraJmapSettingsRepositoryModule() extends AbstractModule {
   override def configure(): Unit = {
-    Multibinder.newSetBinder(binder, classOf[CassandraModule])
+    Multibinder.newSetBinder(binder, classOf[CassandraDataDefinition])
       .addBinding().toInstance(CassandraJmapSettingsTable.MODULE)
     bind(classOf[CassandraJmapSettingsDAO]).in(Scopes.SINGLETON)
 
