@@ -72,3 +72,41 @@ This configuration sets up in `mailetcontainer.xml`
 
 The docker compose sample for the OpenPaas integration with `CardDavCollectedContact` mailet: see `docker-compose-carddav-sample.yml`.
 A sample user `user1@open-paas.org/secret` has been created for testing purposes.
+
+== CalDavCollect
+
+This mailet synchronizes calendars in mails with dav server (create, update, delete calendar events).
+
+=== Parameters
+
+The mailet configuration requires the following parameters:
+
+* `source`: source for this mailet. the value must be same as the value of `destinationAttribute` in ICalendarParser mailet.
+
+=== Example
+This configuration contains all mailets necessary to read ics attachments in mail and send them to dav server.
+
+[source,xml]
+----
+<mailet match="SenderIsLocal" class="StripAttachment">
+    <mimeType>text/calendar</mimeType>
+    <attribute>rawIcalendar2</attribute>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="SenderIsLocal" class="MimeDecodingMailet">
+    <attribute>rawIcalendar2</attribute>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="SenderIsLocal" class="ICalendarParser">
+    <sourceAttribute>rawIcalendar2</sourceAttribute>
+    <destinationAttribute>icalendar2</destinationAttribute>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="All" class="ICALToHeader">
+    <attribute>icalendar2</attribute>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="All" class="com.linagora.tmail.mailet.CalDavCollect">
+    <source>icalendar2</source>
+</mailet>
+----
