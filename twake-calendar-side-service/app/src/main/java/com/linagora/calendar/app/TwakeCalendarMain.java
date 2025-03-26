@@ -22,6 +22,7 @@ import org.apache.james.ExtraProperties;
 import org.apache.james.UserEntityValidator;
 import org.apache.james.data.LdapUsersRepositoryModule;
 import org.apache.james.json.DTOConverter;
+import org.apache.james.modules.mailbox.OpenSearchMailboxConfigurationModule;
 import org.apache.james.modules.server.DNSServiceModule;
 import org.apache.james.modules.server.NoJwtModule;
 import org.apache.james.modules.server.TaskManagerModule;
@@ -48,7 +49,9 @@ import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.calendar.app.modules.MemoryAutoCompleteModule;
 import com.linagora.calendar.app.modules.MemoryUserModule;
+import com.linagora.calendar.app.modules.OpenSearchClientModule;
 import com.linagora.calendar.restapi.RestApiModule;
+import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 
 public class TwakeCalendarMain {
     public static final Module WEBADMIN = Modules.combine(
@@ -86,11 +89,20 @@ public class TwakeCalendarMain {
         return TwakeCalendarGuiceServer.forConfiguration(configuration)
             .combineWith(Modules.combine(
                 new DNSServiceModule(),
-                new MemoryAutoCompleteModule(),
+                chooseAutoComplete(configuration.autoCompleteChoice()),
                 chooseUsersModule(configuration.userChoice()),
                 new RestApiModule(),
                 new TaskManagerModule(),
                 WEBADMIN));
+    }
+
+    private static Module chooseAutoComplete(TwakeCalendarConfiguration.AutoCompleteChoice autoCompleteChoice) {
+        return switch (autoCompleteChoice) {
+            case MEMORY -> new MemoryAutoCompleteModule();
+            case OPENSEARCH -> Modules.override(new MemoryAutoCompleteModule())
+                .with(new OpenSearchClientModule(), new OSContactAutoCompleteModule(),
+                    new OpenSearchMailboxConfigurationModule());
+        };
     }
 
     public static Module chooseUsersModule(TwakeCalendarConfiguration.UserChoice userChoice) {
