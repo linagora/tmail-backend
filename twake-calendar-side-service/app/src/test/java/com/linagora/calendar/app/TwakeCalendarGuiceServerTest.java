@@ -42,6 +42,7 @@ import org.mockserver.model.HttpResponse;
 
 import com.google.inject.name.Names;
 import com.linagora.calendar.app.modules.CalendarDataProbe;
+import com.linagora.calendar.app.modules.MemoryAutoCompleteModule;
 import com.linagora.calendar.restapi.RestApiServerProbe;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
@@ -357,6 +358,37 @@ class TwakeCalendarGuiceServerTest  {
         .then()
             .statusCode(200)
             .header("Content-Type", "image/png");
+    }
+
+    @Test
+    void shouldSupportPeopleSearch(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        server.getProbe(MemoryAutoCompleteModule.Probe.class)
+            .add(USERNAME.asString(), "grepme@linagora.com", "Grep", "Me");
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("{\"q\":\"grepm\",\"objectTypes\":[\"user\",\"group\",\"contact\",\"ldap\"],\"limit\":10}")
+        .when()
+            .post("/api/people/search")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body)
+            .whenIgnoringPaths("[0].id")
+            .isEqualTo("""
+    [{
+      "id":"f0b97959-1f62-40f7-9df0-798125d62308",
+      "objectType":"contact",
+      "emailAddresses":[{"value":"grepme@linagora.com","type":"Work"}],
+      "phoneNumbers":[],
+      "names":[{"displayName":"Grep Me","type":"default"}],
+      "photos":[{"url":"https://twcalendar.linagora.com/api/avatars?email=grepme@linagora.com","type":"default"}]
+    }]""");
     }
 
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {

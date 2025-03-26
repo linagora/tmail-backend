@@ -49,6 +49,7 @@ public class RestApiConfiguration {
         private Optional<URL> calendarSpaUrl = Optional.empty();
         private Optional<URL> openpaasBackendURL = Optional.empty();
         private Optional<URL> davdURL = Optional.empty();
+        private Optional<URL> selfURL = Optional.empty();
         private Optional<Boolean> openpaasBackendTrustAllCerts = Optional.empty();
         private Optional<URL> oidcUserInfoUrl = Optional.empty();
         private Optional<String> oidcIntrospectionClaim = Optional.empty();
@@ -84,6 +85,11 @@ public class RestApiConfiguration {
 
         public Builder calendarSpaUrl(URL url) {
             this.calendarSpaUrl = Optional.of(url);
+            return this;
+        }
+
+        public Builder selfUrl(URL url) {
+            this.selfURL = Optional.of(url);
             return this;
         }
 
@@ -126,6 +132,7 @@ public class RestApiConfiguration {
             try {
                 return new RestApiConfiguration(port,
                     calendarSpaUrl.orElse(new URL("https://e-calendrier.avocat.fr")),
+                    selfURL.orElse(new URL("https://twcalendar.linagora.com")),
                     openpaasBackendURL.orElse(new URL("https://openpaas.linagora.com")),
                     davdURL.orElse(new URL("https://dav.linagora.com")),
                     openpaasBackendTrustAllCerts.orElse(false),
@@ -180,6 +187,7 @@ public class RestApiConfiguration {
 
     private final Optional<Port> port;
     private final URL calendarSpaUrl;
+    private final URL selfUrl;
     private final URL openpaasBackendURL;
     private final URL davURL;
     private final boolean openpaasBackendTrustAllCerts;
@@ -190,11 +198,12 @@ public class RestApiConfiguration {
     private final String oidcClaim;
 
     @VisibleForTesting
-    RestApiConfiguration(Optional<Port> port, URL clandarSpaUrl, URL openpaasBackendURL, URL davURL, boolean openpaasBackendTrustAllCerts,
+    RestApiConfiguration(Optional<Port> port, URL calendarSpaUrl, URL selfUrl, URL openpaasBackendURL, URL davURL, boolean openpaasBackendTrustAllCerts,
                          String jwtPrivatePath, List<String> jwtPublicPath, Duration jwtValidity, URL oidcIntrospectionUrl,
                          String oidcIntrospectionClaim) {
         this.port = port;
-        this.calendarSpaUrl = clandarSpaUrl;
+        this.calendarSpaUrl = calendarSpaUrl;
+        this.selfUrl = selfUrl;
         this.openpaasBackendURL = openpaasBackendURL;
         this.davURL = davURL;
         this.openpaasBackendTrustAllCerts = openpaasBackendTrustAllCerts;
@@ -243,5 +252,9 @@ public class RestApiConfiguration {
 
     public URL getDavURL() {
         return davURL;
+    }
+
+    public URL getSelfUrl() {
+        return selfUrl;
     }
 }
