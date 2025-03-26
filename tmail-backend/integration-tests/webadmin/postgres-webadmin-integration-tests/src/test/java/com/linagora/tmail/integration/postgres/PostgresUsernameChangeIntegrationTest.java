@@ -109,7 +109,7 @@ public class PostgresUsernameChangeIntegrationTest extends UsernameChangeIntegra
             .untilAsserted(() -> assertThat(client.search(
                     new SearchRequest.Builder()
                         .index(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
-                        .query(QueryBuilders.matchAll().build()._toQuery())
+                        .query(QueryBuilders.matchAll().build().toQuery())
                         .build())
                 .block()
                 .hits().total().value()).isEqualTo(documentCount));
