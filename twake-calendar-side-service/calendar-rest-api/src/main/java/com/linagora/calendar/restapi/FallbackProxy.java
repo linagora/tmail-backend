@@ -64,7 +64,7 @@ public class FallbackProxy {
     }
 
     public Mono<Void> forwardRequest(HttpServerRequest request, HttpServerResponse response) {
-        LOGGER.warn("Proxying {}", request.uri());
+        LOGGER.warn("Proxying {} {}", request.method(), request.uri());
         return request.receive().aggregate().asByteArray()
             .switchIfEmpty(Mono.just("".getBytes()))
             .flatMap(payload -> handleAuthIfNeeded(request)
