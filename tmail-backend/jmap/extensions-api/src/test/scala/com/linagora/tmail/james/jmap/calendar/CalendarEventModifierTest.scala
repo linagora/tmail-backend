@@ -397,6 +397,305 @@ class CalendarEventModifierTest {
     }
   }
 
+  @Nested
+  class RecurrenceEvent {
+
+    @Test
+    def shouldChangeTimingWhenDifferent(): Unit = {
+      val counterEvent = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        """BEGIN:VCALENDAR
+          |PRODID:-//Google Inc//Google Calendar 70.9054//EN
+          |VERSION:2.0
+          |CALSCALE:GREGORIAN
+          |METHOD:COUNTER
+          |BEGIN:VTIMEZONE
+          |TZID:Asia/Ho_Chi_Minh
+          |BEGIN:STANDARD
+          |TZOFFSETFROM:+0700
+          |TZOFFSETTO:+0700
+          |TZNAME:GMT+7
+          |DTSTART:19700101T000000
+          |END:STANDARD
+          |END:VTIMEZONE
+          |BEGIN:VEVENT
+          |DTSTART:20250404T030000Z
+          |DTEND:20250404T040000Z
+          |DTSTAMP:20250327T123245Z
+          |ORGANIZER;CN=tungtv202@example.com:mailto:tungtv202@example.com
+          |UID:05r6l49f415p9pf17uo7bk6cng@example.com
+          |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=TENTATIVE;CN=Tung
+          | Tran;X-NUM-GUESTS=0;X-RESPONSE-COMMENT="ok":mailto:vttranlina@example.com
+          |RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250404T100000
+          |CREATED:20250327T122821Z
+          |LAST-MODIFIED:20250327T123245Z
+          |SEQUENCE:0
+          |STATUS:CONFIRMED
+          |SUMMARY:Gmail test 2 loop
+          |TRANSP:OPAQUE
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes("UTF-8")))
+
+      val newCalendar = testee.of(counterEvent, Username.of("tungtv202@example.com"))
+        .apply(sampleRecurrenceCalendar())
+
+      val vEVentList = newCalendar.getComponents[VEvent](Component.VEVENT)
+      assertThat(vEVentList.size()).isEqualTo(2)
+      val originalVEvent = vEVentList.get(0)
+      val newVEvent = vEVentList.get(1)
+
+      // not change original component VEvent
+      assertThat(originalVEvent.toString.removeDTSTAMPLines())
+        .isEqualToNormalizingNewlines(
+          """BEGIN:VEVENT
+            |DTSTART;TZID=Asia/Ho_Chi_Minh:20250328T100000
+            |DTEND;TZID=Asia/Ho_Chi_Minh:20250328T103000
+            |RRULE:FREQ=WEEKLY;WKST=SU;COUNT=5;BYDAY=FR
+            |ORGANIZER;CN=Tung Tran Van:mailto:tungtv202@example.com
+            |UID:05r6l49f415p9pf17uo7bk6cng@example.com
+            |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE;CN=Tung Tran Van;X-NUM-GUESTS=0:mailto:tungtv202@example.com
+            |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=vttranlina@example.com;X-NUM-GUESTS=0:mailto:vttranlina@example.com
+            |CREATED:20250327T122821Z
+            |LAST-MODIFIED:20250327T122850Z
+            |SEQUENCE:0
+            |STATUS:CONFIRMED
+            |SUMMARY:Gmail test 2 loop
+            |TRANSP:OPAQUE
+            |END:VEVENT""".stripMargin)
+
+      // add new component VEvent with recurrence-id and new dtstart, dtend
+      assertThat(newVEvent.toString.removeDTSTAMPLines())
+        .isEqualToNormalizingNewlines(
+          """BEGIN:VEVENT
+            |DTSTART;TZID=Asia/Ho_Chi_Minh:20250404T100000
+            |DTEND;TZID=Asia/Ho_Chi_Minh:20250404T110000
+            |ORGANIZER;CN=Tung Tran Van:mailto:tungtv202@example.com
+            |UID:05r6l49f415p9pf17uo7bk6cng@example.com
+            |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE;CN=Tung Tran Van;X-NUM-GUESTS=0:mailto:tungtv202@example.com
+            |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=vttranlina@example.com;X-NUM-GUESTS=0:mailto:vttranlina@example.com
+            |LAST-MODIFIED:20250327T122850Z
+            |SEQUENCE:1
+            |STATUS:CONFIRMED
+            |SUMMARY:Gmail test 2 loop
+            |TRANSP:OPAQUE
+            |RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250404T100000
+            |END:VEVENT""".trim.stripMargin)
+    }
+
+    @Test
+    def shouldNotChangeWhenNoUpdateRequired(): Unit = {
+      val counterEvent = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        """BEGIN:VCALENDAR
+          |PRODID:-//Google Inc//Google Calendar 70.9054//EN
+          |VERSION:2.0
+          |CALSCALE:GREGORIAN
+          |METHOD:COUNTER
+          |BEGIN:VTIMEZONE
+          |TZID:Asia/Ho_Chi_Minh
+          |BEGIN:STANDARD
+          |TZOFFSETFROM:+0700
+          |TZOFFSETTO:+0700
+          |TZNAME:GMT+7
+          |DTSTART:19700101T000000
+          |END:STANDARD
+          |END:VTIMEZONE
+          |BEGIN:VEVENT
+          |DTSTART;TZID=Asia/Ho_Chi_Minh:20250404T100000
+          |DTEND;TZID=Asia/Ho_Chi_Minh:20250404T103000
+          |DTSTAMP:20250327T123245Z
+          |ORGANIZER;CN=tungtv202@example.com:mailto:tungtv202@example.com
+          |UID:05r6l49f415p9pf17uo7bk6cng@example.com
+          |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=TENTATIVE;CN=Tung
+          | Tran;X-NUM-GUESTS=0;X-RESPONSE-COMMENT="ok":mailto:vttranlina@example.com
+          |RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250404T100000
+          |CREATED:20250327T122821Z
+          |LAST-MODIFIED:20250327T123245Z
+          |SEQUENCE:0
+          |STATUS:CONFIRMED
+          |SUMMARY:Gmail test 2 loop
+          |TRANSP:OPAQUE
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes("UTF-8")))
+
+      assertThatThrownBy(() => testee.of(counterEvent, Username.of("tungtv202@example.com"))
+        .apply(sampleRecurrenceCalendar()))
+        .isInstanceOf(classOf[NoUpdateRequiredException])
+    }
+
+    @Test
+    def shouldRespectOtherVEventComponentOfOtherRecurrenceId(): Unit = {
+      val baseCounterCalendar =
+        """BEGIN:VCALENDAR
+          |PRODID:-//Google Inc//Google Calendar 70.9054//EN
+          |VERSION:2.0
+          |CALSCALE:GREGORIAN
+          |METHOD:COUNTER
+          |BEGIN:VTIMEZONE
+          |TZID:Asia/Ho_Chi_Minh
+          |BEGIN:STANDARD
+          |TZOFFSETFROM:+0700
+          |TZOFFSETTO:+0700
+          |TZNAME:GMT+7
+          |DTSTART:19700101T000000
+          |END:STANDARD
+          |END:VTIMEZONE
+          |BEGIN:VEVENT
+          |DTSTART:20250404T030000Z
+          |DTEND:20250404T040000Z
+          |DTSTAMP:20250327T123245Z
+          |ORGANIZER;CN=tungtv202@example.com:mailto:tungtv202@example.com
+          |UID:05r6l49f415p9pf17uo7bk6cng@example.com
+          |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=TENTATIVE;CN=Tung
+          | Tran;X-NUM-GUESTS=0;X-RESPONSE-COMMENT="ok":mailto:vttranlina@example.com
+          |RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250404T100000
+          |CREATED:20250327T122821Z
+          |LAST-MODIFIED:20250327T123245Z
+          |SEQUENCE:0
+          |STATUS:CONFIRMED
+          |SUMMARY:Gmail test 2 loop
+          |TRANSP:OPAQUE
+          |END:VEVENT
+          |END:VCALENDAR
+          |"""
+
+      val counterEvent1 = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCounterCalendar.stripMargin.getBytes("UTF-8")))
+
+      val calendarUpdated1 = testee.of(counterEvent1, Username.of("tungtv202@example.com"))
+        .apply(sampleRecurrenceCalendar())
+
+      val counterEvent2 = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCounterCalendar
+        .replace("DTSTART:20250404T030000Z", "DTSTART:20250411T050000Z")
+        .replace("DTEND:20250404T040000Z", "DTEND:20250411T060000Z")
+        .replace("RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250404T100000", "RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250411T100000")
+        .stripMargin.getBytes("UTF-8")))
+
+      val calendarUpdated2 = testee.of(counterEvent2, Username.of("tungtv202@example.com"))
+        .apply(calendarUpdated1)
+
+      val vEVentList = calendarUpdated2.getComponents[VEvent](Component.VEVENT)
+      assertThat(vEVentList.size()).isEqualTo(3)
+
+      val vEVent1AsString = vEVentList.get(1).toString
+      SoftAssertions.assertSoftly(softly => {
+        softly.assertThat(vEVent1AsString)
+          .contains("DTSTART;TZID=Asia/Ho_Chi_Minh:20250404T100000")
+        softly.assertThat(vEVent1AsString)
+          .contains("DTEND;TZID=Asia/Ho_Chi_Minh:20250404T110000")
+        softly.assertThat(vEVent1AsString)
+          .contains("RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250404T100000")
+      })
+
+      val vEVent2AsString = vEVentList.get(2).toString
+      SoftAssertions.assertSoftly(softly => {
+        softly.assertThat(vEVent2AsString)
+          .contains("DTSTART;TZID=Asia/Ho_Chi_Minh:20250411T120000")
+        softly.assertThat(vEVent2AsString)
+          .contains("DTEND;TZID=Asia/Ho_Chi_Minh:20250411T130000")
+        softly.assertThat(vEVent2AsString)
+          .contains("RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250411T100000")
+      })
+    }
+
+    @Test
+    def shouldUpdateCorrectVEVentWhenAlreadyExistByRecurrenceId(): Unit = {
+      val baseCounterCalendar =
+        """BEGIN:VCALENDAR
+          |PRODID:-//Google Inc//Google Calendar 70.9054//EN
+          |VERSION:2.0
+          |CALSCALE:GREGORIAN
+          |METHOD:COUNTER
+          |BEGIN:VTIMEZONE
+          |TZID:Asia/Ho_Chi_Minh
+          |BEGIN:STANDARD
+          |TZOFFSETFROM:+0700
+          |TZOFFSETTO:+0700
+          |TZNAME:GMT+7
+          |DTSTART:19700101T000000
+          |END:STANDARD
+          |END:VTIMEZONE
+          |BEGIN:VEVENT
+          |DTSTART:20250404T030000Z
+          |DTEND:20250404T040000Z
+          |DTSTAMP:20250327T123245Z
+          |ORGANIZER;CN=tungtv202@example.com:mailto:tungtv202@example.com
+          |UID:05r6l49f415p9pf17uo7bk6cng@example.com
+          |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=TENTATIVE;CN=Tung
+          | Tran;X-NUM-GUESTS=0;X-RESPONSE-COMMENT="ok":mailto:vttranlina@example.com
+          |RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250404T100000
+          |CREATED:20250327T122821Z
+          |LAST-MODIFIED:20250327T123245Z
+          |SEQUENCE:0
+          |STATUS:CONFIRMED
+          |SUMMARY:Gmail test 2 loop
+          |TRANSP:OPAQUE
+          |END:VEVENT
+          |END:VCALENDAR
+          |"""
+
+      val counterEvent1 = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCounterCalendar.stripMargin.getBytes("UTF-8")))
+
+      val calendarUpdated1 = testee.of(counterEvent1, Username.of("tungtv202@example.com"))
+        .apply(sampleRecurrenceCalendar())
+
+      val counterEvent2 = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCounterCalendar
+        .replace("DTSTART:20250404T030000Z", "DTSTART:20250404T050000Z")
+        .replace("DTEND:20250404T040000Z", "DTEND:20250404T060000Z")
+        .stripMargin.getBytes("UTF-8")))
+
+      val calendarUpdated2 = testee.of(counterEvent2, Username.of("tungtv202@example.com"))
+        .apply(calendarUpdated1)
+
+      val vEVentList = calendarUpdated2.getComponents[VEvent](Component.VEVENT)
+      assertThat(vEVentList.size()).isEqualTo(2)
+
+      val vEVent1AsString = vEVentList.get(1).toString
+      SoftAssertions.assertSoftly(softly => {
+        softly.assertThat(vEVent1AsString)
+          .contains("DTSTART;TZID=Asia/Ho_Chi_Minh:20250404T120000")
+        softly.assertThat(vEVent1AsString)
+          .contains("DTEND;TZID=Asia/Ho_Chi_Minh:20250404T130000")
+        softly.assertThat(vEVent1AsString)
+          .contains("RECURRENCE-ID;TZID=Asia/Ho_Chi_Minh:20250404T100000")
+      })
+    }
+
+    private def sampleRecurrenceCalendar(): Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |PRODID:-//Google Inc//Google Calendar 70.9054//EN
+        |VERSION:2.0
+        |CALSCALE:GREGORIAN
+        |BEGIN:VTIMEZONE
+        |TZID:Asia/Ho_Chi_Minh
+        |BEGIN:STANDARD
+        |TZOFFSETFROM:+0700
+        |TZOFFSETTO:+0700
+        |TZNAME:GMT+7
+        |DTSTART:19700101T000000
+        |END:STANDARD
+        |END:VTIMEZONE
+        |BEGIN:VEVENT
+        |DTSTART;TZID=Asia/Ho_Chi_Minh:20250328T100000
+        |DTEND;TZID=Asia/Ho_Chi_Minh:20250328T103000
+        |RRULE:FREQ=WEEKLY;WKST=SU;COUNT=5;BYDAY=FR
+        |DTSTAMP:20250327T122850Z
+        |ORGANIZER;CN=Tung Tran Van:mailto:tungtv202@example.com
+        |UID:05r6l49f415p9pf17uo7bk6cng@example.com
+        |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+        | ;CN=Tung Tran Van;X-NUM-GUESTS=0:mailto:tungtv202@example.com
+        |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+        | TRUE;CN=vttranlina@example.com;X-NUM-GUESTS=0:mailto:vttranlina@example.com
+        |CREATED:20250327T122821Z
+        |LAST-MODIFIED:20250327T122850Z
+        |SEQUENCE:0
+        |STATUS:CONFIRMED
+        |SUMMARY:Gmail test 2 loop
+        |TRANSP:OPAQUE
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+  }
+
   implicit class ImplicitCalendarString(value: String) {
     def removeDTSTAMPLines(): String =
       value.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim.stripMargin

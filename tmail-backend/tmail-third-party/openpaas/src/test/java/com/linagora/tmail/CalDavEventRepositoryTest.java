@@ -422,6 +422,73 @@ public class CalDavEventRepositoryTest {
             .hasMessageContaining("Can not update event");
     }
 
+    @Test
+    void updateRecurrenceEventShouldSuccess() {
+        String eventUidA = UUID.randomUUID().toString();
+        String calendarWithFrancesTimeZone = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUidA + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
+            "DTEND;TZID=Europe/Paris:20250328T100000\n" +
+            "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
+            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "DTSTAMP:20250313T113032\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        davClient.createCalendar(openPaasUser.email(),
+                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
+            .block();
+
+        String counterEvent = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "METHOD:COUNTER\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUidA + "\n" +
+            "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T120000\n" +
+            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "DTSTAMP:20250313T113032\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        CalendarEventModifier calendarEventModifier = CalendarEventModifier.of(CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(counterEvent.getBytes(StandardCharsets.UTF_8))), testUser);
+
+        assertThatCode(() ->  testee.updateEvent(testUser, eventUidA, calendarEventModifier).block())
+            .doesNotThrowAnyException();
+
+        DavCalendarObject davCalendarObject = davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
+
+        String updatedCalendar = davCalendarObject.calendarData().toString();
+        assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
+            .isEqualToNormalizingNewlines("BEGIN:VCALENDAR\n" +
+                "VERSION:2.0\n" +
+                "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+                "BEGIN:VEVENT\n" +
+                "UID:" + eventUidA + "\n" +
+                "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
+                "DTEND;TZID=Europe/Paris:20250328T100000\n" +
+                "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
+                "ORGANIZER;CN=John1 Doe1;SCHEDULE-STATUS=3.7:" + openPaasUser.email() + "\n" +
+                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+                "END:VEVENT\n" +
+                "BEGIN:VEVENT\n" +
+                "UID:" + eventUidA + "\n" +
+                "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
+                "DTEND;TZID=Europe/Paris:20250409T120000\n" +
+                "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
+                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+                "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
+                "SEQUENCE:1\n" +
+                "END:VEVENT\n" +
+                "END:VCALENDAR\n".trim());
+    }
+
     private CalendarEventModifier createRescheduledTimingModifier(ZonedDateTime proposedStartDate, ZonedDateTime proposedEndDate) {
         return CalendarEventModifier.of(new CalendarEventTimingUpdatePatch(proposedStartDate, proposedEndDate));
     }

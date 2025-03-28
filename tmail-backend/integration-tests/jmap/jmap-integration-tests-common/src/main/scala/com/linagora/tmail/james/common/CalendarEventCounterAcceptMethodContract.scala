@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.common
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -630,6 +632,109 @@ trait CalendarEventCounterAcceptMethodContract {
            |]""".stripMargin)
   }
 
+  @Test
+  def counterAcceptRecurrenceEventShouldSucceed(server: GuiceJamesServer): Unit = {
+    // Given: An original calendar event created and pushed to the server
+    val eventUid: String = UUID.randomUUID().toString
+    val originalCalendar: Calendar =
+      s"""
+         |BEGIN:VCALENDAR
+         |VERSION:2.0
+         |BEGIN:VEVENT
+         |UID:$eventUid
+         |DTSTART;TZID=Europe/Paris:20250328T090000
+         |DTEND;TZID=Europe/Paris:20250328T100000
+         |RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE
+         |ORGANIZER;CN=John1 Doe1:${bobCredential.username.asString()}
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:${aliceCredential.username.asString()}
+         |END:VEVENT
+         |END:VCALENDAR""".stripMargin.asCalendar()
+
+    pushCalendarToDav(bobCredential, eventUid, originalCalendar)
+
+    val counterCalendarEvent: Calendar =
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |METHOD:COUNTER
+         |BEGIN:VEVENT
+         |UID:$eventUid
+         |RECURRENCE-ID;TZID=Europe/Paris:20250409T090000
+         |DTSTART;TZID=Europe/Paris:20250409T110000
+         |DTEND;TZID=Europe/Paris:20250409T120000
+         |ORGANIZER;CN=John1 Doe1:${bobCredential.username.asString()}
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto::${aliceCredential.username.asString()}
+         |END:VEVENT
+         |END:VCALENDAR""".stripMargin.asCalendar()
+
+    val counterEventBlobId: String = createNewEmailWithCalendarAttachment(server, eventUid, counterCalendarEvent)
+
+    // When: The counter event is accepted
+    val response: String =
+      `given`
+        .body(
+          s"""{
+             |  "using": [
+             |    "urn:ietf:params:jmap:core",
+             |    "com:linagora:params:calendar:event"],
+             |  "methodCalls": [[
+             |    "CalendarEventCounter/accept",
+             |    {
+             |      "accountId": "$bobAccountId",
+             |      "blobIds": [ "$counterEventBlobId" ]
+             |    },
+             |    "c1"]]
+             |}""".stripMargin)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    // Then : The response should indicate the event was successfully accepted
+    assertThatJson(response)
+      .withOptions(IGNORING_ARRAY_ORDER)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "CalendarEventCounter/accept",
+           |  {
+           |    "accountId": "$bobAccountId",
+           |    "accepted": [ "$counterEventBlobId" ]
+           |  },
+           |  "c1"
+           |]""".stripMargin)
+
+    // Then: The calendar should be updated on the DAV server with the new proposed dates
+    val calendarOnDav: Calendar = getCalendarFromDav(bobCredential, eventUid)
+
+    assertThat(calendarOnDav.toString.removeDTSTAMPLines())
+      .isEqualToNormalizingNewlines(
+        s"""BEGIN:VCALENDAR
+           |VERSION:2.0
+           |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+           |BEGIN:VEVENT
+           |UID:$eventUid
+           |DTSTART;TZID=Europe/Paris:20250328T090000
+           |DTEND;TZID=Europe/Paris:20250328T100000
+           |RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE
+           |ORGANIZER;CN=John1 Doe1:${bobCredential.username.asString()}
+           |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:${aliceCredential.username.asString()}
+           |END:VEVENT
+           |BEGIN:VEVENT
+           |UID:$eventUid
+           |DTSTART;TZID=Europe/Paris:20250409T110000
+           |DTEND;TZID=Europe/Paris:20250409T120000
+           |ORGANIZER;CN=John1 Doe1:${bobCredential.username.asString()}
+           |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:${aliceCredential.username.asString()}
+           |RECURRENCE-ID;TZID=Europe/Paris:20250409T090000
+           |SEQUENCE:1
+           |END:VEVENT
+           |END:VCALENDAR""".stripMargin)
+  }
+
   private def createAndPushOriginalCalendarEvent(server: GuiceJamesServer,
                                                  eventUid: String,
                                                  originalStartDate: ZonedDateTime,
@@ -742,5 +847,13 @@ trait CalendarEventCounterAcceptMethodContract {
       .extract
       .body
       .path("primaryAccounts[\"urn:ietf:params:jmap:core\"]")
+
+  implicit class ImplicitCalendar(value: String) {
+    def asCalendar(): Calendar =
+      CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8)))
+
+    def removeDTSTAMPLines(): String =
+      value.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim.stripMargin
+  }
 
 }

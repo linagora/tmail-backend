@@ -30,7 +30,7 @@ import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndF
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence}
-import net.fortuna.ical4j.model.{Calendar, Component, Property, PropertyList}
+import net.fortuna.ical4j.model.{Calendar, Component, Period, Property, PropertyList}
 import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.Username
 
@@ -115,19 +115,52 @@ case class OrganizerValidator(requestUser: String) extends Consumer[Calendar] {
 }
 
 case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
-                                 recurrenceId: Option[RecurrenceId[Temporal]] = None,
+                                 recurrenceId: Option[RecurrenceId[Temporal]],
                                  validator: Consumer[Calendar] = (_: Calendar) => {}) {
 
   def apply(calendar: Calendar): Calendar = {
     val newCalendar = calendar.copy()
     validator.accept(newCalendar)
 
-    val vEVentNeedToUpdate: VEvent = newCalendar.getFirstVEvent
+    val vEVentNeedToUpdate: VEvent = recurrenceId.map(findVEventByRecurrenceId(newCalendar, _))
+      .getOrElse(newCalendar.getFirstVEvent)
 
     if (!patches.exists(_.apply(vEVentNeedToUpdate))) throw NoUpdateRequiredException()
     markEventAsModified(vEVentNeedToUpdate)
     validateAfterUpdate(newCalendar)
     newCalendar
+  }
+
+  private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent = {
+    val firstVEVent = calendar.getFirstVEvent
+    require(firstVEVent.getProperty(Property.RRULE).isPresent || firstVEVent.getProperty(Property.RDATE).isPresent,
+      s"Can not find VEVENT with recurrenceId $recurrenceId, the event is not a recurring event".asInstanceOf[Object])
+
+    calendar.getComponents[VEvent](Component.VEVENT).asScala
+      .find(_.getRecurrenceId[Temporal] == recurrenceId)
+      .getOrElse {
+        val baseVEvent = calendar.getFirstVEvent.copy()
+
+        val filteredProperties: util.List[Property] = baseVEvent.getPropertyList.getAll.asScala
+          .filterNot(p => RECURRENCE_IGNORE_COPIED_PROPERTIES.contains(p.getName))
+          .map(_.copy())
+          .asJava
+
+        val preVEvent = new VEvent(new PropertyList(ImmutableList.builder()
+          .addAll(filteredProperties)
+          .add(recurrenceId)
+          .build()))
+
+        (for {
+          period  <- baseVEvent.calculateRecurrenceSet[Temporal](new Period(recurrenceId.getDate, recurrenceId.getDate)).asScala.headOption
+          alternativeZoneId  = VEventTemporalUtil.getAlternativeZoneId(baseVEvent)
+          startDate <- VEventTemporalUtil.temporalToZonedDateTime(period.getStart, alternativeZoneId)
+          endDate   <- VEventTemporalUtil.temporalToZonedDateTime(period.getEnd, alternativeZoneId)
+        } yield CalendarEventTimingUpdatePatch(startDate, endDate).apply(preVEvent))
+
+        calendar.add(preVEvent)
+        preVEvent
+      }
   }
 
   private def markEventAsModified(vEvent: VEvent): Unit = {
