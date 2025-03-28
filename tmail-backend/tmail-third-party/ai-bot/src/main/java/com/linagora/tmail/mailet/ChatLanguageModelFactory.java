@@ -31,9 +31,9 @@ public class ChatLanguageModelFactory {
         String apiKey = config.getApiKey();
         LlmModel llmModel = config.getLlmModel();
         Optional<URL> baseURLOpt = config.getBaseURL();
-
         return createOpenAILanguageModel(apiKey, llmModel.modelName(), baseURLOpt.map(URL::toString).orElse(USE_DEFAULT_BASE_URL));
     }
+
 
     private ChatLanguageModel createOpenAILanguageModel(String apiKey, String modelName, String baseUrl) {
         return OpenAiChatModel.builder()
