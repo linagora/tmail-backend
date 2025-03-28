@@ -31,7 +31,6 @@ public class StreamChatLanguageModelFactory {
         String apiKey = config.getApiKey();
         LlmModel llmModel = config.getLlmModel();
         Optional<URL> baseURLOpt = config.getBaseURL();
-
         return createOpenAILanguageModel(apiKey, llmModel.modelName(), baseURLOpt.map(URL::toString).orElse(USE_DEFAULT_BASE_URL));
     }
 

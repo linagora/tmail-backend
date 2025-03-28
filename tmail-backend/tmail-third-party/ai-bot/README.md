@@ -17,7 +17,6 @@ Sample `mailetcontainer.xml` configuration:
             class="com.linagora.tmail.mailet.AIBotMailet"/>
 </processor>
 ```
-
 # AI Bot Configuration
 
 ## Overview
@@ -25,11 +24,11 @@ Sample `mailetcontainer.xml` configuration:
 This document provides the setup instructions for configuring the AI Bot, specifically for the email response agent and suggestion agent. The configuration ensures a seamless setup by centralizing all settings in a single file.
 
 ---
+
 ## Configuration File
 
-All AI Bot configuration details should be stored in the `ai.properties` file, located in the `conf` directory. Below is an example of the configuration format:
+All AI Bot configuration details should be stored in the `ai.properties` file, located in the `resources` directory. Below is an example of the configuration format:
 
-Sample `ai.properties` configuration:
 ```properties
 apiKey=demo
 botAddress=gpt@localhost
@@ -72,4 +71,3 @@ docker run \
   --volume "target/tmail-ai-bot-jar-with-dependencies.jar:/root/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar" \
   linagora/tmail-backend:memory-branch-master
 ```
-
