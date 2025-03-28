@@ -5,11 +5,13 @@ import java.util.concurrent.TimeUnit;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import reactor.core.publisher.Mono;
+
 public interface IRevokedTokenRepository {
 
-    void add(String sid);
+    Mono<Void> add(String sid);
 
-    boolean exist(String sid);
+    Mono<Boolean> exist(String sid);
 
     class MemoryRevokedTokenRepository implements IRevokedTokenRepository {
 
@@ -22,13 +24,13 @@ public interface IRevokedTokenRepository {
         }
 
         @Override
-        public void add(String sid) {
-            cache.put(sid, true);
+        public Mono<Void> add(String sid) {
+            return Mono.fromRunnable(() -> cache.put(sid, true));
         }
 
         @Override
-        public boolean exist(String sid) {
-            return cache.getIfPresent(sid) != null;
+        public Mono<Boolean> exist(String sid) {
+            return Mono.fromCallable(() -> cache.getIfPresent(sid) != null);
         }
     }
 }
