@@ -30,13 +30,9 @@ class RedisEventBusClientFactory @Singleton() @Inject()
 (redisConfiguration: RedisConfiguration, redisClientFactory: RedisClientFactory) {
   val rawRedisClient: AbstractRedisClient = redisConfiguration match {
     case standaloneConfiguration: StandaloneRedisConfiguration => redisClientFactory.createStandaloneClient(standaloneConfiguration)
-    case masterReplicaRedisConfiguration: MasterReplicaRedisConfiguration =>
-      redisClientFactory.createStandaloneClient(new StandaloneRedisConfiguration(masterReplicaRedisConfiguration.redisURI.value.last,
-        masterReplicaRedisConfiguration.useSSL, masterReplicaRedisConfiguration.mayBeSSLConfiguration, masterReplicaRedisConfiguration.ioThreads, masterReplicaRedisConfiguration.workerThreads))
+    case masterReplicaRedisConfiguration: MasterReplicaRedisConfiguration => redisClientFactory.createMasterReplicaClient(masterReplicaRedisConfiguration)
     case clusterRedisConfiguration: ClusterRedisConfiguration => redisClientFactory.createClusterClient(clusterRedisConfiguration)
-    case sentinelRedisConfiguration: SentinelRedisConfiguration =>
-      redisClientFactory.createStandaloneClient(new StandaloneRedisConfiguration(sentinelRedisConfiguration.redisURI,
-        sentinelRedisConfiguration.useSSL, sentinelRedisConfiguration.mayBeSSLConfiguration, sentinelRedisConfiguration.ioThreads, sentinelRedisConfiguration.workerThreads))
+    case sentinelRedisConfiguration: SentinelRedisConfiguration => redisClientFactory.createSentinelClient(sentinelRedisConfiguration)
   }
 
   def createRedisPubSubCommand(): RedisPubSubReactiveCommands[String, String] = rawRedisClient match {
