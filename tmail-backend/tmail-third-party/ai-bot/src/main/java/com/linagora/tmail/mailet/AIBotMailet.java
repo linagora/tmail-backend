@@ -28,7 +28,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
-import com.linagora.tmail.conf.AIBotConfigLoader;
 import jakarta.inject.Inject;
 import jakarta.mail.Address;
 import jakarta.mail.Message;
@@ -115,7 +114,7 @@ public class AIBotMailet extends GenericMailet {
             MimeMessage replyMimeMessage = evaluateReplyMimeMessage(mail, llmAnswer);
 
             getMailetContext()
-                    .sendMail(config.getBotAddress(), evaluateRecipients(mail), replyMimeMessage);
+                .sendMail(config.getBotAddress(), evaluateRecipients(mail), replyMimeMessage);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -165,7 +164,7 @@ public class AIBotMailet extends GenericMailet {
 
     private MimeMessage evaluateReplyMimeMessage(Mail mail, String answer) throws MessagingException {
         MimeMessage reply = (MimeMessage) mail.getMessage()
-                .reply(true);
+            .reply(true);
 
         stripBotFromRecipients(reply, Message.RecipientType.TO);
         stripBotFromRecipients(reply, Message.RecipientType.CC);
@@ -180,19 +179,19 @@ public class AIBotMailet extends GenericMailet {
 
     private void stripBotFromRecipients(MimeMessage reply, Message.RecipientType recipientType) throws MessagingException {
         Address[] toAddresses =
-                Arrays.stream(Optional.ofNullable(reply.getRecipients(recipientType))
-                                .orElse(new InternetAddress[0]))
-                        .filter(Throwing.predicate(address -> !address.equals(
-                                new InternetAddress(config.getBotAddress().asString()))))
-                        .toArray(Address[]::new);
+            Arrays.stream(Optional.ofNullable(reply.getRecipients(recipientType))
+                    .orElse(new InternetAddress[0]))
+                .filter(Throwing.predicate(address -> !address.equals(
+                    new InternetAddress(config.getBotAddress().asString()))))
+                .toArray(Address[]::new);
         reply.setRecipients(recipientType, toAddresses);
     }
 
     private List<MailAddress> evaluateRecipients(Mail mail) {
         return Stream.of(mail.getMaybeSender().asList(), mail.getRecipients())
-                .flatMap(Collection::stream)
-                .filter(recipient -> !recipient.equals(config.getBotAddress()))
-                .toList();
+            .flatMap(Collection::stream)
+            .filter(recipient -> !recipient.equals(config.getBotAddress()))
+            .toList();
     }
 
     @Override
