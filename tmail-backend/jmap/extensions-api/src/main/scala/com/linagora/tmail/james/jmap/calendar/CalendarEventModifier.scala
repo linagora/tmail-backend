@@ -25,43 +25,120 @@ import java.util.function.Consumer
 
 import com.google.common.base.Preconditions.{checkArgument => require}
 import com.google.common.collect.ImmutableList
-import com.linagora.tmail.james.jmap.model.{CalendarEventParsed, CalendarTimeZoneField, VEventTemporalUtil}
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier._
+import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndField, CalendarLocationField, CalendarOrganizerField, CalendarStartField, CalendarTimeZoneField, VEventTemporalUtil}
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.property.{DtEnd, Sequence}
+import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
+import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence}
 import net.fortuna.ical4j.model.{Calendar, Component, Property, PropertyList}
 import net.fortuna.ical4j.validate.ValidationResult
+import org.apache.james.core.Username
 
 import scala.jdk.CollectionConverters._
 
-object CalendarEventModifier {
-  val MODIFIED_SEQUENCE_DEFAULT: Sequence = new Sequence("1")
+trait CalendarEventUpdatePatch {
 
-  case class NoUpdateRequiredException(message: String) extends RuntimeException(message)
+  /**
+   * Return true if the patch has been applied
+   */
+  def apply(vEvent: VEvent): Boolean
 
-  def modifyEventTiming(originalCalendar: Calendar,
-                        newStartDate: ZonedDateTime,
-                        newEndDate: ZonedDateTime,
-                        validator: Consumer[VEvent] = (_: VEvent) => {}): Calendar = {
-    validateBeforeUpdate(originalCalendar, newStartDate, newEndDate)
+}
 
-    val newCalendar = originalCalendar.copy()
-    val vEvent = newCalendar.getComponent[VEvent](Component.VEVENT).get()
-    validator.accept(vEvent)
-    updateEvent(vEvent, newStartDate, newEndDate)
+case class CalendarEventTimingUpdatePatch(newStartDate: ZonedDateTime, newEndDate: ZonedDateTime) extends CalendarEventUpdatePatch {
 
+  override def apply(vEvent: VEvent): Boolean = {
+    require(!newEndDate.isBefore(newStartDate), "The end date must be after the start date".asInstanceOf[Object])
+
+    // DTSTART, DTSTAMP is mandatory as per RFC 5545
+    val zoneIdEvent: ZoneId = CalendarTimeZoneField.getZoneIdFromStartDate(vEvent)
+      .getOrElse(VEventTemporalUtil.getAlternativeZoneId(vEvent))
+
+    val startDateWithZone: ZonedDateTime = newStartDate.withZoneSameInstant(zoneIdEvent)
+    val endDateWithZone: ZonedDateTime = newEndDate.withZoneSameInstant(zoneIdEvent)
+
+    val originalStartDate: Option[ZonedDateTime] = CalendarStartField.from(vEvent).map(_.value)
+    val originalEndDate: Option[ZonedDateTime] = CalendarEndField.from(vEvent).map(_.value)
+
+    if (originalStartDate.exists(_.isEqual(startDateWithZone)) && originalEndDate.exists(_.isEqual(endDateWithZone))) {
+      return false
+    }
+
+    Option(vEvent.getDateTimeStart[Temporal]())
+      .map(_.setDate(startDateWithZone))
+      .getOrElse(vEvent.addProperty(new DtStart[Temporal](startDateWithZone)))
+
+    Option(vEvent.getDateTimeEnd[Temporal]())
+      .map(_.setDate(endDateWithZone))
+      .getOrElse {
+        // RFC 5545 - Section 3.6.1 - The DTEND property and DURATION property MUST NOT occur in the same VEVENT
+        vEvent.removeProperty(Property.DURATION)
+        vEvent.addProperty(new DtEnd(endDateWithZone))
+      }
+    true
+  }
+}
+
+case class LocationUpdatePatch(newLocation: String) extends CalendarEventUpdatePatch {
+  override def apply(vEvent: VEvent): Boolean =
+    CalendarLocationField.from(vEvent).map(_.value) match {
+      case Some(originalLocation) if originalLocation.equals(newLocation) => false
+      case Some(_) => vEvent.getLocation.setValue(newLocation); true
+      case None => vEvent.addProperty(new Location(newLocation)); true
+    }
+}
+
+case class AttendeeUpdatePatch(attendeeList: Seq[Attendee]) extends CalendarEventUpdatePatch {
+  override def apply(vEvent: VEvent): Boolean = {
+    val originalAttendees: Seq[String] = vEvent.getAttendees.asScala.toSeq
+      .flatMap(_.getIdentity)
+
+    val newAttendees: Seq[Property] = attendeeList
+      .flatMap(attendee => attendee.getIdentity.filterNot(originalAttendees.contains)
+        .map(_ => attendee.copy()))
+
+    if (newAttendees.nonEmpty) {
+      vEvent.addProperty(newAttendees)
+    }
+    newAttendees.nonEmpty
+  }
+}
+
+case class OrganizerValidator(requestUser: String) extends Consumer[Calendar] {
+  override def accept(calendar: Calendar): Unit = {
+    val vEvent = calendar.getFirstVEvent
+    val organizerOpt: Option[String] = CalendarOrganizerField.from(vEvent)
+      .flatMap(_.asMailAddressString())
+    require(organizerOpt.isDefined, s"Can not update event, the organizer is not defined".asInstanceOf[Object])
+    require(organizerOpt.get.equals(requestUser), s"Can not update event, the organizer is '$organizerOpt' and the user is '$requestUser'".asInstanceOf[Object])
+  }
+}
+
+case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
+                                 recurrenceId: Option[RecurrenceId[Temporal]] = None,
+                                 validator: Consumer[Calendar] = (_: Calendar) => {}) {
+
+  def apply(calendar: Calendar): Calendar = {
+    val newCalendar = calendar.copy()
+    validator.accept(newCalendar)
+
+    val vEVentNeedToUpdate: VEvent = newCalendar.getFirstVEvent
+
+    if (!patches.exists(_.apply(vEVentNeedToUpdate))) throw NoUpdateRequiredException()
+    markEventAsModified(vEVentNeedToUpdate)
     validateAfterUpdate(newCalendar)
     newCalendar
   }
 
-  private def validateBeforeUpdate(originalCalendar: Calendar,
-                          newStartDate: ZonedDateTime,
-                          newEndDate: ZonedDateTime): Unit = {
-    require(!newEndDate.isBefore(newStartDate), "The end date must be after the start date".asInstanceOf[Object])
-    val (originalStartDate: Option[ZonedDateTime], originalEndDate: Option[ZonedDateTime]) = parseOriginalEventDate(originalCalendar)
-
-    if (originalStartDate.exists(_.isEqual(newStartDate)) && originalEndDate.exists(_.isEqual(newEndDate))) {
-      throw NoUpdateRequiredException("No changes detected in startDate or endDate. Update is not necessary.")
+  private def markEventAsModified(vEvent: VEvent): Unit = {
+    // Update SEQUENCE
+    Option(vEvent.getSequence) match {
+      case Some(sequence) => sequence.setValue((vEvent.getSequence.getSequenceNo + 1).toString)
+      case None => vEvent.addProperty(MODIFIED_SEQUENCE_DEFAULT.asInstanceOf[Property])
     }
+
+    // Update DTSTAMP
+    vEvent.getDateTimeStamp.setDate(Instant.now)
   }
 
   private def validateAfterUpdate(calendar: Calendar): Unit = {
@@ -69,49 +146,66 @@ object CalendarEventModifier {
     require(!validationResult.hasErrors,
       s"Invalidate calendar event: ${validationResult.getEntries.asScala.toSeq.map(error => s"${error.getContext} : ${error.getMessage}").mkString(";")}".asInstanceOf[Object])
   }
+}
 
-  /**
-   * return the original start date and end date
-   */
-  private def parseOriginalEventDate(counterCalendar: Calendar): (Option[ZonedDateTime], Option[ZonedDateTime]) =
-    CalendarEventParsed.from(counterCalendar) match {
-      case Seq(singleEvent) => (singleEvent.start.map(_.value), singleEvent.end.map(_.value))
-      case _ => throw new IllegalArgumentException("The calendar file must contain exactly one VEVENT component")
+object CalendarEventModifier {
+  val MODIFIED_SEQUENCE_DEFAULT: Sequence = new Sequence("1")
+  val RECURRENCE_IGNORE_COPIED_PROPERTIES: Set[String] = Set(Property.RRULE, Property.RDATE, Property.CREATED)
+
+  def of(patch: CalendarEventUpdatePatch): CalendarEventModifier =
+    CalendarEventModifier(Seq(patch), None)
+
+  def of(counterCalendar: Calendar, userRequest: Username): CalendarEventModifier = {
+    require(ImmutableMethod.COUNTER.equals(counterCalendar.getMethod), s"The calendar must have COUNTER as a method, but got ${counterCalendar.getMethod.getValue}".asInstanceOf[Object])
+
+    val vEvent = counterCalendar.getFirstVEvent
+    val proposedStartDate: ZonedDateTime = CalendarStartField.from(vEvent).map(_.value)
+      .getOrElse(throw new IllegalArgumentException("The calendar file must contain a DTSTART property"))
+
+    val proposedEndDate: ZonedDateTime = CalendarEndField.from(vEvent).map(_.value)
+      .getOrElse(throw new IllegalArgumentException("The calendar file must contain a DTEND or DURATION property"))
+
+    val patches: Seq[CalendarEventUpdatePatch] = Seq(
+      Some(CalendarEventTimingUpdatePatch(proposedStartDate, proposedEndDate)),
+      CalendarLocationField.from(vEvent).map(_.value).map(LocationUpdatePatch),
+      Option(vEvent.getAttendees.asScala.toSeq).map(AttendeeUpdatePatch)).flatten
+
+    CalendarEventModifier(patches = patches,
+      recurrenceId = Option(vEvent.getRecurrenceId[Temporal]),
+      validator = OrganizerValidator(userRequest.asString()))
+  }
+
+  case class NoUpdateRequiredException() extends RuntimeException
+
+  implicit class ImplicitCalendar(calendar: Calendar) {
+    def getFirstVEvent: VEvent =
+      calendar.getComponents[VEvent](Component.VEVENT).asScala.toSeq.headOption match {
+        case Some(vEvent) => vEvent
+        case _ => throw new IllegalArgumentException("The calendar file must contain at least one VEVENT component")
+      }
+  }
+
+  implicit class ImplicitVEvent(vEvent: VEvent) {
+    def addProperty(property: Property): Unit =
+      vEvent.setPropertyList(new PropertyList(ImmutableList.builder()
+        .addAll(vEvent.getProperties[Property])
+        .add(property)
+        .build()))
+
+    def addProperty(property: Seq[Property]): Unit =
+      vEvent.setPropertyList(new PropertyList(ImmutableList.builder()
+        .addAll(vEvent.getProperties[Property])
+        .addAll(property.asJava)
+        .build()))
+
+    def removeProperty(properties: String*): Unit = {
+      val propertyList: util.List[Property] = vEvent.getPropertyList.removeIf(p => properties.contains(p.getName)).getAll
+      vEvent.setPropertyList(new PropertyList(propertyList))
     }
+  }
 
-  private def updateEvent(vEvent: VEvent, startDate: ZonedDateTime, endDate: ZonedDateTime): Unit = {
-    // DTSTART, DTSTAMP is mandatory as per RFC 5545
-
-    val zoneIdEvent: ZoneId = CalendarTimeZoneField.getZoneIdFromStartDate(vEvent)
-      .getOrElse(VEventTemporalUtil.getAlternativeZoneId(vEvent))
-
-    val startDateWithZone: ZonedDateTime = startDate.withZoneSameInstant(zoneIdEvent)
-    val endDateWithZone: ZonedDateTime = endDate.withZoneSameInstant(zoneIdEvent)
-
-    vEvent.getDateTimeStart[Temporal]().setDate(startDateWithZone)
-    vEvent.getDateTimeStamp.setDate(Instant.now)
-
-    // Update DTEND or remove DURATION if necessary
-    Option(vEvent.getDateTimeEnd[Temporal]()) match {
-      case Some(dateTimeEnd) => dateTimeEnd.setDate(endDateWithZone)
-      case None =>
-        // RFC 5545 - Section 3.6.1 - The DTEND property and DURATION property MUST NOT occur in the same VEVENT
-        val propertyList: util.List[Property] = vEvent.getPropertyList.removeIf(_.getName == Property.DURATION).getAll
-        vEvent.setPropertyList(new PropertyList(ImmutableList.builder()
-          .addAll(propertyList)
-          .add(new DtEnd(endDateWithZone))
-          .build())
-        )
-    }
-
-    // Update the sequence number & last modified date
-    Option(vEvent.getSequence) match {
-      case Some(sequence) => sequence.setValue((vEvent.getSequence.getSequenceNo + 1).toString)
-      case None =>
-        vEvent.setPropertyList(new PropertyList(ImmutableList.builder()
-          .addAll(vEvent.getProperties[Property])
-          .add(MODIFIED_SEQUENCE_DEFAULT.asInstanceOf[Property])
-          .build()))
-    }
+  implicit class ImplicitAttendee(attendee: Attendee) {
+    def getIdentity: Option[String] =
+      CalendarAttendeeMailTo.from(attendee).map(_.value.asString())
   }
 }

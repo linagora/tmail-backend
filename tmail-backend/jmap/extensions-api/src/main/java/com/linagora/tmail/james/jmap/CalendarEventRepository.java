@@ -18,13 +18,12 @@
 
 package com.linagora.tmail.james.jmap;
 
-import java.time.ZonedDateTime;
-
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
+
 public interface CalendarEventRepository extends EventAttendanceRepository {
 
-    Publisher<Void> rescheduledTiming(Username username, String eventUid, ZonedDateTime startDate, ZonedDateTime endDate);
-
+    Publisher<Void> updateEvent(Username username, String eventUid, CalendarEventModifier patches);
 }

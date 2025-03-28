@@ -67,7 +67,10 @@ import com.linagora.tmail.dav.OpenPaasDavUserProvider;
 import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
+import com.linagora.tmail.james.jmap.calendar.CalendarEventTimingUpdatePatch;
+import com.linagora.tmail.james.jmap.calendar.CalendarEventUpdatePatch;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
+import com.linagora.tmail.james.jmap.calendar.OrganizerValidator;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
@@ -332,7 +335,7 @@ public class CalDavEventRepositoryTest {
             .atZone(ZoneId.of("Europe/Paris"));
         ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
 
-        assertThatCode(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
+        assertThatCode(() -> testee.updateEvent(testUser, eventUidA, createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .doesNotThrowAnyException();
 
         DavCalendarObject davCalendarObject = davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
@@ -366,10 +369,10 @@ public class CalDavEventRepositoryTest {
             .atZone(ZoneId.of("Europe/Paris"));
         ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
 
-        assertThatCode(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
+        assertThatCode(() -> testee.updateEvent(testUser, eventUidA, createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .doesNotThrowAnyException();
 
-        assertThatThrownBy(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
+        assertThatThrownBy(() -> testee.updateEvent(testUser, eventUidA, createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .isInstanceOf(CalendarEventModifier.NoUpdateRequiredException.class);
     }
 
@@ -380,7 +383,7 @@ public class CalDavEventRepositoryTest {
         ZonedDateTime proposedStartDate = ZonedDateTime.now();
         ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
 
-        assertThatThrownBy(() -> testee.rescheduledTiming(testUser, nonExistentEventUid, proposedStartDate, proposedEndDate).block())
+        assertThatThrownBy(() -> testee.updateEvent(testUser, nonExistentEventUid, createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .isInstanceOf(CalendarEventNotFoundException.class)
             .hasMessageContaining("Calendar event not found");
     }
@@ -409,9 +412,18 @@ public class CalDavEventRepositoryTest {
         ZonedDateTime proposedStartDate = ZonedDateTime.now();
         ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
 
-        assertThatThrownBy(() -> testee.rescheduledTiming(testUser, eventUidA, proposedStartDate, proposedEndDate).block())
+        CalendarEventModifier eventModifier = new CalendarEventModifier(
+            CollectionConverters.asScala(List.<CalendarEventUpdatePatch>of(new CalendarEventTimingUpdatePatch(proposedStartDate, proposedEndDate))).toSeq()
+            , OptionConverters.toScala(Optional.empty()),
+            new OrganizerValidator(testUser.asString()));
+
+        assertThatThrownBy(() -> testee.updateEvent(testUser, eventUidA, eventModifier).block())
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Cannot reschedule event");
+            .hasMessageContaining("Can not update event");
+    }
+
+    private CalendarEventModifier createRescheduledTimingModifier(ZonedDateTime proposedStartDate, ZonedDateTime proposedEndDate) {
+        return CalendarEventModifier.of(new CalendarEventTimingUpdatePatch(proposedStartDate, proposedEndDate));
     }
 
     @Test

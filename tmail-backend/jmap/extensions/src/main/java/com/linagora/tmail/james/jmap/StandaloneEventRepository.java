@@ -20,7 +20,6 @@ package com.linagora.tmail.james.jmap;
 
 import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +39,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
@@ -163,7 +163,7 @@ public class StandaloneEventRepository implements CalendarEventRepository {
     }
 
     @Override
-    public Publisher<Void> rescheduledTiming(Username username, String eventUid, ZonedDateTime startDate, ZonedDateTime endDate) {
-        return Mono.error(new UnsupportedOperationException("Rescheduled timing is not supported."));
+    public Publisher<Void> updateEvent(Username username, String eventUid, CalendarEventModifier patches) {
+        return Mono.error(new UnsupportedOperationException("updateEvent is not supported."));
     }
 }
