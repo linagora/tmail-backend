@@ -23,6 +23,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Optional;
 
+import com.linagora.tmail.conf.AIBotProperties;
 import org.apache.james.core.MailAddress;
 import org.apache.mailet.MailetConfig;
 import org.apache.mailet.MailetException;
@@ -57,12 +58,13 @@ public class AIBotConfig {
         this.llmModel = llmModel;
     }
 
-    public static AIBotConfig fromMailetConfig(MailetConfig mailetConfig) throws MailetException {
-        String apiKeyParam = mailetConfig.getInitParameter(API_KEY_PARAMETER_NAME);
-        String gptAddressParam = mailetConfig.getInitParameter(BOT_ADDRESS_PARAMETER_NAME);
-        String llmModelParam = mailetConfig.getInitParameter(MODEL_PARAMETER_NAME);
-        String baseUrlParam = mailetConfig.getInitParameter(BASE_URL_PARAMETER_NAME);
-
+    public static AIBotConfig fromMailetConfig( AIBotProperties aiBotProperties) throws MailetException {
+        String apiKeyParam = aiBotProperties.getApiKey();
+        String gptAddressParam = aiBotProperties.getBotAddress();
+        String llmModelParam = aiBotProperties.getModel();
+        String baseUrlParam = aiBotProperties.getBaseUrl()
+                .map(URL::toString) // Convertir l'URL en String
+                .orElse("");
         if (Strings.isNullOrEmpty(apiKeyParam)) {
             throw new MailetException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided.");
         }
