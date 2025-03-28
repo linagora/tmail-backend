@@ -66,6 +66,7 @@ class AIBotIntegrationTest {
 
     @RegisterExtension
     public TestIMAPClient imapClient = new TestIMAPClient();
+
     @RegisterExtension
     public SMTPMessageSender messageSender = new SMTPMessageSender(DEFAULT_DOMAIN);
 
