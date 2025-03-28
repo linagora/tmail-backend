@@ -22,10 +22,8 @@ import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults
 import static com.linagora.tmail.james.jmap.model.CalendarEventReplyResults.ReplyResults;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -41,22 +39,20 @@ import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MessageId;
 import org.reactivestreams.Publisher;
 
-import com.google.common.base.Preconditions;
 import com.linagora.tmail.dav.cal.FreeBusyRequest;
 import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.CalendarEventRepository;
 import com.linagora.tmail.james.jmap.MessagePartBlobId;
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
-import com.linagora.tmail.james.jmap.model.CalendarOrganizerField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
-import net.fortuna.ical4j.model.component.VEvent;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import scala.jdk.javaapi.OptionConverters;
@@ -167,18 +163,12 @@ public class CalDavEventRepository implements CalendarEventRepository {
     }
 
     @Override
-    public Mono<Void> rescheduledTiming(Username username, String eventUid, ZonedDateTime startDate, ZonedDateTime endDate) {
-        Consumer<VEvent> organizerValidator = vEvent -> OptionConverters.toJava(CalendarOrganizerField.from(vEvent)
-                .flatMap(CalendarOrganizerField::asMailAddressString))
-            .ifPresent(organizer -> Preconditions.checkArgument(organizer.equals(username.asString()),
-                "Cannot reschedule event '%s', the organizer is '%s' and the user is '%s'".formatted(eventUid, organizer, username.asString())));
-
-        UnaryOperator<DavCalendarObject> updateEventTimingOperator = calendarObject -> calendarObject.withRescheduledTiming(startDate, endDate, organizerValidator);
-
+    public Mono<Void> updateEvent(Username username, String eventUid, CalendarEventModifier eventModifier) {
+        UnaryOperator<DavCalendarObject> updateEventOperator = calendarObject -> calendarObject.withUpdatePatches(eventModifier);
         return davUserProvider.provide(username)
             .flatMap(davUser -> davClient.getCalendarObject(davUser, new EventUid(eventUid))
                 .switchIfEmpty(Mono.error(new CalendarEventNotFoundException(username.asString(), eventUid)))
-                .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), updateEventTimingOperator)));
+                .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), updateEventOperator)));
     }
 
 }

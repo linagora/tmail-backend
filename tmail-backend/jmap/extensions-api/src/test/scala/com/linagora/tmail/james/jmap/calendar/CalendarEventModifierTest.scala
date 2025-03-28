@@ -21,14 +21,21 @@ package com.linagora.tmail.james.jmap.calendar
 import java.io.ByteArrayInputStream
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
+import java.util
+import java.util.UUID
 
-import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.NoUpdateRequiredException
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.{ImplicitCalendar, ImplicitVEvent, NoUpdateRequiredException}
 import com.linagora.tmail.james.jmap.calendar.{CalendarEventModifier => testee}
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.{Calendar, Component}
+import net.fortuna.ical4j.model.property.Attendee
+import net.fortuna.ical4j.model.{Calendar, Component, Property}
+import org.apache.james.core.Username
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
-import org.junit.jupiter.api.Test
+import org.assertj.core.api.SoftAssertions
+import org.junit.jupiter.api.{Nested, Test}
+
+import scala.jdk.CollectionConverters._
 
 class CalendarEventModifierTest {
   val DATE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssX")
@@ -63,9 +70,9 @@ class CalendarEventModifierTest {
   @Test
   def shouldChangeDTSTARTWhenStartDateAreDifferent(): Unit = {
     val newStartDateTime: ZonedDateTime = START_DATE_SAMPLE.minusHours(1)
-    val newCalendar = testee.modifyEventTiming(SAMPLE_CALENDAR,
-      newStartDate = newStartDateTime,
-      newEndDate = END_DATE_SAMPLE)
+
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(newStartDateTime, END_DATE_SAMPLE))
+      .apply(SAMPLE_CALENDAR)
 
     assertThat(CalendarEventParsed.from(newCalendar).head.start.get.value)
       .isEqualTo(newStartDateTime)
@@ -74,9 +81,9 @@ class CalendarEventModifierTest {
   @Test
   def shouldChangeDTENDWhenEndDateAreDifferent: Unit = {
     val newEndDateTime: ZonedDateTime = END_DATE_SAMPLE.plusHours(1)
-    val newCalendar = testee.modifyEventTiming(SAMPLE_CALENDAR,
-      newStartDate = START_DATE_SAMPLE,
-      newEndDate = newEndDateTime)
+
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE, newEndDateTime))
+      .apply(SAMPLE_CALENDAR)
 
     assertThat(CalendarEventParsed.from(newCalendar).head.end.get.value)
       .isEqualTo(newEndDateTime)
@@ -84,14 +91,16 @@ class CalendarEventModifierTest {
 
   @Test
   def shouldThrowWhenStartDateAndEndDateAreTheSame(): Unit = {
-    assertThatThrownBy(() => testee.modifyEventTiming(SAMPLE_CALENDAR, START_DATE_SAMPLE, END_DATE_SAMPLE))
+    assertThatThrownBy(() => testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE, END_DATE_SAMPLE))
+      .apply(SAMPLE_CALENDAR))
       .isInstanceOf(classOf[NoUpdateRequiredException])
   }
 
   @Test
   def shouldIncrementSequenceWhenChangingEvent(): Unit = {
-    val newCalendar = testee.modifyEventTiming(SAMPLE_CALENDAR, newStartDate = START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE)
-
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE))
+      .apply(SAMPLE_CALENDAR)
+    
     val parsedNewCalendar: CalendarEventParsed = CalendarEventParsed.from(newCalendar).head
 
     assertThat(parsedNewCalendar.sequence.get.value)
@@ -121,7 +130,9 @@ class CalendarEventModifierTest {
          |END:VCALENDAR
          |
          |""".stripMargin.getBytes("UTF-8")))
-    val newCalendar = testee.modifyEventTiming(absentSequenceCalendar, START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE)
+
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE))
+      .apply(absentSequenceCalendar)
 
     assertThat(CalendarEventParsed.from(newCalendar).head.sequence.get.value)
       .isEqualTo(CalendarEventModifier.MODIFIED_SEQUENCE_DEFAULT.getSequenceNo)
@@ -129,15 +140,17 @@ class CalendarEventModifierTest {
 
   @Test
   def shouldChangeDTSTAMPWhenChangingEvent(): Unit = {
-    val newCalendar = testee.modifyEventTiming(SAMPLE_CALENDAR, newStartDate = START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE)
-
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE))
+      .apply(SAMPLE_CALENDAR)
+    
     assertThat(newCalendar.getComponent[VEvent](Component.VEVENT).get().getDateTimeStamp.getValue)
       .isNotEqualTo("20250318T120000Z")
   }
 
   @Test
   def shouldKeepOtherPropertiesWhenChangingEvent(): Unit = {
-    val newCalendar = testee.modifyEventTiming(SAMPLE_CALENDAR, newStartDate = START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE)
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE))
+      .apply(SAMPLE_CALENDAR)
 
     // ignore DTSTAMP
     assertThat(newCalendar.toString.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim.stripMargin)
@@ -185,8 +198,9 @@ class CalendarEventModifierTest {
          |""".stripMargin.getBytes("UTF-8")))
 
     val newEndDateTime = END_DATE_SAMPLE.plusHours(1)
-    val newCalendar = testee.modifyEventTiming(absentDTSTARTCalendar, START_DATE_SAMPLE, newEndDateTime)
-
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE, newEndDateTime))
+      .apply(absentDTSTARTCalendar) 
+    
     assertThat(CalendarEventParsed.from(newCalendar).head.end.get.value)
       .isEqualTo(newEndDateTime)
   }
@@ -217,8 +231,8 @@ class CalendarEventModifierTest {
          |""".stripMargin.getBytes("UTF-8")))
 
     // When updating event with new end date
-    val newCalendar = testee.modifyEventTiming(originalCalendar, START_DATE_SAMPLE, END_DATE_SAMPLE.plusHours(1))
-
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE, END_DATE_SAMPLE.plusHours(1)))
+      .apply(originalCalendar)
     // Then DURATION should be removed
     assertThat(newCalendar.toString)
       .doesNotContain("DURATION")
@@ -226,9 +240,8 @@ class CalendarEventModifierTest {
 
   @Test
   def shouldThrowWhenNewEndDateIsBeforeStartDate(): Unit = {
-    assertThatThrownBy(() => testee.modifyEventTiming(SAMPLE_CALENDAR,
-      newStartDate= START_DATE_SAMPLE,
-      newEndDate = START_DATE_SAMPLE.minusHours(1)))
+    assertThatThrownBy(() => testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE, START_DATE_SAMPLE.minusHours(1)))
+      .apply(SAMPLE_CALENDAR))
       .isInstanceOf(classOf[IllegalArgumentException])
   }
 
@@ -236,9 +249,9 @@ class CalendarEventModifierTest {
   def shouldThrowWhenSameDateButDifferentTimeZones(): Unit = {
     val vietNamZone = ZoneId.of("Asia/Ho_Chi_Minh")
 
-    assertThatThrownBy(() => testee.modifyEventTiming(SAMPLE_CALENDAR,
-      START_DATE_SAMPLE.withZoneSameInstant(vietNamZone),
-      END_DATE_SAMPLE.withZoneSameInstant(vietNamZone)))
+    assertThatThrownBy(() => testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE.withZoneSameInstant(vietNamZone),
+        END_DATE_SAMPLE.withZoneSameInstant(vietNamZone)))
+      .apply(SAMPLE_CALENDAR))
       .isInstanceOf(classOf[NoUpdateRequiredException])
   }
 
@@ -274,9 +287,9 @@ class CalendarEventModifierTest {
         |END:VCALENDAR
         |""".stripMargin.getBytes("UTF-8")))
 
-    val updatedCalendar = testee.modifyEventTiming(originalCalendar,
-      START_DATE_SAMPLE.minusHours(1).withZoneSameInstant(ZoneId.of("UTC")),
-      END_DATE_SAMPLE.withZoneSameInstant(ZoneId.of("UTC"))).toString
+    val updatedCalendar = testee.of(CalendarEventTimingUpdatePatch(
+      START_DATE_SAMPLE.minusHours(1).withZoneSameInstant(ZoneId.of("UTC")), END_DATE_SAMPLE.withZoneSameInstant(ZoneId.of("UTC"))))
+      .apply(originalCalendar).toString
 
     assertThat(updatedCalendar)
       .contains("DTSTART;TZID=Asia/Jakarta:20250320T213000")
@@ -294,8 +307,98 @@ class CalendarEventModifierTest {
         |END:VCALENDAR
         |""".stripMargin.getBytes("UTF-8")))
 
-    assertThatThrownBy(() => testee.modifyEventTiming(noVEventCalendar, START_DATE_SAMPLE, END_DATE_SAMPLE))
+    assertThatThrownBy(() => testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE,
+        END_DATE_SAMPLE))
+      .apply(noVEventCalendar))
       .isInstanceOf(classOf[IllegalArgumentException])
   }
 
+  @Nested
+  class LocationPatch {
+    @Test
+    def shouldChangeLOCATIONWhenProposeLocationAreDifferent(): Unit = {
+      val newLocation = "newLocation" + UUID.randomUUID()
+      val newCalendar = testee.of(LocationUpdatePatch(newLocation)).apply(SAMPLE_CALENDAR)
+      assertThat(CalendarEventParsed.from(newCalendar).head.location.get.value).isEqualTo(newLocation)
+    }
+
+    @Test
+    def shouldThrowWhenNotChangeLOCATION(): Unit = {
+      val newLocation = "newLocation" + UUID.randomUUID()
+      val calendarAfterUpdateLocationFirstTime = testee.of(LocationUpdatePatch(newLocation)).apply(SAMPLE_CALENDAR)
+
+      assertThatThrownBy(() => testee.of(LocationUpdatePatch(newLocation)).apply(calendarAfterUpdateLocationFirstTime))
+        .isInstanceOf(classOf[NoUpdateRequiredException])
+    }
+
+    @Test
+    def shouldAddLOCATIONWhenNoLocationExists(): Unit = {
+      val modifiedCalendar = SAMPLE_CALENDAR.copy()
+      modifiedCalendar.getFirstVEvent.removeProperty(Property.LOCATION)
+
+      val newLocation: String = "newLocation" + UUID.randomUUID()
+
+      val updatedCalendar = testee.of(LocationUpdatePatch(newLocation)).apply(modifiedCalendar)
+      assertThat(CalendarEventParsed.from(updatedCalendar).head.location.get.value).isEqualTo(newLocation)
+    }
+
+    @Test
+    def shouldNotModifyLOCATIONWhenProposedLocationIsSame(): Unit = {
+      val originalLocation = CalendarEventParsed.from(SAMPLE_CALENDAR).head.location.get.value
+
+      assertThatThrownBy(() => testee.of(LocationUpdatePatch(originalLocation)).apply(SAMPLE_CALENDAR))
+        .isInstanceOf(classOf[NoUpdateRequiredException])
+    }
+  }
+
+  @Nested
+  class AttendeePatch {
+    @Test
+    def shouldAddNewAttendeeWhenNotInOriginalList(): Unit = {
+      val newAttendee = new Attendee(s"mailto:${UUID.randomUUID().toString}@example.com")
+      val updatedCalendar = testee.of(AttendeeUpdatePatch(Seq(newAttendee))).apply(SAMPLE_CALENDAR)
+
+      assertThat(updatedCalendar.toString)
+        .contains(newAttendee.toString)
+    }
+
+    @Test
+    def shouldNotModifyAttendeesWhenAllExist(): Unit = {
+      val existingAttendees = SAMPLE_CALENDAR.getFirstVEvent.getAttendees.asScala.toSeq
+
+      assertThatThrownBy(() => testee.of(AttendeeUpdatePatch(existingAttendees)).apply(SAMPLE_CALENDAR))
+        .isInstanceOf(classOf[NoUpdateRequiredException])
+    }
+
+    @Test
+    def shouldAddMultipleNewAttendees(): Unit = {
+      val attendee1 = new Attendee("mailto:attendee1@example.com")
+      val attendee2 = new Attendee("mailto:attendee2@example.com")
+
+      val updatedCalendar = testee.of(AttendeeUpdatePatch(Seq(attendee1, attendee2))).apply(SAMPLE_CALENDAR)
+        .toString
+
+      assertThat(updatedCalendar)
+        .contains(attendee1.toString)
+
+      assertThat(updatedCalendar)
+        .contains(attendee2.toString)
+    }
+
+    @Test
+    def shouldRespectCurrentAttendees(): Unit = {
+      val currentAttendees: util.List[Attendee] = SAMPLE_CALENDAR.getFirstVEvent.getAttendees
+      val newAttendee = new Attendee(s"mailto:${UUID.randomUUID().toString}@example.com")
+      val updatedCalendar = testee.of(AttendeeUpdatePatch(Seq(newAttendee))).apply(SAMPLE_CALENDAR)
+
+      assertThat(updatedCalendar.getFirstVEvent.getAttendees.size())
+        .isEqualTo(currentAttendees.size() + 1)
+      assertThat(updatedCalendar.getFirstVEvent.getAttendees).containsAll(currentAttendees)
+    }
+  }
+
+  implicit class ImplicitCalendarString(value: String) {
+    def removeDTSTAMPLines(): String =
+      value.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim.stripMargin
+  }
 }

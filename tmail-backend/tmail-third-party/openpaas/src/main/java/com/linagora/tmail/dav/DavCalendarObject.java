@@ -20,10 +20,8 @@ package com.linagora.tmail.dav;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -84,9 +82,8 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
         return new DavCalendarObject(uri(), updatedCalendarData, eTag());
     }
 
-    public DavCalendarObject withRescheduledTiming(ZonedDateTime statDateTime, ZonedDateTime endDateTime, Consumer<VEvent> vEventValidator) {
-        Calendar updatedCalendarData = CalendarEventModifier.modifyEventTiming(calendarData(), statDateTime, endDateTime, vEventValidator);
-        return new DavCalendarObject(uri(), updatedCalendarData, eTag());
+    public DavCalendarObject withUpdatePatches(CalendarEventModifier eventModifier) {
+        return new DavCalendarObject(uri(), eventModifier.apply(calendarData()), eTag());
     }
 
     private VEvent updatedVEvent(String targetAttendeeEmail, PartStat partStat, VEvent vEvent) {
