@@ -386,6 +386,25 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldServeAllowContactsConfiguration(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("[{\"name\":\"linagora.esn.contacts\",\"keys\":[\"features\"]}]")
+        .when()
+            .post("/api/configurations")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+    [{"name":"linagora.esn.contacts","configurations":[{"name":"features","value":{"isVirtualFollowingAddressbookEnabled":false,"isSharingAddressbookEnabled":true,"isVirtualUserAddressbookEnabled":false,"isDomainMembersAddressbookEnabled":true}}]}]""");
+    }
+
+    @Test
     void shouldServeAvatars(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 
