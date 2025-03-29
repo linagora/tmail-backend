@@ -39,6 +39,8 @@ public class ConstantConfigurationEntryResolver implements ConfigurationEntryRes
     private static Table<ModuleName, ConfigurationKey, Supplier<JsonNode>> TABLE = ImmutableTable.<ModuleName, ConfigurationKey, Supplier<JsonNode>>builder()
         .put(new ModuleName("core"), new ConfigurationKey("allowDomainAdminToManageUserEmails"), NullNode::getInstance)
         .put(new ModuleName("core"), new ConfigurationKey("homePage"), NullNode::getInstance)
+        .put(new ModuleName("linagora.esn.calendar"), new ConfigurationKey("workingDays"), NullNode::getInstance) // moved to core, call is still done by SPA
+        .put(new ModuleName("linagora.esn.calendar"), new ConfigurationKey("hideDeclinedEvents"), NullNode::getInstance) // moved to core, call is still done by SPA
         .build();
     public static final ImmutableSet<EntryIdentifier> KEYS = TABLE.cellSet()
         .stream()
