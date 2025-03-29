@@ -25,8 +25,10 @@ import jakarta.inject.Inject;
 
 import org.apache.james.mailbox.MailboxSession;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Sets;
@@ -41,7 +43,7 @@ import reactor.core.publisher.Flux;
 public class FileConfigurationEntryResolver implements ConfigurationEntryResolver {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private static Function<RestApiConfiguration, ObjectNode> davServerConfiguration() {
+    private static Function<RestApiConfiguration, JsonNode> davServerConfiguration() {
         return configuration -> {
             ObjectNode frontendNode = OBJECT_MAPPER.createObjectNode();
 
@@ -57,7 +59,15 @@ public class FileConfigurationEntryResolver implements ConfigurationEntryResolve
         };
     }
 
-    private static Function<RestApiConfiguration, ObjectNode> calendarSharingEnabled() {
+    private static Function<RestApiConfiguration, JsonNode> visioConfiguration1() {
+        return configuration -> TextNode.valueOf(configuration.getVisioURL().toString());
+    }
+
+    private static Function<RestApiConfiguration, JsonNode> visioConfiguration2() {
+        return configuration -> TextNode.valueOf(configuration.getVisioURL().toString());
+    }
+
+    private static Function<RestApiConfiguration, JsonNode> calendarSharingEnabled() {
         return configuration -> {
             ObjectNode node = OBJECT_MAPPER.createObjectNode();
             node.put("isSharingCalendarEnabled", configuration.isCalendarSharingEnabled());
@@ -65,9 +75,11 @@ public class FileConfigurationEntryResolver implements ConfigurationEntryResolve
         };
     }
 
-    private static final Table<ModuleName, ConfigurationKey, Function<RestApiConfiguration, ObjectNode>> TABLE = ImmutableTable.<ModuleName, ConfigurationKey, Function<RestApiConfiguration, ObjectNode>>builder()
+    private static final Table<ModuleName, ConfigurationKey, Function<RestApiConfiguration, JsonNode>> TABLE = ImmutableTable.<ModuleName, ConfigurationKey, Function<RestApiConfiguration, JsonNode>>builder()
         .put(new ModuleName("core"), new ConfigurationKey("davserver"), davServerConfiguration())
         .put(new ModuleName("linagora.esn.calendar"), new ConfigurationKey("features"), calendarSharingEnabled())
+        .put(new ModuleName("linagora.esn.videoconference"), new ConfigurationKey("jitsiInstanceUrl"), visioConfiguration1())
+        .put(new ModuleName("linagora.esn.videoconference"), new ConfigurationKey("openPaasVideoconferenceAppUrl"), visioConfiguration2())
         .build();
 
     public static final ImmutableSet<EntryIdentifier> KEYS = TABLE.cellSet()
