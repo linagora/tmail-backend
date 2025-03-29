@@ -19,28 +19,40 @@
 package com.linagora.calendar.restapi.routes.configuration;
 
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.apache.james.mailbox.MailboxSession;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Sets;
+import com.google.common.collect.Table;
 import com.linagora.calendar.restapi.api.ConfigurationEntryResolver;
 import com.linagora.calendar.restapi.api.ConfigurationKey;
 import com.linagora.calendar.restapi.api.ModuleName;
 
 import reactor.core.publisher.Flux;
 
-public class NullConstantConfigurationEntryResolver implements ConfigurationEntryResolver {
+public class ConstantConfigurationEntryResolver implements ConfigurationEntryResolver {
+    private static Table<ModuleName, ConfigurationKey, Supplier<JsonNode>> TABLE = ImmutableTable.<ModuleName, ConfigurationKey, Supplier<JsonNode>>builder()
+        .put(new ModuleName("core"), new ConfigurationKey("allowDomainAdminToManageUserEmails"), NullNode::getInstance)
+        .put(new ModuleName("core"), new ConfigurationKey("homePage"), NullNode::getInstance)
+        .build();
+    public static final ImmutableSet<EntryIdentifier> KEYS = TABLE.cellSet()
+        .stream()
+        .map(cell -> new EntryIdentifier(cell.getRowKey(), cell.getColumnKey()))
+        .collect(ImmutableSet.toImmutableSet());
+
     @Override
     public Flux<Entry> resolve(Set<EntryIdentifier> ids, MailboxSession session) {
-        return Flux.fromIterable(Sets.intersection(ids, entryIdentifiers()))
-            .map(id -> new Entry(id.moduleName(), id.configurationKey(), NullNode.getInstance()));
+        return Flux.fromIterable(Sets.intersection(ids, KEYS))
+            .map(id -> new Entry(id.moduleName(), id.configurationKey(), TABLE.get(id.moduleName(), id.configurationKey()).get()));
     }
 
     @Override
     public Set<EntryIdentifier> entryIdentifiers() {
-        return ImmutableSet.of(new ConfigurationEntryResolver.EntryIdentifier(new ModuleName("core"), new ConfigurationKey("allowDomainAdminToManageUserEmails")),
-            new ConfigurationEntryResolver.EntryIdentifier(new ModuleName("core"), new ConfigurationKey("homePage")));
+        return KEYS;
     }
 }
