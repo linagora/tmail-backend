@@ -84,23 +84,13 @@ public class RestApiConfiguration {
             return this;
         }
 
-        public Builder calendarSpaUrl(URL url) {
-            this.calendarSpaUrl = Optional.of(url);
-            return this;
-        }
-
-        public Builder selfUrl(URL url) {
-            this.selfURL = Optional.of(url);
+        public Builder selfUrl(Optional<URL> url) {
+            this.selfURL = url;
             return this;
         }
 
         public Builder calendarSpaUrl(Optional<URL> url) {
             this.calendarSpaUrl = url;
-            return this;
-        }
-
-        public Builder openpaasBackendURL(URL url) {
-            this.openpaasBackendURL = Optional.of(url);
             return this;
         }
 
@@ -168,6 +158,8 @@ public class RestApiConfiguration {
             .map(Throwing.function(URL::new));
         Optional<URL> davURL = Optional.ofNullable(configuration.getString("dav.url", "https://dav.linagora.com"))
             .map(Throwing.function(URL::new));
+        Optional<URL> selfURL = Optional.ofNullable(configuration.getString("dav.url", "https://dav.linagora.com"))
+            .map(Throwing.function(URL::new));
         Optional<Boolean> openpaasBackendTrustAllCerts = Optional.ofNullable(configuration.getBoolean("openpaas.backend.trust.all.certificates", null));
         Optional<String> jwtPrivateKey = Optional.ofNullable(configuration.getString("jwt.key.private", null));
         Optional<List<String>> jwtPublicKey = Optional.ofNullable(configuration.getString("jwt.key.public", null))
@@ -184,6 +176,7 @@ public class RestApiConfiguration {
             .calendarSpaUrl(calendarSpaUrl)
             .openpaasBackendURL(openpaasBackendURL)
             .davURL(davURL)
+            .selfUrl(selfURL)
             .openpaasBackendTrustAllCerts(openpaasBackendTrustAllCerts)
             .jwtPublicPath(jwtPublicKey)
             .jwtPrivatePath(jwtPrivateKey)
