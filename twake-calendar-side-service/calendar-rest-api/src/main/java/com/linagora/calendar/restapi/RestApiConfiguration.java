@@ -53,6 +53,8 @@ public class RestApiConfiguration {
         private Optional<URL> visioURL = Optional.empty();
         private Optional<Boolean> openpaasBackendTrustAllCerts = Optional.empty();
         private Optional<Boolean> sharingCalendarEnabled = Optional.empty();
+        private Optional<Boolean> sharingAddressbookEnabled = Optional.empty();
+        private Optional<Boolean> domainMembersAddressbookEnabled = Optional.empty();
         private Optional<URL> oidcUserInfoUrl = Optional.empty();
         private Optional<String> oidcIntrospectionClaim = Optional.empty();
 
@@ -116,7 +118,17 @@ public class RestApiConfiguration {
         }
 
         public Builder enableCalendarSharing(Optional<Boolean> sharingCalendarEnabled) {
-            this.sharingCalendarEnabled = openpaasBackendTrustAllCerts;
+            this.sharingCalendarEnabled = sharingCalendarEnabled;
+            return this;
+        }
+
+        public Builder sharingAddressbookEnabled(Optional<Boolean> sharingAddressbookEnabled) {
+            this.sharingAddressbookEnabled = sharingAddressbookEnabled;
+            return this;
+        }
+
+        public Builder domainMembersAddressbookEnabled(Optional<Boolean> domainMembersAddressbookEnabled) {
+            this.domainMembersAddressbookEnabled = domainMembersAddressbookEnabled;
             return this;
         }
 
@@ -143,7 +155,10 @@ public class RestApiConfiguration {
                     jwtPublicPath.orElse(ImmutableList.of("classpath://jwt_publickey")),
                     jwtValidity.orElse(Duration.ofHours(12)),
                     oidcUserInfoUrl.orElse(new URL("http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/userInfo")),
-                    oidcIntrospectionClaim.orElse("email"), sharingCalendarEnabled.orElse(true));
+                    oidcIntrospectionClaim.orElse("email"),
+                    sharingCalendarEnabled.orElse(true),
+                    sharingAddressbookEnabled.orElse(true),
+                    domainMembersAddressbookEnabled.orElse(true));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -178,6 +193,8 @@ public class RestApiConfiguration {
             .map(Throwing.function(URL::new));
         Optional<String> oidcIntrospectionClaim = Optional.ofNullable(configuration.getString("oidc.claim", null));
         Optional<Boolean> calendarSharingEnabled = Optional.ofNullable(configuration.getBoolean("calendar.sharing.enabled", null));
+        Optional<Boolean> sharingAddressbookEnabled = Optional.ofNullable(configuration.getBoolean("contacts.sharing.enabled", null));
+        Optional<Boolean> domainMembersAddressbookEnabled = Optional.ofNullable(configuration.getBoolean("domain.contacts.enabled", null));
 
         return RestApiConfiguration.builder()
             .port(port)
@@ -192,6 +209,8 @@ public class RestApiConfiguration {
             .oidcUserInfoUrl(oidcIntrospectionUrl)
             .oidcClaim(oidcIntrospectionClaim)
             .enableCalendarSharing(calendarSharingEnabled)
+            .sharingAddressbookEnabled(sharingAddressbookEnabled)
+            .domainMembersAddressbookEnabled(domainMembersAddressbookEnabled)
             .build();
     }
 
@@ -208,11 +227,13 @@ public class RestApiConfiguration {
     private final URL oidcIntrospectionUrl;
     private final String oidcClaim;
     private final boolean calendarSharingEnabled;
+    private final boolean sharingContactsEnabled;
+    private final boolean domainMembersAddressbookEnabled;
 
     @VisibleForTesting
     RestApiConfiguration(Optional<Port> port, URL calendarSpaUrl, URL selfUrl, URL openpaasBackendURL, URL davURL, URL visioURL, boolean openpaasBackendTrustAllCerts,
                          String jwtPrivatePath, List<String> jwtPublicPath, Duration jwtValidity, URL oidcIntrospectionUrl,
-                         String oidcIntrospectionClaim, boolean calendarSharingENabled) {
+                         String oidcIntrospectionClaim, boolean calendarSharingENabled, boolean sharingCalendarEnabled, boolean domainMembersAddressbookEnabled) {
         this.port = port;
         this.calendarSpaUrl = calendarSpaUrl;
         this.selfUrl = selfUrl;
@@ -226,6 +247,8 @@ public class RestApiConfiguration {
         this.oidcIntrospectionUrl = oidcIntrospectionUrl;
         this.oidcClaim = oidcIntrospectionClaim;
         this.calendarSharingEnabled = calendarSharingENabled;
+        this.sharingContactsEnabled = sharingCalendarEnabled;
+        this.domainMembersAddressbookEnabled = domainMembersAddressbookEnabled;
     }
 
     public Optional<Port> getPort() {
@@ -278,5 +301,13 @@ public class RestApiConfiguration {
 
     public URL getVisioURL() {
         return visioURL;
+    }
+
+    public boolean isSharingContactsEnabled() {
+        return sharingContactsEnabled;
+    }
+
+    public boolean isDomainMembersAddressbookEnabled() {
+        return domainMembersAddressbookEnabled;
     }
 }
