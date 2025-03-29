@@ -405,6 +405,25 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldServeLegacyCalendarConfiguration(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("[{\"name\":\"linagora.esn.calendar\",\"keys\":[\"hideDeclinedEvents\",\"workingDays\"]}]")
+        .when()
+            .post("/api/configurations")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+    [{"name":"linagora.esn.calendar","configurations":[{"name":"hideDeclinedEvents","value":null},{"name":"workingDays", "value":null}]}]""");
+    }
+
+    @Test
     void shouldServeAvatars(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 
