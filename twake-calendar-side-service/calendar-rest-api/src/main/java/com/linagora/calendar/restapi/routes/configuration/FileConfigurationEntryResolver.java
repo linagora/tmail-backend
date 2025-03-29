@@ -19,6 +19,7 @@
 package com.linagora.calendar.restapi.routes.configuration;
 
 import java.util.Set;
+import java.util.function.Function;
 
 import jakarta.inject.Inject;
 
@@ -27,6 +28,9 @@ import org.apache.james.mailbox.MailboxSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableTable;
+import com.google.common.collect.Sets;
+import com.google.common.collect.Table;
 import com.linagora.calendar.restapi.RestApiConfiguration;
 import com.linagora.calendar.restapi.api.ConfigurationEntryResolver;
 import com.linagora.calendar.restapi.api.ConfigurationKey;
@@ -34,39 +38,49 @@ import com.linagora.calendar.restapi.api.ModuleName;
 
 import reactor.core.publisher.Flux;
 
-public class DavConfigurationEntryResolver implements ConfigurationEntryResolver {
-    public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    public static final EntryIdentifier ENTRY_IDENTIFIER = new EntryIdentifier(new ModuleName("core"), new ConfigurationKey("davserver"));
+public class FileConfigurationEntryResolver implements ConfigurationEntryResolver {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static Function<RestApiConfiguration, ObjectNode> davServerConfiguration() {
+        return configuration -> {
+            ObjectNode frontendNode = OBJECT_MAPPER.createObjectNode();
+
+            frontendNode.put("url", configuration.getDavURL().toString());
+
+            ObjectNode backendNode = OBJECT_MAPPER.createObjectNode();
+            backendNode.put("url", configuration.getDavURL().toString());
+
+            ObjectNode objectNode = OBJECT_MAPPER.createObjectNode();
+            objectNode.put("frontend", frontendNode);
+            objectNode.put("backend", backendNode);
+            return objectNode;
+        };
+    }
+
+    private static final Table<ModuleName, ConfigurationKey, Function<RestApiConfiguration, ObjectNode>> TABLE = ImmutableTable.<ModuleName, ConfigurationKey, Function<RestApiConfiguration, ObjectNode>>builder()
+        .put(new ModuleName("core"), new ConfigurationKey("davserver"), davServerConfiguration())
+        .build();
+
+    public static final ImmutableSet<EntryIdentifier> KEYS = TABLE.cellSet()
+        .stream()
+        .map(cell -> new EntryIdentifier(cell.getRowKey(), cell.getColumnKey()))
+        .collect(ImmutableSet.toImmutableSet());
+
     private final RestApiConfiguration configuration;
 
     @Inject
-    public DavConfigurationEntryResolver(RestApiConfiguration configuration) {
+    public FileConfigurationEntryResolver(RestApiConfiguration configuration) {
         this.configuration = configuration;
     }
 
     @Override
     public Flux<Entry> resolve(Set<EntryIdentifier> ids, MailboxSession session) {
-        if (ids.contains(ENTRY_IDENTIFIER)) {
-            return Flux.just(new Entry(ENTRY_IDENTIFIER.moduleName(), ENTRY_IDENTIFIER.configurationKey(), getJsonNodes()));
-        }
-        return Flux.empty();
+        return Flux.fromIterable(Sets.intersection(ids, KEYS))
+            .map(id -> new Entry(id.moduleName(), id.configurationKey(), TABLE.get(id.moduleName(), id.configurationKey()).apply(configuration)));
     }
 
     @Override
     public Set<EntryIdentifier> entryIdentifiers() {
-        return ImmutableSet.of(ENTRY_IDENTIFIER);
-    }
-
-    private ObjectNode getJsonNodes() {
-        ObjectNode frontendNode = OBJECT_MAPPER.createObjectNode();
-        frontendNode.put("url", configuration.getDavURL().toString());
-
-        ObjectNode backendNode = OBJECT_MAPPER.createObjectNode();
-        backendNode.put("url", configuration.getDavURL().toString());
-
-        ObjectNode objectNode = OBJECT_MAPPER.createObjectNode();
-        objectNode.put("frontend", frontendNode);
-        objectNode.put("backend", backendNode);
-        return objectNode;
+        return KEYS;
     }
 }
