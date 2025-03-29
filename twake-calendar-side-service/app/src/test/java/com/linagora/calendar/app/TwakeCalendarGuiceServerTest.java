@@ -367,6 +367,25 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldServeAllowJitsiConfiguration(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("[{\"name\":\"linagora.esn.videoconference\",\"keys\":[\"jitsiInstanceUrl\",\"openPaasVideoconferenceAppUrl\"]}]")
+        .when()
+            .post("/api/configurations")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+    [{"name":"linagora.esn.videoconference","configurations":[{"name":"jitsiInstanceUrl","value":"https://jitsi.linagora.com"},{"name":"openPaasVideoconferenceAppUrl","value":"https://jitsi.linagora.com"}]}]""");
+    }
+
+    @Test
     void shouldServeAvatars(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 

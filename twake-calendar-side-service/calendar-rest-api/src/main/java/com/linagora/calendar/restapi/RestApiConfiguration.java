@@ -50,6 +50,7 @@ public class RestApiConfiguration {
         private Optional<URL> openpaasBackendURL = Optional.empty();
         private Optional<URL> davdURL = Optional.empty();
         private Optional<URL> selfURL = Optional.empty();
+        private Optional<URL> visioURL = Optional.empty();
         private Optional<Boolean> openpaasBackendTrustAllCerts = Optional.empty();
         private Optional<Boolean> sharingCalendarEnabled = Optional.empty();
         private Optional<URL> oidcUserInfoUrl = Optional.empty();
@@ -86,6 +87,11 @@ public class RestApiConfiguration {
 
         public Builder selfUrl(Optional<URL> url) {
             this.selfURL = url;
+            return this;
+        }
+
+        public Builder visioURL(Optional<URL> url) {
+            this.visioURL = url;
             return this;
         }
 
@@ -131,13 +137,13 @@ public class RestApiConfiguration {
                     selfURL.orElse(new URL("https://twcalendar.linagora.com")),
                     openpaasBackendURL.orElse(new URL("https://openpaas.linagora.com")),
                     davdURL.orElse(new URL("https://dav.linagora.com")),
+                    visioURL.orElse(new URL("https://jitsi.linagora.com")),
                     openpaasBackendTrustAllCerts.orElse(false),
                     jwtPrivatePath.orElse("classpath://jwt_privatekey"),
                     jwtPublicPath.orElse(ImmutableList.of("classpath://jwt_publickey")),
                     jwtValidity.orElse(Duration.ofHours(12)),
                     oidcUserInfoUrl.orElse(new URL("http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/userInfo")),
-                    oidcIntrospectionClaim.orElse("email"),
-                    sharingCalendarEnabled.orElse(true));
+                    oidcIntrospectionClaim.orElse("email"), sharingCalendarEnabled.orElse(true));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -159,6 +165,8 @@ public class RestApiConfiguration {
         Optional<URL> davURL = Optional.ofNullable(configuration.getString("dav.url", "https://dav.linagora.com"))
             .map(Throwing.function(URL::new));
         Optional<URL> selfURL = Optional.ofNullable(configuration.getString("dav.url", "https://dav.linagora.com"))
+            .map(Throwing.function(URL::new));
+        Optional<URL> visioURL = Optional.ofNullable(configuration.getString("visio.url", "https://dav.linagora.com"))
             .map(Throwing.function(URL::new));
         Optional<Boolean> openpaasBackendTrustAllCerts = Optional.ofNullable(configuration.getBoolean("openpaas.backend.trust.all.certificates", null));
         Optional<String> jwtPrivateKey = Optional.ofNullable(configuration.getString("jwt.key.private", null));
@@ -192,6 +200,7 @@ public class RestApiConfiguration {
     private final URL selfUrl;
     private final URL openpaasBackendURL;
     private final URL davURL;
+    private final URL visioURL;
     private final boolean openpaasBackendTrustAllCerts;
     private final String jwtPrivatePath;
     private final List<String> jwtPublicPath;
@@ -201,7 +210,7 @@ public class RestApiConfiguration {
     private final boolean calendarSharingEnabled;
 
     @VisibleForTesting
-    RestApiConfiguration(Optional<Port> port, URL calendarSpaUrl, URL selfUrl, URL openpaasBackendURL, URL davURL, boolean openpaasBackendTrustAllCerts,
+    RestApiConfiguration(Optional<Port> port, URL calendarSpaUrl, URL selfUrl, URL openpaasBackendURL, URL davURL, URL visioURL, boolean openpaasBackendTrustAllCerts,
                          String jwtPrivatePath, List<String> jwtPublicPath, Duration jwtValidity, URL oidcIntrospectionUrl,
                          String oidcIntrospectionClaim, boolean calendarSharingENabled) {
         this.port = port;
@@ -209,6 +218,7 @@ public class RestApiConfiguration {
         this.selfUrl = selfUrl;
         this.openpaasBackendURL = openpaasBackendURL;
         this.davURL = davURL;
+        this.visioURL = visioURL;
         this.openpaasBackendTrustAllCerts = openpaasBackendTrustAllCerts;
         this.jwtPrivatePath = jwtPrivatePath;
         this.jwtPublicPath = jwtPublicPath;
@@ -264,5 +274,9 @@ public class RestApiConfiguration {
 
     public boolean isCalendarSharingEnabled() {
         return calendarSharingEnabled;
+    }
+
+    public URL getVisioURL() {
+        return visioURL;
     }
 }
