@@ -51,9 +51,8 @@ import com.linagora.calendar.restapi.routes.JwtSigner;
 import com.linagora.calendar.restapi.routes.LogoRoute;
 import com.linagora.calendar.restapi.routes.PeopleSearchRoute;
 import com.linagora.calendar.restapi.routes.ThemeRoute;
-import com.linagora.calendar.restapi.routes.configuration.AllowDomainAdminToManageUserEmailsConfigurationEntryResolver;
 import com.linagora.calendar.restapi.routes.configuration.DavConfigurationEntryResolver;
-import com.linagora.calendar.restapi.routes.configuration.HomePageConfigurationEntryResolver;
+import com.linagora.calendar.restapi.routes.configuration.NullConstantConfigurationEntryResolver;
 
 public class RestApiModule extends AbstractModule {
     @Override
@@ -76,8 +75,7 @@ public class RestApiModule extends AbstractModule {
 
         Multibinder<ConfigurationEntryResolver> configurationEntryResolvers = Multibinder.newSetBinder(binder(), ConfigurationEntryResolver.class);
         configurationEntryResolvers.addBinding().to(DavConfigurationEntryResolver.class);
-        configurationEntryResolvers.addBinding().to(HomePageConfigurationEntryResolver.class);
-        configurationEntryResolvers.addBinding().to(AllowDomainAdminToManageUserEmailsConfigurationEntryResolver.class);
+        configurationEntryResolvers.addBinding().to(NullConstantConfigurationEntryResolver.class);
     }
 
     @Provides

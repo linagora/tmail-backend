@@ -18,29 +18,29 @@
 
 package com.linagora.calendar.restapi.routes.configuration;
 
+import java.util.Set;
+
 import org.apache.james.mailbox.MailboxSession;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.NullNode;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.linagora.calendar.restapi.api.ConfigurationEntryResolver;
 import com.linagora.calendar.restapi.api.ConfigurationKey;
 import com.linagora.calendar.restapi.api.ModuleName;
 
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
-public class HomePageConfigurationEntryResolver implements ConfigurationEntryResolver {
+public class NullConstantConfigurationEntryResolver implements ConfigurationEntryResolver {
     @Override
-    public Mono<JsonNode> resolve(MailboxSession session) {
-        return Mono.just(NullNode.getInstance());
+    public Flux<Entry> resolve(Set<EntryIdentifier> ids, MailboxSession session) {
+        return Flux.fromIterable(Sets.intersection(ids, entryIdentifiers()))
+            .map(id -> new Entry(id.moduleName(), id.configurationKey(), NullNode.getInstance()));
     }
 
     @Override
-    public ModuleName moduleName() {
-        return new ModuleName("core");
-    }
-
-    @Override
-    public ConfigurationKey configurationKey() {
-        return new ConfigurationKey("homePage");
+    public Set<EntryIdentifier> entryIdentifiers() {
+        return ImmutableSet.of(new ConfigurationEntryResolver.EntryIdentifier(new ModuleName("core"), new ConfigurationKey("allowDomainAdminToManageUserEmails")),
+            new ConfigurationEntryResolver.EntryIdentifier(new ModuleName("core"), new ConfigurationKey("homePage")));
     }
 }
