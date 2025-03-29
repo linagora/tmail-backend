@@ -18,16 +18,30 @@
 
 package com.linagora.calendar.restapi.api;
 
+import java.util.Set;
+
 import org.apache.james.mailbox.MailboxSession;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
 public interface ConfigurationEntryResolver {
-    Mono<JsonNode> resolve(MailboxSession session);
+    record EntryIdentifier(ModuleName moduleName, ConfigurationKey configurationKey) {
 
-    ModuleName moduleName();
+    }
 
-    ConfigurationKey configurationKey();
+    record Entry(ModuleName moduleName, ConfigurationKey configurationKey, JsonNode node) {
+
+    }
+
+    Flux<Entry> resolve(Set<EntryIdentifier> ids, MailboxSession session);
+
+    default Flux<Entry> resolveAll(MailboxSession session) {
+        return resolve(entryIdentifiers(), session);
+    }
+
+    Set<EntryIdentifier> entryIdentifiers();
+
+
 }
