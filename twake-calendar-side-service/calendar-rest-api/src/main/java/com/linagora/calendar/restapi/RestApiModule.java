@@ -52,7 +52,7 @@ import com.linagora.calendar.restapi.routes.LogoRoute;
 import com.linagora.calendar.restapi.routes.PeopleSearchRoute;
 import com.linagora.calendar.restapi.routes.ThemeRoute;
 import com.linagora.calendar.restapi.routes.configuration.DavConfigurationEntryResolver;
-import com.linagora.calendar.restapi.routes.configuration.NullConstantConfigurationEntryResolver;
+import com.linagora.calendar.restapi.routes.configuration.ConstantConfigurationEntryResolver;
 
 public class RestApiModule extends AbstractModule {
     @Override
@@ -75,7 +75,7 @@ public class RestApiModule extends AbstractModule {
 
         Multibinder<ConfigurationEntryResolver> configurationEntryResolvers = Multibinder.newSetBinder(binder(), ConfigurationEntryResolver.class);
         configurationEntryResolvers.addBinding().to(DavConfigurationEntryResolver.class);
-        configurationEntryResolvers.addBinding().to(NullConstantConfigurationEntryResolver.class);
+        configurationEntryResolvers.addBinding().to(ConstantConfigurationEntryResolver.class);
     }
 
     @Provides
