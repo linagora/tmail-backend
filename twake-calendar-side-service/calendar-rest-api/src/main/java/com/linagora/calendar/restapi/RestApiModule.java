@@ -51,8 +51,8 @@ import com.linagora.calendar.restapi.routes.JwtSigner;
 import com.linagora.calendar.restapi.routes.LogoRoute;
 import com.linagora.calendar.restapi.routes.PeopleSearchRoute;
 import com.linagora.calendar.restapi.routes.ThemeRoute;
-import com.linagora.calendar.restapi.routes.configuration.DavConfigurationEntryResolver;
 import com.linagora.calendar.restapi.routes.configuration.ConstantConfigurationEntryResolver;
+import com.linagora.calendar.restapi.routes.configuration.FileConfigurationEntryResolver;
 
 public class RestApiModule extends AbstractModule {
     @Override
@@ -74,7 +74,7 @@ public class RestApiModule extends AbstractModule {
         authenticationStrategies.addBinding().to(OidcAuthenticationStrategy.class);
 
         Multibinder<ConfigurationEntryResolver> configurationEntryResolvers = Multibinder.newSetBinder(binder(), ConfigurationEntryResolver.class);
-        configurationEntryResolvers.addBinding().to(DavConfigurationEntryResolver.class);
+        configurationEntryResolvers.addBinding().to(FileConfigurationEntryResolver.class);
         configurationEntryResolvers.addBinding().to(ConstantConfigurationEntryResolver.class);
     }
 
