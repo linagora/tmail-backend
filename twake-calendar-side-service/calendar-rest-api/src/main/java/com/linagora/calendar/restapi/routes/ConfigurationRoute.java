@@ -19,11 +19,10 @@
 package com.linagora.calendar.restapi.routes;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.jmap.Endpoint;
 import org.apache.james.jmap.http.Authenticator;
 import org.apache.james.mailbox.MailboxSession;
@@ -33,7 +32,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableSet;
 import com.linagora.calendar.restapi.api.ConfigurationDocument;
+import com.linagora.calendar.restapi.api.ConfigurationEntryResolver;
 import com.linagora.calendar.restapi.api.ConfigurationKey;
 import com.linagora.calendar.restapi.api.ModuleName;
 import com.linagora.calendar.restapi.routes.configuration.ConfigurationResolver;
@@ -57,11 +58,11 @@ public class ConfigurationRoute extends CalendarRoute {
             this.keys = keys;
         }
 
-        List<Pair<ModuleName, ConfigurationKey>> asConfigurationKeys() {
+        Set<ConfigurationEntryResolver.EntryIdentifier> asConfigurationKeys() {
             ModuleName moduleName = new ModuleName(name);
             return keys.stream()
-                .map(key -> Pair.of(moduleName, new ConfigurationKey(key)))
-                .collect(Collectors.toList());
+                .map(key -> new ConfigurationEntryResolver.EntryIdentifier(moduleName, new ConfigurationKey(key)))
+                .collect(ImmutableSet.toImmutableSet());
         }
     }
 

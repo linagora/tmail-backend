@@ -18,22 +18,25 @@
 
 package com.linagora.calendar.restapi.routes.configuration;
 
+import java.util.Set;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.mailbox.MailboxSession;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.ImmutableSet;
 import com.linagora.calendar.restapi.RestApiConfiguration;
 import com.linagora.calendar.restapi.api.ConfigurationEntryResolver;
 import com.linagora.calendar.restapi.api.ConfigurationKey;
 import com.linagora.calendar.restapi.api.ModuleName;
 
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 
 public class DavConfigurationEntryResolver implements ConfigurationEntryResolver {
     public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    public static final EntryIdentifier ENTRY_IDENTIFIER = new EntryIdentifier(new ModuleName("core"), new ConfigurationKey("davserver"));
     private final RestApiConfiguration configuration;
 
     @Inject
@@ -42,7 +45,19 @@ public class DavConfigurationEntryResolver implements ConfigurationEntryResolver
     }
 
     @Override
-    public Mono<JsonNode> resolve(MailboxSession session) {
+    public Flux<Entry> resolve(Set<EntryIdentifier> ids, MailboxSession session) {
+        if (ids.contains(ENTRY_IDENTIFIER)) {
+            return Flux.just(new Entry(ENTRY_IDENTIFIER.moduleName(), ENTRY_IDENTIFIER.configurationKey(), getJsonNodes()));
+        }
+        return Flux.empty();
+    }
+
+    @Override
+    public Set<EntryIdentifier> entryIdentifiers() {
+        return ImmutableSet.of(ENTRY_IDENTIFIER);
+    }
+
+    private ObjectNode getJsonNodes() {
         ObjectNode frontendNode = OBJECT_MAPPER.createObjectNode();
         frontendNode.put("url", configuration.getDavURL().toString());
 
@@ -52,16 +67,6 @@ public class DavConfigurationEntryResolver implements ConfigurationEntryResolver
         ObjectNode objectNode = OBJECT_MAPPER.createObjectNode();
         objectNode.put("frontend", frontendNode);
         objectNode.put("backend", backendNode);
-        return Mono.just(objectNode);
-    }
-
-    @Override
-    public ModuleName moduleName() {
-        return new ModuleName("core");
-    }
-
-    @Override
-    public ConfigurationKey configurationKey() {
-        return new ConfigurationKey("davserver");
+        return objectNode;
     }
 }
