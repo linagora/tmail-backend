@@ -348,6 +348,25 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldServeAllowCalendarSharingConfiguration(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("[{\"name\":\"linagora.esn.calendar\",\"keys\":[\"features\"]}]")
+        .when()
+            .post("/api/configurations")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+    [{"name":"linagora.esn.calendar","configurations":[{"name":"features","value":{"isSharingCalendarEnabled": true}}]}]""");
+    }
+
+    @Test
     void shouldServeAvatars(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 

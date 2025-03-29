@@ -51,6 +51,7 @@ public class RestApiConfiguration {
         private Optional<URL> davdURL = Optional.empty();
         private Optional<URL> selfURL = Optional.empty();
         private Optional<Boolean> openpaasBackendTrustAllCerts = Optional.empty();
+        private Optional<Boolean> sharingCalendarEnabled = Optional.empty();
         private Optional<URL> oidcUserInfoUrl = Optional.empty();
         private Optional<String> oidcIntrospectionClaim = Optional.empty();
 
@@ -118,6 +119,11 @@ public class RestApiConfiguration {
             return this;
         }
 
+        public Builder enableCalendarSharing(Optional<Boolean> sharingCalendarEnabled) {
+            this.sharingCalendarEnabled = openpaasBackendTrustAllCerts;
+            return this;
+        }
+
         public Builder oidcUserInfoUrl(Optional<URL> url) {
             this.oidcUserInfoUrl = url;
             return this;
@@ -140,7 +146,8 @@ public class RestApiConfiguration {
                     jwtPublicPath.orElse(ImmutableList.of("classpath://jwt_publickey")),
                     jwtValidity.orElse(Duration.ofHours(12)),
                     oidcUserInfoUrl.orElse(new URL("http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/userInfo")),
-                    oidcIntrospectionClaim.orElse("email"));
+                    oidcIntrospectionClaim.orElse("email"),
+                    sharingCalendarEnabled.orElse(true));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -170,6 +177,7 @@ public class RestApiConfiguration {
         Optional<URL> oidcIntrospectionUrl = Optional.ofNullable(configuration.getString("oidc.userInfo.url", null))
             .map(Throwing.function(URL::new));
         Optional<String> oidcIntrospectionClaim = Optional.ofNullable(configuration.getString("oidc.claim", null));
+        Optional<Boolean> calendarSharingEnabled = Optional.ofNullable(configuration.getBoolean("calendar.sharing.enabled", null));
 
         return RestApiConfiguration.builder()
             .port(port)
@@ -182,6 +190,7 @@ public class RestApiConfiguration {
             .jwtValidity(jwtValidity)
             .oidcUserInfoUrl(oidcIntrospectionUrl)
             .oidcClaim(oidcIntrospectionClaim)
+            .enableCalendarSharing(calendarSharingEnabled)
             .build();
     }
 
@@ -196,11 +205,12 @@ public class RestApiConfiguration {
     private final Duration jwtValidity;
     private final URL oidcIntrospectionUrl;
     private final String oidcClaim;
+    private final boolean calendarSharingEnabled;
 
     @VisibleForTesting
     RestApiConfiguration(Optional<Port> port, URL calendarSpaUrl, URL selfUrl, URL openpaasBackendURL, URL davURL, boolean openpaasBackendTrustAllCerts,
                          String jwtPrivatePath, List<String> jwtPublicPath, Duration jwtValidity, URL oidcIntrospectionUrl,
-                         String oidcIntrospectionClaim) {
+                         String oidcIntrospectionClaim, boolean calendarSharingENabled) {
         this.port = port;
         this.calendarSpaUrl = calendarSpaUrl;
         this.selfUrl = selfUrl;
@@ -212,6 +222,7 @@ public class RestApiConfiguration {
         this.jwtValidity = jwtValidity;
         this.oidcIntrospectionUrl = oidcIntrospectionUrl;
         this.oidcClaim = oidcIntrospectionClaim;
+        this.calendarSharingEnabled = calendarSharingENabled;
     }
 
     public Optional<Port> getPort() {
@@ -256,5 +267,9 @@ public class RestApiConfiguration {
 
     public URL getSelfUrl() {
         return selfUrl;
+    }
+
+    public boolean isCalendarSharingEnabled() {
+        return calendarSharingEnabled;
     }
 }

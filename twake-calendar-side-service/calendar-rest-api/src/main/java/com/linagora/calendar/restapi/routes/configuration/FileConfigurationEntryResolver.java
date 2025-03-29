@@ -57,8 +57,17 @@ public class FileConfigurationEntryResolver implements ConfigurationEntryResolve
         };
     }
 
+    private static Function<RestApiConfiguration, ObjectNode> calendarSharingEnabled() {
+        return configuration -> {
+            ObjectNode node = OBJECT_MAPPER.createObjectNode();
+            node.put("isSharingCalendarEnabled", configuration.isCalendarSharingEnabled());
+            return node;
+        };
+    }
+
     private static final Table<ModuleName, ConfigurationKey, Function<RestApiConfiguration, ObjectNode>> TABLE = ImmutableTable.<ModuleName, ConfigurationKey, Function<RestApiConfiguration, ObjectNode>>builder()
         .put(new ModuleName("core"), new ConfigurationKey("davserver"), davServerConfiguration())
+        .put(new ModuleName("linagora.esn.calendar"), new ConfigurationKey("features"), calendarSharingEnabled())
         .build();
 
     public static final ImmutableSet<EntryIdentifier> KEYS = TABLE.cellSet()
