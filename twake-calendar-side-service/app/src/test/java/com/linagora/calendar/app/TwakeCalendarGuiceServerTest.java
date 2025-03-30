@@ -424,6 +424,25 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldServeDefaultCoreConfiguration(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("[{\"name\":\"core\",\"keys\":[\"language\",\"businessHours\",\"datetime\"]}]")
+        .when()
+            .post("/api/configurations")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body).isEqualTo("""
+    [{"name":"core","configurations":[{"name":"language","value":"en"},{"name":"businessHours","value":[{"start":"8:0","end":"19:0","daysOfWeek":[1,2,3,4,5]}]},{"name":"datetime","value":{"timeZone":"Europe/Paris","use24hourFormat":true}}]}]""");
+    }
+
+    @Test
     void shouldServeAvatars(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 
