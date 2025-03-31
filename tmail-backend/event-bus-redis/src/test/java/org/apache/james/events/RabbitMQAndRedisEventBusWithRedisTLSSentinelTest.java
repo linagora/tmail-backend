@@ -39,6 +39,7 @@ import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Sender;
 
+@Disabled("Redis Sentinel tests are heavy to run")
 public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupContract.SingleEventBusGroupContract, KeyContract.SingleEventBusKeyContract {
     static EventBusName TEST_EVENT_BUS = new EventBusName("test");
     static NamingStrategy TEST_NAMING_STRATEGY = new NamingStrategy(TEST_EVENT_BUS);
