@@ -163,7 +163,7 @@ public class DavClient {
                     new DavClientException("Max retries exceeded for calendar update", retrySignal.failure())));
     }
 
-    private Mono<Void> doUpdateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
+    public Mono<Void> doUpdateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
         return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                 .add(HttpHeaderNames.IF_MATCH, updatedCalendarObject.eTag())
                 .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))

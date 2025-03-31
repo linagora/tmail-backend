@@ -22,6 +22,7 @@ import static com.linagora.tmail.dav.DavClient.CALENDAR_PATH;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -42,7 +43,9 @@ import com.linagora.tmail.dav.DavUserProvider;
 import com.linagora.tmail.dav.EventUid;
 
 import net.fortuna.ical4j.model.Calendar;
+import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.Property;
+import net.fortuna.ical4j.model.component.CalendarComponent;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.Method;
 import net.fortuna.ical4j.model.property.Uid;
@@ -104,14 +107,46 @@ public class CalDavCollect extends GenericMailet {
             return deleteDavCalendar(davUser, eventUid);
         } else {
             return davClient.getCalendarObject(davUser, eventUid)
-                .flatMap(davCalendarObject -> updateDavCalendar(davCalendarObject, calendar, davUser))
-                .switchIfEmpty(createDavCalendar(calendar, davUser));
+                .singleOptional()
+                .flatMap(maybeDavCalendarObject ->
+                    maybeDavCalendarObject.map(davCalendarObject -> updateDavCalendar(davCalendarObject, calendar, davUser))
+                        .orElseGet(() -> createDavCalendar(calendar, davUser)));
         }
     }
 
-    private Mono<Void> updateDavCalendar(DavCalendarObject davCalendarObject, Calendar calendar, DavUser davUser) {
-        // TODO Rewrite this method to handle case the calendar event is already present
-        return Mono.error(new RuntimeException("Calendar event already exists"));
+    private Mono<Void> updateDavCalendar(DavCalendarObject davCalendarObject, Calendar newCalendar, DavUser davUser) {
+        if (checkIfNewCalendarIsNewVersion(newCalendar, davCalendarObject.calendarData())) {
+            DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
+                newCalendar.removeIf(property -> Property.METHOD.equals(property.getName())),
+                davCalendarObject.eTag());
+            return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
+        } else {
+            return Mono.empty();
+        }
+    }
+
+    private boolean checkIfNewCalendarIsNewVersion(Calendar newCalendar, Calendar currentCalendar) {
+        CalendarComponent newVEvent = newCalendar.getComponent(Component.VEVENT).get();
+        CalendarComponent currentVEvent = currentCalendar.getComponent(Component.VEVENT).get();
+        Optional<Property> maybeNewSequence = newVEvent.getProperty(Property.SEQUENCE);
+        Optional<Property> maybeCurrentSequence = currentVEvent.getProperty(Property.SEQUENCE);
+        if (maybeNewSequence.isPresent() && maybeCurrentSequence.isPresent()) {
+            int newSequence = Integer.parseInt(maybeNewSequence.get().getValue());
+            int currentSequence = Integer.parseInt(maybeCurrentSequence.get().getValue());
+            if (newSequence > currentSequence) {
+                return true;
+            } else if (newSequence == currentSequence) {
+                return checkIfNewDtStampIsOlder(newVEvent, currentVEvent);
+            } else {
+                return false;
+            }
+        } else {
+            return checkIfNewDtStampIsOlder(newVEvent, currentVEvent);
+        }
+    }
+
+    private boolean checkIfNewDtStampIsOlder(CalendarComponent  newVEvent, CalendarComponent currentVEvent) {
+        return newVEvent.getProperty(Property.DTSTAMP).get().compareTo(currentVEvent.getProperty(Property.DTSTAMP).get()) > 0;
     }
 
     private Mono<Void> createDavCalendar(Calendar calendar, DavUser davUser) {
