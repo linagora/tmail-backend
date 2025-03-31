@@ -28,9 +28,7 @@ import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.SessionProvider;
-import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,12 +111,9 @@ public class OpenPaasModule extends AbstractModule {
         @Singleton
         public CalendarEventRepository provideCalDavEventRepository(DavClient davClient,
                                                                     SessionProvider sessionProvider,
-                                                                    MessageId.Factory messageIdFactory,
-                                                                    MessageIdManager messageIdManager,
                                                                     DavUserProvider davUserProvider,
                                                                     CalendarResolver calendarResolver) {
-            return new CalDavEventRepository(davClient, sessionProvider, messageIdFactory,
-                messageIdManager, davUserProvider, calendarResolver);
+            return new CalDavEventRepository(davClient, sessionProvider, davUserProvider, calendarResolver);
         }
 
         @Provides

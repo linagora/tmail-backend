@@ -40,6 +40,7 @@ import jakarta.mail.{Message, Part}
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.parameter.PartStat
+import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import org.apache.commons.configuration2.Configuration
 import org.apache.james.core.MailAddress
 import org.apache.james.core.builder.MimeMessageBuilder
@@ -104,7 +105,7 @@ class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: CalendarResolv
   }
 
   private def generateReplyMailAndTryEnqueue(blobId: BlobId, mailboxSession: MailboxSession, attendeeReply: AttendeeReply, language: Locale): SMono[CalendarEventReplyResults] =
-    blobCalendarResolver.resolveRequestCalendar(blobId, mailboxSession)
+    blobCalendarResolver.resolveRequestCalendar(blobId, mailboxSession, Some(ImmutableMethod.REQUEST))
       .flatMap(calendarRequest => mailReplyGenerator.generateMail(calendarRequest, attendeeReply, language))
       .flatMap(replyMail => SMono(queue.enqueueReactive(replyMail))
         .`then`(SMono.fromCallable(() => LifecycleUtil.dispose(replyMail))

@@ -28,13 +28,15 @@ import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier._
 import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndField, CalendarLocationField, CalendarOrganizerField, CalendarStartField, CalendarTimeZoneField, VEventTemporalUtil}
 import net.fortuna.ical4j.model.component.VEvent
+import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence}
-import net.fortuna.ical4j.model.{Calendar, Component, Period, Property, PropertyList}
+import net.fortuna.ical4j.model.{Calendar, Component, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
 import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.Username
 
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 trait CalendarEventUpdatePatch {
 
@@ -102,6 +104,19 @@ case class AttendeeUpdatePatch(attendeeList: Seq[Attendee]) extends CalendarEven
     }
     newAttendees.nonEmpty
   }
+}
+
+case class AttendeePartStatusUpdatePatch(targetAttendeeEmail: String, status: PartStat) extends CalendarEventUpdatePatch {
+  override def apply(vEvent: VEvent): Boolean =
+    vEvent.getAttendees.asScala
+      .find(_.getCalAddress.toASCIIString.equalsIgnoreCase(s"mailto:$targetAttendeeEmail"))
+      .map { attendee =>
+        attendee.getParameter[PartStat](Parameter.PARTSTAT).toScala match {
+          case Some(currentPartStat) if currentPartStat.getValue.equals(status.getValue) => false
+          case _ => vEvent.`with`(RelationshipPropertyModifiers.ATTENDEE, attendee.replace(status)); true
+        }
+      }
+      .getOrElse(throw new IllegalArgumentException(s"The attendee is not found in the event. $targetAttendeeEmail"))
 }
 
 case class OrganizerValidator(requestUser: String) extends Consumer[Calendar] {
@@ -206,6 +221,27 @@ object CalendarEventModifier {
     CalendarEventModifier(patches = patches,
       recurrenceId = Option(vEvent.getRecurrenceId[Temporal]),
       validator = OrganizerValidator(userRequest.asString()))
+  }
+
+  def withPartStat(targetAttendeeEmail: String,
+                   status: PartStat,
+                   requestCalendar: Calendar): CalendarEventModifier =
+    withPartStat(targetAttendeeEmail = targetAttendeeEmail,
+      status = status,
+      recurrenceId = Option(requestCalendar.getFirstVEvent.getRecurrenceId[Temporal]))
+
+  def withPartStat(targetAttendeeEmail: String,
+                   status: PartStat,
+                   recurrenceId: Option[RecurrenceId[Temporal]]): CalendarEventModifier = {
+
+    val validator: Consumer[Calendar] = calendar =>
+      recurrenceId.foreach { rid =>
+        calendar.getComponents[VEvent](Component.VEVENT).asScala
+          .find(_.getRecurrenceId[Temporal] == rid)
+          .getOrElse(throw new IllegalArgumentException(s"Cannot find VEVENT with recurrenceId $rid"))
+      }
+
+    CalendarEventModifier(Seq(AttendeePartStatusUpdatePatch(targetAttendeeEmail, status)), recurrenceId, validator)
   }
 
   case class NoUpdateRequiredException() extends RuntimeException
