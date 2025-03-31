@@ -26,6 +26,7 @@ import java.util.{Locale, Optional, TimeZone}
 import com.google.common.base.Preconditions
 import com.ibm.icu.util.{TimeZone => Icu4jTimeZone}
 import com.linagora.tmail.james.jmap.AttendanceStatus
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.ImplicitCalendar
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.EventStatus
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
@@ -113,6 +114,12 @@ object CalendarUidField {
   def from(vEvent: VEvent): Option[CalendarUidField] =
     vEvent.getUid.toScala
       .map(_.getValue).map(CalendarUidField(_))
+
+  def getEventUidFromCalendar(calendar: Calendar): String =
+    from(calendar.getFirstVEvent) match {
+      case Some(uidField) => uidField.value
+      case None => throw new IllegalStateException("Calendar does not contain UID field")
+    }
 }
 
 case class CalendarUidField(value: String) extends AnyVal

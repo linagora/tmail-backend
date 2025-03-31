@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.calendar
 
 import java.io.ByteArrayInputStream
 import java.time.format.DateTimeFormatter
+import java.time.temporal.Temporal
 import java.time.{ZoneId, ZonedDateTime}
 import java.util
 import java.util.UUID
@@ -28,14 +29,18 @@ import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.{ImplicitCal
 import com.linagora.tmail.james.jmap.calendar.{CalendarEventModifier => testee}
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.property.Attendee
+import net.fortuna.ical4j.model.parameter.PartStat
+import net.fortuna.ical4j.model.property.{Attendee, RecurrenceId}
 import net.fortuna.ical4j.model.{Calendar, Component, Property}
 import org.apache.james.core.Username
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{Nested, Test}
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 class CalendarEventModifierTest {
   val DATE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssX")
@@ -394,6 +399,222 @@ class CalendarEventModifierTest {
       assertThat(updatedCalendar.getFirstVEvent.getAttendees.size())
         .isEqualTo(currentAttendees.size() + 1)
       assertThat(updatedCalendar.getFirstVEvent.getAttendees).containsAll(currentAttendees)
+    }
+  }
+
+  @Nested
+  class AttendeePartStatusPatch {
+
+    @ParameterizedTest
+    @ValueSource(strings = Array("ACCEPTED", "DECLINED", "TENTATIVE"))
+    def shouldUpdateAttendeePartStat(partStatValue: String): Unit = {
+      val updatedCalendar = testee.of(AttendeePartStatusUpdatePatch("johndoe@example.com", new PartStat(partStatValue))).apply(SAMPLE_CALENDAR)
+
+      assertThat(updatedCalendar.toString)
+        .contains(s"ATTENDEE;CN=John Doe;RSVP=TRUE;PARTSTAT=${partStatValue}:mailto:johndoe@example.com")
+    }
+
+    @Test
+    def shouldNotChangeOtherAttendeePartStat(): Unit = {
+      val attendee1 = "johndoe@example.com"
+      val attendee2 = "janesmith@example.com"
+      val updated1 = testee.of(AttendeePartStatusUpdatePatch(attendee1, PartStat.ACCEPTED)).apply(SAMPLE_CALENDAR)
+
+      val updated2 = testee.of(AttendeePartStatusUpdatePatch(attendee2, PartStat.DECLINED)).apply(updated1)
+
+      assertThat(updated2.getFirstVEvent
+        .getAttendees.asScala
+        .find(_.getCalAddress.toString.contains(attendee1))
+        .flatMap(_.getParameter[PartStat]("PARTSTAT").toScala).get.getValue).isEqualTo("ACCEPTED")
+    }
+
+    @Test
+    def shouldThrowIfPartStatUnchanged(): Unit = {
+      val attendee1 = "johndoe@example.com"
+      val updated1 = testee.of(AttendeePartStatusUpdatePatch(attendee1, PartStat.ACCEPTED)).apply(SAMPLE_CALENDAR)
+
+      assertThatThrownBy(() =>  testee.of(AttendeePartStatusUpdatePatch(attendee1, PartStat.ACCEPTED)).apply(updated1))
+        .isInstanceOf(classOf[NoUpdateRequiredException])
+    }
+
+    @Test
+    def shouldThrowIfAttendeeNotFound(): Unit = {
+      assertThatThrownBy(() =>  testee.of(AttendeePartStatusUpdatePatch(UUID.randomUUID().toString + "@example.com", PartStat.ACCEPTED)).apply(SAMPLE_CALENDAR))
+        .isInstanceOf(classOf[IllegalArgumentException])
+    }
+
+    @Test
+    def shouldAllowChangingAttendeePartStat() : Unit = {
+      val attendee1 = "johndoe@example.com"
+      val updated1 = testee.of(AttendeePartStatusUpdatePatch(attendee1, PartStat.ACCEPTED)).apply(SAMPLE_CALENDAR)
+
+      val updated2 = testee.of(AttendeePartStatusUpdatePatch(attendee1, PartStat.DECLINED)).apply(updated1)
+
+      assertThat(updated2.getFirstVEvent
+        .getAttendees.asScala
+        .find(_.getCalAddress.toString.contains(attendee1))
+        .flatMap(_.getParameter[PartStat]("PARTSTAT").toScala).get.getValue).isEqualTo("DECLINED")
+    }
+
+    @Test
+    def withPartStatShouldUpdateCorrectRecurrenceEvent(): Unit = {
+      val baseCalendar =
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+          |CALSCALE:GREGORIAN
+          |BEGIN:VTIMEZONE
+          |TZID:Asia/Ho_Chi_Minh
+          |BEGIN:STANDARD
+          |TZOFFSETFROM:+0700
+          |TZOFFSETTO:+0700
+          |TZNAME:WIB
+          |DTSTART:19700101T000000
+          |END:STANDARD
+          |END:VTIMEZONE
+          |BEGIN:VEVENT
+          |UID:e04c1e54-181a-4a0d-9fa2-0a27fc7a4397
+          |TRANSP:OPAQUE
+          |DTSTART;TZID=Asia/Ho_Chi_Minh:20250401T150000
+          |DTEND;TZID=Asia/Ho_Chi_Minh:20250401T153000
+          |CLASS:PUBLIC
+          |SUMMARY:Loop3
+          |RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE
+          |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
+          | DUAL;CN=John2 Doe2:mailto:user2@open-paas.org
+          |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:u
+          | ser1@open-paas.org
+          |DTSTAMP:20250331T075231Z
+          |SEQUENCE:0
+          |END:VEVENT
+          |BEGIN:VEVENT
+          |UID:e04c1e54-181a-4a0d-9fa2-0a27fc7a4397
+          |TRANSP:OPAQUE
+          |DTSTART;TZID=Asia/Ho_Chi_Minh:20250409T170000
+          |DTEND;TZID=Asia/Ho_Chi_Minh:20250409T173000
+          |CLASS:PUBLIC
+          |SUMMARY:Loop3
+          |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+          |DTSTAMP:20250331T075231Z
+          |RECURRENCE-ID:20250409T080000Z
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
+          | DUAL;CN=John2 Doe2:mailto:user2@open-paas.org
+          |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=John1
+          |  Doe1:mailto:user1@open-paas.org
+          |SEQUENCE:1
+          |END:VEVENT
+          |END:VCALENDAR
+          |"""
+
+      val recurrenceEvent = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCalendar.stripMargin.getBytes("UTF-8")))
+
+      val recurrenceId: Option[RecurrenceId[Temporal]] = Some(new RecurrenceId("20250409T080000Z"))
+      val updateCalendar = testee.withPartStat("user2@open-paas.org", PartStat.ACCEPTED, recurrenceId)
+        .apply(recurrenceEvent)
+
+      assertThat(updateCalendar.toString.removeDTSTAMPLines())
+        .isEqualToNormalizingNewlines(
+          """BEGIN:VCALENDAR
+            |VERSION:2.0
+            |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+            |CALSCALE:GREGORIAN
+            |BEGIN:VTIMEZONE
+            |TZID:Asia/Ho_Chi_Minh
+            |BEGIN:STANDARD
+            |TZOFFSETFROM:+0700
+            |TZOFFSETTO:+0700
+            |TZNAME:WIB
+            |DTSTART:19700101T000000
+            |END:STANDARD
+            |END:VTIMEZONE
+            |BEGIN:VEVENT
+            |UID:e04c1e54-181a-4a0d-9fa2-0a27fc7a4397
+            |TRANSP:OPAQUE
+            |DTSTART;TZID=Asia/Ho_Chi_Minh:20250401T150000
+            |DTEND;TZID=Asia/Ho_Chi_Minh:20250401T153000
+            |CLASS:PUBLIC
+            |SUMMARY:Loop3
+            |RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE
+            |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+            |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:user2@open-paas.org
+            |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:user1@open-paas.org
+            |SEQUENCE:0
+            |END:VEVENT
+            |BEGIN:VEVENT
+            |UID:e04c1e54-181a-4a0d-9fa2-0a27fc7a4397
+            |TRANSP:OPAQUE
+            |DTSTART;TZID=Asia/Ho_Chi_Minh:20250409T170000
+            |DTEND;TZID=Asia/Ho_Chi_Minh:20250409T173000
+            |CLASS:PUBLIC
+            |SUMMARY:Loop3
+            |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+            |RECURRENCE-ID:20250409T080000Z
+            |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=John1 Doe1:mailto:user1@open-paas.org
+            |SEQUENCE:2
+            |ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;PARTSTAT=ACCEPTED:mailto:user2@open-paas.org
+            |END:VEVENT
+            |END:VCALENDAR""".stripMargin)
+    }
+
+    @Test
+    def withPartStatShouldThrowWhenRecurringIdNotFound(): Unit = {
+      val baseCalendar =
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+          |CALSCALE:GREGORIAN
+          |BEGIN:VTIMEZONE
+          |TZID:Asia/Ho_Chi_Minh
+          |BEGIN:STANDARD
+          |TZOFFSETFROM:+0700
+          |TZOFFSETTO:+0700
+          |TZNAME:WIB
+          |DTSTART:19700101T000000
+          |END:STANDARD
+          |END:VTIMEZONE
+          |BEGIN:VEVENT
+          |UID:e04c1e54-181a-4a0d-9fa2-0a27fc7a4397
+          |TRANSP:OPAQUE
+          |DTSTART;TZID=Asia/Ho_Chi_Minh:20250401T150000
+          |DTEND;TZID=Asia/Ho_Chi_Minh:20250401T153000
+          |CLASS:PUBLIC
+          |SUMMARY:Loop3
+          |RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE
+          |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
+          | DUAL;CN=John2 Doe2:mailto:user2@open-paas.org
+          |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:u
+          | ser1@open-paas.org
+          |DTSTAMP:20250331T075231Z
+          |SEQUENCE:0
+          |END:VEVENT
+          |BEGIN:VEVENT
+          |UID:e04c1e54-181a-4a0d-9fa2-0a27fc7a4397
+          |TRANSP:OPAQUE
+          |DTSTART;TZID=Asia/Ho_Chi_Minh:20250409T170000
+          |DTEND;TZID=Asia/Ho_Chi_Minh:20250409T173000
+          |CLASS:PUBLIC
+          |SUMMARY:Loop3
+          |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+          |DTSTAMP:20250331T075231Z
+          |RECURRENCE-ID:20250409T080000Z
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
+          | DUAL;CN=John2 Doe2:mailto:user2@open-paas.org
+          |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=John1
+          |  Doe1:mailto:user1@open-paas.org
+          |SEQUENCE:1
+          |END:VEVENT
+          |END:VCALENDAR
+          |"""
+
+      val recurrenceEvent = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCalendar.stripMargin.getBytes("UTF-8")))
+
+      val notFoundRecurrenceId: Option[RecurrenceId[Temporal]] = Some(new RecurrenceId("20250509T080000Z"))
+
+      assertThatThrownBy(() =>  testee.withPartStat("user2@open-paas.org", PartStat.ACCEPTED, notFoundRecurrenceId)
+        .apply(recurrenceEvent))
+        .isInstanceOf(classOf[IllegalArgumentException])
     }
   }
 

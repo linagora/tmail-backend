@@ -33,11 +33,6 @@ import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import net.fortuna.ical4j.model.Calendar;
-import net.fortuna.ical4j.model.Component;
-import net.fortuna.ical4j.model.ComponentList;
-import net.fortuna.ical4j.model.RelationshipPropertyModifiers;
-import net.fortuna.ical4j.model.component.VEvent;
-import net.fortuna.ical4j.model.parameter.PartStat;
 import scala.jdk.javaapi.CollectionConverters;
 
 public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
@@ -68,31 +63,8 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
         return events.getFirst();
     }
 
-    public DavCalendarObject withPartStat(String targetAttendeeEmail, PartStat partStat) {
-        LOGGER.trace("Calendar to update: {}", calendarData());
-        Calendar updatedCalendarData = calendarData().copy();
-
-        updatedCalendarData.setComponentList(new ComponentList<>(updatedCalendarData.<VEvent>getComponents(Component.VEVENT)
-            .stream()
-            .map(vEvent -> updatedVEvent(targetAttendeeEmail, partStat, vEvent))
-            .toList()));
-
-        LOGGER.trace("Calendar updated: {}", updatedCalendarData);
-
-        return new DavCalendarObject(uri(), updatedCalendarData, eTag());
-    }
-
     public DavCalendarObject withUpdatePatches(CalendarEventModifier eventModifier) {
         return new DavCalendarObject(uri(), eventModifier.apply(calendarData()), eTag());
-    }
-
-    private VEvent updatedVEvent(String targetAttendeeEmail, PartStat partStat, VEvent vEvent) {
-        return vEvent.getAttendees()
-            .stream()
-            .filter(attendee -> attendee.getCalAddress().toASCIIString().equalsIgnoreCase("mailto:" + targetAttendeeEmail))
-            .findAny()
-            .map(attendee -> (VEvent) vEvent.with(RelationshipPropertyModifiers.ATTENDEE, attendee.replace(partStat)))
-            .orElse(vEvent);
     }
 
 }

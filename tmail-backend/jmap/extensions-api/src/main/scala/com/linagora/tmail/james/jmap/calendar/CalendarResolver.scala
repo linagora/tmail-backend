@@ -22,7 +22,6 @@ import com.linagora.tmail.james.jmap.model.{CalendarEventParsed, InvalidCalendar
 import jakarta.inject.Inject
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.property.Method
-import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import org.apache.james.jmap.mail.BlobId
 import org.apache.james.jmap.routes.BlobResolvers
 import org.apache.james.mailbox.MailboxSession
@@ -31,9 +30,6 @@ import reactor.core.scala.publisher.SMono
 import scala.util.Using
 
 class CalendarResolver @Inject()(blobResolvers: BlobResolvers) {
-
-  def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession): SMono[Calendar] =
-    resolveRequestCalendar(blobId, mailboxSession, Some(ImmutableMethod.REQUEST))
 
   def resolveRequestCalendar(blobId: BlobId, mailboxSession: MailboxSession,
                              expectedMethod: Option[Method]): SMono[Calendar] =
