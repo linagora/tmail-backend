@@ -43,10 +43,11 @@ import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAttendanceGetMethodContract;
-import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.openpaas.OpenpaasTestUtils;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+
+import net.fortuna.ical4j.model.Calendar;
 
 public class MemoryLinagoraCalendarEventAttendanceGetMethodTest {
 
@@ -155,11 +156,11 @@ public class MemoryLinagoraCalendarEventAttendanceGetMethodTest {
         }
 
         @Override
-        public void pushCalendarToDav(UserCredential userCredential, CalendarEventHelper calendar) {
+        public void pushCalendarToDav(UserCredential userCredential, Calendar calendar, String eventUid) {
             String openPaasUserId = davUsers.get(userCredential.username().asString()).id();
             assertThat(openPaasUserId).isNotNull();
-            URI davCalendarUri = URI.create("/calendars/" + openPaasUserId + "/" + openPaasUserId + "/" + calendar.uid() + ".ics");
-            davClient.createCalendar(userCredential.username().asString(), davCalendarUri, calendar.asCalendar()).block();
+            URI davCalendarUri = URI.create("/calendars/" + openPaasUserId + "/" + openPaasUserId + "/" + eventUid + ".ics");
+            davClient.createCalendar(userCredential.username().asString(), davCalendarUri, calendar).block();
         }
     }
 

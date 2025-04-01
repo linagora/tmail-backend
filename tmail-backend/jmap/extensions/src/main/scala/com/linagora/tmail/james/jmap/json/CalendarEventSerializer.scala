@@ -73,6 +73,7 @@ object CalendarEventSerializer {
   private implicit val calendarRecurrenceRuleWrites: Writes[RecurrenceRule] = Json.writes[RecurrenceRule]
   private implicit val calendarRecurrenceRulesFieldWrites: Writes[RecurrenceRulesField] = Json.valueWrites[RecurrenceRulesField]
   private implicit val calendarExcludedRecurrenceRulesFieldWrites: Writes[ExcludedRecurrenceRulesField] = Json.valueWrites[ExcludedRecurrenceRulesField]
+  private implicit val calendarRecurrenceIdFieldWrites: Writes[RecurrenceIdField] = Json.valueWrites[RecurrenceIdField]
 
   private implicit val calendarEventParsedWrites: Writes[CalendarEventParsed] = Json.writes[CalendarEventParsed]
   private implicit val calendarEventParsedListWrites: Writes[CalendarEventParsedList] = Json.valueWrites[CalendarEventParsedList]

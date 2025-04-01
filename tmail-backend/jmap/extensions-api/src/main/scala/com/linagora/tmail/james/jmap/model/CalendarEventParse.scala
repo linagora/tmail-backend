@@ -543,6 +543,20 @@ case class RecurrenceRule(frequency: RecurrenceRuleFrequency,
                           bySecond: Option[Seq[Int]] = None,
                           bySetPosition: Option[Seq[Int]] = None)
 
+object RecurrenceIdField {
+
+  def from(vEvent: VEvent): Option[RecurrenceIdField] =
+    Option(vEvent.getRecurrenceId[Temporal]).map(_.getValue)
+      .map(RecurrenceIdField(_))
+
+  def getRecurrenceIdAsString(calendar: Calendar): Optional[String] =
+    from(calendar.getFirstVEvent).map(_.value).toJava
+}
+
+case class RecurrenceIdField(value: String) extends AnyVal {
+  def asString(): String = value
+}
+
 case class InvalidCalendarFileException(blobId: BlobId, originException: Throwable) extends RuntimeException {
   override def getMessage: String = originException.getMessage
 }
@@ -593,7 +607,8 @@ object CalendarEventParsed {
       participants = CalendarParticipantsField.from(vevent),
       extensionFields = CalendarExtensionFields.from(vevent),
       recurrenceRules = RecurrenceRulesField.from(vevent),
-      excludedRecurrenceRules = ExcludedRecurrenceRulesField.from(vevent))
+      excludedRecurrenceRules = ExcludedRecurrenceRulesField.from(vevent),
+      recurrenceId = RecurrenceIdField.from(vevent))
   }
 }
 
@@ -617,7 +632,8 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                participants: CalendarParticipantsField = CalendarParticipantsField(),
                                extensionFields: CalendarExtensionFields = CalendarExtensionFields(),
                                recurrenceRules: RecurrenceRulesField = RecurrenceRulesField(Seq()),
-                               excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq())) {
+                               excludedRecurrenceRules: ExcludedRecurrenceRulesField = ExcludedRecurrenceRulesField(Seq()),
+                               recurrenceId: Option[RecurrenceIdField] = None) {
   def getAttendanceStatus(username: String): Option[AttendanceStatus] = participants.findParticipantByMailTo(username)
     .flatMap(_.participationStatus)
     .map((status: CalendarAttendeeParticipationStatus) => AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).orElseThrow)
@@ -625,4 +641,5 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
   def uidAsString(): Optional[String] = uid.map(_.value).toJava
   def startAsJava(): Optional[ZonedDateTime] = start.map(_.value).toJava
   def endAsJava(): Optional[ZonedDateTime] = end.map(_.value).toJava
+  def recurrenceIdAsJava(): Optional[String] = recurrenceId.map(_.value).toJava
 }
