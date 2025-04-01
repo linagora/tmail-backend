@@ -1,51 +1,17 @@
 package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertNotNull;
 
-import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.linagora.tmail.conf.AIBotConfigModule;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
-import org.apache.james.utils.PropertiesProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class AIBotConfigTest {
     private Injector injector;
     private AIBotConfig aiBotConfig;
     private AIRedactionalHelper aiRedactionalHelper;
-
-
-//    @Test
-//    void testAIBotConfigNotNull() {
-//        // Vérifier que la configuration AI Bot est bien injectée
-//        assertNotNull(aiBotConfig);
-//    }
-//
-//    @Test
-//    void testAIRedactionalHelperInjection() {
-//        // Vérifier que AI Redactional Helper est bien injecté
-//        assertNotNull(aiRedactionalHelper);
-//    }
-//
-//    @Test
-//    void testChatLanguageModelInjection() {
-//        // Vérifier que ChatLanguageModel est bien injecté dans AIRedactionalHelper
-//        ChatLanguageModel chatModel = aiRedactionalHelper.getChatLanguageModel();
-//        assertNotNull(chatModel);
-//    }
-//
-//    @Test
-//    void testChatLanguageModelFactoryInjection() {
-//        // Vérifier que ChatLanguageModelFactory est bien injecté
-//        ChatLanguageModelFactory factory = aiRedactionalHelper.getChatLanguageModelFactory();
-//        assertNotNull(factory);
-//    }
-
-
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenApiKeyIsNull() {
@@ -70,6 +36,7 @@ public class AIBotConfigTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("No value for botAddress parameter was provided.");
     }
+
     @Test
     public void shouldThrowRuntimeExceptionWhenURLIsWrong() {
         Configuration configuration = new PropertiesConfiguration();
@@ -83,10 +50,6 @@ public class AIBotConfigTest {
                 .hasMessageContaining("Invalid LLM API base URL");
     }
 
-
-
-
-
-    }
+}
 
 

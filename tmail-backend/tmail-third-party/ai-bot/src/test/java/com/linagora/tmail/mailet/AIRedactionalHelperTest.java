@@ -6,40 +6,27 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 import jakarta.mail.MessagingException;
-import jakarta.mail.internet.AddressException;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
-import org.apache.james.core.MailAddress;
-import org.apache.mailet.MailetContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-
-
-
 public class AIRedactionalHelperTest {
-
     private AIRedactionalHelper aiRedactioanlHelper;
     private Configuration configuration;
     private AIBotConfig aiBotConfig;
 
-
     @BeforeEach
     void setUp() {
         configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "AIzaSyDsG6foAS2aVwgvxEn_Z6vzeOxRMYKvPFg");
+        configuration.addProperty("apiKey", "demo");
         configuration.addProperty("botAddress", "gpt@localhost");
         configuration.addProperty("model", "gemini-2.0-flash");
         configuration.addProperty("baseURL", "https://generativelanguage.googleapis.com/v1beta");
         aiBotConfig= AIBotConfig.fromMailetConfig(configuration);
         aiRedactioanlHelper = new AIRedactionalHelper(aiBotConfig, new ChatLanguageModelFactory());
-    }
-
-    @Test
-    void should_check_if_redactional_model_exists()  {
-        assertThat(aiRedactioanlHelper).isNotNull();
     }
 
     @Test
@@ -58,14 +45,16 @@ public class AIRedactionalHelperTest {
         assertThat(aiRedactioanlHelper.getChatLanguageModel()).isNotNull();
 
     }
+
     @Test
     void initShouldVerifyConfigCredentials() throws MessagingException , IOException {
 
-        assertThat(aiRedactioanlHelper.getConfig().getApiKey()).isEqualTo("AIzaSyDsG6foAS2aVwgvxEn_Z6vzeOxRMYKvPFg");
+        assertThat(aiRedactioanlHelper.getConfig().getApiKey()).isEqualTo("demo");
         assertThat(aiRedactioanlHelper.getConfig().getBotAddress()).isEqualTo("gpt@localhost");
         assertThat(aiRedactioanlHelper.getConfig().getLlmModel().modelName()).isEqualTo("gemini-2.0-flash");
         assertThat(aiRedactioanlHelper.getConfig().getBaseURL().get().toString()).isEqualTo("https://generativelanguage.googleapis.com/v1beta");
     }
+
     @Test
     void shoulthrouwOpenAiHttpException() throws Exception {
 
@@ -77,6 +66,7 @@ public class AIRedactionalHelperTest {
         assertThatThrownBy(() -> aiRedactioanlHelper.suggestContent(userInput, mailContent))
                 .isInstanceOf(RuntimeException.class);
     }
+
     @Test
     void shouldReplyToSender() throws Exception {
 

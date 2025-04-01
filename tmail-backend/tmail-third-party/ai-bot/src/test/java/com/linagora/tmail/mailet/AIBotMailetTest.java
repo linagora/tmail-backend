@@ -20,17 +20,18 @@ package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import jakarta.mail.internet.AddressException;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.server.core.MailImpl;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailetContext;
-import org.apache.mailet.MailetException;
 import org.apache.mailet.base.MailAddressFixture;
-import org.apache.mailet.base.test.FakeMailetConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -50,45 +51,45 @@ class AIBotMailetTest {
     private static final MailAddress ASKING_SENDER = createMailAddress("sender@example.com");
     private static final MailAddress BOT_ADDRESS = createMailAddress("gpt@example.com");
 
-    private AIBotMailet testee;
     private MailetContext mailetContext;
+    private ChatLanguageModel chatLanguageModel;
 
     @BeforeEach
     void setUp() {
-        testee = new AIBotMailet(new ChatLanguageModelFactory(), new JsoupHtmlTextExtractor());
+        ChatLanguageModel chatLanguageModel=Mockito.mock(ChatLanguageModel.class);
         mailetContext = Mockito.mock(MailetContext.class);
     }
 
     @Test
     void initShouldThrowWhenMissingApiKeyProperty() {
-        assertThatThrownBy(() -> testee.init(FakeMailetConfig
-            .builder()
-            .setProperty("botAddress", BOT_ADDRESS.asString())
-            .mailetContext(mailetContext)
-            .build()))
-            .isInstanceOf(MailetException.class);
+        Configuration configuration = new PropertiesConfiguration();
+        configuration.addProperty("botAddress", "gpt@localhost");
+        configuration.addProperty("model", "Lucie");
+        configuration.addProperty("baseURL", "htp://example.com");
+        assertThatThrownBy(() -> AIBotConfig.fromMailetConfig(configuration))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void initShouldThrowWhenMissingBotAddressProperty() {
-        assertThatThrownBy(() -> testee.init(FakeMailetConfig
-            .builder()
-            .setProperty("apiKey", "demo")
-            .mailetContext(mailetContext)
-            .build()))
-            .isInstanceOf(MailetException.class);
+        Configuration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "demo");
+        configuration.addProperty("model", "Lucie");
+        configuration.addProperty("baseURL", "htp://example.com");
+        assertThatThrownBy(() -> AIBotConfig.fromMailetConfig(configuration))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Disabled("openai account quota limit issue")
     @Test
     void shouldReplyToSender() throws Exception {
-        testee.init(FakeMailetConfig
-            .builder()
-            .setProperty("apiKey", "demo")
-            .setProperty("botAddress", BOT_ADDRESS.asString())
-            .setProperty("model", DEMO_MODEL)
-            .mailetContext(mailetContext)
-            .build());
+        Configuration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "demo");
+        configuration.addProperty("botAddress", "gpt@localhost");
+        configuration.addProperty("model", "Lucie");
+        configuration.addProperty("baseURL", "htp://example.com");
+        AIBotConfig aiBotConfig= AIBotConfig.fromMailetConfig(configuration);
+        AIBotMailet testee = new AIBotMailet(aiBotConfig, chatLanguageModel, new JsoupHtmlTextExtractor());
 
         Mail mail = MailImpl.builder()
             .name("mail-id")

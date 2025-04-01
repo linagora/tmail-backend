@@ -18,14 +18,11 @@
 
 package com.linagora.tmail.conf;
 
-
 import java.io.FileNotFoundException;
-
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.utils.PropertiesProvider;
-
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
