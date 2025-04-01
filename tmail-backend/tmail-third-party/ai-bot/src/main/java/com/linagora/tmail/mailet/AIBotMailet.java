@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import com.linagora.tmail.conf.AIBotConfigLoader;
 import jakarta.inject.Inject;
 import jakarta.mail.Address;
 import jakarta.mail.Message;
@@ -172,13 +171,7 @@ public class AIBotMailet extends GenericMailet {
 
     @Override
     public void init() throws MailetException {
-        try {
-            this.config = AIBotConfig.fromMailetConfig(AIBotConfigLoader.loadConfiguration());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
         this.chatLanguageModel = createChatLanguageModelModel(config);
-
         this.defaultMessageBuilder = new DefaultMessageBuilder();
         defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
         defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);

@@ -66,6 +66,7 @@ class AIBotIntegrationTest {
 
     @RegisterExtension
     public TestIMAPClient imapClient = new TestIMAPClient();
+
     @RegisterExtension
     public SMTPMessageSender messageSender = new SMTPMessageSender(DEFAULT_DOMAIN);
 
@@ -75,10 +76,10 @@ class AIBotIntegrationTest {
             .putProcessor(ProcessorConfiguration.error()
                 .enableJmx(false)
                 .addMailet(MailetConfiguration.builder()
-                    .matcher(All.class)
-                    .mailet(ToRepository.class)
-                    .addProperty("repositoryPath", ERROR_REPOSITORY.asString()))
-                .build())
+                        .matcher(All.class)
+                        .mailet(ToRepository.class)
+                        .addProperty("repositoryPath", ERROR_REPOSITORY.asString()))
+                    .build())
             .putProcessor(ProcessorConfiguration.transport()
                 .addMailet(MailetConfiguration.builder()
                     .matcher(RecipientsContain.class)
