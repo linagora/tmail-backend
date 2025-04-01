@@ -47,6 +47,7 @@ import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.CalendarComponent;
 import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.property.ExDate;
 import net.fortuna.ical4j.model.property.Method;
 import net.fortuna.ical4j.model.property.Uid;
 import reactor.core.publisher.Mono;
@@ -100,18 +101,36 @@ public class CalDavCollect extends GenericMailet {
                 }
             });
     }
-
+    
     private Mono<Void> synchronizeWithDavServer(Calendar calendar, DavUser davUser) {
         EventUid eventUid = getEventUid(calendar);
-        if (Method.VALUE_CANCEL.equals(calendar.getMethod().getValue())) {
-            return deleteDavCalendar(davUser, eventUid);
-        } else {
-            return davClient.getCalendarObject(davUser, eventUid)
-                .singleOptional()
-                .flatMap(maybeDavCalendarObject ->
-                    maybeDavCalendarObject.map(davCalendarObject -> updateDavCalendar(davCalendarObject, calendar, davUser))
-                        .orElseGet(() -> createDavCalendar(calendar, davUser)));
-        }
+        return davClient.getCalendarObject(davUser, eventUid)
+            .singleOptional()
+            .flatMap(maybeDavCalendarObject -> {
+                if (checkIfCalendarHasRecurrenceId(calendar)) {
+                    return maybeDavCalendarObject.map(davCalendarObject -> handleAnEventInRecurringCalendar(davCalendarObject, calendar, davUser))
+                        .orElse(Mono.empty());
+                } else {
+                    if (Method.VALUE_CANCEL.equals(calendar.getMethod().getValue())) {
+                        return deleteDavCalendar(davUser, eventUid);
+                    } else {
+                        return maybeDavCalendarObject.map(davCalendarObject -> updateDavCalendar(davCalendarObject, calendar, davUser))
+                            .orElseGet(() -> createDavCalendar(calendar, davUser));
+                    }
+                }
+            });
+    }
+
+    private boolean checkIfCalendarHasRecurrenceId(Calendar calendar) {
+        return calendar.getComponent(Component.VEVENT)
+            .map(vevent -> vevent.getProperty(Property.RECURRENCE_ID).isPresent())
+            .orElse(false);
+    }
+
+    private Mono<Void> createDavCalendar(Calendar calendar, DavUser davUser) {
+        return davClient.createCalendar(davUser.username(),
+            URI.create(CALENDAR_PATH + davUser.userId() + "/" + davUser.userId() + "/" + calendar.getUid().getValue() + ".ics"),
+            calendar.removeIf(property -> Property.METHOD.equals(property.getName())));
     }
 
     private Mono<Void> updateDavCalendar(DavCalendarObject davCalendarObject, Calendar newCalendar, DavUser davUser) {
@@ -125,6 +144,11 @@ public class CalDavCollect extends GenericMailet {
         }
     }
 
+    private Mono<Void> deleteDavCalendar(DavUser davUser, EventUid eventUid) {
+        return davClient.deleteCalendar(davUser.username(),
+            URI.create(CALENDAR_PATH + davUser.userId() + "/" + davUser.userId() + "/" + eventUid.value() + ".ics"));
+    }
+
     private boolean checkIfNewCalendarIsNewVersion(Calendar newCalendar, Calendar currentCalendar) {
         CalendarComponent newVEvent = newCalendar.getComponent(Component.VEVENT).get();
         CalendarComponent currentVEvent = currentCalendar.getComponent(Component.VEVENT).get();
@@ -136,29 +160,99 @@ public class CalDavCollect extends GenericMailet {
             if (newSequence > currentSequence) {
                 return true;
             } else if (newSequence == currentSequence) {
-                return checkIfNewDtStampIsOlder(newVEvent, currentVEvent);
+                return checkIfNewDtStampIsLater(newVEvent, currentVEvent);
             } else {
                 return false;
             }
         } else {
-            return checkIfNewDtStampIsOlder(newVEvent, currentVEvent);
+            return checkIfNewDtStampIsLater(newVEvent, currentVEvent);
         }
     }
 
-    private boolean checkIfNewDtStampIsOlder(CalendarComponent  newVEvent, CalendarComponent currentVEvent) {
+    private Mono<Void> handleAnEventInRecurringCalendar(DavCalendarObject davCalendarObject, Calendar newCalendar, DavUser davUser) {
+        CalendarComponent newVEvent = newCalendar.getComponent(Component.VEVENT).get();
+        Optional<CalendarComponent> maybeCurrentVEvent = getCurrentVEventContainingSameRecurrenceId(newVEvent, davCalendarObject.calendarData());
+        if (Method.VALUE_CANCEL.equals(newCalendar.getMethod().getValue())) {
+            return deleteVEventFromRecurringCalendar(newVEvent, maybeCurrentVEvent, davCalendarObject, davUser);
+        } else {
+            if (maybeCurrentVEvent.isPresent()) {
+                return updateVEventInRecurringCalendar(newVEvent, maybeCurrentVEvent.get(), davCalendarObject, davUser);
+            } else {
+                return createVEventInRecurringCalendar(newVEvent, davCalendarObject, davUser);
+            }
+        }
+    }
+
+    private Mono<Void> createVEventInRecurringCalendar(CalendarComponent newVEvent, DavCalendarObject davCalendarObject, DavUser davUser) {
+        Calendar currentCalendar = davCalendarObject.calendarData();
+        CalendarComponent originalVEvent = getCurrentVEventContainingRRule(currentCalendar).get();
+        if (checkIfNewEventComponentIsNewVersion(newVEvent, originalVEvent)) {
+            currentCalendar.getComponentList().add(newVEvent);
+            DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
+                currentCalendar,
+                davCalendarObject.eTag());
+            return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
+        } else {
+            return Mono.empty();
+        }
+    }
+
+    private Mono<Void> updateVEventInRecurringCalendar(CalendarComponent newVEvent, CalendarComponent currentVEvent, DavCalendarObject davCalendarObject, DavUser davUser) {
+        Calendar currentCalendar = davCalendarObject.calendarData();
+        if (checkIfNewEventComponentIsNewVersion(newVEvent, currentVEvent)) {
+            currentCalendar.getComponentList().remove(currentVEvent);
+            currentCalendar.getComponentList().add(newVEvent);
+            DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
+                currentCalendar,
+                davCalendarObject.eTag());
+            return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
+        } else {
+            return Mono.empty();
+        }
+    }
+
+    private Mono<Void> deleteVEventFromRecurringCalendar(CalendarComponent deletedVEvent, Optional<CalendarComponent> maybeCurrentVEvent, DavCalendarObject davCalendarObject, DavUser davUser) {
+        Calendar currentCalendar = davCalendarObject.calendarData();
+        CalendarComponent originalVEvent = getCurrentVEventContainingRRule(currentCalendar).get();
+        if (checkIfNewEventComponentIsNewVersion(deletedVEvent, originalVEvent)) {
+            maybeCurrentVEvent.ifPresent(calendarComponent -> currentCalendar.getComponentList().remove(calendarComponent));
+            originalVEvent.add(new ExDate(deletedVEvent.getProperty(Property.RECURRENCE_ID).get().getValue()));
+            DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
+                currentCalendar,
+                davCalendarObject.eTag());
+            return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
+        } else {
+            return Mono.empty();
+        }
+    }
+
+    private Optional<CalendarComponent> getCurrentVEventContainingSameRecurrenceId(CalendarComponent newVEvent, Calendar currentCalendar) {
+        return currentCalendar.getComponents().stream()
+            .filter(component -> Component.VEVENT.equals(component.getName()))
+            .filter(component -> component.getProperty(Property.RECURRENCE_ID)
+                .map(recurrenceId -> recurrenceId.equals(newVEvent.getProperty(Property.RECURRENCE_ID).get())).orElse(false))
+            .findAny();
+    }
+
+    private Optional<CalendarComponent> getCurrentVEventContainingRRule(Calendar currentCalendar) {
+        return currentCalendar.getComponents().stream()
+            .filter(component -> Component.VEVENT.equals(component.getName()))
+            .filter(component -> component.getProperty(Property.RRULE).isPresent())
+            .findAny();
+    }
+
+    private boolean checkIfNewEventComponentIsNewVersion(CalendarComponent newEvent, CalendarComponent currentEvent) {
+        Optional<Property> newLastModified = newEvent.getProperty(Property.LAST_MODIFIED);
+        Optional<Property> currentLastModified = currentEvent.getProperty(Property.LAST_MODIFIED);
+        if (newLastModified.isPresent() && currentLastModified.isPresent()) {
+            return newLastModified.get().compareTo(currentLastModified.get()) > 0;
+        } else {
+            return checkIfNewDtStampIsLater(newEvent, currentEvent);
+        }
+    }
+
+    private boolean checkIfNewDtStampIsLater(CalendarComponent newVEvent, CalendarComponent currentVEvent) {
         return newVEvent.getProperty(Property.DTSTAMP).get().compareTo(currentVEvent.getProperty(Property.DTSTAMP).get()) > 0;
-    }
-
-    private Mono<Void> createDavCalendar(Calendar calendar, DavUser davUser) {
-        Calendar newCalendar = calendar.removeIf(property -> Property.METHOD.equals(property.getName()));
-        return davClient.createCalendar(davUser.username(),
-            URI.create(CALENDAR_PATH + davUser.userId() + "/" + davUser.userId() + "/" + calendar.getUid().getValue() + ".ics"),
-            newCalendar);
-    }
-
-    private Mono<Void> deleteDavCalendar(DavUser davUser, EventUid eventUid) {
-        return davClient.deleteCalendar(davUser.username(),
-            URI.create(CALENDAR_PATH + davUser.userId() + "/" + davUser.userId() + "/" + eventUid.value() + ".ics"));
     }
 
     private EventUid getEventUid(Calendar calendar) {
