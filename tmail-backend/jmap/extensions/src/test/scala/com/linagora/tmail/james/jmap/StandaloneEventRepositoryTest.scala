@@ -22,7 +22,7 @@ import java.util
 import java.util.Optional
 
 import com.google.common.collect.ImmutableList
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyMailProcessor
 import com.linagora.tmail.james.jmap.model.{CalendarEventAttendanceResults, EventAttendanceStatusEntry, LanguageLocation}
 import jakarta.mail.Flags
 import net.fortuna.ical4j.model.parameter.PartStat
@@ -44,7 +44,7 @@ import reactor.core.scala.publisher.SMono
 import scala.util.Random
 
 class StandaloneEventRepositoryTest {
-  var calendarEventReplyPerformer: CalendarEventReplyPerformer = _
+  var calendarEventReplyPerformer: CalendarEventReplyMailProcessor = _
   var session: MailboxSession = _
   var testee: StandaloneEventRepository = _
   var messageIdManagerTestSystem: MessageIdManagerTestSystem = _
@@ -54,7 +54,7 @@ class StandaloneEventRepositoryTest {
   @throws[MailboxException]
   def setUp(): Unit = {
     messageIdManagerTestSystem = createTestSystem
-    calendarEventReplyPerformer = mock(classOf[CalendarEventReplyPerformer])
+    calendarEventReplyPerformer = mock(classOf[CalendarEventReplyMailProcessor])
     when(calendarEventReplyPerformer.process(
       any[Seq[BlobId]],
       any[Option[LanguageLocation]],

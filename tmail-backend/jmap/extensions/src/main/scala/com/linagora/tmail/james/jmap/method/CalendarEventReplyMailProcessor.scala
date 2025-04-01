@@ -30,7 +30,7 @@ import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, LOGGER}
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyMailProcessor.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, LOGGER}
 import com.linagora.tmail.james.jmap.model._
 import eu.timepit.refined.auto._
 import jakarta.annotation.PreDestroy
@@ -63,18 +63,18 @@ import reactor.core.scheduler.Schedulers
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.util.{Failure, Success, Try}
 
-object CalendarEventReplyPerformer {
+object CalendarEventReplyMailProcessor {
   val I18N_MAIL_TEMPLATE_LOCATION_PROPERTY: String = "calendarEvent.reply.mailTemplateLocation"
   val I18N_MAIL_TEMPLATE_LOCATION_DEFAULT: String = "file://eml-template/"
-  val LOGGER: Logger = LoggerFactory.getLogger(classOf[CalendarEventReplyPerformer])
+  val LOGGER: Logger = LoggerFactory.getLogger(classOf[CalendarEventReplyMailProcessor])
 }
 
-class CalendarEventReplyPerformer @Inject()(blobCalendarResolver: CalendarResolver,
-                                            mailQueueFactory: MailQueueFactory[_ <: MailQueue],
-                                            fileSystem: FileSystem,
-                                            @Named("jmap") jmapConfiguration: Configuration,
-                                            supportedLanguage: CalendarEventReplySupportedLanguage,
-                                            usersRepository: UsersRepository) extends Startable {
+class CalendarEventReplyMailProcessor @Inject()(blobCalendarResolver: CalendarResolver,
+                                                mailQueueFactory: MailQueueFactory[_ <: MailQueue],
+                                                fileSystem: FileSystem,
+                                                @Named("jmap") jmapConfiguration: Configuration,
+                                                supportedLanguage: CalendarEventReplySupportedLanguage,
+                                                usersRepository: UsersRepository) extends Startable {
 
   private val mailReplyGenerator: CalendarEventMailReplyGenerator = Try(jmapConfiguration.getString(I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, I18N_MAIL_TEMPLATE_LOCATION_DEFAULT))
     .map(i18nEmlDirectory => new I18NCalendarEventReplyMessageGenerator(fileSystem, i18nEmlDirectory)) match {

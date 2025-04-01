@@ -107,14 +107,14 @@ class CalendarEventMethodModule extends AbstractModule {
       .addBinding()
       .to(classOf[CalendarEventCounterAcceptMethod])
 
-    bind(classOf[CalendarEventReplyPerformer]).in(Scopes.SINGLETON)
+    bind(classOf[CalendarEventReplyMailProcessor]).in(Scopes.SINGLETON)
     bind(classOf[CalendarEventReplySupportedLanguage]).in(Scopes.SINGLETON)
     bind(classOf[CalendarEventCounterPerformer]).in(Scopes.SINGLETON)
   }
 
   @ProvidesIntoSet
-  def initCalendarEventReplyPerformer(instance: CalendarEventReplyPerformer): InitializationOperation = {
-    InitilizationOperationBuilder.forClass(classOf[CalendarEventReplyPerformer])
+  def initCalendarEventReplyPerformer(instance: CalendarEventReplyMailProcessor): InitializationOperation = {
+    InitilizationOperationBuilder.forClass(classOf[CalendarEventReplyMailProcessor])
       .init(new org.apache.james.utils.InitilizationOperationBuilder.Init() {
         override def init(): Unit = instance.init
       })

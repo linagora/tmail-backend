@@ -40,7 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyPerformer;
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyMailProcessor;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
 import com.linagora.tmail.james.jmap.model.LanguageLocation;
@@ -55,15 +55,15 @@ public class StandaloneEventRepository implements CalendarEventRepository {
 
     private final MessageIdManager messageIdManager;
     private final SessionProvider sessionProvider;
-    private final CalendarEventReplyPerformer calendarEventReplyPerformer;
+    private final CalendarEventReplyMailProcessor calendarEventReplyMailPerformer;
     private final MessageId.Factory messageIdFactory;
 
     @Inject
     public StandaloneEventRepository(MessageIdManager messageIdManager, SessionProvider sessionProvider,
-                                     CalendarEventReplyPerformer calendarEventReplyPerformer, MessageId.Factory messageIdFactory) {
+                                     CalendarEventReplyMailProcessor calendarEventReplyMailPerformer, MessageId.Factory messageIdFactory) {
         this.messageIdManager = messageIdManager;
         this.sessionProvider = sessionProvider;
-        this.calendarEventReplyPerformer = calendarEventReplyPerformer;
+        this.calendarEventReplyMailPerformer = calendarEventReplyMailPerformer;
         this.messageIdFactory = messageIdFactory;
     }
 
@@ -133,7 +133,7 @@ public class StandaloneEventRepository implements CalendarEventRepository {
                                                              List<BlobId> eventBlobIds,
                                                              Optional<LanguageLocation> maybePreferredLanguage,
                                                              AttendanceStatus attendanceStatus) {
-        return Mono.from(calendarEventReplyPerformer.process(
+        return Mono.from(calendarEventReplyMailPerformer.process(
             CollectionConverters.asScala(eventBlobIds).toSeq(),
             OptionConverters.toScala(maybePreferredLanguage),
             attendanceStatus.toPartStat(),
