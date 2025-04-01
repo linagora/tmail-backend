@@ -117,7 +117,8 @@ The server responds:
                         "bySetPosition": [ 1, 2 ],
                         "until":"2024-01-11T09:00:00Z"
                    }
-                ]
+                ],
+                "recurrenceId": "20250409T080000Z"
             },
             ...
         ]

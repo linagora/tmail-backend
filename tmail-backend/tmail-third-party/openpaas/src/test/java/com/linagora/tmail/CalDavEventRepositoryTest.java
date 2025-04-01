@@ -176,6 +176,144 @@ public class CalDavEventRepositoryTest {
     }
 
     @Test
+    void getAttendanceStatusShouldReturnRecurrenceEventStatusWhenRecurrenceIdIsPresent() {
+        // Given a calendar event with recurrence id
+        String eventUid = UUID.randomUUID().toString();
+        String recurrenceIdValue = "RECURRENCE-ID:20250409T080000Z";
+        String calendarAsString = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+            "CALSCALE:GREGORIAN\n" +
+            "BEGIN:VTIMEZONE\n" +
+            "TZID:Europe/Paris\n" +
+            "BEGIN:STANDARD\n" +
+            "TZOFFSETFROM:+0700\n" +
+            "TZOFFSETTO:+0700\n" +
+            "TZNAME:WIB\n" +
+            "DTSTART:19700101T000000\n" +
+            "END:STANDARD\n" +
+            "END:VTIMEZONE\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "TRANSP:OPAQUE\n" +
+            "DTSTART;TZID=Europe/Paris:20250401T150000\n" +
+            "DTEND;TZID=Europe/Paris:20250401T153000\n" +
+            "CLASS:PUBLIC\n" +
+            "SUMMARY:Loop3\n" +
+            "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
+            " DUAL;CN=John2 Doe2:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:u\n" +
+            " ser1@open-paas.org\n" +
+            "DTSTAMP:20250331T075231Z\n" +
+            "SEQUENCE:0\n" +
+            "END:VEVENT\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:"+ eventUid + "\n" +
+            "TRANSP:OPAQUE\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T170000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T173000\n" +
+            "CLASS:PUBLIC\n" +
+            "SUMMARY:Loop3\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org\n" +
+            "DTSTAMP:20250331T075231Z\n" +
+            recurrenceIdValue + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
+            " DUAL;CN=John2 Doe2:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=John1\n" +
+            "  Doe1:mailto:user1@open-paas.org\n" +
+            "SEQUENCE:1\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        // Push calendar to Dav
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUid + ".ics");
+        davClient.createCalendar(openPaasUser.email(), davCalendarUri, stringAsCalendar(calendarAsString)).block();
+
+        // Setup blobId for the event, with recurrence id
+        BlobId blobId = setupCalendarResolver(eventUid, Optional.of(recurrenceIdValue));
+
+        // When get AttendanceStatus
+        CalendarEventAttendanceResults calendarEventAttendanceResults = Mono.from(testee.getAttendanceStatus(testUser, List.of(blobId))).block();
+
+        // Then it should return the correct data
+        assertThat(calendarEventAttendanceResults).isNotNull();
+        assertThat(calendarEventAttendanceResults.done().size()).isEqualTo(1);
+        assertThat(CollectionConverters.asJava(calendarEventAttendanceResults.done()).getFirst().eventAttendanceStatus())
+            .isEqualTo(AttendanceStatus.NeedsAction);
+    }
+
+    @Test
+    void getAttendanceStatusShouldReturnOriginalEventStatusWhenRecurrenceIdIsAbsent() {
+        // Given a calendar event with recurrence id
+        String eventUid = UUID.randomUUID().toString();
+        String recurrenceIdValue = "RECURRENCE-ID:20250409T080000Z";
+        String calendarAsString = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+            "CALSCALE:GREGORIAN\n" +
+            "BEGIN:VTIMEZONE\n" +
+            "TZID:Europe/Paris\n" +
+            "BEGIN:STANDARD\n" +
+            "TZOFFSETFROM:+0700\n" +
+            "TZOFFSETTO:+0700\n" +
+            "TZNAME:WIB\n" +
+            "DTSTART:19700101T000000\n" +
+            "END:STANDARD\n" +
+            "END:VTIMEZONE\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "TRANSP:OPAQUE\n" +
+            "DTSTART;TZID=Europe/Paris:20250401T150000\n" +
+            "DTEND;TZID=Europe/Paris:20250401T153000\n" +
+            "CLASS:PUBLIC\n" +
+            "SUMMARY:Loop3\n" +
+            "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
+            " DUAL;CN=John2 Doe2:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:u\n" +
+            " ser1@open-paas.org\n" +
+            "DTSTAMP:20250331T075231Z\n" +
+            "SEQUENCE:0\n" +
+            "END:VEVENT\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:"+ eventUid + "\n" +
+            "TRANSP:OPAQUE\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T170000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T173000\n" +
+            "CLASS:PUBLIC\n" +
+            "SUMMARY:Loop3\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org\n" +
+            "DTSTAMP:20250331T075231Z\n" +
+            recurrenceIdValue + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
+            " DUAL;CN=John2 Doe2:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=John1\n" +
+            "  Doe1:mailto:user1@open-paas.org\n" +
+            "SEQUENCE:1\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        // Push calendar to Dav
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUid + ".ics");
+        davClient.createCalendar(openPaasUser.email(), davCalendarUri, stringAsCalendar(calendarAsString)).block();
+
+        // Setup blobId for the event, with empty recurrence id
+        BlobId blobId = setupCalendarResolver(eventUid, Optional.empty());
+
+        // When get AttendanceStatus
+        CalendarEventAttendanceResults calendarEventAttendanceResults = Mono.from(testee.getAttendanceStatus(testUser, List.of(blobId))).block();
+
+        // Then it should return the correct data
+        assertThat(calendarEventAttendanceResults).isNotNull();
+        assertThat(calendarEventAttendanceResults.done().size()).isEqualTo(1);
+        assertThat(CollectionConverters.asJava(calendarEventAttendanceResults.done()).getFirst().eventAttendanceStatus())
+            .isEqualTo(AttendanceStatus.Accepted);
+    }
+
+    @Test
     void getAttendanceStatusShouldReturnIsFreeFalseWhenTimeSlotConflicts() {
         // Given a calendar event A, already ACCEPTED
         ZonedDateTime startDateOfEventA = ZonedDateTime.parse("2025-03-14T14:00:00Z");
@@ -601,5 +739,9 @@ public class CalDavEventRepositoryTest {
                 "ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2;PARTSTAT=ACCEPTED:mailto:" + openPaasUser.email() + "\n" +
                 "END:VEVENT\n" +
                 "END:VCALENDAR\n".trim());
+    }
+
+    private Calendar stringAsCalendar(String input) {
+        return CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
     }
 }

@@ -21,11 +21,10 @@ package com.linagora.tmail.dav;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.dav.xml.CalendarData;
 import com.linagora.tmail.dav.xml.DavResponse;
@@ -36,7 +35,6 @@ import net.fortuna.ical4j.model.Calendar;
 import scala.jdk.javaapi.CollectionConverters;
 
 public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DavCalendarObject.class);
 
     public static Optional<DavCalendarObject> fromDavResponse(DavResponse davResponse) {
         return davResponse.getPropstat().getProp().getCalendarData()
@@ -50,17 +48,16 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
                     calendar, davResponse.getPropstat().getProp().getETag().orElse("ETag_NOT_FOUND")));
     }
 
-    public CalendarEventParsed parse() {
+    public CalendarEventParsed parse(Optional<String> recurrenceId) {
         List<CalendarEventParsed> events = CollectionConverters.asJava(CalendarEventParsed.from(calendarData()));
         if (events.isEmpty()) {
-            throw new RuntimeException("No VEvents found in calendar object. Returning empty attendance results.");
+            throw new NoSuchElementException("No VEvents found in calendar object. Returning empty attendance results.");
         }
-        if (events.size() != 1) {
-            LOGGER.debug("Expected exactly one VEvent, but found {} entries. Using the first VEvent. " +
-                    "This may indicate unhandled recurrent events or a malformed calendar object. VEvents: {}",
-                events.size(), events);
-        }
-        return events.getFirst();
+
+        return recurrenceId.flatMap(id -> events.stream()
+                .filter(event -> id.equals(event.recurrenceIdAsJava().orElse("")))
+                .findFirst())
+            .orElse(events.getFirst());
     }
 
     public DavCalendarObject withUpdatePatches(CalendarEventModifier eventModifier) {

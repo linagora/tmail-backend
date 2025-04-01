@@ -18,14 +18,19 @@
 
 package com.linagora.tmail.james.common
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.time.ZonedDateTime
+import java.util.UUID
 
 import com.linagora.tmail.james.common.LinagoraCalendarEventAttendanceGetMethodContract.bobAccountId
 import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper
+import com.linagora.tmail.james.jmap.model.CalendarEventParsed
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
+import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
@@ -41,6 +46,7 @@ import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
+import org.hamcrest.Matchers.hasItem
 import org.junit.jupiter.api.{Assumptions, BeforeEach, Test}
 import play.api.libs.json.Json
 
@@ -55,7 +61,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
   def aliceCredential: UserCredential
   def andreCredential: UserCredential
 
-  def pushCalendarToDav(userCredential: UserCredential, calendar: CalendarEventHelper): Unit = {}
+  def pushCalendarToDav(userCredential: UserCredential, calendar: Calendar, eventUid: String): Unit = {}
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -705,6 +711,179 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
       .body("capabilities.\"com:linagora:params:calendar:event\".version", Matchers.is(2))
   }
 
+  @Test
+  def shouldReturnAcceptBaseEventAndRejectRecurrenceEvent(server: GuiceJamesServer): Unit = {
+    // setup calendar
+    val eventUid = UUID.randomUUID().toString
+    val recurrenceId = "TZID=Europe/Paris:20250409T090000"
+    val originalCalendarAsString =
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |BEGIN:VEVENT
+         |UID:$eventUid
+         |DTSTART;TZID=Europe/Paris:20250328T090000
+         |DTEND;TZID=Europe/Paris:20250328T100000
+         |RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE
+         |ORGANIZER;CN=John1 Doe1;SCHEDULE-STATUS=3.7:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:${bobCredential.username.asString()}
+         |END:VEVENT
+         |BEGIN:VEVENT
+         |UID:$eventUid
+         |DTSTART;TZID=Europe/Paris:20250409T110000
+         |DTEND;TZID=Europe/Paris:20250409T120000
+         |ORGANIZER;CN=John1 Doe1:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:${bobCredential.username.asString()}
+         |DTSTAMP:20250331T083652Z
+         |RECURRENCE-ID;$recurrenceId
+         |SEQUENCE:1
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin
+
+    val originalCalendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(originalCalendarAsString.getBytes(StandardCharsets.UTF_8)))
+    pushCalendarToDav(bobCredential, originalCalendar, eventUid)
+
+    val requestCalendarWithRecurrenceId: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |CALSCALE:GREGORIAN
+         |METHOD:REQUEST
+         |BEGIN:VEVENT
+         |UID:$eventUid
+         |TRANSP:OPAQUE
+         |DTSTART;TZID=Europe/Paris:20250409T110000
+         |DTEND;TZID=Europe/Paris:20250409T120000
+         |CLASS:PUBLIC
+         |SUMMARY:Loop3
+         |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+         |DTSTAMP:20250331T075231Z
+         |RECURRENCE-ID;$recurrenceId
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
+         | DUAL;CN=John2 Doe2:mailto:${bobCredential.username.asString()}
+         |SEQUENCE:1
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin.getBytes(StandardCharsets.UTF_8)))
+
+    val requestCalendarWithoutRecurrenceId: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |CALSCALE:GREGORIAN
+         |METHOD:REQUEST
+         |BEGIN:VEVENT
+         |UID:$eventUid
+         |TRANSP:OPAQUE
+         |DTSTART;TZID=Asia/Jakarta:20250401T150000
+         |DTEND;TZID=Asia/Jakarta:20250401T153000
+         |CLASS:PUBLIC
+         |SUMMARY:Loop3
+         |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+         |DTSTAMP:20250331T075231Z
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
+         | DUAL;CN=John2 Doe2:mailto:${bobCredential.username.asString()}
+         |SEQUENCE:1
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin.getBytes(StandardCharsets.UTF_8)))
+
+    val blobIdAccept: String = createNewEmailWithCalendarAttachment(server, requestCalendarWithoutRecurrenceId, eventUid, pushToDav = false)
+    val blobIdReject: String = createNewEmailWithCalendarAttachment(server, requestCalendarWithRecurrenceId, eventUid, pushToDav = false)
+
+    // accept base event invitation
+    `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:calendar:event"],
+           |  "methodCalls": [[
+           |    "CalendarEvent/accept",
+           |    {
+           |      "accountId": "$bobAccountId",
+           |      "blobIds": [ "$blobIdAccept" ]
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].accepted", hasItem(blobIdAccept))
+
+    // reject recurrence event invitation
+    `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:calendar:event"],
+           |  "methodCalls": [[
+           |    "CalendarEvent/reject",
+           |    {
+           |      "accountId": "$bobAccountId",
+           |      "blobIds": [ "$blobIdReject" ]
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].rejected", hasItem(blobIdReject))
+
+      // Then
+      val response = `given`
+        .body(
+          s"""{
+             |  "using": [
+             |    "urn:ietf:params:jmap:core",
+             |    "com:linagora:params:calendar:event"],
+             |  "methodCalls": [[
+             |    "CalendarEventAttendance/get",
+             |    {
+             |      "accountId": "$bobAccountId",
+             |      "blobIds": [ "$blobIdAccept", "$blobIdReject" ]
+             |    },
+             |    "c1"]]
+             |}""".stripMargin)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    assertThatJson(response)
+      .withOptions(Option.IGNORING_ARRAY_ORDER)
+      .whenIgnoringPaths("methodResponses[0][1].list[*].isFree")
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""|[
+            |  "CalendarEventAttendance/get",
+            |  {
+            |    "accountId": "$bobAccountId",
+            |    "list": [
+            |      {
+            |        "blobId": "$blobIdAccept",
+            |        "eventAttendanceStatus": "accepted"
+            |      },
+            |      {
+            |        "blobId": "$blobIdReject",
+            |        "eventAttendanceStatus": "rejected"
+            |      }
+            |    ]
+            |  },
+            |  "c1"
+            |]""".stripMargin)
+  }
+
   private def acceptInvitation(blobId: String) = {
     val request: String =
       s"""{
@@ -793,16 +972,23 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
                                                      PartStat.NEEDS_ACTION,
                                                      ZonedDateTime.now(),
                                                      ZonedDateTime.now().plusHours(1))): String = {
+    createNewEmailWithCalendarAttachment(server, calendar.asCalendar, calendar.uid, supportFreeBusyQuery)
+  }
+
+  private def createNewEmailWithCalendarAttachment(server: GuiceJamesServer,
+                                                   calendar: Calendar,
+                                                   eventUid: String,
+                                                   pushToDav: Boolean): String = {
 
     // upload calendar attachment
     val uploadBlobId: String = `given`
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .contentType("text/plain")
-      .body(calendar.asByte)
-      .when
+      .body(calendar.toString.getBytes(StandardCharsets.UTF_8))
+    .when
       .post(s"/upload/$bobAccountId")
-      .`then`
+    .`then`
       .statusCode(SC_CREATED)
       .extract
       .path("blobId")
@@ -826,7 +1012,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
            |            "mailboxIds": {
            |              "${bobMailboxId.serialize}": true
            |            },
-           |            "header:X-MEETING-UID:asText": "${calendar.uid}",
+           |            "header:X-MEETING-UID:asText": "$eventUid",
            |            "subject": "World domination",
            |            "textBody": [ { "partId": "a49d", "type": "text/plain" } ],
            |            "bodyValues": {
@@ -871,8 +1057,8 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
       .extract()
       .path("methodResponses[1][1].list[0].attachments[0].blobId")
 
-    if (supportFreeBusyQuery) {
-      pushCalendarToDav(bobCredential, calendar)
+    if (pushToDav) {
+      pushCalendarToDav(bobCredential, calendar, eventUid)
     }
     eventMessagePartBlobId
   }

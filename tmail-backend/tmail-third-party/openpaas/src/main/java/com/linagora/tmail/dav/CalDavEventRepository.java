@@ -45,6 +45,7 @@ import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
+import com.linagora.tmail.james.jmap.model.RecurrenceIdField;
 
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod;
 import reactor.core.publisher.Flux;
@@ -91,7 +92,6 @@ public class CalDavEventRepository implements CalendarEventRepository {
 
     private Mono<CalendarEventAttendanceResults> getAttendanceStatus(DavUser davUser, BlobId blobId) {
         return fetchCalendarObject(davUser, blobId)
-            .map(DavCalendarObject::parse)
             .flatMap(calendarEventParsed ->
                 Mono.justOrEmpty(OptionConverters.toJava(calendarEventParsed.getAttendanceStatus(davUser.username())))
                     .flatMap(attendanceStatus -> freeBusyQuery(davUser, calendarEventParsed)
@@ -101,13 +101,17 @@ public class CalDavEventRepository implements CalendarEventRepository {
             .onErrorResume(error -> Mono.just(AttendanceResult().notDone(blobId, error)));
     }
 
-    private Mono<DavCalendarObject> fetchCalendarObject(DavUser davUser, BlobId blobId) {
+    private Mono<CalendarEventParsed> fetchCalendarObject(DavUser davUser, BlobId blobId) {
         MailboxSession session = sessionProvider.createSystemSession(Username.of(davUser.username()));
 
         return Mono.from(calendarResolver.resolveRequestCalendar(blobId, session, OptionConverters.toScala(Optional.empty())))
-            .map(CalendarUidField::getEventUidFromCalendar)
-            .flatMap(eventUid -> davClient.getCalendarObject(davUser, new EventUid(eventUid))
-                .switchIfEmpty(Mono.error(() -> new DavClientException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid)))));
+            .flatMap(requestCalendar -> {
+                String eventUid = CalendarUidField.getEventUidFromCalendar(requestCalendar);
+                Optional<String> recurrenceId = RecurrenceIdField.getRecurrenceIdAsString(requestCalendar);
+                return davClient.getCalendarObject(davUser, new EventUid(eventUid))
+                    .switchIfEmpty(Mono.error(() -> new DavClientException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid))))
+                    .map(davCalendarObject -> davCalendarObject.parse(recurrenceId));
+            });
     }
 
     public Mono<FreeBusyStatus> freeBusyQuery(DavUser davUser, CalendarEventParsed calendarEventParsed) {
