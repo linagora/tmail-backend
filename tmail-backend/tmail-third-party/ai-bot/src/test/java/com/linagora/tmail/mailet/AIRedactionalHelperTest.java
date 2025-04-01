@@ -1,65 +1,77 @@
 package com.linagora.tmail.mailet;
 
-
-
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.AddressException;
-import org.apache.james.core.MailAddress;
-
-import org.apache.mailet.MailetContext;
-import org.apache.mailet.MailetException;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.AddressException;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.james.core.MailAddress;
+import org.apache.mailet.MailetContext;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+
+
+
 
 public class AIRedactionalHelperTest {
-    public static MailAddress createMailAddress(String mailAddress) {
-        try {
-            return new MailAddress(mailAddress);
-        } catch (AddressException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    public static final String DEMO_MODEL = "lucie-7b-instruct-v1.1";
-    private static final MailAddress ASKING_SENDER = createMailAddress("sender@example.com");
 
-    private AIRedactioanlHelper aiRedactioanlHelper;
-    private MailetContext mailetContext;
+    private AIRedactionalHelper aiRedactioanlHelper;
+    private Configuration configuration;
+    private AIBotConfig aiBotConfig;
+
+
     @BeforeEach
     void setUp() {
-        aiRedactioanlHelper = new AIRedactioanlHelper(new ChatLanguageModelFactory());
-        mailetContext = mock(MailetContext.class);
+        configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "AIzaSyDsG6foAS2aVwgvxEn_Z6vzeOxRMYKvPFg");
+        configuration.addProperty("botAddress", "gpt@localhost");
+        configuration.addProperty("model", "gemini-2.0-flash");
+        configuration.addProperty("baseURL", "https://generativelanguage.googleapis.com/v1beta");
+        aiBotConfig= AIBotConfig.fromMailetConfig(configuration);
+        aiRedactioanlHelper = new AIRedactionalHelper(aiBotConfig, new ChatLanguageModelFactory());
     }
+
     @Test
-    void should_check_if_redactional_model_exists() throws MailetException {
+    void should_check_if_redactional_model_exists()  {
         assertThat(aiRedactioanlHelper).isNotNull();
     }
+
     @Test
     void testSuggestContentNullInput() {
+
         ChatLanguageModelFactory mockFactory = mock(ChatLanguageModelFactory.class);
-        AIRedactioanlHelper helper = new AIRedactioanlHelper(mockFactory);
+
 
         assertThrows(IllegalArgumentException.class, () ->
-                helper.suggestContent(null, "Valid content").block());
+                aiRedactioanlHelper.suggestContent(null, "Valid content").block());
     }
 
     @Test
     void initShouldCheckChatModel() throws MessagingException , IOException {
-        aiRedactioanlHelper.confuguerAiBot();
+
         assertThat(aiRedactioanlHelper.getChatLanguageModel()).isNotNull();
+
+    }
+    @Test
+    void initShouldVerifyConfigCredentials() throws MessagingException , IOException {
+
+        assertThat(aiRedactioanlHelper.getConfig().getApiKey()).isEqualTo("AIzaSyDsG6foAS2aVwgvxEn_Z6vzeOxRMYKvPFg");
+        assertThat(aiRedactioanlHelper.getConfig().getBotAddress()).isEqualTo("gpt@localhost");
+        assertThat(aiRedactioanlHelper.getConfig().getLlmModel().modelName()).isEqualTo("gemini-2.0-flash");
+        assertThat(aiRedactioanlHelper.getConfig().getBaseURL().get().toString()).isEqualTo("https://generativelanguage.googleapis.com/v1beta");
     }
     @Test
     void shoulthrouwOpenAiHttpException() throws Exception {
 
-
+        configuration.setProperty("baseURL", "https://generativelanguage.googleapis.com");
+        aiBotConfig= AIBotConfig.fromMailetConfig(configuration);
+        aiRedactioanlHelper = new AIRedactionalHelper(aiBotConfig, new ChatLanguageModelFactory());
         String userInput="email content";
         String mailContent="I want to know if your ready to go by 6pm ?";
         assertThatThrownBy(() -> aiRedactioanlHelper.suggestContent(userInput, mailContent))
