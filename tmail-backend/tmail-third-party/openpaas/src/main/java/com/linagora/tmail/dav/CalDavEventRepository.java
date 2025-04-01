@@ -19,7 +19,6 @@
 package com.linagora.tmail.dav;
 
 import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
-import static com.linagora.tmail.james.jmap.model.CalendarEventReplyResults.ReplyResults;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.util.List;
@@ -31,7 +30,6 @@ import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.BlobId;
-import org.apache.james.jmap.routes.BlobNotFoundException;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.SessionProvider;
 import org.reactivestreams.Publisher;
@@ -45,10 +43,8 @@ import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
 import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
-import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod;
 import reactor.core.publisher.Flux;
@@ -128,31 +124,18 @@ public class CalDavEventRepository implements CalendarEventRepository {
     }
 
     @Override
-    public Mono<CalendarEventReplyResults> setAttendanceStatus(Username username, AttendanceStatus attendanceStatus,
-                                                               List<BlobId> eventBlobIds, Optional<LanguageLocation> ignore) {
+    public Mono<Void> setAttendanceStatus(Username username, AttendanceStatus attendanceStatus, BlobId eventBlobId) {
         return davUserProvider.provide(username)
-            .flatMapMany(davUser -> {
-                MailboxSession session = sessionProvider.createSystemSession(username);
-                return Flux.fromIterable(eventBlobIds)
-                    .flatMap(blobId -> setAttendanceStatus(username, blobId, attendanceStatus, session), DEFAULT_CONCURRENCY);
-            })
-            .reduce(CalendarEventReplyResults::merge);
+            .flatMap(davUser -> setAttendanceStatus(username, eventBlobId, attendanceStatus, sessionProvider.createSystemSession(username)));
     }
 
-    private Mono<CalendarEventReplyResults> setAttendanceStatus(Username username, BlobId blobId, AttendanceStatus attendanceStatus, MailboxSession session) {
+    private Mono<Void> setAttendanceStatus(Username username, BlobId blobId, AttendanceStatus attendanceStatus, MailboxSession session) {
         return calendarResolver.resolveRequestCalendar(blobId, session, OptionConverters.toScala(Optional.of(ImmutableMethod.REQUEST))).asJava()
             .flatMap(calendar -> {
                 String eventUid = CalendarUidField.getEventUidFromCalendar(calendar);
                 CalendarEventModifier eventModifier = CalendarEventModifier.withPartStat(username.asString(), attendanceStatus.toPartStat(), calendar);
-                return updateEvent(username, eventUid, eventModifier)
-                    .thenReturn(ReplyResults().done(blobId))
-                    .onErrorResume(e -> Mono.just(ReplyResults().notDone(blobId, e, username.asString())));
-            })
-            .onErrorResume((e ->
-                switch (e) {
-                    case BlobNotFoundException b -> Mono.just(ReplyResults().notFound(blobId));
-                    default -> Mono.just(ReplyResults().notDone(blobId, e, username.asString()));
-                }));
+                return updateEvent(username, eventUid, eventModifier);
+            });
     }
 
     @Override
