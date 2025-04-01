@@ -28,11 +28,9 @@ import com.github.mustachejava.{DefaultMustacheFactory, MustacheFactory}
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
-import com.linagora.tmail.james.jmap.calendar.CalendarResolver
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyMailProcessor.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, LOGGER}
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
 import com.linagora.tmail.james.jmap.model._
-import eu.timepit.refined.auto._
 import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Named}
 import jakarta.mail.internet.{InternetAddress, MimeMessage, MimeMultipart}
@@ -40,15 +38,12 @@ import jakarta.mail.{Message, Part}
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.parameter.PartStat
-import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import org.apache.commons.configuration2.Configuration
 import org.apache.james.core.MailAddress
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.core.builder.MimeMessageBuilder.BodyPartBuilder
 import org.apache.james.filesystem.api.FileSystem
-import org.apache.james.jmap.mail.{BlobId, BlobIds}
 import org.apache.james.jmap.method.EmailSubmissionSetMethod.MAIL_METADATA_USERNAME_ATTRIBUTE
-import org.apache.james.jmap.routes.BlobNotFoundException
 import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.queue.api.MailQueueFactory.SPOOL
@@ -57,7 +52,7 @@ import org.apache.james.server.core.{MailImpl, MimeMessageInputStreamSource, Mim
 import org.apache.james.user.api.UsersRepository
 import org.apache.mailet.{Attribute, AttributeValue, Mail}
 import org.slf4j.{Logger, LoggerFactory}
-import reactor.core.scala.publisher.{SFlux, SMono}
+import reactor.core.scala.publisher.SMono
 import reactor.core.scheduler.Schedulers
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
@@ -69,8 +64,7 @@ object CalendarEventReplyMailProcessor {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[CalendarEventReplyMailProcessor])
 }
 
-class CalendarEventReplyMailProcessor @Inject()(blobCalendarResolver: CalendarResolver,
-                                                mailQueueFactory: MailQueueFactory[_ <: MailQueue],
+class CalendarEventReplyMailProcessor @Inject()(mailQueueFactory: MailQueueFactory[_ <: MailQueue],
                                                 fileSystem: FileSystem,
                                                 @Named("jmap") jmapConfiguration: Configuration,
                                                 supportedLanguage: CalendarEventReplySupportedLanguage,
@@ -90,31 +84,25 @@ class CalendarEventReplyMailProcessor @Inject()(blobCalendarResolver: CalendarRe
   @PreDestroy
   def dispose: Unit = Try(queue.close()).recover(e => LOGGER.debug("error closing queue", e))
 
-  def process(blobIds: Seq[BlobId],
+  def process(calendarRequest: Calendar,
               requestLanguage: Option[LanguageLocation],
               partStat: PartStat,
-              mailboxSession: MailboxSession): SMono[CalendarEventReplyResults] = {
+              mailboxSession: MailboxSession): SMono[Unit] = {
     val language: Locale = getLanguageLocale(requestLanguage)
     Preconditions.checkArgument(supportedLanguage.isSupported(language), s"The language only supports ${supportedLanguage.value}".asInstanceOf[Object])
 
     SMono.fromCallable(() => usersRepository.getMailAddressFor(mailboxSession.getUser))
       .map(mailAddress => AttendeeReply(mailAddress, partStat))
-      .flatMapMany(attendeeReply => SFlux.fromIterable(blobIds)
-        .flatMap(blobId => generateReplyMailAndTryEnqueue(blobId, mailboxSession, attendeeReply, language)))
-      .reduce(CalendarEventReplyResults.empty)(CalendarEventReplyResults.merge)
+      .flatMap(attendeeReply => generateReplyMailAndTryEnqueue(attendeeReply, language, calendarRequest))
   }
 
-  private def generateReplyMailAndTryEnqueue(blobId: BlobId, mailboxSession: MailboxSession, attendeeReply: AttendeeReply, language: Locale): SMono[CalendarEventReplyResults] =
-    blobCalendarResolver.resolveRequestCalendar(blobId, mailboxSession, Some(ImmutableMethod.REQUEST))
-      .flatMap(calendarRequest => mailReplyGenerator.generateMail(calendarRequest, attendeeReply, language))
+  private def generateReplyMailAndTryEnqueue(attendeeReply: AttendeeReply,
+                                             language: Locale,
+                                             calendarRequest: Calendar): SMono[Unit] =
+    mailReplyGenerator.generateMail(calendarRequest, attendeeReply, language)
       .flatMap(replyMail => SMono(queue.enqueueReactive(replyMail))
         .`then`(SMono.fromCallable(() => LifecycleUtil.dispose(replyMail))
-          .subscribeOn(Schedulers.boundedElastic()))
-        .`then`(SMono.just(CalendarEventReplyResults(done = BlobIds(Seq(blobId.value))))))
-      .onErrorResume({
-        case _: BlobNotFoundException => SMono.just(CalendarEventReplyResults.notFound(blobId))
-        case e => SMono.just(CalendarEventReplyResults.notDone(blobId, e, mailboxSession.getUser.asString()))
-      })
+          .subscribeOn(Schedulers.boundedElastic())))
 
   private def getLanguageLocale(requestLanguage: Option[LanguageLocation]): Locale =
     requestLanguage.map(_.language).getOrElse(CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT)

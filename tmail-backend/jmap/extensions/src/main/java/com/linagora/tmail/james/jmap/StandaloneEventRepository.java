@@ -21,7 +21,6 @@ package com.linagora.tmail.james.jmap;
 import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
 
 import java.util.List;
-import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.mail.Flags;
@@ -40,30 +39,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyMailProcessor;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
-import com.linagora.tmail.james.jmap.model.LanguageLocation;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import scala.compat.java8.OptionConverters;
-import scala.jdk.javaapi.CollectionConverters;
 
 public class StandaloneEventRepository implements CalendarEventRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(StandaloneEventRepository.class);
 
     private final MessageIdManager messageIdManager;
     private final SessionProvider sessionProvider;
-    private final CalendarEventReplyMailProcessor calendarEventReplyMailPerformer;
     private final MessageId.Factory messageIdFactory;
 
     @Inject
     public StandaloneEventRepository(MessageIdManager messageIdManager, SessionProvider sessionProvider,
-                                     CalendarEventReplyMailProcessor calendarEventReplyMailPerformer, MessageId.Factory messageIdFactory) {
+                                     MessageId.Factory messageIdFactory) {
         this.messageIdManager = messageIdManager;
         this.sessionProvider = sessionProvider;
-        this.calendarEventReplyMailPerformer = calendarEventReplyMailPerformer;
         this.messageIdFactory = messageIdFactory;
     }
 
@@ -103,23 +95,21 @@ public class StandaloneEventRepository implements CalendarEventRepository {
     }
 
     @Override
-    public Publisher<CalendarEventReplyResults> setAttendanceStatus(Username username, AttendanceStatus attendanceStatus,
-                                                                    List<BlobId> calendarEventBlobIds,
-                                                                    Optional<LanguageLocation> maybePreferredLanguage) {
+    public Publisher<Void> setAttendanceStatus(Username username,
+                                               AttendanceStatus attendanceStatus,
+                                               BlobId eventBlobId) {
         MailboxSession systemMailboxSession = sessionProvider.createSystemSession(username);
 
-        return Flux.fromIterable(calendarEventBlobIds)
-            .flatMap(blobId -> extractMessageId(blobId.value().toString()))
-            .onErrorContinue((throwable, o) -> LOGGER.debug("Failed to extract message id from blob id: {}", o, throwable))
-            .collectList()
-            .flatMap(messageIds ->
-                Flux.from(messageIdManager.getMessagesReactive(messageIds, FetchGroup.MINIMAL, systemMailboxSession))
-                    .flatMap(messageResult ->
-                        updateEventAttendanceFlags(
-                            messageResult,
-                            attendanceStatus,
-                            systemMailboxSession)).then())
-            .then(doSendReplyEmail(systemMailboxSession, calendarEventBlobIds, maybePreferredLanguage, attendanceStatus));
+        return extractMessageId(eventBlobId.value().toString())
+            .doOnError(error -> LOGGER.debug("Failed to extract message id from blob id: {}", eventBlobId.value().toString(), error))
+            .flatMap(messageId -> Flux.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, systemMailboxSession))
+                .next()
+                .switchIfEmpty(Mono.defer(() -> Mono.error(new IllegalArgumentException("No messageId: " + messageId.serialize()))))
+                .flatMap(messageResult ->
+                    updateEventAttendanceFlags(
+                        messageResult,
+                        attendanceStatus,
+                        systemMailboxSession)));
     }
 
     private Mono<MessageId> extractMessageId(String blobId) {
@@ -129,18 +119,7 @@ public class StandaloneEventRepository implements CalendarEventRepository {
                 .get());
     }
 
-    private Mono<CalendarEventReplyResults> doSendReplyEmail(MailboxSession session,
-                                                             List<BlobId> eventBlobIds,
-                                                             Optional<LanguageLocation> maybePreferredLanguage,
-                                                             AttendanceStatus attendanceStatus) {
-        return Mono.from(calendarEventReplyMailPerformer.process(
-            CollectionConverters.asScala(eventBlobIds).toSeq(),
-            OptionConverters.toScala(maybePreferredLanguage),
-            attendanceStatus.toPartStat(),
-            session));
-    }
-
-    private Flux<Void> updateEventAttendanceFlags(MessageResult message, AttendanceStatus attendanceStatus,
+    private Mono<Void> updateEventAttendanceFlags(MessageResult message, AttendanceStatus attendanceStatus,
                                                   MailboxSession session) {
         // By removing the current event attendance flags (without the new flag to set) we ensure
         // commutativity of operations that is it does not matter whether the REMOVE or ADD operation is done first.
@@ -158,8 +137,7 @@ public class StandaloneEventRepository implements CalendarEventRepository {
                 MessageManager.FlagsUpdateMode.ADD,
                 message.getMessageId(),
                 List.of(message.getMailboxId()),
-                session)
-        );
+                session)).then();
     }
 
     @Override

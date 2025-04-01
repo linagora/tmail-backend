@@ -66,7 +66,6 @@ import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.calendar.OrganizerValidator;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
-import com.linagora.tmail.james.jmap.model.CalendarEventReplyResults;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 
 import net.fortuna.ical4j.model.Calendar;
@@ -532,10 +531,9 @@ public class CalDavEventRepositoryTest {
 
         BlobId blobId = setupCalendarResolver(calendarEvent.uid(), Optional.empty());
 
-        CalendarEventReplyResults eventReplyResults = testee.setAttendanceStatus(testUser, AttendanceStatus.fromPartStat(PartStat.ACCEPTED).get(),
-            List.of(blobId), Optional.empty()).block();
-
-        assertThat(eventReplyResults).isNotNull();
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.fromPartStat(PartStat.ACCEPTED).get(),
+            blobId).block())
+            .doesNotThrowAnyException();
 
         DavCalendarObject davCalendarObject = davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(calendarEvent.uid())).block();
 
@@ -576,11 +574,8 @@ public class CalDavEventRepositoryTest {
 
         BlobId blobId = setupCalendarResolver(eventUidA, Optional.of("RECURRENCE-ID;TZID=Europe/Paris:20250409T090000"));
 
-        CalendarEventReplyResults eventReplyResults = testee.setAttendanceStatus(testUser,
-            AttendanceStatus.Accepted, List.of(blobId), Optional.empty()).block();
-
-        assertThat(CollectionConverters.asJava(eventReplyResults.done().value()).size())
-            .isEqualTo(1);
+        assertThatCode(() -> testee.setAttendanceStatus(testUser,
+            AttendanceStatus.Accepted, blobId).block()).doesNotThrowAnyException();
 
         DavCalendarObject davCalendarObject = davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
         String updatedCalendar = davCalendarObject.calendarData().toString();

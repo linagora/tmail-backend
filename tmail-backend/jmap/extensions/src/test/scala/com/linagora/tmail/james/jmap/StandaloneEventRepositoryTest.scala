@@ -19,13 +19,10 @@
 package com.linagora.tmail.james.jmap
 
 import java.util
-import java.util.Optional
 
 import com.google.common.collect.ImmutableList
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyMailProcessor
-import com.linagora.tmail.james.jmap.model.{CalendarEventAttendanceResults, EventAttendanceStatusEntry, LanguageLocation}
+import com.linagora.tmail.james.jmap.model.{CalendarEventAttendanceResults, EventAttendanceStatusEntry}
 import jakarta.mail.Flags
-import net.fortuna.ical4j.model.parameter.PartStat
 import org.apache.james.jmap.mail.{BlobId, PartId}
 import org.apache.james.mailbox.exception.MailboxException
 import org.apache.james.mailbox.fixture.MailboxFixture
@@ -36,15 +33,11 @@ import org.apache.james.mailbox.store.MessageIdManagerTestSystem
 import org.apache.james.mailbox.{MailboxSession, MailboxSessionUtil, MessageUid}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{mock, when}
 import reactor.core.publisher.Mono
-import reactor.core.scala.publisher.SMono
 
 import scala.util.Random
 
 class StandaloneEventRepositoryTest {
-  var calendarEventReplyPerformer: CalendarEventReplyMailProcessor = _
   var session: MailboxSession = _
   var testee: StandaloneEventRepository = _
   var messageIdManagerTestSystem: MessageIdManagerTestSystem = _
@@ -54,15 +47,7 @@ class StandaloneEventRepositoryTest {
   @throws[MailboxException]
   def setUp(): Unit = {
     messageIdManagerTestSystem = createTestSystem
-    calendarEventReplyPerformer = mock(classOf[CalendarEventReplyMailProcessor])
-    when(calendarEventReplyPerformer.process(
-      any[Seq[BlobId]],
-      any[Option[LanguageLocation]],
-      any(classOf[PartStat]),
-      any(classOf[MailboxSession])))
-      .thenReturn(SMono.empty)
-
-    testee = new StandaloneEventRepository(messageIdManagerTestSystem.getMessageIdManager, messageIdManagerTestSystem.getMailboxManager.getSessionProvider, calendarEventReplyPerformer, new TestMessageId.Factory)
+    testee = new StandaloneEventRepository(messageIdManagerTestSystem.getMessageIdManager, messageIdManagerTestSystem.getMailboxManager.getSessionProvider, new TestMessageId.Factory)
     session = MailboxSessionUtil.create(ALICE)
     mailbox = messageIdManagerTestSystem.createMailbox(MailboxFixture.INBOX_ALICE, session)
   }
@@ -126,9 +111,8 @@ class StandaloneEventRepositoryTest {
     val flags: Flags = new Flags
     val messageId: MessageId = createMessage(flags)
     val calendaerEventBlobId: BlobId = createFakeCalendaerEventBlobId(messageId)
-    val blobIds = util.List.of(calendaerEventBlobId)
 
-    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Accepted, blobIds, Optional.empty)).block
+    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Accepted, calendaerEventBlobId)).block
 
     val updatedFlags: Flags = getFlags(messageId)
 
@@ -140,9 +124,8 @@ class StandaloneEventRepositoryTest {
     val flags: Flags = new Flags
     val messageId: MessageId = createMessage(flags)
     val calendaerEventBlobId: BlobId = createFakeCalendaerEventBlobId(messageId)
-    val blobIds = util.List.of(calendaerEventBlobId)
 
-    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Declined, blobIds, Optional.empty)).block
+    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Declined, calendaerEventBlobId)).block
     val updatedFlags: Flags = getFlags(messageId)
     assertThat(updatedFlags.contains("$rejected")).isTrue
   }
@@ -152,9 +135,8 @@ class StandaloneEventRepositoryTest {
     val flags: Flags = new Flags
     val messageId: MessageId = createMessage(flags)
     val calendaerEventBlobId: BlobId = createFakeCalendaerEventBlobId(messageId)
-    val blobIds = util.List.of(calendaerEventBlobId)
 
-    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Tentative, blobIds, Optional.empty)).block
+    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Tentative, calendaerEventBlobId)).block
     val updatedFlags: Flags = getFlags(messageId)
     assertThat(updatedFlags.contains("$tentativelyaccepted")).isTrue
   }
@@ -164,9 +146,8 @@ class StandaloneEventRepositoryTest {
     val flags: Flags = new Flags("$accepted")
     val messageId: MessageId = createMessage(flags)
     val calendaerEventBlobId: BlobId = createFakeCalendaerEventBlobId(messageId)
-    val blobIds = util.List.of(calendaerEventBlobId)
 
-    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Declined, blobIds, Optional.empty)).block
+    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Declined, calendaerEventBlobId)).block
     val updatedFlags: Flags = getFlags(messageId)
     assertThat(updatedFlags.contains("$accepted")).isFalse
     assertThat(updatedFlags.contains("$rejected")).isTrue
@@ -177,9 +158,8 @@ class StandaloneEventRepositoryTest {
     val flags: Flags = new Flags("$rejected")
     val messageId: MessageId = createMessage(flags)
     val calendaerEventBlobId: BlobId = createFakeCalendaerEventBlobId(messageId)
-    val blobIds = util.List.of(calendaerEventBlobId)
 
-    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.NeedsAction, blobIds, Optional.empty)).block
+    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.NeedsAction, calendaerEventBlobId)).block
     val updatedFlags: Flags = getFlags(messageId)
     assertThat(updatedFlags.contains("$rejected")).isFalse
     assertThat(updatedFlags.contains("$needs-action")).isTrue
@@ -190,10 +170,9 @@ class StandaloneEventRepositoryTest {
     val flags: Flags = new Flags
     val messageId: MessageId = createMessage(flags)
     val calendaerEventBlobId: BlobId = createFakeCalendaerEventBlobId(messageId)
-    val blobIds = util.List.of(calendaerEventBlobId)
 
-    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Accepted, blobIds, Optional.empty)).block
-    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Accepted, blobIds, Optional.empty)).block
+    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Accepted, calendaerEventBlobId)).block
+    Mono.from(testee.setAttendanceStatus(mailbox.getUser, AttendanceStatus.Accepted, calendaerEventBlobId)).block
     val updatedFlags: Flags = getFlags(messageId)
     assertThat(updatedFlags.contains("$accepted")).isTrue
     assertThat(updatedFlags.getUserFlags.length).isEqualTo(1)
