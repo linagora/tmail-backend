@@ -73,4 +73,8 @@ public class AIRedactionalHelper {
         return config;
     }
 
+    public ChatLanguageModel getChatLanguageModel() {
+        return chatLanguageModel;
+    }
+
 }

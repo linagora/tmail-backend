@@ -19,20 +19,17 @@ public class AIBotConfigIntegrationTest {
 
     @BeforeEach
     public void setup() {
-
         injector = Guice.createInjector(new AIBotConfigModule());
     }
 
     @Test
     public void shouldLoadAIBotConfig() throws FileNotFoundException {
-
         AIBotConfig aiBotConfig = injector.getInstance(AIBotConfig.class);
         assertNotNull(aiBotConfig);
     }
 
     @Test
     public void shouldFindAIPropertiesFile() {
-
         Path configPath = Paths.get("conf/ai.properties");
         assertTrue(Files.exists(configPath), "Le fichier ai.properties n'existe pas !");
     }
