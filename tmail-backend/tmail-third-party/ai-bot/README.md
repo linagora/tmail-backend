@@ -50,3 +50,28 @@ baseURL=https://chat.lucie.example.com
 
 - The `ai.properties` file is used to configure the AI Bot in the `aibot` configuration class.
 - This approach replaces the need to configure the AI Bot using the `mailetConfig`.
+
+### Starting the AiBot
+
+To start the AiBot [in memory], follow the steps below:
+
+###  Clean Install
+
+Run the following Maven command to compile the extension JAR:
+
+
+```bash
+mvn clean install -DskipTests --am --pl :tmail-ai-bot
+```
+
+To run AiBot in memory using Docker, use the following command:
+
+```bash
+docker run \
+  --mount type=bind,source="sample_conf/jwt_publickey",target="/root/conf/jwt_publickey" \
+  --mount type=bind,source="sample_conf/jwt_privatekey",target="/root/conf/jwt_privatekey" \
+  --mount type=bind,source="sample_conf/mailetcontainer.xml",target="/root/conf/mailetcontainer.xml" \
+  --volume "target/tmail-ai-bot-jar-with-dependencies.jar:/root/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar" \
+  linagora/tmail-backend:memory-branch-master
+```
+
