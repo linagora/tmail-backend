@@ -27,7 +27,7 @@ This document provides the setup instructions for configuring the AI Bot, specif
 ---
 ## Configuration File
 
-All AI Bot configuration detanils should be stored in the `ai.properties` file, located in the `conf` directory. Below is an example of the configuration format:
+All AI Bot configuration details should be stored in the `ai.properties` file, located in the `conf` directory. Below is an example of the configuration format:
 
 Sample `ai.properties` configuration:
 ```properties

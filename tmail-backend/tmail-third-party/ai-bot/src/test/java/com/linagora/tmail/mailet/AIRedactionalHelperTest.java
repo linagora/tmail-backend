@@ -22,10 +22,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import jakarta.mail.internet.AddressException;
 import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.util.Optional;
 
 public class AIRedactionalHelperTest {
     private AIRedactionalHelper aiRedactioanlHelper;
@@ -33,13 +38,12 @@ public class AIRedactionalHelperTest {
     private AIBotConfig aiBotConfig;
 
     @BeforeEach
-    void setUp() {
-        configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "demo");
-        configuration.addProperty("botAddress", "gpt@localhost");
-        configuration.addProperty("model", "gemini-2.0-flash");
-        configuration.addProperty("baseURL", "https://generativelanguage.googleapis.com/v1beta");
-        aiBotConfig= AIBotConfig.fromAiPropertiesConfig(configuration);
+    void setUp() throws AddressException, MalformedURLException {
+        aiBotConfig= new AIBotConfig(
+            "demo",
+            new MailAddress("gpt@localhost"),
+            new LlmModel("gemini-2.0-flash"),
+            Optional.of(URI.create("https://generativelanguage.googleapis.exemple.com").toURL()));
         ChatLanguageModel chatLanguageModel = new ChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
         aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);
     }
@@ -54,7 +58,7 @@ public class AIRedactionalHelperTest {
     @Test
     void shoulThrouwOpenAiHttpException() throws Exception {
         configuration.setProperty("baseURL", "https://generativelanguage.googleapis.com");
-        aiBotConfig= AIBotConfig.fromAiPropertiesConfig(configuration);
+        aiBotConfig= AIBotConfig.from(configuration);
         ChatLanguageModel chatLanguageModel = new ChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
         aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);
         String userInput="email content";

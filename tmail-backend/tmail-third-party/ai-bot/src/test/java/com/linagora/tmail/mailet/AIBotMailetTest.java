@@ -39,6 +39,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.util.Optional;
+
 class AIBotMailetTest {
     public static MailAddress createMailAddress(String mailAddress) {
         try {
@@ -53,18 +57,16 @@ class AIBotMailetTest {
     private static final MailAddress BOT_ADDRESS = createMailAddress("gpt@localhost");
 
     private MailetContext mailetContext;
-    private Configuration configuration;
     private AIBotConfig aiBotConfig;
     private AIBotMailet testee;
 
     @BeforeEach
-    void setUp() {
-        configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "demo");
-        configuration.addProperty("botAddress", "gpt@localhost");
-        configuration.addProperty("model", "gemini-2.0-flash");
-        configuration.addProperty("baseURL", "https://generativelanguage.googleapis.exemple.com");
-        aiBotConfig= AIBotConfig.fromAiPropertiesConfig(configuration);
+    void setUp() throws MalformedURLException, AddressException {
+        aiBotConfig= new AIBotConfig(
+            "demo",
+            new MailAddress("gpt@localhost"),
+            new LlmModel("gemini-2.0-flash"),
+            Optional.of(URI.create("https://generativelanguage.googleapis.exemple.com").toURL()));
         ChatLanguageModelFactory chatLanguageModelFactory = new ChatLanguageModelFactory();
         ChatLanguageModel chatLanguageModel= chatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
         testee = new AIBotMailet(aiBotConfig, chatLanguageModel, new JsoupHtmlTextExtractor());
