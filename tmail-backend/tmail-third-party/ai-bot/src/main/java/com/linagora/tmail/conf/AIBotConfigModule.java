@@ -38,12 +38,8 @@ public class AIBotConfigModule extends AbstractModule {
     @Provides
     @Singleton
     @Named("ai")
-    public  Configuration getAIBotConfigurations(PropertiesProvider propertiesProvider) throws FileNotFoundException {
-        try {
+    public  Configuration getAIBotConfigurations(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
             return propertiesProvider.getConfiguration("ai.properties");
-        } catch (FileNotFoundException | ConfigurationException e) {
-            throw new FileNotFoundException("File Not found");
-        }
     }
 
     @Provides
