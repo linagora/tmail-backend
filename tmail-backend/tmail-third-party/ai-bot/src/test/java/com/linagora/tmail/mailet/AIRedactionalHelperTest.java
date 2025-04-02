@@ -32,8 +32,9 @@ public class AIRedactionalHelperTest {
 
     @Test
     void testSuggestContentNullInput() {
-        assertThrows(IllegalArgumentException.class, () ->
-                aiRedactioanlHelper.suggestContent(null, "Valid content").block());
+        assertThatThrownBy(() ->
+            aiRedactioanlHelper.suggestContent(null, "Valid content").block()
+        ).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
