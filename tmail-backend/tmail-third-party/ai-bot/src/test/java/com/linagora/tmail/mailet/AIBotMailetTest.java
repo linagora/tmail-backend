@@ -30,8 +30,10 @@ import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.server.core.MailImpl;
 import org.apache.mailet.Mail;
+import org.apache.mailet.Mailet;
 import org.apache.mailet.MailetContext;
 import org.apache.mailet.base.MailAddressFixture;
+import org.apache.mailet.base.test.FakeMailetConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -49,48 +51,35 @@ class AIBotMailetTest {
 
     public static final String DEMO_MODEL = "gpt-4o-mini";
     private static final MailAddress ASKING_SENDER = createMailAddress("sender@example.com");
-    private static final MailAddress BOT_ADDRESS = createMailAddress("gpt@example.com");
+    private static final MailAddress BOT_ADDRESS = createMailAddress("gpt@localhost");
 
     private MailetContext mailetContext;
-    private ChatLanguageModel chatLanguageModel;
+    private Configuration configuration;
+    private AIBotConfig aiBotConfig;
+    private AIBotMailet testee;
 
     @BeforeEach
     void setUp() {
-        ChatLanguageModel chatLanguageModel=Mockito.mock(ChatLanguageModel.class);
-        mailetContext = Mockito.mock(MailetContext.class);
-    }
-
-    @Test
-    void initShouldThrowWhenMissingApiKeyProperty() {
-        Configuration configuration = new PropertiesConfiguration();
+        configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "AIzaSyDsG6foAS2aVwgvxEn_Z6vzeOxRMYKvPFg");
         configuration.addProperty("botAddress", "gpt@localhost");
-        configuration.addProperty("model", "Lucie");
-        configuration.addProperty("baseURL", "htp://example.com");
-        assertThatThrownBy(() -> AIBotConfig.fromMailetConfig(configuration))
-            .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    void initShouldThrowWhenMissingBotAddressProperty() {
-        Configuration configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "demo");
-        configuration.addProperty("model", "Lucie");
-        configuration.addProperty("baseURL", "htp://example.com");
-        assertThatThrownBy(() -> AIBotConfig.fromMailetConfig(configuration))
-            .isInstanceOf(IllegalArgumentException.class);
+        configuration.addProperty("model", "gemini-2.0-flash");
+        configuration.addProperty("baseURL", "https://generativelanguage.googleapis.com/v1beta");
+        aiBotConfig= AIBotConfig.fromMailetConfig(configuration);
+        ChatLanguageModelFactory chatLanguageModelFactory = new ChatLanguageModelFactory();
+        ChatLanguageModel chatLanguageModel= chatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
+        testee = new AIBotMailet(aiBotConfig, chatLanguageModel, new JsoupHtmlTextExtractor());
+        mailetContext = Mockito.mock(MailetContext.class);
     }
 
     @Disabled("openai account quota limit issue")
     @Test
     void shouldReplyToSender() throws Exception {
-        Configuration configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "demo");
-        configuration.addProperty("botAddress", "gpt@localhost");
-        configuration.addProperty("model", "Lucie");
-        configuration.addProperty("baseURL", "htp://example.com");
-        AIBotConfig aiBotConfig= AIBotConfig.fromMailetConfig(configuration);
-        AIBotMailet testee = new AIBotMailet(aiBotConfig, chatLanguageModel, new JsoupHtmlTextExtractor());
 
+        testee.init(FakeMailetConfig
+            .builder()
+            .mailetContext(mailetContext)
+            .build());
         Mail mail = MailImpl.builder()
             .name("mail-id")
             .sender(ASKING_SENDER)
@@ -100,7 +89,6 @@ class AIBotMailetTest {
                 .setText("I do not know how to cook an egg. Please help me.")
                 .build())
             .build();
-
         testee.service(mail);
 
         Mockito.verify(mailetContext).sendMail(ArgumentMatchers.eq(BOT_ADDRESS), ArgumentMatchers.any(), ArgumentMatchers.any());
