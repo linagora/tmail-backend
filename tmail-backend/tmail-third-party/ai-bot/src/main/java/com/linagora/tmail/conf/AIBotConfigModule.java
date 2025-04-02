@@ -44,7 +44,7 @@ public class AIBotConfigModule extends AbstractModule {
 
     @Provides
     public static AIBotConfig provideAiBotExtensionConfiguration(@Named("ai") Configuration configuration) {
-        return AIBotConfig.fromMailetConfig(configuration);
+        return AIBotConfig.fromAiPropertiesConfig(configuration);
     }
 
     @Provides

@@ -56,11 +56,11 @@ public class AIBotConfig {
         this.llmModel = llmModel;
     }
 
-    public static AIBotConfig fromMailetConfig(Configuration configuration) throws IllegalArgumentException {
-        String apiKeyParam = configuration.getString(API_KEY_PARAMETER_NAME,"");
-        String gptAddressParam = configuration.getString(BOT_ADDRESS_PARAMETER_NAME,"");
-        String llmModelParam = configuration.getString(MODEL_PARAMETER_NAME,"");
-        String baseUrlParam = configuration.getString(BASE_URL_PARAMETER_NAME,"");
+    public static AIBotConfig fromAiPropertiesConfig(Configuration configuration) throws IllegalArgumentException {
+        String apiKeyParam = configuration.getString(API_KEY_PARAMETER_NAME, "");
+        String gptAddressParam = configuration.getString(BOT_ADDRESS_PARAMETER_NAME, "");
+        String llmModelParam = configuration.getString(MODEL_PARAMETER_NAME, "");
+        String baseUrlParam = configuration.getString(BASE_URL_PARAMETER_NAME, "");
 
 
         if (Strings.isNullOrEmpty(apiKeyParam)) {

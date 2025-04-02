@@ -45,7 +45,7 @@ public class AIBotConfigTest {
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
-        assertThatThrownBy(() -> AIBotConfig.fromMailetConfig(configuration))
+        assertThatThrownBy(() -> AIBotConfig.fromAiPropertiesConfig(configuration))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("No value for apiKey parameter was provided.");
     }
@@ -57,7 +57,7 @@ public class AIBotConfigTest {
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
-        assertThatThrownBy(() -> AIBotConfig.fromMailetConfig(configuration))
+        assertThatThrownBy(() -> AIBotConfig.fromAiPropertiesConfig(configuration))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("No value for botAddress parameter was provided.");
     }
@@ -70,7 +70,7 @@ public class AIBotConfigTest {
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "htp://example.com");
 
-        assertThatThrownBy(() -> AIBotConfig.fromMailetConfig(configuration))
+        assertThatThrownBy(() -> AIBotConfig.fromAiPropertiesConfig(configuration))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Invalid LLM API base URL");
     }
@@ -86,7 +86,7 @@ public class AIBotConfigTest {
 
         //act
         AIBotConfig expected = new AIBotConfig("demo", new MailAddress("gpt@localhost"), new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()));
-        AIBotConfig actual = AIBotConfig.fromMailetConfig(configuration);
+        AIBotConfig actual = AIBotConfig.fromAiPropertiesConfig(configuration);
 
         //Assertions
         assertThat(actual).isEqualTo(expected);
