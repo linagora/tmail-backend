@@ -27,6 +27,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
@@ -72,8 +75,10 @@ import com.linagora.tmail.dav.EventUid;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.mailet.CalDavCollect;
 
+import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.Property;
+import net.fortuna.ical4j.model.component.CalendarComponent;
 import reactor.core.publisher.Mono;
 
 public class CalDavCollectIntegrationTest {
@@ -86,7 +91,11 @@ public class CalDavCollectIntegrationTest {
                                      String method,
                                      String sequence,
                                      String dtStamp,
-                                     String location) {
+                                     String location,
+                                     String dtStart,
+                                     String dtEnd,
+                                     String recurrenceId,
+                                     String lastModified) {
         public Function<String, String> base64Encode() {
             return (obj) -> Base64.getEncoder().encodeToString(obj.getBytes(StandardCharsets.UTF_8));
         }
@@ -104,6 +113,10 @@ public class CalDavCollectIntegrationTest {
             private Optional<String> sequence = Optional.empty();
             private Optional<String> dtStamp = Optional.empty();
             private Optional<String> location = Optional.empty();
+            private Optional<String> dtStart = Optional.empty();
+            private Optional<String> dtEnd = Optional.empty();
+            private Optional<String> recurrenceId = Optional.empty();
+            private Optional<String> lastModified = Optional.empty();
 
             public Builder sender(EmailTemplateUser sender) {
                 this.sender = sender;
@@ -145,6 +158,26 @@ public class CalDavCollectIntegrationTest {
                 return this;
             }
 
+            public Builder dtStart(String dtStart) {
+                this.dtStart = Optional.of(dtStart);
+                return this;
+            }
+
+            public Builder dtEnd(String dtEnd) {
+                this.dtEnd = Optional.of(dtEnd);
+                return this;
+            }
+
+            public Builder recurrenceId(String recurrenceId) {
+                this.recurrenceId = Optional.of(recurrenceId);
+                return this;
+            }
+
+            public Builder lastModified(String lastModified) {
+                this.lastModified = Optional.of(lastModified);
+                return this;
+            }
+
             public EmailTemplateData build() {
                 Preconditions.checkNotNull(sender, "sender is required");
                 Preconditions.checkNotNull(receiver, "receiver is required");
@@ -158,7 +191,11 @@ public class CalDavCollectIntegrationTest {
                     method.orElse("REQUEST"),
                     sequence.orElse("0"),
                     dtStamp.orElse("20170106T115036Z"),
-                    location.orElse("office"));
+                    location.orElse("office"),
+                    dtStart.orElse("20170111T090000Z"),
+                    dtEnd.orElse("20170111T100000Z"),
+                    recurrenceId.orElse("20170112T090000Z"),
+                    lastModified.orElse("20170106T115036Z"));
             }
         }
     }
@@ -175,6 +212,8 @@ public class CalDavCollectIntegrationTest {
     private SMTPMessageSender messageSender = new SMTPMessageSender(OpenPaaSProvisioningService.DOMAIN);
     private TemporaryJamesServer jamesServer;
     private DavClient davClient;
+    private OpenPaasUser sender;
+    private OpenPaasUser receiver;
 
     @BeforeEach
     void setUpJamesServer(@TempDir File temporaryFolder) throws Exception {
@@ -219,6 +258,15 @@ public class CalDavCollectIntegrationTest {
         jamesServer.start();
 
         davClient = new DavClient(openPaasExtension.dockerOpenPaasSetup().davConfiguration());
+
+        sender = createUser();
+        receiver = createUser();
+
+        jamesServer.getProbe(DataProbeImpl.class)
+            .fluent()
+            .addDomain(OpenPaaSProvisioningService.DOMAIN)
+            .addUser(sender.email(), PASSWORD)
+            .addUser(receiver.email(), PASSWORD);
     }
 
     @AfterEach
@@ -228,23 +276,10 @@ public class CalDavCollectIntegrationTest {
 
     @Test
     void mailetShouldCallDavSeverToCreateNewCalendarObject(@TempDir File temporaryFolder) throws Exception {
-        OpenPaasUser sender = createUser();
-        OpenPaasUser receiver = createUser();
-
-        jamesServer.getProbe(DataProbeImpl.class)
-            .fluent()
-            .addDomain(OpenPaaSProvisioningService.DOMAIN)
-            .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
-
         String mimeMessageId = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
-
-        awaitMessage(receiver, mimeMessageId);
+        sendMessage(sender, receiver, mail, mimeMessageId);
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
@@ -252,39 +287,22 @@ public class CalDavCollectIntegrationTest {
 
     @Test
     void mailetShouldCallDavSeverToDeleteCalendarObjectWhenIcsMethodIsCancel(@TempDir File temporaryFolder) throws Exception {
-        OpenPaasUser sender = createUser();
-        OpenPaasUser receiver = createUser();
-
-        jamesServer.getProbe(DataProbeImpl.class)
-            .fluent()
-            .addDomain(OpenPaaSProvisioningService.DOMAIN)
-            .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
-
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, calendarUid));
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
-
-        awaitMessage(receiver, mimeMessageId);
+        sendMessage(sender, receiver, mail, mimeMessageId);
 
         String mimeMessageId2 = UUID.randomUUID().toString();
         String mail2 = generateMail("template/emailWithAliceInviteBob.eml.mustache",
-            EmailTemplateData.builder().sender(new EmailTemplateUser(sender.firstname() + " " + sender.lastname(), sender.email()))
-                .receiver(new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email()))
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
                 .mimeMessageId(mimeMessageId2)
                 .calendarUid(calendarUid)
                 .method("CANCEL")
                 .build());
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail2);
-
-        awaitMessage(receiver, mimeMessageId2);
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
         assertThat(result).isNull();
@@ -292,40 +310,23 @@ public class CalDavCollectIntegrationTest {
 
     @Test
     void mailetShouldCallDavSeverToUpdateCalendarObjectWhenNewSequenceIsGreaterThanCurrentSequence(@TempDir File temporaryFolder) throws Exception {
-        OpenPaasUser sender = createUser();
-        OpenPaasUser receiver = createUser();
-
-        jamesServer.getProbe(DataProbeImpl.class)
-            .fluent()
-            .addDomain(OpenPaaSProvisioningService.DOMAIN)
-            .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
-
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, calendarUid));
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
-
-        awaitMessage(receiver, mimeMessageId);
+        sendMessage(sender, receiver, mail, mimeMessageId);
 
         String mimeMessageId2 = UUID.randomUUID().toString();
         String mail2 = generateMail("template/emailWithAliceInviteBob.eml.mustache",
-            EmailTemplateData.builder().sender(new EmailTemplateUser(sender.firstname() + " " + sender.lastname(), sender.email()))
-                .receiver(new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email()))
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
                 .mimeMessageId(mimeMessageId2)
                 .calendarUid(calendarUid)
                 .sequence("1")
                 .location("office2")
                 .build());
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail2);
-
-        awaitMessage(receiver, mimeMessageId2);
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.LOCATION).get().getValue())
@@ -334,29 +335,16 @@ public class CalDavCollectIntegrationTest {
 
     @Test
     void mailetShouldCallDavSeverToUpdateCalendarObjectWhenNewSequenceEqualCurrentSequenceAndNewDtStampIsGreaterThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
-        OpenPaasUser sender = createUser();
-        OpenPaasUser receiver = createUser();
-
-        jamesServer.getProbe(DataProbeImpl.class)
-            .fluent()
-            .addDomain(OpenPaaSProvisioningService.DOMAIN)
-            .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
-
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, calendarUid));
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
-
-        awaitMessage(receiver, mimeMessageId);
+        sendMessage(sender, receiver, mail, mimeMessageId);
 
         String mimeMessageId2 = UUID.randomUUID().toString();
         String mail2 = generateMail("template/emailWithAliceInviteBob.eml.mustache",
-            EmailTemplateData.builder().sender(new EmailTemplateUser(sender.firstname() + " " + sender.lastname(), sender.email()))
-                .receiver(new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email()))
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
                 .mimeMessageId(mimeMessageId2)
                 .calendarUid(calendarUid)
                 .sequence("0")
@@ -364,11 +352,7 @@ public class CalDavCollectIntegrationTest {
                 .location("office2")
                 .build());
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail2);
-
-        awaitMessage(receiver, mimeMessageId2);
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.LOCATION).get().getValue())
@@ -377,40 +361,23 @@ public class CalDavCollectIntegrationTest {
 
     @Test
     void mailetShouldCallDavSeverToUpdateCalendarObjectWhenSequenceDoesNotExistAndNewDtStampIsGreaterThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
-        OpenPaasUser sender = createUser();
-        OpenPaasUser receiver = createUser();
-
-        jamesServer.getProbe(DataProbeImpl.class)
-            .fluent()
-            .addDomain(OpenPaaSProvisioningService.DOMAIN)
-            .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
-
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, calendarUid));
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
-
-        awaitMessage(receiver, mimeMessageId);
+        sendMessage(sender, receiver, mail, mimeMessageId);
 
         String mimeMessageId2 = UUID.randomUUID().toString();
-        String mail2 = generateMail("template/emailWithNoSequenceIcs.eml.mustache",
-            EmailTemplateData.builder().sender(new EmailTemplateUser(sender.firstname() + " " + sender.lastname(), sender.email()))
-                .receiver(new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email()))
+        String mail2 = generateMail("template/emailWithoutSequenceIcs.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
                 .mimeMessageId(mimeMessageId2)
                 .calendarUid(calendarUid)
                 .dtStamp("20180106T115036Z")
                 .location("office2")
                 .build());
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail2);
-
-        awaitMessage(receiver, mimeMessageId2);
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.LOCATION).get().getValue())
@@ -419,47 +386,30 @@ public class CalDavCollectIntegrationTest {
 
     @Test
     void mailetShouldNotCallDavSeverToUpdateCalendarObjectWhenNewSequenceIsLessThanCurrentSequence(@TempDir File temporaryFolder) throws Exception {
-        OpenPaasUser sender = createUser();
-        OpenPaasUser receiver = createUser();
-
-        jamesServer.getProbe(DataProbeImpl.class)
-            .fluent()
-            .addDomain(OpenPaaSProvisioningService.DOMAIN)
-            .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
-
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
-            EmailTemplateData.builder().sender(new EmailTemplateUser(sender.firstname() + " " + sender.lastname(), sender.email()))
-                .receiver(new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email()))
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
                 .mimeMessageId(mimeMessageId)
                 .calendarUid(calendarUid)
                 .sequence("1")
                 .location("office")
                 .build());
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
-
-        awaitMessage(receiver, mimeMessageId);
+        sendMessage(sender, receiver, mail, mimeMessageId);
 
         String mimeMessageId2 = UUID.randomUUID().toString();
         String mail2 = generateMail("template/emailWithAliceInviteBob.eml.mustache",
-            EmailTemplateData.builder().sender(new EmailTemplateUser(sender.firstname() + " " + sender.lastname(), sender.email()))
-                .receiver(new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email()))
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
                 .mimeMessageId(mimeMessageId2)
                 .calendarUid(calendarUid)
                 .sequence("0")
                 .location("office2")
                 .build());
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail2);
-
-        awaitMessage(receiver, mimeMessageId2);
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.LOCATION).get().getValue())
@@ -468,48 +418,446 @@ public class CalDavCollectIntegrationTest {
 
     @Test
     void mailetShouldNotCallDavSeverToUpdateCalendarObjectWhenNewSequenceEqualCurrentSequenceAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
-        OpenPaasUser sender = createUser();
-        OpenPaasUser receiver = createUser();
-
-        jamesServer.getProbe(DataProbeImpl.class)
-            .fluent()
-            .addDomain(OpenPaaSProvisioningService.DOMAIN)
-            .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
-
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, calendarUid));
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
-
-        awaitMessage(receiver, mimeMessageId);
+        sendMessage(sender, receiver, mail, mimeMessageId);
 
         String mimeMessageId2 = UUID.randomUUID().toString();
         String mail2 = generateMail("template/emailWithAliceInviteBob.eml.mustache",
-            EmailTemplateData.builder().sender(new EmailTemplateUser(sender.firstname() + " " + sender.lastname(), sender.email()))
-                .receiver(new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email()))
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
                 .mimeMessageId(mimeMessageId2)
                 .calendarUid(calendarUid)
                 .dtStamp("20160106T115036Z")
                 .location("office2")
                 .build());
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail2);
-
-        awaitMessage(receiver, mimeMessageId2);
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.LOCATION).get().getValue())
             .isEqualTo("office");
     }
 
+    @Test
+    void mailetShouldCallDavSeverToCreateNewVEventInRecurringCalendarWhenNewLastModifiedIsGreaterThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T125036Z")
+                .location("office2")
+                .build());
+
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()).get().getProperty(Property.RECURRENCE_ID).get().getValue())
+            .isEqualTo("20170112T090000Z");
+    }
+
+    @Test
+    void mailetShouldCallDavSeverToCreateNewVEventInRecurringCalendarWhenLastModifiedNotExistAndNewDtStampIsGreaterThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithoutLastModified.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .dtStamp("20170106T115036Z")
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .dtStamp("20170106T125036Z")
+                .location("office2")
+                .build());
+
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()).get().getProperty(Property.RECURRENCE_ID).get().getValue())
+            .isEqualTo("20170112T090000Z");
+    }
+
+    @Test
+    void mailetShouldNotCallDavSeverToCreateNewVEventInRecurringCalendarWhenNewLastModifiedIsLessThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T105036Z")
+                .location("office2")
+                .build());
+
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()))
+            .isEmpty();
+    }
+
+    @Test
+    void mailetShouldNotCallDavSeverToCreateNewVEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .dtStamp("20170106T115036Z")
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .dtStamp("20170106T125036Z")
+                .location("office2")
+                .build());
+
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()))
+            .isEmpty();
+    }
+
+    @Test
+    void mailetShouldNotCallDavSeverToCreateNewVEventInRecurringCalendarWhenLastModifiedNotExistAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithoutLastModified.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .dtStamp("20170106T115036Z")
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .dtStamp("20170106T105036Z")
+                .location("office2")
+                .build());
+
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()))
+            .isEmpty();
+    }
+
+    @Test
+    void mailetShouldCallDavSeverToUpdateVEventInRecurringCalendarWhenNewLastModifiedIsGreaterThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .build());
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T125036Z")
+                .location("office2")
+                .build());
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        String mimeMessageId3 = UUID.randomUUID().toString();
+        String mail3 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId3)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T135036Z")
+                .location("office3")
+                .build());
+        sendMessage(sender, receiver, mail3, mimeMessageId3);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()).get().getProperty(Property.LOCATION).get().getValue())
+            .isEqualTo("office3");
+    }
+
+    @Test
+    void mailetShouldNotCallDavSeverToUpdateVEventInRecurringCalendarWhenNewLastModifiedIsLessThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .build());
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T125036Z")
+                .location("office2")
+                .build());
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        String mimeMessageId3 = UUID.randomUUID().toString();
+        String mail3 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId3)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T105036Z")
+                .location("office3")
+                .build());
+        sendMessage(sender, receiver, mail3, mimeMessageId3);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()).get().getProperty(Property.LOCATION).get().getValue())
+            .isEqualTo("office2");
+    }
+
+    @Test
+    void mailetShouldNotCallDavSeverToUpdateVEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithoutLastModified.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .dtStamp("20170106T115036Z")
+                .build());
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T125036Z")
+                .dtStamp("20170106T125036Z")
+                .location("office2")
+                .build());
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        String mimeMessageId3 = UUID.randomUUID().toString();
+        String mail3 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId3)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T125036Z")
+                .dtStamp("20170106T135036Z")
+                .location("office2")
+                .build());
+        sendMessage(sender, receiver, mail3, mimeMessageId3);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()).get().getProperty(Property.LOCATION).get().getValue())
+            .isEqualTo("office2");
+    }
+
+    @Test
+    void mailetShouldNotCallDavSeverToUpdateVEventInRecurringCalendarWhenLastModifiedNotExistAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithoutLastModified.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .dtStamp("20170106T115036Z")
+                .build());
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .dtStamp("20170106T125036Z")
+                .location("office2")
+                .build());
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        String mimeMessageId3 = UUID.randomUUID().toString();
+        String mail3 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId3)
+                .calendarUid(calendarUid)
+                .dtStamp("20170106T115036Z")
+                .location("office3")
+                .build());
+        sendMessage(sender, receiver, mail3, mimeMessageId3);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()).get().getProperty(Property.LOCATION).get().getValue())
+            .isEqualTo("office2");
+    }
+
+    @Test
+    void mailetShouldCallDavSeverToDeleteEventInRecurringCalendarWhenNewLastModifiedIsGreaterThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .build());
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .method("CANCEL")
+                .lastModified("20170106T125036Z")
+                .build());
+
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.EXDATE).get().getValue())
+            .isEqualTo("20170112T090000Z");
+    }
+
+    @Test
+    void mailetShouldCallDavSeverToDeleteUpdatedEventInRecurringCalendarWhenNewLastModifiedIsGreaterThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .build());
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T125036Z")
+                .location("office2")
+                .build());
+
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        String mimeMessageId3 = UUID.randomUUID().toString();
+        String mail3 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId3)
+                .calendarUid(calendarUid)
+                .method("CANCEL")
+                .lastModified("20170106T135036Z")
+                .build());
+        sendMessage(sender, receiver, mail3, mimeMessageId3);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.EXDATE).get().getValue())
+            .isEqualTo("20170112T090000Z");
+        assertThat(getVEventContainingRecurrenceId(result.calendarData()))
+            .isEmpty();
+    }
+
+    private EmailTemplateUser getReceiver() {
+        return new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email());
+    }
+
+    private EmailTemplateUser getSender() {
+        return new EmailTemplateUser(sender.firstname() + " " + sender.lastname(), sender.email());
+    }
+
+    private void sendMessage(OpenPaasUser sender, OpenPaasUser receiver, String mail, String mimeMessageId) throws IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException {
+        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
+            .authenticate(sender.email(), PASSWORD)
+            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
+
+        awaitMessage(receiver, mimeMessageId);
+    }
+
     private void awaitMessage(OpenPaasUser receiver, String mimeMessageId) {
-        CALMLY_AWAIT.atMost(5000, TimeUnit.SECONDS)
+        CALMLY_AWAIT.atMost(5, TimeUnit.SECONDS)
             .dontCatchUncaughtExceptions()
             .until(() -> {
                 Optional<MessageId> maybeMessageId = searchReceiverInboxForNewMessages(receiver, mimeMessageId);
@@ -538,6 +886,13 @@ public class CalDavCollectIntegrationTest {
             .mimeMessageId(mimeMessageId)
             .calendarUid(calendarUid)
             .build();
+    }
+
+    private Optional<CalendarComponent> getVEventContainingRecurrenceId(Calendar calendar) {
+        return calendar.getComponents().stream()
+            .filter(component -> Component.VEVENT.equals(component.getName()))
+            .filter(component -> component.getProperty(Property.RECURRENCE_ID).isPresent())
+            .findAny();
     }
 
     private OpenPaasUser createUser() {
