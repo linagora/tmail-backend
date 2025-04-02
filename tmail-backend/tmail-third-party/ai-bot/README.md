@@ -25,7 +25,6 @@ Sample `mailetcontainer.xml` configuration:
 This document provides the setup instructions for configuring the AI Bot, specifically for the email response agent and suggestion agent. The configuration ensures a seamless setup by centralizing all settings in a single file.
 
 ---
-
 ## Configuration File
 
 All AI Bot configuration detanils should be stored in the `ai.properties` file, located in the `conf` directory. Below is an example of the configuration format:
@@ -37,7 +36,6 @@ botAddress=gpt@localhost
 model=lucie
 baseURL=https://chat.lucie.example.com
 ```
-# AI Bot Configuration
 
 ## How Configuration Works
 
