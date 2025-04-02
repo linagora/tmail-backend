@@ -61,10 +61,10 @@ class AIBotMailetTest {
     @BeforeEach
     void setUp() {
         configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "AIzaSyDsG6foAS2aVwgvxEn_Z6vzeOxRMYKvPFg");
+        configuration.addProperty("apiKey", "demo");
         configuration.addProperty("botAddress", "gpt@localhost");
         configuration.addProperty("model", "gemini-2.0-flash");
-        configuration.addProperty("baseURL", "https://generativelanguage.googleapis.com/v1beta");
+        configuration.addProperty("baseURL", "https://generativelanguage.googleapis.exemple.com");
         aiBotConfig= AIBotConfig.fromMailetConfig(configuration);
         ChatLanguageModelFactory chatLanguageModelFactory = new ChatLanguageModelFactory();
         ChatLanguageModel chatLanguageModel= chatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
