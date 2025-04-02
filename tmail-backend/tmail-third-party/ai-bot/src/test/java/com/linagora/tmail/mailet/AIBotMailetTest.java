@@ -30,7 +30,6 @@ import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.server.core.MailImpl;
 import org.apache.mailet.Mail;
-import org.apache.mailet.Mailet;
 import org.apache.mailet.MailetContext;
 import org.apache.mailet.base.MailAddressFixture;
 import org.apache.mailet.base.test.FakeMailetConfig;
@@ -65,7 +64,7 @@ class AIBotMailetTest {
         configuration.addProperty("botAddress", "gpt@localhost");
         configuration.addProperty("model", "gemini-2.0-flash");
         configuration.addProperty("baseURL", "https://generativelanguage.googleapis.exemple.com");
-        aiBotConfig= AIBotConfig.fromMailetConfig(configuration);
+        aiBotConfig= AIBotConfig.fromAiPropertiesConfig(configuration);
         ChatLanguageModelFactory chatLanguageModelFactory = new ChatLanguageModelFactory();
         ChatLanguageModel chatLanguageModel= chatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
         testee = new AIBotMailet(aiBotConfig, chatLanguageModel, new JsoupHtmlTextExtractor());
