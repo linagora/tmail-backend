@@ -44,6 +44,7 @@ import com.linagora.tmail.dav.EventUid;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.ComponentList;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.CalendarComponent;
 import net.fortuna.ical4j.model.component.VEvent;
@@ -101,13 +102,13 @@ public class CalDavCollect extends GenericMailet {
                 }
             });
     }
-    
+
     private Mono<Void> synchronizeWithDavServer(Calendar calendar, DavUser davUser) {
         EventUid eventUid = getEventUid(calendar);
         return davClient.getCalendarObject(davUser, eventUid)
             .singleOptional()
             .flatMap(maybeDavCalendarObject -> {
-                if (checkIfCalendarHasRecurrenceId(calendar)) {
+                if (hasRecurrenceId(calendar)) {
                     return maybeDavCalendarObject.map(davCalendarObject -> handleAnEventInRecurringCalendar(davCalendarObject, calendar, davUser))
                         .orElse(Mono.empty());
                 } else {
@@ -121,7 +122,7 @@ public class CalDavCollect extends GenericMailet {
             });
     }
 
-    private boolean checkIfCalendarHasRecurrenceId(Calendar calendar) {
+    private boolean hasRecurrenceId(Calendar calendar) {
         return calendar.getComponent(Component.VEVENT)
             .map(vevent -> vevent.getProperty(Property.RECURRENCE_ID).isPresent())
             .orElse(false);
@@ -134,7 +135,7 @@ public class CalDavCollect extends GenericMailet {
     }
 
     private Mono<Void> updateDavCalendar(DavCalendarObject davCalendarObject, Calendar newCalendar, DavUser davUser) {
-        if (checkIfNewCalendarIsNewVersion(newCalendar, davCalendarObject.calendarData())) {
+        if (hasNewerVersion(newCalendar, davCalendarObject.calendarData())) {
             DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
                 newCalendar.removeIf(property -> Property.METHOD.equals(property.getName())),
                 davCalendarObject.eTag());
@@ -149,24 +150,19 @@ public class CalDavCollect extends GenericMailet {
             URI.create(CALENDAR_PATH + davUser.userId() + "/" + davUser.userId() + "/" + eventUid.value() + ".ics"));
     }
 
-    private boolean checkIfNewCalendarIsNewVersion(Calendar newCalendar, Calendar currentCalendar) {
+    private boolean hasNewerVersion(Calendar newCalendar, Calendar currentCalendar) {
         CalendarComponent newVEvent = newCalendar.getComponent(Component.VEVENT).get();
         CalendarComponent currentVEvent = currentCalendar.getComponent(Component.VEVENT).get();
-        Optional<Property> maybeNewSequence = newVEvent.getProperty(Property.SEQUENCE);
-        Optional<Property> maybeCurrentSequence = currentVEvent.getProperty(Property.SEQUENCE);
-        if (maybeNewSequence.isPresent() && maybeCurrentSequence.isPresent()) {
-            int newSequence = Integer.parseInt(maybeNewSequence.get().getValue());
-            int currentSequence = Integer.parseInt(maybeCurrentSequence.get().getValue());
-            if (newSequence > currentSequence) {
-                return true;
-            } else if (newSequence == currentSequence) {
-                return checkIfNewDtStampIsLater(newVEvent, currentVEvent);
-            } else {
-                return false;
-            }
-        } else {
-            return checkIfNewDtStampIsLater(newVEvent, currentVEvent);
-        }
+        Optional<Integer> maybeNewSequence = newVEvent.getProperty(Property.SEQUENCE)
+            .map(Property::getValue)
+            .map(Integer::parseInt);
+        Optional<Integer> maybeCurrentSequence = currentVEvent.getProperty(Property.SEQUENCE)
+            .map(Property::getValue)
+            .map(Integer::parseInt);
+        return maybeNewSequence.flatMap(newSequence -> maybeCurrentSequence
+                .filter(currentSequence -> !currentSequence.equals(newSequence))
+                .map(currentSequence -> currentSequence < newSequence))
+            .orElseGet(() -> hasLaterDtStamp(newVEvent, currentVEvent));
     }
 
     private Mono<Void> handleAnEventInRecurringCalendar(DavCalendarObject davCalendarObject, Calendar newCalendar, DavUser davUser) {
@@ -186,8 +182,8 @@ public class CalDavCollect extends GenericMailet {
     private Mono<Void> createVEventInRecurringCalendar(CalendarComponent newVEvent, DavCalendarObject davCalendarObject, DavUser davUser) {
         Calendar currentCalendar = davCalendarObject.calendarData();
         CalendarComponent originalVEvent = getCurrentVEventContainingRRule(currentCalendar).get();
-        if (checkIfNewEventComponentIsNewVersion(newVEvent, originalVEvent)) {
-            currentCalendar.getComponentList().add(newVEvent);
+        if (hasNewerVersion(newVEvent, originalVEvent)) {
+            currentCalendar.setComponentList((ComponentList<CalendarComponent>) currentCalendar.getComponentList().add(newVEvent));
             DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
                 currentCalendar,
                 davCalendarObject.eTag());
@@ -199,9 +195,8 @@ public class CalDavCollect extends GenericMailet {
 
     private Mono<Void> updateVEventInRecurringCalendar(CalendarComponent newVEvent, CalendarComponent currentVEvent, DavCalendarObject davCalendarObject, DavUser davUser) {
         Calendar currentCalendar = davCalendarObject.calendarData();
-        if (checkIfNewEventComponentIsNewVersion(newVEvent, currentVEvent)) {
-            currentCalendar.getComponentList().remove(currentVEvent);
-            currentCalendar.getComponentList().add(newVEvent);
+        if (hasNewerVersion(newVEvent, currentVEvent)) {
+            currentCalendar.setComponentList((ComponentList<CalendarComponent>) currentCalendar.getComponentList().remove(currentVEvent).add(newVEvent));
             DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
                 currentCalendar,
                 davCalendarObject.eTag());
@@ -214,8 +209,10 @@ public class CalDavCollect extends GenericMailet {
     private Mono<Void> deleteVEventFromRecurringCalendar(CalendarComponent deletedVEvent, Optional<CalendarComponent> maybeCurrentVEvent, DavCalendarObject davCalendarObject, DavUser davUser) {
         Calendar currentCalendar = davCalendarObject.calendarData();
         CalendarComponent originalVEvent = getCurrentVEventContainingRRule(currentCalendar).get();
-        if (checkIfNewEventComponentIsNewVersion(deletedVEvent, originalVEvent)) {
-            maybeCurrentVEvent.ifPresent(calendarComponent -> currentCalendar.getComponentList().remove(calendarComponent));
+        if (hasNewerVersion(deletedVEvent, originalVEvent)) {
+            maybeCurrentVEvent.ifPresent(currentVEvent -> {
+                currentCalendar.setComponentList((ComponentList<CalendarComponent>) currentCalendar.getComponentList().remove(currentVEvent));
+            });
             originalVEvent.add(new ExDate(deletedVEvent.getProperty(Property.RECURRENCE_ID).get().getValue()));
             DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
                 currentCalendar,
@@ -241,17 +238,17 @@ public class CalDavCollect extends GenericMailet {
             .findAny();
     }
 
-    private boolean checkIfNewEventComponentIsNewVersion(CalendarComponent newEvent, CalendarComponent currentEvent) {
+    private boolean hasNewerVersion(CalendarComponent newEvent, CalendarComponent currentEvent) {
         Optional<Property> newLastModified = newEvent.getProperty(Property.LAST_MODIFIED);
         Optional<Property> currentLastModified = currentEvent.getProperty(Property.LAST_MODIFIED);
         if (newLastModified.isPresent() && currentLastModified.isPresent()) {
             return newLastModified.get().compareTo(currentLastModified.get()) > 0;
         } else {
-            return checkIfNewDtStampIsLater(newEvent, currentEvent);
+            return hasLaterDtStamp(newEvent, currentEvent);
         }
     }
 
-    private boolean checkIfNewDtStampIsLater(CalendarComponent newVEvent, CalendarComponent currentVEvent) {
+    private boolean hasLaterDtStamp(CalendarComponent newVEvent, CalendarComponent currentVEvent) {
         return newVEvent.getProperty(Property.DTSTAMP).get().compareTo(currentVEvent.getProperty(Property.DTSTAMP).get()) > 0;
     }
 
