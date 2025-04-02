@@ -11,7 +11,7 @@ Sample `mailetcontainer.xml` configuration:
 <processor state="local-delivery" enableJmx="true">
     ...
     <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
-                <consume>false</consume>
+        <consume>false</consume>
     </mailet>
 
 <!-- Put the OpenAIMailet after LocalDelivery so the GPT reply would come after the asking question -->
