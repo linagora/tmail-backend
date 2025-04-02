@@ -38,6 +38,7 @@
     <modules>
         <module>app</module>
         <module>calendar-rest-api</module>
+        <module>storage-api</module>
     </modules>
 
     <properties>

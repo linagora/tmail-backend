@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~  As a subpart of Twake Mail, this file is edited by Linagora.   ~
+  ~                                                                 ~
+  ~  https://twake-mail.com/                                        ~
+  ~  https://linagora.com                                           ~
+  ~                                                                 ~
+  ~  This file is subject to The Affero Gnu Public License          ~
+  ~  version 3.                                                     ~
+  ~                                                                 ~
+  ~  https://www.gnu.org/licenses/agpl-3.0.en.html                  ~
+  ~                                                                 ~
+  ~  This program is distributed in the hope that it will be        ~
+  ~  useful, but WITHOUT ANY WARRANTY; without even the implied     ~
+  ~  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR        ~
+  ~  PURPOSE. See the GNU Affero General Public License for         ~
+  ~  more details.                                                  ~
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <parent>
+        <artifactId>twake-calendar-side-service</artifactId>
+        <groupId>com.linagora.tmail</groupId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>calendar-storage-api</artifactId>
+    <name>Twake Calendar :: Storage service :: API</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-util</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>testing-base</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>
