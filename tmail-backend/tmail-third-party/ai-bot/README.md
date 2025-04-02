@@ -33,7 +33,7 @@ Run the following Maven command to compile the extension JAR:
 
 
 ```bash
-mvn clean install -DskipTests --am --pl :ai-bot
+mvn clean install -DskipTests --am --pl :tmail-ai-bot
 ```
 
 To run AiBot in memory using Docker, use the following command:
