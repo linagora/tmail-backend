@@ -33,7 +33,7 @@ import com.linagora.tmail.mailet.ChatLanguageModelFactory;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
-public class AIBotConfigModule extends AbstractModule {
+public class AIBotModule extends AbstractModule {
 
     @Provides
     @Singleton
@@ -44,7 +44,7 @@ public class AIBotConfigModule extends AbstractModule {
 
     @Provides
     public static AIBotConfig provideAiBotExtensionConfiguration(@Named("ai") Configuration configuration) {
-        return AIBotConfig.fromAiPropertiesConfig(configuration);
+        return AIBotConfig.from(configuration);
     }
 
     @Provides

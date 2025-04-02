@@ -51,12 +51,12 @@ public class AIBotConfig {
         Preconditions.checkNotNull(baseURLOpt);
 
         this.apiKey = apiKey;
-        this.baseURLOpt = baseURLOpt;
+        this.baseURLOpt = baseURLOpt != null ? baseURLOpt : Optional.empty();
         this.botAddress = botAddress;
         this.llmModel = llmModel;
     }
 
-    public static AIBotConfig fromAiPropertiesConfig(Configuration configuration) throws IllegalArgumentException {
+    public static AIBotConfig from(Configuration configuration) throws IllegalArgumentException {
         String apiKeyParam = configuration.getString(API_KEY_PARAMETER_NAME, "");
         String gptAddressParam = configuration.getString(BOT_ADDRESS_PARAMETER_NAME, "");
         String llmModelParam = configuration.getString(MODEL_PARAMETER_NAME, "");
@@ -106,13 +106,16 @@ public class AIBotConfig {
         return Objects.equals(apiKey, that.apiKey) &&
             Objects.equals(botAddress, that.botAddress) &&
             Objects.equals(llmModel, that.llmModel) &&
-            Objects.equals(baseURLOpt.map(URL::toString), that.baseURLOpt.map(URL::toString));
+            Objects.equals(Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
+                Optional.ofNullable(that.baseURLOpt).map(opt -> opt.map(URL::toString)));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(apiKey, botAddress, llmModel, baseURLOpt.map(URL::toString));
+        return Objects.hash(apiKey, botAddress, llmModel,
+            Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)));
     }
+
 
     public String getApiKey() {
         return apiKey;
