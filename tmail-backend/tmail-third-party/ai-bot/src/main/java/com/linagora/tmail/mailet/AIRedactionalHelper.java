@@ -34,22 +34,15 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import reactor.core.publisher.Mono;
 
-
 public class AIRedactionalHelper {
-    private final AIBotConfig config;
     private final ChatLanguageModel chatLanguageModel;
-    private final ChatLanguageModelFactory chatLanguageModelFactory;
-
 
     @Inject
-    public AIRedactionalHelper(AIBotConfig config, ChatLanguageModelFactory chatLanguageModelFactory) {
-        this.config = config;
-        this.chatLanguageModelFactory = chatLanguageModelFactory;
-        this.chatLanguageModel = createChatLanguageModelModel(config);
+    public AIRedactionalHelper(ChatLanguageModel chatLanguageModel) {
+        this.chatLanguageModel = chatLanguageModel;
     }
 
     public Mono<String> suggestContent(String userInput, String mailContent) throws OpenAiHttpException, MailetException, IOException {
-
         Preconditions.checkArgument(!Strings.isNullOrEmpty(userInput), "User input cannot be null or empty");
         Preconditions.checkArgument(!Strings.isNullOrEmpty(mailContent), "Mail content cannot be null or empty");
 
@@ -63,18 +56,6 @@ public class AIRedactionalHelper {
                 .content()
                 .text();
         return Mono.just(llmResponse);
-    }
-
-    private ChatLanguageModel createChatLanguageModelModel(AIBotConfig AIBotConfig) {
-        return chatLanguageModelFactory.createChatLanguageModel(AIBotConfig);
-    }
-
-    public AIBotConfig getConfig() {
-        return config;
-    }
-
-    public ChatLanguageModel getChatLanguageModel() {
-        return chatLanguageModel;
     }
 
 }

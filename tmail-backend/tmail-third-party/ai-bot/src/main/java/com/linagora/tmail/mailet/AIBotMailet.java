@@ -176,8 +176,6 @@ public class AIBotMailet extends GenericMailet {
         defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
     }
 
-
-
     @Override
     public String getMailetName() {
         return "AIBotMailet";

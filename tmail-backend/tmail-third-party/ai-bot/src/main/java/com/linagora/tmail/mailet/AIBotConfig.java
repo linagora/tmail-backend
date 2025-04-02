@@ -21,6 +21,7 @@ package com.linagora.tmail.mailet;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
@@ -91,6 +92,26 @@ public class AIBotConfig {
         } catch (MalformedURLException e) {
             throw new RuntimeException("Invalid LLM API base URL", e);
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        AIBotConfig that = (AIBotConfig) o;
+        return Objects.equals(apiKey, that.apiKey) &&
+            Objects.equals(botAddress, that.botAddress) &&
+            Objects.equals(llmModel, that.llmModel) &&
+            Objects.equals(baseURLOpt.map(URL::toString), that.baseURLOpt.map(URL::toString));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(apiKey, botAddress, llmModel, baseURLOpt.map(URL::toString));
     }
 
     public String getApiKey() {
