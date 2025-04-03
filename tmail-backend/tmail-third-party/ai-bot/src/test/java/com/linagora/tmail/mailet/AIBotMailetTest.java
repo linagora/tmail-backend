@@ -61,8 +61,8 @@ class AIBotMailetTest {
     private AIBotMailet testee;
 
     @BeforeEach
-    void setUp() throws MalformedURLException, AddressException {
-        aiBotConfig= new AIBotConfig(
+    void setUp() throws Exception {
+        aiBotConfig = new AIBotConfig(
             "demo",
             new MailAddress("gpt@localhost"),
             new LlmModel("gemini-2.0-flash"),

@@ -22,13 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import jakarta.mail.internet.AddressException;
+
 import org.apache.commons.configuration2.Configuration;
 import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.Optional;
 
@@ -38,7 +37,7 @@ public class AIRedactionalHelperTest {
     private AIBotConfig aiBotConfig;
 
     @BeforeEach
-    void setUp() throws AddressException, MalformedURLException {
+    void setUp() throws Exception{
         aiBotConfig= new AIBotConfig(
             "demo",
             new MailAddress("gpt@localhost"),
@@ -51,7 +50,7 @@ public class AIRedactionalHelperTest {
     @Test
     void testSuggestContentNullInput() {
         assertThatThrownBy(() ->
-            aiRedactioanlHelper.suggestContent(null, "Valid content").block()
+            aiRedactioanlHelper.suggestContent(null, Optional.of("Valid content")).block()
         ).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -63,7 +62,7 @@ public class AIRedactionalHelperTest {
         aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);
         String userInput="email content";
         String mailContent="I want to know if your ready to go by 6pm ?";
-        assertThatThrownBy(() -> aiRedactioanlHelper.suggestContent(userInput, mailContent))
+        assertThatThrownBy(() -> aiRedactioanlHelper.suggestContent(userInput, Optional.of(mailContent)))
                 .isInstanceOf(RuntimeException.class);
     }
 
@@ -71,7 +70,7 @@ public class AIRedactionalHelperTest {
     void shouldReplyToSender() throws Exception {
         String userInput="email content";
         String mailContent="I want to know if your ready to go by 6pm ?";
-        String output= aiRedactioanlHelper.suggestContent(userInput,mailContent).block();;
+        String output= aiRedactioanlHelper.suggestContent(userInput, Optional.of(mailContent)).block();;
         assertThat(output).isNotNull();
         assertThat(output).isInstanceOf(String.class);
     }
