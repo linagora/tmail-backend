@@ -26,6 +26,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.backends.redis.RedisClientFactory;
 import org.apache.james.backends.redis.RedisSentinelExtension;
+import org.apache.james.backends.redis.SentinelRedisConfiguration;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
 import org.junit.jupiter.api.AfterEach;
@@ -49,6 +50,7 @@ public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupCo
     @RegisterExtension
     static RedisSentinelExtension redisExtension = new RedisSentinelExtension(true);
 
+    private RedisClientFactory redisClientFactory;
     private RedisEventBusClientFactory redisEventBusClientFactory;
     private RabbitMQAndRedisEventBus eventBus;
     private EventSerializer eventSerializer;
@@ -67,8 +69,9 @@ public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupCo
 
     @BeforeEach
     void setUp() throws Exception {
-        redisEventBusClientFactory = new RedisEventBusClientFactory(redisExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration(),
-            new RedisClientFactory(FileSystemImpl.forTesting()));
+        SentinelRedisConfiguration redisConfiguration = redisExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
+        redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration);
+        redisEventBusClientFactory = new RedisEventBusClientFactory(redisConfiguration, redisClientFactory);
         memoryEventDeadLetters = new MemoryEventDeadLetters();
 
         eventSerializer = new EventBusTestFixture.TestEventSerializer();
@@ -93,7 +96,7 @@ public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupCo
         rabbitMQExtension.getSender()
             .delete(TEST_NAMING_STRATEGY.deadLetterQueue())
             .block();
-        redisEventBusClientFactory.close();
+        redisClientFactory.close();
     }
 
     @Override

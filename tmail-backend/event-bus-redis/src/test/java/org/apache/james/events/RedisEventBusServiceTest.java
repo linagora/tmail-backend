@@ -65,14 +65,7 @@ class RedisEventBusServiceTest {
     void dispatchShouldNotThrowWhenRedisDownAndFailureIgnoreIsTrue() throws Exception {
         // Given EventBus with failureIgnore set to true
         RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(true, Duration.ofSeconds(3));
-        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
-            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
-            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
-            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
-            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
-            redisEventBusConfiguration);
-        eventBus.start();
+        initEventBus(redisEventBusConfiguration);
 
         EventCollector listener = new EventCollector();
         EventBusTestFixture.GroupA registeredGroup = new EventBusTestFixture.GroupA();
@@ -91,14 +84,7 @@ class RedisEventBusServiceTest {
     void dispatchShouldThrowWhenRedisDownAndFailureIgnoreIsFalse() throws Exception {
         // Given EventBus with failureIgnore set to false
         RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
-        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
-            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
-            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
-            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
-            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
-            redisEventBusConfiguration);
-        eventBus.start();
+        initEventBus(redisEventBusConfiguration);
 
         EventCollector listener = new EventCollector();
         EventBusTestFixture.GroupA registeredGroup = new EventBusTestFixture.GroupA();
@@ -118,14 +104,7 @@ class RedisEventBusServiceTest {
     void registerShouldNotThrowWhenRedisDownAndFailureIgnoreIsTrue() throws Exception {
         // Given EventBus with failureIgnore set to true
         RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(true, Duration.ofSeconds(3));
-        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
-            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
-            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
-            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
-            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
-            redisEventBusConfiguration);
-        eventBus.start();
+        initEventBus(redisEventBusConfiguration);
 
         EventCollector listener = new EventCollector();
 
@@ -144,14 +123,7 @@ class RedisEventBusServiceTest {
     void registerShouldThrowWhenRedisDownAndFailureIgnoreIsFalse() throws Exception {
         // Given EventBus with failureIgnore set to false
         RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
-        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
-            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
-            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
-            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
-            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
-            redisEventBusConfiguration);
-        eventBus.start();
+        initEventBus(redisEventBusConfiguration);
 
         EventCollector listener = new EventCollector();
 
@@ -164,5 +136,17 @@ class RedisEventBusServiceTest {
         // Then register should throw
         assertThatThrownBy(() -> Mono.from(eventBus.register(listener, KEY_1)).block())
             .hasCauseInstanceOf(TimeoutException.class);
+    }
+
+    private void initEventBus(RedisEventBusConfiguration redisEventBusConfiguration) throws Exception {
+        StandaloneRedisConfiguration redisConfiguration = StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString());
+        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
+            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
+            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
+            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
+            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
+            new RedisEventBusClientFactory(redisConfiguration, new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration)),
+            redisEventBusConfiguration);
+        eventBus.start();
     }
 }

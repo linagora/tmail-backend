@@ -118,6 +118,7 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
     @RegisterExtension
     static RedisExtension redisExtension = new RedisExtension();
 
+    private RedisClientFactory redisClientFactory;
     private RedisEventBusClientFactory redisEventBusClientFactory;
     private RabbitMQAndRedisEventBus eventBus;
     private RabbitMQAndRedisEventBus eventBus2;
@@ -134,7 +135,9 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
 
     @BeforeEach
     void setUp() throws Exception {
-        redisEventBusClientFactory = new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting()));
+        StandaloneRedisConfiguration redisConfiguration = StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString());
+        redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration);
+        redisEventBusClientFactory = new RedisEventBusClientFactory(redisConfiguration, redisClientFactory);
         memoryEventDeadLetters = new MemoryEventDeadLetters();
 
         eventSerializer = new TestEventSerializer();
@@ -168,7 +171,7 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
         rabbitMQExtension.getSender()
             .delete(TEST_NAMING_STRATEGY.deadLetterQueue())
             .block();
-        redisEventBusClientFactory.close();
+        redisClientFactory.close();
     }
 
     private RabbitMQAndRedisEventBus newEventBus() throws Exception {

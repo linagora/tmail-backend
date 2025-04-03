@@ -63,9 +63,10 @@ class EnforceRateLimitingPlanTest {
 
   @BeforeEach
   def setup(redis: DockerRedis): Unit = {
+    val redisConfiguration: StandaloneRedisConfiguration = StandaloneRedisConfiguration.from(redis.redisURI().toString)
     rateLimitationPlanRepository = new InMemoryRateLimitingPlanRepository
     rateLimitingPlanUserRepository = new MemoryRateLimitingPlanUserRepository
-    redisRateLimiterFactory = new RedisRateLimiterFactory(StandaloneRedisConfiguration.from(redis.redisURI().toString), new RedisClientFactory(FileSystemImpl.forTesting))
+    redisRateLimiterFactory = new RedisRateLimiterFactory(redisConfiguration, new RedisClientFactory(FileSystemImpl.forTesting, redisConfiguration))
 
     val rateLimitingPlan: RateLimitingPlan = SMono.fromPublisher(rateLimitationPlanRepository.create(RateLimitingPlanCreateRequest(
       name = "PaidPlan",

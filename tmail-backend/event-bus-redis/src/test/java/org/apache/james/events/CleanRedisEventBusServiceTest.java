@@ -54,8 +54,10 @@ class CleanRedisEventBusServiceTest {
     static RedisExtension redisExtension = new RedisExtension();
 
     private final RoutingKeyConverter routingKeyConverter = RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory());
+    private final StandaloneRedisConfiguration redisConfiguration = StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString());
+    private final RedisClientFactory redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration);
     private final CleanRedisEventBusService service = new CleanRedisEventBusService(
-        new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
+        new RedisEventBusClientFactory(redisConfiguration, redisClientFactory),
         RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()));
 
     private RabbitMQAndRedisEventBus eventBus1;
@@ -96,7 +98,7 @@ class CleanRedisEventBusServiceTest {
             EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, routingKeyConverter,
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
+            new RedisEventBusClientFactory(redisConfiguration, redisClientFactory),
             RedisEventBusConfiguration.DEFAULT);
     }
 
@@ -232,14 +234,15 @@ class CleanRedisEventBusServiceTest {
         eventBus1.stop();
 
         // Assume 3 James nodes clean up Redis data in parallel
+        StandaloneRedisConfiguration redisConfiguration = StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString());
         CleanRedisEventBusService node1 = new CleanRedisEventBusService(
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
+            new RedisEventBusClientFactory(redisConfiguration, redisClientFactory),
             RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()));
         CleanRedisEventBusService node2 = new CleanRedisEventBusService(
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
+            new RedisEventBusClientFactory(redisConfiguration, redisClientFactory),
             RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()));
         CleanRedisEventBusService node3 = new CleanRedisEventBusService(
-            new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting())),
+            new RedisEventBusClientFactory(redisConfiguration, redisClientFactory),
             RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()));
 
         assertThatCode(() -> Flux.just(node1, node2, node3)
