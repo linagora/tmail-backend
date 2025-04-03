@@ -54,6 +54,7 @@ public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupCo
     private EventSerializer eventSerializer;
     private RoutingKeyConverter routingKeyConverter;
     private MemoryEventDeadLetters memoryEventDeadLetters;
+    private RedisClientFactory redisClientFactory;
 
     @Override
     public EnvironmentSpeedProfile getSpeedProfile() {
@@ -67,8 +68,8 @@ public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupCo
 
     @BeforeEach
     void setUp() throws Exception {
-        redisEventBusClientFactory = new RedisEventBusClientFactory(redisExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration(),
-            new RedisClientFactory(FileSystemImpl.forTesting()));
+        redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration());
+        redisEventBusClientFactory = new RedisEventBusClientFactory(redisClientFactory);
         memoryEventDeadLetters = new MemoryEventDeadLetters();
 
         eventSerializer = new EventBusTestFixture.TestEventSerializer();
@@ -93,7 +94,7 @@ public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest implements GroupCo
         rabbitMQExtension.getSender()
             .delete(TEST_NAMING_STRATEGY.deadLetterQueue())
             .block();
-        redisEventBusClientFactory.close();
+        redisClientFactory.close();
     }
 
     @Override

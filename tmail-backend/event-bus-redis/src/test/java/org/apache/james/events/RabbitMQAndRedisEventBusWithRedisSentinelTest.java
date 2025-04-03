@@ -121,6 +121,7 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
     private EventSerializer eventSerializer;
     private RoutingKeyConverter routingKeyConverter;
     private MemoryEventDeadLetters memoryEventDeadLetters;
+    private RedisClientFactory redisClientFactory;
 
     @Override
     public EnvironmentSpeedProfile getSpeedProfile() {
@@ -134,7 +135,8 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
         eventSerializer = new TestEventSerializer();
         routingKeyConverter = RoutingKeyConverter.forFactories(new TestRegistrationKeyFactory());
         SentinelRedisConfiguration redisConfiguration = redisSentinelCluster.redisSentinelContainerList().getRedisConfiguration();
-        redisEventBusClientFactory = new RedisEventBusClientFactory(redisConfiguration, new RedisClientFactory(FileSystemImpl.forTesting()));
+        redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration);
+        redisEventBusClientFactory = new RedisEventBusClientFactory(redisClientFactory);
         eventBus = newEventBus();
         eventBus2 = newEventBus();
         eventBus3 = newEventBus();
@@ -163,7 +165,7 @@ class RabbitMQAndRedisEventBusWithRedisSentinelTest implements GroupContract.Sin
         rabbitMQExtension.getSender()
             .delete(TEST_NAMING_STRATEGY.deadLetterQueue())
             .block();
-        redisEventBusClientFactory.close();
+        redisClientFactory.close();
     }
 
     private RabbitMQAndRedisEventBus newEventBus() throws Exception {

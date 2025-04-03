@@ -126,6 +126,7 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
     private EventSerializer eventSerializer;
     private RoutingKeyConverter routingKeyConverter;
     private MemoryEventDeadLetters memoryEventDeadLetters;
+    private RedisClientFactory redisClientFactory;
 
     @Override
     public EnvironmentSpeedProfile getSpeedProfile() {
@@ -134,7 +135,9 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
 
     @BeforeEach
     void setUp() throws Exception {
-        redisEventBusClientFactory = new RedisEventBusClientFactory(StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()), new RedisClientFactory(FileSystemImpl.forTesting()));
+        redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(),
+            StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString()));
+        redisEventBusClientFactory = new RedisEventBusClientFactory(redisClientFactory);
         memoryEventDeadLetters = new MemoryEventDeadLetters();
 
         eventSerializer = new TestEventSerializer();
@@ -168,7 +171,7 @@ class RabbitMQAndRedisEventBusTest implements GroupContract.SingleEventBusGroupC
         rabbitMQExtension.getSender()
             .delete(TEST_NAMING_STRATEGY.deadLetterQueue())
             .block();
-        redisEventBusClientFactory.close();
+        redisClientFactory.close();
     }
 
     private RabbitMQAndRedisEventBus newEventBus() throws Exception {
