@@ -21,7 +21,6 @@ package com.linagora.tmail.mailet;
 import java.io.IOException;
 import java.util.Optional;
 
-import dev.langchain4j.data.message.ChatMessageType;
 import jakarta.inject.Inject;
 
 import org.apache.mailet.MailetException;
@@ -60,7 +59,7 @@ public class AIRedactionalHelper {
         if (mailContent.isPresent()) {
             prompt = "You are an advanced email assistant AI. Your role is to analyze the provided email content and generate a professional, contextually relevant response. " +
                 "Act as the recipient, carefully addressing the key points raised while integrating any additional information or suggestions from the user. " +
-                "Ensure the response is polite, well-structured, and aligned with the email’s tone and intent. ***generate only one option and act like the recipient of the email*** " ;
+                "Ensure the response is polite, well-structured, and aligned with the email’s tone and intent. ***generate only one option and act like the recipient of the email*** ";
         } else {
             prompt = "You are an advanced email assistant AI. Your task is to compose a professional and well-structured email based on the user's input. " +
                 "Ensure the email effectively conveys the provided information and suggestions in a clear and appropriate manner." +
