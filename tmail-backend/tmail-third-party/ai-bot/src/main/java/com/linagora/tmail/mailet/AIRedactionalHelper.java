@@ -19,7 +19,9 @@
 package com.linagora.tmail.mailet;
 
 import java.io.IOException;
+import java.util.Optional;
 
+import dev.langchain4j.data.message.ChatMessageType;
 import jakarta.inject.Inject;
 
 import org.apache.mailet.MailetException;
@@ -42,20 +44,29 @@ public class AIRedactionalHelper {
         this.chatLanguageModel = chatLanguageModel;
     }
 
-    public Mono<String> suggestContent(String userInput, String mailContent) throws OpenAiHttpException, MailetException, IOException {
+    public Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws OpenAiHttpException, MailetException, IOException {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(userInput), "User input cannot be null or empty");
-        Preconditions.checkArgument(!Strings.isNullOrEmpty(mailContent), "Mail content cannot be null or empty");
-
-        ChatMessage systemMessage = new SystemMessage(
-                "You are an advanced email suggestion AI. Your role is to act as the recipient of an email and provide a helpful, contextually appropriate response to it. " +
-                        "Use the content of the email and incorporate the user's input to craft the response. Be polite, professional, and aligned with the tone of the email. " +
-                        "Focus on addressing the key points raised in the email, while integrating additional information or suggestions provided by the user ");
-        ChatMessage prompt = new UserMessage(
-                "Email Content: \n" + mailContent + "\n" + "User Input: \n" + userInput);
-        String llmResponse = chatLanguageModel.generate(systemMessage, prompt)
+        ChatMessage promptForContext = generatePrompt(mailContent);
+        ChatMessage promptForUserInput = new UserMessage(userInput);
+        ChatMessage promptForMailContent = new SystemMessage("[EMAIL CONTENT] (Read-only): " + mailContent);
+        String llmResponse = chatLanguageModel.generate(promptForContext, promptForUserInput, promptForMailContent)
                 .content()
                 .text();
         return Mono.just(llmResponse);
+    }
+
+    private ChatMessage generatePrompt(Optional<String> mailContent) {
+        String prompt;
+        if (mailContent.isPresent()) {
+            prompt = "You are an advanced email assistant AI. Your role is to analyze the provided email content and generate a professional, contextually relevant response. " +
+                "Act as the recipient, carefully addressing the key points raised while integrating any additional information or suggestions from the user. " +
+                "Ensure the response is polite, well-structured, and aligned with the email’s tone and intent. ***generate only one option and act like the recipient of the email*** " ;
+        } else {
+            prompt = "You are an advanced email assistant AI. Your task is to compose a professional and well-structured email based on the user's input. " +
+                "Ensure the email effectively conveys the provided information and suggestions in a clear and appropriate manner." +
+                "Generate only one option and act like the sender of the email.";
+        }
+        return new SystemMessage(prompt);
     }
 
 }
