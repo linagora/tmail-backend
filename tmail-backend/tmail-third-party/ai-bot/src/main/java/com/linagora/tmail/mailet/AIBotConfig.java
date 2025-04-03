@@ -51,7 +51,7 @@ public class AIBotConfig {
         Preconditions.checkNotNull(baseURLOpt);
 
         this.apiKey = apiKey;
-        this.baseURLOpt = baseURLOpt != null ? baseURLOpt : Optional.empty();
+        this.baseURLOpt = baseURLOpt;
         this.botAddress = botAddress;
         this.llmModel = llmModel;
     }

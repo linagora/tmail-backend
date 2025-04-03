@@ -17,21 +17,18 @@
  ********************************************************************/
 package com.linagora.tmail.mailet;
 
-import static jdk.dynalink.beans.StaticClass.forClass;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import com.google.inject.Injector;
 
-import jakarta.mail.internet.AddressException;
-
 import nl.jqno.equalsverifier.EqualsVerifier;
+
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.Test;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.Optional;
 
@@ -78,7 +75,7 @@ public class AIBotConfigTest {
     }
 
     @Test
-    public void shouldVerifyCorrectConfiguration() throws AddressException, MalformedURLException {
+    public void shouldVerifyCorrectConfiguration() throws Exception {
         //Arrange
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "demo");
