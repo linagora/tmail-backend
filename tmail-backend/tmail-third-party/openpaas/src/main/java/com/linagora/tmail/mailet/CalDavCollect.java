@@ -110,7 +110,7 @@ public class CalDavCollect extends GenericMailet {
             .flatMap(maybeDavCalendarObject -> {
                 if (hasRecurrenceId(calendar)) {
                     return maybeDavCalendarObject.map(davCalendarObject -> handleAnEventInRecurringCalendar(davCalendarObject, calendar, davUser))
-                        .orElse(Mono.empty());
+                        .orElse(Mono.error(new RuntimeException("Cannot find the recurring calendar object in dav server")));
                 } else {
                     if (Method.VALUE_CANCEL.equals(calendar.getMethod().getValue())) {
                         return deleteDavCalendar(davUser, eventUid);
@@ -136,8 +136,13 @@ public class CalDavCollect extends GenericMailet {
 
     private Mono<Void> updateDavCalendar(DavCalendarObject davCalendarObject, Calendar newCalendar, DavUser davUser) {
         if (hasNewerVersion(newCalendar, davCalendarObject.calendarData())) {
+            Calendar currentCalendar = davCalendarObject.calendarData();
+            CalendarComponent newVEvent = newCalendar.getComponent(Component.VEVENT).get();
+            currentCalendar.setComponentList((ComponentList<CalendarComponent>) currentCalendar.getComponentList()
+                .remove(getVEventNotContainingRecurrenceId(currentCalendar))
+                .add(newVEvent));
             DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
-                newCalendar.removeIf(property -> Property.METHOD.equals(property.getName())),
+                currentCalendar,
                 davCalendarObject.eTag());
             return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
         } else {
@@ -181,7 +186,7 @@ public class CalDavCollect extends GenericMailet {
 
     private Mono<Void> createVEventInRecurringCalendar(CalendarComponent newVEvent, DavCalendarObject davCalendarObject, DavUser davUser) {
         Calendar currentCalendar = davCalendarObject.calendarData();
-        CalendarComponent originalVEvent = getCurrentVEventContainingRRule(currentCalendar).get();
+        CalendarComponent originalVEvent = getVEventContainingRRule(currentCalendar).get();
         if (hasNewerVersion(newVEvent, originalVEvent)) {
             currentCalendar.setComponentList((ComponentList<CalendarComponent>) currentCalendar.getComponentList().add(newVEvent));
             DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
@@ -208,11 +213,10 @@ public class CalDavCollect extends GenericMailet {
 
     private Mono<Void> deleteVEventFromRecurringCalendar(CalendarComponent deletedVEvent, Optional<CalendarComponent> maybeCurrentVEvent, DavCalendarObject davCalendarObject, DavUser davUser) {
         Calendar currentCalendar = davCalendarObject.calendarData();
-        CalendarComponent originalVEvent = getCurrentVEventContainingRRule(currentCalendar).get();
-        if (hasNewerVersion(deletedVEvent, originalVEvent)) {
-            maybeCurrentVEvent.ifPresent(currentVEvent -> {
-                currentCalendar.setComponentList((ComponentList<CalendarComponent>) currentCalendar.getComponentList().remove(currentVEvent));
-            });
+        CalendarComponent originalVEvent = getVEventContainingRRule(currentCalendar).get();
+        if (hasNewerVersion(deletedVEvent, maybeCurrentVEvent.orElse(originalVEvent))) {
+            maybeCurrentVEvent.ifPresent(currentVEvent ->
+                currentCalendar.setComponentList((ComponentList<CalendarComponent>) currentCalendar.getComponentList().remove(currentVEvent)));
             originalVEvent.add(new ExDate(deletedVEvent.getProperty(Property.RECURRENCE_ID).get().getValue()));
             DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
                 currentCalendar,
@@ -231,11 +235,19 @@ public class CalDavCollect extends GenericMailet {
             .findAny();
     }
 
-    private Optional<CalendarComponent> getCurrentVEventContainingRRule(Calendar currentCalendar) {
-        return currentCalendar.getComponents().stream()
+    private Optional<CalendarComponent> getVEventContainingRRule(Calendar calendar) {
+        return calendar.getComponents().stream()
             .filter(component -> Component.VEVENT.equals(component.getName()))
             .filter(component -> component.getProperty(Property.RRULE).isPresent())
             .findAny();
+    }
+
+    private CalendarComponent getVEventNotContainingRecurrenceId(Calendar currentCalendar) {
+        return currentCalendar.getComponents().stream()
+            .filter(component -> Component.VEVENT.equals(component.getName()))
+            .filter(component -> component.getProperty(Property.RECURRENCE_ID).isEmpty())
+            .findAny()
+            .get();
     }
 
     private boolean hasNewerVersion(CalendarComponent newEvent, CalendarComponent currentEvent) {

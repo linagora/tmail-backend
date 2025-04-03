@@ -840,6 +840,36 @@ public class CalDavCollectIntegrationTest {
             .isEmpty();
     }
 
+    @Test
+    void mailetShouldNotCallDavSeverToDeleteEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .lastModified("20170106T115036Z")
+                .build());
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        String mimeMessageId2 = UUID.randomUUID().toString();
+        String mail2 = generateMail("template/emailWithRecurrenceId.eml.mustache",
+            EmailTemplateData.builder().sender(getSender())
+                .receiver(getReceiver())
+                .mimeMessageId(mimeMessageId2)
+                .calendarUid(calendarUid)
+                .method("CANCEL")
+                .lastModified("20170106T115036Z")
+                .build());
+
+        sendMessage(sender, receiver, mail2, mimeMessageId2);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.EXDATE))
+            .isEmpty();
+    }
+
     private EmailTemplateUser getReceiver() {
         return new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email());
     }
@@ -857,7 +887,7 @@ public class CalDavCollectIntegrationTest {
     }
 
     private void awaitMessage(OpenPaasUser receiver, String mimeMessageId) {
-        CALMLY_AWAIT.atMost(5, TimeUnit.SECONDS)
+        CALMLY_AWAIT.atMost(5000, TimeUnit.SECONDS)
             .dontCatchUncaughtExceptions()
             .until(() -> {
                 Optional<MessageId> maybeMessageId = searchReceiverInboxForNewMessages(receiver, mimeMessageId);
