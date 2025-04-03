@@ -887,7 +887,7 @@ public class CalDavCollectIntegrationTest {
     }
 
     private void awaitMessage(OpenPaasUser receiver, String mimeMessageId) {
-        CALMLY_AWAIT.atMost(5000, TimeUnit.SECONDS)
+        CALMLY_AWAIT.atMost(5, TimeUnit.SECONDS)
             .dontCatchUncaughtExceptions()
             .until(() -> {
                 Optional<MessageId> maybeMessageId = searchReceiverInboxForNewMessages(receiver, mimeMessageId);
