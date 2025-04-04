@@ -79,8 +79,12 @@ class LdapTest {
     }
 
     @RegisterExtension
-    static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(TwakeCalendarConfiguration.builder()
-        .configurationFromClasspath().userChoice(TwakeCalendarConfiguration.UserChoice.LDAP), ldapModule());
+    static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(
+        TwakeCalendarConfiguration.builder()
+            .configurationFromClasspath()
+            .userChoice(TwakeCalendarConfiguration.UserChoice.LDAP)
+            .dbChoice(TwakeCalendarConfiguration.DbChoice.MEMORY),
+        ldapModule());
 
     @BeforeEach
     void setUp(TwakeCalendarGuiceServer server) {

@@ -16,30 +16,13 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.calendar.storage;
+package com.linagora.calendar.storage.mongodb;
 
-import java.util.List;
+import com.mongodb.reactivestreams.client.MongoClients;
+import com.mongodb.reactivestreams.client.MongoDatabase;
 
-import org.apache.commons.configuration2.Configuration;
-import org.apache.james.core.Domain;
-
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
-
-public class DomainConfiguration {
-    public static DomainConfiguration parseConfiguration(Configuration configuration) {
-        return new DomainConfiguration(Splitter.on(',').splitToStream(configuration.getString("domains", "linagora.com"))
-            .map(Domain::of)
-            .collect(ImmutableList.toImmutableList()));
-    }
-
-    private final List<Domain> domains;
-
-    public DomainConfiguration(List<Domain> domains) {
-        this.domains = domains;
-    }
-
-    public List<Domain> getDomains() {
-        return domains;
+public class MongoDBConnectionFactory {
+    public static MongoDatabase instantiateDB(MongoDBConfiguration configuration) {
+        return MongoClients.create(configuration.mongoURL()).getDatabase(configuration.database());
     }
 }
