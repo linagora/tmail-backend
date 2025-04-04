@@ -21,15 +21,14 @@ package com.linagora.tmail.mailet;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Objects;
 import java.util.Optional;
 
+import org.apache.commons.configuration2.Configuration;
 import org.apache.james.core.MailAddress;
-import org.apache.mailet.MailetConfig;
-import org.apache.mailet.MailetException;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
-
 
 public class AIBotConfig {
     public static String API_KEY_PARAMETER_NAME = "apiKey";
@@ -57,18 +56,19 @@ public class AIBotConfig {
         this.llmModel = llmModel;
     }
 
-    public static AIBotConfig fromMailetConfig(MailetConfig mailetConfig) throws MailetException {
-        String apiKeyParam = mailetConfig.getInitParameter(API_KEY_PARAMETER_NAME);
-        String gptAddressParam = mailetConfig.getInitParameter(BOT_ADDRESS_PARAMETER_NAME);
-        String llmModelParam = mailetConfig.getInitParameter(MODEL_PARAMETER_NAME);
-        String baseUrlParam = mailetConfig.getInitParameter(BASE_URL_PARAMETER_NAME);
+    public static AIBotConfig from(Configuration configuration) throws IllegalArgumentException {
+        String apiKeyParam = configuration.getString(API_KEY_PARAMETER_NAME, "");
+        String gptAddressParam = configuration.getString(BOT_ADDRESS_PARAMETER_NAME, "");
+        String llmModelParam = configuration.getString(MODEL_PARAMETER_NAME, "");
+        String baseUrlParam = configuration.getString(BASE_URL_PARAMETER_NAME, "");
+
 
         if (Strings.isNullOrEmpty(apiKeyParam)) {
-            throw new MailetException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided.");
+            throw new IllegalArgumentException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided.");
         }
 
         if (Strings.isNullOrEmpty(gptAddressParam)) {
-            throw new MailetException("No value for " + BOT_ADDRESS_PARAMETER_NAME + " parameter was provided.");
+            throw new IllegalArgumentException("No value for " + BOT_ADDRESS_PARAMETER_NAME + " parameter was provided.");
         }
 
         Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
@@ -84,7 +84,6 @@ public class AIBotConfig {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
     }
 
     private static Optional<URL> baseURLStringToURL(String baseUrlString) {
@@ -94,6 +93,29 @@ public class AIBotConfig {
             throw new RuntimeException("Invalid LLM API base URL", e);
         }
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        AIBotConfig that = (AIBotConfig) o;
+        return Objects.equals(apiKey, that.apiKey) &&
+            Objects.equals(botAddress, that.botAddress) &&
+            Objects.equals(llmModel, that.llmModel) &&
+            Objects.equals(Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
+                Optional.ofNullable(that.baseURLOpt).map(opt -> opt.map(URL::toString)));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(apiKey, botAddress, llmModel,
+            Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)));
+    }
+
 
     public String getApiKey() {
         return apiKey;

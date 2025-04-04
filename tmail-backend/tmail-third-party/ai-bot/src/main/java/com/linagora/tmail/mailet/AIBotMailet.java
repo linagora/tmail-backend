@@ -88,11 +88,11 @@ public class AIBotMailet extends GenericMailet {
     private DefaultMessageBuilder defaultMessageBuilder;
     private AIBotConfig config;
     private ChatLanguageModel chatLanguageModel;
-    private final ChatLanguageModelFactory chatLanguageModelFactory;
 
     @Inject
-    public AIBotMailet(ChatLanguageModelFactory chatLanguageModelFactory, HtmlTextExtractor htmlTextExtractor) {
-        this.chatLanguageModelFactory = chatLanguageModelFactory;
+    public AIBotMailet(AIBotConfig aiBotConfig, ChatLanguageModel chatLanguageModel, HtmlTextExtractor htmlTextExtractor) {
+        this.config = aiBotConfig;
+        this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
     }
 
@@ -171,16 +171,9 @@ public class AIBotMailet extends GenericMailet {
 
     @Override
     public void init() throws MailetException {
-        this.config = AIBotConfig.fromMailetConfig(getMailetConfig());
-        this.chatLanguageModel = createChatLanguageModelModel(config);
-
         this.defaultMessageBuilder = new DefaultMessageBuilder();
         defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
         defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
-    }
-
-    private ChatLanguageModel createChatLanguageModelModel(AIBotConfig AIBotConfig) {
-        return chatLanguageModelFactory.createChatLanguageModel(AIBotConfig);
     }
 
     @Override

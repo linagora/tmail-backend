@@ -20,15 +20,17 @@ package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import jakarta.mail.internet.AddressException;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.server.core.MailImpl;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailetContext;
-import org.apache.mailet.MailetException;
 import org.apache.mailet.base.MailAddressFixture;
 import org.apache.mailet.base.test.FakeMailetConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +38,10 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
+
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.util.Optional;
 
 class AIBotMailetTest {
     public static MailAddress createMailAddress(String mailAddress) {
@@ -48,48 +54,33 @@ class AIBotMailetTest {
 
     public static final String DEMO_MODEL = "gpt-4o-mini";
     private static final MailAddress ASKING_SENDER = createMailAddress("sender@example.com");
-    private static final MailAddress BOT_ADDRESS = createMailAddress("gpt@example.com");
+    private static final MailAddress BOT_ADDRESS = createMailAddress("gpt@localhost");
 
-    private AIBotMailet testee;
     private MailetContext mailetContext;
+    private AIBotConfig aiBotConfig;
+    private AIBotMailet testee;
 
     @BeforeEach
-    void setUp() {
-        testee = new AIBotMailet(new ChatLanguageModelFactory(), new JsoupHtmlTextExtractor());
+    void setUp() throws Exception {
+        aiBotConfig = new AIBotConfig(
+            "demo",
+            new MailAddress("gpt@localhost"),
+            new LlmModel("gemini-2.0-flash"),
+            Optional.of(URI.create("https://generativelanguage.googleapis.exemple.com").toURL()));
+        ChatLanguageModelFactory chatLanguageModelFactory = new ChatLanguageModelFactory();
+        ChatLanguageModel chatLanguageModel= chatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
+        testee = new AIBotMailet(aiBotConfig, chatLanguageModel, new JsoupHtmlTextExtractor());
         mailetContext = Mockito.mock(MailetContext.class);
-    }
-
-    @Test
-    void initShouldThrowWhenMissingApiKeyProperty() {
-        assertThatThrownBy(() -> testee.init(FakeMailetConfig
-            .builder()
-            .setProperty("botAddress", BOT_ADDRESS.asString())
-            .mailetContext(mailetContext)
-            .build()))
-            .isInstanceOf(MailetException.class);
-    }
-
-    @Test
-    void initShouldThrowWhenMissingBotAddressProperty() {
-        assertThatThrownBy(() -> testee.init(FakeMailetConfig
-            .builder()
-            .setProperty("apiKey", "demo")
-            .mailetContext(mailetContext)
-            .build()))
-            .isInstanceOf(MailetException.class);
     }
 
     @Disabled("openai account quota limit issue")
     @Test
     void shouldReplyToSender() throws Exception {
+
         testee.init(FakeMailetConfig
             .builder()
-            .setProperty("apiKey", "demo")
-            .setProperty("botAddress", BOT_ADDRESS.asString())
-            .setProperty("model", DEMO_MODEL)
             .mailetContext(mailetContext)
             .build());
-
         Mail mail = MailImpl.builder()
             .name("mail-id")
             .sender(ASKING_SENDER)
@@ -99,7 +90,6 @@ class AIBotMailetTest {
                 .setText("I do not know how to cook an egg. Please help me.")
                 .build())
             .build();
-
         testee.service(mail);
 
         Mockito.verify(mailetContext).sendMail(ArgumentMatchers.eq(BOT_ADDRESS), ArgumentMatchers.any(), ArgumentMatchers.any());
