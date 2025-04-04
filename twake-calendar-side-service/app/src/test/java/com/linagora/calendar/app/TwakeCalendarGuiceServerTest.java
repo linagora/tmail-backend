@@ -18,7 +18,6 @@
 
 package com.linagora.calendar.app;
 
-
 import static io.restassured.RestAssured.given;
 import static io.restassured.config.EncoderConfig.encoderConfig;
 import static io.restassured.config.RestAssuredConfig.newConfig;
@@ -44,6 +43,7 @@ import com.google.inject.name.Names;
 import com.linagora.calendar.app.modules.CalendarDataProbe;
 import com.linagora.calendar.app.modules.MemoryAutoCompleteModule;
 import com.linagora.calendar.restapi.RestApiServerProbe;
+import com.linagora.calendar.storage.OpenPaaSId;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
@@ -64,6 +64,8 @@ class TwakeCalendarGuiceServerTest  {
         }
     }
 
+    private OpenPaaSId userId;
+
     @RegisterExtension
     static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(TwakeCalendarConfiguration.builder()
         .configurationFromClasspath()
@@ -82,7 +84,7 @@ class TwakeCalendarGuiceServerTest  {
             .setBasePath("/")
             .build();
 
-        server.getProbe(CalendarDataProbe.class)
+        userId = server.getProbe(CalendarDataProbe.class)
             .addUser(USERNAME, PASSWORD);
     }
 
@@ -484,6 +486,20 @@ class TwakeCalendarGuiceServerTest  {
       "names":[{"displayName":"Grep Me","type":"default"}],
       "photos":[{"url":"https://twcalendar.linagora.com/api/avatars?email=grepme@linagora.com","type":"default"}]
     }]""");
+    }
+
+    @Test
+    void shouldSupportProfileAvatar(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        given()
+            .redirects().follow(false)
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+        .when()
+            .get("/api/users/" + userId.value() + "/profile/avatar")
+        .then()
+            .statusCode(302)
+            .header("Location", "https://twcalendar.linagora.com/api/avatars?email=btellier@linagora.com");
     }
 
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {

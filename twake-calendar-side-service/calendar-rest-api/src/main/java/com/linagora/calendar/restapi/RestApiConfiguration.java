@@ -231,7 +231,7 @@ public class RestApiConfiguration {
             .map(Throwing.function(URL::new));
         Optional<URL> davURL = Optional.ofNullable(configuration.getString("dav.url", "https://dav.linagora.com"))
             .map(Throwing.function(URL::new));
-        Optional<URL> selfURL = Optional.ofNullable(configuration.getString("dav.url", "https://dav.linagora.com"))
+        Optional<URL> selfURL = Optional.ofNullable(configuration.getString("self.url", "https://twcalendar.linagora.com"))
             .map(Throwing.function(URL::new));
         Optional<URL> visioURL = Optional.ofNullable(configuration.getString("visio.url", "https://dav.linagora.com"))
             .map(Throwing.function(URL::new));
