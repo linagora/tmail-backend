@@ -68,7 +68,7 @@ public interface OpenPaaSUserDAOContract {
 
     @Test
     default void retriveByIdShouldReturnEmptyByDefault() {
-        assertThat(testee().retrieve(new OpenPaaSId("abcdef")).blockOptional()).isEmpty();
+        assertThat(testee().retrieve(new OpenPaaSId("659387b9d486dc0046aeff21")).blockOptional()).isEmpty();
     }
 
     @Test

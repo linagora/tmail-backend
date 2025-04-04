@@ -39,6 +39,7 @@
         <module>app</module>
         <module>calendar-rest-api</module>
         <module>storage-api</module>
+        <module>storage-mongodb</module>
     </modules>
 
     <properties>
@@ -55,6 +56,22 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>calendar-storage-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>calendar-storage-api</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>calendar-storage-mongodb</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>${james.groupId}</groupId>
                 <artifactId>james-project</artifactId>
                 <version>${james.version}</version>
@@ -67,6 +84,12 @@
                 <version>${james.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongodb-driver-reactivestreams</artifactId>
+                <version>5.3.1</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
