@@ -21,7 +21,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
 import io.lettuce.core.RedisException;
-import io.lettuce.core.api.sync.RedisStringCommands;
+import io.lettuce.core.api.reactive.RedisStringReactiveCommands;
 
 class RedisMasterReplicaRevokedTokenRepositoryTest implements RevokedTokenRepositoryContract {
     private static final String REDIS_PASSWORD = "my_password";
@@ -75,7 +75,7 @@ class RedisMasterReplicaRevokedTokenRepositoryTest implements RevokedTokenReposi
 
     @BeforeEach
     void setup() {
-        RedisStringCommands<String, String> stringStringRedisStringCommands = AppConfiguration.initRedisCommandMasterReplica(
+        RedisStringReactiveCommands<String, String> stringStringRedisStringCommands = AppConfiguration.initRedisCommandMasterReplica(
             String.format("localhost:%d,localhost:%d",
                 REDIS_MASTER.getMappedPort(6379), REDIS_REPLICA.getMappedPort(6379)),
             REDIS_PASSWORD,  Duration.ofSeconds(3));
@@ -106,16 +106,16 @@ class RedisMasterReplicaRevokedTokenRepositoryTest implements RevokedTokenReposi
 
     @Test
     void existsShouldReturnCorrectWhenIgnoreWasConfigured() throws InterruptedException {
-        testee().add("sid1");
-        assertThat(testee().exist("sid1")).isTrue();
+        testee().add("sid1").block();
+        assertThat(testee().exist("sid1").block()).isTrue();
 
         ContainerHelper.pause(REDIS_MASTER);
         TimeUnit.SECONDS.sleep(1);
-        assertThat(testee().exist("sid1")).isFalse();
+        assertThat(testee().exist("sid1").block()).isFalse();
 
         ContainerHelper.unPause(REDIS_MASTER);
         TimeUnit.SECONDS.sleep(1);
-        assertThat(testee().exist("sid1")).isTrue();
+        assertThat(testee().exist("sid1").block()).isTrue();
     }
 
     @Test
@@ -128,6 +128,6 @@ class RedisMasterReplicaRevokedTokenRepositoryTest implements RevokedTokenReposi
 
         ContainerHelper.pause(REDIS_MASTER);
         TimeUnit.SECONDS.sleep(1);
-        assertThatThrownBy(() -> testee.exist("sid1")).isInstanceOf(RedisException.class);
+        assertThatThrownBy(() -> testee.exist("sid1").block()).isInstanceOf(RedisException.class);
     }
 }
