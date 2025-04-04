@@ -39,6 +39,7 @@ import reactor.core.publisher.Mono;
 
 public class OpenPaaSProvisioningService {
     public static final String USER_PASSWORD_DEFAULT = "$2a$05$m.puixylA7FAPR593aS6n.UR3dFGeAtO9GnvXbVoFyiCqWxUHC2fa"; // secret
+    public static final String DOMAIN = "open-paas.org";
     private final MongoDatabase database;
 
     public OpenPaaSProvisioningService(String mongoUri) {
@@ -61,7 +62,7 @@ public class OpenPaaSProvisioningService {
                 .append("domains",  List.of(new Document("domain_id", openPaasDomain().get("_id"))))
                 .append("accounts", List.of(new Document()
                         .append("type", "email")
-                        .append("emails", List.of("user_" + randomUUID + "@open-paas.org"))));
+                        .append("emails", List.of("user_" + randomUUID + "@" + DOMAIN))));
 
         return Mono.from(database.getCollection("users").insertOne(userToSave))
             .flatMap(success ->
