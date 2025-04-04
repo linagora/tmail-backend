@@ -24,9 +24,14 @@ import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.lifecycle.api.Startable;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class OpenPaaSDomainList implements DomainList {
+public class OpenPaaSDomainList implements DomainList, Startable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaaSDomainList.class);
+
     private final OpenPaaSDomainDAO domainDAO;
 
     @Inject
@@ -54,6 +59,14 @@ public class OpenPaaSDomainList implements DomainList {
 
     public void addDomain(Domain domain) {
         domainDAO.add(domain).block();
+    }
+
+    public void addDomainLenient(Domain domain) {
+        try {
+            domainDAO.add(domain).block();
+        } catch (IllegalStateException e) {
+            LOGGER.info("Domain '{}' already exist", domain.asString());
+        }
     }
 
     public void removeDomain(Domain domain) {
