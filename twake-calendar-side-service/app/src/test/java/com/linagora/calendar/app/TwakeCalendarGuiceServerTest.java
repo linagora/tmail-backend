@@ -121,7 +121,7 @@ class TwakeCalendarGuiceServerTest  {
             .asString();
 
         assertThatJson(body).isEqualTo("""
-            ["localhost","linagora.com"]""");
+            ["linagora.com"]""");
     }
 
     @Test

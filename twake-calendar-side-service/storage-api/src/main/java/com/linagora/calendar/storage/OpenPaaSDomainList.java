@@ -18,21 +18,49 @@
 
 package com.linagora.calendar.storage;
 
+import java.util.List;
+
+import jakarta.inject.Inject;
+
+import org.apache.james.core.Domain;
 import org.apache.james.domainlist.api.DomainList;
+import org.reactivestreams.Publisher;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
+public class OpenPaaSDomainList implements DomainList {
+    private final OpenPaaSDomainDAO domainDAO;
 
-public class MemoryOpenPaaSDAOModule extends AbstractModule {
-    @Override
-    protected void configure() {
-        bind(MemoryOpenPaaSUserDAO.class).in(Scopes.SINGLETON);
-        bind(MemoryOpenPaaSDomainDAO.class).in(Scopes.SINGLETON);
+    @Inject
+    public OpenPaaSDomainList(OpenPaaSDomainDAO domainDAO) {
+        this.domainDAO = domainDAO;
+    }
 
-        bind(OpenPaaSDomainDAO.class).to(MemoryOpenPaaSDomainDAO.class);
-        bind(OpenPaaSUserDAO.class).to(MemoryOpenPaaSUserDAO.class);
+    public List<Domain> getDomains() {
+        return domainDAO.list()
+            .map(domain -> domain.domain())
+            .collectList()
+            .block();
+    }
 
-        bind(OpenPaaSDomainList.class).in(Scopes.SINGLETON);
-        bind(DomainList.class).to(OpenPaaSDomainList.class);
+    public boolean containsDomain(Domain domain) {
+        return domainDAO.retrieve(domain)
+            .blockOptional()
+            .isPresent();
+    }
+
+    public Publisher<Boolean> containsDomainReactive(Domain domain) {
+        return domainDAO.retrieve(domain)
+            .hasElement();
+    }
+
+    public void addDomain(Domain domain) {
+        domainDAO.add(domain).block();
+    }
+
+    public void removeDomain(Domain domain) {
+        throw new RuntimeException("Not implemented exception");
+    }
+
+    public Domain getDefaultDomain() {
+        throw new RuntimeException("Not implemented exception");
     }
 }

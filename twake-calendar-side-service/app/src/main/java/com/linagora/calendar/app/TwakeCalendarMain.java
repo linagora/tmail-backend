@@ -51,6 +51,7 @@ import com.linagora.calendar.app.modules.MemoryAutoCompleteModule;
 import com.linagora.calendar.app.modules.MemoryUserModule;
 import com.linagora.calendar.app.modules.OpenSearchClientModule;
 import com.linagora.calendar.restapi.RestApiModule;
+import com.linagora.calendar.storage.MemoryOpenPaaSDAOModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 
 public class TwakeCalendarMain {
@@ -89,6 +90,7 @@ public class TwakeCalendarMain {
         return TwakeCalendarGuiceServer.forConfiguration(configuration)
             .combineWith(Modules.combine(
                 new DNSServiceModule(),
+                new MemoryOpenPaaSDAOModule(),
                 chooseAutoComplete(configuration.autoCompleteChoice()),
                 chooseUsersModule(configuration.userChoice()),
                 new RestApiModule(),
