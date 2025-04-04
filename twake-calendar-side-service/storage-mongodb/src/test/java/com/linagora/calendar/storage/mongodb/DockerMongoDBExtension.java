@@ -18,18 +18,20 @@
 
 package com.linagora.calendar.storage.mongodb;
 
+import java.util.Optional;
+
 import org.bson.Document;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.MongoDBContainer;
 
-import com.mongodb.reactivestreams.client.MongoClients;
 import com.mongodb.reactivestreams.client.MongoDatabase;
 
 import reactor.core.publisher.Mono;
 
 public class DockerMongoDBExtension implements AfterEachCallback {
     public static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:4.0.10");
+    private static MongoDBConfiguration mongoDBConfiguration;
 
     static {
         mongoDBContainer.start();
@@ -40,12 +42,17 @@ public class DockerMongoDBExtension implements AfterEachCallback {
 
     static void init() {
         mongoDBContainer.start();
-        db = MongoClients.create(mongoDBContainer.getConnectionString()).getDatabase("esn_docker");
+        mongoDBConfiguration = new MongoDBConfiguration(mongoDBContainer.getConnectionString(), "esn_docker");
+        db = MongoDBConnectionFactory.instantiateDB(mongoDBConfiguration);
         MongoDBCollectionFactory.initialize(db);
     }
 
     MongoDatabase openDatabaseConnection() {
         return db;
+    }
+
+    public static MongoDBConfiguration getMongoDBConfiguration() {
+        return mongoDBConfiguration;
     }
 
     @Override

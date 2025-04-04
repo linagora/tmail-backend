@@ -52,6 +52,7 @@ import com.linagora.calendar.app.modules.MemoryUserModule;
 import com.linagora.calendar.app.modules.OpenSearchClientModule;
 import com.linagora.calendar.restapi.RestApiModule;
 import com.linagora.calendar.storage.MemoryOpenPaaSDAOModule;
+import com.linagora.calendar.storage.mongodb.MongoDBModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 
 public class TwakeCalendarMain {
@@ -90,7 +91,7 @@ public class TwakeCalendarMain {
         return TwakeCalendarGuiceServer.forConfiguration(configuration)
             .combineWith(Modules.combine(
                 new DNSServiceModule(),
-                new MemoryOpenPaaSDAOModule(),
+                chooseDb(configuration.dbChoice()),
                 chooseAutoComplete(configuration.autoCompleteChoice()),
                 chooseUsersModule(configuration.userChoice()),
                 new RestApiModule(),
@@ -104,6 +105,13 @@ public class TwakeCalendarMain {
             case OPENSEARCH -> Modules.override(new MemoryAutoCompleteModule())
                 .with(new OpenSearchClientModule(), new OSContactAutoCompleteModule(),
                     new OpenSearchMailboxConfigurationModule());
+        };
+    }
+
+    private static Module chooseDb(TwakeCalendarConfiguration.DbChoice autoCompleteChoice) {
+        return switch (autoCompleteChoice) {
+            case MEMORY -> new MemoryOpenPaaSDAOModule();
+            case MONGODB -> new MongoDBModule();
         };
     }
 

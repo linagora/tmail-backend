@@ -33,17 +33,20 @@ import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
 
-public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories, UserChoice userChoice, AutoCompleteChoice autoCompleteChoice) implements Configuration {
+public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
+                                         UserChoice userChoice, DbChoice dbChoice, AutoCompleteChoice autoCompleteChoice) implements Configuration {
     public static class Builder {
         private Optional<String> rootDirectory;
         private Optional<ConfigurationPath> configurationPath;
         private Optional<UserChoice> userChoice;
+        private Optional<DbChoice> dbChoice;
         private Optional<AutoCompleteChoice> autoCompleteChoice;
 
         private Builder() {
             rootDirectory = Optional.empty();
             configurationPath = Optional.empty();
             userChoice = Optional.empty();
+            dbChoice = Optional.empty();
             autoCompleteChoice = Optional.empty();
         }
 
@@ -59,6 +62,11 @@ public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, Ja
 
         public Builder userChoice(UserChoice choice) {
             userChoice = Optional.of(choice);
+            return this;
+        }
+
+        public Builder dbChoice(DbChoice choice) {
+            dbChoice = Optional.of(choice);
             return this;
         }
 
@@ -102,6 +110,13 @@ public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, Ja
                 }
                 return UserChoice.LDAP;
             }));
+            DbChoice dbChoice = this.dbChoice.orElseGet(Throwing.supplier(() -> {
+                var configuration = propertiesProvider.getConfiguration("configuration");
+                if (Optional.ofNullable(configuration.getString("mongo.url", null)).isEmpty()) {
+                    return DbChoice.MEMORY;
+                }
+                return DbChoice.MONGODB;
+            }));
             AutoCompleteChoice autoCompleteChoice = this.autoCompleteChoice.orElseGet(Throwing.supplier(() -> {
                 try {
                     propertiesProvider.getConfiguration("opensearch");
@@ -115,12 +130,18 @@ public record TwakeCalendarConfiguration(ConfigurationPath configurationPath, Ja
                 configurationPath,
                 directories,
                 userChoice,
+                dbChoice,
                 autoCompleteChoice);
         }
     }
 
     enum UserChoice {
         LDAP,
+        MEMORY
+    }
+
+    enum DbChoice {
+        MONGODB,
         MEMORY
     }
 

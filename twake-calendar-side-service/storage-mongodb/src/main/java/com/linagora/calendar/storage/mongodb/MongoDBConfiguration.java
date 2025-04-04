@@ -16,30 +16,18 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.calendar.storage;
+package com.linagora.calendar.storage.mongodb;
 
-import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
-import org.apache.james.core.Domain;
 
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
-
-public class DomainConfiguration {
-    public static DomainConfiguration parseConfiguration(Configuration configuration) {
-        return new DomainConfiguration(Splitter.on(',').splitToStream(configuration.getString("domains", "linagora.com"))
-            .map(Domain::of)
-            .collect(ImmutableList.toImmutableList()));
-    }
-
-    private final List<Domain> domains;
-
-    public DomainConfiguration(List<Domain> domains) {
-        this.domains = domains;
-    }
-
-    public List<Domain> getDomains() {
-        return domains;
+public record MongoDBConfiguration(String mongoURL, String database) {
+    public static MongoDBConfiguration parse(Configuration configuration) {
+        return new MongoDBConfiguration(
+            Optional.ofNullable(configuration.getString("mongo.url", null))
+                .orElseThrow(() -> new IllegalArgumentException("'mongo.url' is mandatory")),
+            Optional.ofNullable(configuration.getString("mongo.database", null))
+                .orElseThrow(() -> new IllegalArgumentException("'mongo.database' is mandatory")));
     }
 }

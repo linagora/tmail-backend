@@ -67,9 +67,11 @@ class TwakeCalendarGuiceServerTest  {
     private OpenPaaSId userId;
 
     @RegisterExtension
-    static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(TwakeCalendarConfiguration.builder()
-        .configurationFromClasspath()
-        .userChoice(TwakeCalendarConfiguration.UserChoice.MEMORY),
+    static TwakeCalendarExtension twakeCalendarExtension = new TwakeCalendarExtension(
+        TwakeCalendarConfiguration.builder()
+            .configurationFromClasspath()
+            .userChoice(TwakeCalendarConfiguration.UserChoice.MEMORY)
+            .dbChoice(TwakeCalendarConfiguration.DbChoice.MEMORY),
         binder -> binder.bind(URL.class).annotatedWith(Names.named("userInfo")).toProvider(TwakeCalendarGuiceServerTest::getUserInfoTokenEndpoint));
 
     @BeforeEach
