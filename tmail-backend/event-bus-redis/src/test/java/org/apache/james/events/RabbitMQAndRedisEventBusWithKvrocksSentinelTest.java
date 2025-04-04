@@ -18,18 +18,18 @@
 
 package org.apache.james.events;
 
+import org.apache.james.backends.redis.KvrocksSentinelExtension;
 import org.apache.james.backends.redis.RedisConfiguration;
-import org.apache.james.backends.redis.RedisSentinelExtension;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-@Disabled("Redis Sentinel tests are heavy to run")
-public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest extends RabbitMQAndRedisEventBusContractTest {
+@Disabled("event bus tests are heavy")
+public class RabbitMQAndRedisEventBusWithKvrocksSentinelTest extends RabbitMQAndRedisEventBusContractTest {
     @RegisterExtension
-    static RedisSentinelExtension redisExtension = new RedisSentinelExtension(true);
+    static KvrocksSentinelExtension kvrocksSentinelExtension = new KvrocksSentinelExtension();
 
     @Override
     RedisConfiguration redisConfiguration() {
-        return redisExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
+        return kvrocksSentinelExtension.getKvrocksSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
     }
 }

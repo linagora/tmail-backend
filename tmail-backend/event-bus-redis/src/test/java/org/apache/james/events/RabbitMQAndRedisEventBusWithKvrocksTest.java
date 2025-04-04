@@ -14,22 +14,31 @@
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
+ *                                                                  *
+ *  This file was taken and adapted from the Apache James project.  *
+ *                                                                  *
+ *  https://james.apache.org                                        *
+ *                                                                  *
+ *  It was originally licensed under the Apache V2 license.         *
+ *                                                                  *
+ *  http://www.apache.org/licenses/LICENSE-2.0                      *
  ********************************************************************/
 
 package org.apache.james.events;
 
+import org.apache.james.backends.redis.KvrocksExtension;
 import org.apache.james.backends.redis.RedisConfiguration;
-import org.apache.james.backends.redis.RedisSentinelExtension;
+import org.apache.james.backends.redis.StandaloneRedisConfiguration;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-@Disabled("Redis Sentinel tests are heavy to run")
-public class RabbitMQAndRedisEventBusWithRedisTLSSentinelTest extends RabbitMQAndRedisEventBusContractTest {
+@Disabled("event bus tests are heavy")
+public class RabbitMQAndRedisEventBusWithKvrocksTest extends RabbitMQAndRedisEventBusContractTest {
     @RegisterExtension
-    static RedisSentinelExtension redisExtension = new RedisSentinelExtension(true);
+    static KvrocksExtension kvrocksExtension = new KvrocksExtension();
 
     @Override
     RedisConfiguration redisConfiguration() {
-        return redisExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
+        return StandaloneRedisConfiguration.from(kvrocksExtension.dockerKvrocks().redisURI().toString());
     }
 }
