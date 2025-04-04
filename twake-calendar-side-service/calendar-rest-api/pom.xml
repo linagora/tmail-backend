@@ -33,6 +33,10 @@
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>calendar-storage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions-api</artifactId>
             <version>${project.version}</version>
         </dependency>
