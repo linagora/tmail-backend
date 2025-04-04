@@ -41,6 +41,10 @@ import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
 import com.linagora.tmail.dav.EventUid;
+import com.linagora.tmail.james.jmap.CalendarComponentNotFoundException;
+import com.linagora.tmail.james.jmap.CalendarPropertyNotFoundException;
+import com.linagora.tmail.james.jmap.OutdatedCalendarUpdateException;
+import com.linagora.tmail.james.jmap.RecurringCalendarEventNotFoundException;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
@@ -54,12 +58,6 @@ import net.fortuna.ical4j.model.property.Uid;
 import reactor.core.publisher.Mono;
 
 public class CalDavCollect extends GenericMailet {
-    public static class CalDavWarningException extends RuntimeException {
-        public CalDavWarningException(String message) {
-            super(message);
-        }
-    }
-
     public static final String SOURCE_ATTRIBUTE_NAME = "source";
     public static final String DEFAULT_SOURCE_ATTRIBUTE_NAME = "calendars";
 
@@ -103,7 +101,7 @@ public class CalDavCollect extends GenericMailet {
                     davUserProvider.provide(Username.of(mailAddress.asString()))
                         .flatMap(davUser -> synchronizeWithDavServer(calendar, davUser))
                         .block();
-                } catch (CalDavWarningException e) {
+                } catch (OutdatedCalendarUpdateException e) {
                     LOGGER.warn("Error while handling calendar in mail {} with recipient {}", mail.getName(), mailAddress.asString(), e);
                 } catch (Exception e) {
                     LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), mailAddress.asString(), e);
@@ -118,7 +116,7 @@ public class CalDavCollect extends GenericMailet {
             .flatMap(maybeDavCalendarObject -> {
                 if (hasRecurrenceId(calendar)) {
                     return maybeDavCalendarObject.map(davCalendarObject -> handleAnEventInRecurringCalendar(davCalendarObject, calendar, davUser))
-                        .orElse(Mono.error(new CalDavWarningException("Cannot find the recurring calendar object in dav server")));
+                        .orElse(Mono.error(() -> new RecurringCalendarEventNotFoundException(davUser.username(), eventUid.value())));
                 } else {
                     if (Method.VALUE_CANCEL.equals(calendar.getMethod().getValue())) {
                         return deleteDavCalendar(davUser, eventUid);
@@ -147,14 +145,14 @@ public class CalDavCollect extends GenericMailet {
             Calendar currentCalendar = davCalendarObject.calendarData();
             CalendarComponent newVEvent = getVEvent(newCalendar);
             currentCalendar.setComponentList((ComponentList<CalendarComponent>) currentCalendar.getComponentList()
-                .remove(getVEventNotContainingRecurrenceId(currentCalendar))
+                .remove(getVEventWithoutRecurrenceId(currentCalendar))
                 .add(newVEvent));
             DavCalendarObject newDavCalendarObject = new DavCalendarObject(davCalendarObject.uri(),
                 currentCalendar,
                 davCalendarObject.eTag());
             return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
         } else {
-            return Mono.error(new CalDavWarningException("Data in the ics file is older than the current one in dav server"));
+            return Mono.error(new OutdatedCalendarUpdateException());
         }
     }
 
@@ -202,7 +200,7 @@ public class CalDavCollect extends GenericMailet {
                 davCalendarObject.eTag());
             return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
         } else {
-            return Mono.error(new CalDavWarningException("Data in the ics file is older than the current one in dav server"));
+            return Mono.error(new OutdatedCalendarUpdateException());
         }
     }
 
@@ -215,7 +213,7 @@ public class CalDavCollect extends GenericMailet {
                 davCalendarObject.eTag());
             return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
         } else {
-            return Mono.error(new CalDavWarningException("Data in the ics file is older than the current one in dav server"));
+            return Mono.error(new OutdatedCalendarUpdateException());
         }
     }
 
@@ -231,7 +229,7 @@ public class CalDavCollect extends GenericMailet {
                 davCalendarObject.eTag());
             return davClient.doUpdateCalendarObject(davUser.username(), newDavCalendarObject);
         } else {
-            return Mono.error(new CalDavWarningException("Data in the ics file is older than the current one in dav server"));
+            return Mono.error(new OutdatedCalendarUpdateException());
         }
     }
 
@@ -248,15 +246,15 @@ public class CalDavCollect extends GenericMailet {
             .filter(component -> Component.VEVENT.equals(component.getName()))
             .filter(component -> component.getProperty(Property.RRULE).isPresent())
             .findAny()
-            .orElseThrow(() -> new RuntimeException("Failed to get VEVENT component containing RRULE"));
+            .orElseThrow(() -> new CalendarComponentNotFoundException(Component.VEVENT, "with RRULE"));
     }
 
-    private CalendarComponent getVEventNotContainingRecurrenceId(Calendar currentCalendar) {
+    private CalendarComponent getVEventWithoutRecurrenceId(Calendar currentCalendar) {
         return currentCalendar.getComponents().stream()
             .filter(component -> Component.VEVENT.equals(component.getName()))
             .filter(component -> component.getProperty(Property.RECURRENCE_ID).isEmpty())
             .findAny()
-            .orElseThrow(() -> new RuntimeException("Failed to get VEVENT component that does not contain RECURRENCE-ID"));
+            .orElseThrow(() -> new CalendarComponentNotFoundException(Component.VEVENT, " without RECURRENCE-ID"));
     }
 
     private boolean hasNewerVersion(CalendarComponent newEvent, CalendarComponent currentEvent) {
@@ -275,20 +273,20 @@ public class CalDavCollect extends GenericMailet {
 
     private CalendarComponent getVEvent(Calendar calendar) {
         return calendar.getComponent(Component.VEVENT)
-            .orElseThrow(() -> new RuntimeException("Failed to get VEVENT component"));
+            .orElseThrow(() -> new CalendarComponentNotFoundException(Component.VEVENT));
     }
 
     private Property getProperty(CalendarComponent calendarComponent, String propertyName) {
         return calendarComponent.getProperty(propertyName)
-            .orElseThrow(() -> new RuntimeException("Failed to get property " + propertyName));
+            .orElseThrow(() -> new CalendarPropertyNotFoundException(propertyName, calendarComponent.getName()));
     }
 
     private EventUid getEventUid(Calendar calendar) {
         VEvent vevent = (VEvent) calendar.getComponent(Component.VEVENT)
-            .orElseThrow(() -> new RuntimeException("Failed to get VEVENT component"));
+            .orElseThrow(() -> new CalendarComponentNotFoundException(Component.VEVENT));
         return vevent.getUid()
             .map(Uid::getValue)
             .map(EventUid::new)
-            .orElseThrow(() -> new RuntimeException("Failed to get VEVENT uid"));
+            .orElseThrow(() -> new CalendarPropertyNotFoundException(Property.UID, Component.VEVENT));
     }
 }
