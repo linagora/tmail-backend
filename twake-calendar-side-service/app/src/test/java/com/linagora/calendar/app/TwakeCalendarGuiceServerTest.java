@@ -82,7 +82,7 @@ class TwakeCalendarGuiceServerTest  {
             .setBasePath("/")
             .build();
 
-        server.getProbe(CalendarDataProbe.class).addDomain(DOMAIN)
+        server.getProbe(CalendarDataProbe.class)
             .addUser(USERNAME, PASSWORD);
     }
 
