@@ -20,6 +20,7 @@ package com.linagora.tmail.mailet;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import jakarta.inject.Inject;
 
@@ -47,25 +48,30 @@ public class AIRedactionalHelper {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(userInput), "User input cannot be null or empty");
         ChatMessage promptForContext = generatePrompt(mailContent);
         ChatMessage promptForUserInput = new UserMessage(userInput);
-        ChatMessage promptForMailContent = new SystemMessage("[EMAIL CONTENT] (Read-only): " + mailContent);
-        String llmResponse = chatLanguageModel.generate(promptForContext, promptForUserInput, promptForMailContent)
-                .content()
-                .text();
-        return Mono.just(llmResponse);
+
+        CompletableFuture<String> llmResponse = CompletableFuture.supplyAsync(() -> {
+                return mailContent.map(content -> new SystemMessage(content))
+                    .map(mailContentPrompt -> chatLanguageModel.generate(promptForContext, promptForUserInput, mailContentPrompt))
+                        .orElseGet(() -> chatLanguageModel.generate(promptForContext, promptForUserInput))
+                    .content()
+                    .text();
+        });
+
+        return Mono.just(String.valueOf(llmResponse));
     }
 
     private ChatMessage generatePrompt(Optional<String> mailContent) {
-        String prompt;
         if (mailContent.isPresent()) {
-            prompt = "You are an advanced email assistant AI. Your role is to analyze the provided email content and generate a professional, contextually relevant response. " +
-                "Act as the recipient, carefully addressing the key points raised while integrating any additional information or suggestions from the user. " +
-                "Ensure the response is polite, well-structured, and aligned with the email’s tone and intent. ***generate only one option and act like the recipient of the email*** ";
-        } else {
-            prompt = "You are an advanced email assistant AI. Your task is to compose a professional and well-structured email based on the user's input. " +
-                "Ensure the email effectively conveys the provided information and suggestions in a clear and appropriate manner." +
-                "Generate only one option and act like the sender of the email.";
+            return new SystemMessage("You are an advanced email assistant AI. Your role is to analyze the given email content and generate a professional and contextually appropriate reply, as if you were the actual recipient of that email.\n\n" +
+                "Please do not simply repeat or copy the email content. Process it, understand it, and respond accordingly.\n\n" +
+                "Carefully address the key points raised in the message, while incorporating any relevant suggestions or information from the user.\n\n" +
+                "Make sure your reply is polite, well-structured, and matches the tone and intent of the original message.\n\n" +
+                "*** Important: Generate only one response and nothing else. Reply as the recipient of the email. ***");
         }
-        return new SystemMessage(prompt);
-    }
+        return new SystemMessage("Respond in Arabic. You are an advanced email assistant AI. Your task is to compose a professional and well-structured email based on the user's input.\n\n" +
+            "Make sure the email clearly conveys the intended message and suggestions in an appropriate tone and language.\n\n" +
+            "Generate only one version of the email, and act as the sender.");
+        }
+
 
 }
