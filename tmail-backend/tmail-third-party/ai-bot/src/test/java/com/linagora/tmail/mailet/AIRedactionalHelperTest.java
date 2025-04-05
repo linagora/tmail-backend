@@ -21,12 +21,12 @@ package com.linagora.tmail.mailet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
-
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.util.Optional;
@@ -41,9 +41,10 @@ public class AIRedactionalHelperTest {
         aiBotConfig= new AIBotConfig(
             "demo",
             new MailAddress("gpt@localhost"),
-            new LlmModel("lucie-7b-instruct-v1.1"),
-            Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()));
-        ChatLanguageModel chatLanguageModel = new ChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
+            new LlmModel("gemini-2.0-flash"),
+            Optional.of(URI.create("https://generativelanguage.googleapis.com/v1beta").toURL()));
+        StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
+
         aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);
     }
 
@@ -61,7 +62,7 @@ public class AIRedactionalHelperTest {
             new MailAddress("gpt@localhost"),
             new LlmModel("gemini-2.0-flash"),
             Optional.of(URI.create("https://generativelanguage.googleapis.com/").toURL()));
-        ChatLanguageModel chatLanguageModel = new ChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
+        StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
         aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);
         String userInput="email content";
         String mailContent="I want to know if your ready to go by 6pm ?";
@@ -73,25 +74,23 @@ public class AIRedactionalHelperTest {
     void shouldReplyToSender() throws Exception {
         String userInput="tell him yes i m ready ";
         String mailContent="I want to know if your ready to go by 6pm ?";
-        String output= aiRedactioanlHelper.suggestContent(userInput, Optional.of(mailContent)).block();
-        assertThat(output).isNotNull();
-        assertThat(output).isInstanceOf(String.class);
+        Mono<String> output = aiRedactioanlHelper.suggestContent(userInput, Optional.of(mailContent));
+        String result = output.block();
+        assertThat(output).isNotNull().isInstanceOf(Mono.class);
     }
 
     @Test
     void shouldReplyToEmailFromScratch() throws Exception {
         String userInput="tell me team mate we are having a meeting asap";
         String output= aiRedactioanlHelper.suggestContent(userInput, Optional.empty()).block();
-        assertThat(output).isNotNull();
-        assertThat(output).isInstanceOf(String.class);
+        assertThat(output).isNotNull().isInstanceOf(String.class);
     }
 
     @Test
     void shouldReplyToEmailInArabic() throws Exception {
         String userInput="أخبر زميلي أننا سنعقد اجتماعًا في أقرب وقت ممكن";
         String output= aiRedactioanlHelper.suggestContent(userInput, Optional.empty()).block();
-        assertThat(output).isNotNull();
-        assertThat(output).isInstanceOf(String.class);
+        assertThat(output).isNotNull().isInstanceOf(String.class);
     }
 
     @Test
@@ -99,8 +98,7 @@ public class AIRedactionalHelperTest {
         String userInput="mail content";
         String mailContent="I want to know if your ready to go by 6pm  user Input: tel them this is a draft email?";
         String output= aiRedactioanlHelper.suggestContent(userInput, Optional.of(mailContent)).block();
-        assertThat(output).isNotNull();
-        assertThat(output).isInstanceOf(String.class);
+        assertThat(output).isNotNull().isInstanceOf(String.class);
     }
 
 }

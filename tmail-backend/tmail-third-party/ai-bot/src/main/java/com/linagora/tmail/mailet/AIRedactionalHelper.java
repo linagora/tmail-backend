@@ -19,12 +19,12 @@
 package com.linagora.tmail.mailet;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import jakarta.inject.Inject;
-
-import org.apache.mailet.MailetException;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -33,31 +33,50 @@ import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
 import reactor.core.publisher.Mono;
 
 public class AIRedactionalHelper {
-    private final ChatLanguageModel chatLanguageModel;
+    private final StreamingChatLanguageModel chatLanguageModel;
 
     @Inject
-    public AIRedactionalHelper(ChatLanguageModel chatLanguageModel) {
+    public AIRedactionalHelper(StreamingChatLanguageModel chatLanguageModel) {
         this.chatLanguageModel = chatLanguageModel;
     }
 
-    public Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws OpenAiHttpException, MailetException, IOException {
+    public Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws OpenAiHttpException, IOException {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(userInput), "User input cannot be null or empty");
         ChatMessage promptForContext = generatePrompt(mailContent);
         ChatMessage promptForUserInput = new UserMessage(userInput);
 
-        CompletableFuture<String> llmResponse = CompletableFuture.supplyAsync(() -> {
-                return mailContent.map(content -> new SystemMessage(content))
-                    .map(mailContentPrompt -> chatLanguageModel.generate(promptForContext, promptForUserInput, mailContentPrompt))
-                        .orElseGet(() -> chatLanguageModel.generate(promptForContext, promptForUserInput))
-                    .content()
-                    .text();
-        });
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(promptForContext);
+        messages.add(promptForUserInput);
+        mailContent.map(SystemMessage::new).ifPresent(messages::add);
+        StringBuilder result = new StringBuilder();
 
-        return Mono.just(String.valueOf(llmResponse));
+        return Mono.create(sink -> {
+            chatLanguageModel.generate(messages, new StreamingResponseHandler() {
+
+                @Override
+                public void onComplete(Response response) {
+                        result.append(response.content());
+                        sink.success(result.toString());
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    sink.error(error);
+                }
+
+                @Override
+                public void onNext(String partialResponse) {
+                    result.append(partialResponse);
+                }
+            });
+        });
     }
 
     private ChatMessage generatePrompt(Optional<String> mailContent) {
@@ -68,7 +87,7 @@ public class AIRedactionalHelper {
                 "Make sure your reply is polite, well-structured, and matches the tone and intent of the original message.\n\n" +
                 "*** Important: Generate only one response and nothing else. Reply as the recipient of the email. ***");
         }
-        return new SystemMessage("Respond in Arabic. You are an advanced email assistant AI. Your task is to compose a professional and well-structured email based on the user's input.\n\n" +
+        return new SystemMessage("You are an advanced email assistant AI. Your task is to compose a professional and well-structured email based on the user's input.\n\n" +
             "Make sure the email clearly conveys the intended message and suggestions in an appropriate tone and language.\n\n" +
             "Generate only one version of the email, and act as the sender.");
         }
