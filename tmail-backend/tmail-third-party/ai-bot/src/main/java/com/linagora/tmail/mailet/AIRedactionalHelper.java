@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import jakarta.inject.Inject;
 
@@ -48,7 +47,7 @@ public class AIRedactionalHelper {
 
     public Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws OpenAiHttpException, IOException {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(userInput), "User input cannot be null or empty");
-        ChatMessage promptForContext = generatePrompt(mailContent);
+        ChatMessage promptForContext = generateSystemMessage(mailContent);
         ChatMessage promptForUserInput = new UserMessage(userInput);
 
         List<ChatMessage> messages = new ArrayList<>();
@@ -79,7 +78,7 @@ public class AIRedactionalHelper {
         });
     }
 
-    private ChatMessage generatePrompt(Optional<String> mailContent) {
+    private ChatMessage generateSystemMessage(Optional<String> mailContent) {
         if (mailContent.isPresent()) {
             return new SystemMessage("You are an advanced email assistant AI. Your role is to analyze the given email content and generate a professional and contextually appropriate reply, as if you were the actual recipient of that email.\n\n" +
                 "Please do not simply repeat or copy the email content. Process it, understand it, and respond accordingly.\n\n" +
