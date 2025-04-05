@@ -504,6 +504,40 @@ class TwakeCalendarGuiceServerTest  {
             .header("Location", "https://twcalendar.linagora.com/api/avatars?email=btellier@linagora.com");
     }
 
+    @Test
+    void shouldSupportDomainEndpoint(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String domainId = server.getProbe(CalendarDataProbe.class).domainId(DOMAIN).value();
+        String body = given()
+            .redirects().follow(false)
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+        .when()
+            .get("/api/domains/" + domainId)
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body)
+            .isEqualTo(String.format("""
+                {
+                     "timestamps": {
+                         "creation": "1970-01-01T00:00:00.000Z"
+                     },
+                     "hostnames": ["linagora.com"],
+                     "schemaVersion": 1,
+                     "_id": "%s",
+                     "name": "linagora.com",
+                     "company_name": "linagora.com",
+                     "administrators": [ ],
+                     "injections": [],
+                     "__v": 0
+                 }
+                """, domainId));
+    }
+
     private static void targetRestAPI(TwakeCalendarGuiceServer server) {
         RestAssured.requestSpecification =  new RequestSpecBuilder()
             .setContentType(ContentType.JSON)
