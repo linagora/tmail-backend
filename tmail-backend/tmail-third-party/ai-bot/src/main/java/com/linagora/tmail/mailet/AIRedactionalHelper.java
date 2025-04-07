@@ -19,9 +19,10 @@
 package com.linagora.tmail.mailet;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 
@@ -50,15 +51,14 @@ public class AIRedactionalHelper {
         ChatMessage promptForContext = generateSystemMessage(mailContent);
         ChatMessage promptForUserInput = new UserMessage(userInput);
 
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(promptForContext);
-        messages.add(promptForUserInput);
-        mailContent.map(SystemMessage::new).ifPresent(messages::add);
-        StringBuilder result = new StringBuilder();
+        List<ChatMessage> messages = Stream.concat(
+            Stream.of(promptForContext, promptForUserInput),
+            mailContent.map(content -> Stream.of(new SystemMessage(content))).orElseGet(Stream::empty)
+        ).collect(Collectors.toUnmodifiableList());
 
         return Mono.create(sink -> {
             chatLanguageModel.generate(messages, new StreamingResponseHandler() {
-
+                StringBuilder result = new StringBuilder();
                 @Override
                 public void onComplete(Response response) {
                         result.append(response.content());

@@ -18,13 +18,10 @@
 
 package com.linagora.tmail.mailet;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import jakarta.mail.internet.AddressException;
 
-import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.configuration2.PropertiesConfiguration;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
@@ -39,7 +36,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.Optional;
 
@@ -66,9 +62,9 @@ class AIBotMailetTest {
             "demo",
             new MailAddress("gpt@localhost"),
             new LlmModel("gemini-2.0-flash"),
-            Optional.of(URI.create("https://generativelanguage.googleapis.exemple.com").toURL()));
-        ChatLanguageModelFactory chatLanguageModelFactory = new ChatLanguageModelFactory();
-        ChatLanguageModel chatLanguageModel= chatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
+            Optional.of(URI.create("https://generativelanguage.googleapis.com/v1beta").toURL()));
+        StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
+        StreamingChatLanguageModel chatLanguageModel= streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
         testee = new AIBotMailet(aiBotConfig, chatLanguageModel, new JsoupHtmlTextExtractor());
         mailetContext = Mockito.mock(MailetContext.class);
     }
@@ -91,7 +87,6 @@ class AIBotMailetTest {
                 .build())
             .build();
         testee.service(mail);
-
         Mockito.verify(mailetContext).sendMail(ArgumentMatchers.eq(BOT_ADDRESS), ArgumentMatchers.any(), ArgumentMatchers.any());
     }
 }

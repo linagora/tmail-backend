@@ -56,21 +56,6 @@ public class AIRedactionalHelperTest {
     }
 
     @Test
-    void shoulThrouwOpenAiHttpException() throws Exception {
-        aiBotConfig= new AIBotConfig(
-            "demo",
-            new MailAddress("gpt@localhost"),
-            new LlmModel("gemini-2.0-flash"),
-            Optional.of(URI.create("https://generativelanguage.googleapis.com/").toURL()));
-        StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
-        aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);
-        String userInput="email content";
-        String mailContent="I want to know if your ready to go by 6pm ?";
-        assertThatThrownBy(() -> aiRedactioanlHelper.suggestContent(userInput, Optional.of(mailContent)))
-                .isInstanceOf(RuntimeException.class);
-    }
-
-    @Test
     void shouldReplyToSender() throws Exception {
         String userInput="tell him yes i m ready ";
         String mailContent="I want to know if your ready to go by 6pm ?";

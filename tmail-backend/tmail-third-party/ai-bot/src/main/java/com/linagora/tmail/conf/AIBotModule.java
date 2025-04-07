@@ -29,10 +29,8 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.linagora.tmail.mailet.AIBotConfig;
-import com.linagora.tmail.mailet.ChatLanguageModelFactory;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
 public class AIBotModule extends AbstractModule {
@@ -47,12 +45,6 @@ public class AIBotModule extends AbstractModule {
     @Provides
     public static AIBotConfig provideAiBotExtensionConfiguration(@Named("ai") Configuration configuration) {
         return AIBotConfig.from(configuration);
-    }
-
-    @Provides
-    @Singleton
-    public ChatLanguageModel provideChatLanguageModel(AIBotConfig config, ChatLanguageModelFactory chatLanguageModelFactory) {
-        return chatLanguageModelFactory.createChatLanguageModel(config);
     }
 
     @Provides
