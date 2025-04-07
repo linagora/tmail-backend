@@ -21,12 +21,13 @@ package com.linagora.tmail.mailet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
+
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
 import java.net.URI;
 import java.util.Optional;

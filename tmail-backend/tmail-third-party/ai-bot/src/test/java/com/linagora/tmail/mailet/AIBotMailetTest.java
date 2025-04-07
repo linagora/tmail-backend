@@ -18,9 +18,10 @@
 
 package com.linagora.tmail.mailet;
 
-import jakarta.mail.internet.AddressException;
+import java.net.URI;
+import java.util.Optional;
 
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.builder.MimeMessageBuilder;
@@ -36,8 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-import java.net.URI;
-import java.util.Optional;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
 class AIBotMailetTest {
     public static MailAddress createMailAddress(String mailAddress) {
