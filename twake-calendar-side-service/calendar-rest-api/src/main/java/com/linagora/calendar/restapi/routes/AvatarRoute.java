@@ -83,7 +83,7 @@ public class AvatarRoute implements JMAPRoutes {
                 .then());
     }
 
-    private static String extractEmail(HttpServerRequest request) {
+    static String extractEmail(HttpServerRequest request) {
         return new QueryStringDecoder(request.uri()).parameters().get("email")
             .stream()
             .findAny()

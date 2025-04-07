@@ -612,6 +612,68 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void shouldSupportUserByEmailEndpoint(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String domainId = server.getProbe(CalendarDataProbe.class).domainId(DOMAIN).value();
+        String userId = server.getProbe(CalendarDataProbe.class).userId(USERNAME).value();
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .queryParam("email", "btellier@linagora.com")
+        .when()
+            .get("/api/users")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body)
+            .isEqualTo(String.format("""
+                [{
+                    "preferredEmail": "btellier@linagora.com",
+                    "_id": "%s",
+                    "state": [],
+                    "domains": [
+                        {
+                            "domain_id": "%s",
+                            "joined_at": "1970-01-01T00:00:00.000Z"
+                        }
+                    ],
+                    "main_phone": "",
+                    "followings": 0,
+                    "following": false,
+                    "followers": 0,
+                    "emails": [
+                        "btellier@linagora.com"
+                    ],
+                    "firstname": "btellier@linagora.com",
+                    "lastname": "btellier@linagora.com",
+                    "objectType": "user"
+                }]
+                """, userId, domainId));
+    }
+
+    @Test
+    void userByEmailEndpointShouldReturnEmptyWHenNotFound(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .queryParam("email", "notFOund@linagora.com")
+        .when()
+            .get("/api/users")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body)
+            .isEqualTo("[]");
+    }
+
+    @Test
     void userShouldReturnNotFoundWhenNone(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 
