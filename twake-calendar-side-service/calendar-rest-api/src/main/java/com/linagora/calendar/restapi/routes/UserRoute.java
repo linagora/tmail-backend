@@ -36,100 +36,132 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.linagora.calendar.restapi.NotFoundException;
-import com.linagora.calendar.storage.OpenPaaSDomain;
 import com.linagora.calendar.storage.OpenPaaSDomainDAO;
 import com.linagora.calendar.storage.OpenPaaSId;
+import com.linagora.calendar.storage.OpenPaaSUser;
+import com.linagora.calendar.storage.OpenPaaSUserDAO;
 
 import io.netty.handler.codec.http.HttpMethod;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
-public class DomainRoute extends CalendarRoute {
+public class UserRoute extends CalendarRoute {
     public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
         .registerModule(new JavaTimeModule());
 
     public static class ResponseDTO {
-        private final OpenPaaSDomain domain;
+        private final OpenPaaSUser user;
+        private final OpenPaaSId domainId;
 
-        public ResponseDTO(OpenPaaSDomain domain) {
-            this.domain = domain;
-        }
-
-        @JsonProperty("timestamps")
-        public Timestamp getTimestamps() {
-            return new Timestamp();
-        }
-
-        @JsonProperty("hostnames")
-        public ImmutableList<String> getHostnames() {
-            return ImmutableList.of(domain.domain().asString());
-        }
-
-        @JsonProperty("schemaVersion")
-        public int getSchemaVersion() {
-            return 1;
+        public ResponseDTO(OpenPaaSUser user, OpenPaaSId domainId) {
+            this.user = user;
+            this.domainId = domainId;
         }
 
         @JsonProperty("_id")
         public String getId() {
-            return domain.id().value();
+            return user.id().value();
         }
 
-        @JsonProperty("name")
+        @JsonProperty("preferredEmail")
         public String getName() {
-            return domain.domain().asString();
+            return user.username().asString();
         }
 
-        @JsonProperty("company_name")
-        public String getCompanyName() {
-            return domain.domain().asString();
+        @JsonProperty("objectType")
+        public String getOpbjectType() {
+            return "user";
         }
 
-        @JsonProperty("__v")
-        public int getV() {
+        @JsonProperty("main_phone")
+        public String getMainPhone() {
+            return "";
+        }
+
+        @JsonProperty("followings")
+        public int getFollowings() {
             return 0;
         }
 
-        @JsonProperty("administrators")
-        public ImmutableList<String> getAdministrators() {
+        @JsonProperty("following")
+        public boolean getFollowing() {
+            return false;
+        }
+
+        @JsonProperty("followers")
+        public int getFollowers() {
+            return 0;
+        }
+
+        @JsonProperty("domains")
+        public ImmutableList<DomainInfo> getDomains() {
+            return ImmutableList.of(new DomainInfo(domainId));
+        }
+
+        @JsonProperty("state")
+        public ImmutableList<String> getState() {
             return ImmutableList.of();
         }
 
-        @JsonProperty("injections")
-        public ImmutableList<String> getIjections() {
-            return ImmutableList.of();
+        @JsonProperty("emails")
+        public ImmutableList<String> getEmails() {
+            return ImmutableList.of(user.username().asString());
+        }
+
+        @JsonProperty("firstname")
+        public String getFirstname() {
+            return user.firstname();
+        }
+
+        @JsonProperty("lastname")
+        public String getLastname() {
+            return user.lastname();
         }
     }
 
-    public static class Timestamp {
-        @JsonProperty("creation")
+    public static class DomainInfo {
+        private final OpenPaaSId domainId;
+
+        public DomainInfo(OpenPaaSId domainId) {
+            this.domainId = domainId;
+        }
+
+        @JsonProperty("domain_id")
+        public String getDomainId() {
+            return domainId.value();
+        }
+
+        @JsonProperty("joined_at")
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX")
-        public ZonedDateTime getCreation() {
+        public ZonedDateTime getJoinedAt() {
             return ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
         }
     }
 
+    private final OpenPaaSUserDAO userDAO;
     private final OpenPaaSDomainDAO domainDAO;
 
     @Inject
-    public DomainRoute(Authenticator authenticator, MetricFactory metricFactory, OpenPaaSDomainDAO domainDAO) {
+    public UserRoute(Authenticator authenticator, MetricFactory metricFactory, OpenPaaSUserDAO userDAO, OpenPaaSDomainDAO domainDAO) {
         super(authenticator, metricFactory);
+        this.userDAO = userDAO;
         this.domainDAO = domainDAO;
     }
 
     @Override
     Endpoint endpoint() {
-        return new Endpoint(HttpMethod.GET, "/api/domains/{domainId}");
+        return new Endpoint(HttpMethod.GET, "/api/users/{userId}");
     }
 
     @Override
     Mono<Void> handleRequest(HttpServerRequest request, HttpServerResponse response, MailboxSession session) {
-        OpenPaaSId domainId = new OpenPaaSId(request.param("domainId"));
-        return domainDAO.retrieve(domainId)
-            .switchIfEmpty(Mono.error(NotFoundException::new))
-            .map(ResponseDTO::new)
+        OpenPaaSId userId = new OpenPaaSId(request.param("userId"));
+        return userDAO.retrieve(userId)
+            .flatMap(user -> domainDAO.retrieve(user.username().getDomainPart().get())
+                .map(domain -> new ResponseDTO(user, domain.id())))
             .map(Throwing.function(OBJECT_MAPPER::writeValueAsBytes))
+            .switchIfEmpty(Mono.error(NotFoundException::new))
             .flatMap(bytes -> response.status(200)
                 .header("Content-Type", "application/json;charset=utf-8")
                 .header("Cache-Control", "max-age=60, public")
