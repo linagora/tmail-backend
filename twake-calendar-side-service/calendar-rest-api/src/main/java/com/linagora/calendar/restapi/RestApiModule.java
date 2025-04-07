@@ -53,6 +53,7 @@ import com.linagora.calendar.restapi.routes.LogoRoute;
 import com.linagora.calendar.restapi.routes.PeopleSearchRoute;
 import com.linagora.calendar.restapi.routes.ProfileAvatarRoute;
 import com.linagora.calendar.restapi.routes.ThemeRoute;
+import com.linagora.calendar.restapi.routes.UserProfileRoute;
 import com.linagora.calendar.restapi.routes.UserRoute;
 import com.linagora.calendar.restapi.routes.UsersRoute;
 import com.linagora.calendar.restapi.routes.configuration.ConstantConfigurationEntryResolver;
@@ -75,6 +76,7 @@ public class RestApiModule extends AbstractModule {
         routes.addBinding().to(PeopleSearchRoute.class);
         routes.addBinding().to(ProfileAvatarRoute.class);
         routes.addBinding().to(UserRoute.class);
+        routes.addBinding().to(UserProfileRoute.class);
         routes.addBinding().to(UsersRoute.class);
 
         Multibinder<AuthenticationStrategy> authenticationStrategies = Multibinder.newSetBinder(binder(), AuthenticationStrategy.class);

@@ -674,6 +674,165 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void getUserShouldReturnProfile(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+        String domainId = server.getProbe(CalendarDataProbe.class).domainId(DOMAIN).value();
+        String userId = server.getProbe(CalendarDataProbe.class).userId(USERNAME).value();
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+        .when()
+            .get("/api/user")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body)
+            .isEqualTo(String.format("""
+                {
+                    "id": "%s",
+                    "_id": "%s",
+                    "accounts": [
+                        {
+                            "hosted": true,
+                            "preferredEmailIndex": 0,
+                            "type": "email",
+                            "timestamps": {
+                                "creation": "1970-01-01T00:00:00.000Z"
+                            },
+                            "emails": [
+                                "btellier@linagora.com"
+                            ]
+                        }
+                    ],
+                    "isPlatformAdmin": false,
+                    "login": {
+                        "success": "1970-01-01T00:00:00.000Z",
+                        "failures": []
+                    },
+                    "configurations": { "modules" : [
+                        {
+                            "name": "core",
+                            "configurations": [
+                                {
+                                    "name": "davserver",
+                                    "value": {
+                                        "frontend": {
+                                            "url": "https://dav.linagora.com"
+                                        },
+                                        "backend": {
+                                            "url": "https://dav.linagora.com"
+                                        }
+                                    }
+                                },
+                                {
+                                    "name": "allowDomainAdminToManageUserEmails",
+                                    "value": null
+                                },
+                                {
+                                    "name": "homePage",
+                                    "value": null
+                                },
+                                {
+                                    "name": "language",
+                                    "value": "en"
+                                },
+                                {
+                                    "name": "datetime",
+                                    "value": {
+                                        "timeZone": "Europe/Paris",
+                                        "use24hourFormat": true
+                                    }
+                                },
+                                {
+                                    "name": "businessHours",
+                                    "value": [
+                                        {
+                                            "start": "8:0",
+                                            "end": "19:0",
+                                            "daysOfWeek": [
+                                                1,
+                                                2,
+                                                3,
+                                                4,
+                                                5
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "name": "linagora.esn.calendar",
+                            "configurations": [
+                                {
+                                    "name": "features",
+                                    "value": {
+                                        "isSharingCalendarEnabled": true
+                                    }
+                                },
+                                {
+                                    "name": "workingDays",
+                                    "value": null
+                                },
+                                {
+                                    "name": "hideDeclinedEvents",
+                                    "value": null
+                                }
+                            ]
+                        },
+                        {
+                            "name": "linagora.esn.videoconference",
+                            "configurations": [
+                                {
+                                    "name": "jitsiInstanceUrl",
+                                    "value": "https://jitsi.linagora.com"
+                                },
+                                {
+                                    "name": "openPaasVideoconferenceAppUrl",
+                                    "value": "https://jitsi.linagora.com"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "linagora.esn.contacts",
+                            "configurations": [
+                                {
+                                    "name": "features",
+                                    "value": {
+                                        "isVirtualFollowingAddressbookEnabled": false,
+                                        "isVirtualUserAddressbookEnabled": false,
+                                        "isSharingAddressbookEnabled": true,
+                                        "isDomainMembersAddressbookEnabled": true
+                                    }
+                                }
+                            ]
+                        }
+                    ]},
+                    "preferredEmail": "btellier@linagora.com",
+                    "state": [],
+                    "domains": [
+                        {
+                            "domain_id": "%s",
+                            "joined_at": "1970-01-01T00:00:00.000Z"
+                        }
+                    ],
+                    "main_phone": "",
+                    "followings": 0,
+                    "following": false,
+                    "followers": 0,
+                    "emails": [
+                        "btellier@linagora.com"
+                    ],
+                    "firstname": "btellier@linagora.com",
+                    "lastname": "btellier@linagora.com",
+                    "objectType": "user"
+                }""", userId, userId, domainId));
+    }
+
+    @Test
     void userShouldReturnNotFoundWhenNone(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 
