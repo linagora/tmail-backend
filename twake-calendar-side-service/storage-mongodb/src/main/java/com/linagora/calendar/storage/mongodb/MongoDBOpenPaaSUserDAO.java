@@ -53,9 +53,10 @@ public class MongoDBOpenPaaSUserDAO implements OpenPaaSUserDAO {
         return Mono.from(database.getCollection(COLLECTION)
                 .find(Filters.eq("_id", new ObjectId(id.value())))
                 .first())
-            .map(document -> document.getList("accounts", Document.class).get(0))
-            .map(document -> document.getList("emails", String.class).get(0))
-            .map(email -> new OpenPaaSUser(Username.of(email), id));
+            .map(document -> new OpenPaaSUser(
+                Username.of(document.getList("accounts", Document.class).get(0).getList("emails", String.class).get(0)),
+                new OpenPaaSId(document.getObjectId("_id").toHexString()),
+                document.getString("firstname"), document.getString("lastname")));
     }
 
     @Override
@@ -63,7 +64,8 @@ public class MongoDBOpenPaaSUserDAO implements OpenPaaSUserDAO {
         return Mono.from(database.getCollection(COLLECTION)
                 .find(Filters.eq("accounts.emails", username.asString()))
                 .first())
-            .map(document -> new OpenPaaSUser(username, new OpenPaaSId(document.getObjectId("_id").toHexString())));
+            .map(document -> new OpenPaaSUser(username, new OpenPaaSId(document.getObjectId("_id").toHexString()),
+                document.getString("firstname"), document.getString("lastname")));
     }
 
     @Override
@@ -81,7 +83,7 @@ public class MongoDBOpenPaaSUserDAO implements OpenPaaSUserDAO {
                     .append("emails", List.of(username.asString())))))
             .flatMap(document -> Mono.from(database.getCollection(COLLECTION).insertOne(document)))
             .map(InsertOneResult::getInsertedId)
-            .map(id -> new OpenPaaSUser(username, new OpenPaaSId(id.asObjectId().getValue().toHexString())))
+            .map(id -> new OpenPaaSUser(username, new OpenPaaSId(id.asObjectId().getValue().toHexString()), username.asString(), username.asString()))
             .onErrorResume(e -> {
                 if (e.getMessage().contains("E11000 duplicate key error collection")) {
                     return Mono.error(new IllegalStateException(username.asString() + " already exists"));
@@ -95,6 +97,7 @@ public class MongoDBOpenPaaSUserDAO implements OpenPaaSUserDAO {
         return Flux.from(database.getCollection(COLLECTION).find())
             .map(document -> new OpenPaaSUser(
                 Username.of(document.getList("accounts", Document.class).get(0).getList("emails", String.class).get(0)),
-                new OpenPaaSId(document.getObjectId("_id").toHexString())));
+                new OpenPaaSId(document.getObjectId("_id").toHexString()),
+                document.getString("firstname"), document.getString("lastname")));
     }
 }

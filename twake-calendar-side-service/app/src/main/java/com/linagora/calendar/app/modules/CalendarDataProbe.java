@@ -65,4 +65,8 @@ public class CalendarDataProbe implements GuiceProbe {
     public OpenPaaSId domainId(Domain domain) {
         return domainDAO.retrieve(domain).block().id();
     }
+
+    public OpenPaaSId userId(Username username) {
+        return usersDAO.retrieve(username).block().id();
+    }
 }

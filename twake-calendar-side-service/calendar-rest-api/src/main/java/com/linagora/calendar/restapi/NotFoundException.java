@@ -16,10 +16,8 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.calendar.storage;
+package com.linagora.calendar.restapi;
 
-import org.apache.james.core.Username;
-
-public record OpenPaaSUser(Username username, OpenPaaSId id, String firstname, String lastname) {
+public class NotFoundException extends RuntimeException {
 
 }

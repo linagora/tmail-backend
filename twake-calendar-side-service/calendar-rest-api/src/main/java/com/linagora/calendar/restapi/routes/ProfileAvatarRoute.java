@@ -27,6 +27,7 @@ import org.apache.james.jmap.JMAPRoute;
 import org.apache.james.jmap.JMAPRoutes;
 import org.apache.james.metrics.api.MetricFactory;
 
+import com.linagora.calendar.restapi.NotFoundException;
 import com.linagora.calendar.restapi.RestApiConfiguration;
 import com.linagora.calendar.storage.OpenPaaSId;
 import com.linagora.calendar.storage.OpenPaaSUserDAO;
@@ -63,6 +64,7 @@ public class ProfileAvatarRoute implements JMAPRoutes {
 
     Mono<Void> generateAvatar(HttpServerRequest request, HttpServerResponse response) {
         return userDAO.retrieve(new OpenPaaSId(request.param("userId")))
+            .switchIfEmpty(Mono.error(NotFoundException::new))
             .flatMap(user -> response
                 .status(302)
                 .header("Location", configuration.getSelfUrl() + "/api/avatars?email=" + user.username().asString())
