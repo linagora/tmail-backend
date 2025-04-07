@@ -491,6 +491,37 @@ class TwakeCalendarGuiceServerTest  {
     }
 
     @Test
+    void peopleSearchShouldIgnoreUnknownFields(TwakeCalendarGuiceServer server) {
+        targetRestAPI(server);
+
+        server.getProbe(MemoryAutoCompleteModule.Probe.class)
+            .add(USERNAME.asString(), "grepme@linagora.com", "Grep", "Me");
+
+        String body = given()
+            .auth().preemptive().basic(USERNAME.asString(), PASSWORD)
+            .body("{\"q\":\"grepm\",\"objectTypes\":[\"user\",\"group\",\"contact\",\"ldap\"],\"limit\":10,\"unknown\":\"whatever\"}")
+        .when()
+            .post("/api/people/search")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(body)
+            .whenIgnoringPaths("[0].id")
+            .isEqualTo("""
+    [{
+      "id":"f0b97959-1f62-40f7-9df0-798125d62308",
+      "objectType":"contact",
+      "emailAddresses":[{"value":"grepme@linagora.com","type":"Work"}],
+      "phoneNumbers":[],
+      "names":[{"displayName":"Grep Me","type":"default"}],
+      "photos":[{"url":"https://twcalendar.linagora.com/api/avatars?email=grepme@linagora.com","type":"default"}]
+    }]""");
+    }
+
+    @Test
     void shouldSupportProfileAvatar(TwakeCalendarGuiceServer server) {
         targetRestAPI(server);
 
