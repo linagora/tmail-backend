@@ -77,7 +77,7 @@ public class CalendarRestApiServer implements Startable  {
                 .handleRequest(request, response))
                 .onErrorResume(e -> {
                     if (e instanceof IllegalArgumentException) {
-                        LOGGER.info("Invalid request", e);
+                        LOGGER.info("Invalid request {} {}", request.method(), request.uri(), e);
                         return response.status(BAD_REQUEST).send();
                     }
                     if (e instanceof UnauthorizedException) {

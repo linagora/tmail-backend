@@ -63,7 +63,8 @@ public class ProfileAvatarRoute implements JMAPRoutes {
     }
 
     Mono<Void> generateAvatar(HttpServerRequest request, HttpServerResponse response) {
-        return userDAO.retrieve(new OpenPaaSId(request.param("userId")))
+        return Mono.fromCallable(() -> new OpenPaaSId(request.param("userId")))
+            .flatMap(userDAO::retrieve)
             .switchIfEmpty(Mono.error(NotFoundException::new))
             .flatMap(user -> response
                 .status(302)
