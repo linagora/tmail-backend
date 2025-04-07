@@ -29,6 +29,7 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.metrics.api.MetricFactory;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,6 +50,7 @@ public class PeopleSearchRoute extends CalendarRoute {
 
     public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     static class SearchRequestDTO {
         private final String q;
         private final List<String> objectTypes; // ignored
