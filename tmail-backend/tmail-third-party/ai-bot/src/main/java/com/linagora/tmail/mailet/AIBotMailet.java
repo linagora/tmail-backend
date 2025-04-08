@@ -28,7 +28,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.inject.Inject;
 import jakarta.mail.Address;
 import jakarta.mail.Message;
@@ -50,6 +49,8 @@ import org.apache.mailet.base.GenericMailet;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
+
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
