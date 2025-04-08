@@ -21,14 +21,13 @@ package com.linagora.tmail.mailet;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.inject.Inject;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 
 import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.data.message.ChatMessage;
@@ -60,6 +59,7 @@ public class AIRedactionalHelper {
         return Mono.create(sink -> {
             chatLanguageModel.generate(messages, new StreamingResponseHandler() {
                 StringBuilder result = new StringBuilder();
+
                 @Override
                 public void onComplete(Response response) {
                         sink.success(result.toString());
