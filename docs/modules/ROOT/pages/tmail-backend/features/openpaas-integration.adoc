@@ -23,8 +23,8 @@ TMail interacts with OpenPaaS through two main channels:
 - RabbitMQ Messages.
 - REST API Calls to the https://docs.open-paas.org/apis/web/[OpenPaaS API].
 
-=== OpenPaas Contacts Consumption
-TMail integrates with OpenPaaS to fetch contacts and index them. The `OpenPaasContactsConsumer` class handles contacts consumption by fetching contacts from OpenPaaS and indexing using `EmailAddressContactSearchEngine`.
+=== Sabre Contacts Consumption
+TMail integrates with Sabre via AMQP exchange to parse contacts and index them. The `SabreContactsConsumer` class handles contacts consumption by parse contacts from AMQP Message and indexing using `EmailAddressContactSearchEngine`.
 
 This integration powers the auto-complete feature in TMail, allowing users to email their OpenPaaS contacts directly from TMail's compose screen.
 
