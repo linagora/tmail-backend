@@ -40,10 +40,10 @@ public class AIRedactionalHelperTest {
     @BeforeEach
     void setUp() throws Exception{
         aiBotConfig= new AIBotConfig(
-            "demo",
+            "sk-fakefakefakefakefakefakefakefake",
             new MailAddress("gpt@localhost"),
-            new LlmModel("gemini-2.0-flash"),
-            Optional.of(URI.create("https://generativelanguage.googleapis.com/v1beta").toURL()));
+            new LlmModel("lucie-7b-instruct-v1.1"),
+            Optional.of(URI.create("https://chat.lucie").toURL()));
         StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
 
         aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);

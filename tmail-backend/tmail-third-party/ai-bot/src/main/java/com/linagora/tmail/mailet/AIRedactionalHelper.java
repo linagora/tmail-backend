@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.google.common.collect.ImmutableList;
 import jakarta.inject.Inject;
 
 import com.google.common.base.Preconditions;
@@ -53,15 +54,14 @@ public class AIRedactionalHelper {
 
         List<ChatMessage> messages = Stream.concat(
             Stream.of(promptForContext, promptForUserInput),
-            mailContent.map(content -> Stream.of(new SystemMessage(content))).orElseGet(Stream::empty)
-        ).collect(Collectors.toUnmodifiableList());
+            mailContent.stream().map(SystemMessage::new))
+            .collect(ImmutableList.toImmutableList());
 
         return Mono.create(sink -> {
             chatLanguageModel.generate(messages, new StreamingResponseHandler() {
                 StringBuilder result = new StringBuilder();
                 @Override
                 public void onComplete(Response response) {
-                        result.append(response.content());
                         sink.success(result.toString());
                 }
 
