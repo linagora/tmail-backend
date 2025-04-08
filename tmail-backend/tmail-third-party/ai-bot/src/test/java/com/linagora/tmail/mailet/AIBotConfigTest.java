@@ -52,7 +52,7 @@ public class AIBotConfigTest {
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenBotAdressIsNull() {
         Configuration configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "demo");
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
@@ -64,7 +64,7 @@ public class AIBotConfigTest {
     @Test
     public void shouldThrowRuntimeExceptionWhenURLIsWrong() {
         Configuration configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "demo");
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("botAddress", "gpt@localhost");
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "htp://example.com");
@@ -78,13 +78,13 @@ public class AIBotConfigTest {
     public void shouldVerifyCorrectConfiguration() throws Exception {
         //Arrange
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "demo");
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("botAddress", "gpt@localhost");
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
         //act
-        AIBotConfig expected = new AIBotConfig("demo", new MailAddress("gpt@localhost"), new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()));
+        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new MailAddress("gpt@localhost"), new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()));
         AIBotConfig actual = AIBotConfig.from(configuration);
 
         //Assertions

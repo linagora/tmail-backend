@@ -59,7 +59,7 @@ class AIBotMailetTest {
     @BeforeEach
     void setUp() throws Exception {
         aiBotConfig = new AIBotConfig(
-            "demo",
+            "sk-fakefakefakefakefakefakefakefake",
             new MailAddress("gpt@localhost"),
             new LlmModel("gemini-2.0-flash"),
             Optional.of(URI.create("https://generativelanguage.googleapis.com/v1beta").toURL()));
