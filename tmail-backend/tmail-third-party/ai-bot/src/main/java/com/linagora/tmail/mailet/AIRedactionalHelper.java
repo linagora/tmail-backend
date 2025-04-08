@@ -52,8 +52,8 @@ public class AIRedactionalHelper {
         ChatMessage promptForUserInput = new UserMessage(userInput);
 
         List<ChatMessage> messages = Stream.concat(
-            Stream.of(promptForContext, promptForUserInput),
-            mailContent.stream().map(SystemMessage::new))
+                Stream.of(promptForContext, promptForUserInput),
+                mailContent.stream().map(SystemMessage::new))
             .collect(ImmutableList.toImmutableList());
 
         return Mono.create(sink -> {
@@ -62,7 +62,7 @@ public class AIRedactionalHelper {
 
                 @Override
                 public void onComplete(Response response) {
-                        sink.success(result.toString());
+                    sink.success(result.toString());
                 }
 
                 @Override

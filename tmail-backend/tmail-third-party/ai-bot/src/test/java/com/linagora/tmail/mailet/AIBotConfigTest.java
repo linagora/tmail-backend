@@ -92,6 +92,7 @@ public class AIBotConfigTest {
         //Assertions
         assertThat(actual).isEqualTo(expected);
     }
+    
     @Test
     void shouldRespectEqualsAndHashCodeContract() {
         EqualsVerifier.simple().forClass(AIBotConfig.class).verify();
