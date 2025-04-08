@@ -27,13 +27,11 @@ import nl.jqno.equalsverifier.EqualsVerifier;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.james.core.MailAddress;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.util.Optional;
 
-@Disabled("Requires a valid API key in order to be run")
 public class AIBotConfigTest {
     private Injector injector;
     private AIBotConfig aiBotConfig;
