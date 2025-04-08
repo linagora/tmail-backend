@@ -21,20 +21,28 @@ package com.linagora.tmail.contact;
 import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 
 import java.io.Closeable;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
+import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Sets;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.dav.DavClientException;
+import com.linagora.tmail.james.jmap.contact.ContactFields;
+import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 
 import reactor.core.Disposable;
@@ -73,8 +81,8 @@ public class SabreContactsConsumer implements Closeable {
     }
 
     public void start() {
-        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::handleIndexContact);
-        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::handleIndexContact);
+        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::handleAddContact);
+        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::handleUpdateContact);
         consumeDeletedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_DELETE, this::handleDeleteContact);
     }
 
@@ -82,8 +90,8 @@ public class SabreContactsConsumer implements Closeable {
         Disposable previousAddedConsumer = consumeAddedContactsDisposable;
         Disposable previousUpdatedConsumer = consumeUpdatedContactsDisposable;
         Disposable previousDeletedConsumer = consumeDeletedContactsDisposable;
-        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::handleIndexContact);
-        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::handleIndexContact);
+        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::handleAddContact);
+        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::handleUpdateContact);
         consumeDeletedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_DELETE, this::handleDeleteContact);
         Optional.ofNullable(previousAddedConsumer).ifPresent(Disposable::dispose);
         Optional.ofNullable(previousUpdatedConsumer).ifPresent(Disposable::dispose);
@@ -120,16 +128,60 @@ public class SabreContactsConsumer implements Closeable {
             });
     }
 
-    private Mono<Void> handleIndexContact(AccountId ownerAccountId, SabreContactMessage sabreContactMessage) {
+    private Mono<Void> handleAddContact(AccountId ownerAccountId, SabreContactMessage sabreContactMessage) {
         return Flux.fromIterable(sabreContactMessage.getContactFields())
             .flatMap(contactFields ->
-                Mono.from(contactSearchEngine.index(ownerAccountId, contactFields)))
+                Mono.from(contactSearchEngine.index(ownerAccountId, contactFields, sabreContactMessage.getVCardUid())))
             .then();
+    }
+
+    private Mono<Void> handleUpdateContact(AccountId ownerAccountId, SabreContactMessage sabreContactMessage) {
+        Mono<Map<MailAddress, ContactFields>> existingContacts = Flux.from(contactSearchEngine.list(ownerAccountId, sabreContactMessage.getVCardUid()))
+            .collectList()
+            .map(list -> list.stream()
+                .collect(Collectors.toMap(addressContact -> addressContact.fields().address(), EmailAddressContact::fields)));
+
+        Mono<Map<MailAddress, ContactFields>> incomingContacts = Mono.fromCallable(() -> sabreContactMessage.getContactFields()
+            .stream()
+            .collect(Collectors.toMap(ContactFields::address, Function.identity())));
+
+        return Mono.zip(incomingContacts, existingContacts)
+            .flatMap(tuple ->
+                applyContactDiff(ownerAccountId, sabreContactMessage.getVCardUid(), tuple.getT1(), tuple.getT2()));
+    }
+
+    private Mono<Void> applyContactDiff(AccountId accountId,
+                                        String vCardUid,
+                                        Map<MailAddress, ContactFields> newContacts,
+                                        Map<MailAddress, ContactFields> oldContacts) {
+        Set<MailAddress> newAddresses = newContacts.keySet();
+        Set<MailAddress> oldAddresses = oldContacts.keySet();
+
+        Set<MailAddress> toAdd = Sets.difference(newAddresses, oldAddresses);
+        Set<MailAddress> toDelete = Sets.difference(oldAddresses, newAddresses);
+        Set<MailAddress> toUpdate = Sets.intersection(oldAddresses, newAddresses)
+            .stream()
+            .filter(address -> !(oldContacts.get(address).identifier().equals(newContacts.get(address).identifier())))
+            .collect(Collectors.toSet());
+
+        Mono<Void> addOp = Flux.fromIterable(toAdd)
+            .flatMap(address -> Mono.from(contactSearchEngine.index(accountId, newContacts.get(address), vCardUid)))
+            .then();
+
+        Mono<Void> updateOp = Flux.fromIterable(toUpdate)
+            .flatMap(address -> Mono.from(contactSearchEngine.update(accountId, newContacts.get(address), vCardUid)))
+            .then();
+
+        Mono<Void> deleteOp = Flux.fromIterable(toDelete)
+            .flatMap(address -> Mono.from(contactSearchEngine.delete(accountId, address, vCardUid)))
+            .then();
+
+        return Mono.when(addOp, updateOp, deleteOp);
     }
 
     private Mono<Void> handleDeleteContact(AccountId ownerAccountId, SabreContactMessage sabreContactMessage) {
         return Flux.fromIterable(sabreContactMessage.getMailAddresses())
-            .flatMap(mailAddress -> Mono.from(contactSearchEngine.delete(ownerAccountId, mailAddress))
+            .flatMap(mailAddress -> Mono.from(contactSearchEngine.delete(ownerAccountId, mailAddress, sabreContactMessage.getVCardUid()))
                 .onErrorResume(error -> {
                     LOGGER.warn("Failed to delete contact: {} for accountId {} ", mailAddress, ownerAccountId.getIdentifier(), error);
                     return Mono.empty();

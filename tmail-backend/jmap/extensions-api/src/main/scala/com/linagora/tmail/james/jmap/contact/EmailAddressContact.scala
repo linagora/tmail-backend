@@ -24,6 +24,9 @@ import java.util.UUID
 import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
+import com.ibm.icu.impl.locale.XCldrStub.ImmutableMap
+import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.tuple.Pair
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.events.Event
 import org.apache.james.events.Event.EventId
@@ -33,7 +36,7 @@ import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import scala.jdk.CollectionConverters.CollectionHasAsScala
+import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.util.Try
 
@@ -58,13 +61,23 @@ case class InMemoryEmailAddressContactSearchEngineModule() extends AbstractModul
 object EmailAddressContact {
   private def computeId(mailAddress: MailAddress): UUID = UUID.nameUUIDFromBytes(mailAddress.asString().getBytes(StandardCharsets.UTF_8))
 
-  def of(fields: ContactFields): EmailAddressContact = EmailAddressContact(computeId(fields.address), fields)
+  private def computeId(mailAddress: MailAddress, addressBookId: String): UUID =
+    UUID.nameUUIDFromBytes(s"${mailAddress.asString()}$addressBookId".getBytes(StandardCharsets.UTF_8))
+
+  def of(fields: ContactFields): EmailAddressContact =
+    EmailAddressContact(id = computeId(fields.address), fields = fields)
+
+  def of(fields: ContactFields, addressBookId: String): EmailAddressContact =
+    EmailAddressContact(computeId(fields.address, addressBookId), fields = fields)
 }
 
 case class EmailAddressContact(id: UUID, fields: ContactFields)
 
 object ContactFields {
   def of(mailAddress: MailAddress, displayName: String): ContactFields = ContactFields(mailAddress, firstname = Option(displayName).getOrElse(""), surname = "")
+
+  def of(address: MailAddress, firstname: String, surname: String): ContactFields =
+    ContactFields(address, firstname = Option(firstname).getOrElse(""), surname = Option(surname).getOrElse(""))
 
   def of(mailbox: Mailbox): ContactFields =
     Try(new MailAddress(mailbox.getAddress))
@@ -78,7 +91,10 @@ case class ContactFields(address: MailAddress, firstname: String = "", surname: 
   def contains(part: String): Boolean =
     address.asString().contains(part) || firstname.contains(part) || surname.contains(part)
 
-  def fullName(): String = s"$firstname $surname".trim
+  def fullName(): String =
+    s"${StringUtils.defaultIfBlank(firstname, StringUtils.EMPTY)} ${StringUtils.defaultIfBlank(surname, StringUtils.EMPTY)}".trim
+
+  def identifier(): String = s"${address.asString().toLowerCase}:${fullName().toLowerCase}"
 }
 
 case class ContactNotFoundException(mailAddress: MailAddress) extends RuntimeException {
@@ -94,19 +110,27 @@ case class MinAutoCompleteInputLength(value: Int)
 trait EmailAddressContactSearchEngine {
   def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact]
 
+  def index(accountId: AccountId, fields: ContactFields, addressBookId: String): Publisher[EmailAddressContact]
+
   def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact]
 
   def update(accountId: AccountId, updatedFields: ContactFields): Publisher[EmailAddressContact]
 
+  def update(accountId: AccountId, updatedFields: ContactFields, addressBookId: String): Publisher[EmailAddressContact]
+
   def update(domain: Domain, updatedFields: ContactFields): Publisher[EmailAddressContact]
 
   def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void]
+
+  def delete(accountId: AccountId, mailAddress: MailAddress, addressBookId: String): Publisher[Void]
 
   def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void]
 
   def autoComplete(accountId: AccountId, part: String, limit: Int = 256): Publisher[EmailAddressContact]
 
   def list(accountId: AccountId): Publisher[EmailAddressContact]
+
+  def list(accountId: AccountId, addressBookId: String): Publisher[EmailAddressContact]
 
   def list(domain: Domain): Publisher[EmailAddressContact]
 
@@ -130,18 +154,21 @@ case class TmailContactUserAddedEvent(eventId: EventId, username: Username, cont
 }
 
 class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchEngine {
-  private val userContactList: Table[AccountId, MailAddress, EmailAddressContact] = Tables.synchronizedTable(HashBasedTable.create())
+  private val userContactList: Table[AccountId, Pair[MailAddress, Option[String]], EmailAddressContact] = Tables.synchronizedTable(HashBasedTable.create())
   private val domainContactList: Table[Domain, MailAddress, EmailAddressContact] = Tables.synchronizedTable(HashBasedTable.create())
 
   override def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact] =
-    index(accountId, EmailAddressContact.of(fields))
+    index(accountId, EmailAddressContact.of(fields), None)
 
-  private def index(accountId: AccountId, addressContact: EmailAddressContact) =
+  override def index(accountId: AccountId, fields: ContactFields, addressBookId: String): Publisher[EmailAddressContact] =
+    index(accountId, EmailAddressContact.of(fields, addressBookId), Some(addressBookId))
+
+  private def index(accountId: AccountId, addressContact: EmailAddressContact, addressBookId: Option[String]): SMono[EmailAddressContact] =
     SFlux.fromIterable(domainContactList.values().asScala)
       .filter(contact => contact.fields.address.equals(addressContact.fields.address))
       .count()
       .map(hits => hits == 0)
-      .flatMap(_ => SMono.fromCallable(() => userContactList.put(accountId, addressContact.fields.address, addressContact)))
+      .flatMap(_ => SMono.fromCallable(() => userContactList.put(accountId, Pair.of(addressContact.fields.address, addressBookId), addressContact)))
       .`then`(SMono.just(addressContact))
 
   override def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact] =
@@ -152,13 +179,24 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       .`then`(SMono.just(addressContact))
 
   override def update(accountId: AccountId, updatedFields: ContactFields): Publisher[EmailAddressContact] =
-    SMono.fromCallable(() => userContactList.put(accountId, updatedFields.address, EmailAddressContact.of(updatedFields)))
+    SMono.fromCallable(() => userContactList.put(accountId, Pair.of(updatedFields.address, None), EmailAddressContact.of(updatedFields)))
+
+  override def update(accountId: AccountId, updatedFields: ContactFields, addressBookId: String): Publisher[EmailAddressContact] =
+    SMono.fromCallable(() => userContactList.put(accountId, Pair.of(updatedFields.address, Some(addressBookId)), EmailAddressContact.of(updatedFields, addressBookId)))
 
   override def update(domain: Domain, updatedFields: ContactFields): Publisher[EmailAddressContact] =
     SMono.fromCallable(() => domainContactList.put(domain, updatedFields.address, EmailAddressContact.of(updatedFields)))
 
   override def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void] =
-    SMono.fromCallable(() => userContactList.remove(accountId, mailAddress))
+    SFlux.fromIterable(ImmutableMap.copyOf(userContactList.row(accountId)).asScala)
+      .filter { case (_, contact) => contact.fields.address == mailAddress }
+      .doOnNext { case (key, _) => userContactList.remove(accountId, key) }
+      .`then`()
+
+  override def delete(accountId: AccountId, mailAddress: MailAddress, addressBookId: String): Publisher[Void] =
+    SFlux.fromIterable(ImmutableMap.copyOf(userContactList.row(accountId)).asScala)
+      .filter { case (pair, contact) => contact.fields.address == mailAddress && pair.getValue.contains(addressBookId) }
+      .doOnNext { case (key, _) => userContactList.remove(accountId, key) }
       .`then`()
 
   override def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void] =
@@ -197,7 +235,6 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
   override def get(accountId: AccountId, mailAddress: MailAddress): Publisher[EmailAddressContact] =
     SFlux.fromIterable(ImmutableList.copyOf(userContactList.row(accountId).values()).asScala)
       .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
-      .singleOrEmpty()
       .switchIfEmpty(SMono.error(ContactNotFoundException(mailAddress)))
 
   override def get(domain: Domain, mailAddress: MailAddress): Publisher[EmailAddressContact] =
@@ -205,4 +242,10 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
       .singleOrEmpty()
       .switchIfEmpty(SMono.error(ContactNotFoundException(mailAddress)))
+
+  override def list(accountId: AccountId, addressBookId: String): Publisher[EmailAddressContact] =
+    SFlux.fromIterable(ImmutableMap.copyOf(userContactList.row(accountId)).asScala)
+      .collect {
+        case (key, contact) if key.getValue.contains(addressBookId) => contact
+      }
 }

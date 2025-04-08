@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap;
 
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.ACCOUNT_ID;
+import static com.linagora.tmail.james.jmap.ContactMappingFactory.ADDRESS_BOOK_ID;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.CONTACT_ID;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.DOMAIN;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.EMAIL;
@@ -33,6 +34,7 @@ import java.util.UUID;
 import jakarta.inject.Inject;
 import jakarta.mail.internet.AddressException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.backends.opensearch.DocumentId;
 import org.apache.james.backends.opensearch.OpenSearchIndexer;
 import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
@@ -45,8 +47,10 @@ import org.apache.james.jmap.api.model.AccountId;
 import org.apache.james.util.FunctionalUtils;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.Time;
+import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
+import org.opensearch.client.opensearch._types.query_dsl.TermQuery;
 import org.opensearch.client.opensearch.core.GetRequest;
 import org.opensearch.client.opensearch.core.GetResponse;
 import org.opensearch.client.opensearch.core.SearchRequest;
@@ -58,6 +62,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.github.fge.lambdas.Throwing;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
@@ -90,7 +95,20 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
 
     @Override
     public Publisher<EmailAddressContact> index(AccountId accountId, ContactFields fields) {
-        EmailAddressContact emailAddressContact = EmailAddressContact.of(fields);
+        return index(accountId, fields, Optional.empty());
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> index(AccountId accountId, ContactFields fields, String addressBookId) {
+        Preconditions.checkArgument(StringUtils.isNotEmpty(addressBookId), "addressBookId should not be empty");
+        return index(accountId, fields, Optional.of(addressBookId));
+    }
+
+    public Mono<EmailAddressContact> index(AccountId accountId, ContactFields fields, Optional<String> addressBookId) {
+        EmailAddressContact emailAddressContact = addressBookId.map(addressBookIdValue -> EmailAddressContact.of(fields, addressBookIdValue))
+            .orElseGet(() -> EmailAddressContact.of(fields));
+        DocumentId documentId = addressBookId.map(addressBookIdValue -> computeUserContactDocumentId(accountId, fields.address(), addressBookIdValue))
+            .orElseGet(() -> computeUserContactDocumentId(accountId, fields.address()));
 
         SearchRequest checkDuplicatedContactOnDomainIndexRequest = new SearchRequest.Builder()
             .index(configuration.getDomainContactReadAliasName().getValue())
@@ -107,8 +125,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .get()
             .map(searchResponse -> searchResponse.hits().total().value())
             .filter(hits -> hits == 0)
-            .flatMap(any -> Mono.fromCallable(() -> mapper.writeValueAsString(new UserContactDocument(accountId, emailAddressContact)))
-                .flatMap(content -> userContactIndexer.index(computeUserContactDocumentId(accountId, fields.address()), content,
+            .flatMap(any -> Mono.fromCallable(() -> mapper.writeValueAsString(new UserContactDocument(accountId, emailAddressContact, addressBookId.orElse(null))))
+                .flatMap(content -> userContactIndexer.index(documentId, content,
                     RoutingKey.fromString(fields.address().asString()))))
             .thenReturn(emailAddressContact);
     }
@@ -128,14 +146,34 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
+    public Publisher<EmailAddressContact> update(AccountId accountId, ContactFields updatedFields, String addressBookId) {
+        return index(accountId, updatedFields, addressBookId);
+    }
+
+    @Override
     public Publisher<EmailAddressContact> update(Domain domain, ContactFields updatedFields) {
         return index(domain, updatedFields);
     }
 
     @Override
     public Publisher<Void> delete(AccountId accountId, MailAddress address) {
+        Query combinedQuery = BoolQuery.of(b -> b
+            .must(TermQuery.of(t -> t
+                .field(EMAIL)
+                .value(new FieldValue.Builder().stringValue(address.asString()).build())).toQuery())
+            .must(TermQuery.of(t -> t
+                .field(ACCOUNT_ID)
+                .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())).toQuery())).toQuery();
+
+        return userContactIndexer.deleteAllMatchingQuery(combinedQuery,
+                RoutingKey.fromString(address.asString()))
+            .then();
+    }
+
+    @Override
+    public Publisher<Void> delete(AccountId accountId, MailAddress address, String addressBookId) {
         return userContactIndexer.delete(
-                List.of(computeUserContactDocumentId(accountId, address)),
+                List.of(computeUserContactDocumentId(accountId, address, addressBookId)),
                 RoutingKey.fromString(address.asString()))
             .then();
     }
@@ -160,7 +198,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .get()
             .flatMapIterable(searchResponse -> ImmutableList.copyOf(searchResponse.hits().hits()))
             .map(Throwing.function(this::extractContentFromHit).sneakyThrow())
-            .distinct(contact -> contact.fields().address());
+            .distinct(emailAddressContact -> emailAddressContact.fields().identifier());
     }
 
     private Query buildAutoCompleteQuery(AccountId accountId, String part) {
@@ -197,6 +235,27 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
                 .minimumShouldMatch("1")
                 .build()
                 .toQuery())
+            .build();
+
+        return new ScrolledSearch(client, request)
+            .searchHits()
+            .map(Throwing.function(this::extractContentFromHit).sneakyThrow());
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> list(AccountId accountId, String addressBookId) {
+        Query combinedQuery = BoolQuery.of(b -> b
+            .must(TermQuery.of(t -> t
+                .field(ADDRESS_BOOK_ID)
+                .value(new FieldValue.Builder().stringValue(addressBookId).build())).toQuery())
+            .must(TermQuery.of(t -> t
+                .field(ACCOUNT_ID)
+                .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())).toQuery())).toQuery();
+
+        SearchRequest request = new SearchRequest.Builder()
+            .index(configuration.getUserContactReadAliasName().getValue())
+            .scroll(TIMEOUT)
+            .query(combinedQuery)
             .build();
 
         return new ScrolledSearch(client, request)
@@ -244,7 +303,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .get()
             .filter(GetResponse::found)
             .mapNotNull(GetResponse::source)
-            .map(Throwing.function(this::extractContactFromSource).sneakyThrow())
+            .map(Throwing.function(this::extractContactFromUserSource).sneakyThrow())
             .switchIfEmpty(Mono.error(() -> new ContactNotFoundException(mailAddress)));
     }
 
@@ -258,22 +317,34 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
             .get()
             .filter(GetResponse::found)
             .mapNotNull(GetResponse::source)
-            .map(Throwing.function(this::extractContactFromSource).sneakyThrow())
+            .map(Throwing.function(this::extractContactFromDomainSource).sneakyThrow())
             .switchIfEmpty(Mono.error(() -> new ContactNotFoundException(mailAddress)));
     }
 
-    private EmailAddressContact extractContactFromSource(ObjectNode source) throws AddressException {
+    private EmailAddressContact extractContactFromDomainSource(ObjectNode source) throws AddressException {
+        return new EmailAddressContact(
+            UUID.fromString(source.get(CONTACT_ID).asText()),
+            ContactFields.of(
+                new MailAddress(source.get(EMAIL).asText()),
+                source.get(FIRSTNAME).asText(),
+                source.get(SURNAME).asText()));
+    }
+
+    private EmailAddressContact extractContactFromUserSource(ObjectNode source) throws AddressException {
         return new EmailAddressContact(
             UUID.fromString(source.get(CONTACT_ID).asText()),
             new ContactFields(
                 new MailAddress(source.get(EMAIL).asText()),
                 source.get(FIRSTNAME).asText(),
-                source.get(SURNAME).asText()
-            ));
+                source.get(SURNAME).asText()));
     }
 
     private DocumentId computeUserContactDocumentId(AccountId accountId, MailAddress mailAddress) {
         return DocumentId.fromString(String.join(DELIMITER, accountId.getIdentifier(), mailAddress.asString()));
+    }
+
+    private DocumentId computeUserContactDocumentId(AccountId accountId, MailAddress mailAddress, String addressBookId) {
+        return DocumentId.fromString(String.join(DELIMITER, accountId.getIdentifier(), mailAddress.asString(), addressBookId));
     }
 
     private DocumentId computeDomainContactDocumentId(Domain domain, MailAddress mailAddress) {

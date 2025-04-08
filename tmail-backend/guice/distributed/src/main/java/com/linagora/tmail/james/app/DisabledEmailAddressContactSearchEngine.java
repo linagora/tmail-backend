@@ -31,8 +31,14 @@ import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import reactor.core.publisher.Mono;
 
 public class DisabledEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
+
     @Override
     public Publisher<EmailAddressContact> index(AccountId accountId, ContactFields fields) {
+        return Mono.error(new NotImplementedException());
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> index(AccountId accountId, ContactFields fields, String addressBookId) {
         return Mono.error(new NotImplementedException());
     }
 
@@ -47,12 +53,22 @@ public class DisabledEmailAddressContactSearchEngine implements EmailAddressCont
     }
 
     @Override
+    public Publisher<EmailAddressContact> update(AccountId accountId, ContactFields updatedFields, String addressBookId) {
+        return Mono.error(new NotImplementedException());
+    }
+
+    @Override
     public Publisher<EmailAddressContact> update(Domain domain, ContactFields updatedFields) {
         return Mono.error(new NotImplementedException());
     }
 
     @Override
     public Publisher<Void> delete(AccountId accountId, MailAddress mailAddress) {
+        return Mono.error(new NotImplementedException());
+    }
+
+    @Override
+    public Publisher<Void> delete(AccountId accountId, MailAddress mailAddress, String addressBookId) {
         return Mono.error(new NotImplementedException());
     }
 
@@ -68,6 +84,11 @@ public class DisabledEmailAddressContactSearchEngine implements EmailAddressCont
 
     @Override
     public Publisher<EmailAddressContact> list(AccountId accountId) {
+        return Mono.empty();
+    }
+
+    @Override
+    public Publisher<EmailAddressContact> list(AccountId accountId, String addressBookId) {
         return Mono.empty();
     }
 
