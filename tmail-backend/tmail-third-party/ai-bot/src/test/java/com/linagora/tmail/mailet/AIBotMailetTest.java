@@ -39,6 +39,7 @@ import org.mockito.Mockito;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
+@Disabled("Requires a valid API key in order to be run")
 class AIBotMailetTest {
     public static MailAddress createMailAddress(String mailAddress) {
         try {
@@ -61,15 +62,14 @@ class AIBotMailetTest {
         aiBotConfig = new AIBotConfig(
             "sk-fakefakefakefakefakefakefakefake",
             new MailAddress("gpt@localhost"),
-            new LlmModel("gemini-2.0-flash"),
-            Optional.of(URI.create("https://generativelanguage.googleapis.com/v1beta").toURL()));
+            new LlmModel("lucie-7b-instruct-v1.1"),
+            Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()));
         StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
         StreamingChatLanguageModel chatLanguageModel= streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
         testee = new AIBotMailet(aiBotConfig, chatLanguageModel, new JsoupHtmlTextExtractor());
         mailetContext = Mockito.mock(MailetContext.class);
     }
 
-    @Disabled("openai account quota limit issue")
     @Test
     void shouldReplyToSender() throws Exception {
 

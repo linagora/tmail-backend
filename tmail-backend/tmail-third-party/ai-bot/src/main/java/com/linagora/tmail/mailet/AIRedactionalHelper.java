@@ -90,6 +90,4 @@ public class AIRedactionalHelper {
             "Make sure the email clearly conveys the intended message and suggestions in an appropriate tone and language.\n\n" +
             "Generate only one version of the email, and act as the sender.");
         }
-
-
 }

@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
@@ -32,6 +33,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import java.net.URI;
 import java.util.Optional;
 
+@Disabled("Requires a valid API key in order to be run")
 public class AIRedactionalHelperTest {
     private AIRedactionalHelper aiRedactioanlHelper;
     private Configuration configuration;
@@ -43,7 +45,7 @@ public class AIRedactionalHelperTest {
             "sk-fakefakefakefakefakefakefakefake",
             new MailAddress("gpt@localhost"),
             new LlmModel("lucie-7b-instruct-v1.1"),
-            Optional.of(URI.create("https://chat.lucie").toURL()));
+            Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()));
         StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
 
         aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);

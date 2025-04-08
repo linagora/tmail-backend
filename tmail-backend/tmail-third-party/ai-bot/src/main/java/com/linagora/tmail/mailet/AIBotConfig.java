@@ -57,30 +57,22 @@ public class AIBotConfig {
     }
 
     public static AIBotConfig from(Configuration configuration) throws IllegalArgumentException {
-        String apiKeyParam = configuration.getString(API_KEY_PARAMETER_NAME, "");
-        String gptAddressParam = configuration.getString(BOT_ADDRESS_PARAMETER_NAME, "");
-        String llmModelParam = configuration.getString(MODEL_PARAMETER_NAME, "");
-        String baseUrlParam = configuration.getString(BASE_URL_PARAMETER_NAME, "");
-
-
-        if (Strings.isNullOrEmpty(apiKeyParam)) {
-            throw new IllegalArgumentException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided.");
-        }
-
-        if (Strings.isNullOrEmpty(gptAddressParam)) {
-            throw new IllegalArgumentException("No value for " + BOT_ADDRESS_PARAMETER_NAME + " parameter was provided.");
-        }
+        String apiKeyParam = Optional.ofNullable(configuration.getString(API_KEY_PARAMETER_NAME, null))
+            .orElseThrow(() ->  new IllegalArgumentException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided."));
+        String gptAddressParam = Optional.ofNullable(configuration.getString(BOT_ADDRESS_PARAMETER_NAME, null))
+            .orElseThrow(() ->  new IllegalArgumentException("No value for " + BOT_ADDRESS_PARAMETER_NAME + " parameter was provided."));
+        LlmModel llmModelParam = Optional.ofNullable(configuration.getString(MODEL_PARAMETER_NAME))
+            .filter(modelString -> !Strings.isNullOrEmpty(modelString))
+            .map(LlmModel::new).orElse(DEFAULT_LLM_MODEL);
+        String baseUrlParam = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME,null))
+            .orElseThrow(() ->  new IllegalArgumentException("No value for " + BASE_URL_PARAMETER_NAME + " parameter was provided."));
 
         Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
             .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
             .flatMap(AIBotConfig::baseURLStringToURL);
 
-        LlmModel llmModel = Optional.ofNullable(llmModelParam)
-            .filter(modelString -> !Strings.isNullOrEmpty(modelString))
-            .map(LlmModel::new).orElse(DEFAULT_LLM_MODEL);
-
         try {
-            return new AIBotConfig(apiKeyParam, new MailAddress(gptAddressParam), llmModel, baseURLOpt);
+            return new AIBotConfig(apiKeyParam, new MailAddress(gptAddressParam), llmModelParam, baseURLOpt);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -115,7 +107,6 @@ public class AIBotConfig {
         return Objects.hash(apiKey, botAddress, llmModel,
             Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)));
     }
-
 
     public String getApiKey() {
         return apiKey;

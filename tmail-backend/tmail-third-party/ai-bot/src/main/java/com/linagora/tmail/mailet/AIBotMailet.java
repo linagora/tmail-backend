@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
+import com.google.common.collect.ImmutableList;
 import jakarta.inject.Inject;
 import jakarta.mail.Address;
 import jakarta.mail.Message;
@@ -125,8 +126,7 @@ public class AIBotMailet extends GenericMailet {
     private String askChatLanguageModel(Mail mail) throws IOException, MessagingException, InterruptedException, ExecutionException {
         ChatMessage systemMessage = new SystemMessage("You are a helpful mailing chatbot. Respond to the following email as a chatbot, not as the recipient. ");
         ChatMessage userMessage = new UserMessage(evaluatePrompt(mail));
-        List<ChatMessage> messages = Stream.of(systemMessage, userMessage)
-            .toList();
+        List<ChatMessage> messages = ImmutableList.of(systemMessage, userMessage);
         CompletableFuture<String> future = new CompletableFuture<>();
 
         chatLanguageModel.generate(messages, new StreamingResponseHandler() {
