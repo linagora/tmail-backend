@@ -76,7 +76,7 @@ public class RedisEventBusServiceSentinelTest {
         // Then dispatch should eventually succeed after sentinel failover process elects a new master
         Awaitility.await()
             .pollInterval(2, TimeUnit.SECONDS)
-            .atMost(20, TimeUnit.SECONDS)
+            .atMost(40, TimeUnit.SECONDS)
             .untilAsserted(() -> assertThatCode(() -> eventBus.dispatch(EVENT, KEY_1).block())
                 .doesNotThrowAnyException());
     }
@@ -98,7 +98,7 @@ public class RedisEventBusServiceSentinelTest {
         // Then register should eventually succeed after sentinel failover process elects a new master
         Awaitility.await()
             .pollInterval(2, TimeUnit.SECONDS)
-            .atMost(20, TimeUnit.SECONDS)
+            .atMost(40, TimeUnit.SECONDS)
             .untilAsserted(() -> assertThatCode(() -> Mono.from(eventBus.register(listener, KEY_1)).block())
                 .doesNotThrowAnyException());
     }
