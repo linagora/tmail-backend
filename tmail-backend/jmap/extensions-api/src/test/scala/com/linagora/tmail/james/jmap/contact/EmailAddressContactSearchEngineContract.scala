@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.contact
 
+import java.util.UUID
 import java.util.stream.IntStream
 
 import EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, contactFieldsFrench, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
@@ -25,9 +26,10 @@ import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.{Nested, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -747,4 +749,244 @@ trait EmailAddressContactSearchEngineContract {
       .containsExactlyInAnyOrder(mailAddress)
       .doesNotContain(whatEverMailAddress)
   }
+
+  @Nested
+  class AddressBookId {
+    @Test
+    def indexWithAddressBookIdShouldIndex(): Unit = {
+      val addressBookId = UUID.randomUUID().toString
+      val contact = ContactFields(new MailAddress("dpot@linagora.com"), firstname = "Diana", surname = "Pivot")
+
+      SMono(testee().index(accountId, contact, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+      assertThat(SFlux(testee().autoComplete(accountId, "diana"))
+        .map(_.fields.address).asJavaList)
+        .containsExactly(new MailAddress("dpot@linagora.com"))
+    }
+
+    @Test
+    def indexWithSameAddressBookIdShouldIndex(): Unit = {
+      val addressBookId = UUID.randomUUID().toString
+      val contact1 = ContactFields(new MailAddress("iphone13@linagora.com"), firstname = "Iphone 13", surname = "Pivot")
+      val contact2 = ContactFields(new MailAddress("ihpone14@linagora.com"), firstname = "Iphone 14", surname = "Pivot")
+
+      SMono(testee().index(accountId, contact1, addressBookId)).block()
+      SMono(testee().index(accountId, contact2, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+      assertThat(SFlux(testee().autoComplete(accountId, "iphone"))
+        .map(_.fields.address).asJavaList).hasSize(2)
+    }
+
+    @Test
+    def updateWithAddressBookIdShouldUpdate(): Unit = {
+      val addressBookId = UUID.randomUUID().toString
+      val initial = ContactFields(new MailAddress("nobi@linagora.com"), firstname = "Nobi", surname = "Kun")
+      val updated = ContactFields(new MailAddress("nobi@linagora.com"), firstname = "Shin", surname = "Kun")
+
+      SMono(testee().index(accountId, initial, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+      SMono(testee().update(accountId, updated, addressBookId)).block()
+      awaitDocumentsIndexed(MatchQuery("firstname", "Shin"), 1)
+
+      assertThat(SFlux(testee().autoComplete(accountId, "shin"))
+        .map(_.fields.firstname).asJavaList).containsExactlyInAnyOrder("Shin")
+    }
+
+    @Test
+    def deleteWithAddressBookIdShouldRemoveContact(): Unit = {
+      val addressBookId = UUID.randomUUID().toString
+      val mail = new MailAddress("gone@linagora.com")
+      val fields = ContactFields(mail, firstname = "Gone", surname = "Person")
+
+      SMono(testee().index(accountId, fields, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+      SMono(testee().delete(accountId, mail, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 0)
+
+      assertThat(SFlux(testee().autoComplete(accountId, "gone")).asJavaList).isEmpty()
+    }
+
+    @Test
+    def deleteWithoutAddressBookIdShouldDeleteVariants(): Unit = {
+      val mailAddress = new MailAddress("multi@linagora.com")
+      val mailAddressOther = new MailAddress("other@linagora.com")
+      val addressBookId1 = UUID.randomUUID().toString
+      val addressBookId2 = UUID.randomUUID().toString
+
+      SMono(testee().index(accountId,  ContactFields(mailAddress, firstname = "multi", surname = "Contact One"))).block()
+      SMono(testee().index(accountId,  ContactFields(mailAddress, firstname = "multi", surname = "Contact Two"), addressBookId1)).block()
+      SMono(testee().index(accountId,  ContactFields(mailAddressOther, firstname = "Other", surname = "Contact"), addressBookId2)).block()
+
+      awaitDocumentsIndexed(MatchAllQuery(), 3)
+      SMono(testee().delete(accountId, mailAddress)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+      assertThat(SFlux(testee().autoComplete(accountId, "multi")).asJavaList).isEmpty()
+      // should not delete other contact
+      assertThat(SFlux(testee().autoComplete(accountId, "other")).asJavaList).hasSize(1)
+    }
+
+    @Test
+    def shouldReturnAllVariantContact(): Unit = {
+      val mailAddress: MailAddress = new MailAddress("nobita@linagora.com")
+      val contactFields1: ContactFields = ContactFields(mailAddress, "John", "Carpenter")
+      val contactFields2: ContactFields = ContactFields(mailAddress, "Boss", "John")
+      val addressBookId1 = UUID.randomUUID().toString
+      val addressBookId2 = UUID.randomUUID().toString
+
+      SMono(testee().index(accountId, contactFields1, addressBookId1)).block()
+      SMono(testee().index(accountId, contactFields2, addressBookId2)).block()
+
+      awaitDocumentsIndexed(MatchAllQuery(), 2)
+      assertThat(SFlux(testee().autoComplete(accountId, mailAddress.asString())).map(_.fields).asJava().collectList().block())
+        .containsExactlyInAnyOrder(contactFields1, contactFields2)
+    }
+
+    @Test
+    def autoCompleteShouldReturnAllMatchesWhenIndexingWithDifferentAddressBookIds(): Unit = {
+      val addressBookIdA = UUID.randomUUID().toString
+      val addressBookIdB = UUID.randomUUID().toString
+      SMono(testee().index(accountId, contactEmptyNameFieldsA, addressBookIdA)).block()
+      SMono(testee().index(accountId, contactEmptyNameFieldsB, addressBookIdB)).block()
+
+      awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+      assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "bit")).asJava().map(_.fields).collectList().block())
+        .containsExactlyInAnyOrder(contactEmptyNameFieldsA, contactEmptyNameFieldsB)
+    }
+
+    @Test
+    def listShouldReturnAllContactsForAccountId(): Unit = {
+      val mail1 = new MailAddress("first@linagora.com")
+      val mail2 = new MailAddress("second@linagora.com")
+      val addressBookId1 = UUID.randomUUID().toString
+      val addressBookId2 = UUID.randomUUID().toString
+
+      SMono(testee().index(accountId, ContactFields(mail1, "First", "Contact"))).block()
+      SMono(testee().index(accountId, ContactFields(mail2, "Second", "Contact-1"), addressBookId1)).block()
+      SMono(testee().index(accountId, ContactFields(mail2, "Second", "Contact-2"), addressBookId2)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 3)
+
+      assertThat(SFlux(testee().list(accountId))
+        .map(_.fields.address)
+        .asJavaList).containsExactlyInAnyOrder(mail1, mail2, mail2)
+    }
+
+    @Test
+    def listByAddressBookIdShouldReturnContactWithExactAddressBookId(): Unit = {
+      val mailAddress = new MailAddress("nobita@linagora.com")
+      val contactFields = ContactFields(mailAddress, "Nobita", "Nobi")
+      val addressBookId = UUID.randomUUID().toString
+
+      SMono(testee().index(accountId, contactFields, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+      assertThat(SFlux(testee().list(accountId, addressBookId)).map(_.fields).asJavaList).containsExactly(contactFields)
+    }
+
+    @Test
+    def listByAddressBookIdShouldReturnEmptyWhenWrongAddressBookId(): Unit = {
+      val mailAddress = new MailAddress("nobita@linagora.com")
+      val contactFields = ContactFields(mailAddress, "Nobita", "Nobi")
+      val addressBookId = UUID.randomUUID().toString
+      val wrongContactId = UUID.randomUUID().toString
+
+      SMono(testee().index(accountId, contactFields, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+      assertThat(SFlux(testee().list(accountId, wrongContactId)).asJavaList).isEmpty()
+    }
+
+    @Test
+    def listByAddressBookIdShouldReturnEmptyWhenAccountIdDoesNotMatch(): Unit = {
+      val mailAddress = new MailAddress("nobita@linagora.com")
+      val contactFields = ContactFields(mailAddress, "Nobita", "Nobi")
+      val addressBookId = UUID.randomUUID().toString
+      val otherAccount = AccountId.fromString("other@linagora.com")
+
+      SMono(testee().index(accountId, contactFields, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+      assertThat(SFlux(testee().list(otherAccount, addressBookId)).asJavaList).isEmpty()
+    }
+
+    @Test
+    def listByAddressBookIdShouldReturnOnlyMatchingContactWhenMultipleExist(): Unit = {
+      val contactFields1 = ContactFields(new MailAddress("nobita@linagora.com"), "Nobita", "One")
+      val contactFields2 = ContactFields(new MailAddress("sakura@linagora.com"), "Sakura", "Two")
+      val contactFields3 = ContactFields(new MailAddress("sasuke@linagora.com"), "Sasuke", "Three")
+      val id1 = UUID.randomUUID().toString
+      val id2 = UUID.randomUUID().toString
+
+      SMono(testee().index(accountId, contactFields1, id1)).block()
+      SMono(testee().index(accountId, contactFields2, id2)).block()
+      SMono(testee().index(accountId, contactFields3, id2)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 3)
+
+      assertThat(SFlux(testee().list(accountId, id2)).map(_.fields).asJavaList)
+        .containsExactlyInAnyOrder(contactFields2, contactFields3)
+        .doesNotContain(contactFields1)
+    }
+
+    @Test
+    def deleteShouldRemoveContactWhenAddressAndIdMatch(): Unit = {
+      val mailAddress = new MailAddress("nobita@linagora.com")
+      val contactFields1 = ContactFields(mailAddress, "Nobita", "One")
+      val contactFields2 = ContactFields(mailAddress, "Nobita", "Two")
+      val addressBookId1 = UUID.randomUUID().toString
+      val addressBookId2 = UUID.randomUUID().toString
+
+      SMono(testee().index(accountId, contactFields1, addressBookId1)).block()
+      SMono(testee().index(accountId, contactFields2, addressBookId2)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+      SMono(testee().delete(accountId, mailAddress, addressBookId2)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+      assertThat(SFlux(testee().list(accountId, addressBookId2)).asJavaList).isEmpty()
+      assertThat(SFlux(testee().list(accountId, addressBookId1)).asJavaList).hasSize(1)
+    }
+
+    @Test
+    def deleteShouldNotRemoveWhenAddressDoesNotMatch(): Unit = {
+      val mailAddress = new MailAddress("nobita@linagora.com")
+      val contactFields1 = ContactFields(mailAddress, "Nobita", "One")
+      val addressBookId = UUID.randomUUID().toString
+
+      SMono(testee().index(accountId, contactFields1, addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+      SMono(testee().delete(accountId,  new MailAddress("sasuke@linagora.com"), addressBookId)).block()
+      assertThat(SFlux(testee().list(accountId, addressBookId)).asJavaList).hasSize(1)
+    }
+
+    @Test
+    def deleteShouldNotThrowWhenNoContactExistsForAccount(): Unit = {
+      assertThatCode(() => SMono(testee().delete(accountId,  new MailAddress(UUID.randomUUID().toString + "@linagora.com"), UUID.randomUUID().toString)).block())
+        .doesNotThrowAnyException()
+    }
+
+    @Test
+    def deleteShouldNotRemoveContactWhenAddressBookIdDoesNotMatch(): Unit = {
+      val mailAddress = new MailAddress("nobita@linagora.com")
+      val addressBookId = UUID.randomUUID().toString
+      val contact1 = ContactFields(mailAddress, "Nobita", "One")
+      val contact2 = ContactFields(mailAddress, "Sasuke", "Two")
+
+      SMono(testee().index(accountId, contact1, addressBookId)).block()
+      SMono(testee().index(accountId, contact2)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+      SMono(testee().delete(accountId, mailAddress, UUID.randomUUID().toString)).block()
+      assertThat(SFlux(testee().list(accountId)).map(_.fields).asJavaList).containsExactlyInAnyOrder(contact1, contact2)
+    }
+  }
+
+  implicit class ImplicitPublisher[U](publisher: Publisher[U]) {
+    def asJavaList: java.util.List[U] =
+      SFlux(publisher).collectSeq().block().asJava
+  }
+
 }

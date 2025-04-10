@@ -391,6 +391,119 @@ public class SabreContactsConsumerTest {
         }
     }
 
+    @Test
+    void shouldHandleContactUpdatedEventWhenSeveralCases() {
+        // Given
+        String uid = UUID.randomUUID().toString();
+
+        String emailToKeep = "keep@domain.tld"; // toUpdate
+        String emailToRemove = "remove@domain.tld"; // toDelete
+        String emailToAdd = "add@domain.tld"; // toAdd
+        String originalName = "Old Name";
+        String updatedName = "New Name";
+
+        // Initial vCard with two emails (keep, remove)
+        String originalVcard = """
+            BEGIN:VCARD
+            VERSION:4.0
+            FN:%s
+            UID:%s
+            EMAIL;TYPE=work:%s
+            EMAIL;TYPE=home:%s
+            END:VCARD
+            """.formatted(originalName, uid, emailToKeep, emailToRemove);
+
+        davClient.putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid,
+            originalVcard.getBytes(StandardCharsets.UTF_8)).block();
+
+        awaitAtMost.untilAsserted(() -> {
+            List<ContactFields> contactFieldsList = Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
+                    originalName.toLowerCase(), 255)).map(EmailAddressContact::fields)
+                .collectList().block();
+            assertThat(contactFieldsList)
+                .containsExactly(ContactFields.of(Throwing.supplier(() -> new MailAddress(emailToKeep)).get(), originalName),
+                    ContactFields.of(Throwing.supplier(() -> new MailAddress(emailToRemove)).get(), originalName));
+        });
+
+
+        // Updated vCard:
+        // - remove emailToRemove
+        // - keep emailToKeep, but update name
+        // - add emailToAdd
+        String updatedVcard = """
+            BEGIN:VCARD
+            VERSION:4.0
+            FN:%s
+            UID:%s
+            EMAIL;TYPE=work:%s
+            EMAIL;TYPE=other:%s
+            END:VCARD
+            """.formatted(updatedName, uid, emailToKeep, emailToAdd);
+
+        // When
+        davClient.putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid, updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
+
+        // Then
+        // emailToRemove should be gone
+        awaitAtMost.untilAsserted(() -> assertThat(
+            Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(), "remove", 255))
+                .map(EmailAddressContact::fields)
+                .collectList().block()).isEmpty());
+
+        // emailToKeep should be updated with new name
+        awaitAtMost.untilAsserted(() -> assertThat(
+            Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(), "keep", 255))
+                .map(EmailAddressContact::fields)
+                .collectList().block())
+            .containsExactly(ContactFields.of(new MailAddress(emailToKeep), updatedName)));
+
+        // emailToAdd should be indexed with new name
+        awaitAtMost.untilAsserted(() -> assertThat(
+            Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(), "add", 255))
+                .map(EmailAddressContact::fields)
+                .collectList().block())
+            .containsExactly(ContactFields.of(new MailAddress(emailToAdd), updatedName)));
+    }
+
+    @Test
+    void shouldPreserveOtherContactWhenDeletingOneOfMultipleWithSameEmail() throws Exception {
+        // Given: two contacts with the same email address but different UIDs and full names are indexed
+        String vcardUid1 = UUID.randomUUID().toString();
+        String vcardUid2 = UUID.randomUUID().toString();
+
+        String emailAddress = "vttran@exmaple.ltd";
+
+        String vcard1 = """
+            BEGIN:VCARD
+            VERSION:4.0
+            FN:Tung Tran
+            UID:%s
+            EMAIL;TYPE=work:%s
+            END:VCARD""".formatted(vcardUid1, emailAddress);
+
+        String vcard2 = """
+            BEGIN:VCARD
+            VERSION:4.0
+            FN:Java Member
+            UID:%s
+            EMAIL;TYPE=work:%s
+            END:VCARD""".formatted(vcardUid2, emailAddress);
+
+        davClient.putCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid1, vcard1.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.putCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid2, vcard2.getBytes(StandardCharsets.UTF_8)).block();
+        awaitContactIndexed(emailAddress, "Tung Tran");
+        awaitContactIndexed(emailAddress, "Java Member");
+
+        // When: one of the two contacts is deleted (vcardUid1)
+        deleteCollectedContact(vcardUid1);
+        Thread.sleep(200);
+
+        // Then: the other contact with the same email but different UID should still exist in the index
+        awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
+                emailAddress, 255)).map(EmailAddressContact::fields)
+            .collectList().block()).containsExactly(ContactFields.of(new MailAddress(emailAddress), "Java Member")));
+    }
+
     private CardDavCreationObjectRequest createContact(String mailAddress, String fullName) {
         MailAddress mailAddress1 = Throwing.supplier(() -> new MailAddress(mailAddress)).get();
         CardDavCreationObjectRequest cardDavCreationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of(fullName),

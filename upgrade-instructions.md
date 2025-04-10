@@ -12,6 +12,24 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+## 1.0.5
+
+- [Add new field to user contact index](#add-new-field-to-user-contact-index)
+
+### Add new field to user contact index
+Add new field `addressBookId` to the `user_contact` index. 
+
+```curl
+PUT /user_contact/_mapping
+{
+  "properties": {
+    "addressBookId": {
+      "type": "keyword"
+    }
+  }
+}
+```
+
 ## 0.11.0
 
 - [Change default minimum ngram settings for contact indices](#change-default-minimum-ngram-settings-for-contact-indices)

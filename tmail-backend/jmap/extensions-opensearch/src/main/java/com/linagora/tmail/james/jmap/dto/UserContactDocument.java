@@ -31,13 +31,15 @@ public class UserContactDocument {
     private final String email;
     private final String firstname;
     private final String surname;
+    private final String addressBookId;
 
-    public UserContactDocument(AccountId accountId, EmailAddressContact contact) {
+    public UserContactDocument(AccountId accountId, EmailAddressContact contact, String addressBookId) {
         this.accountId = accountId.getIdentifier();
         this.contactId = contact.id();
         this.email = contact.fields().address().asString();
         this.firstname = contact.fields().firstname();
         this.surname = contact.fields().surname();
+        this.addressBookId = addressBookId;
     }
 
     @JsonProperty("accountId")
@@ -63,5 +65,10 @@ public class UserContactDocument {
     @JsonProperty("surname")
     public String getSurname() {
         return surname;
+    }
+
+    @JsonProperty("addressBookId")
+    public String getAddressBookId() {
+        return addressBookId;
     }
 }

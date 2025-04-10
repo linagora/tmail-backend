@@ -45,6 +45,7 @@ public class ContactMappingFactory {
     public static final String EMAIL = "email";
     public static final String FIRSTNAME = "firstname";
     public static final String SURNAME = "surname";
+    public static final String ADDRESS_BOOK_ID = "addressBookId";
     public static final String EMAIL_AUTO_COMPLETE_ANALYZER = "email_ngram_filter_analyzer";
     public static final String NAME_AUTO_COMPLETE_ANALYZER = "name_edge_ngram_filter_analyzer";
     public static final String REBUILT_KEYWORD_ANALYZER = "rebuilt_keyword";
@@ -115,6 +116,7 @@ public class ContactMappingFactory {
                 .put(EMAIL, new Property(new TextProperty.Builder().analyzer(EMAIL_AUTO_COMPLETE_ANALYZER).searchAnalyzer(REBUILT_KEYWORD_ANALYZER).build()))
                 .put(FIRSTNAME, new Property(new TextProperty.Builder().analyzer(NAME_AUTO_COMPLETE_ANALYZER).searchAnalyzer(STANDARD).build()))
                 .put(SURNAME, new Property(new TextProperty.Builder().analyzer(NAME_AUTO_COMPLETE_ANALYZER).searchAnalyzer(STANDARD).build()))
+                .put(ADDRESS_BOOK_ID, new Property(new KeywordProperty.Builder().build()))
                 .build())
             .build();
     }

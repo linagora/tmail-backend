@@ -119,6 +119,7 @@ public record SabreContactMessage(String openPaasUserId,
     }
 
     public String getVCardUid() {
-        return vcard.getUid().getValue();
+        return Optional.ofNullable(vcard.getUid())
+            .map(SimpleProperty::getValue).orElseThrow(() -> new IllegalArgumentException("VCard uid is null"));
     }
 }
