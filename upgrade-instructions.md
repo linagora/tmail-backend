@@ -12,7 +12,7 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
-## 1.0.6 
+## 1.0.5
 
 - [Add new field to user contact index](#add-new-field-to-user-contact-index)
 
