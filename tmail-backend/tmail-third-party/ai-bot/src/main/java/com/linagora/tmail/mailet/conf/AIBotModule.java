@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.conf;
+package com.linagora.tmail.mailet.conf;
 
 import java.io.FileNotFoundException;
 
