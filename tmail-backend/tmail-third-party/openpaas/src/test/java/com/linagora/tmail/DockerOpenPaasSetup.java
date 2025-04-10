@@ -133,6 +133,14 @@ public class DockerOpenPaasSetup {
             .build()).get();
     }
 
+    public URI rabbitMqManagementUri() {
+        return Throwing.supplier(() -> new URIBuilder()
+            .setScheme("http")
+            .setHost(getHost(DockerService.RABBITMQ_ADMIN))
+            .setPort(getPort(DockerService.RABBITMQ_ADMIN))
+            .build()).get();
+    }
+
     public ContainerState getSabreDavContainer() {
         return environment.getContainerByServiceName(DockerService.SABRE_DAV.serviceName()).orElseThrow();
     }

@@ -43,17 +43,16 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
-import com.linagora.tmail.contact.OpenPaasContactsConsumer;
-import com.linagora.tmail.contact.OpenPaasContactsConsumerReconnectionHandler;
+import com.linagora.tmail.contact.SabreContactsOperator;
 
 public class OpenPaasContactsConsumerModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumerModule.class);
 
     @ProvidesIntoSet
-    public InitializationOperation initializeContactsConsumer(OpenPaasContactsConsumer instance) {
+    public InitializationOperation initializeContactsConsumer(SabreContactsOperator instance) {
         return InitilizationOperationBuilder
-            .forClass(OpenPaasContactsConsumer.class)
-            .init(instance::start);
+            .forClass(SabreContactsOperator.class)
+            .init(instance::init);
     }
 
     @Provides
@@ -100,7 +99,7 @@ public class OpenPaasContactsConsumerModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(OpenPaasContactsConsumer contactsConsumer) {
-        return new OpenPaasContactsConsumerReconnectionHandler(contactsConsumer);
+    SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(SabreContactsOperator sabreContactsOperator) {
+        return sabreContactsOperator;
     }
 }

@@ -335,9 +335,9 @@ public class ScheduledReconnectionHandler implements Startable {
         .add("JamesMailQueue-workqueue-spool",
         "JamesMailQueue-workqueue-outgoing",
         "deleted-message-vault-work-queue",
-        "openpaas-contacts-queue-add",
-        "openpaas-contacts-queue-update",
-        "openpaas-contacts-queue-delete")
+        "sabre-contacts-queue-add",
+        "sabre-contacts-queue-update",
+        "sabre-contacts-queue-delete")
         .add(TMAIL_DISCONNECTOR_QUEUE_NAME)
         .build();
 
