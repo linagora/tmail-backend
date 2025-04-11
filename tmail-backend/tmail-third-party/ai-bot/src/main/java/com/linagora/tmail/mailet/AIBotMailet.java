@@ -24,6 +24,8 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
@@ -47,11 +49,16 @@ import org.apache.mailet.base.GenericMailet;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
+
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
+
 
 /**
  * <b>AIBotMailet</b> is a mailet designed to automatically reply to emails sent to a specific recipient
@@ -87,12 +94,12 @@ public class AIBotMailet extends GenericMailet {
     private final HtmlTextExtractor htmlTextExtractor;
     private DefaultMessageBuilder defaultMessageBuilder;
     private AIBotConfig config;
-    private ChatLanguageModel chatLanguageModel;
-    private final ChatLanguageModelFactory chatLanguageModelFactory;
+    private StreamingChatLanguageModel chatLanguageModel;
 
     @Inject
-    public AIBotMailet(ChatLanguageModelFactory chatLanguageModelFactory, HtmlTextExtractor htmlTextExtractor) {
-        this.chatLanguageModelFactory = chatLanguageModelFactory;
+    public AIBotMailet(AIBotConfig aiBotConfig, StreamingChatLanguageModel chatLanguageModel, HtmlTextExtractor htmlTextExtractor) {
+        this.config = aiBotConfig;
+        this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
     }
 
@@ -117,13 +124,31 @@ public class AIBotMailet extends GenericMailet {
         return mail.getMaybeSender().equals(MaybeSender.of(config.getBotAddress()));
     }
 
-    private String askChatLanguageModel(Mail mail) throws IOException, MessagingException {
+    private String askChatLanguageModel(Mail mail) throws IOException, MessagingException, InterruptedException, ExecutionException {
         ChatMessage systemMessage = new SystemMessage("You are a helpful mailing chatbot. Respond to the following email as a chatbot, not as the recipient. ");
         ChatMessage userMessage = new UserMessage(evaluatePrompt(mail));
+        List<ChatMessage> messages = ImmutableList.of(systemMessage, userMessage);
+        CompletableFuture<String> future = new CompletableFuture<>();
 
-        return chatLanguageModel.generate(systemMessage, userMessage)
-            .content()
-            .text();
+        chatLanguageModel.generate(messages, new StreamingResponseHandler() {
+            StringBuilder result = new StringBuilder();
+
+            @Override
+            public void onNext(String token) {
+                result.append(token);
+            }
+
+            @Override
+            public void onComplete(Response response) {
+                future.complete(result.toString());
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+        return future.get();
     }
 
     private String evaluatePrompt(Mail mail) throws IOException, MessagingException {
@@ -171,16 +196,9 @@ public class AIBotMailet extends GenericMailet {
 
     @Override
     public void init() throws MailetException {
-        this.config = AIBotConfig.fromMailetConfig(getMailetConfig());
-        this.chatLanguageModel = createChatLanguageModelModel(config);
-
         this.defaultMessageBuilder = new DefaultMessageBuilder();
         defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
         defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
-    }
-
-    private ChatLanguageModel createChatLanguageModelModel(AIBotConfig AIBotConfig) {
-        return chatLanguageModelFactory.createChatLanguageModel(AIBotConfig);
     }
 
     @Override
