@@ -84,9 +84,19 @@
             <version>${langchain4j.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.james</groupId>
+            <artifactId>james-server-guice-configuration</artifactId>
+            <version>3.9.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
             <version>${langchain4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
         </dependency>
     </dependencies>
 
