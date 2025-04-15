@@ -220,6 +220,28 @@ public class DavClient {
             });
     }
 
+    public Mono<Void> sendITIPRequest(String username, URI uri, byte[] json) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "application/json")
+                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+            .request(HttpMethod.valueOf("ITIP"))
+            .uri(uri.toString())
+            .send(Mono.just(Unpooled.wrappedBuffer(json)))
+            .responseSingle((response, responseContent) -> {
+                switch (response.status().code()) {
+                    case 204:
+                        return ReactorUtils.logAsMono(() -> LOGGER.info("Send itip request for '{}' successfully.", uri));
+                    default:
+                        return responseContent.asString(StandardCharsets.UTF_8)
+                            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+                            .flatMap(responseBody -> Mono.error(new DavClientException("""
+                                Unexpected status code: %d when sending itip request for '%s'
+                                %s
+                                """.formatted(response.status().code(), uri.toString(), responseBody))));
+
+                }
+            });
+    }
+
     private static Mono<Void> handleCalendarObjectUpdateResponse(DavCalendarObject updatedCalendarObject, HttpClientResponse response) {
         if (response.status() == HttpResponseStatus.NO_CONTENT) {
             return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' updated successfully.", updatedCalendarObject.uri()));

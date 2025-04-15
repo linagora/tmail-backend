@@ -74,6 +74,7 @@ import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.EventUid;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.mailet.CalDavCollect;
+import com.linagora.tmail.mailet.SenderICALToJsonAttribute;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
@@ -248,7 +249,12 @@ public class CalDavCollectIntegrationTest {
                         .addMailet(MailetConfiguration.builder()
                             .matcher(All.class)
                             .mailet(ICalendarParser.class)
-                            .addProperty(ICalendarParser.SOURCE_ATTRIBUTE_PARAMETER_NAME, "rawIcalendar"))
+                            .addProperty(ICalendarParser.SOURCE_ATTRIBUTE_PARAMETER_NAME, "rawIcalendar")
+                            .addProperty(ICalendarParser.DESTINATION_ATTRIBUTE_PARAMETER_NAME, "icalendar"))
+                        .addMailet(MailetConfiguration.builder()
+                            .matcher(All.class)
+                            .mailet(SenderICALToJsonAttribute.class)
+                            .addProperty(SenderICALToJsonAttribute.RAW_SOURCE_ATTRIBUTE_NAME, "rawIcalendar"))
                         .addMailet(MailetConfiguration.builder()
                             .matcher(All.class)
                             .mailet(CalDavCollect.class))
@@ -281,7 +287,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, receiver, mail, mimeMessageId);
 
-        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(mimeMessageId)).block();
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(sender.id(), sender.email()), new EventUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
     }
 
