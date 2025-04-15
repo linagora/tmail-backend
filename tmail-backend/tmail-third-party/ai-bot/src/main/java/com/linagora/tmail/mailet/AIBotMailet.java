@@ -92,7 +92,6 @@ import dev.langchain4j.model.output.Response;
  */
 public class AIBotMailet extends GenericMailet {
     private final HtmlTextExtractor htmlTextExtractor;
-    private DefaultMessageBuilder defaultMessageBuilder;
     private AIBotConfig config;
     private StreamingChatLanguageModel chatLanguageModel;
 
@@ -159,6 +158,9 @@ public class AIBotMailet extends GenericMailet {
     }
 
     private MessageContentExtractor.MessageContent extractMessageContent(Mail mail) throws IOException, MessagingException {
+        DefaultMessageBuilder defaultMessageBuilder = new DefaultMessageBuilder();
+        defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
+        defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
         return new MessageContentExtractor().extract(defaultMessageBuilder.parseMessage(new MimeMessageInputStream(mail.getMessage())));
     }
 
@@ -196,9 +198,7 @@ public class AIBotMailet extends GenericMailet {
 
     @Override
     public void init() throws MailetException {
-        this.defaultMessageBuilder = new DefaultMessageBuilder();
-        defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
-        defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
+
     }
 
     @Override
