@@ -47,6 +47,7 @@ import org.apache.james.mailets.configuration.MailetConfiguration;
 import org.apache.james.mailets.configuration.ProcessorConfiguration;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
+import org.apache.james.transport.mailets.ICALToJsonAttribute;
 import org.apache.james.transport.mailets.ICalendarParser;
 import org.apache.james.transport.mailets.MimeDecodingMailet;
 import org.apache.james.transport.mailets.StripAttachment;
@@ -57,6 +58,7 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
@@ -74,7 +76,6 @@ import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.EventUid;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.mailet.CalDavCollect;
-import com.linagora.tmail.mailet.SenderICALToJsonAttribute;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
@@ -253,8 +254,8 @@ public class CalDavCollectIntegrationTest {
                             .addProperty(ICalendarParser.DESTINATION_ATTRIBUTE_PARAMETER_NAME, "icalendar"))
                         .addMailet(MailetConfiguration.builder()
                             .matcher(All.class)
-                            .mailet(SenderICALToJsonAttribute.class)
-                            .addProperty(SenderICALToJsonAttribute.RAW_SOURCE_ATTRIBUTE_NAME, "rawIcalendar"))
+                            .mailet(ICALToJsonAttribute.class)
+                            .addProperty(ICALToJsonAttribute.RAW_SOURCE_ATTRIBUTE_NAME, "rawIcalendar"))
                         .addMailet(MailetConfiguration.builder()
                             .matcher(All.class)
                             .mailet(CalDavCollect.class))
@@ -287,7 +288,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, receiver, mail, mimeMessageId);
 
-        DavCalendarObject result = davClient.getCalendarObject(new DavUser(sender.id(), sender.email()), new EventUid(mimeMessageId)).block();
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
     }
 
@@ -311,7 +312,7 @@ public class CalDavCollectIntegrationTest {
         sendMessage(sender, receiver, mail2, mimeMessageId2);
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
-        assertThat(result).isNull();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.STATUS).get().getValue()).isEqualTo("CANCELLED");
     }
 
     @Test
@@ -390,8 +391,9 @@ public class CalDavCollectIntegrationTest {
             .isEqualTo("office2");
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToUpdateCalendarObjectWhenNewSequenceIsLessThanCurrentSequence(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotUpdateCalendarObjectWhenNewSequenceIsLessThanCurrentSequence(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
@@ -411,6 +413,8 @@ public class CalDavCollectIntegrationTest {
                 .receiver(getReceiver())
                 .mimeMessageId(mimeMessageId2)
                 .calendarUid(calendarUid)
+                .dtStamp("20170106T105036Z")
+                .lastModified("20170106T105036Z")
                 .sequence("0")
                 .location("office2")
                 .build());
@@ -422,8 +426,9 @@ public class CalDavCollectIntegrationTest {
             .isEqualTo("office");
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToUpdateCalendarObjectWhenNewSequenceEqualCurrentSequenceAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotUpdateCalendarObjectWhenNewSequenceEqualCurrentSequenceAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, calendarUid));
@@ -509,8 +514,9 @@ public class CalDavCollectIntegrationTest {
             .isEqualTo("20170112T090000Z");
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToCreateNewVEventInRecurringCalendarWhenNewLastModifiedIsLessThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotCreateNewVEventInRecurringCalendarWhenNewLastModifiedIsLessThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
@@ -541,8 +547,9 @@ public class CalDavCollectIntegrationTest {
             .isEmpty();
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToCreateNewVEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotCreateNewVEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
@@ -575,8 +582,9 @@ public class CalDavCollectIntegrationTest {
             .isEmpty();
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToCreateNewVEventInRecurringCalendarWhenLastModifiedNotExistAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotCreateNewVEventInRecurringCalendarWhenLastModifiedNotExistAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithoutLastModified.eml.mustache",
@@ -647,8 +655,9 @@ public class CalDavCollectIntegrationTest {
             .isEqualTo("office3");
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToUpdateVEventInRecurringCalendarWhenNewLastModifiedIsLessThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotUpdateVEventInRecurringCalendarWhenNewLastModifiedIsLessThanCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
@@ -688,8 +697,9 @@ public class CalDavCollectIntegrationTest {
             .isEqualTo("office2");
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToUpdateVEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotUpdateVEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithoutLastModified.eml.mustache",
@@ -722,7 +732,7 @@ public class CalDavCollectIntegrationTest {
                 .calendarUid(calendarUid)
                 .lastModified("20170106T125036Z")
                 .dtStamp("20170106T135036Z")
-                .location("office2")
+                .location("office3")
                 .build());
         sendMessage(sender, receiver, mail3, mimeMessageId3);
 
@@ -732,8 +742,9 @@ public class CalDavCollectIntegrationTest {
             .isEqualTo("office2");
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToUpdateVEventInRecurringCalendarWhenLastModifiedNotExistAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotUpdateVEventInRecurringCalendarWhenLastModifiedNotExistAndNewDtStampIsLessThanCurrentDtStamp(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithoutLastModified.eml.mustache",
@@ -846,8 +857,9 @@ public class CalDavCollectIntegrationTest {
             .isEmpty();
     }
 
+    @Disabled("Currently dav server does not check if ics is outdated")
     @Test
-    void mailetShouldNotCallDavSeverToDeleteEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
+    void davSeverShouldNotDeleteEventInRecurringCalendarWhenNewLastModifiedEqualCurrentLastModified(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",

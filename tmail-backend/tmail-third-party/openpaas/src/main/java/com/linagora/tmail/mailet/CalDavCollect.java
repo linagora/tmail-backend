@@ -21,8 +21,10 @@ package com.linagora.tmail.mailet;
 import static com.linagora.tmail.dav.DavClient.CALENDAR_PATH;
 
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
+
+import jakarta.inject.Inject;
+import jakarta.mail.MessagingException;
 
 import org.apache.james.core.Username;
 import org.apache.mailet.AttributeName;
@@ -37,8 +39,6 @@ import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
 
-import jakarta.inject.Inject;
-import jakarta.mail.MessagingException;
 import reactor.core.publisher.Mono;
 
 public class CalDavCollect extends GenericMailet {
@@ -74,12 +74,11 @@ public class CalDavCollect extends GenericMailet {
                     .toList()
                     .forEach(json -> handleCalendarInMail(json, mail)));
         } catch (ClassCastException e) {
-            LOGGER.error("Received a mail with {} not being an ICAL object for mail {}", sourceAttributeName, mail.getName(), e);
+            LOGGER.error("Attribute {} is not Map<String, AttributeValue<byte[]> in mail {}", sourceAttributeName, mail.getName(), e);
         }
     }
 
     private void handleCalendarInMail(byte[] json, Mail mail) {
-        String s = new String(json, StandardCharsets.UTF_8);
         mail.getRecipients()
             .forEach(mailAddress -> {
                 try {
