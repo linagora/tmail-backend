@@ -346,6 +346,43 @@ class RedisPlaygroundTest {
         }
 
         @Test
+        @Disabled("Redis Pub/sub test upon Redis standalone restart. Please configure DockerRedis to expose to a static port on the host machine e.g:" +
+            "redisContainer.setPortBindings(List.of(String.format(%d:%d, 6379, 6379)))")
+        void pubSubMessagesShouldBeWellReceivedAfterRedisStandaloneRestart(DockerRedis redis) throws InterruptedException {
+            String channel = "testChannel";
+            String message = "Hello, Lettuce Redis Pub/Sub!";
+
+            // Set up a latch to wait for the message
+            CountDownLatch latch = new CountDownLatch(2);
+
+            // create the Pub/sub publisher and subscriber connection beforehand (just like RedisEventBus)
+            StatefulRedisPubSubConnection<String, String> subscriberConnection = createRawRedisClient(redis).connectPubSub();
+            RedisPubSubCommands<String, String> publisher = createRawRedisClient(redis).connectPubSub().sync();
+
+            // Consumer 1 subscribes the Listener 1 to the Redis Pub/Sub channel, before the Redis restart
+            subscriberConnection.sync().subscribe(channel);
+            subscriberConnection.addListener(new RedisPubSubListener(1, 1, latch));
+
+            // Redis restarts in the middle of pub sub
+            redis.stop();
+            Thread.sleep(2000L); // simulate a downtime
+            redis.start();
+
+            // Await a bit for the Redis server to be fully started, and Redis Pub/sub consumer can reconnect
+            Thread.sleep(2000L);
+
+            // Consumer 1 subscribes the Listener 2 to the Redis Pub/Sub channel, after Redis restart, on the existing Lettuce Pub/sub connection.
+            subscriberConnection.addListener(new RedisPubSubListener(1, 2, latch));
+
+            // Publish a message to the channel
+            publisher.publish(channel, message);
+
+            // Two listeners should receive 2 messages in total well
+            latch.await(10L, TimeUnit.SECONDS);
+            assertEquals(0, latch.getCount(), "Messages were fully received");
+        }
+
+        @Test
         void allListenersShouldBeNotifiedAboutTheMessage(DockerRedis redis) throws InterruptedException {
             String channel = "testChannel";
             String message = "Hello, Lettuce Redis Pub/Sub!";
