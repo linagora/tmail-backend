@@ -81,7 +81,7 @@ This mailet synchronizes calendars in mails with dav server (create, update, del
 
 The mailet configuration requires the following parameters:
 
-* `source`: source for this mailet. the value must be same as the value of `destinationAttribute` in ICalendarParser mailet.
+* `source`: source for this mailet. the value must be same as the value of `destination` attribute in ICALToJsonAttribute mailet.
 
 === Example
 This configuration contains all mailets necessary to read ics attachments in mail and send them to dav server.
