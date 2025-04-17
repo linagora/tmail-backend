@@ -58,7 +58,7 @@
             <mailet match="All" class="RemoveMimeHeader">
                 <name>bcc</name>
             </mailet>
-            <!-- ICAL pipeline for EventCaleandar response -->
+            <!-- ICAL pipeline for EventCalendar response -->
             <mailet match="SenderIsLocal" class="StripAttachment">
                 <mimeType>text/calendar</mimeType>
                 <attribute>rawIcalendar2</attribute>
@@ -77,8 +77,14 @@
                 <attribute>icalendar2</attribute>
                 <onMailetException>ignore</onMailetException>
             </mailet>
-            <mailet match="All" class="com.linagora.tmail.mailet.CalDavCollect">
+            <mailet match="All" class="org.apache.james.transport.mailets.ICALToJsonAttribute">
                 <source>icalendar2</source>
+                <destination>icalendarAsJson2</destination>
+                <rawSource>rawIcalendar2</rawSource>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="All" class="com.linagora.tmail.mailet.CalDavCollect">
+                <source>icalendarAsJson2</source>
             </mailet>
             <!-- End of ICAL pipeline -->
             <mailet match="All" class="RecipientRewriteTable">
