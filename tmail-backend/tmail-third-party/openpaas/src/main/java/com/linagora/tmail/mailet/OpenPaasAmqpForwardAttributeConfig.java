@@ -30,6 +30,7 @@ import com.google.common.base.Preconditions;
 import com.linagora.tmail.Exchange;
 import com.rabbitmq.client.BuiltinExchangeType;
 
+@Deprecated(forRemoval = true)
 public record OpenPaasAmqpForwardAttributeConfig(
     AttributeName attribute,
     Exchange exchange,
