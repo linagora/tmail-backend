@@ -50,6 +50,7 @@ import com.linagora.tmail.james.openpaas.OpenpaasTestUtils;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.rabbitmq.client.BuiltinExchangeType;
 
+@Deprecated(forRemoval = true)
 public class MemoryCalendarEventReplyWithAMQPWorkflowTest implements LinagoraCalendarEventReplyWithAMQPWorkflowContract {
     static final String AMQP_EXCHANGE_NAME = "james:events";
     static final String AMQP_ROUTING_KEY = "icalendar_routing_key2";
