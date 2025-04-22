@@ -31,34 +31,6 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 | Timeout for DAV Rest client. Optional, integer. Unit is milliseconds. Default to 10000.
 |===
 
-== OpenPaasAmqpForwardAttribute
-
-This mailet forwards the specified mail attribute value to OpenPaas through the AMQP protocol.
-
-=== Parameters
-
-The mailet configuration requires the following parameters:
-
-* `attribute`: the name of the attribute which its value would be forwarded, the value is expected to be a Map<String, byte[]>.
-* `exchange`: name of the AMQP exchange.
-* `exchange_type`: type of the exchange. Can be "direct", "fanout", "topic", "headers". Optional, defaults to "direct".
-
-=== Example
-This configuration forwards contacts extracted by the `ContactExtractor` mailet to OpenPaas through the AMQP protocol.
-
-[source,xml]
-----
-<mailet match="SenderIsLocal" class="ContactExtractor">
-    <attribute>extractedContacts</attribute>
-</mailet>
-
-<mailet match="All" class="com.linagora.tmail.mailet.OpenPaasAmqpForwardAttribute">
-  <attribute>extractedContacts</attribute>
-  <exchange>contacts:contact:add</exchange>
-  <exchange_type>FANOUT</exchange_type>
-</mailet>
-----
-
 == CardDavCollectedContact
 
 This mailet collects contacts from mail recipients and stores them in a CardDAV server using the HTTP API.
