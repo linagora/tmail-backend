@@ -88,7 +88,10 @@ import net.fortuna.ical4j.model.Calendar;
  *         &lt;/mailet&gt;
  *     </code>
  * </pre>
+ *
+ * @Deprecated to be removed after 1.0.6 Twake Mail backend release. Replaced by native DAV extension.
  */
+@Deprecated(forRemoval = true, since = "1.0.5 - April 2025")
 public class SenderICALToJsonAttribute extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(SenderICALToJsonAttribute.class);
     @SuppressWarnings("unchecked")
