@@ -66,6 +66,7 @@ import net.fortuna.ical4j.data.CalendarBuilder;
  * Cloned from org.apache.james.transport.mailets.ICALToJsonAttributeTest
  * And modified to fit the needs of the project
  */
+@Deprecated(forRemoval = true)
 public class SenderICALToJsonAttributeTest {
     private static final MailAddress SENDER = MailAddressFixture.ANY_AT_JAMES;
     @SuppressWarnings("unchecked")
