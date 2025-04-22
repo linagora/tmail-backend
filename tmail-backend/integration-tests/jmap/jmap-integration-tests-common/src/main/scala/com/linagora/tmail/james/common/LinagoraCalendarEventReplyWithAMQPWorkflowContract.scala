@@ -42,6 +42,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Test}
 
+@Deprecated(forRemoval = true)
 trait LinagoraCalendarEventReplyWithAMQPWorkflowContract {
 
   @BeforeEach
