@@ -15,15 +15,26 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
+package com.linagora.tmail.mailet.prob;
 
-package com.linagora.tmail.mailet;
+import jakarta.inject.Inject;
 
-import java.io.IOException;
-import java.util.Optional;
+import org.apache.james.utils.GuiceProbe;
 
-import dev.ai4j.openai4j.OpenAiHttpException;
-import reactor.core.publisher.Mono;
+import com.linagora.tmail.mailet.AIRedactionalHelper;
 
-public interface AIRedactionalHelper {
-    Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws OpenAiHttpException, IOException;
+
+
+public class AiBotProbe implements GuiceProbe {
+
+    private final AIRedactionalHelper aiRedactionalHelper;
+
+    @Inject
+    public AiBotProbe(AIRedactionalHelper aiRedactionalHelper) {
+        this.aiRedactionalHelper = aiRedactionalHelper;
+    }
+
+    public AIRedactionalHelper getAiRedactionalHelper() {
+        return aiRedactionalHelper;
+    }
 }

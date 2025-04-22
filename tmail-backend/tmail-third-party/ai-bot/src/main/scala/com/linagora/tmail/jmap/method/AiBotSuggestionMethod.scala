@@ -25,6 +25,7 @@ import com.linagora.tmail.mailet.AIRedactionalHelper
 import com.linagora.tmail.jmap.mail.{AiBotSuggestReplyRequest, AiBotSuggestReplyResponse}
 import com.linagora.tmail.jmap.core.CapabilityIdentifier.LINAGORA_AIBOT
 import com.linagora.tmail.jmap.json.AiBotSerializer
+import org.apache.commons.io.IOUtils
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.{Invocation, SessionTranslator}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -37,10 +38,10 @@ import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json._
 import reactor.core.publisher.{Flux, Mono}
+import reactor.core.scheduler.Schedulers
 
 import java.nio.charset.StandardCharsets
-import scala.io.Source
-import scala.jdk.CollectionConverters._
+
 
 class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
                                       val metricFactory: MetricFactory,
@@ -50,14 +51,14 @@ class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
                                       val messageIdFactory: MessageId.Factory)
   extends MethodRequiringAccountId[AiBotSuggestReplyRequest] {
 
-  override val methodName: Invocation.MethodName = MethodName("AiBotSuggestion/get")
+  override val methodName: Invocation.MethodName = MethodName("AiBot/Suggest")
 
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE,LINAGORA_AIBOT)
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, AiBotSuggestReplyRequest] =
     AiBotSerializer.deserializeRequest(invocation.arguments.value).asEither.left.map(ResponseSerializer.asException)
 
-  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Publisher[InvocationWithContext] = {
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Publisher[InvocationWithContext] =
     getEmail(mailboxSession, request)
       .flatMap(result => aiBotService.suggestContent(request.userInput, Optional.ofNullable(result))
         .map(res => AiBotSuggestReplyResponse.from(request.accountId,res))
@@ -66,37 +67,22 @@ class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
           Arguments(AiBotSerializer.serializeResponse(response).as[JsObject]),
           invocation.invocation.methodCallId))
         .map(InvocationWithContext(_, invocation.processingContext)))
-  }
 
-  private def getEmail(mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest) = {
+  private def getEmail(mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Mono[String] = {
     val messageId: MessageId = messageIdFactory.fromString(request.emailId)
     val messageIds = java.util.Collections.singletonList(messageId)
-    val fetchGroup = FetchGroup.FULL_CONTENT
-    val messagesPublisher: Publisher[MessageResult] =
-      messageIdManager.getMessagesReactive(
-        messageIds,
-        fetchGroup,
-        mailboxSession)
 
-    val emailContentAsString = extractEmailContent(messagesPublisher)
-    emailContentAsString
+    extractEmailContent(messageIdManager.getMessagesReactive(
+      messageIds,
+      FetchGroup.FULL_CONTENT,
+      mailboxSession))
   }
 
-  private def extractEmailContent(messagesPublisher: Publisher[MessageResult]): Mono[String] = {
-    val mono = Mono.from(messagesPublisher)
-
-    mono.map { messageResult =>
-      val inputStream = messageResult.getBody.getInputStream
-      messageResult.getFullContent.getInputStream
-      try {
-        inputStream.readAllBytes()
-      } finally {
-        inputStream.close()
-      }
-    }.map { bytes =>
-      new String(bytes, StandardCharsets.UTF_8)
-    }
-  }
+  private def extractEmailContent(messagesPublisher: Publisher[MessageResult]): Mono[String] =
+    Mono.from(messagesPublisher)
+      .map(_.getBody)
+      .flatMap(body => Mono.fromCallable(() => IOUtils.toString(body.getInputStream, StandardCharsets.UTF_8))
+        .subscribeOn(Schedulers.boundedElastic()))
 }
 
 
