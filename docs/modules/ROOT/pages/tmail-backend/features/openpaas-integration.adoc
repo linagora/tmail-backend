@@ -28,11 +28,6 @@ TMail integrates with Sabre via AMQP exchange to parse contacts and index them. 
 
 This integration powers the auto-complete feature in TMail, allowing users to email their OpenPaaS contacts directly from TMail's compose screen.
 
-=== Mail Attribute Forwarding
-Another feature is the ability to forward mail attributes to a OpenPaas through an AMQP server. This is enabled by `OpenPaasAmqpForwardAttribute` mailet.
-
-The integration uses the AMQP server configured in the `openpaas.properties` file.
-
 === Implementation Notes
 Deploying OpenPaaS alongside TMail is not required, making the integration with OpenPaaS optional.
 
