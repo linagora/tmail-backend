@@ -38,36 +38,36 @@ object CapabilityIdentifier {
   val LINAGORA_AIBOT: CapabilityIdentifier = "com:linagora:params:jmap:aibot"
 }
 
-case object CustomCapabilityProperties extends CapabilityProperties {
+case object AiBotCapabilityProperties extends CapabilityProperties {
   override def jsonify(): JsObject = Json.obj()
 }
 
-case object CustomCapability extends Capability {
-  val properties: CapabilityProperties = CustomCapabilityProperties
+case object AiBotCapability extends Capability {
+  val properties: CapabilityProperties = AiBotCapabilityProperties
   val identifier: CapabilityIdentifier = LINAGORA_AIBOT
 }
 
-class CustomCapabilitiesModule extends AbstractModule {
+class AiBotCapabilitiesModule extends AbstractModule {
   @ProvidesIntoSet
-  private def capability(): CapabilityFactory = CustomCapabilityFactory
+  private def capability(): CapabilityFactory = AiBotCapabilityFactory
 }
 
-case object CustomCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = CustomCapability
+case object AiBotCapabilityFactory extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability = AiBotCapability
 
   override def id(): CapabilityIdentifier = LINAGORA_AIBOT
 }
 
-class CustomMethodModule extends AbstractModule {
+class AiBotMethodModule extends AbstractModule {
   override def configure(): Unit = {
-    install(new CustomCapabilitiesModule())
+    install(new AiBotCapabilitiesModule())
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
-      .to(classOf[CustomMethod])
+      .to(classOf[AiBotMethod])
   }
 }
 
-class CustomMethod extends Method {
+class AiBotMethod extends Method {
 
   override val methodName: MethodName = MethodName("AiBot/Suggest")
 

@@ -27,7 +27,7 @@ import com.linagora.tmail.jmap.core.CapabilityIdentifier.LINAGORA_AIBOT
 import com.linagora.tmail.jmap.json.AiBotSerializer
 import org.apache.commons.io.IOUtils
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
-import org.apache.james.jmap.core.{Invocation, SessionTranslator}
+import org.apache.james.jmap.core.{Id, Invocation, SessionTranslator}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId}
@@ -69,13 +69,18 @@ class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
         .map(InvocationWithContext(_, invocation.processingContext)))
 
   private def getEmail(mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Mono[String] = {
-    val messageId: MessageId = messageIdFactory.fromString(request.emailId)
-    val messageIds = java.util.Collections.singletonList(messageId)
+    request.emailId match {
+      case Some(id) =>
+        val messageId: MessageId = messageIdFactory.fromString(id)
+        val messageIds = java.util.Collections.singletonList(messageId)
 
-    extractEmailContent(messageIdManager.getMessagesReactive(
-      messageIds,
-      FetchGroup.FULL_CONTENT,
-      mailboxSession))
+        extractEmailContent(messageIdManager.getMessagesReactive(
+          messageIds,
+          FetchGroup.FULL_CONTENT,
+          mailboxSession))
+      case None =>
+        Mono.empty()
+    }
   }
 
   private def extractEmailContent(messagesPublisher: Publisher[MessageResult]): Mono[String] =

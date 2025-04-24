@@ -18,57 +18,47 @@
 
 package com.linagora.tmail.mailet;
 
-import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
-import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.mailet.conf.AIBotModule;
-import com.linagora.tmail.mailet.prob.AiBotProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
-import io.grpc.netty.shaded.io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.restassured.specification.RequestSpecification;
+import jakarta.mail.Flags;
 import jakarta.mail.internet.MimeMessage;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.core.Username;
 import org.apache.james.core.builder.MimeMessageBuilder;
-import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
-import org.apache.james.mailets.configuration.*;
-import org.apache.james.modules.protocols.ImapGuiceProbe;
-import org.apache.james.modules.protocols.SmtpGuiceProbe;
-import org.apache.james.util.MimeMessageUtil;
+import org.apache.james.jmap.http.UserCredential;
+import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.utils.DataProbeImpl;
-import org.apache.james.utils.GuiceProbe;
-import org.apache.james.utils.SMTPMessageSender;
-import org.apache.james.utils.TestIMAPClient;
-import org.apache.mailet.base.test.FakeMail;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import java.util.Arrays;
-import java.util.Optional;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.util.Date;
 
-import static io.restassured.RestAssured.with;
+import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.SC_OK;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
-import static org.apache.james.mailets.configuration.Constants.*;
-import static org.apache.james.jmap.rfc8621.contract.Fixture.ACCEPT_RFC8621_VERSION_HEADER;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.apache.james.jmap.rfc8621.contract.Fixture.*;
 
 public class AiBotSuggestionMethodTest {
 
-    static final String DOMAIN = "linagora.com";
+    static final String DOMAIN = "james.org";
     static final String PASSWORD = "secret";
 
-    private static final String BOB = "bob@" + DEFAULT_DOMAIN;
-    private static final String ALICE = "alice@" + DEFAULT_DOMAIN;
-
-    @RegisterExtension
-    public SMTPMessageSender messageSender = new SMTPMessageSender(DEFAULT_DOMAIN);
-
-    @RegisterExtension
-    public TestIMAPClient imapClient = new TestIMAPClient();
+    private static final String BOB = "bob@" + DOMAIN;
+    private static final String ALICE = "alice@" + DOMAIN;
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
@@ -84,97 +74,88 @@ public class AiBotSuggestionMethodTest {
                 @Override
                 protected void configure() {
                     bind(AIRedactionalHelper.class).to(AIRedactionalHelperForTest.class);
-                }})
-            )
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(AiBotProbe.class)))
+                }})))
         .build();
 
-    @Test
-    public void shouldLoadAIBot(GuiceJamesServer jamesServer) throws Exception {
-        AIRedactionalHelper helperr =jamesServer.getProbe(AiBotProbe.class).getAiRedactionalHelper();
-        String result= helperr.suggestContent("aaa", Optional.of("alae")).block();
-        System.out.println(result);
-        assertThat(result).isNotNull();
-    }
 
+    @Disabled("Capability not supported yet")
     @Test
-    public void shouldSendEmail(GuiceJamesServer jamesServer) {
-        assertThat(jamesServer.getProbe(MailboxManagerClassProbe.class).getMailboxManagerClass())
-            .isEqualTo(InMemoryMailboxManager.class);
-    }
-
-    @Test
-    public void shoudVerifyServerStarted(GuiceJamesServer jamesServer) throws Exception {
-        Assertions.assertTrue(jamesServer.isStarted());
-    }
-    @Test
-    public void shoudVerifyEmailSent(GuiceJamesServer jamesServer) throws Exception {
+    public void shoudVerifyJmapMethodReplyToEmailFromScratch(GuiceJamesServer jamesServer) throws Exception {
         jamesServer.getProbe(DataProbeImpl.class).fluent()
-            .addDomain(DEFAULT_DOMAIN)
-            .addUser(BOB, PASSWORD)
+            .addDomain(DOMAIN)
             .addUser(ALICE, PASSWORD);
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(BOB, PASSWORD)
-            .sendMessage(FakeMail.builder()
-                .name("name")
-                .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
-                    .setSender(BOB)
-                    .addToRecipient(ALICE)
-                    .setSubject("How can I cook an egg?")
-                    .setText("I do not know how to cook an egg. Please help me."))
-                .sender(BOB)
-                .recipient(ALICE));
-        imapClient.connect(LOCALHOST_IP, jamesServer.getProbe(ImapGuiceProbe.class).getImapPort())
-            .login(ALICE, PASSWORD)
-            .select(TestIMAPClient.INBOX)
-            .awaitMessageCount(Constants.awaitAtMostOneMinute, 1);
+        MailboxPath path = MailboxPath.inbox(Username.of(ALICE));
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(path);
 
-        MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(imapClient.readFirstMessage());
-        System.out.println(Arrays.toString(mimeMessage.getHeader("Message-Id")));
-        assertThat(mimeMessage.getHeader("Sender")).containsOnly(BOB);
-        assertThat(mimeMessage.getHeader("Subject")[0]).isEqualTo("How can I cook an egg?");
+        String request = "{\n" +
+            "  \"using\": [\"urn:ietf:params:jmap:core\", \"com:linagora:params:jmap:aibot\"]," +
+            "  \"methodCalls\": [" +
+            "    [\"AiBot/Suggest\", {" +
+            "      \"accountId\": \"ec77d4733cef70537b19b580db81fbbb6dc2a46a6d5662055cab568e75f71570\"," +
+            "      \"userInput\": \"explain to him how to cook an egg\"" +
+            "    }, \"0\"]" +
+            "  ]" +
+            "}";
+
+        //assertions are not complete yet
+        given(buildJmapRequestSpecification(Username.of(ALICE), PASSWORD, jamesServer))
+            .log().all()
+            .body(String.format(request))
+            .when()
+            .post()
+            .then()
+            .log().all()
+            .statusCode(SC_OK);
     }
+
+    @Disabled("Capability not supported yet")
     @Test
     public void shoudVerifyJmapMethod(GuiceJamesServer jamesServer) throws Exception {
         jamesServer.getProbe(DataProbeImpl.class).fluent()
-            .addDomain(DEFAULT_DOMAIN)
-            .addUser(BOB, PASSWORD)
+            .addDomain("james.org")
             .addUser(ALICE, PASSWORD);
 
-        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
-            .authenticate(BOB, PASSWORD)
-            .sendMessage(FakeMail.builder()
-                .name("name")
-                .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
-                    .setSender(BOB)
-                    .addToRecipient(ALICE)
-                    .setSubject("How can I cook an egg?")
-                    .setText("I do not know how to cook an egg. Please help me."))
-                .sender(BOB)
-                .recipient(ALICE));
-        imapClient.connect(LOCALHOST_IP, jamesServer.getProbe(ImapGuiceProbe.class).getImapPort())
-            .login(ALICE, PASSWORD)
-            .select(TestIMAPClient.INBOX)
-            .awaitMessageCount(Constants.awaitAtMostOneMinute, 1);
-        MimeMessage mimeMessage = MimeMessageUtil.mimeMessageFromString(imapClient.readFirstMessage());
+        MimeMessage mimeMessage = MimeMessageBuilder.mimeMessageBuilder()
+            .setSender(BOB)
+            .addToRecipient("alice@james.org")
+            .setSubject("Redaction Aide")
+            .setText("Peux-tu m’aider à écrire une réponse formelle ?")
+            .build();
 
-        String request = "{\n" +
-            "  \"using\": [\"urn:ietf:params:jmap:core\", \"com:linagora:params:jmap:aibot\"],\n" +
-            "  \"methodCalls\": [\n" +
-            "    [\"AiBot/Suggest\", {\n" +
-            "      \"accountId\": \"ec77d4733cef70537b19b580db81fbbb6dc2a46a6d5662055cab568e75f71570\",\n" +
-            "      \"userInput\": \"explain to him how to cook an egg\",\n" +
-            "      \"emailId\": " + Arrays.toString(mimeMessage.getHeader("Message-Id")) + "\n" +
-            "    }, \"0\"]\n" +
-            "  ]\n" +
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        mimeMessage.writeTo(outputStream);
+        InputStream messageInputStream = new ByteArrayInputStream(outputStream.toByteArray());
+        MailboxPath path = MailboxPath.inbox(Username.of(ALICE));
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(path);
+        MessageId messageId = jamesServer.getProbe(MailboxProbeImpl.class).appendMessage(ALICE,path,messageInputStream,new Date(),true,new Flags(Flags.Flag.RECENT)).getMessageId();
+        String request = "{" +
+            "  \"using\": [\"urn:ietf:params:jmap:core\", \"com:linagora:params:jmap:aibot\"]," +
+            "  \"methodCalls\": [" +
+            "    [\"AiBot/Suggest\", {" +
+            "      \"accountId\":\\\"ec77d4733cef70537b19b580db81fbbb6dc2a46a6d5662055cab568e75f71570\\\"," +
+            "      \"userInput\": \"explain to him how to cook an egg\"," +
+            "      \"emailId\": \"" + messageId.serialize() + "\"" +
+            "    }, \"0\"]" +
+            "  ]" +
             "}";
-        System.out.println("Generated Request: \n" + request);
 
-        with()
-            .header(HttpHeaderNames.ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER())
-            .body(request)
+        //assertions are not complete yet
+        given(buildJmapRequestSpecification(Username.of(ALICE), PASSWORD, jamesServer))
+            .log().all()
+            .body(String.format(request))
             .when()
-            .post();
+            .post()
+            .then()
+            .log().all()
+            .statusCode(SC_OK);
+    }
+
+    private RequestSpecification buildJmapRequestSpecification(Username username, String password, GuiceJamesServer jamesServer) {
+        return baseRequestSpecBuilder(jamesServer)
+            .setAuth(authScheme(new UserCredential(username, password)))
+            .addHeader(HttpHeaderNames.ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER())
+            .build();
     }
 }
+

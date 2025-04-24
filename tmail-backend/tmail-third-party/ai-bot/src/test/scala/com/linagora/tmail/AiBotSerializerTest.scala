@@ -24,6 +24,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json._
 import org.scalatest.matchers.should.Matchers
 
+import java.util.Optional
+
 class AiBotSerializerTest extends AnyWordSpec with Matchers {
 
   "AiBotDeSerializer" should {
@@ -39,7 +41,7 @@ class AiBotSerializerTest extends AnyWordSpec with Matchers {
 
       val expected = AiBotSuggestReplyRequest(
         accountId = AccountId(Id.validate("aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8").toOption.get),
-        emailId = Id.validate("aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8").toOption.get,
+        emailId = Some(Id.validate("aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8").toOption.get),
         userInput = "Hello AI!"
       )
       val result = AiBotSerializer.deserializeRequest(Json.parse(jsonString))
@@ -47,7 +49,27 @@ class AiBotSerializerTest extends AnyWordSpec with Matchers {
     }
   }
 
-  "AiBotIdentitySerializer" should {
+  "AiBotNullRequestDeSerializer" should {
+    "deserialize AiBotSuggestReplyRequest from valid JSON with null mailId" in {
+      val jsonString =
+        """
+          |{
+          |  "accountId": "aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8",
+          |  "userInput": "Hello AI!"
+          |}
+          |""".stripMargin
+
+      val expected = AiBotSuggestReplyRequest(
+        accountId = AccountId(Id.validate("aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8").toOption.get),
+        emailId = None,
+        userInput = "Hello AI!"
+      )
+      val result = AiBotSerializer.deserializeRequest(Json.parse(jsonString))
+      result should equal(JsSuccess(expected))
+    }
+  }
+
+  "AiBotSerializer" should {
     "deserialize AiBotSuggestReplyRequest from valid JSON" in {
       val expected = Json.parse ("""
           |{

@@ -21,9 +21,11 @@ import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.method.WithAccountId
 
+import java.util.Optional
+
 case class AiBotSuggestReplyRequest(
                                      accountId: AccountId,
-                                     emailId: Id,
+                                     emailId: Option[Id],
                                      userInput: String
                                    )extends WithAccountId
 
