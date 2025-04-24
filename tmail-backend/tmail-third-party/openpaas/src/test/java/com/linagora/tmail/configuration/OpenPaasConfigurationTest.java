@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import java.time.Duration;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
@@ -51,12 +52,14 @@ class OpenPaasConfigurationTest {
         configuration.addProperty("openpaas.admin.password", "123");
         configuration.addProperty("openpaas.rest.client.trust.all.ssl.certs", "true");
         configuration.addProperty("openpaas.queues.quorum.bypass", "true");
+        configuration.addProperty("openpaas.rest.client.response.timeout", "500ms");
 
         OpenPaasConfiguration expected = new OpenPaasConfiguration(
             URI.create("http://localhost:8080"),
             "jhon_doe",
             "123",
             true,
+            Duration.ofMillis(500),
             new OpenPaasConfiguration.ContactConsumerConfiguration(
                 ImmutableList.of(AmqpUri.from("amqp://james:james@rabbitmqhost:5672")),
                 true));
@@ -75,6 +78,18 @@ class OpenPaasConfigurationTest {
 
         assertThat(OpenPaasConfiguration.from(configuration).contactConsumerConfiguration().get().quorumQueuesBypass())
             .isEqualTo(false);
+    }
+
+    @Test
+    void clientTimeoutShouldBe30SecondsByDefault() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://james:james@rabbitmqhost:5672");
+        configuration.addProperty("openpaas.api.uri", "http://localhost:8080");
+        configuration.addProperty("openpaas.admin.user", "jhon_doe");
+        configuration.addProperty("openpaas.admin.password", "123");
+
+        assertThat(OpenPaasConfiguration.from(configuration).responseTimeout())
+            .isEqualTo(Duration.ofSeconds(30));
     }
 
     @Test

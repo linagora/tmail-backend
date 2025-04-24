@@ -18,6 +18,8 @@
 
 package com.linagora.tmail;
 
+import static com.linagora.tmail.configuration.OpenPaasConfiguration.DEFAULT_RESPONSE_TIMEOUT;
+
 import java.util.Optional;
 
 import com.google.inject.AbstractModule;
@@ -48,6 +50,7 @@ public class OpenPaasTestModule extends AbstractModule {
             WireMockOpenPaaSServerExtension.ALICE_ID,
             WireMockOpenPaaSServerExtension.GOOD_PASSWORD,
             false,
+            DEFAULT_RESPONSE_TIMEOUT,
             contactConsumerConfiguration,
             davConfiguration);
     }

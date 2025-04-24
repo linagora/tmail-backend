@@ -210,6 +210,7 @@ public class DockerOpenPaasSetup {
             OPENPAAS_ADMIN_USERNAME,
             OPENPAAS_ADMIN_PASSWORD,
             TRUST_ALL_SSL_CERTS,
+            OpenPaasConfiguration.DEFAULT_RESPONSE_TIMEOUT,
             Optional.of(new OpenPaasConfiguration.ContactConsumerConfiguration(
                 ImmutableList.of(AmqpUri.from(rabbitMqUri())),
                 OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED)),

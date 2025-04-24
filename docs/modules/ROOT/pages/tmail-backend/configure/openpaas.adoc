@@ -19,6 +19,8 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 | Whether the OpenPaaS Rest client should trust all SSL certificates. Optional, boolean. Default to false.
 | openpaas.queues.quorum.bypass
 | Whether to ignore quorum queues setting from `rabbitmq.properties`. Optional, boolean. Default to false. If `true`, OpenPaaS queues would use classic queues.
+| openpaas.rest.client.response.timeout
+| Timeout for OpenPaaS Rest client. Optional. Duration (support multiple time units cf `DurationParser`, default unit is milliseconds), defaults to 30 seconds.
 | dav.api.uri
 | Optional. URI for DAV API. Example: `dav.api.uri=http://sabre_dav:80/api`
 | dav.admin.user

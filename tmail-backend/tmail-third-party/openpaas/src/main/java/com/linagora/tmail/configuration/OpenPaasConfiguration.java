@@ -20,12 +20,16 @@ package com.linagora.tmail.configuration;
 
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.james.util.DurationParser;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.AmqpUri;
@@ -35,6 +39,7 @@ public record OpenPaasConfiguration(URI apirUri,
                                     String adminUsername,
                                     String adminPassword,
                                     boolean trustAllSslCerts,
+                                    Duration responseTimeout,
                                     Optional<ContactConsumerConfiguration> contactConsumerConfiguration,
                                     Optional<DavConfiguration> davConfiguration) {
 
@@ -42,12 +47,19 @@ public record OpenPaasConfiguration(URI apirUri,
                                                boolean quorumQueuesBypass) {
     }
 
-    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, ContactConsumerConfiguration contactConsumerConfiguration) {
-        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.of(contactConsumerConfiguration), Optional.empty());
+    @VisibleForTesting
+    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, Duration responseTimeout, ContactConsumerConfiguration contactConsumerConfiguration) {
+        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, responseTimeout, Optional.of(contactConsumerConfiguration), Optional.empty());
     }
 
+    @VisibleForTesting
+    public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, ContactConsumerConfiguration contactConsumerConfiguration) {
+        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, DEFAULT_RESPONSE_TIMEOUT, Optional.of(contactConsumerConfiguration), Optional.empty());
+    }
+
+    @VisibleForTesting
     public OpenPaasConfiguration(URI apirUri, String adminUsername, String adminPassword, boolean trustAllSslCerts, DavConfiguration davConfiguration) {
-        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, Optional.empty(), Optional.of(davConfiguration));
+        this(apirUri, adminUsername, adminPassword, trustAllSslCerts, DEFAULT_RESPONSE_TIMEOUT, Optional.empty(), Optional.of(davConfiguration));
     }
 
     private static final String RABBITMQ_URI_PROPERTY = "rabbitmq.uri";
@@ -55,23 +67,26 @@ public record OpenPaasConfiguration(URI apirUri,
     private static final String OPENPAAS_ADMIN_USER_PROPERTY = "openpaas.admin.user";
     private static final String OPENPAAS_ADMIN_PASSWORD_PROPERTY = "openpaas.admin.password";
     private static final String OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY = "openpaas.rest.client.trust.all.ssl.certs";
+    private static final String OPENPAAS_REST_CLIENT_RESPONSE_TIMEOUT_PROPERTY = "openpaas.rest.client.response.timeout";
     public static final boolean OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED = false;
     private static final String OPENPAAS_QUEUES_QUORUM_BYPASS_PROPERTY = "openpaas.queues.quorum.bypass";
     public static final boolean OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED = false;
     public static final boolean OPENPAAS_QUEUES_QUORUM_BYPASS_ENABLED = true;
+    public static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(30);
 
     public static OpenPaasConfiguration from(Configuration configuration) {
         URI openPaasApiUri = readApiUri(configuration);
         String adminUser = readAdminUsername(configuration);
         String adminPassword = readAdminPassword(configuration);
         boolean trustAllSslCerts = readTrustAllSslCerts(configuration);
+        Duration responseTimeout = readOpenPaasClientTimeout(configuration);
 
         Optional<ContactConsumerConfiguration> contactConsumerConfiguration = readRabbitMqUri(configuration)
             .map(amqpUri -> new ContactConsumerConfiguration(amqpUri, readQuorumQueuesBypass(configuration)));
 
         Optional<DavConfiguration> davConfiguration = DavConfiguration.maybeFrom(configuration);
 
-        return new OpenPaasConfiguration(openPaasApiUri, adminUser, adminPassword, trustAllSslCerts, contactConsumerConfiguration, davConfiguration);
+        return new OpenPaasConfiguration(openPaasApiUri, adminUser, adminPassword, trustAllSslCerts, responseTimeout, contactConsumerConfiguration, davConfiguration);
     }
 
     public static boolean isConfiguredContactConsumer(Configuration configuration) {
@@ -143,6 +158,12 @@ public record OpenPaasConfiguration(URI apirUri,
 
     private static boolean readQuorumQueuesBypass(Configuration configuration) {
         return configuration.getBoolean(OPENPAAS_QUEUES_QUORUM_BYPASS_PROPERTY, OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED);
+    }
+
+    private static Duration readOpenPaasClientTimeout(Configuration configuration) {
+        return Optional.ofNullable(configuration.getString(OPENPAAS_REST_CLIENT_RESPONSE_TIMEOUT_PROPERTY, null))
+            .map(value -> DurationParser.parse(value, ChronoUnit.MILLIS))
+            .orElse(DEFAULT_RESPONSE_TIMEOUT);
     }
 
 }
