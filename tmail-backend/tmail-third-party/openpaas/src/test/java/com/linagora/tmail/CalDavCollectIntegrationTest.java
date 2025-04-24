@@ -215,6 +215,7 @@ public class CalDavCollectIntegrationTest {
     private DavClient davClient;
     private OpenPaasUser sender;
     private OpenPaasUser receiver;
+    private OpenPaasUser notInvited;
 
     @BeforeEach
     void setUpJamesServer(@TempDir File temporaryFolder) throws Exception {
@@ -267,12 +268,14 @@ public class CalDavCollectIntegrationTest {
 
         sender = createUser();
         receiver = createUser();
+        notInvited = createUser();
 
         jamesServer.getProbe(DataProbeImpl.class)
             .fluent()
             .addDomain(OpenPaaSProvisioningService.DOMAIN)
             .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
+            .addUser(receiver.email(), PASSWORD)
+            .addUser(notInvited.email(), PASSWORD);
     }
 
     @AfterEach
@@ -289,6 +292,17 @@ public class CalDavCollectIntegrationTest {
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
+    }
+
+    @Test
+    void mailetShouldNotCallDavServerToCreateNewCalendarObjectIfRecipientNotInvited(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
+
+        sendMessage(sender, notInvited, mail, mimeMessageId);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new EventUid(mimeMessageId)).block();
+        assertThat(result).isNull();
     }
 
     @Test

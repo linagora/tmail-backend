@@ -21,11 +21,13 @@ package com.linagora.tmail.mailet;
 import static com.linagora.tmail.dav.DavClient.CALENDAR_PATH;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 
+import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeUtils;
@@ -35,6 +37,8 @@ import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
@@ -79,21 +83,45 @@ public class CalDavCollect extends GenericMailet {
     }
 
     private void handleCalendarInMail(byte[] json, Mail mail) {
-        mail.getRecipients()
-            .forEach(mailAddress -> {
-                try {
-                    davUserProvider.provide(Username.of(mailAddress.asString()))
-                        .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
-                        .block();
-                } catch (Exception e) {
-                    LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), mailAddress.asString(), e);
-                }
-            });
+        String icalContent = extractIcalContent(json, mail.getName());
+
+        if (!icalContent.isEmpty()) {
+            mail.getRecipients()
+                .forEach(mailAddress -> {
+                    try {
+                        if (isRecipientAttendee(mailAddress, icalContent)) {
+                            davUserProvider.provide(Username.of(mailAddress.asString()))
+                                .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
+                                .block();
+                        }
+                    } catch (Exception e) {
+                        LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), mailAddress.asString(), e);
+                    }
+                });
+        }
     }
 
     private Mono<Void> synchronizeWithDavServer(byte[] json, DavUser davUser) {
         return davClient.sendITIPRequest(davUser.username(),
             URI.create(CALENDAR_PATH + davUser.userId()),
             json);
+    }
+
+    private String extractIcalContent(byte[] json, String mailName) {
+        try {
+            String jsonString = new String(json, StandardCharsets.UTF_8);
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonString);
+
+            return rootNode.get("ical").asText();
+        } catch (Exception e) {
+            LOGGER.error("Error while handling calendar in mail {}", mailName, e);
+            return "";
+        }
+    }
+
+    private boolean isRecipientAttendee(MailAddress mailAddress, String icalContent) {
+        return icalContent.toLowerCase().contains(mailAddress.getLocalPart().toLowerCase());
     }
 }
