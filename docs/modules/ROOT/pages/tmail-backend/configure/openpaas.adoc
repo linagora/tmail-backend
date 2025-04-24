@@ -28,7 +28,7 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 | dav.rest.client.trust.all.ssl.certs
 | Whether the DAV Rest client should trust all SSL certificates. Optional, boolean. Default to false.
 | dav.rest.client.response.timeout
-| Timeout for DAV Rest client. Optional, integer. Unit is milliseconds. Default to 10000.
+| Timeout for DAV Rest client. Optional. Duration (support multiple time units cf `DurationParser`, default unit is milliseconds), defaults to 30 seconds.
 |===
 
 == CardDavCollectedContact

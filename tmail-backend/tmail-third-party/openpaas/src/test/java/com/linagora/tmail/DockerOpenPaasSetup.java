@@ -26,6 +26,7 @@
 
 package com.linagora.tmail;
 
+import static com.linagora.tmail.configuration.DavConfiguration.DEFAULT_RESPONSE_TIMEOUT;
 import static com.linagora.tmail.configuration.OpenPaasConfiguration.OPENPAAS_QUEUES_QUORUM_BYPASS_DISABLED;
 
 import java.io.File;
@@ -200,7 +201,7 @@ public class DockerOpenPaasSetup {
             new UsernamePasswordCredentials(DAV_ADMIN, DAV_ADMIN_PASSWORD),
             getSabreDavURI(),
             TRUST_ALL_SSL_CERTS,
-            Optional.empty());
+            DEFAULT_RESPONSE_TIMEOUT);
     }
 
     public OpenPaasConfiguration openPaasConfiguration() {
