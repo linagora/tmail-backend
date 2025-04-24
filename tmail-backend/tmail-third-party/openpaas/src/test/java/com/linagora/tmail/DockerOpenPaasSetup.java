@@ -199,7 +199,7 @@ public class DockerOpenPaasSetup {
         return new DavConfiguration(
             new UsernamePasswordCredentials(DAV_ADMIN, DAV_ADMIN_PASSWORD),
             getSabreDavURI(),
-            Optional.of(TRUST_ALL_SSL_CERTS),
+            TRUST_ALL_SSL_CERTS,
             Optional.empty());
     }
 

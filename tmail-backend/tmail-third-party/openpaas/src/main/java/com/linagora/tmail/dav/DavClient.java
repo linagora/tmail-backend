@@ -85,14 +85,14 @@ public class DavClient {
     @Inject
     public DavClient(DavConfiguration config) throws SSLException {
         this.config = config;
-        this.client = createHttpClient(config.trustAllSslCerts().orElse(false));
+        this.client = createHttpClient();
     }
 
-    private HttpClient createHttpClient(boolean trustAllSslCerts) throws SSLException {
+    private HttpClient createHttpClient() throws SSLException {
         HttpClient client = HttpClient.create()
             .baseUrl(config.baseUrl().toString())
             .responseTimeout(config.responseTimeout().orElse(DEFAULT_RESPONSE_TIMEOUT));
-        if (trustAllSslCerts) {
+        if (config.trustAllSslCerts()) {
             SslContext sslContext = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
             return client.secure(sslContextSpec -> sslContextSpec.sslContext(sslContext));
         }
