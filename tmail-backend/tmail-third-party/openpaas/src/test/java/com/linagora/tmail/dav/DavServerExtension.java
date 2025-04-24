@@ -234,7 +234,7 @@ public class DavServerExtension extends WireMockExtension {
         return new DavConfiguration(
             new UsernamePasswordCredentials(DAV_ADMIN, DAV_ADMIN_PASSWORD),
             URI.create(baseUrl()),
-            Optional.of(TRUST_ALL_SSL_CERTS),
+            TRUST_ALL_SSL_CERTS,
             Optional.of(TEN_SECONDS));
     }
 

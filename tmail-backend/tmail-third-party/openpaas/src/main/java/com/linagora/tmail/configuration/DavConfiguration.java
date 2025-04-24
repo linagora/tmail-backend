@@ -30,7 +30,7 @@ import com.google.common.base.Preconditions;
 
 public record DavConfiguration(UsernamePasswordCredentials adminCredential,
                                URI baseUrl,
-                               Optional<Boolean> trustAllSslCerts,
+                               boolean trustAllSslCerts,
                                Optional<Duration> responseTimeout) {
     static final boolean CLIENT_TRUST_ALL_SSL_CERTS_DISABLED = false;
     static final String DAV_API_URI_PROPERTY = "dav.api.uri";
@@ -58,8 +58,7 @@ public record DavConfiguration(UsernamePasswordCredentials adminCredential,
         Preconditions.checkArgument(StringUtils.isNotEmpty(baseUrlAsString), DAV_API_URI_PROPERTY + " should not be empty");
         URI baseUrl = URI.create(baseUrlAsString);
 
-        Optional<Boolean> trustAllSslCerts = Optional.of(configuration.getBoolean(
-            DAV_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY, CLIENT_TRUST_ALL_SSL_CERTS_DISABLED));
+        boolean trustAllSslCerts = configuration.getBoolean(DAV_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY, CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
         Optional<Duration> responseTimeout = Optional.ofNullable(configuration.getLong(
                 DAV_REST_CLIENT_RESPONSE_TIMEOUT_PROPERTY, null))
             .map(durationAsMilliseconds -> {
