@@ -20,7 +20,6 @@ package com.linagora.tmail.api;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.stream.Collectors;
 
 import javax.net.ssl.SSLException;
@@ -50,7 +49,6 @@ import reactor.netty.http.client.HttpClientResponse;
 public class OpenPaasRestClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasRestClient.class);
 
-    private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private final HttpClient client;
     private final ObjectMapper deserializer = new ObjectMapper();
@@ -68,7 +66,7 @@ public class OpenPaasRestClient {
         HttpClient baseHttpClient = HttpClient.create()
             .baseUrl(apiUrl.toString())
             .headers(headers -> headers.add(AUTHORIZATION_HEADER, HttpUtils.createBasicAuthenticationToken(user, password)))
-            .responseTimeout(RESPONSE_TIMEOUT);
+            .responseTimeout(openPaasConfiguration.responseTimeout());
 
         if (openPaasConfiguration.trustAllSslCerts()) {
             SslContext sslContext = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
