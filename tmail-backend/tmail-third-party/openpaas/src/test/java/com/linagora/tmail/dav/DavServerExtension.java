@@ -36,7 +36,6 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.Optional;
 
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.james.util.ClassLoaderUtils;
@@ -235,7 +234,7 @@ public class DavServerExtension extends WireMockExtension {
             new UsernamePasswordCredentials(DAV_ADMIN, DAV_ADMIN_PASSWORD),
             URI.create(baseUrl()),
             TRUST_ALL_SSL_CERTS,
-            Optional.of(TEN_SECONDS));
+            TEN_SECONDS);
     }
 
     public static String createDelegatedBasicAuthenticationToken(String username) {

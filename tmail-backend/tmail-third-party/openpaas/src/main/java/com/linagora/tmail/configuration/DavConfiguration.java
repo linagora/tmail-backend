@@ -20,18 +20,21 @@ package com.linagora.tmail.configuration;
 
 import java.net.URI;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.james.util.DurationParser;
 
 import com.google.common.base.Preconditions;
 
 public record DavConfiguration(UsernamePasswordCredentials adminCredential,
                                URI baseUrl,
                                boolean trustAllSslCerts,
-                               Optional<Duration> responseTimeout) {
+                               Duration responseTimeout) {
+    public static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(30);
     static final boolean CLIENT_TRUST_ALL_SSL_CERTS_DISABLED = false;
     static final String DAV_API_URI_PROPERTY = "dav.api.uri";
     static final String DAV_ADMIN_USER_PROPERTY = "dav.admin.user";
@@ -59,12 +62,11 @@ public record DavConfiguration(UsernamePasswordCredentials adminCredential,
         URI baseUrl = URI.create(baseUrlAsString);
 
         boolean trustAllSslCerts = configuration.getBoolean(DAV_REST_CLIENT_TRUST_ALL_SSL_CERTS_PROPERTY, CLIENT_TRUST_ALL_SSL_CERTS_DISABLED);
-        Optional<Duration> responseTimeout = Optional.ofNullable(configuration.getLong(
-                DAV_REST_CLIENT_RESPONSE_TIMEOUT_PROPERTY, null))
-            .map(durationAsMilliseconds -> {
-                Preconditions.checkArgument(durationAsMilliseconds > 0, "Response timeout should not be negative");
-                return Duration.ofMillis(durationAsMilliseconds);
-            });
+
+        Duration responseTimeout = Optional.ofNullable(configuration.getString(DAV_REST_CLIENT_RESPONSE_TIMEOUT_PROPERTY, null))
+            .map(value -> DurationParser.parse(value, ChronoUnit.MILLIS))
+            .orElse(DEFAULT_RESPONSE_TIMEOUT);
+
         return new DavConfiguration(adminCredential, baseUrl, trustAllSslCerts, responseTimeout);
     }
 

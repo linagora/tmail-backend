@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
-import java.util.Optional;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -47,16 +46,28 @@ class DavConfigurationTest {
         configuration.addProperty("dav.admin.user", "jhon_doe");
         configuration.addProperty("dav.admin.password", "123");
         configuration.addProperty("dav.rest.client.trust.all.ssl.certs", "true");
-        configuration.addProperty("dav.rest.client.response.timeout", "500");
+        configuration.addProperty("dav.rest.client.response.timeout", "500ms");
 
         DavConfiguration expected = new DavConfiguration(
             new UsernamePasswordCredentials("jhon_doe", "123"),
             new URI("http://localhost:8080"),
             true,
-            Optional.of(Duration.ofMillis(500)));
+            Duration.ofMillis(500));
 
         assertThat(DavConfiguration.from(configuration))
             .isEqualTo(expected);
+    }
+
+    @Test
+    void davClientTimeoutShouldDefaultTo30Seconds() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("dav.api.uri", "http://localhost:8080");
+        configuration.addProperty("dav.admin.user", "jhon_doe");
+        configuration.addProperty("dav.admin.password", "123");
+        configuration.addProperty("dav.rest.client.trust.all.ssl.certs", "true");
+
+        assertThat(DavConfiguration.from(configuration).responseTimeout())
+            .isEqualTo(Duration.ofSeconds(30));
     }
 
     @Test

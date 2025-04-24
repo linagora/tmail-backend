@@ -65,7 +65,6 @@ import reactor.util.retry.Retry;
 
 public class DavClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(DavClient.class);
-    private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofSeconds(10);
     private static final String COLLECTED_ADDRESS_BOOK_PATH = "/addressbooks/%s/collected/%s.vcf";
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String ACCEPT_XML = "application/xml";
@@ -91,7 +90,7 @@ public class DavClient {
     private HttpClient createHttpClient() throws SSLException {
         HttpClient client = HttpClient.create()
             .baseUrl(config.baseUrl().toString())
-            .responseTimeout(config.responseTimeout().orElse(DEFAULT_RESPONSE_TIMEOUT));
+            .responseTimeout(config.responseTimeout());
         if (config.trustAllSslCerts()) {
             SslContext sslContext = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
             return client.secure(sslContextSpec -> sslContextSpec.sslContext(sslContext));
