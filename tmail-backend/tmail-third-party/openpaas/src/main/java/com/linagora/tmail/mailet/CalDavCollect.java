@@ -20,8 +20,10 @@ package com.linagora.tmail.mailet;
 
 import static com.linagora.tmail.dav.DavClient.CALENDAR_PATH;
 
+import java.io.StringReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 import jakarta.inject.Inject;
@@ -39,10 +41,17 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
 
+import net.fortuna.ical4j.data.CalendarBuilder;
+import net.fortuna.ical4j.model.Calendar;
+import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.Property;
+import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.property.Attendee;
 import reactor.core.publisher.Mono;
 
 public class CalDavCollect extends GenericMailet {
@@ -91,8 +100,9 @@ public class CalDavCollect extends GenericMailet {
         if (!icalContent.isEmpty() && !recipient.isEmpty()) {
             try {
                 MailAddress mailAddress = new MailAddress(recipient);
+                Calendar calendar = parseICalString(icalContent);
 
-                if (isRecipientAttendee(mailAddress, icalContent)) {
+                if (isRecipientAttendee(mailAddress, calendar)) {
                     davUserProvider.provide(Username.of(mailAddress.asString()))
                         .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
                         .block();
@@ -120,7 +130,26 @@ public class CalDavCollect extends GenericMailet {
         }
     }
 
-    private boolean isRecipientAttendee(MailAddress mailAddress, String icalContent) {
-        return icalContent.toLowerCase().contains(mailAddress.getLocalPart().toLowerCase());
+    private Calendar parseICalString(String icsContent) throws Exception {
+        StringReader reader = new StringReader(icsContent);
+        return new CalendarBuilder().build(reader);
+    }
+
+    private boolean isRecipientAttendee(MailAddress mailAddress, Calendar calendar) {
+        for (Component component : calendar.getComponents(Component.VEVENT)) {
+            VEvent event = (VEvent) component;
+
+            List<MailAddress> attendeeList = event.getProperties(Property.ATTENDEE)
+                .stream()
+                .map(attendee -> (Attendee) attendee)
+                .map(Attendee::getCalAddress)
+                .map(URI::getSchemeSpecificPart)
+                .map(Throwing.function(MailAddress::new))
+                .toList();
+
+            return attendeeList.contains(mailAddress);
+        }
+
+        return false;
     }
 }

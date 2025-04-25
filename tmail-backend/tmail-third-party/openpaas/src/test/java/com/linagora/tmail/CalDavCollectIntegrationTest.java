@@ -309,7 +309,7 @@ public class CalDavCollectIntegrationTest {
     }
 
     @Test
-    void mailetShouldCallOrNotCallDavServerToCreateNewCalendarObjectIfRecipientIsOrNotInvited(@TempDir File temporaryFolder) throws Exception {
+    void mailetShouldOnlyCallDavServerToCreateNewCalendarObjectForInvitedRecipientsWhenMailContainsBothInvitedRecipientsAndUninvitedRecipients(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
 
