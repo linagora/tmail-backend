@@ -1,0 +1,115 @@
+= JMAP Mailbox/clear Extension
+:navtitle: JMAP Mailbox/clear
+
+This extension allows users to delete all messages within a mailbox in a single operation, providing an efficient way to clear mailboxes without the need for multiple individual message deletions.
+
+== Addition to the capability object
+
+Servers supporting the JMAP Mailbox/clear extension need to advertise it through the session capabilities:
+
+....
+com:linagora:params:jmap:mailbox:clear
+....
+
+The associated capability object is empty.
+
+== Mailbox/clear
+
+This method allows clients to efficiently delete all messages in a specified mailbox.
+
+The request object has the following properties:
+
+* **accountId**: `Id` - The id of the account to use.
+* **mailboxId**: `Id` - The id of the mailbox to clear.
+
+The response object has the following properties:
+
+* **accountId**: `Id` - The id of the account used for this call.
+* **notCleared**: `SetError|null` - a SetError object explains why the mailbox was failed to be cleared, or `null` if the clearance was successful.
+
+=== Example: Successful clearance
+
+If the mailbox was successfully cleared, only the `accountId` is returned in the response.
+
+Request:
+```json
+[
+    "Mailbox/clear",
+    {
+        "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+        "mailboxId": "mailboxId123"
+    },
+    "#0"
+]
+```
+
+Response:
+```json
+[
+    "Mailbox/clear",
+    {
+        "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac"
+    },
+    "#0"
+]
+```
+
+=== Example: Mailbox not found
+
+Request:
+```json
+[
+    "Mailbox/clear",
+    {
+        "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+        "mailboxId": "notFoundMailboxId"
+    },
+    "#0"
+]
+```
+
+Response:
+```json
+[
+    "Mailbox/clear",
+    {
+        "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+        "notCleared": {
+            "type": "notFound",
+            "description": "notFoundMailboxId can not be found"
+        }
+    },
+    "#0"
+]
+```
+
+=== Example: Server side error
+
+A `serverFail` error would be returned if exceptions are encountered during the deletion.
+
+Request:
+```json
+[
+    "Mailbox/clear",
+    {
+        "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+        "mailboxId": "mailboxId123"
+    },
+    "#0"
+]
+```
+
+Response:
+```json
+[
+    "Mailbox/clear",
+    {
+        "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+        "notCleared": {
+            "type": "serverFail",
+            "description": "exception abcxyz happened while clearing mailboxId123"
+        }
+    },
+    "#0"
+]
+```
