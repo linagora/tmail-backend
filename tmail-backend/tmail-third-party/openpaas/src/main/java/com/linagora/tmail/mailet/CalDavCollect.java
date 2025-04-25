@@ -83,21 +83,23 @@ public class CalDavCollect extends GenericMailet {
     }
 
     private void handleCalendarInMail(byte[] json, Mail mail) {
-        String icalContent = extractIcalContent(json, mail.getName());
+        JsonNode jsonNode = convertToJson(json, mail.getName());
 
-        if (!icalContent.isEmpty()) {
-            mail.getRecipients()
-                .forEach(mailAddress -> {
-                    try {
-                        if (isRecipientAttendee(mailAddress, icalContent)) {
-                            davUserProvider.provide(Username.of(mailAddress.asString()))
-                                .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
-                                .block();
-                        }
-                    } catch (Exception e) {
-                        LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), mailAddress.asString(), e);
-                    }
-                });
+        String icalContent = jsonNode.path("ical").asText();
+        String recipient = jsonNode.path("recipient").asText();
+
+        if (!icalContent.isEmpty() && !recipient.isEmpty()) {
+            try {
+                MailAddress mailAddress = new MailAddress(recipient);
+
+                if (isRecipientAttendee(mailAddress, icalContent)) {
+                    davUserProvider.provide(Username.of(mailAddress.asString()))
+                        .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
+                        .block();
+                }
+            } catch (Exception e) {
+                LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
+            }
         }
     }
 
@@ -107,17 +109,14 @@ public class CalDavCollect extends GenericMailet {
             json);
     }
 
-    private String extractIcalContent(byte[] json, String mailName) {
+    private JsonNode convertToJson(byte[] json, String mailName) {
+        ObjectMapper mapper = new ObjectMapper();
         try {
             String jsonString = new String(json, StandardCharsets.UTF_8);
-
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode rootNode = mapper.readTree(jsonString);
-
-            return rootNode.get("ical").asText();
+            return mapper.readTree(jsonString);
         } catch (Exception e) {
             LOGGER.error("Error while handling calendar in mail {}", mailName, e);
-            return "";
+            return mapper.createObjectNode();
         }
     }
 
