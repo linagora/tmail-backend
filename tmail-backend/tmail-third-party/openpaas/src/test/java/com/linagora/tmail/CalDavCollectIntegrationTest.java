@@ -21,6 +21,7 @@ package com.linagora.tmail;
 import static org.apache.james.mailets.configuration.Constants.LOCALHOST_IP;
 import static org.apache.james.mailets.configuration.Constants.PASSWORD;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.io.File;
@@ -31,6 +32,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -66,6 +68,7 @@ import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
 import com.github.mustachejava.MustacheFactory;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.util.Modules;
@@ -215,6 +218,7 @@ public class CalDavCollectIntegrationTest {
     private DavClient davClient;
     private OpenPaasUser sender;
     private OpenPaasUser receiver;
+    private OpenPaasUser notInvited;
 
     @BeforeEach
     void setUpJamesServer(@TempDir File temporaryFolder) throws Exception {
@@ -267,12 +271,14 @@ public class CalDavCollectIntegrationTest {
 
         sender = createUser();
         receiver = createUser();
+        notInvited = createUser();
 
         jamesServer.getProbe(DataProbeImpl.class)
             .fluent()
             .addDomain(OpenPaaSProvisioningService.DOMAIN)
             .addUser(sender.email(), PASSWORD)
-            .addUser(receiver.email(), PASSWORD);
+            .addUser(receiver.email(), PASSWORD)
+            .addUser(notInvited.email(), PASSWORD);
     }
 
     @AfterEach
@@ -289,6 +295,35 @@ public class CalDavCollectIntegrationTest {
 
         DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
+    }
+
+    @Test
+    void mailetShouldNotCallDavServerToCreateNewCalendarObjectIfRecipientNotInvited(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
+
+        sendMessage(sender, notInvited, mail, mimeMessageId);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new EventUid(mimeMessageId)).block();
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void mailetShouldOnlyCallDavServerToCreateNewCalendarObjectForInvitedRecipientsWhenMailContainsBothInvitedRecipientsAndUninvitedRecipients(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
+
+        sendMessage(sender, ImmutableList.of(receiver, notInvited), mail, mimeMessageId);
+
+        DavCalendarObject result1 = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(mimeMessageId)).block();
+
+        DavCalendarObject result2 = davClient.getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new EventUid(mimeMessageId)).block();
+
+        assertSoftly(softly -> {
+            softly.assertThat(result1).isNotNull();
+            softly.assertThat(result2).isNull();
+        });
+
     }
 
     @Test
@@ -492,11 +527,19 @@ public class CalDavCollectIntegrationTest {
     }
 
     private void sendMessage(OpenPaasUser sender, OpenPaasUser receiver, String mail, String mimeMessageId) throws IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException {
+        sendMessage(sender, ImmutableList.of(receiver), mail, mimeMessageId);
+    }
+
+    private void sendMessage(OpenPaasUser sender, List<OpenPaasUser> receivers, String mail, String mimeMessageId) throws IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException {
+        List<String> receiverEmails = receivers.stream()
+                .map(OpenPaasUser::email)
+                .toList();
+
         messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
             .authenticate(sender.email(), PASSWORD)
-            .sendMessageWithHeaders(sender.email(), receiver.email(), mail);
+            .sendMessageWithHeaders(sender.email(), receiverEmails, mail);
 
-        awaitMessage(receiver, mimeMessageId);
+        receivers.forEach(receiver -> awaitMessage(receiver, mimeMessageId));
     }
 
     private void awaitMessage(OpenPaasUser receiver, String mimeMessageId) {
