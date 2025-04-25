@@ -78,11 +78,12 @@ class AiBotSerializerTest extends AnyWordSpec with Matchers {
           |}
           |""".stripMargin)
 
-      val actual = AiBotSuggestReplyResponse(
+      val actual = AiBotSuggestReplyResponse.from(
         accountId = AccountId(Id.validate("aHR0cHM6Ly93d3cuYmFzZTY0ZW5jb2RlLm9yZy8").toOption.get),
-        suggestion = "this is an email suggestion"
+        results = "this is an email suggestion"
       )
       val result = AiBotSerializer.serializeResponse(actual)
+      print(result)
       result should equal(expected)
     }
   }

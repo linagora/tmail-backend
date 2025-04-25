@@ -31,7 +31,9 @@ case class AiBotSuggestReplyRequest(
 
 object AiBotSuggestReplyResponse {
   def from(accountId: AccountId, results: String): AiBotSuggestReplyResponse =
-    AiBotSuggestReplyResponse(accountId, results)
+    AiBotSuggestReplyResponse(
+      accountId = accountId,
+      suggestion = results)
 }
 
 case class AiBotSuggestReplyResponse(

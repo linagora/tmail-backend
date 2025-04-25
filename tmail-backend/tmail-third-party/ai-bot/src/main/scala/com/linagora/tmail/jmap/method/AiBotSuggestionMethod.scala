@@ -58,16 +58,18 @@ class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, AiBotSuggestReplyRequest] =
     AiBotSerializer.deserializeRequest(invocation.arguments.value).asEither.left.map(ResponseSerializer.asException)
 
-  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Publisher[InvocationWithContext] =
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Publisher[InvocationWithContext] = {
     getEmail(mailboxSession, request)
-      .flatMap(result => aiBotService.suggestContent(request.userInput, Optional.ofNullable(result))
-        .map(res => AiBotSuggestReplyResponse.from(request.accountId,res))
-        .map(response => Invocation(
+      .flatMap(result => aiBotService.suggestContent(request.userInput, if (result != "") Optional.of(result) else Optional.empty()))
+      .map(res =>AiBotSuggestReplyResponse.from(request.accountId,res))
+      .map(response =>Invocation(
           methodName,
           Arguments(AiBotSerializer.serializeResponse(response).as[JsObject]),
           invocation.invocation.methodCallId))
-        .map(InvocationWithContext(_, invocation.processingContext)))
+      .map(InvocationWithContext(_, invocation.processingContext))
+  }
 
+  //To check if it's okay to return an empty string because null value is harder to handel
   private def getEmail(mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Mono[String] = {
     request.emailId match {
       case Some(id) =>
@@ -79,7 +81,7 @@ class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
           FetchGroup.FULL_CONTENT,
           mailboxSession))
       case None =>
-        Mono.empty()
+        Mono.just("")
     }
   }
 

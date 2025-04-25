@@ -33,7 +33,7 @@ public class AIRedactionalHelperForTest implements AIRedactionalHelper {
     public Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws OpenAiHttpException, IOException {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(userInput), "User input cannot be null or empty");
 
-        return Mono.just(userInput + mailContent.orElse(""));
+        return Mono.just("This suggestion is just for testing purpose this is your UserInput: " + userInput + " This is you mailContent: " + mailContent.orElse(""));
     }
 
 }

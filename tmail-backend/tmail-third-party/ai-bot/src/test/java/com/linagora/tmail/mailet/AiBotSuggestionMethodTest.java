@@ -22,9 +22,10 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.jmap.core.AiBotMethodModule;
 import com.linagora.tmail.mailet.conf.AIBotModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
-import io.netty.handler.codec.http.HttpHeaderNames;
+import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import jakarta.mail.Flags;
 import jakarta.mail.internet.MimeMessage;
@@ -38,7 +39,6 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.utils.DataProbeImpl;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -47,10 +47,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.Date;
 
+import static io.netty.handler.codec.http.HttpHeaderNames.ACCEPT;
 import static io.restassured.RestAssured.given;
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.*;
+import static org.hamcrest.CoreMatchers.equalTo;
 
 public class AiBotSuggestionMethodTest {
 
@@ -74,11 +76,10 @@ public class AiBotSuggestionMethodTest {
                 @Override
                 protected void configure() {
                     bind(AIRedactionalHelper.class).to(AIRedactionalHelperForTest.class);
-                }})))
+                }}))
+            .overrideWith(new AiBotMethodModule()))
         .build();
 
-
-    @Disabled("Capability not supported yet")
     @Test
     public void shoudVerifyJmapMethodReplyToEmailFromScratch(GuiceJamesServer jamesServer) throws Exception {
         jamesServer.getProbe(DataProbeImpl.class).fluent()
@@ -87,18 +88,18 @@ public class AiBotSuggestionMethodTest {
 
         MailboxPath path = MailboxPath.inbox(Username.of(ALICE));
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(path);
+        String accountId = getAccountId(Username.of(ALICE),PASSWORD,jamesServer);
 
-        String request = "{\n" +
+        String request = String.format("{" +
             "  \"using\": [\"urn:ietf:params:jmap:core\", \"com:linagora:params:jmap:aibot\"]," +
             "  \"methodCalls\": [" +
             "    [\"AiBot/Suggest\", {" +
-            "      \"accountId\": \"ec77d4733cef70537b19b580db81fbbb6dc2a46a6d5662055cab568e75f71570\"," +
+            "      \"accountId\": \"%s\"," +
             "      \"userInput\": \"explain to him how to cook an egg\"" +
             "    }, \"0\"]" +
             "  ]" +
-            "}";
+            "}", accountId);
 
-        //assertions are not complete yet
         given(buildJmapRequestSpecification(Username.of(ALICE), PASSWORD, jamesServer))
             .log().all()
             .body(String.format(request))
@@ -106,10 +107,12 @@ public class AiBotSuggestionMethodTest {
             .post()
             .then()
             .log().all()
-            .statusCode(SC_OK);
+            .statusCode(SC_OK)
+            .body("methodResponses[0][0]", equalTo("AiBot/Suggest"))
+            .body("methodResponses[0][1].accountId", equalTo(accountId))
+            .body("methodResponses[0][1].suggestion", equalTo("This suggestion is just for testing purpose this is your UserInput: explain to him how to cook an egg This is you mailContent: "));
     }
 
-    @Disabled("Capability not supported yet")
     @Test
     public void shoudVerifyJmapMethod(GuiceJamesServer jamesServer) throws Exception {
         jamesServer.getProbe(DataProbeImpl.class).fluent()
@@ -119,8 +122,8 @@ public class AiBotSuggestionMethodTest {
         MimeMessage mimeMessage = MimeMessageBuilder.mimeMessageBuilder()
             .setSender(BOB)
             .addToRecipient("alice@james.org")
-            .setSubject("Redaction Aide")
-            .setText("Peux-tu m’aider à écrire une réponse formelle ?")
+            .setSubject("Asking for help")
+            .setText("How to cook an egg ?")
             .build();
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -129,18 +132,19 @@ public class AiBotSuggestionMethodTest {
         MailboxPath path = MailboxPath.inbox(Username.of(ALICE));
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(path);
         MessageId messageId = jamesServer.getProbe(MailboxProbeImpl.class).appendMessage(ALICE,path,messageInputStream,new Date(),true,new Flags(Flags.Flag.RECENT)).getMessageId();
-        String request = "{" +
+        String accountId = getAccountId(Username.of(ALICE),PASSWORD,jamesServer);
+
+        String request = String.format("{" +
             "  \"using\": [\"urn:ietf:params:jmap:core\", \"com:linagora:params:jmap:aibot\"]," +
             "  \"methodCalls\": [" +
             "    [\"AiBot/Suggest\", {" +
-            "      \"accountId\":\\\"ec77d4733cef70537b19b580db81fbbb6dc2a46a6d5662055cab568e75f71570\\\"," +
+            "      \"accountId\":\"%s\"," +
             "      \"userInput\": \"explain to him how to cook an egg\"," +
             "      \"emailId\": \"" + messageId.serialize() + "\"" +
             "    }, \"0\"]" +
             "  ]" +
-            "}";
+            "}", accountId);
 
-        //assertions are not complete yet
         given(buildJmapRequestSpecification(Username.of(ALICE), PASSWORD, jamesServer))
             .log().all()
             .body(String.format(request))
@@ -148,14 +152,30 @@ public class AiBotSuggestionMethodTest {
             .post()
             .then()
             .log().all()
-            .statusCode(SC_OK);
+            .statusCode(SC_OK)
+            .body("methodResponses[0][0]", equalTo("AiBot/Suggest"))
+            .body("methodResponses[0][1].accountId", equalTo(accountId))
+            .body("methodResponses[0][1].suggestion", equalTo("This suggestion is just for testing purpose this is your UserInput: explain to him how to cook an egg This is you mailContent: How to cook an egg ?"));
     }
 
     private RequestSpecification buildJmapRequestSpecification(Username username, String password, GuiceJamesServer jamesServer) {
         return baseRequestSpecBuilder(jamesServer)
             .setAuth(authScheme(new UserCredential(username, password)))
-            .addHeader(HttpHeaderNames.ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER())
+            .addHeader(ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER())
             .build();
+    }
+
+    public static String getAccountId(Username username, String password, GuiceJamesServer server) {
+        Response response = given(baseRequestSpecBuilder(server)
+            .setAuth(authScheme(new UserCredential(username, password)))
+            .addHeader(ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER())
+            .build())
+            .get("/session")
+            .then()
+            .statusCode(200)
+            .contentType("application/json")
+            .extract().response();
+        return response.jsonPath().getString("primaryAccounts[\"urn:ietf:params:jmap:core\"]");
     }
 }
 

@@ -20,9 +20,8 @@ package com.linagora.tmail.jmap.core
 import com.linagora.tmail.jmap.core.CapabilityIdentifier.LINAGORA_AIBOT
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
-
+import com.linagora.tmail.jmap.method.AiBotSuggestionMethod
 import eu.timepit.refined.auto._
-
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.CapabilityIdentifier.JMAP_CORE
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
@@ -30,7 +29,6 @@ import org.apache.james.jmap.core.Invocation.MethodName
 import org.apache.james.jmap.method.{InvocationWithContext, Method}
 import org.apache.james.mailbox.MailboxSession
 import org.reactivestreams.Publisher
-
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.SMono
 
@@ -63,16 +61,7 @@ class AiBotMethodModule extends AbstractModule {
     install(new AiBotCapabilitiesModule())
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
-      .to(classOf[AiBotMethod])
+      .to(classOf[AiBotSuggestionMethod])
   }
 }
 
-class AiBotMethod extends Method {
-
-  override val methodName: MethodName = MethodName("AiBot/Suggest")
-
-  override def process(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession): Publisher[InvocationWithContext] = SMono.just(invocation)
-
-  override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_AIBOT)
-
-}
