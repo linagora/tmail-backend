@@ -72,3 +72,4 @@ docker run \
   --volume "target/tmail-ai-bot-jar-with-dependencies.jar:/root/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar" \
   linagora/tmail-backend:memory-branch-master
 ```
+

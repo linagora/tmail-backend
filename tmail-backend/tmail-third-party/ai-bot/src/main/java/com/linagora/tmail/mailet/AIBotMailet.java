@@ -44,7 +44,6 @@ import org.apache.james.server.core.MimeMessageInputStream;
 import org.apache.james.util.html.HtmlTextExtractor;
 import org.apache.james.util.mime.MessageContentExtractor;
 import org.apache.mailet.Mail;
-import org.apache.mailet.MailetException;
 import org.apache.mailet.base.GenericMailet;
 
 import com.github.fge.lambdas.Throwing;
@@ -194,11 +193,6 @@ public class AIBotMailet extends GenericMailet {
             .flatMap(Collection::stream)
             .filter(recipient -> !recipient.equals(config.getBotAddress()))
             .toList();
-    }
-
-    @Override
-    public void init() throws MailetException {
-
     }
 
     @Override
