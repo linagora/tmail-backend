@@ -358,9 +358,9 @@
                         <image>${jib.base.image}</image>
                     </from>
                     <to>
-                        <image>linagora/tmail-backend-postgresql-experimental</image>
+                        <image>linagora/tmail-backend</image>
                         <tags>
-                            <tag>latest</tag>
+                            <tag>postgres-branch-master</tag>
                         </tags>
                     </to>
                     <container>
