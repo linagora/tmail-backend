@@ -19,14 +19,24 @@
 package com.linagora.tmail.james;
 
 import org.apache.james.JamesServerExtension;
+import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.james.common.MailboxClearContract;
+import com.linagora.tmail.team.TeamMailboxProbe;
 
 public class PostgresMailboxClearMethodTest implements MailboxClearContract {
     @RegisterExtension
     static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION
         .apply(Modules.combine())
+        .overrideServerModule(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+            .addBinding().to(TeamMailboxProbe.class))
         .build();
+
+    @Override
+    public String errorInvalidMailboxIdMessage(String value) {
+        return String.format("%s is not a mailboxId: Invalid UUID string: %s", value, value);
+    }
 }

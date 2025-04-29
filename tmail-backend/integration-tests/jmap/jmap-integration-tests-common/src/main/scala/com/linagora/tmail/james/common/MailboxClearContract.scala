@@ -22,6 +22,9 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 import com.linagora.tmail.james.common.MailboxClearContract.{BIG_LIMIT, MESSAGE, andreBaseRequest, andreInboxId, andreTrashId, bobBaseRequest, bobInboxId, bobTrashId}
+import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
+import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
+import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.`given`
 import io.restassured.http.ContentType.JSON
@@ -30,6 +33,7 @@ import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCOUNT_ID => BOB_ACCOUNT_ID, _}
 import org.apache.james.mailbox.MessageManager.AppendCommand
@@ -63,7 +67,9 @@ object MailboxClearContract {
 }
 
 trait MailboxClearContract {
-  private lazy val await: ConditionFactory = awaitility.atMost(30, TimeUnit.SECONDS)
+  private lazy val await: ConditionFactory = awaitility.atMost(60, TimeUnit.SECONDS)
+
+  def errorInvalidMailboxIdMessage(value: String): String
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
@@ -110,7 +116,7 @@ trait MailboxClearContract {
          |            "Mailbox/clear",
          |            {
          |                "accountId": "unknownAccountId",
-         |                "mailboxId": "$bobTrashId"
+         |                "mailboxId": "${bobTrashId.serialize()}"
          |            },
          |            "c1"
          |        ]
@@ -265,7 +271,7 @@ trait MailboxClearContract {
       .statusCode(HttpStatus.SC_OK)
       .contentType(JSON)
       .body("methodResponses[0][1].notCleared.type", Matchers.is("invalidArguments"))
-      .body("methodResponses[0][1].notCleared.description", Matchers.is(s"For input string: \"invalidMailboxId\""))
+      .body("methodResponses[0][1].notCleared.description", Matchers.is(s"${errorInvalidMailboxIdMessage("invalidMailboxId")}"))
   }
 
   @Test
@@ -387,7 +393,7 @@ trait MailboxClearContract {
   }
 
   @Test
-  def bobClearHistTrashShouldNotClearMailboxesOfOtherUser(server: GuiceJamesServer): Unit = {
+  def bobClearHisTrashShouldNotClearMailboxesOfOtherUser(server: GuiceJamesServer): Unit = {
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
 
     mailboxProbe
@@ -511,6 +517,133 @@ trait MailboxClearContract {
         ANDRE.asString(),
         BIG_LIMIT)
       assertThat(andreTrashMessages).containsExactly(andreTrashMessageId)
+    })
+  }
+
+  @Test
+  def shouldSucceedToClearTeamMailboxWhenRequestHasShareCapability(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+    mailboxProbe
+      .appendMessage(BOB.asString(), teamMailbox.mailboxPath, AppendCommand.from(MESSAGE))
+      .getMessageId
+
+    val response: String = `given`(bobBaseRequest)
+      .body(
+        s"""{
+           |    "using": [
+           |        "urn:ietf:params:jmap:core",
+           |        "urn:ietf:params:jmap:mail",
+           |        "urn:apache:james:params:jmap:mail:shares",
+           |        "com:linagora:params:jmap:mailbox:clear"
+           |    ],
+           |    "methodCalls": [
+           |        [
+           |            "Mailbox/clear",
+           |            {
+           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "mailboxId": "${teamMailboxId.serialize()}"
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "Mailbox/clear",
+           |    {
+           |        "accountId": "$BOB_ACCOUNT_ID"
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+
+    await.untilAsserted(() => {
+      val teamMailboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
+        .inMailboxes(teamMailboxId).build,
+        BOB.asString(),
+        BIG_LIMIT)
+      assertThat(teamMailboxMessages).isEmpty()
+    })
+  }
+
+  @Test
+  def shouldFailToClearTeamMailboxWhenMissingShareCapability(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+    val messageId = mailboxProbe
+      .appendMessage(BOB.asString(), teamMailbox.mailboxPath, AppendCommand.from(MESSAGE))
+      .getMessageId
+
+    val response: String = `given`(bobBaseRequest)
+      .body(
+        s"""{
+           |    "using": [
+           |        "urn:ietf:params:jmap:core",
+           |        "urn:ietf:params:jmap:mail",
+           |        "com:linagora:params:jmap:mailbox:clear"
+           |    ],
+           |    "methodCalls": [
+           |        [
+           |            "Mailbox/clear",
+           |            {
+           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "mailboxId": "${teamMailboxId.serialize()}"
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "Mailbox/clear",
+           |    {
+           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "notCleared": {
+           |            "type": "notFound",
+           |            "description": "${teamMailboxId.serialize()} can not be found"
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+
+    await.untilAsserted(() => {
+      val teamMailboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
+        .inMailboxes(teamMailboxId).build,
+        BOB.asString(),
+        BIG_LIMIT)
+      assertThat(teamMailboxMessages).containsExactly(messageId)
     })
   }
 

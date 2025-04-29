@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.google.common.collect.ImmutableMap
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.MailboxClearSerializer
@@ -26,22 +27,26 @@ import com.linagora.tmail.james.jmap.method.MailboxClearMethod.{DELETE_BATCH_SIZ
 import com.linagora.tmail.james.jmap.model.{MailboxClearRequest, MailboxClearResponse}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
-import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE, JMAP_MAIL}
+import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JAMES_SHARES, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, SetError, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.mail.{MailboxGet, UnparsedMailboxId}
+import org.apache.james.jmap.method.MailboxSetMethod.assertCapabilityIfSharedMailbox
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.exception.MailboxNotFoundException
 import org.apache.james.mailbox.model.{MailboxId, MessageRange}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}
 import org.apache.james.metrics.api.MetricFactory
+import org.apache.james.util.{AuditTrail, ReactorUtils}
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+import scala.jdk.OptionConverters.RichOptional
 
 case object MailboxClearCapabilityFactory extends CapabilityFactory {
   override def create(urlPrefixes: UrlPrefixes): Capability = MailboxClearCapability
@@ -85,7 +90,7 @@ case class MailboxClearFailure(mailboxId: UnparsedMailboxId, exception: Throwabl
     case e: MailboxNotFoundException =>
       SetError.notFound(SetErrorDescription(e.getMessage))
     case e: IllegalArgumentException =>
-      SetError.invalidArguments(SetErrorDescription(e.getMessage), None)
+      SetError.invalidArguments(SetErrorDescription(s"${mailboxId.id} is not a mailboxId: ${e.getMessage}"))
     case e =>
       LOGGER.error("Failed to clear mailbox", e)
       SetError.serverFail(SetErrorDescription(e.getMessage))
@@ -108,15 +113,16 @@ class MailboxClearMethod @Inject()(mailboxManager: MailboxManager,
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext,
                          mailboxSession: MailboxSession, request: MailboxClearRequest): SMono[InvocationWithContext] =
-    clearMailbox(request, mailboxSession)
+    clearMailbox(request, mailboxSession, capabilities.contains(JAMES_SHARES))
       .map(response => createResponse(invocation.invocation, response))
       .map(InvocationWithContext(_, invocation.processingContext))
 
-  private def clearMailbox(request: MailboxClearRequest, mailboxSession: MailboxSession): SMono[MailboxClearResponse] =
+  private def clearMailbox(request: MailboxClearRequest, mailboxSession: MailboxSession, supportSharedMailbox: Boolean): SMono[MailboxClearResponse] =
     MailboxGet.parse(mailboxIdFactory)(request.mailboxId)
       .fold(
         e => SMono.just(MailboxClearFailure(request.mailboxId, e)),
         parsedMailboxId => SMono(mailboxManager.getMailboxReactive(parsedMailboxId, mailboxSession))
+          .filterWhen(assertCapabilityIfSharedMailbox(mailboxSession, parsedMailboxId, supportSharedMailbox))
           .flatMap(mailbox => expungeAllMessages(mailbox, mailboxSession)
             .`then`(SMono.just(MailboxClearSuccess(parsedMailboxId))))
           .onErrorResume(e => SMono.just(MailboxClearFailure(request.mailboxId, e))))
@@ -130,8 +136,24 @@ class MailboxClearMethod @Inject()(mailboxManager: MailboxManager,
       .map(_.getComposedMessageId.getUid)
       .window(DELETE_BATCH_SIZE)
       .concatMap(batch => batch.collectList()
-        .flatMap(uids => mailbox.deleteReactive(uids.asInstanceOf[java.util.List[MessageUid]], mailboxSession))))
+        .flatMap(uids => mailbox.deleteReactive(uids.asInstanceOf[java.util.List[MessageUid]], mailboxSession)
+          .thenReturn(uids.size()))))
+      .reduce(0)((acc: Int, size: Int) => acc + size)
+      .flatMap(totalDeleted => auditTrail(mailboxSession, mailbox.getId, totalDeleted))
       .`then`()
+
+  private def auditTrail(mailboxSession: MailboxSession, mailboxId: MailboxId, totalDeleted: Int): SMono[Void] =
+    SMono(ReactorUtils.logAsMono(() => AuditTrail.entry()
+      .username(() => mailboxSession.getUser.asString())
+      .protocol("JMAP")
+      .action("Mailbox/clear")
+      .parameters(() => ImmutableMap.of(
+        "loggedInUser", mailboxSession.getLoggedInUser.toScala
+          .map(_.asString())
+          .getOrElse(""),
+        "mailboxId", mailboxId.serialize(),
+        "totalDeletedMessages", totalDeleted.toString))
+      .log(s"Mailbox clear succeeded. $totalDeleted messages deleted.")))
 
   private def createResponse(invocation: Invocation, response: MailboxClearResponse): Invocation =
     Invocation(
