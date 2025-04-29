@@ -47,8 +47,10 @@ import org.apache.james.jmap.method.AccountNotFoundException
 import org.apache.james.jmap.routes.DownloadRoutes.LOGGER
 import org.apache.james.jmap.routes.{AttachmentBlob, Blob, ForbiddenException}
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
-import org.apache.james.mailbox.model.{AttachmentId, FetchGroup, MessageId}
-import org.apache.james.mailbox.{AttachmentManager, MailboxSession, MessageIdManager}
+import org.apache.james.mailbox.model.{AttachmentMetadata, FetchGroup, MessageId, MessageResult, ParsedAttachment}
+import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser
+import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.mime4j.codec.EncoderUtil
 import org.apache.james.mime4j.codec.EncoderUtil.Usage
@@ -102,7 +104,8 @@ class DownloadAllRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticat
                                   val sessionTranslator: SessionTranslator,
                                   val messageIdManager: MessageIdManager,
                                   val messageIdFactory: MessageId.Factory,
-                                  val attachmentManager: AttachmentManager,
+                                  val attachmentIdAssignationStrategy: AttachmentIdAssignationStrategy,
+                                  val messageParser: MessageParser,
                                   val metricFactory: MetricFactory) extends JMAPRoutes {
 
   private val accountIdParam: String = "accountId"
@@ -156,24 +159,32 @@ class DownloadAllRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticat
     val id: String = request.param(emailIdParam)
     SMono.fromCallable(() => messageIdFactory.fromString(id: String))
       .onErrorResume(e => SMono.error(MessageNotFoundException(id, e)))
-      .flatMap(messageId => SFlux(messageIdManager.getMessagesReactive(ImmutableList.of(messageId), FetchGroup.HEADERS_WITH_ATTACHMENTS_METADATA, mailboxSession))
+      .flatMap(messageId => SFlux(messageIdManager.getMessagesReactive(ImmutableList.of(messageId), FetchGroup.FULL_CONTENT, mailboxSession))
         .singleOrEmpty()
-        .switchIfEmpty(SMono.error(MessageNotFoundException(id))))
-      .flatMapMany(messageResult => SFlux.fromIterable(messageResult.getLoadedAttachments.asScala))
-      .flatMap(attachment => getBlob(attachment.getAttachmentId, mailboxSession)
-        .map(blob => BlobWithName(blob, attachment.getName.orElse(DEFAULT_FILE_NAME))))
-      .collectSeq()
-      .flatMap(blobs => downloadBlobs(
-        optionalName = queryParam(request, nameParam),
-        response = response,
-        blobs)
-        .`then`())
+        .switchIfEmpty(SMono.error(MessageNotFoundException(id)))
+        .flatMapMany(messageResult => getAttachments(messageResult))
+        .flatMap(attachment => getBlob(attachment, messageId)
+          .map(blob => BlobWithName(blob, attachment.getName.orElse(DEFAULT_FILE_NAME))))
+        .collectSeq()
+        .flatMap(blobs => downloadBlobs(
+            optionalName = queryParam(request, nameParam),
+            response = response,
+            blobs)
+          .`then`()))
   }
 
-  private def getBlob(attachmentId: AttachmentId, mailboxSession: MailboxSession): SMono[Blob] =
-    SMono(attachmentManager.getAttachmentReactive(attachmentId, mailboxSession))
-      .flatMap(attachmentMetadata => SMono(attachmentManager.loadReactive(attachmentMetadata, mailboxSession))
-        .map(content => AttachmentBlob(attachmentMetadata, content)))
+  private def getAttachments(messageResult: MessageResult): SFlux[ParsedAttachment] =
+    SFlux.fromIterable(messageParser.retrieveAttachments(messageResult.getFullContent.getInputStream)
+      .getAttachments
+      .asScala)
+
+  private def getBlob(attachment: ParsedAttachment, messageId: MessageId): SMono[Blob] = // blobResolver?
+    SMono.just(AttachmentBlob(AttachmentMetadata.builder
+        .attachmentId(attachmentIdAssignationStrategy.assign(attachment, messageId))
+        .`type`(attachment.getContentType)
+        .size(attachment.getContent.size)
+        .messageId(messageId)
+      .build, attachment.getContent.openStream()))
 
   private def downloadBlobs(optionalName: Option[String],
                            response: HttpServerResponse,
