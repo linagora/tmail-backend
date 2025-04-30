@@ -15,28 +15,22 @@
  * PURPOSE. See the GNU Affero General Public License for          *
  * more details.                                                   *
  * ****************************************************************** */
-package com.linagora.tmail.jmap.mail;
+package com.linagora.tmail.jmap.aibot.json
 
-import org.apache.james.jmap.core.AccountId
-import org.apache.james.jmap.core.Id.Id
-import org.apache.james.jmap.method.WithAccountId
+import com.linagora.tmail.jmap.aibot.{AiBotSuggestReplyRequest, AiBotSuggestReplyResponse}
+import play.api.libs.json._
 
-import java.util.Optional
 
-case class AiBotSuggestReplyRequest(
-                                     accountId: AccountId,
-                                     emailId: Option[Id],
-                                     userInput: String
-                                   )extends WithAccountId
+object AiBotSerializer {
 
-object AiBotSuggestReplyResponse {
-  def from(accountId: AccountId, results: String): AiBotSuggestReplyResponse =
-    AiBotSuggestReplyResponse(
-      accountId = accountId,
-      suggestion = results)
+  private implicit val identityGetRequestReads: Reads[AiBotSuggestReplyRequest] = Json.reads[AiBotSuggestReplyRequest]
+  private implicit val AiBotSuggestReplyResponseWrites:  OWrites[AiBotSuggestReplyResponse] = Json.writes[AiBotSuggestReplyResponse]
+  private implicit val identityGetResponseReads: Reads[AiBotSuggestReplyResponse] = Json.reads[AiBotSuggestReplyResponse]
+
+  def deserializeRequest(json: JsValue): JsResult[AiBotSuggestReplyRequest] =
+    Json.fromJson[AiBotSuggestReplyRequest](json)
+
+  def serializeResponse(response: AiBotSuggestReplyResponse): JsObject =
+    Json.toJsObject(response)
+
 }
-
-case class AiBotSuggestReplyResponse(
-                                      accountId: AccountId,
-                                      suggestion: String
-                                    )extends WithAccountId

@@ -17,14 +17,12 @@
  * ****************************************************************** */
 package com.linagora.tmail
 
-import com.linagora.tmail.jmap.json.AiBotSerializer
-import com.linagora.tmail.jmap.mail.{AiBotSuggestReplyRequest, AiBotSuggestReplyResponse}
+import com.linagora.tmail.jmap.aibot.json.AiBotSerializer
+import com.linagora.tmail.jmap.aibot.{AiBotSuggestReplyRequest, AiBotSuggestReplyResponse}
 import org.apache.james.jmap.core.{AccountId, Id}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json._
 import org.scalatest.matchers.should.Matchers
-
-import java.util.Optional
 
 class AiBotSerializerTest extends AnyWordSpec with Matchers {
 

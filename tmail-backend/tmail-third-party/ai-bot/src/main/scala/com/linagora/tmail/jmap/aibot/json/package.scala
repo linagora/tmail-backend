@@ -15,7 +15,7 @@
  * PURPOSE. See the GNU Affero General Public License for          *
  * more details.                                                   *
  * ****************************************************************** */
-package com.linagora.tmail.jmap
+package com.linagora.tmail.jmap.aibot
 
 import eu.timepit.refined.api.{RefType, Validate}
 import org.apache.james.jmap.core.AccountId
