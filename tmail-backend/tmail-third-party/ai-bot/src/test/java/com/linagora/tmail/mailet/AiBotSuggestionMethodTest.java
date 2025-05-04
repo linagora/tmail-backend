@@ -158,6 +158,30 @@ public class AiBotSuggestionMethodTest {
     }
 
     @Test
+    public void shoudSuggestContentWhenEmailIdIsNull(GuiceJamesServer jamesServer) throws Exception {
+        String request = String.format("{" +
+            "  \"using\": [\"urn:ietf:params:jmap:core\", \"com:linagora:params:jmap:aibot\"]," +
+            "  \"methodCalls\": [" +
+            "    [\"AiBot/Suggest\", {" +
+            "      \"accountId\":\"%s\"," +
+            "      \"userInput\": \"explain to him how to cook an egg\"," +
+            "      \"emailId\": null"+
+            "    }, \"0\"]" +
+            "  ]" +
+            "}", accountId);
+
+        given(buildJmapRequestSpecification(Username.of(ALICE), PASSWORD, jamesServer))
+            .body(String.format(request))
+        .when()
+            .post()
+        .then()
+            .statusCode(SC_OK)
+            .body("methodResponses[0][0]", equalTo("AiBot/Suggest"))
+            .body("methodResponses[0][1].accountId", equalTo(accountId))
+            .body("methodResponses[0][1].suggestion", equalTo("This suggestion is just for testing purpose this is your UserInput: explain to him how to cook an egg This is you mailContent: "));
+    }
+
+    @Test
     public void shouldExtractOnlyTextContentFromEmail(GuiceJamesServer jamesServer) throws Exception {
         BasicBodyFactory bodyFactory = new BasicBodyFactory();
         Message message = Message.Builder.of()
@@ -171,8 +195,7 @@ public class AiBotSuggestionMethodTest {
                 .addTextPart("This is the text part ", StandardCharsets.UTF_8)
                 .addBodyPart(BodyPartBuilder.create().setBody(bodyFactory.textBody("<html><body><h1>Hello World in HTML</h1></body></html>", "UTF-8"))
                     .setContentType("text/html"))
-                .build()
-                )
+                .build())
             .build();
 
         MessageId messageId = jamesServer.getProbe(MailboxProbeImpl.class).appendMessage(ALICE, path, MessageManager.AppendCommand.from(message)).getMessageId();
@@ -241,6 +264,65 @@ public class AiBotSuggestionMethodTest {
             .body("methodResponses[0][0]", equalTo("AiBot/Suggest"))
             .body("methodResponses[0][1].accountId", equalTo(accountId))
             .body("methodResponses[0][1].suggestion", equalTo("This suggestion is just for testing purpose this is your UserInput: explain to him how to cook an egg This is you mailContent: This is the text part"));
+    }
+
+    @Test
+    public void shouldExtractTextContentWhenMailIsComplex(GuiceJamesServer jamesServer) throws Exception {
+        BasicBodyFactory bodyFactory = new BasicBodyFactory();
+        Message message = Message.Builder.of()
+            .setFrom("John Doe <jdoe@machine.example>")
+            .setTo("Mary Smith <mary@example.net>")
+            .setSubject("Complex email for you")
+            .setDate(new Date())
+            .generateMessageId(InetAddress.getLocalHost().getCanonicalHostName())
+            .setBody(MultipartBuilder.create("mixed")
+                .setPreamble("This is a multi_part message with an attachment")
+                .addBodyPart(BodyPartBuilder.create()
+                    .setBody(MultipartBuilder.create("alternative")
+                        .setPreamble("this is the alternative part ")
+                        .addTextPart("this is the text part", StandardCharsets.UTF_8)
+                        .addBodyPart(BodyPartBuilder.create()
+                            .setBody(MultipartBuilder.create("related")
+                                .addBodyPart(BodyPartBuilder.create()
+                                    .setBody(bodyFactory.textBody("This is the html part", StandardCharsets.UTF_8))
+                                    .setContentType("text/html"))
+                                .addBodyPart(BodyPartBuilder.create()
+                                    .setBody(bodyFactory.binaryBody("image data".getBytes(StandardCharsets.UTF_8)))
+                                    .setContentType("image/jpeg")
+                                    .setContentDisposition("inline; filename=\"image.jpg\""))
+                                .build()))
+                        .build()))
+                .addBodyPart(BodyPartBuilder.create()
+                    .setBody(bodyFactory.binaryBody("This is the content of the attachment".getBytes(StandardCharsets.UTF_8)))
+                    .setContentType("application/pdf")
+                    .setContentDisposition("attachment; filename=\"example.pdf\"")
+                    .build()).
+                build())
+            .build();
+        MessageId messageId = jamesServer.getProbe(MailboxProbeImpl.class)
+            .appendMessage(ALICE, path, MessageManager.AppendCommand.from(message))
+            .getMessageId();
+
+        String request = String.format("{" +
+            "  \"using\": [\"urn:ietf:params:jmap:core\", \"com:linagora:params:jmap:aibot\"]," +
+            "  \"methodCalls\": [" +
+            "    [\"AiBot/Suggest\", {" +
+            "      \"accountId\":\"%s\"," +
+            "      \"userInput\": \"explain to him how to cook an egg\"," +
+            "      \"emailId\": \"" + messageId.serialize() + "\"" +
+            "    }, \"0\"]" +
+            "  ]" +
+            "}", accountId);
+
+        given(buildJmapRequestSpecification(Username.of(ALICE), PASSWORD, jamesServer))
+            .body(String.format(request))
+        .when()
+            .post()
+        .then()
+            .statusCode(SC_OK)
+            .body("methodResponses[0][0]", equalTo("AiBot/Suggest"))
+            .body("methodResponses[0][1].accountId", equalTo(accountId))
+            .body("methodResponses[0][1].suggestion", equalTo("This suggestion is just for testing purpose this is your UserInput: explain to him how to cook an egg This is you mailContent: this is the text part"));
     }
 
     @Test
@@ -353,7 +435,7 @@ public class AiBotSuggestionMethodTest {
             .statusCode(SC_OK)
             .body("methodResponses[0][0]", equalTo("error"))
             .body("methodResponses[0][1].type", equalTo("invalidArguments"))
-            .body("methodResponses[0][1].description", equalTo("missing accountId"));
+            .body("methodResponses[0][1].description", equalTo("Missing '/accountId' property"));
     }
 
     @Test
@@ -375,7 +457,7 @@ public class AiBotSuggestionMethodTest {
             .statusCode(SC_OK)
             .body("methodResponses[0][0]", equalTo("error"))
             .body("methodResponses[0][1].type", equalTo("invalidArguments"))
-            .body("methodResponses[0][1].description", equalTo("missing UserInput"));
+            .body("methodResponses[0][1].description", equalTo("Missing '/userInput' property"));
     }
 
     @Test
@@ -424,7 +506,7 @@ public class AiBotSuggestionMethodTest {
             .statusCode(SC_OK)
             .body("methodResponses[0][0]", equalTo("error"))
             .body("methodResponses[0][1].type", equalTo("invalidArguments"))
-            .body("methodResponses[0][1].description", equalTo("MessageId not found: 2"));
+            .body("methodResponses[0][1].description", equalTo("Message with id 2 not found"));
     }
 
     private RequestSpecification buildJmapRequestSpecification(Username username, String password, GuiceJamesServer jamesServer) {

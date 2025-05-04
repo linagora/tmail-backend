@@ -26,7 +26,7 @@ import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JM
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, SessionTranslator}
 import org.apache.james.jmap.json.ResponseSerializer
-import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId}
+import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId, standardErrorMessage}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.model.{FetchGroup, MessageId, MessageResult}
 import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
@@ -38,9 +38,11 @@ import org.apache.james.util.mime.MessageContentExtractor
 import org.reactivestreams.Publisher
 import play.api.libs.json._
 import reactor.core.publisher.Mono
-import reactor.core.scheduler.Schedulers
 
 import java.util.Optional
+
+case class MessageNotFoundException(id: MessageId) extends IllegalArgumentException(){
+  override def getMessage: String = s"Message with id ${id.serialize()} not found"}
 
 class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
                                       val metricFactory: MetricFactory,
@@ -55,15 +57,9 @@ class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE,LINAGORA_AIBOT)
 
   override def getRequest(mailboxSession: MailboxSession, invocation: Invocation): Either[Exception, AiBotSuggestReplyRequest] =
-    AiBotSerializer.deserializeRequest(invocation.arguments.value).asEither.left.map { error =>
-      if (error.toString == "List((/accountId,List(JsonValidationError(List(error.path.missing),List()))))") {
-        new IllegalArgumentException("missing accountId")
-      }else if(error.toString == "List((/userInput,List(JsonValidationError(List(error.path.missing),List()))))") {
-        new IllegalArgumentException("missing UserInput")}
-      else {
-        ResponseSerializer.asException(error)
-      }
-    }
+    AiBotSerializer.deserializeRequest(invocation.arguments.value).asEither.left.map(error =>
+      new IllegalArgumentException(standardErrorMessage(error)))
+
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Publisher[InvocationWithContext] =
     getEmail(mailboxSession, request)
@@ -85,23 +81,18 @@ private def getEmail(mailboxSession: MailboxSession, request: AiBotSuggestReplyR
           messageIds,
           FetchGroup.FULL_CONTENT,
           mailboxSession))
-        .switchIfEmpty(Mono.error(new IllegalArgumentException(s"MessageId not found: $id")))
-        .flatMap(messageResult => extractEmailContent(Mono.just(messageResult)))
+        .switchIfEmpty(Mono.error(MessageNotFoundException(messageId)))
+        .flatMap(messageResult => extractEmailContent(messageResult))
     case None =>
       Mono.just(Optional.empty())
   }
 
-  private def extractEmailContent(messagesPublisher: Publisher[MessageResult]): Mono[Optional[String]] =
-    Mono.from(messagesPublisher)
-      .flatMap(messageResult => {
-        val contentStream = messageResult.getFullContent.getInputStream
-        Mono.fromCallable(() => {
-          val messageBuilder = new DefaultMessageBuilder()
-          messageBuilder.setMimeEntityConfig(MimeConfig.DEFAULT)
-          val mimeMessage: Message = messageBuilder.parseMessage(contentStream)
-          val ext = new MessageContentExtractor
-          val extractor = ext.extract(mimeMessage)
-          extractor.getTextBody
-        }).subscribeOn(Schedulers.boundedElastic())
-      })
+  private def extractEmailContent(messageResult: MessageResult): Mono[Optional[String]] =
+    Mono.fromCallable(() => {
+      val messageBuilder = new DefaultMessageBuilder()
+      messageBuilder.setMimeEntityConfig(MimeConfig.DEFAULT)
+      val mimeMessage: Message = messageBuilder.parseMessage(messageResult.getFullContent.getInputStream)
+      val extractor = new MessageContentExtractor().extract(mimeMessage)
+      extractor.getTextBody
+    })
 }
