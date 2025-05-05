@@ -107,6 +107,7 @@ import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
+import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
@@ -174,7 +175,8 @@ public class MemoryServer {
         new MailboxesCleanupModule(),
         new InboxArchivalTaskModule(),
         new ContactSupportCapabilitiesModule(),
-        new DownloadAllRoutesModule())
+        new DownloadAllRoutesModule(),
+        new MailboxClearMethodModule())
         .with(new TeamMailboxJmapModule());
 
     public static final Module MODULES = Modules.override(

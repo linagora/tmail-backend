@@ -167,6 +167,7 @@ import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
 import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
+import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverAttachmentIdAssignationStrategy;
@@ -308,7 +309,8 @@ public class PostgresTmailServer {
         new EmailRecoveryActionMethodModule(),
         new LabelMethodModule(),
         new JmapSettingsMethodModule(),
-        new PublicAssetsModule())
+        new PublicAssetsModule(),
+        new MailboxClearMethodModule())
         .with(new TeamMailboxJmapModule());
 
     private static final Module PROTOCOLS = Modules.combine(

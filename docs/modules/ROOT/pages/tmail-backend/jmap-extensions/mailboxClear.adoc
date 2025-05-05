@@ -25,11 +25,12 @@ The request object has the following properties:
 The response object has the following properties:
 
 * **accountId**: `Id` - The id of the account used for this call.
+* **totalDeletedMessagesCount**: `UnsignedInt|null` - The total number of messages deleted, only present if the clearance was successful.
 * **notCleared**: `SetError|null` - a SetError object explains why the mailbox was failed to be cleared, or `null` if the clearance was successful.
 
 === Example: Successful clearance
 
-If the mailbox was successfully cleared, only the `accountId` is returned in the response.
+If the mailbox was successfully cleared, the `accountId` and `totalDeletedMessagesCount` are returned in the response.
 
 Request:
 ```json
@@ -48,7 +49,8 @@ Response:
 [
     "Mailbox/clear",
     {
-        "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac"
+        "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+        "totalDeletedMessagesCount": 42
     },
     "#0"
 ]
