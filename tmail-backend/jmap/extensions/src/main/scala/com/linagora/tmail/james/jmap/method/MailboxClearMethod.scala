@@ -30,7 +30,8 @@ import jakarta.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JAMES_SHARES, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, SetError, UrlPrefixes}
+import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, SessionTranslator, SetError, UnsignedInt, UrlPrefixes}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.mail.{MailboxGet, UnparsedMailboxId}
 import org.apache.james.jmap.method.MailboxSetMethod.assertCapabilityIfSharedMailbox
@@ -84,7 +85,7 @@ object MailboxClearMethod {
 }
 
 sealed trait MailboxClearResult
-case class MailboxClearSuccess(mailboxId: MailboxId) extends MailboxClearResult
+case class MailboxClearSuccess(mailboxId: MailboxId, totalDeleted: UnsignedInt) extends MailboxClearResult
 case class MailboxClearFailure(mailboxId: UnparsedMailboxId, exception: Throwable) extends MailboxClearResult {
   def asSetError: SetError = exception match {
     case e: MailboxNotFoundException =>
@@ -124,14 +125,14 @@ class MailboxClearMethod @Inject()(mailboxManager: MailboxManager,
         parsedMailboxId => SMono(mailboxManager.getMailboxReactive(parsedMailboxId, mailboxSession))
           .filterWhen(assertCapabilityIfSharedMailbox(mailboxSession, parsedMailboxId, supportSharedMailbox))
           .flatMap(mailbox => expungeAllMessages(mailbox, mailboxSession)
-            .`then`(SMono.just(MailboxClearSuccess(parsedMailboxId))))
+            .map(totalDeleted => MailboxClearSuccess(parsedMailboxId, UnsignedInt.liftOrThrow(totalDeleted))))
           .onErrorResume(e => SMono.just(MailboxClearFailure(request.mailboxId, e))))
       .map {
-        case _: MailboxClearSuccess => MailboxClearResponse(accountId = request.accountId, notCleared = None)
-        case failure: MailboxClearFailure => MailboxClearResponse(accountId = request.accountId, notCleared = Some(failure.asSetError))
+        case MailboxClearSuccess(_, totalDeleted) => MailboxClearResponse(accountId = request.accountId, totalDeletedMessagesCount = Some(totalDeleted), notCleared = None)
+        case failure: MailboxClearFailure => MailboxClearResponse(accountId = request.accountId, totalDeletedMessagesCount = None, notCleared = Some(failure.asSetError))
       }
 
-  private def expungeAllMessages(mailbox: MessageManager, mailboxSession: MailboxSession): SMono[Unit] =
+  private def expungeAllMessages(mailbox: MessageManager, mailboxSession: MailboxSession): SMono[Int] =
     SFlux(Flux.from(mailbox.listMessagesMetadata(MessageRange.all(), mailboxSession))
       .map(_.getComposedMessageId.getUid)
       .window(DELETE_BATCH_SIZE)
@@ -139,8 +140,8 @@ class MailboxClearMethod @Inject()(mailboxManager: MailboxManager,
         .flatMap(uids => mailbox.deleteReactive(uids.asInstanceOf[java.util.List[MessageUid]], mailboxSession)
           .thenReturn(uids.size()))))
       .reduce(0)((acc: Int, size: Int) => acc + size)
-      .flatMap(totalDeleted => auditTrail(mailboxSession, mailbox.getId, totalDeleted))
-      .`then`()
+      .flatMap(totalDeleted => auditTrail(mailboxSession, mailbox.getId, totalDeleted)
+        .`then`(SMono.just(totalDeleted)))
 
   private def auditTrail(mailboxSession: MailboxSession, mailboxId: MailboxId, totalDeleted: Int): SMono[Void] =
     SMono(ReactorUtils.logAsMono(() => AuditTrail.entry()

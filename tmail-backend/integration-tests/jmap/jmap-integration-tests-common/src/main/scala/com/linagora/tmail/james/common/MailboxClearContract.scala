@@ -230,7 +230,8 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID"
+           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "totalDeletedMessagesCount": 2
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -312,7 +313,8 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID"
+           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "totalDeletedMessagesCount": 0
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -371,7 +373,8 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID"
+           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "totalDeletedMessagesCount": 1
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -438,7 +441,8 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID"
+           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "totalDeletedMessagesCount": 1
            |    },
            |    "c1"
            |]""".stripMargin)
@@ -568,7 +572,8 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID"
+           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "totalDeletedMessagesCount": 1
            |    },
            |    "c1"
            |]""".stripMargin)

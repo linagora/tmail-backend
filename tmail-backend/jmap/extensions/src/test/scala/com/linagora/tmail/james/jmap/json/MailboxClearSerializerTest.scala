@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.json
 import com.linagora.tmail.james.jmap.model.{MailboxClearRequest, MailboxClearResponse}
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{AccountId, SetError}
+import org.apache.james.jmap.core.{AccountId, SetError, UnsignedInt}
 import org.apache.james.jmap.mail.UnparsedMailboxId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -48,13 +48,15 @@ class MailboxClearSerializerTest {
   @Test
   def serializeSuccessResponseShouldSucceed(): Unit = {
     val response = MailboxClearResponse(
-      accountId = AccountId.apply("50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac"))
+      accountId = AccountId.apply("50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac"),
+      totalDeletedMessagesCount = Some(UnsignedInt.liftOrThrow(10)))
 
     val serialized = new MailboxClearSerializer().serializeResponse(response)
 
     assertThat(serialized).isEqualTo(Json.parse(
       """{
-        |  "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac"
+        |    "accountId": "50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac",
+        |    "totalDeletedMessagesCount": 10
         |}""".stripMargin))
   }
 
@@ -62,6 +64,7 @@ class MailboxClearSerializerTest {
   def serializeFailureResponseShouldSucceed(): Unit = {
     val response = MailboxClearResponse(
       accountId = AccountId.apply("50fb9073ba109901291988b0d78e8a602a6fcd96fbde033eb46ca308779f8fac"),
+      totalDeletedMessagesCount = None,
       notCleared = Some(SetError.serverFail(SetErrorDescription("An error occurred"))))
 
     val serialized = new MailboxClearSerializer().serializeResponse(response)

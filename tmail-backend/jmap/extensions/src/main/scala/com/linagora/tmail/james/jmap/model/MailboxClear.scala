@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.model
 
+import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
 import org.apache.james.jmap.core.{AccountId, SetError}
 import org.apache.james.jmap.mail.UnparsedMailboxId
 import org.apache.james.jmap.method.WithAccountId
@@ -26,5 +27,5 @@ case class MailboxClearRequest(accountId: AccountId,
                                mailboxId: UnparsedMailboxId) extends WithAccountId
 
 case class MailboxClearResponse(accountId: AccountId,
+                                totalDeletedMessagesCount: Option[UnsignedInt],
                                 notCleared: Option[SetError] = None)
-
