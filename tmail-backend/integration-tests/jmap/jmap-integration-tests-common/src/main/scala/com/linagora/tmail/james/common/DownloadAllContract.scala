@@ -102,6 +102,38 @@ trait DownloadAllContract {
   }
 
   @Test
+  def downloadAllShouldNotIncludeInlineAttachments(server: GuiceJamesServer): Unit = {
+    val path = MailboxPath.inbox(BOB)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString, path, AppendCommand.from(
+        ClassLoaderUtils.getSystemResourceAsSharedStream("eml/mixed-inline-and-normal-attachments.eml")))
+      .getMessageId
+
+    val response = `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+    .when
+      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType("application/zip")
+      .header("cache-control", "private, immutable, max-age=31536000")
+      .extract
+      .body
+      .asInputStream()
+
+    assertThat(ZipUtil.readZipData(response))
+      .containsExactlyInAnyOrderElementsOf(ImmutableList.of(
+        new ZipEntryData("text1",
+          "-----BEGIN RSA PRIVATE KEY-----\n" +
+            "MIIEogIBAAKCAQEAx7PG0+E//EMpm7IgI5Q9TMDSFya/1hE+vvTJrk0iGFllPeHL\n" +
+            "A5/VlTM0YWgG6X50qiMfE3VLazf2c19iXrT0mq/21PZ1wFnogv4zxUNaih+Bng62\n" +
+            "F0SyruE/O/Njqxh/Ccq6K/e05TV4T643USxAeG0KppmYW9x8HA/GvV832apZuxkV\n" +
+            "i6NVkDBrfzaUCwu4zH+HwOv/pI87E7KccHYC++Biaj3\n")))
+  }
+
+  @Test
   def downloadShouldAddExtraNumberToFileNameWhenAttachmentNamesAreDuplicated(server: GuiceJamesServer): Unit = {
     val path = MailboxPath.inbox(BOB)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)

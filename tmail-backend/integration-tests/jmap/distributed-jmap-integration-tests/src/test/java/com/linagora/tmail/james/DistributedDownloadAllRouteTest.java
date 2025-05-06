@@ -46,6 +46,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -54,6 +55,7 @@ import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.DownloadAllContract;
 import com.linagora.tmail.james.jmap.ZipUtil;
+import com.linagora.tmail.james.jmap.ZipUtil.ZipEntryData;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.module.CassandraAttachmentProbeModule;
 import com.linagora.tmail.james.probe.CassandraAttachmentProbe;
@@ -123,5 +125,43 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
 
         assertThat(ZipUtil.readZipData(response))
             .containsExactlyInAnyOrderElementsOf(DownloadAllContract.ZIP_ENTRIES());
+    }
+
+    @Test
+    void downloadAllShouldStillNotIncludeInlinedAfterAttachmentMetadataGotDeletedByMistake(GuiceJamesServer server) throws MailboxException {
+        MailboxPath path = MailboxPath.inbox(BOB);
+        server.getProbe(MailboxProbeImpl.class).createMailbox(path);
+
+        MessageId messageId = server.getProbe(MailboxProbeImpl.class)
+            .appendMessage(BOB.asString(), path, AppendCommand.from(
+                ClassLoaderUtils.getSystemResourceAsSharedStream("eml/mixed-inline-and-normal-attachments.eml")))
+            .getMessageId();
+
+        CassandraAttachmentProbe attachmentProbe = server.getProbe(CassandraAttachmentProbe.class);
+        server.getProbe(MessageIdProbe.class)
+            .retrieveAttachmentIds(messageId, BOB)
+            .forEach(attachmentProbe::delete);
+
+        InputStream response = given()
+            .basePath("")
+            .header(ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER)
+        .when()
+            .get("/downloadAll/" + DownloadAllContract.accountId() + "/" + messageId.serialize())
+        .then()
+            .statusCode(SC_OK)
+            .contentType("application/zip")
+            .header("cache-control", "private, immutable, max-age=31536000")
+            .extract()
+            .body()
+            .asInputStream();
+
+        assertThat(ZipUtil.readZipData(response))
+            .containsExactlyInAnyOrderElementsOf(ImmutableList.of(
+                new ZipEntryData("text1",
+                    "-----BEGIN RSA PRIVATE KEY-----\n" +
+                        "MIIEogIBAAKCAQEAx7PG0+E//EMpm7IgI5Q9TMDSFya/1hE+vvTJrk0iGFllPeHL\n" +
+                        "A5/VlTM0YWgG6X50qiMfE3VLazf2c19iXrT0mq/21PZ1wFnogv4zxUNaih+Bng62\n" +
+                        "F0SyruE/O/Njqxh/Ccq6K/e05TV4T643USxAeG0KppmYW9x8HA/GvV832apZuxkV\n" +
+                        "i6NVkDBrfzaUCwu4zH+HwOv/pI87E7KccHYC++Biaj3\n")));
     }
 }
