@@ -96,7 +96,7 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
     }
 
     @Test
-    void downloadAllShouldWorkAfterAttachmentMetadataGotDeletedByMistake(GuiceJamesServer server) throws MailboxException {
+    void downloadAllShouldWorkAfterAttachmentMetadataGotDeleted(GuiceJamesServer server) throws MailboxException {
         MailboxPath path = MailboxPath.inbox(BOB);
         server.getProbe(MailboxProbeImpl.class).createMailbox(path);
 
@@ -128,7 +128,7 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
     }
 
     @Test
-    void downloadAllShouldStillNotIncludeInlinedAfterAttachmentMetadataGotDeletedByMistake(GuiceJamesServer server) throws MailboxException {
+    void downloadAllShouldStillNotIncludeInlinedAfterAttachmentMetadataGotDeleted(GuiceJamesServer server) throws MailboxException {
         MailboxPath path = MailboxPath.inbox(BOB);
         server.getProbe(MailboxProbeImpl.class).createMailbox(path);
 
