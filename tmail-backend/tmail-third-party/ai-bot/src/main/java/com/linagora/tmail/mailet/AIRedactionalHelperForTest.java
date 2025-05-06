@@ -21,9 +21,19 @@ package com.linagora.tmail.mailet;
 import java.io.IOException;
 import java.util.Optional;
 
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
+
 import dev.ai4j.openai4j.OpenAiHttpException;
 import reactor.core.publisher.Mono;
 
-public interface AIRedactionalHelper {
-    Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws OpenAiHttpException, IOException;
+
+public class AIRedactionalHelperForTest implements AIRedactionalHelper {
+
+    public Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws OpenAiHttpException, IOException {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(userInput), "User input cannot be null or empty");
+
+        return Mono.just("This suggestion is just for testing purpose this is your UserInput: " + userInput + " This is you mailContent: " + mailContent.orElse(""));
+    }
+
 }

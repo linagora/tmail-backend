@@ -29,17 +29,23 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.linagora.tmail.mailet.AIBotConfig;
+import com.linagora.tmail.mailet.AIRedactionalHelper;
+import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
 public class AIBotModule extends AbstractModule {
+    @Override
+    protected void configure() {
+        bind(AIRedactionalHelper.class).to(LangchainAIRedactionalHelper.class);
+    }
 
     @Provides
     @Singleton
     @Named("ai")
     public  Configuration getAIBotConfigurations(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
-        return propertiesProvider.getConfiguration("ai.properties");
+        return propertiesProvider.getConfiguration("ai");
     }
 
     @Provides

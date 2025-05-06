@@ -48,7 +48,7 @@ public class AIRedactionalHelperTest {
             Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()));
         StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
 
-        aiRedactioanlHelper = new AIRedactionalHelper(chatLanguageModel);
+        aiRedactioanlHelper = new LangchainAIRedactionalHelper(chatLanguageModel);
     }
 
     @Test
