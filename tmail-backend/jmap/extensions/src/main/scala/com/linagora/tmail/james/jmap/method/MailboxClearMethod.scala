@@ -81,7 +81,7 @@ class MailboxClearMethodModule extends AbstractModule {
 
 object MailboxClearMethod {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[MailboxClearMethod])
-  val DELETE_BATCH_SIZE: Int = 64
+  val DELETE_BATCH_SIZE: Int = 256
 }
 
 sealed trait MailboxClearResult
