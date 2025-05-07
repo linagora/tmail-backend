@@ -169,6 +169,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
+import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverAttachmentIdAssignationStrategy;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverBlobResolverModule;
@@ -288,6 +289,7 @@ public class PostgresTmailServer {
         new JMAPServerModule(),
         new JMAPModule(),
         new RFC8621MethodsModule(),
+        new JMAPOidcModule(),
         new TMailCleverBlobResolverModule(),
         new TMailJMAPModule(),
         new CalendarEventMethodModule(),

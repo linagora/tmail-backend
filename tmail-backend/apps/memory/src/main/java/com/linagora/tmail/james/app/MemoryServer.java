@@ -109,6 +109,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
+import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.routes.DownloadAllRoutesModule;
@@ -149,6 +150,7 @@ public class MemoryServer {
     public static final Module JMAP_LINAGORA = Modules.override(
         JMAP,
         new TMailJMAPModule(),
+        new JMAPOidcModule(),
         new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
         new ContactIndexingModule(),
