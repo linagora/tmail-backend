@@ -76,14 +76,9 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
             })
             .map(tokenInfo -> Username.of(tokenInfo.email()))
             .map(Throwing.function(sessionProvider::createSystemSession))
-            .onErrorResume(this::handleOidcError);
-    }
-
-    private Mono<MailboxSession> handleOidcError(Throwable error) {
-        if (error instanceof TokenIntrospectionException || error instanceof UserInfoCheckException) {
-            return Mono.error(new UnauthorizedException("Invalid OIDC token", error));
-        }
-        return Mono.error(error);
+            .onErrorMap(TokenIntrospectionException.class, e -> new UnauthorizedException("Invalid OIDC token when introspection check", e))
+            .onErrorMap(UserInfoCheckException.class, e -> new UnauthorizedException("Invalid OIDC token when user info check", e))
+            .onErrorMap(Throwable::getCause);
     }
 
     @Override
