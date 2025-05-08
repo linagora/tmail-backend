@@ -42,6 +42,7 @@ import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 
 public record DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
@@ -59,7 +60,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             boolean quotaCompatibilityMode,
                                             EventBusKeysChoice eventBusKeysChoice,
                                             boolean dropListEnabled,
-                                            VaultConfiguration vaultConfiguration) implements Configuration {
+                                            VaultConfiguration vaultConfiguration,
+                                            boolean oidcEnabled) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -76,6 +78,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<Boolean> quotaCompatibilityMode;
         private Optional<Boolean> dropListsEnabled;
         private Optional<VaultConfiguration> vaultConfiguration;
+        private Optional<Boolean> oidcEnabled;
 
         private Builder() {
             searchConfiguration = Optional.empty();
@@ -93,6 +96,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             eventBusKeysChoice = Optional.empty();
             dropListsEnabled = Optional.empty();
             vaultConfiguration = Optional.empty();
+            oidcEnabled = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -188,6 +192,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder oidcEnabled(boolean enable) {
+            this.oidcEnabled = Optional.of(enable);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -266,6 +275,16 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 }
             });
 
+            boolean oidcEnabled = this.oidcEnabled.orElseGet(() -> {
+                try {
+                    return JMAPOidcConfiguration.parseConfiguration(propertiesProvider).getOidcEnabled();
+                } catch (FileNotFoundException e) {
+                    return false;
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -283,7 +302,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 quotaCompatibilityMode,
                 eventBusKeysChoice,
                 dropListsEnabled,
-                vaultConfiguration);
+                vaultConfiguration,
+                oidcEnabled);
         }
     }
 
