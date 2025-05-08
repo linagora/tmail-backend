@@ -77,8 +77,7 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
             .map(tokenInfo -> Username.of(tokenInfo.email()))
             .map(Throwing.function(sessionProvider::createSystemSession))
             .onErrorMap(TokenIntrospectionException.class, e -> new UnauthorizedException("Invalid OIDC token when introspection check", e))
-            .onErrorMap(UserInfoCheckException.class, e -> new UnauthorizedException("Invalid OIDC token when user info check", e))
-            .onErrorMap(Throwable::getCause);
+            .onErrorMap(UserInfoCheckException.class, e -> new UnauthorizedException("Invalid OIDC token when user info check", e));
     }
 
     @Override
