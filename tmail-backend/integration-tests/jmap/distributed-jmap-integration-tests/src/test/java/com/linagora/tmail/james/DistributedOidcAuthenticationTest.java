@@ -18,34 +18,53 @@
 
 package com.linagora.tmail.james;
 
-import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
-
 import java.net.URL;
 import java.util.Optional;
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.SearchConfiguration;
+import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.core.JmapRfc8621Configuration;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
+import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.name.Names;
+import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.common.OidcAuthenticationContract;
-import com.linagora.tmail.james.app.MemoryConfiguration;
-import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedJamesConfiguration;
+import com.linagora.tmail.james.app.DistributedServer;
+import com.linagora.tmail.james.app.DockerOpenSearchExtension;
+import com.linagora.tmail.james.app.EventBusKeysChoice;
+import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class MemoryOidcAuthenticationTest extends OidcAuthenticationContract {
+public class DistributedOidcAuthenticationTest extends OidcAuthenticationContract {
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
-        MemoryConfiguration.builder()
+    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+        DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
-            .usersRepository(DEFAULT)
+            .blobStore(BlobStoreConfiguration.builder()
+                .s3()
+                .noSecondaryS3BlobStore()
+                .disableCache()
+                .deduplication()
+                .noCryptoConfig()
+                .disableSingleSave())
+            .eventBusKeysChoice(EventBusKeysChoice.REDIS)
+            .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
-        .server(configuration -> MemoryServer.createServer(configuration)
+        .extension(new DockerOpenSearchExtension())
+        .extension(new CassandraExtension())
+        .extension(new RabbitMQExtension())
+        .extension(new RedisExtension())
+        .extension(new AwsS3BlobStoreExtension())
+        .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> binder.bind(JmapRfc8621Configuration.class)
                 .toInstance(JmapRfc8621Configuration.LOCALHOST_CONFIGURATION()

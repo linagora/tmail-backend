@@ -33,6 +33,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.utils.DataProbeImpl;
@@ -44,6 +46,7 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 
 import com.github.fge.lambdas.Throwing;
+import com.linagora.tmail.james.jmap.oidc.OidcAuthenticationStrategy;
 
 import io.restassured.authentication.NoAuthScheme;
 import io.restassured.http.Header;
@@ -51,9 +54,13 @@ import io.restassured.http.Header;
 public abstract class OidcAuthenticationContract {
     private static final String USERINFO_TOKEN_URI_PATH = "/oauth2/userinfo";
     private static final String INTROSPECT_TOKEN_URI_PATH = "/oauth2/introspect";
+    private static final String EMAIL_CLAIM_VALUE = BOB.asString();
+    private static final Header AUTH_HEADER = new Header(AUTHORIZATION_HEADER(), "Bearer oidc_opac_token");
     private static final long TOKEN_EXPIRATION_TIME = Clock.systemUTC().instant().plus(Duration.ofHours(1)).getEpochSecond();
 
     private static final ClientAndServer mockServer = ClientAndServer.startClientAndServer(0);
+
+    protected static final Optional<List<String>>  OIDC_AUTHENTICATION_STRATEGY = Optional.of(List.of(OidcAuthenticationStrategy.class.getCanonicalName()));
 
     protected static URL getUserInfoTokenEndpoint() {
         return Throwing.supplier(() -> URI.create(String.format("http://127.0.0.1:%s%s", mockServer.getLocalPort(), USERINFO_TOKEN_URI_PATH)).toURL()).get();
@@ -133,17 +140,165 @@ public abstract class OidcAuthenticationContract {
     }
 
     @Test
-    void shoulAuthenticateWithOidc() {
-        String emailClaimValue = BOB.asString();
-        updateMockServerTokenInfoResponse(emailClaimValue);
+    void shouldAuthenticateWithOidc() {
+        updateMockServerTokenInfoResponse(EMAIL_CLAIM_VALUE);
 
-        Header authHeader = new Header(AUTHORIZATION_HEADER(), "Bearer oidc_opac_token");
         given()
-            .headers(getHeadersWith(authHeader))
+            .headers(getHeadersWith(AUTH_HEADER))
             .body(ECHO_REQUEST_OBJECT())
         .when()
             .post()
         .then()
             .statusCode(200);
+    }
+
+    @Test
+    void shouldAcceptAudArray() {
+        updateMockServerTokenInfoResponse(EMAIL_CLAIM_VALUE);
+        updateMockServerIntrospectionResponseWithAudArray();
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(200);
+    }
+
+    @Test
+    void shouldRejectOutdatedToken() {
+        updateMockServerUserInfoResponse(EMAIL_CLAIM_VALUE);
+
+        long expiredTime = Clock.systemUTC().instant().minus(Duration.ofHours(1)).getEpochSecond();
+        updateMockerServerSpecifications(INTROSPECT_TOKEN_URI_PATH, """
+            {
+                "exp": %d,
+                "scope": "openid email profile",
+                "client_id": "tmail",
+                "active": true,
+                "aud": "tmail",
+                "sub": "twake-mail-dev",
+                "sid": "dT/8+UDx1lWp1bRZkdhbS1i6ZfYhf8+bWAZQs8p0T/c",
+                "iss": "https://sso.linagora.com"
+              }""".formatted(expiredTime), 200);
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(401);
+    }
+
+    @Test
+    void shouldRejectBadAudience() {
+        updateMockServerUserInfoResponse(EMAIL_CLAIM_VALUE);
+
+        updateMockerServerSpecifications(INTROSPECT_TOKEN_URI_PATH, """
+            {
+                "exp": %d,
+                "scope": "openid email profile",
+                "client_id": "tmail",
+                "active": true,
+                "aud": "bad",
+                "sub": "twake-mail-dev",
+                "sid": "dT/8+UDx1lWp1bRZkdhbS1i6ZfYhf8+bWAZQs8p0T/c",
+                "iss": "https://sso.linagora.com"
+              }""".formatted(TOKEN_EXPIRATION_TIME), 200);
+
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(401);
+    }
+
+    @Test
+    void shouldAcceptNoSidInUserInfo() {
+        String activeResponseNoSid = """
+            {
+              "sub": "twake-mail-dev",
+              "email": "%s",
+              "family_name": "twake-mail-dev",
+              "name": "twake-mail-dev"
+            }""".formatted(EMAIL_CLAIM_VALUE);
+
+        updateMockerServerSpecifications(USERINFO_TOKEN_URI_PATH, activeResponseNoSid, 200);
+        updateMockServerIntrospectionResponse();
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(200);
+    }
+
+    @Test
+    void shouldAcceptNoSidInIntrospection() {
+        updateMockServerUserInfoResponse(EMAIL_CLAIM_VALUE);
+
+        updateMockerServerSpecifications(INTROSPECT_TOKEN_URI_PATH, """
+            {
+                "exp": %d,
+                "scope": "openid email profile",
+                "client_id": "tmail",
+                "active": true,
+                "aud": "tmail",
+                "sub": "twake-mail-dev",
+                "iss": "https://sso.linagora.com"
+              }""".formatted(TOKEN_EXPIRATION_TIME), 200);
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(200);
+    }
+
+    @Test
+    void shouldRejectWhenUserInfoFails() {
+        updateMockerServerSpecifications(INTROSPECT_TOKEN_URI_PATH, """
+            {
+                "exp": %d,
+                "scope": "openid email profile",
+                "client_id": "tmail",
+                "active": true,
+                "aud": "tmail",
+                "sub": "twake-mail-dev",
+                "iss": "https://sso.linagora.com"
+              }""".formatted(TOKEN_EXPIRATION_TIME), 200);
+
+        updateMockerServerSpecifications(USERINFO_TOKEN_URI_PATH, "activeResponse", 401);
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(401);
+    }
+
+    @Test
+    void shouldRejectWhenIntrospectionFails() {
+        updateMockServerUserInfoResponse(EMAIL_CLAIM_VALUE);
+        updateMockerServerSpecifications(INTROSPECT_TOKEN_URI_PATH, "", 401);
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(401);
     }
 }
