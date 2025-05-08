@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.jmap.model;
+package com.linagora.tmail.james.jmap.oidc;
 
-public record Aud(String value) {
+public record Sid(String value) {
 }

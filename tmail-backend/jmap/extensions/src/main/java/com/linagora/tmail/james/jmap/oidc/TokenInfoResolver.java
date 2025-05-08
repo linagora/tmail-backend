@@ -20,9 +20,6 @@ package com.linagora.tmail.james.jmap.oidc;
 
 import java.util.function.Function;
 
-import com.linagora.tmail.james.jmap.model.Token;
-import com.linagora.tmail.james.jmap.model.TokenInfo;
-
 import reactor.core.publisher.Mono;
 
 public interface TokenInfoResolver extends Function<Token, Mono<TokenInfo>> {

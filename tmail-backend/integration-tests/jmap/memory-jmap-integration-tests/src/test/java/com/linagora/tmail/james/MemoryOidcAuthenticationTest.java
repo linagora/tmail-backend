@@ -33,7 +33,6 @@ import com.linagora.tmail.common.OidcAuthenticationContract;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryOidcAuthenticationTest extends OidcAuthenticationContract {

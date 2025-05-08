@@ -36,10 +36,6 @@ import org.apache.james.util.streams.Iterators;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
-import com.linagora.tmail.james.jmap.model.Aud;
-import com.linagora.tmail.james.jmap.model.Sid;
-import com.linagora.tmail.james.jmap.model.Token;
-import com.linagora.tmail.james.jmap.model.TokenInfo;
 
 import reactor.core.publisher.Mono;
 

@@ -36,9 +36,6 @@ import org.apache.james.mailbox.SessionProvider;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableMap;
-import com.linagora.tmail.james.jmap.model.Aud;
-import com.linagora.tmail.james.jmap.model.Token;
-import com.linagora.tmail.james.jmap.model.TokenInfo;
 
 import reactor.core.publisher.Mono;
 import reactor.netty.http.server.HttpServerRequest;
@@ -63,7 +60,6 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
         return Mono.fromCallable(() -> authHeaders(httpRequest))
             .filter(header -> header.startsWith(AUTHORIZATION_HEADER_PREFIX))
             .map(header -> header.substring(AUTHORIZATION_HEADER_PREFIX.length()))
-            .filter(token -> !token.startsWith("eyJ")) // Heuristic for detecting JWT
             .map(Token::new)
             .flatMap(tokenInfoResolver::apply)
             .<TokenInfo>handle((tokenInfo, sink) -> {

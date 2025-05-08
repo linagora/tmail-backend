@@ -21,22 +21,15 @@ package com.linagora.tmail.james.jmap.oidc;
 import java.net.URL;
 
 import org.apache.commons.configuration2.Configuration;
-import org.apache.james.jmap.http.AuthenticationStrategy;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
-import com.linagora.tmail.james.jmap.model.Aud;
 
 public class JMAPOidcModule extends AbstractModule {
     @Override
     protected void configure() {
-        Multibinder.newSetBinder(binder(), AuthenticationStrategy.class)
-            .addBinding()
-            .to(OidcAuthenticationStrategy.class);
-
         bind(TokenInfoResolver.class).to(OidcEndpointsInfoResolver.class);
     }
 

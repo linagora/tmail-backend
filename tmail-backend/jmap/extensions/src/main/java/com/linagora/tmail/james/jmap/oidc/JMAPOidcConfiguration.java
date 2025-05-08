@@ -26,7 +26,6 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 
 import com.github.fge.lambdas.Throwing;
-import com.linagora.tmail.james.jmap.model.Aud;
 
 public class JMAPOidcConfiguration {
     private static final String USERINFO_URL_PROPERTY = "oidc.userInfo.url";
