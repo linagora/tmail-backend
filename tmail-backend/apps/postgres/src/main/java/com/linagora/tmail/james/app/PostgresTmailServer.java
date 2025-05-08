@@ -254,6 +254,7 @@ public class PostgresTmailServer {
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
+            .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED));
     }
 
@@ -289,7 +290,6 @@ public class PostgresTmailServer {
         new JMAPServerModule(),
         new JMAPModule(),
         new RFC8621MethodsModule(),
-        new JMAPOidcModule(),
         new TMailCleverBlobResolverModule(),
         new TMailJMAPModule(),
         new CalendarEventMethodModule(),
@@ -533,5 +533,14 @@ public class PostgresTmailServer {
             return new RLSSupportPostgresMailboxModule();
         }
         return Modules.EMPTY_MODULE;
+    }
+
+    private static Module chooseJmapOidc(PostgresTmailConfiguration configuration) {
+        if (configuration.oidcEnabled()) {
+            return new JMAPOidcModule();
+        }
+        return binder -> {
+
+        };
     }
 }

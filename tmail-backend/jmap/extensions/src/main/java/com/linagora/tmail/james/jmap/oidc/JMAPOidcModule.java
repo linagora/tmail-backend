@@ -20,7 +20,6 @@ package com.linagora.tmail.james.jmap.oidc;
 
 import java.net.URL;
 
-import org.apache.commons.configuration2.Configuration;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
 
 import com.google.inject.AbstractModule;
@@ -31,11 +30,6 @@ public class JMAPOidcModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(TokenInfoResolver.class).to(OidcEndpointsInfoResolver.class);
-    }
-
-    @Provides
-    JMAPOidcConfiguration provideJMAPOidcConfiguration(@Named("jmap")Configuration configuration) {
-        return JMAPOidcConfiguration.parseConfiguration(configuration);
     }
 
     @Provides

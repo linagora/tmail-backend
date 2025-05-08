@@ -44,6 +44,7 @@ public class MemoryOidcAuthenticationTest extends OidcAuthenticationContract {
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .oidcEnabled(true)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

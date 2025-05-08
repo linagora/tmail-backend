@@ -18,14 +18,20 @@
 
 package com.linagora.tmail.james.jmap.oidc;
 
-import java.net.MalformedURLException;
+import static org.apache.james.jmap.core.JmapConfigProperties.AUTHENTICATION_STRATEGIES;
+
+import java.io.FileNotFoundException;
 import java.net.URL;
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
+import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
 
 public class JMAPOidcConfiguration {
     private static final String USERINFO_URL_PROPERTY = "oidc.userInfo.url";
@@ -34,15 +40,21 @@ public class JMAPOidcConfiguration {
     private static final String AUDIENCE_PROPERTY = "oidc.audience";
     private static final String CLAIM_PROPERTY = "oidc.claim";
 
-    public static Builder builder() {
-        return new Builder();
+    @FunctionalInterface
+    public interface RequireOidcEnabled {
+        Builder oidcEnabled(boolean oidcEnabled);
     }
 
     public static class Builder {
+        private final boolean oidcEnabled;
         private Optional<URL> oidcUserInfoUrl = Optional.empty();
         private Optional<IntrospectionEndpoint> oidcIntrospectionEndpoint = Optional.empty();
         private Optional<String> oidcIntrospectionClaim = Optional.empty();
         private Optional<Aud> oidcAudience = Optional.empty();
+
+        private Builder(boolean oidcEnabled) {
+            this.oidcEnabled = oidcEnabled;
+        }
 
         public Builder oidcUserInfoUrl(Optional<URL> url) {
             this.oidcUserInfoUrl = url;
@@ -65,19 +77,40 @@ public class JMAPOidcConfiguration {
         }
 
         public JMAPOidcConfiguration build() {
-            try {
-                return new JMAPOidcConfiguration(
-                    oidcUserInfoUrl.orElse(new URL("http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/userInfo")),
-                    oidcIntrospectionEndpoint.orElse(new IntrospectionEndpoint(new URL("http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/introspect"), Optional.empty())),
-                    oidcIntrospectionClaim.orElse("email"),
-                    oidcAudience.orElse(new Aud("tmail")));
-            } catch (MalformedURLException e) {
-                throw new RuntimeException(e);
+            if (oidcEnabled) {
+                checkOidcFieldsPresence();
+            }
+
+            return new JMAPOidcConfiguration(
+                oidcEnabled,
+                oidcUserInfoUrl,
+                oidcIntrospectionEndpoint,
+                oidcIntrospectionClaim,
+                oidcAudience);
+        }
+
+        private void checkOidcFieldsPresence() {
+            if (oidcUserInfoUrl.isEmpty() ||
+                oidcIntrospectionEndpoint.isEmpty() ||
+                oidcIntrospectionClaim.isEmpty() ||
+                oidcAudience.isEmpty()) {
+                throw new IllegalStateException("All OIDC fields must be defined when OIDC is enabled.");
             }
         }
     }
 
+    public static RequireOidcEnabled builder() {
+        return oidcEnabled -> new Builder(oidcEnabled);
+    }
+
+    public static JMAPOidcConfiguration parseConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
+        return parseConfiguration(propertiesProvider.getConfiguration("jmap"));
+    }
+
     public static JMAPOidcConfiguration parseConfiguration(Configuration configuration) {
+        List<String> authenticationStrategies = configuration.getList(String.class, AUTHENTICATION_STRATEGIES(), ImmutableList.of());
+        boolean oidcEnabled = authenticationStrategies.contains(OidcAuthenticationStrategy.class.getCanonicalName());
+
         Optional<URL> oidcUserInfoUrl = Optional.ofNullable(configuration.getString(USERINFO_URL_PROPERTY, null))
             .map(Throwing.function(URL::new));
         Optional<URL> oidcIntrospectUrl = Optional.ofNullable(configuration.getString(INTROSPECT_URL_PROPERTY, null))
@@ -89,6 +122,7 @@ public class JMAPOidcConfiguration {
         Optional<IntrospectionEndpoint> introspectionEndpoint = oidcIntrospectUrl.map(url -> new IntrospectionEndpoint(url, oidcIntrospectCreds));
 
         return JMAPOidcConfiguration.builder()
+            .oidcEnabled(oidcEnabled)
             .oidcUserInfoUrl(oidcUserInfoUrl)
             .oidcIntrospectionEndpoint(introspectionEndpoint)
             .oidcAudience(oidcAudience)
@@ -96,31 +130,38 @@ public class JMAPOidcConfiguration {
             .build();
     }
 
-    private final URL oidcUserInfoUrl;
-    private final IntrospectionEndpoint introspectionEndpoint;
-    private final String oidcClaim;
-    private final Aud aud;
+    private final boolean oidcEnabled;
+    private final Optional<URL> oidcUserInfoUrl;
+    private final Optional<IntrospectionEndpoint> introspectionEndpoint;
+    private final Optional<String> oidcClaim;
+    private final Optional<Aud> aud;
 
-    JMAPOidcConfiguration(URL oidcUserInfoUrl, IntrospectionEndpoint introspectionEndpoint, String oidcClaim, Aud aud) {
+    JMAPOidcConfiguration(boolean oidcEnabled, Optional<URL> oidcUserInfoUrl, Optional<IntrospectionEndpoint> introspectionEndpoint,
+                          Optional<String> oidcClaim, Optional<Aud> aud) {
+        this.oidcEnabled = oidcEnabled;
         this.oidcUserInfoUrl = oidcUserInfoUrl;
         this.introspectionEndpoint = introspectionEndpoint;
         this.oidcClaim = oidcClaim;
         this.aud = aud;
     }
 
+    public boolean getOidcEnabled() {
+        return oidcEnabled;
+    }
+
     public URL getOidcUserInfoUrl() {
-        return oidcUserInfoUrl;
+        return oidcUserInfoUrl.get();
     }
 
     public String getOidcClaim() {
-        return oidcClaim;
+        return oidcClaim.get();
     }
 
     public IntrospectionEndpoint getIntrospectionEndpoint() {
-        return introspectionEndpoint;
+        return introspectionEndpoint.get();
     }
 
     public Aud getAud() {
-        return aud;
+        return aud.get();
     }
 }

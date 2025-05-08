@@ -295,7 +295,6 @@ public class DistributedServer {
         new JMAPServerModule(),
         new JMAPModule(),
         new RFC8621MethodsModule(),
-        new JMAPOidcModule(),
         new TMailCleverBlobResolverModule(),
         new JmapEventBusModule(),
         new PublicAssetsModule(),
@@ -435,6 +434,7 @@ public class DistributedServer {
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(overrideEventBusModule(configuration))
             .overrideWith(chooseDropListsModule(configuration))
+            .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(QUOTA_USERNAME_SUPPLIER_MODULE);
     }
 
@@ -638,5 +638,14 @@ public class DistributedServer {
         } catch (ConfigurationException exception) {
             return Modules.EMPTY_MODULE;
         }
+    }
+
+    private static Module chooseJmapOidc(DistributedJamesConfiguration configuration) {
+        if (configuration.oidcEnabled()) {
+            return new JMAPOidcModule();
+        }
+        return binder -> {
+
+        };
     }
 }

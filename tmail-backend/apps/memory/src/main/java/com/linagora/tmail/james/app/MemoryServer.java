@@ -150,7 +150,6 @@ public class MemoryServer {
     public static final Module JMAP_LINAGORA = Modules.override(
         JMAP,
         new TMailJMAPModule(),
-        new JMAPOidcModule(),
         new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
         new ContactIndexingModule(),
@@ -227,7 +226,8 @@ public class MemoryServer {
             .combineWith(chooseDropListsModule(configuration))
             .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
-            .overrideWith(chooseJmapModule(configuration));
+            .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(chooseJmapOidc(configuration));
     }
 
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
@@ -315,5 +315,14 @@ public class MemoryServer {
         } catch (ConfigurationException exception) {
             return Modules.EMPTY_MODULE;
         }
+    }
+
+    private static Module chooseJmapOidc(MemoryConfiguration configuration) {
+        if (configuration.oidcEnabled()) {
+            return new JMAPOidcModule();
+        }
+        return binder -> {
+
+        };
     }
 }

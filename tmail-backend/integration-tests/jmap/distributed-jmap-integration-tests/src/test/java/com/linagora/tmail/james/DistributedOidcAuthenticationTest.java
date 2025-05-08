@@ -58,6 +58,7 @@ public class DistributedOidcAuthenticationTest extends OidcAuthenticationContrac
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .oidcEnabled(true)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
