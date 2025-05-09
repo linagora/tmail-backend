@@ -20,6 +20,9 @@ package com.linagora.tmail.common;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
+import static io.restassured.RestAssured.with;
+import static org.apache.james.jmap.JMAPTestingConstants.ALICE;
+import static org.apache.james.jmap.JMAPTestingConstants.ALICE_PASSWORD;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB_PASSWORD;
 import static org.apache.james.jmap.JMAPTestingConstants.DOMAIN;
@@ -44,6 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
+import org.mockserver.verify.VerificationTimes;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.james.jmap.oidc.OidcAuthenticationStrategy;
@@ -75,7 +79,8 @@ public abstract class OidcAuthenticationContract {
         server.getProbe(DataProbeImpl.class)
             .fluent()
             .addDomain(DOMAIN)
-            .addUser(BOB.asString(), BOB_PASSWORD);
+            .addUser(BOB.asString(), BOB_PASSWORD)
+            .addUser(ALICE.asString(), ALICE_PASSWORD);
 
         requestSpecification = baseRequestSpecBuilder(server)
             .setAuth(new NoAuthScheme())
@@ -300,5 +305,65 @@ public abstract class OidcAuthenticationContract {
             .post()
         .then()
             .statusCode(401);
+    }
+
+    @Test
+    void shouldCacheResponse() {
+        updateMockServerTokenInfoResponse(EMAIL_CLAIM_VALUE);
+
+        for (int i = 0; i < 3; i++) {
+            with()
+                .headers(getHeadersWith(AUTH_HEADER))
+                .body(ECHO_REQUEST_OBJECT())
+            .when()
+                .post()
+            .then()
+                .statusCode(200);
+        }
+
+        mockServer.verify(HttpRequest.request().withPath(INTROSPECT_TOKEN_URI_PATH),
+            VerificationTimes.exactly(1));
+
+        mockServer.verify(HttpRequest.request().withPath(USERINFO_TOKEN_URI_PATH),
+            VerificationTimes.exactly(1));
+    }
+
+    @Test
+    void shouldNotShareCacheAcrossDifferentOidcTokens() {
+        updateMockServerIntrospectionResponse();
+
+        updateMockServerUserInfoResponse(EMAIL_CLAIM_VALUE);
+        String token1 = "Bearer token1";
+
+        given()
+            .headers(getHeadersWith(new Header(AUTHORIZATION_HEADER(), token1)))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(200);
+
+        updateMockServerUserInfoResponse(ALICE.asString());
+
+        String token2 = "Bearer token2";
+        given()
+            .headers(getHeadersWith(new Header(AUTHORIZATION_HEADER(), token2)))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(200);
+
+        mockServer.verify(
+            HttpRequest.request()
+                .withPath(USERINFO_TOKEN_URI_PATH)
+                .withHeader("Authorization", token1),
+            VerificationTimes.exactly(1));
+
+        mockServer.verify(
+            HttpRequest.request()
+                .withPath(USERINFO_TOKEN_URI_PATH)
+                .withHeader("Authorization", token2),
+            VerificationTimes.exactly(1));
     }
 }

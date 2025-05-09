@@ -42,14 +42,14 @@ import reactor.netty.http.server.HttpServerRequest;
 
 public class OidcAuthenticationStrategy implements AuthenticationStrategy {
     private final SessionProvider sessionProvider;
-    private final TokenInfoResolver tokenInfoResolver;
+    private final OidcTokenCache oidcTokenCache;
     private final Clock clock;
     private final Aud aud;
 
     @Inject
-    public OidcAuthenticationStrategy(SessionProvider sessionProvider, TokenInfoResolver tokenInfoResolver, Clock clock, Aud aud) {
+    public OidcAuthenticationStrategy(SessionProvider sessionProvider, OidcTokenCache oidcTokenCache, Clock clock, Aud aud) {
         this.sessionProvider = sessionProvider;
-        this.tokenInfoResolver = tokenInfoResolver;
+        this.oidcTokenCache = oidcTokenCache;
         this.clock = clock;
         this.aud = aud;
     }
@@ -61,7 +61,7 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
             .filter(header -> header.startsWith(AUTHORIZATION_HEADER_PREFIX))
             .map(header -> header.substring(AUTHORIZATION_HEADER_PREFIX.length()))
             .map(Token::new)
-            .flatMap(tokenInfoResolver::apply)
+            .flatMap(oidcTokenCache::associatedInformation)
             .<TokenInfo>handle((tokenInfo, sink) -> {
                 if (!tokenInfo.aud().contains(aud)) {
                     sink.error(new UnauthorizedException("Wrong audience. Expected " + aud.value() + " got " + tokenInfo.aud()));
