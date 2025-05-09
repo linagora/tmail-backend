@@ -169,6 +169,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
+import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverAttachmentIdAssignationStrategy;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverBlobResolverModule;
@@ -253,6 +254,7 @@ public class PostgresTmailServer {
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
+            .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED));
     }
 
@@ -531,5 +533,14 @@ public class PostgresTmailServer {
             return new RLSSupportPostgresMailboxModule();
         }
         return Modules.EMPTY_MODULE;
+    }
+
+    private static Module chooseJmapOidc(PostgresTmailConfiguration configuration) {
+        if (configuration.oidcEnabled()) {
+            return new JMAPOidcModule();
+        }
+        return binder -> {
+
+        };
     }
 }
