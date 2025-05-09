@@ -122,7 +122,7 @@ public class SabreContactsConsumer implements Closeable {
                 ackDelivery.ack();
             })
             .onErrorResume(error -> {
-                LOGGER.error("Error when consume message", error);
+                LOGGER.warn("Error when consume message", error);
                 ackDelivery.nack(!REQUEUE_ON_NACK);
                 return Mono.empty();
             });
