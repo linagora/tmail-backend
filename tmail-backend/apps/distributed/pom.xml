@@ -143,6 +143,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>webadmin-oidc-backchannel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>webadmin-rate-limit</artifactId>
         </dependency>
         <dependency>
