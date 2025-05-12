@@ -110,6 +110,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
+import com.linagora.tmail.james.jmap.oidc.CaffeineOidcTokenCacheModule;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
@@ -322,7 +323,8 @@ public class MemoryServer {
 
     private static Module chooseJmapOidc(MemoryConfiguration configuration) {
         if (configuration.oidcEnabled()) {
-            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule());
+            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule(),
+                new CaffeineOidcTokenCacheModule());
         }
         return binder -> {
 

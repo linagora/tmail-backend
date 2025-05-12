@@ -19,46 +19,45 @@
 package com.linagora.tmail.james.jmap.oidc;
 
 import java.io.FileNotFoundException;
-import java.net.URL;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.james.jwt.introspection.IntrospectionEndpoint;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.utils.PropertiesProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
-import com.google.inject.name.Named;
+import com.google.inject.Module;
 
-public class JMAPOidcModule extends AbstractModule {
-    @Override
-    protected void configure() {
-        bind(TokenInfoResolver.class).to(OidcEndpointsInfoResolver.class);
+public class OidcTokenCacheModuleChooser {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OidcTokenCacheModuleChooser.class);
+
+    public enum OidcTokenCacheChoice {
+        MEMORY,
+        REDIS;
+
+        public static OidcTokenCacheChoice from(PropertiesProvider propertiesProvider) {
+            try {
+                propertiesProvider.getConfiguration("redis");
+                return REDIS;
+            } catch (FileNotFoundException e) {
+                return MEMORY;
+            } catch (ConfigurationException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
-    @Provides
-    @Named("userInfo")
-    URL provideUserInfoEndpoint(JMAPOidcConfiguration configuration) {
-        return configuration.getOidcUserInfoUrl();
-    }
-
-    @Provides
-    IntrospectionEndpoint provideIntrospectionEndpoint(JMAPOidcConfiguration configuration) {
-        return configuration.getIntrospectionEndpoint();
-    }
-
-    @Provides
-    Aud provideAudience(JMAPOidcConfiguration configuration) {
-        return configuration.getAud();
-    }
-
-    @Provides
-    @Singleton
-    OidcTokenCacheConfiguration oidcTokenCacheConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
-        try {
-            return OidcTokenCacheConfiguration.parse(propertiesProvider.getConfiguration("jmap"));
-        } catch (FileNotFoundException e) {
-            return OidcTokenCacheConfiguration.DEFAULT;
+    public static Module chooseModule(OidcTokenCacheChoice oidcTokenCacheChoice) {
+        switch (oidcTokenCacheChoice) {
+            case REDIS -> {
+                LOGGER.info("Using Redis for OIDC token storage");
+                return new RedisOidcTokenCacheModule();
+            }
+            case MEMORY -> {
+                LOGGER.info("Using Caffeine for OIDC token storage");
+                return new CaffeineOidcTokenCacheModule();
+            }
+            default -> throw new NotImplementedException();
         }
     }
 }

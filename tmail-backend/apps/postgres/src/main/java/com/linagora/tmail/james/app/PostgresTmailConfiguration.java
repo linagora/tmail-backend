@@ -43,6 +43,7 @@ import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
+import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 
 public record PostgresTmailConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
@@ -57,7 +58,8 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          boolean rlsEnabled,
                                          PropertiesProvider propertiesProvider,
                                          PostgresJamesConfiguration.EventBusImpl eventBusImpl,
-                                         boolean oidcEnabled) implements Configuration {
+                                         boolean oidcEnabled,
+                                         OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
@@ -72,6 +74,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<Boolean> rlsEnabled;
         private Optional<PostgresJamesConfiguration.EventBusImpl> eventBusImpl;
         private Optional<Boolean> oidcEnabled;
+        private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
 
         private Builder() {
             searchConfiguration = Optional.empty();
@@ -87,6 +90,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             rlsEnabled = Optional.empty();
             eventBusImpl = Optional.empty();
             oidcEnabled = Optional.empty();
+            oidcTokenStorageChoice = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -172,6 +176,11 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return this;
         }
 
+        public Builder oidcTokenStorageChoice(OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) {
+            this.oidcTokenStorageChoice = Optional.of(oidcTokenCacheChoice);
+            return this;
+        }
+
         public PostgresTmailConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -229,6 +238,9 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 }
             });
 
+            OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice = this.oidcTokenStorageChoice.orElseGet(Throwing.supplier(
+                () -> OidcTokenCacheModuleChooser.OidcTokenCacheChoice.from(propertiesProvider)));
+
             return new PostgresTmailConfiguration(
                 configurationPath,
                 directories,
@@ -243,7 +255,8 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 rlsEnabled,
                 propertiesProvider,
                 eventBusImpl,
-                oidcEnabled);
+                oidcEnabled,
+                oidcTokenCacheChoice);
         }
 
         private boolean readRLSEnabledFromFile(PropertiesProvider propertiesProvider) {
