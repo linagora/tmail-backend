@@ -57,7 +57,7 @@ public class JMAPOidcModule extends AbstractModule {
     @Singleton
     OidcTokenCacheConfiguration oidcTokenCacheConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
-            return OidcTokenCacheConfiguration.parse(propertiesProvider.getConfiguration("configuration"));
+            return OidcTokenCacheConfiguration.parse(propertiesProvider.getConfiguration("jmap"));
         } catch (FileNotFoundException e) {
             return OidcTokenCacheConfiguration.DEFAULT;
         }
