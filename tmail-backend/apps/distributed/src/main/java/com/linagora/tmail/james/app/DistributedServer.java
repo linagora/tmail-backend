@@ -218,6 +218,7 @@ import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
+import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
@@ -273,6 +274,7 @@ public class DistributedServer {
         new MessagesRoutesModule(),
         new WebAdminMailOverWebModule(),
         new EmailAddressContactRoutesModule(),
+        new OidcBackchannelLogoutRoutesModule(),
         new UserIdentityModule(),
         new MailboxesCleanupModule(),
         new InboxArchivalTaskModule(),
