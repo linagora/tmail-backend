@@ -264,7 +264,6 @@ public class PostgresTmailServer {
         new DeletedMessageVaultRoutesModule(),
         new DLPRoutesModule(),
         new EmailAddressContactRoutesModule(),
-        new OidcBackchannelLogoutRoutesModule(),
         new InconsistencyQuotasSolvingRoutesModule(),
         new InboxArchivalTaskModule(),
         new JmapUploadCleanupModule(),
@@ -539,7 +538,7 @@ public class PostgresTmailServer {
 
     private static Module chooseJmapOidc(PostgresTmailConfiguration configuration) {
         if (configuration.oidcEnabled()) {
-            return new JMAPOidcModule();
+            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule());
         }
         return binder -> {
 

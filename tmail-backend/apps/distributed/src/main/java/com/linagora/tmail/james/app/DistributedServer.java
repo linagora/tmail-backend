@@ -274,7 +274,6 @@ public class DistributedServer {
         new MessagesRoutesModule(),
         new WebAdminMailOverWebModule(),
         new EmailAddressContactRoutesModule(),
-        new OidcBackchannelLogoutRoutesModule(),
         new UserIdentityModule(),
         new MailboxesCleanupModule(),
         new InboxArchivalTaskModule(),
@@ -644,7 +643,7 @@ public class DistributedServer {
 
     private static Module chooseJmapOidc(DistributedJamesConfiguration configuration) {
         if (configuration.oidcEnabled()) {
-            return new JMAPOidcModule();
+            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule());
         }
         return binder -> {
 

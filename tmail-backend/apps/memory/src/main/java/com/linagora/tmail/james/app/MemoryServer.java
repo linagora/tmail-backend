@@ -197,7 +197,6 @@ public class MemoryServer {
             new RateLimitPlanRoutesModule(),
             new MemoryEmailAddressContactModule(),
             new EmailAddressContactRoutesModule(),
-            new OidcBackchannelLogoutRoutesModule(),
             new MemoryLabelRepositoryModule(),
             new MemoryJmapSettingsRepositoryModule(),
             new PublicAssetsMemoryModule(),
@@ -323,7 +322,7 @@ public class MemoryServer {
 
     private static Module chooseJmapOidc(MemoryConfiguration configuration) {
         if (configuration.oidcEnabled()) {
-            return new JMAPOidcModule();
+            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule());
         }
         return binder -> {
 
