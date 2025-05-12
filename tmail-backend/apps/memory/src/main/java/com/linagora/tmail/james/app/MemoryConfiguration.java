@@ -39,6 +39,7 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 
 public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
@@ -50,7 +51,8 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   FileConfigurationProvider fileConfigurationProvider,
                                   ExtensionConfiguration extentionConfiguration,
                                   boolean jmapEnabled,
-                                  boolean dropListEnabled) implements Configuration {
+                                  boolean dropListEnabled,
+                                  boolean oidcEnabled) implements Configuration {
     public static class Builder {
         private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<String> rootDirectory;
@@ -62,6 +64,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
         private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> dropListsEnabled;
+        private Optional<Boolean> oidcEnabled;
 
 
         private Builder() {
@@ -75,6 +78,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             extentionConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             dropListsEnabled = Optional.empty();
+            oidcEnabled = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -145,6 +149,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return this;
         }
 
+        public Builder oidcEnabled(boolean enable) {
+            this.oidcEnabled = Optional.of(enable);
+            return this;
+        }
+
         public MemoryConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -152,9 +161,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
 
             FileSystemImpl fileSystem = new FileSystemImpl(directories);
 
+            PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
+
             MailboxConfiguration mailboxConfiguration = this.mailboxConfiguration.orElseGet(Throwing.supplier(
                 () -> MailboxConfiguration.parse(
-                    new PropertiesProvider(fileSystem, configurationPath))));
+                    propertiesProvider)));
 
             ExtensionConfiguration extentionConfiguration = this.extentionConfiguration.orElseGet(Throwing.supplier(
                 () -> ExtensionConfiguration.from(new PropertiesProvider(fileSystem, configurationPath).getConfiguration("extensions"))));
@@ -168,16 +179,15 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 () -> UsersRepositoryModuleChooser.Implementation.parse(configurationProvider));
 
             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration = this.firebaseModuleChooserConfiguration.orElseGet(Throwing.supplier(
-                () -> FirebaseModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+                () -> FirebaseModuleChooserConfiguration.parse(propertiesProvider)));
 
             LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration.orElseGet(Throwing.supplier(
-                () -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+                () -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(propertiesProvider)));
 
             OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration = this.openPaasModuleChooserConfiguration.orElseGet(Throwing.supplier(
-                () -> OpenPaasModuleChooserConfiguration.parse(new PropertiesProvider(fileSystem, configurationPath))));
+                () -> OpenPaasModuleChooserConfiguration.parse(propertiesProvider)));
 
             boolean jmapEnabled = this.jmapEnabled.orElseGet(() -> {
-                PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
                 try {
                     return JMAPModule.parseConfiguration(propertiesProvider).isEnabled();
                 } catch (FileNotFoundException e) {
@@ -188,9 +198,18 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             });
 
             boolean dropListsEnabled = this.dropListsEnabled.orElseGet(() -> {
-                PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
                 try {
                     return propertiesProvider.getConfiguration("droplists").getBoolean("enabled", false);
+                } catch (FileNotFoundException e) {
+                    return false;
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            boolean oidcEnabled = this.oidcEnabled.orElseGet(() -> {
+                try {
+                    return JMAPOidcConfiguration.parseConfiguration(propertiesProvider).getOidcEnabled();
                 } catch (FileNotFoundException e) {
                     return false;
                 } catch (ConfigurationException e) {
@@ -209,7 +228,8 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 configurationProvider,
                 extentionConfiguration,
                 jmapEnabled,
-                dropListsEnabled);
+                dropListsEnabled,
+                oidcEnabled);
         }
     }
 

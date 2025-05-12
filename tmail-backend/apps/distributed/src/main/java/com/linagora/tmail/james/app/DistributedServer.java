@@ -199,6 +199,7 @@ import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
+import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverAttachmentIdAssignationStrategy;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverBlobResolverModule;
@@ -433,6 +434,7 @@ public class DistributedServer {
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(overrideEventBusModule(configuration))
             .overrideWith(chooseDropListsModule(configuration))
+            .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(QUOTA_USERNAME_SUPPLIER_MODULE);
     }
 
@@ -636,5 +638,14 @@ public class DistributedServer {
         } catch (ConfigurationException exception) {
             return Modules.EMPTY_MODULE;
         }
+    }
+
+    private static Module chooseJmapOidc(DistributedJamesConfiguration configuration) {
+        if (configuration.oidcEnabled()) {
+            return new JMAPOidcModule();
+        }
+        return binder -> {
+
+        };
     }
 }
