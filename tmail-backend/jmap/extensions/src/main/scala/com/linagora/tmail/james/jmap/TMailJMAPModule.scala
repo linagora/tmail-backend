@@ -22,6 +22,7 @@ import java.io.FileNotFoundException
 
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Singleton}
+import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration
 import org.apache.commons.configuration2.{Configuration, PropertiesConfiguration}
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.mailbox.{MessageIdManager, SessionProvider}
@@ -57,4 +58,9 @@ class TMailJMAPModule extends AbstractModule {
   @Singleton
   def provideCalendarEventRepository(messageIdManager: MessageIdManager, sessionProvider: SessionProvider, messageIdFactory: MessageId.Factory): CalendarEventRepository =
     new StandaloneEventRepository(messageIdManager, sessionProvider, messageIdFactory)
+
+  @Provides
+  @Singleton
+  def provideJMAPOidcConfiguration(@Named("jmap") configuration: Configuration) =
+    JMAPOidcConfiguration.parseConfiguration(configuration)
 }

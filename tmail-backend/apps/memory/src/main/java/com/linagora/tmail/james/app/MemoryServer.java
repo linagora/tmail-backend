@@ -110,6 +110,7 @@ import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
+import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.routes.DownloadAllRoutesModule;
@@ -227,7 +228,8 @@ public class MemoryServer {
             .combineWith(chooseDropListsModule(configuration))
             .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
-            .overrideWith(chooseJmapModule(configuration));
+            .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(chooseJmapOidc(configuration));
     }
 
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
@@ -315,5 +317,14 @@ public class MemoryServer {
         } catch (ConfigurationException exception) {
             return Modules.EMPTY_MODULE;
         }
+    }
+
+    private static Module chooseJmapOidc(MemoryConfiguration configuration) {
+        if (configuration.oidcEnabled()) {
+            return new JMAPOidcModule();
+        }
+        return binder -> {
+
+        };
     }
 }
