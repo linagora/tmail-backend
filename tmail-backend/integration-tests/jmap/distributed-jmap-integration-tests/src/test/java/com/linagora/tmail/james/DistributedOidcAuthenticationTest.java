@@ -40,6 +40,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedOidcAuthenticationTest extends OidcAuthenticationContract {
@@ -59,6 +60,7 @@ public class DistributedOidcAuthenticationTest extends OidcAuthenticationContrac
             .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .oidcEnabled(true)
+            .oidcTokenStorageChoice(OidcTokenCacheModuleChooser.OidcTokenCacheChoice.REDIS)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
