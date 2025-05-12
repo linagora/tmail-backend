@@ -122,6 +122,7 @@ import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
+import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
@@ -321,7 +322,7 @@ public class MemoryServer {
 
     private static Module chooseJmapOidc(MemoryConfiguration configuration) {
         if (configuration.oidcEnabled()) {
-            return new JMAPOidcModule();
+            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule());
         }
         return binder -> {
 

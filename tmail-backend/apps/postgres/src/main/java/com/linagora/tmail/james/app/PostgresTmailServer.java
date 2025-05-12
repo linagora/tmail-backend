@@ -187,6 +187,7 @@ import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
+import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
@@ -537,7 +538,7 @@ public class PostgresTmailServer {
 
     private static Module chooseJmapOidc(PostgresTmailConfiguration configuration) {
         if (configuration.oidcEnabled()) {
-            return new JMAPOidcModule();
+            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule());
         }
         return binder -> {
 

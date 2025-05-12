@@ -81,6 +81,7 @@
 
         <module>webadmin/webadmin-email-address-contact</module>
         <module>webadmin/webadmin-mailbox</module>
+        <module>webadmin/webadmin-oidc-backchannel</module>
         <module>webadmin/webadmin-protocols</module>
         <module>webadmin/webadmin-team-mailboxes</module>
         <module>webadmin/webadmin-rate-limit</module>
@@ -263,6 +264,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>webadmin-email-address-contact</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>webadmin-oidc-backchannel</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
