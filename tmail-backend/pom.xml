@@ -72,6 +72,7 @@
         <module>jmap/extensions-postgres</module>
         <module>jmap/extensions-opensearch</module>
         <module>jmap/extensions-rabbitmq</module>
+        <module>jmap/extensions-redis</module>
 
         <module>rate-limiter/rate-limiter-api</module>
         <module>rate-limiter/rate-limiter-cassandra</module>
@@ -202,6 +203,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>jmap-extensions-rabbitmq</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>jmap-extensions-redis</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
