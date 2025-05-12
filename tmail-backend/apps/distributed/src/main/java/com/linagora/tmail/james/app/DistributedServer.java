@@ -200,6 +200,7 @@ import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
+import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverAttachmentIdAssignationStrategy;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverBlobResolverModule;
@@ -643,7 +644,8 @@ public class DistributedServer {
 
     private static Module chooseJmapOidc(DistributedJamesConfiguration configuration) {
         if (configuration.oidcEnabled()) {
-            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule());
+            return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule(),
+                OidcTokenCacheModuleChooser.chooseModule(configuration.oidcTokenCacheChoice()));
         }
         return binder -> {
 
