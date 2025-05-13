@@ -723,7 +723,7 @@ curl -XPOST http://ip:port/add-revoked-token?logout_token=[LOGOUT_TOKEN]
 ....
 
 Where the `logout_token` is a JWT token sent by the OIDC provider during backchannel logout mechanism. It should contain
-at least the `sid` that TMail wiil use to invalidate the token stored in cache, so that I can not be used to anymore to
+at least the `sid` that TMail will use to invalidate the token stored in cache, so that it can not be used to anymore to
 access backend resources.
 
 Response codes:
