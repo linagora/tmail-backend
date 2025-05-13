@@ -141,6 +141,20 @@ trait EmailAddressContactSearchEngineContract {
   }
 
   @Test
+  def shouldSupportPrefixedSearchOnDomain(): Unit = {
+    val mailAddress: MailAddress = new MailAddress("nobita@linagora.com")
+    val contactFields: ContactFields = ContactFields(mailAddress, "John", "Carpenter")
+    val duplicatedContactFields: ContactFields = ContactFields(mailAddress, "John Carpenter", "")
+
+    // GIVEN that contact X is indexed in domain index
+    SMono(testee().index(domain, contactFields)).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "linag")).asJava().map(_.fields).collectList().block())
+      .hasSize(1)
+  }
+
+  @Test
   def searchASCIICharactersShouldReturnMatchedFrenchName(): Unit = {
     SMono(testee().index(accountId, contactFieldsFrench)).block()
 
