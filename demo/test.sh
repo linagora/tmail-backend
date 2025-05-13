@@ -32,7 +32,7 @@ fi
 
 echo -n "Trying James: "
 
-APISIX_JMAP_ENDPOINT=apisix.example.com:9080/oidc/jmap/session
+APISIX_JMAP_ENDPOINT=tmail-backend:8001/jmap/session
 if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization: Bearer $ACCESS_TOKEN" $APISIX_JMAP_ENDPOINT 2>/dev/null | grep uploadUrl >/dev/null; then
 	echo "OK"
 else
