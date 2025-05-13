@@ -101,6 +101,8 @@ link:https://james.staged.apache.org/james-project/3.7.0/servers/distributed/con
  - link:ticketAuthentication.adoc[com:linagora:params:jmap:ws:ticket] allows to generate one time usage tickets in order
 to authenticate webSocket connections using URI query parameters, as most browsers do not support setting `Authorization`
 headers during the webSocket handshake.
+ - TMail supports link:oidcAuthentication.adoc[OIDC authentication] defined via link:https://openid.net/developers/specs/[OpenID Connect specifications].
+It allows to validate the OIDC token against an OIDC server provider, cache it and invalidate it for accessing backend resources.
 
 == Non goals and limitations
 

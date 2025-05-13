@@ -710,3 +710,24 @@ Response codes:
 
 * 201: Success. Corresponding task id is returned.
 * 400: Error in the request. Details can be found in the reported error.
+
+== JMAP OIDC
+
+=== Backchannel logout
+
+If you use OIDC authentication, the Backchannel logout route can be called by your OIDC provider to invalidate OIDC tokens
+on TMail backend server when the user logs out of his JMAP client.
+
+....
+curl -XPOST http://ip:port/add-revoked-token?logout_token=[LOGOUT_TOKEN]
+....
+
+Where the `logout_token` is a JWT token sent by the OIDC provider during backchannel logout mechanism. It should contain
+at least the `sid` that TMail will use to invalidate the token stored in cache, so that it can not be used to anymore to
+access backend resources.
+
+Response codes:
+
+* 200: Success. Token has been invalidated.
+* 400: Error in the request. Details can be found in the reported error.
+* 415: Content type is invalid. It must be `application/x-www-form-urlencoded`.
