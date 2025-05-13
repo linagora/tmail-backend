@@ -51,4 +51,25 @@ Example: `emailRecoveryAction.restorationHorizon=10d`
 | `support.httpLink`
 | Optional. Configures the support contact HTTP link. Example: `https://my-domain.com/support`. Cannot be configured at the same time as `support.mail.address`.
 
+| `oidc.introspect.url`
+| Optional. Configures the introspection url for OIDC authentication. Example: `http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/introspect`. Mandatory if `OidcAuthenticationStrategy` is declared in `authentication.strategy.rfc8621`.
+
+| `oidc.introspect.credentials`
+| Optional. Configures the credentials for accessing the introspection endpoint for OIDC authentication. Example: `Bearer ewjiwelhwew`.
+
+| `oidc.audience`
+| Optional. Configures the audience for OIDC authentication. Example: `tmail`. Mandatory if `OidcAuthenticationStrategy` is declared in `authentication.strategy.rfc8621`.
+
+| `oidc.userInfo.url`
+| Optional. Configures the user info endpoint url for OIDC authentication. Example: `http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/token/userinfo[Bearer ewjiwelhwew]`. Mandatory if `OidcAuthenticationStrategy` is declared in `authentication.strategy.rfc8621`.
+
+| `oidc.claim`
+| Optional. Configures the claim to get the username from for OIDC authentication. Example: `email`. Mandatory if `OidcAuthenticationStrategy` is declared in `authentication.strategy.rfc8621`.
+
+| `oidc.token.cache.expiration`
+| Optional. Configures the OIDC token cache expiration time. Example: `300s`. Defaults to 5 minutes.
+
+| `oidc.token.cache.maxSize`
+| Optional. Configures the maximum number of OIDC tokens to cache in memory. Example: `10000`. Defaults to 10000 tokens.
+
 |===
