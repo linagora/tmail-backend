@@ -1,0 +1,32 @@
+= OIDC authentication
+:navtitle: OIDC authentication
+
+We added support for OIDC authentication regarding the JMAP endpoint access. The authentication is performed using
+the `Authorization` header positioned upon the HTTP request to the JMAP endpoint.
+
+TMail will verify the validity of the token by calling the configured introspection endpoint of the OIDC provider.
+Then, it will call the user info endpoint of the OIDC provider to get the information of the user carried by the token,
+and use it to identify the user.
+
+The token will be then cached so that TMail does not need to request the OIDC provider every time that token is used.
+
+For security reasons, a webadmin route is being exposed as well onm TMail to allow the OIDC provider to use its backchannel mechanism to
+invalidate a token, so that the backend resources can not be accessed anymore once the user logged out of the OIDC provider.
+
+== OIDC configuration
+
+To use the OIDC authentication, you need to declare the corresponding authentication strategy `OidcAuthenticationStrategy`
+in `jmap.propertie` in the `authentication.strategy.rfc8621` list:
+
+----
+authentication.strategy.rfc8621=com.linagora.tmail.james.jmap.oidc.OidcAuthenticationStrategy
+----
+
+Then you need to define the OIDC configuration in link:../configure/jmap.adoc[`jmap.properties`].
+
+== Backchannel logout route
+
+When OIDC authentication is enabled via JMAP configuration, a webadmin route for backchannel logout will be injected.
+It can be used by your OIDC provider to invalidate tokens when user logs out of his JMAP client.
+
+You can configure your OIDC provider to point to the route defined link:../webadmin.adoc#_jmap_oidc[here] when using backchannel logout.
