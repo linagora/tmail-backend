@@ -73,27 +73,5 @@ services:
     networks:
       - tmail
 
-  apisix:
-    container_name: apisix.example.com
-    image: linagora/apisix:3.9.1-debian-javaplugin
-    volumes:
-      - ./apisix/conf/apisix.yaml:/usr/local/apisix/conf/apisix.yaml
-      - ./apisix/conf/config.yaml:/usr/local/apisix/conf/config.yaml
-    networks:
-      - tmail
-    ports:
-      - "9080:9080/tcp"
-      - "8081:8081"
-
-  redis:
-    container_name: redis.example.com
-    image: bitnami/redis:7.0.4-debian-11-r25
-    environment:
-      - REDIS_PASSWORD=secret1
-    networks:
-      - tmail
-    ports:
-      - "6379:6379"
-
 networks:
   tmail:
