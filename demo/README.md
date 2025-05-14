@@ -1,6 +1,6 @@
 # Tmail backend + LemonLDAP
 
-This contains Tmail with OIDC integration with LemonLDAP, through the Apisix api gateway, with an OpenLDAP backend.
+This contains Tmail with OIDC integration with LemonLDAP with an OpenLDAP backend.
 
 ## Quickstart
 
