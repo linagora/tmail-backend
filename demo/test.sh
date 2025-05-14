@@ -32,8 +32,8 @@ fi
 
 echo -n "Trying James: "
 
-APISIX_JMAP_ENDPOINT=apisix.example.com:9080/oidc/jmap/session
-if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization: Bearer $ACCESS_TOKEN" $APISIX_JMAP_ENDPOINT 2>/dev/null | grep uploadUrl >/dev/null; then
+JMAP_ENDPOINT=tmail-backend:8001/jmap/session
+if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization: Bearer $ACCESS_TOKEN" $JMAP_ENDPOINT 2>/dev/null | grep uploadUrl >/dev/null; then
 	echo "OK"
 else
 	echo "Not OK"
@@ -45,7 +45,7 @@ curl -s -D - -o /dev/null -b lemonldap=$COOKIE http://sso.example.com/?logout=1 
 
 sleep 1
 
-if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization: Bearer $ACCESS_TOKEN" $APISIX_JMAP_ENDPOINT 2>/dev/null | grep uploadUrl >/dev/null; then
+if curl -v -H 'Accept: application/json; jmapVersion=rfc-8621' -H "Authorization: Bearer $ACCESS_TOKEN" $JMAP_ENDPOINT 2>/dev/null | grep uploadUrl >/dev/null; then
 	echo "LOGOUT FAILED"
 else
 	echo "Logout OK"

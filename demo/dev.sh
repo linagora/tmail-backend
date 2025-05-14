@@ -32,7 +32,7 @@ start_services() {
         echo
         echo "Please add the following line to your '/etc/hosts' file"
         echo
-        echo "127.0.0.1 api.manager.example.com manager.sso.example.com sso.example.com handler.sso.example.com test.sso.example.com apisix.example.com"
+        echo "127.0.0.1 api.manager.example.com manager.sso.example.com sso.example.com handler.sso.example.com test.sso.example.com tmail-backend"
         echo
 
         echo "All service started!"
