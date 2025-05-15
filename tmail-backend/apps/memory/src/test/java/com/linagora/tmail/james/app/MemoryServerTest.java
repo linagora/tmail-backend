@@ -15,7 +15,6 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-
 package com.linagora.tmail.james.app;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
