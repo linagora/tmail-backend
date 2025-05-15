@@ -27,9 +27,6 @@ import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
 import java.util.List;
 
-import com.github.fge.lambdas.Throwing;
-import com.google.inject.*;
-import com.google.inject.Module;
 import jakarta.inject.Named;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -65,8 +62,18 @@ import org.apache.james.modules.server.TaskManagerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultModule;
 import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 import org.apache.james.util.Host;
+import org.apache.james.utils.ClassName;
+import org.apache.james.utils.ExtendedClassLoader;
+import org.apache.james.utils.NamingScheme;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.Module;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
@@ -125,10 +132,6 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
-import org.apache.james.utils.ClassName;
-import org.apache.james.utils.ExtendedClassLoader;
-import org.apache.james.utils.GuiceGenericLoader;
-import org.apache.james.utils.NamingScheme;
 
 public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
@@ -264,7 +267,6 @@ public class MemoryServer {
             throw new RuntimeException("Failed to load " + className.getName(), e);
         }
     }
-
 
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
         if (configuration.jmapEnabled()) {
