@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.contact
 import java.util.UUID
 import java.util.stream.IntStream
 
-import EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, contactFieldsFrench, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract.{accountId, accountIdB, bigContactsNumber, contactEmptyNameFieldsA, contactEmptyNameFieldsB, contactFieldsA, contactFieldsB, contactFieldsFrench, domain, firstnameB, mailAddressA, otherContactEmptyNameFields, otherContactFields, otherContactFieldsWithUppercaseEmail, otherMailAddress, surnameB}
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
@@ -138,6 +138,20 @@ trait EmailAddressContactSearchEngineContract {
 
     // THEN the contact X should only be indexed once after all.
     awaitDocumentsIndexed(MatchAllQuery(), 1)
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("li", "lin", "lina", "linag", "linago", "linagor", "linagora"))
+  def domainPrefixAutoCompleteShouldWorkForDomainContacts(searchInput: String): Unit = {
+    val mailAddress: MailAddress = new MailAddress("nobita@linagora.com")
+    val contactFields: ContactFields = ContactFields(mailAddress, "John", "Carpenter")
+
+    // GIVEN that contact X is indexed in domain index
+    SMono(testee().index(domain, contactFields)).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, searchInput)).asJava().map(_.fields.address).collectList().block())
+      .containsExactlyInAnyOrder(mailAddress)
   }
 
   @Test
