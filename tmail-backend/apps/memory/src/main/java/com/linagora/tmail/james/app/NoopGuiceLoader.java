@@ -92,7 +92,6 @@ public class NoopGuiceLoader implements GuiceLoader {
     @Inject
     public NoopGuiceLoader(Injector injector, ExtendedClassLoader extendedClassLoader, ExtensionConfiguration extensionConfiguration) {
         this.injector = injector;
-
     }
 
     @Override
