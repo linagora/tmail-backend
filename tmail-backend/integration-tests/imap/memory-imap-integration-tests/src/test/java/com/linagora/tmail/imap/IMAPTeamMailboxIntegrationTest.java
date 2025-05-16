@@ -918,7 +918,7 @@ public class IMAPTeamMailboxIntegrationTest {
 
         assertThat(imapClient
             .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new2"))
-            .contains("NO RENAME processing failed");
+            .contains("NO RENAME failed");
     }
 
     @Test
@@ -926,7 +926,7 @@ public class IMAPTeamMailboxIntegrationTest {
         assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(MINISTER, MINISTER_PASSWORD)
             .sendCommand("RENAME #TeamMailbox.marketing.INBOX #TeamMailbox.marketing.new1"))
-            .contains("NO RENAME processing failed");
+            .contains("NO RENAME failed");
     }
 
     @Test
