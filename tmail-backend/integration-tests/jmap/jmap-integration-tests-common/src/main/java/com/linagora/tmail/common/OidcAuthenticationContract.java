@@ -224,6 +224,32 @@ public abstract class OidcAuthenticationContract {
     }
 
     @Test
+    void shouldAcceptOtherConfiguredAudience() {
+        updateMockServerUserInfoResponse(EMAIL_CLAIM_VALUE);
+
+        updateMockerServerSpecifications(INTROSPECT_TOKEN_URI_PATH, """
+            {
+                "exp": %d,
+                "scope": "openid email profile",
+                "client_id": "tmail",
+                "active": true,
+                "aud": "james",
+                "sub": "twake-mail-dev",
+                "sid": "dT/8+UDx1lWp1bRZkdhbS1i6ZfYhf8+bWAZQs8p0T/c",
+                "iss": "https://sso.linagora.com"
+              }""".formatted(TOKEN_EXPIRATION_TIME), 200);
+
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(200);
+    }
+
+    @Test
     void shouldAcceptNoSidInUserInfo() {
         String activeResponseNoSid = """
             {
