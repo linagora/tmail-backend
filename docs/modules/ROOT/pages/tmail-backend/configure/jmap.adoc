@@ -58,7 +58,7 @@ Example: `emailRecoveryAction.restorationHorizon=10d`
 | Optional. Configures the credentials for accessing the introspection endpoint for OIDC authentication. Example: `Bearer ewjiwelhwew`.
 
 | `oidc.audience`
-| Optional. Configures the audience for OIDC authentication. Example: `tmail`. Mandatory if `OidcAuthenticationStrategy` is declared in `authentication.strategy.rfc8621`.
+| Optional. Configures a list of audiences for OIDC authentication. Example: `tmail,james`. Omitting this bypasses the audience check (not advised).
 
 | `oidc.userInfo.url`
 | Optional. Configures the user info endpoint url for OIDC authentication. Example: `http://keycloak:8080/auth/realms/oidc/protocol/openid-connect/token/userinfo[Bearer ewjiwelhwew]`. Mandatory if `OidcAuthenticationStrategy` is declared in `authentication.strategy.rfc8621`.

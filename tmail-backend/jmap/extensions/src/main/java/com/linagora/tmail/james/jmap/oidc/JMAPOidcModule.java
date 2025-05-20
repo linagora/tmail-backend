@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.oidc;
 
 import java.io.FileNotFoundException;
 import java.net.URL;
+import java.util.List;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.jwt.introspection.IntrospectionEndpoint;
@@ -48,7 +49,7 @@ public class JMAPOidcModule extends AbstractModule {
     }
 
     @Provides
-    Aud provideAudience(JMAPOidcConfiguration configuration) {
+    List<Aud> provideAudience(JMAPOidcConfiguration configuration) {
         return configuration.getAud();
     }
 

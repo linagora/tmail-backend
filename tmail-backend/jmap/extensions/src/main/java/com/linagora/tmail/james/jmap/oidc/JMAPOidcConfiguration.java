@@ -50,7 +50,7 @@ public class JMAPOidcConfiguration {
         private Optional<URL> oidcUserInfoUrl = Optional.empty();
         private Optional<IntrospectionEndpoint> oidcIntrospectionEndpoint = Optional.empty();
         private Optional<String> oidcIntrospectionClaim = Optional.empty();
-        private Optional<Aud> oidcAudience = Optional.empty();
+        private Optional<List<Aud>> oidcAudience = Optional.empty();
 
         private Builder(boolean oidcEnabled) {
             this.oidcEnabled = oidcEnabled;
@@ -71,7 +71,7 @@ public class JMAPOidcConfiguration {
             return this;
         }
 
-        public Builder oidcAudience(Optional<Aud> aud) {
+        public Builder oidcAudience(Optional<List<Aud>> aud) {
             this.oidcAudience = aud;
             return this;
         }
@@ -92,8 +92,7 @@ public class JMAPOidcConfiguration {
         private void checkOidcFieldsPresence() {
             if (oidcUserInfoUrl.isEmpty() ||
                 oidcIntrospectionEndpoint.isEmpty() ||
-                oidcIntrospectionClaim.isEmpty() ||
-                oidcAudience.isEmpty()) {
+                oidcIntrospectionClaim.isEmpty()) {
                 throw new IllegalStateException("All OIDC fields must be defined when OIDC is enabled.");
             }
         }
@@ -116,7 +115,7 @@ public class JMAPOidcConfiguration {
         Optional<URL> oidcIntrospectUrl = Optional.ofNullable(configuration.getString(INTROSPECT_URL_PROPERTY, null))
             .map(Throwing.function(URL::new));
         Optional<String> oidcIntrospectCreds = Optional.ofNullable(configuration.getString(INTROSPECT_CREDENTIALS_PROPERTY, null));
-        Optional<Aud> oidcAudience = Optional.ofNullable(configuration.getString(AUDIENCE_PROPERTY, null)).map(Aud::new);
+        Optional<List<Aud>> oidcAudience = Optional.of(configuration.getList(String.class, AUDIENCE_PROPERTY, ImmutableList.of()).stream().map(Aud::new).toList());
         Optional<String> oidcIntrospectionClaim = Optional.ofNullable(configuration.getString(CLAIM_PROPERTY, null));
 
         Optional<IntrospectionEndpoint> introspectionEndpoint = oidcIntrospectUrl.map(url -> new IntrospectionEndpoint(url, oidcIntrospectCreds));
@@ -134,10 +133,10 @@ public class JMAPOidcConfiguration {
     private final Optional<URL> oidcUserInfoUrl;
     private final Optional<IntrospectionEndpoint> introspectionEndpoint;
     private final Optional<String> oidcClaim;
-    private final Optional<Aud> aud;
+    private final Optional<List<Aud>> aud;
 
     JMAPOidcConfiguration(boolean oidcEnabled, Optional<URL> oidcUserInfoUrl, Optional<IntrospectionEndpoint> introspectionEndpoint,
-                          Optional<String> oidcClaim, Optional<Aud> aud) {
+                          Optional<String> oidcClaim, Optional<List<Aud>> aud) {
         this.oidcEnabled = oidcEnabled;
         this.oidcUserInfoUrl = oidcUserInfoUrl;
         this.introspectionEndpoint = introspectionEndpoint;
@@ -161,7 +160,7 @@ public class JMAPOidcConfiguration {
         return introspectionEndpoint.get();
     }
 
-    public Aud getAud() {
+    public List<Aud> getAud() {
         return aud.get();
     }
 }
