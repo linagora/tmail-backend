@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.oidc;
 import static org.apache.james.jmap.http.JWTAuthenticationStrategy.AUTHORIZATION_HEADER_PREFIX;
 
 import java.time.Clock;
+import java.util.List;
 
 import jakarta.inject.Inject;
 
@@ -44,14 +45,14 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
     private final SessionProvider sessionProvider;
     private final OidcTokenCache oidcTokenCache;
     private final Clock clock;
-    private final Aud aud;
+    private final List<Aud> auds;
 
     @Inject
-    public OidcAuthenticationStrategy(SessionProvider sessionProvider, OidcTokenCache oidcTokenCache, Clock clock, Aud aud) {
+    public OidcAuthenticationStrategy(SessionProvider sessionProvider, OidcTokenCache oidcTokenCache, Clock clock, List<Aud> auds) {
         this.sessionProvider = sessionProvider;
         this.oidcTokenCache = oidcTokenCache;
         this.clock = clock;
-        this.aud = aud;
+        this.auds = auds;
     }
 
 
@@ -63,8 +64,8 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
             .map(Token::new)
             .flatMap(oidcTokenCache::associatedInformation)
             .<TokenInfo>handle((tokenInfo, sink) -> {
-                if (!tokenInfo.aud().contains(aud)) {
-                    sink.error(new UnauthorizedException("Wrong audience. Expected " + aud.value() + " got " + tokenInfo.aud()));
+                if (!auds.isEmpty() && !isAudienceAccepted(tokenInfo.aud())) {
+                    sink.error(new UnauthorizedException("Wrong audience. Expected " + auds + " got " + tokenInfo.aud()));
                     return;
                 }
                 if (clock.instant().isAfter(tokenInfo.exp())) {
@@ -78,6 +79,15 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
             .map(Throwing.function(sessionProvider::createSystemSession))
             .onErrorMap(TokenIntrospectionException.class, e -> new UnauthorizedException("Invalid OIDC token when introspection check", e))
             .onErrorMap(UserInfoCheckException.class, e -> new UnauthorizedException("Invalid OIDC token when user info check", e));
+    }
+
+    private boolean isAudienceAccepted(List<Aud> tokenAudiences) {
+        for (Aud aud: auds) {
+            if (tokenAudiences.contains(aud)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
