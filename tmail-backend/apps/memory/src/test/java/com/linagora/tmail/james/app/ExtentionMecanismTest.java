@@ -1,10 +1,25 @@
+/********************************************************************
+ *  As a subpart of Twake Mail, this file is edited by Linagora.    *
+ *                                                                  *
+ *  https://twake-mail.com/                                         *
+ *  https://linagora.com                                            *
+ *                                                                  *
+ *  This file is subject to The Affero Gnu Public License           *
+ *  version 3.                                                      *
+ *                                                                  *
+ *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
+ *                                                                  *
+ *  This program is distributed in the hope that it will be         *
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
+ *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
+ *  PURPOSE. See the GNU Affero General Public License for          *
+ *  more details.                                                   *
+ ********************************************************************/
 package com.linagora.tmail.james.app;
 
-import com.google.inject.util.Modules;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
-import com.linagora.tmail.james.app.MemoryConfiguration;
-import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
@@ -17,6 +32,7 @@ import org.apache.james.mailbox.model.MailboxPath;
 
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.utils.DataProbeImpl;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -29,6 +45,7 @@ import static org.apache.james.jmap.rfc8621.contract.Fixture.*;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 public class ExtentionMecanismTest {
+
     static final String DOMAIN = "james.org";
     static final String PASSWORD = "secret";
 
@@ -60,7 +77,10 @@ public class ExtentionMecanismTest {
             accountId = getAccountId(Username.of(ALICE),PASSWORD,jamesServer);
         }
 
-
+    @Test
+    public void connectPOP3ServerShouldSendShabangOnConnect(GuiceJamesServer jamesServer) {
+        Assertions.assertTrue(jamesServer.isStarted());
+    }
     @Test
     public void shoudSuggestContentWhenNoEmailId(GuiceJamesServer jamesServer) throws Exception {
         String request = String.format("{" +

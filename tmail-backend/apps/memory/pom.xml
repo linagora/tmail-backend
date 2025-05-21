@@ -320,6 +320,10 @@
                         </ports>
                         <appRoot>/root</appRoot>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                        <jvmFlags>
+                            <!-- Ajout du répertoire extensions-jars au classpath -->
+                            <jvmFlag>-Djava.class.path=/root/extensions-jars/*</jvmFlag>
+                        </jvmFlags>
                     </container>
                     <extraDirectories>
                         <paths>
@@ -338,6 +342,9 @@
                             <path>
                                 <from>target/async-profiler-2.9-linux-x64</from>
                                 <into>/root/async-profiler</into>
+                            <path>
+                                <from>src/main/extensions-jars</from>
+                                <into>/root/extensions-jars</into>
                             </path>
                             <path>
                                 <from>target/curl</from>
@@ -442,6 +449,9 @@
                                 </ports>
                                 <appRoot>/root</appRoot>
                                 <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                                <jvmFlags>
+                                    <jvmFlag>-Djava.class.path=/root/extensions-jars/*</jvmFlag>
+                                </jvmFlags>
                             </container>
                             <extraDirectories>
                                 <paths>
