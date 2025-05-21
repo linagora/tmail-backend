@@ -32,7 +32,6 @@ import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
-import org.apache.james.utils.ExtendedClassLoader;
 import org.apache.james.utils.ExtensionConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 
@@ -50,7 +49,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration,
                                   FileConfigurationProvider fileConfigurationProvider,
                                   ExtensionConfiguration extentionConfiguration,
-                                  ExtendedClassLoader extendedClassLoader,
                                   boolean jmapEnabled,
                                   boolean dropListEnabled) implements Configuration {
     public static class Builder {
@@ -62,7 +60,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
         private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
         private Optional<ExtensionConfiguration> extentionConfiguration;
-        private Optional<ExtendedClassLoader> extendedClassLoader;
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> dropListsEnabled;
 
@@ -76,7 +73,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             openPaasModuleChooserConfiguration = Optional.empty();
             extentionConfiguration = Optional.empty();
-            extendedClassLoader = Optional.empty();
             jmapEnabled = Optional.empty();
             dropListsEnabled = Optional.empty();
         }
@@ -116,11 +112,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
 
         public Builder extensionsConfiguration(ExtensionConfiguration configuration) {
             this.extentionConfiguration = Optional.of(configuration);
-            return this;
-        }
-
-        public Builder extendedClassLoader(ExtendedClassLoader extendedClassLoader) {
-            this.extendedClassLoader = Optional.of(extendedClassLoader);
             return this;
         }
 
@@ -167,9 +158,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
 
             ExtensionConfiguration extentionConfiguration = this.extentionConfiguration.orElseGet(Throwing.supplier(
                 () -> ExtensionConfiguration.from(new PropertiesProvider(fileSystem, configurationPath).getConfiguration("extensions"))));
-
-            ExtendedClassLoader extendedClassLoader = this.extendedClassLoader.orElseGet(() ->
-                new ExtendedClassLoader(fileSystem));
 
             FileConfigurationProvider configurationProvider = new FileConfigurationProvider(fileSystem, Basic.builder()
                 .configurationPath(configurationPath)
@@ -220,7 +208,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 openPaasModuleChooserConfiguration,
                 configurationProvider,
                 extentionConfiguration,
-                extendedClassLoader,
                 jmapEnabled,
                 dropListsEnabled);
         }

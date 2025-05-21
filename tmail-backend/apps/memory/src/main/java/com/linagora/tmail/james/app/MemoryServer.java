@@ -25,6 +25,10 @@ import static org.apache.james.JamesServerMain.LOGGER;
 import static org.apache.james.MemoryJamesServerMain.JMAP;
 import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.List;
 
 import jakarta.inject.Named;
@@ -63,8 +67,7 @@ import org.apache.james.modules.vault.DeletedMessageVaultModule;
 import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 import org.apache.james.util.Host;
 import org.apache.james.utils.ClassName;
-import org.apache.james.utils.ExtendedClassLoader;
-import org.apache.james.utils.NamingScheme;
+import org.apache.james.utils.GuiceLoader;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
@@ -234,35 +237,30 @@ public class MemoryServer {
             .combineWith(extentionModules(configuration))
             .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
-            .overrideWith(chooseJmapModule(configuration));
+            .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(binder -> binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class).in(Singleton.class));
     }
 
     private static Module extentionModules(MemoryConfiguration configuration) {
         Injector injector = Guice.createInjector();
-        ExtendedClassLoader extendedClassLoader = configuration.extendedClassLoader();
-        Module additionalExtensionBindings = Modules.combine(configuration.extentionConfiguration().getAdditionalGuiceModulesForExtensions()
-            .stream()
-            .map(Throwing.<ClassName, Module>function(className -> instanciate(injector, NamingScheme.IDENTITY, extendedClassLoader, className)))
-            .peek(module -> LOGGER.info("Enabling injects contained in " + module.getClass().getCanonicalName()))
-            .collect(ImmutableList.toImmutableList()));
-        return additionalExtensionBindings;
+        File jarFile = new File("src/main/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar");
+        try {
+            URLClassLoader classLoader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()}, MemoryServer.class.getClassLoader());
+            Module additionalExtensionBindings = Modules.combine(configuration.extentionConfiguration().getAdditionalGuiceModulesForExtensions()
+                .stream()
+                .map(Throwing.<ClassName, Module>function(className -> instanciate(injector, classLoader, className)))
+                .peek(module -> LOGGER.info("Enabling injects contained in " + module.getClass().getCanonicalName()))
+                .collect(ImmutableList.toImmutableList()));
+            return additionalExtensionBindings;
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private static <T> T instanciate(Injector injector, NamingScheme namingScheme, ExtendedClassLoader extendedClassLoader, ClassName className) throws ClassNotFoundException {
-
+    private static <T> T instanciate(Injector injector, ClassLoader classLoader, ClassName className) throws ClassNotFoundException {
         try {
-            ImmutableList<Class<T>> classes = namingScheme.<T>toFullyQualifiedClassNames(className)
-                .flatMap(fullyQualifiedName -> extendedClassLoader.<T>locateClass(fullyQualifiedName).stream())
-                .collect(ImmutableList.toImmutableList());
-
-            if (classes.isEmpty()) {
-                throw new ClassNotFoundException(className.getName());
-            }
-            if (classes.size() > 1) {
-                LOGGER.warn("Ambiguous class name for {}. Corresponding classes are {} and {} will be loaded",
-                    className, classes, classes.get(0));
-            }
-            return injector.getInstance(classes.get(0));
+            Class<?> clazz = classLoader.loadClass(className.getName());
+            return (T) injector.getInstance(clazz);
         } catch (Exception e) {
             throw new RuntimeException("Failed to load " + className.getName(), e);
         }
