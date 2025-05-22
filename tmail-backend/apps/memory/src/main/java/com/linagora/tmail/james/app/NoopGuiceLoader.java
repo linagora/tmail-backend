@@ -20,8 +20,6 @@ package com.linagora.tmail.james.app;
 import java.util.stream.Stream;
 
 import org.apache.james.utils.ClassName;
-import org.apache.james.utils.ExtendedClassLoader;
-import org.apache.james.utils.ExtensionConfiguration;
 import org.apache.james.utils.FullyQualifiedClassName;
 import org.apache.james.utils.GuiceLoader;
 import org.apache.james.utils.NamingScheme;
@@ -39,7 +37,7 @@ public class NoopGuiceLoader implements GuiceLoader {
 
     public static class InvocationPerformer<T> implements GuiceLoader.InvocationPerformer<T> {
         private final Injector injector;
-        private final NamingScheme namingScheme;
+        private NamingScheme namingScheme;
 
         private InvocationPerformer(Injector injector, NamingScheme namingScheme) {
             this.injector = injector;
@@ -57,7 +55,13 @@ public class NoopGuiceLoader implements GuiceLoader {
         }
 
         public Class<T> locateClass(ClassName className) throws ClassNotFoundException {
+
+            if (className.getName().contains(".")) {
+                namingScheme = NamingScheme.IDENTITY;
+            }
+
             ImmutableList<Class<T>> classes = this.namingScheme.toFullyQualifiedClassNames(className)
+                .filter(fqcn -> fqcn.getName().contains("."))
                 .flatMap(this::tryLocateClass)
                 .collect(ImmutableList.toImmutableList());
 
@@ -82,7 +86,7 @@ public class NoopGuiceLoader implements GuiceLoader {
 
         @Override
         public InvocationPerformer<T> withChildModule(Module childModule) {
-            return new InvocationPerformer<>(injector.createChildInjector(childModule), NamingScheme.IDENTITY);
+            return new InvocationPerformer<>(injector.createChildInjector(childModule), namingScheme);
         }
 
         @Override
@@ -94,7 +98,7 @@ public class NoopGuiceLoader implements GuiceLoader {
     private final Injector injector;
 
     @Inject
-    public NoopGuiceLoader(Injector injector, ExtendedClassLoader extendedClassLoader, ExtensionConfiguration extensionConfiguration) {
+    public NoopGuiceLoader(Injector injector) {
         this.injector = injector;
     }
 

@@ -25,10 +25,6 @@ import static org.apache.james.JamesServerMain.LOGGER;
 import static org.apache.james.MemoryJamesServerMain.JMAP;
 import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.List;
 
 import jakarta.inject.Named;
@@ -248,26 +244,21 @@ public class MemoryServer {
 
     private static Module extentionModules(MemoryConfiguration configuration) {
         Injector injector = Guice.createInjector();
-        File jarFile = new File("src/main/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar");
-        try {
-            URLClassLoader classLoader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()}, MemoryServer.class.getClassLoader());
             Module additionalExtensionBindings = Modules.combine(configuration.extentionConfiguration().getAdditionalGuiceModulesForExtensions()
                 .stream()
-                .map(Throwing.<ClassName, Module>function(className -> instanciate(injector, classLoader, className)))
+                .map(Throwing.<ClassName, Module>function(className -> instanciate(injector, MemoryServer.class.getClassLoader(), className)))
                 .peek(module -> LOGGER.info("Enabling injects contained in " + module.getClass().getCanonicalName()))
                 .collect(ImmutableList.toImmutableList()));
             return additionalExtensionBindings;
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static <T> T instanciate(Injector injector, ClassLoader classLoader, ClassName className) throws ClassNotFoundException {
         try {
             Class<?> clazz = classLoader.loadClass(className.getName());
             return (T) injector.getInstance(clazz);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load " + className.getName(), e);
+        } catch (ClassNotFoundException e) {
+            LOGGER.error("Class not found: {}", className.getName(), e);
+            throw e;
         }
     }
 

@@ -307,6 +307,9 @@
                     </to>
                     <container>
                         <mainClass>com.linagora.tmail.james.app.MemoryServer</mainClass>
+                        <extraClasspath>
+                            <item>/root/libs/tmail-ai-bot-jar-with-dependencies.jar</item>
+                        </extraClasspath>
                         <ports>
                             <port>80</port> <!-- JMAP -->
                             <port>143</port> <!-- IMAP -->
@@ -320,10 +323,6 @@
                         </ports>
                         <appRoot>/root</appRoot>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
-                        <jvmFlags>
-                            <!-- Ajout du répertoire extensions-jars au classpath -->
-                            <jvmFlag>-Djava.class.path=/root/extensions-jars/*</jvmFlag>
-                        </jvmFlags>
                     </container>
                     <extraDirectories>
                         <paths>
@@ -342,13 +341,14 @@
                             <path>
                                 <from>target/async-profiler-2.9-linux-x64</from>
                                 <into>/root/async-profiler</into>
-                            <path>
-                                <from>src/main/extensions-jars</from>
-                                <into>/root/extensions-jars</into>
                             </path>
                             <path>
                                 <from>target/curl</from>
                                 <into>/usr/local/bin</into>
+                            </path>
+                            <path>
+                                <from>src/main/extensions-jars</from>
+                                <into>/root/libs</into>
                             </path>
                             <path>
                                 <from>src/main/extensions-jars</from>
@@ -449,9 +449,6 @@
                                 </ports>
                                 <appRoot>/root</appRoot>
                                 <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
-                                <jvmFlags>
-                                    <jvmFlag>-Djava.class.path=/root/extensions-jars/*</jvmFlag>
-                                </jvmFlags>
                             </container>
                             <extraDirectories>
                                 <paths>
@@ -474,6 +471,10 @@
                                     <path>
                                         <from>target/curl</from>
                                         <into>/usr/local/bin</into>
+                                    </path>
+                                    <path>
+                                        <from>src/main/extensions-jars</from>
+                                        <into>/root/libs</into>
                                     </path>
                                     <path>
                                         <from>src/main/extensions-jars</from>
