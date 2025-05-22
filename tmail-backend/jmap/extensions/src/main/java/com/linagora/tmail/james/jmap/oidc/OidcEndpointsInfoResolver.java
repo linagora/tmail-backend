@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.oidc;
 import java.net.URL;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -86,14 +87,16 @@ public class OidcEndpointsInfoResolver implements TokenInfoResolver {
             extractAudience(introspectionResponse));
     }
 
-    private static List<Aud> extractAudience(TokenIntrospectionResponse introspectionResponse) {
-        JsonNode audJson = introspectionResponse.json().get("aud");
-        if (audJson.isArray()) {
-            return Iterators.toStream(audJson.iterator())
-                .map(JsonNode::asText)
-                .map(Aud::new)
-                .toList();
-        }
-        return ImmutableList.of(new Aud(audJson.asText()));
+    private static Optional<List<Aud>> extractAudience(TokenIntrospectionResponse introspectionResponse) {
+        return Optional.ofNullable(introspectionResponse.json().get("aud"))
+            .map(audJson -> {
+                if (audJson.isArray()) {
+                    return Iterators.toStream(audJson.iterator())
+                        .map(JsonNode::asText)
+                        .map(Aud::new)
+                        .toList();
+                }
+                return ImmutableList.of(new Aud(audJson.asText()));
+            });
     }
 }

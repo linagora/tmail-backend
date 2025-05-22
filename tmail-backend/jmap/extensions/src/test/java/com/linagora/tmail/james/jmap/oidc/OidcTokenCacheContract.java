@@ -46,7 +46,7 @@ public abstract class OidcTokenCacheContract {
     protected static final String EMAIL = "user@example.com";
     protected static final String SID_STRING = "sid-1";
     protected static final Sid SID = new Sid(SID_STRING);
-    protected static final List<Aud> AUD = ImmutableList.of(new Aud("tmail"));
+    protected static final Optional<List<Aud>> AUD = Optional.of(ImmutableList.of(new Aud("tmail")));
     protected static final Instant EXPIRES_AT = Instant.now().plus(Duration.ofMinutes(1));
     protected static final TokenInfo TOKEN_INFO = new TokenInfo(EMAIL, Optional.of(SID), EXPIRES_AT, AUD);
 
@@ -189,6 +189,22 @@ public abstract class OidcTokenCacheContract {
         for (int i = 0; i < 5; i++) {
             testee().associatedInformation(token).block();
         }
+        verify(tokenInfoResolver, times(1)).apply(token);
+        assertThat(getUsernameFromCache(token)).contains(Username.of(EMAIL));
+    }
+
+    @Test
+    public void associatedUsernameShouldBeCachedWhenAbsentAudInTokenInfo() {
+        Token token = new Token("token-" + UUID.randomUUID());
+        mockTokenInfoResolverSuccess(token, new TokenInfo(EMAIL, Optional.of(SID), EXPIRES_AT,
+            Optional.empty()));
+
+        for (int i = 0; i < 5; i++) {
+            assertThat(testee().associatedInformation(token).block().aud())
+                .isEmpty();
+        }
+
+        // Verify that the OIDC was called only once
         verify(tokenInfoResolver, times(1)).apply(token);
         assertThat(getUsernameFromCache(token)).contains(Username.of(EMAIL));
     }

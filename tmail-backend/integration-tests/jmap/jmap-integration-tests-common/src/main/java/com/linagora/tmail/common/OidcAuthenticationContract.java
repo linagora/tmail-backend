@@ -296,6 +296,39 @@ public abstract class OidcAuthenticationContract {
     }
 
     @Test
+    void shouldAcceptMissingAudInIntrospectionResponse() {
+        updateMockServerUserInfoResponse(EMAIL_CLAIM_VALUE);
+
+        updateMockerServerSpecifications(INTROSPECT_TOKEN_URI_PATH, """
+            {
+                "exp": %d,
+                "scope": "openid email profile",
+                "client_id": "tmail",
+                "active": true,
+                "sub": "twake-mail-dev",
+                "sid": "dT/8+UDx1lWp1bRZkdhbS1i6ZfYhf8+bWAZQs8p0T/c",
+                "iss": "https://sso.linagora.com"
+              }""".formatted(TOKEN_EXPIRATION_TIME), 200);
+
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(200);
+
+        // verify the second call which uses the cache would still be fine
+        given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(ECHO_REQUEST_OBJECT())
+        .when()
+            .post()
+        .then()
+            .statusCode(200);
+    }
+
+    @Test
     void shouldRejectWhenUserInfoFails() {
         updateMockerServerSpecifications(INTROSPECT_TOKEN_URI_PATH, """
             {

@@ -24,14 +24,18 @@ import java.util.Optional;
 
 import com.google.common.base.MoreObjects;
 
-public record TokenInfo(String email, Optional<Sid> sid, Instant exp, List<Aud> aud) {
+public record TokenInfo(String email, Optional<Sid> sid, Instant exp, Optional<List<Aud>> aud) {
 
     public String asString() {
         return MoreObjects.toStringHelper(this)
             .add("email", email)
             .add("sid", Optional.ofNullable(sid).flatMap(sidValue -> sidValue.map(Sid::value)).orElse(null))
             .add("exp", exp)
-            .add("aud", Optional.ofNullable(aud).orElseGet(List::of).stream().map(Aud::value).toList())
+            .add("aud", aud.map(audList -> audList
+                    .stream()
+                    .map(Aud::value)
+                    .toList())
+                .orElse(null))
             .toString();
     }
 }
