@@ -22,6 +22,7 @@ import static org.apache.james.jmap.http.JWTAuthenticationStrategy.AUTHORIZATION
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 
@@ -81,13 +82,16 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
             .onErrorMap(UserInfoCheckException.class, e -> new UnauthorizedException("Invalid OIDC token when user info check", e));
     }
 
-    private boolean isAudienceAccepted(List<Aud> tokenAudiences) {
-        for (Aud aud: auds) {
-            if (tokenAudiences.contains(aud)) {
-                return true;
-            }
-        }
-        return false;
+    private boolean isAudienceAccepted(Optional<List<Aud>> maybeTokenAudiences) {
+        return maybeTokenAudiences.map(tokenAudiences -> {
+                for (Aud aud: auds) {
+                    if (tokenAudiences.contains(aud)) {
+                        return true;
+                    }
+                }
+                return false;
+            })
+            .orElse(true); // if no audience is present in the introspection response, we ignore audience validation
     }
 
     @Override
