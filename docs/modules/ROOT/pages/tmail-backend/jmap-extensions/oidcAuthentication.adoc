@@ -10,19 +10,158 @@ and use it to identify the user.
 
 The token will be then cached so that TMail does not need to request the OIDC provider every time that token is used.
 
-For security reasons, a webadmin route is being exposed as well onm TMail to allow the OIDC provider to use its backchannel mechanism to
+For security reasons, a webadmin route is being exposed as well on TMail to allow the OIDC provider to use its backchannel mechanism to
 invalidate a token, so that the backend resources can not be accessed anymore once the user logged out of the OIDC provider.
 
 == OIDC configuration
 
 To use the OIDC authentication, you need to declare the corresponding authentication strategy `OidcAuthenticationStrategy`
-in `jmap.propertie` in the `authentication.strategy.rfc8621` list:
+in `jmap.properties` in the `authentication.strategy.rfc8621` list:
 
 ----
 authentication.strategy.rfc8621=com.linagora.tmail.james.jmap.oidc.OidcAuthenticationStrategy
 ----
 
 Then you need to define the OIDC configuration in link:../configure/jmap.adoc[`jmap.properties`].
+
+Example:
+----
+oidc.introspect.url=https:/your-oidc-provider/oauth2/introspect
+oidc.userInfo.url=https://your-oidc-provider/oauth2/userinfo
+oidc.introspect.credentials=Basic change-me
+oidc.audience=twakemail,teammail-mobile
+oidc.claim=email
+----
+
+We suggest how to configure those values in the following sections.
+
+=== Configure the introspection and userinfo endpoints
+
+Most OIDC providers expose a well-known URL that contains various endpoint URLs.
+You can find this URL by appending `/.well-known/openid-configuration` to your OIDC provider's base URL:
+
+----
+curl https://your-oidc-provider/.well-known/openid-configuration
+----
+
+The response will contain `introspection_endpoint` and `userinfo_endpoint` which correspond to `oidc.introspect.url` and
+`oidc.userInfo.url` respectively.
+
+=== Configure `oidc.introspect.credentials`
+
+Contact your OIDC provider administrator or access the OIDC admin interface to:
+
+1. Obtain the client ID and client secret for TMail
+2. Combine them in format `clientId:clientSecret`
+3. Base64 encode the combination
+
+----
+echo -n "clientId:clientSecret" | base64
+----
+
+Use the resulting base64 string as the value for `oidc.introspect.credentials`, prefixed with "Basic ". For example: `Basic Y2xpZW50SWQ6Y2xpZW50U2VjcmV0`.
+
+=== Configure `oidc.claim` value
+
+To find the claim that contains the user's email:
+
+1. Get an access token from your OIDC provider
+
+You can use https://learning.postman.com/docs/sending-requests/authorization/oauth-20/[Postman] or any other tool to get an access token.
+
+2. Use the token to call the userinfo endpoint
+
+Example request:
+----
+curl https://your-oidc-provider/oauth2/userinfo \
+  -H "Authorization: Bearer your-access-token"
+----
+
+Example response:
+----
+{
+    "sub": "36cab5e9-8c7f-40b3-8ee5-69975f607bcd",
+    "email_verified": false,
+    "name": "user100",
+    "preferred_username": "user100",
+    "given_name": "user100",
+    "family_name": "familyname",
+    "email": "user100@domain.tld"
+}
+----
+
+The response will contain user information. Look for the field containing the email address, `email` will be your `oidc.claim` value for example.
+
+=== Configure `oidc.audience` value
+
+To configure the audience (`aud`) values, you can have a look at the introspection response of your OIDC provider.
+
+1. Get an access token as shown above
+2. Call the introspection endpoint
+
+Example request:
+----
+curl https://your-oidc-provider/oauth2/introspect \
+  -H "Authorization: your-client-credentials" \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d "token=your-access-token"
+----
+
+Example response:
+----
+{
+  "exp": 1747904421,
+  "iat": 1747904061,
+  "auth_time": 1747902338,
+  "jti": "********-****-****-****-************",
+  "iss": "https://<masked-domain>/realms/<masked-realm>",
+  "aud": "twakemail",
+  "sub": "********-****-****-****-************",
+  "typ": "Bearer",
+  "azp": "<masked-client-id>",
+  "session_state": "********-****-****-****-************",
+  "acr": "0",
+  "allowed-origins": [
+    "https://<masked-domain>"
+  ],
+  "realm_access": {
+    "roles": [
+      "default-roles-<masked-realm>",
+      "offline_access",
+      "uma_authorization"
+    ]
+  },
+  "resource_access": {
+    "account": {
+      "roles": [
+        "manage-account",
+        "manage-account-links",
+        "view-profile"
+      ]
+    }
+  },
+  "scope": "openid email profile",
+  "sid": "********-****-****-****-************",
+  "email_verified": false,
+  "name": "<masked-name>",
+  "preferred_username": "<masked-username>",
+  "given_name": "<masked-name>",
+  "family_name": "<masked-name>",
+  "email": "<masked-email>",
+  "client_id": "<masked-client-id>",
+  "username": "<masked-username>",
+  "token_type": "Bearer",
+  "active": true
+}
+----
+
+The response should have an `aud` field showing the intended audiences.
+You need to configure `oidc.audience` with all relevant audience values, separated by commas if multiple values are needed (e.g. "twakemail,teammail-mobile").
+
+Notes:
+
+- You may need to take into account the audience for the mobile OIDC client as well, e.g. `teammail-mobile`.
+- If the OIDC server does not return the audience as part of the introspection response, audience validation would be ignored.
 
 == Backchannel logout route
 
