@@ -112,7 +112,7 @@ public class RedisOidcTokenCache implements OidcTokenCache {
         String rawExp = mapData.get(TokenFields.EXP);
         String rawAud = mapData.get(TokenFields.AUD);
 
-        if (StringUtils.isBlank(rawEmail) || StringUtils.isBlank(rawExp) || StringUtils.isBlank(rawAud)) {
+        if (StringUtils.isBlank(rawEmail) || StringUtils.isBlank(rawExp)) {
             throw new TokenParseException("Missing required fields in token data: " + mapData);
         }
         try {
@@ -121,12 +121,15 @@ public class RedisOidcTokenCache implements OidcTokenCache {
                 .map(Sid::new);
             Instant exp = Instant.ofEpochSecond(Long.parseLong(rawExp));
 
-            List<Aud> audList = Splitter.on(AUD_DELIMITER)
-                .omitEmptyStrings()
-                .splitToStream(rawAud)
-                .map(Aud::new)
-                .toList();
-            return new TokenInfo(rawEmail, sid, exp, audList);
+            Optional<List<Aud>> maybeAudList = Optional.ofNullable(rawAud)
+                .filter(StringUtils::isNotBlank)
+                .map(value -> Splitter.on(AUD_DELIMITER)
+                    .omitEmptyStrings()
+                    .splitToStream(value)
+                    .map(Aud::new)
+                    .toList());
+
+            return new TokenInfo(rawEmail, sid, exp, maybeAudList);
         } catch (Exception e) {
             throw new TokenParseException("Failed to parse token fields from cache: " + mapData, e);
         }
@@ -153,7 +156,9 @@ public class RedisOidcTokenCache implements OidcTokenCache {
         Map<String, String> mapData = ImmutableMap.of(
             TokenFields.EMAIL, tokenInfo.email(),
             TokenFields.EXP, String.valueOf(tokenInfo.exp().getEpochSecond()),
-            TokenFields.AUD, Joiner.on(AUD_DELIMITER).skipNulls().join(Lists.transform(tokenInfo.aud(), Aud::value)),
+            TokenFields.AUD, tokenInfo.aud()
+                .map(audList -> Joiner.on(AUD_DELIMITER).skipNulls().join(Lists.transform(audList, Aud::value)))
+                .orElse(StringUtils.EMPTY),
             TokenFields.SID, tokenInfo.sid().map(Sid::value).orElse(StringUtils.EMPTY));
 
         return redisCommands.hset(tokenRedisKey, mapData)
