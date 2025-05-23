@@ -27,6 +27,7 @@ import static org.apache.james.MemoryJamesServerMain.WEBADMIN;
 
 import java.util.List;
 
+import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
 import jakarta.inject.Named;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -239,7 +240,10 @@ public class MemoryServer {
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseJmapModule(configuration))
-            .overrideWith(binder -> binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class).in(Singleton.class));
+            .overrideWith(binder -> {
+                binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
+                binder.bind(NoopGuiceLoader.class).in(Singleton.class);
+            });
     }
 
     private static Module extentionModules(MemoryConfiguration configuration) {
