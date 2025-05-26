@@ -125,6 +125,7 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-jmap-rfc-8621</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
