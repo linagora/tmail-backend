@@ -168,7 +168,13 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                     propertiesProvider)));
 
             ExtensionConfiguration extentionConfiguration = this.extentionConfiguration.orElseGet(Throwing.supplier(
-                () -> ExtensionConfiguration.from(new PropertiesProvider(fileSystem, configurationPath).getConfiguration("extensions"))));
+                () -> {
+                    try {
+                        return ExtensionConfiguration.from(new PropertiesProvider(fileSystem, configurationPath).getConfiguration("extensions"));
+                } catch (FileNotFoundException e) {
+                        return ExtensionConfiguration.DEFAULT;
+                    }
+                }));
 
             FileConfigurationProvider configurationProvider = new FileConfigurationProvider(fileSystem, Basic.builder()
                 .configurationPath(configurationPath)
