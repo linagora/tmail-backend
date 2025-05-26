@@ -84,8 +84,7 @@ public class AiBotSuggestionMethodTest {
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(Modules.override(new AIBotModule()).with(binder -> binder.bind(AIRedactionalHelper.class).to(AIRedactionalHelperForTest.class)))
-            .overrideWith(new AiBotMethodModule()))
+            .overrideWith(Modules.override(new AIBotModule()).with(binder -> binder.bind(AIRedactionalHelper.class).to(AIRedactionalHelperForTest.class))))
         .build();
 
     @BeforeEach
