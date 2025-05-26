@@ -36,7 +36,6 @@ import org.apache.james.jwt.userinfo.UserInfoCheckException;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.SessionProvider;
 
-import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableMap;
 
 import reactor.core.publisher.Mono;
@@ -77,7 +76,8 @@ public class OidcAuthenticationStrategy implements AuthenticationStrategy {
                 sink.next(tokenInfo);
             })
             .map(tokenInfo -> Username.of(tokenInfo.email()))
-            .map(Throwing.function(sessionProvider::createSystemSession))
+            .flatMap(username -> Mono.fromCallable(() -> sessionProvider.authenticate(username)
+                .withoutDelegation()))
             .onErrorMap(TokenIntrospectionException.class, e -> new UnauthorizedException("Invalid OIDC token when introspection check", e))
             .onErrorMap(UserInfoCheckException.class, e -> new UnauthorizedException("Invalid OIDC token when user info check", e));
     }
