@@ -21,6 +21,7 @@ package com.linagora.tmail.common;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
 import static io.restassured.RestAssured.with;
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.apache.james.jmap.JMAPTestingConstants.ALICE;
 import static org.apache.james.jmap.JMAPTestingConstants.ALICE_PASSWORD;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
@@ -40,6 +41,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.apache.james.GuiceJamesServer;
+import org.apache.james.core.Username;
+import org.apache.james.jmap.core.AccountId;
 import org.apache.james.utils.DataProbeImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -424,5 +427,58 @@ public abstract class OidcAuthenticationContract {
                 .withPath(USERINFO_TOKEN_URI_PATH)
                 .withHeader("Authorization", token2),
             VerificationTimes.exactly(1));
+    }
+
+    @Test
+    void forwardSetShouldSucceedWithOidcAuthenticationStrategy() {
+        AccountId accountId = AccountId.from(Username.of(EMAIL_CLAIM_VALUE)).toOption().get();
+
+        String request = """
+            {
+                "using": [ "urn:ietf:params:jmap:core",
+                           "com:linagora:params:jmap:forward" ],
+                "methodCalls": [
+                  ["Forward/set", {
+                    "accountId": "%s",
+                    "update": {
+                        "singleton": {
+                            "localCopy": true,
+                            "forwards": [
+                                "targetA@domain.org",
+                                "targetB@domain.org"
+                            ]
+                        }
+                    }
+                  }, "c1"]
+                ]
+            }""".formatted(accountId.id());
+
+        updateMockServerTokenInfoResponse(EMAIL_CLAIM_VALUE);
+
+        String response = given()
+            .headers(getHeadersWith(AUTH_HEADER))
+            .body(request)
+        .when()
+            .post()
+        .then()
+            .log().ifValidationFails()
+            .statusCode(200)
+            .contentType("application/json")
+            .extract()
+            .body()
+            .asString();
+
+        assertThatJson(response).isEqualTo("""
+            {
+              "sessionState": "${json-unit.ignore}",
+              "methodResponses": [
+                ["Forward/set", {
+                  "accountId": "%s",
+                  "newState": "${json-unit.ignore}",
+                  "updated": {"singleton":{}}
+                }, "c1"]
+              ]
+            }
+            """.formatted(accountId.id()));
     }
 }
