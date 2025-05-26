@@ -55,13 +55,7 @@ public class NoopGuiceLoader implements GuiceLoader {
         }
 
         public Class<T> locateClass(ClassName className) throws ClassNotFoundException {
-
-            if (className.getName().contains(".")) {
-                namingScheme = NamingScheme.IDENTITY;
-            }
-
             ImmutableList<Class<T>> classes = this.namingScheme.toFullyQualifiedClassNames(className)
-                .filter(fqcn -> fqcn.getName().contains("."))
                 .flatMap(this::tryLocateClass)
                 .collect(ImmutableList.toImmutableList());
 
@@ -78,9 +72,9 @@ public class NoopGuiceLoader implements GuiceLoader {
         private Stream<Class<T>> tryLocateClass(FullyQualifiedClassName className) {
             try {
                 Class<?> clazz = getClass().getClassLoader().loadClass(className.getName());
-                return ImmutableList.of((Class<T>) clazz).stream();
+                return Stream.of((Class<T>) clazz);
             } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
+                return Stream.of();
             }
         }
 

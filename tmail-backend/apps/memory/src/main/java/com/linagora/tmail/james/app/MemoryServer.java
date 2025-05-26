@@ -233,7 +233,7 @@ public class MemoryServer {
             .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(choosePop3ServerModule(configuration))
             .combineWith(chooseDropListsModule(configuration))
-            .combineWith(extentionModules(configuration))
+            .overrideWith(extentionModules(configuration))
             .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
