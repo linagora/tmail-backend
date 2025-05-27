@@ -39,4 +39,14 @@ public class RabbitMQAndRedisEventBusTest extends RabbitMQAndRedisEventBusContra
     RedisConfiguration redisConfiguration() {
         return StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString());
     }
+
+    @Override
+    public void pauseRedis() {
+        redisExtension.dockerRedis().pause();
+    }
+
+    @Override
+    public void unpauseRedis() {
+        redisExtension.dockerRedis().unPause();
+    }
 }

@@ -41,4 +41,14 @@ public class RabbitMQAndRedisEventBusWithKvrocksTest extends RabbitMQAndRedisEve
     RedisConfiguration redisConfiguration() {
         return StandaloneRedisConfiguration.from(kvrocksExtension.dockerKvrocks().redisURI().toString());
     }
+
+    @Override
+    void pauseRedis() {
+        kvrocksExtension.dockerKvrocks().pause();
+    }
+
+    @Override
+    void unpauseRedis() {
+        kvrocksExtension.dockerKvrocks().unPause();
+    }
 }

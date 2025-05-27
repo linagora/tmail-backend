@@ -40,8 +40,8 @@ import static org.apache.james.events.EventBusTestFixture.GROUP_A;
 import static org.apache.james.events.EventBusTestFixture.GROUP_B;
 import static org.apache.james.events.EventBusTestFixture.KEY_1;
 import static org.apache.james.events.EventBusTestFixture.NO_KEYS;
-import static org.apache.james.events.EventBusTestFixture.newAsyncListener;
 import static org.apache.james.events.EventBusTestFixture.newListener;
+import static org.apache.james.events.RedisEventBusConfiguration.FAILURE_IGNORE_DEFAULT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -61,12 +61,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
-import org.apache.james.backends.rabbitmq.RabbitMQExtension.DockerRestartPolicy;
 import org.apache.james.backends.rabbitmq.RabbitMQFixture;
 import org.apache.james.backends.rabbitmq.RabbitMQManagementAPI;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
@@ -131,6 +131,10 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
 
     abstract RedisConfiguration redisConfiguration();
 
+    abstract void pauseRedis();
+
+    abstract void unpauseRedis();
+
     @BeforeEach
     void setUp() throws Exception {
         redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(),
@@ -182,7 +186,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
             memoryEventDeadLetters, new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
             redisEventBusClientFactory,
-            RedisEventBusConfiguration.DEFAULT);
+            new RedisEventBusConfiguration(FAILURE_IGNORE_DEFAULT, Duration.ofSeconds(2)));
     }
 
     @Override
@@ -477,41 +481,6 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
         @Nested
         class SingleEventBus {
 
-            @Nested
-            class DispatchingWhenNetWorkIssue {
-
-                @RegisterExtension
-                RabbitMQExtension rabbitMQNetWorkIssueExtension = RabbitMQExtension.defaultRabbitMQ()
-                    .restartPolicy(DockerRestartPolicy.PER_TEST)
-                    .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
-
-                private RabbitMQAndRedisEventBus rabbitMQAndRedisEventBusWithNetWorkIssue;
-
-                @BeforeEach
-                void beforeEach() throws Exception {
-                    rabbitMQAndRedisEventBusWithNetWorkIssue = newEventBus(TEST_NAMING_STRATEGY, rabbitMQNetWorkIssueExtension.getSender(), rabbitMQNetWorkIssueExtension.getReceiverProvider());
-                }
-
-                @Test
-                void dispatchShouldWorkAfterNetworkIssuesForOldRegistrationAndKey() {
-                    rabbitMQAndRedisEventBusWithNetWorkIssue.start();
-                    EventListener listener = newListener();
-                    Mono.from(rabbitMQAndRedisEventBusWithNetWorkIssue.register(listener, KEY_1)).block();
-
-                    rabbitMQNetWorkIssueExtension.getRabbitMQ().pause();
-
-                    assertThatThrownBy(() -> rabbitMQAndRedisEventBusWithNetWorkIssue.dispatch(EVENT, NO_KEYS).block())
-                        .getCause()
-                        .isInstanceOf(NoSuchElementException.class)
-                        .hasMessageContaining("Timeout waiting for idle object");
-
-                    rabbitMQNetWorkIssueExtension.getRabbitMQ().unpause();
-
-                    rabbitMQAndRedisEventBusWithNetWorkIssue.dispatch(EVENT, ImmutableSet.of(KEY_1)).block();
-                    assertThatListenerReceiveOneEvent(listener);
-                }
-            }
-
             @Test
             void startShouldCreateEventExchange() {
                 eventBus.start();
@@ -524,7 +493,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
             }
 
             @Test
-            void dispatchShouldWorkAfterRestartForOldRegistration() throws Exception {
+            void dispatchShouldWorkAfterRestartForOldGroupRegistration() throws Exception {
                 eventBus.start();
                 EventListener listener = newListener();
                 eventBus.register(listener, GROUP_A);
@@ -536,7 +505,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
             }
 
             @Test
-            void dispatchShouldWorkAfterRestartForNewRegistration() throws Exception {
+            void dispatchShouldWorkAfterRestartForNewGroupRegistration() throws Exception {
                 eventBus.start();
                 EventListener listener = newListener();
 
@@ -551,7 +520,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
             }
 
             @Test
-            void redeliverShouldWorkAfterRestartForOldRegistration() throws Exception {
+            void redeliverShouldWorkAfterRestartForOldGroupRegistration() throws Exception {
                 eventBus.start();
                 EventListener listener = newListener();
                 eventBus.register(listener, GROUP_A);
@@ -563,7 +532,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
             }
 
             @Test
-            void redeliverShouldWorkAfterRestartForNewRegistration() throws Exception {
+            void redeliverShouldWorkAfterRestartForNewGroupRegistration() throws Exception {
                 eventBus.start();
                 EventListener listener = newListener();
 
@@ -576,49 +545,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
             }
 
             @Test
-            void dispatchShouldWorkAfterRestartForOldKeyRegistration() throws Exception {
-                eventBus.start();
-                EventListener listener = newListener();
-                Mono.from(eventBus.register(listener, KEY_1)).block();
-
-                rabbitMQExtension.getRabbitMQ().restart();
-
-                eventBus.dispatch(EVENT, KEY_1).block();
-                assertThatListenerReceiveOneEvent(listener);
-            }
-
-            @Test
-            @Disabled("Failing because of Redis integration. TODO fix in another ticket...")
-            void dispatchedMessagesShouldSurviveARabbitMQRestart() throws Exception {
-                eventBusWithKeyHandlerNotStarted.startWithoutStartingKeyRegistrationHandler();
-                EventListener listener = newAsyncListener();
-                Mono.from(eventBusWithKeyHandlerNotStarted.register(listener, KEY_1)).block();
-                Mono<Void> dispatch = eventBusWithKeyHandlerNotStarted.dispatch(EVENT, KEY_1);
-                dispatch.block();
-
-                rabbitMQExtension.getRabbitMQ().restart();
-
-                eventBusWithKeyHandlerNotStarted.startKeyRegistrationHandler();
-
-                assertThatListenerReceiveOneEvent(listener);
-            }
-
-            @Disabled("JAMES-3083 Disable this unstable test")
-            @Test
-            void dispatchShouldWorkAfterRestartForNewKeyRegistration() throws Exception {
-                eventBus.start();
-                EventListener listener = newListener();
-
-                rabbitMQExtension.getRabbitMQ().restart();
-
-                Mono.from(eventBus.register(listener, KEY_1)).block();
-
-                eventBus.dispatch(EVENT, KEY_1).block();
-                assertThatListenerReceiveOneEvent(listener);
-            }
-
-            @Test
-            void dispatchShouldWorkAfterNetworkIssuesForNewRegistration() {
+            void dispatchShouldWorkAfterNetworkIssuesForNewGroupRegistration() {
                 eventBus.start();
                 EventListener listener = newListener();
 
@@ -637,7 +564,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
             }
 
             @Test
-            void redeliverShouldWorkAfterNetworkIssuesForNewRegistration() {
+            void redeliverShouldWorkAfterNetworkIssuesForNewGroupRegistration() {
                 eventBus.start();
                 EventListener listener = newListener();
 
@@ -660,14 +587,13 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
                 when(listener.getExecutionMode()).thenReturn(EventListener.ExecutionMode.ASYNCHRONOUS);
                 Mono.from(eventBus.register(listener, KEY_1)).block();
 
-                rabbitMQExtension.getRabbitMQ().pause();
+                pauseRedis();
 
-                assertThatThrownBy(() -> eventBus.dispatch(EVENT, NO_KEYS).block())
-                        .getCause()
-                        .isInstanceOf(NoSuchElementException.class)
-                        .hasMessageContaining("Timeout waiting for idle object");
+                assertThatThrownBy(() -> eventBus.dispatch(EVENT, KEY_1).block())
+                    .getCause()
+                    .isInstanceOf(TimeoutException.class);
 
-                rabbitMQExtension.getRabbitMQ().unpause();
+                unpauseRedis();
 
                 eventBus.dispatch(EVENT, KEY_1).block();
                 assertThatListenerReceiveOneEvent(listener);
@@ -679,14 +605,13 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
                 EventListener listener = newListener();
                 when(listener.getExecutionMode()).thenReturn(EventListener.ExecutionMode.ASYNCHRONOUS);
 
-                rabbitMQExtension.getRabbitMQ().pause();
+                pauseRedis();
 
-                assertThatThrownBy(() -> eventBus.dispatch(EVENT, NO_KEYS).block())
-                        .getCause()
-                        .isInstanceOf(NoSuchElementException.class)
-                        .hasMessageContaining("Timeout waiting for idle object");
+                assertThatThrownBy(() -> eventBus.dispatch(EVENT, KEY_1).block())
+                    .getCause()
+                    .isInstanceOf(TimeoutException.class);
 
-                rabbitMQExtension.getRabbitMQ().unpause();
+                unpauseRedis();
 
                 Mono.from(eventBus.register(listener, KEY_1)).block();
                 eventBus.dispatch(EVENT, KEY_1).block();
@@ -901,7 +826,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
     }
 
     @Nested
-    class ErrorDispatchingTest {
+    class ErrorGroupDispatchingTest {
 
         @AfterEach
         void tearDown() {
