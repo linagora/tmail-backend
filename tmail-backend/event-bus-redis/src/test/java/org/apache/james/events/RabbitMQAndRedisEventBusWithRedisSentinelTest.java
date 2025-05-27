@@ -32,4 +32,15 @@ public class RabbitMQAndRedisEventBusWithRedisSentinelTest extends RabbitMQAndRe
     RedisConfiguration redisConfiguration() {
         return redisSentinelExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
     }
+
+    @Override
+    void pauseRedis() {
+        redisSentinelExtension.getRedisSentinelCluster().redisMasterReplicaContainerList().pauseMasterNode();
+    }
+
+    @Override
+    void unpauseRedis() {
+        redisSentinelExtension.getRedisSentinelCluster().redisMasterReplicaContainerList().unPauseMasterNode();
+    }
+
 }

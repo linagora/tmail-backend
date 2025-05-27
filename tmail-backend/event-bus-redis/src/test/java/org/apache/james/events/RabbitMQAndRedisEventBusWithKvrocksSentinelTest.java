@@ -32,4 +32,14 @@ public class RabbitMQAndRedisEventBusWithKvrocksSentinelTest extends RabbitMQAnd
     RedisConfiguration redisConfiguration() {
         return kvrocksSentinelExtension.getKvrocksSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
     }
+
+    @Override
+    void pauseRedis() {
+        kvrocksSentinelExtension.getKvrocksSentinelCluster().kvrocksMasterReplicaContainerList().pauseMasterNode();
+    }
+
+    @Override
+    void unpauseRedis() {
+        kvrocksSentinelExtension.getKvrocksSentinelCluster().kvrocksMasterReplicaContainerList().unPauseMasterNode();
+    }
 }
