@@ -66,10 +66,11 @@ To run AiBot in memory using Docker, use the following command:
 
 ```bash
 docker run \
-  --mount type=bind,source="sample_conf/jwt_publickey",target="/root/conf/jwt_publickey" \
-  --mount type=bind,source="sample_conf/jwt_privatekey",target="/root/conf/jwt_privatekey" \
-  --mount type=bind,source="sample_conf/mailetcontainer.xml",target="/root/conf/mailetcontainer.xml" \
-  --volume "target/tmail-ai-bot-jar-with-dependencies.jar:/root/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar" \
-  linagora/tmail-backend:memory-branch-master
+  --mount type=bind,source="$PWD/sample_conf/jwt_publickey",target="/root/conf/jwt_publickey" \
+  --mount type=bind,source="$PWD/sample_conf/jwt_privatekey",target="/root/conf/jwt_privatekey" \
+  --mount type=bind,source="$PWD/sample_conf/mailetcontainer.xml",target="/root/conf/mailetcontainer.xml" \
+  --mount type=bind,source="$PWD/sample_conf/ai.properties",target="/root/conf/ai.properties" \
+  --mount type=bind,source="$PWD/sample_conf/extensions.properties",target="/root/conf/extensions.properties" \
+  --volume "$PWD/target/tmail-ai-bot-jar-with-dependencies.jar:/root/libs/tmail-ai-bot-jar-with-dependencies.jar" \
+  linagora/tmail-backend-memory
 ```
-

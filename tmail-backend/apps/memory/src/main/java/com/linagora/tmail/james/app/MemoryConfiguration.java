@@ -32,6 +32,7 @@ import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
+import org.apache.james.utils.ExtensionConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
@@ -48,6 +49,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
                                   OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration,
                                   FileConfigurationProvider fileConfigurationProvider,
+                                  ExtensionConfiguration extentionConfiguration,
                                   boolean jmapEnabled,
                                   boolean dropListEnabled,
                                   boolean oidcEnabled) implements Configuration {
@@ -59,9 +61,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
         private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
+        private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> dropListsEnabled;
         private Optional<Boolean> oidcEnabled;
+
 
         private Builder() {
             mailboxConfiguration = Optional.empty();
@@ -71,6 +75,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             openPaasModuleChooserConfiguration = Optional.empty();
+            extentionConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             dropListsEnabled = Optional.empty();
             oidcEnabled = Optional.empty();
@@ -106,6 +111,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
 
         public Builder mailbox(MailboxConfiguration mailboxConfiguration) {
             this.mailboxConfiguration = Optional.of(mailboxConfiguration);
+            return this;
+        }
+
+        public Builder extensionsConfiguration(ExtensionConfiguration configuration) {
+            this.extentionConfiguration = Optional.of(configuration);
             return this;
         }
 
@@ -156,6 +166,15 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             MailboxConfiguration mailboxConfiguration = this.mailboxConfiguration.orElseGet(Throwing.supplier(
                 () -> MailboxConfiguration.parse(
                     propertiesProvider)));
+
+            ExtensionConfiguration extentionConfiguration = this.extentionConfiguration.orElseGet(Throwing.supplier(
+                () -> {
+                    try {
+                        return ExtensionConfiguration.from(new PropertiesProvider(fileSystem, configurationPath).getConfiguration("extensions"));
+                } catch (FileNotFoundException e) {
+                        return ExtensionConfiguration.DEFAULT;
+                    }
+                }));
 
             FileConfigurationProvider configurationProvider = new FileConfigurationProvider(fileSystem, Basic.builder()
                 .configurationPath(configurationPath)
@@ -213,6 +232,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 servicesDiscoveryModuleChooserConfiguration,
                 openPaasModuleChooserConfiguration,
                 configurationProvider,
+                extentionConfiguration,
                 jmapEnabled,
                 dropListsEnabled,
                 oidcEnabled);
