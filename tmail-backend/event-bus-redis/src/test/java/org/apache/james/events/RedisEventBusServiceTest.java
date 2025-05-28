@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.TEN_SECONDS;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
@@ -42,6 +43,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.testcontainers.containers.GenericContainer;
 
 import reactor.core.publisher.Mono;
 
@@ -75,13 +77,24 @@ class RedisEventBusServiceTest {
         }
     }
 
+    public static void restartRedis(DockerRedis dockerRedis) {
+        try {
+            Field containerField = DockerRedis.class.getDeclaredField("container");
+            containerField.setAccessible(true);
+            GenericContainer<?> redisContainer = (GenericContainer<?>) containerField.get(dockerRedis);
+            redisContainer.getDockerClient().restartContainerCmd(redisContainer.getContainerId()).exec();
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to access 'container' field", e);
+        }
+    }
+
     @Nested
     @Disabled("RedisEventBus tests upon Redis standalone restart. Please configure DockerRedis to expose to a static port on the host machine e.g:" +
         "redisContainer.setPortBindings(List.of(String.format(%d:%d, 6379, 6379)))")
     class RedisStandaloneRestart {
         @Nested
         class UserHasNoNotificationRegistrationBeforeRedisRestart {
-            // test for user has no notification registration before Redis restart
+            // test for user has no notification registration before Redis restart, the following behavior should be the same for Redis AOF disabled/enabled
             @Test
             void newNotificationRegistrationShouldWorkWellAfterRedisRestartTest(DockerRedis redis) throws Exception {
                 TestEventCollector listener = new TestEventCollector();
@@ -112,68 +125,128 @@ class RedisEventBusServiceTest {
         class UserHasNotificationRegistrationsBeforeRedisRestart {
             // Tests for user that has registrations before Redis restart
 
-            @Test
-            void notificationShouldWorkAfterCleanupOldRegistrationAndResubscribe(DockerRedis redis) throws Exception {
-                TestEventCollector listener = new TestEventCollector();
+            @Nested
+            // Note: We should disable Redis AOF and Redis RDB snapshot (enabled by default) in DockerRedis: `.withCommand("--appendonly", "no",  "--save", "")`
+            // Otherwise, even with AOF disabled, data could still be persisted thanks to Redis RDB snapshot
+            class RedisAOFDisabled {
+                @Test
+                void notificationShouldWorkAfterCleanupOldRegistrationAndResubscribe(DockerRedis redis) throws Exception {
+                    TestEventCollector listener = new TestEventCollector();
 
-                // Start event bus
-                RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
-                initEventBus(redisEventBusConfiguration);
+                    // Start event bus
+                    RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
+                    initEventBus(redisEventBusConfiguration);
 
-                // User subscribes for IMAP notifications for example
-                Registration oldRegistration = Mono.from(eventBus.register(listener, KEY_1)).block();
+                    // User subscribes for IMAP notifications for example
+                    Registration oldRegistration = Mono.from(eventBus.register(listener, KEY_1)).block();
 
-                // Restart Redis after user subscribes notifications
-                redis.stop();
-                Thread.sleep(2000L); // simulate a downtime
-                redis.start();
+                    // Restart Redis after user subscribes notifications
+                    restartRedis(redis);
 
-                // Await a bit for the Redis server to be fully started, and Redis Pub/sub connection can reconnect
-                Thread.sleep(2000L);
+                    // Await a bit for the Redis server to be fully started, and Redis Pub/sub connection can reconnect
+                    Thread.sleep(2000L);
 
-                // Old registration would lose after Redis restart (registration mappings is stored using redis SET), therefore user needs to re-subscribe a new registration (e.g F5 browser to refresh Websocket Push)
-                Mono.from(oldRegistration.unregister()).block(); // normally cleanup registration gets called as a part of IMAP SELECT/Websocket connection close
-                Mono.from(eventBus.register(listener, KEY_1)).block(); // User re-subscribe for notifications
+                    // Old registration would lose after Redis restart (registration mappings is stored using redis SET), therefore user needs to re-subscribe a new registration (e.g F5 browser to refresh Websocket Push)
+                    Mono.from(oldRegistration.unregister()).block(); // normally cleanup registration gets called as a part of IMAP SELECT/Websocket connection close
+                    Mono.from(eventBus.register(listener, KEY_1)).block(); // User re-subscribe for notifications
 
-                // TMail dispatches an update
-                eventBus.dispatch(EVENT, KEY_1).block();
+                    // TMail dispatches an update
+                    eventBus.dispatch(EVENT, KEY_1).block();
 
-                // The event should be received well
-                await().timeout(TEN_SECONDS)
-                    .untilAsserted(() -> assertThat(listener.getEvents()).containsOnly(EVENT));
+                    // The event should be received well
+                    await().timeout(TEN_SECONDS)
+                        .untilAsserted(() -> assertThat(listener.getEvents()).containsOnly(EVENT));
+                }
+
+                @Test
+                void notificationShouldNotWorkIfOldRegistrationIsNotCleanedUpCorrectly(DockerRedis redis) throws Exception {
+                    TestEventCollector listener = new TestEventCollector();
+
+                    // Start event bus
+                    RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
+                    initEventBus(redisEventBusConfiguration);
+
+                    // User subscribes for IMAP notifications for example
+                    Registration oldRegistration = Mono.from(eventBus.register(listener, KEY_1)).block();
+
+                    // Restart Redis after user subscribes notifications
+                    restartRedis(redis);
+
+                    // Await a bit for the Redis server to be fully started, and Redis Pub/sub connection can reconnect
+                    Thread.sleep(2000L);
+
+                    // Old registration would lose after Redis restart, therefore user needs to re-subscribe a new registration (e.g F5 browser to refresh Websocket Push)
+                    // Somehow the old registration is not cleaned correctly (likely very rare case), and user tries to re-subscribe a new registration
+                    Mono.from(eventBus.register(listener, KEY_1)).block();
+
+                    // TMail dispatches an update
+                    eventBus.dispatch(EVENT, KEY_1).block();
+
+                    // The event would not be delivered because:
+                    // 1. The registration mapping (stored using Redis Set) have been lost after Redis (without AOF) restart
+                    // 2. This is not the first subscription for the KEY_1, therefore the registration mapping won't be stored again cf https://github.com/linagora/tmail-backend/blob/ec13090ac17601bd13651ee87508f14c412a68ee/tmail-backend/event-bus-redis/src/main/java/org/apache/james/events/RedisKeyRegistrationHandler.java#L149
+                    await().timeout(TEN_SECONDS)
+                        .untilAsserted(() -> assertThat(listener.getEvents()).isEmpty());
+                }
             }
 
-            @Test
-            void notificationShouldNotWorkIfOldRegistrationIsNotCleanedUpCorrectly(DockerRedis redis) throws Exception {
-                TestEventCollector listener = new TestEventCollector();
+            @Nested
+            // Note: We need to enable Redis AOF: `.withCommand("--appendonly", "yes")`
+            class RedisAOFEnabled {
+                @Test
+                void notificationShouldWorkContinuouslyAfterRedisRestartWhenAOFEnabled(DockerRedis redis) throws Exception {
+                    TestEventCollector listener = new TestEventCollector();
 
-                // Start event bus
-                RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
-                initEventBus(redisEventBusConfiguration);
+                    // Start event bus
+                    RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
+                    initEventBus(redisEventBusConfiguration);
 
-                // User subscribes for IMAP notifications for example
-                Registration oldRegistration = Mono.from(eventBus.register(listener, KEY_1)).block();
+                    // User subscribes for IMAP notifications for example
+                    Mono.from(eventBus.register(listener, KEY_1)).block();
 
-                // Restart Redis after user subscribes notifications
-                redis.stop();
-                Thread.sleep(2000L); // simulate a downtime
-                redis.start();
+                    // Restart Redis after user subscribes notifications
+                    restartRedis(redis);
 
-                // Await a bit for the Redis server to be fully started, and Redis Pub/sub connection can reconnect
-                Thread.sleep(2000L);
+                    // Await a bit for the Redis server to be fully started, and Redis Pub/sub connection can reconnect
+                    Thread.sleep(3000L);
 
-                // Old registration would lose after Redis restart, therefore user needs to re-subscribe a new registration (e.g F5 browser to refresh Websocket Push)
-                // Somehow the old registration is not cleaned correctly (likely very rare case), and user tries to re-subscribe a new registration
-                Mono.from(eventBus.register(listener, KEY_1)).block();
+                    // TMail dispatches an update
+                    eventBus.dispatch(EVENT, KEY_1).block();
 
-                // TMail dispatches an update
-                eventBus.dispatch(EVENT, KEY_1).block();
+                    // The notification should be received well
+                    // as the registration is stored using Redis Set, and it would be restored after Redis (AOF enabled) restart
+                    await().timeout(TEN_SECONDS)
+                        .untilAsserted(() -> assertThat(listener.getEvents()).containsOnly(EVENT));
+                }
 
-                // The event would not be delivered because:
-                // 1. The registration mapping (stored using Redis Set) have been lost after Redis (without AOF) restart
-                // 2. This is not the first subscription for the KEY_1, therefore the registration mapping won't be stored again cf https://github.com/linagora/tmail-backend/blob/ec13090ac17601bd13651ee87508f14c412a68ee/tmail-backend/event-bus-redis/src/main/java/org/apache/james/events/RedisKeyRegistrationHandler.java#L149
-                await().timeout(TEN_SECONDS)
-                    .untilAsserted(() -> assertThat(listener.getEvents()).isEmpty());
+                @Test
+                void notificationShouldWorkEvenIfOldRegistrationIsNotCleanedUpCorrectly(DockerRedis redis) throws Exception {
+                    TestEventCollector listener = new TestEventCollector();
+
+                    // Start event bus
+                    RedisEventBusConfiguration redisEventBusConfiguration = new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
+                    initEventBus(redisEventBusConfiguration);
+
+                    // User subscribes for IMAP notifications for example
+                    Mono.from(eventBus.register(listener, KEY_1)).block();
+
+                    // Restart Redis after user subscribes notifications
+                    restartRedis(redis);
+
+                    // Await a bit for the Redis server to be fully started, and Redis Pub/sub connection can reconnect
+                    Thread.sleep(3000L);
+
+                    // Somehow the old registration is not cleaned correctly (likely very rare case), and user tries to re-subscribe a new registration
+                    Mono.from(eventBus.register(listener, KEY_1)).block();
+
+                    // TMail dispatches an update
+                    eventBus.dispatch(EVENT, KEY_1).block();
+
+                    // The notification should be received well
+                    // as the registration is stored using Redis Set, and it would be restored after Redis (AOF enabled) restart
+                    await().timeout(TEN_SECONDS)
+                        .untilAsserted(() -> assertThat(listener.getEvents()).containsOnly(EVENT));
+                }
             }
         }
     }
