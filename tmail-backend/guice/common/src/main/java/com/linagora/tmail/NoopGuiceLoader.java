@@ -15,7 +15,7 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.james.app;
+package com.linagora.tmail;
 
 import java.util.stream.Stream;
 

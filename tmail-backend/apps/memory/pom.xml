@@ -202,6 +202,10 @@
             <artifactId>wiremock-standalone</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>tmail-guice-common</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
