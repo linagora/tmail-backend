@@ -509,6 +509,9 @@
                         </ports>
                         <appRoot>/root</appRoot>
                         <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                        <extraClasspath>
+                            <item>/root/libs/*</item>
+                        </extraClasspath>
                     </container>
                     <extraDirectories>
                         <paths>
@@ -623,6 +626,9 @@
                                 </ports>
                                 <appRoot>/root</appRoot>
                                 <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                                <extraClasspath>
+                                    <item>/root/libs/*</item>
+                                </extraClasspath>
                             </container>
                             <extraDirectories>
                                 <paths>

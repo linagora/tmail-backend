@@ -33,6 +33,7 @@ import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
+import org.apache.james.utils.ExtensionConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 import org.apache.james.vault.VaultConfiguration;
 
@@ -62,6 +63,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             EventBusKeysChoice eventBusKeysChoice,
                                             boolean dropListEnabled,
                                             VaultConfiguration vaultConfiguration,
+                                            ExtensionConfiguration extentionConfiguration,
                                             boolean oidcEnabled,
                                             OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) implements Configuration {
     public static class Builder {
@@ -80,6 +82,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<Boolean> quotaCompatibilityMode;
         private Optional<Boolean> dropListsEnabled;
         private Optional<VaultConfiguration> vaultConfiguration;
+        private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<Boolean> oidcEnabled;
         private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
 
@@ -99,6 +102,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             eventBusKeysChoice = Optional.empty();
             dropListsEnabled = Optional.empty();
             vaultConfiguration = Optional.empty();
+            extentionConfiguration = Optional.empty();
             oidcEnabled = Optional.empty();
             oidcTokenStorageChoice = Optional.empty();
         }
@@ -196,6 +200,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder extensionsConfiguration(ExtensionConfiguration configuration) {
+            this.extentionConfiguration = Optional.of(configuration);
+            return this;
+        }
+
         public Builder oidcEnabled(boolean enable) {
             this.oidcEnabled = Optional.of(enable);
             return this;
@@ -284,6 +293,15 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 }
             });
 
+            ExtensionConfiguration extentionConfiguration = this.extentionConfiguration.orElseGet(Throwing.supplier(
+                () -> {
+                    try {
+                        return ExtensionConfiguration.from(new PropertiesProvider(fileSystem, configurationPath).getConfiguration("extensions"));
+                    } catch (FileNotFoundException e) {
+                        return ExtensionConfiguration.DEFAULT;
+                    }
+                }));
+
             boolean oidcEnabled = this.oidcEnabled.orElseGet(() -> {
                 try {
                     return JMAPOidcConfiguration.parseConfiguration(propertiesProvider).getOidcEnabled();
@@ -315,6 +333,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 eventBusKeysChoice,
                 dropListsEnabled,
                 vaultConfiguration,
+                extentionConfiguration,
                 oidcEnabled,
                 oidcTokenCacheChoice);
         }

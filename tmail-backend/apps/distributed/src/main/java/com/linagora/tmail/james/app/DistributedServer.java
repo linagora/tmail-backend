@@ -130,6 +130,7 @@ import org.apache.james.quota.search.QuotaSearcher;
 import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
+import org.apache.james.utils.GuiceLoader;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.vault.VaultConfiguration;
@@ -148,6 +149,8 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
+import com.linagora.tmail.ExtensionModuleProvider;
+import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
@@ -430,6 +433,11 @@ public class DistributedServer {
             .combineWith(chooseQuotaModule(configuration))
             .combineWith(chooseDeletedMessageVault(configuration.vaultConfiguration()))
             .combineWith(choosePop3ServerModule(configuration))
+            .overrideWith(ExtensionModuleProvider.extentionModules(configuration.extentionConfiguration()))
+            .overrideWith(binder -> {
+                binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
+                binder.bind(NoopGuiceLoader.class).in(Singleton.class);
+            })
             .overrideWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
