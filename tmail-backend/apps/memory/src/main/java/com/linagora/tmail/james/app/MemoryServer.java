@@ -62,19 +62,17 @@ import org.apache.james.modules.server.TaskManagerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultModule;
 import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 import org.apache.james.util.Host;
-import org.apache.james.utils.ClassName;
 import org.apache.james.utils.GuiceLoader;
 
-import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.AmqpUri;
+import com.linagora.tmail.ExtensionModuleProvider;
+import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
@@ -233,7 +231,7 @@ public class MemoryServer {
             .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(choosePop3ServerModule(configuration))
             .combineWith(chooseDropListsModule(configuration))
-            .overrideWith(extentionModules(configuration))
+            .overrideWith(ExtensionModuleProvider.extentionModules(configuration.extentionConfiguration()))
             .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
@@ -243,26 +241,6 @@ public class MemoryServer {
                 binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
                 binder.bind(NoopGuiceLoader.class).in(Singleton.class);
             });
-    }
-
-    private static Module extentionModules(MemoryConfiguration configuration) {
-        Injector injector = Guice.createInjector();
-            Module additionalExtensionBindings = Modules.combine(configuration.extentionConfiguration().getAdditionalGuiceModulesForExtensions()
-                .stream()
-                .map(Throwing.<ClassName, Module>function(className -> instanciate(injector, MemoryServer.class.getClassLoader(), className)))
-                .peek(module -> LOGGER.info("Enabling injects contained in " + module.getClass().getCanonicalName()))
-                .collect(ImmutableList.toImmutableList()));
-            return additionalExtensionBindings;
-    }
-
-    private static <T> T instanciate(Injector injector, ClassLoader classLoader, ClassName className) throws ClassNotFoundException {
-        try {
-            Class<?> clazz = classLoader.loadClass(className.getName());
-            return (T) injector.getInstance(clazz);
-        } catch (ClassNotFoundException e) {
-            LOGGER.error("Class not found: {}", className.getName(), e);
-            throw e;
-        }
     }
 
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
