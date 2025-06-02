@@ -117,6 +117,7 @@ import org.apache.james.quota.search.QuotaSearcher;
 import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.user.postgres.PostgresUsersDAO;
+import org.apache.james.utils.GuiceLoader;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,6 +130,8 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
+import com.linagora.tmail.ExtensionModuleProvider;
+import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
@@ -253,6 +256,11 @@ public class PostgresTmailServer {
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseRLSSupportPostgresMailboxModule(configuration))
             .overrideWith(chooseSearchModules(configuration))
+            .overrideWith(ExtensionModuleProvider.extentionModules(configuration.extentionConfiguration()))
+            .overrideWith(binder -> {
+                binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
+                binder.bind(NoopGuiceLoader.class).in(Scopes.SINGLETON);
+            })
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
