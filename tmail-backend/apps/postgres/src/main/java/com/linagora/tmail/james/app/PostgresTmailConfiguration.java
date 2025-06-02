@@ -35,6 +35,7 @@ import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
+import org.apache.james.utils.ExtensionConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
@@ -57,6 +58,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          boolean jmapEnabled,
                                          boolean rlsEnabled,
                                          PropertiesProvider propertiesProvider,
+                                         ExtensionConfiguration extentionConfiguration,
                                          PostgresJamesConfiguration.EventBusImpl eventBusImpl,
                                          boolean oidcEnabled,
                                          OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) implements Configuration {
@@ -72,6 +74,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> rlsEnabled;
+        private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<PostgresJamesConfiguration.EventBusImpl> eventBusImpl;
         private Optional<Boolean> oidcEnabled;
         private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
@@ -88,6 +91,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             rlsEnabled = Optional.empty();
+            extentionConfiguration = Optional.empty();
             eventBusImpl = Optional.empty();
             oidcEnabled = Optional.empty();
             oidcTokenStorageChoice = Optional.empty();
@@ -166,6 +170,11 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return this;
         }
 
+        public Builder extensionsConfiguration(ExtensionConfiguration configuration) {
+            this.extentionConfiguration = Optional.of(configuration);
+            return this;
+        }
+
         public Builder eventBusImpl(PostgresJamesConfiguration.EventBusImpl eventBusImpl) {
             this.eventBusImpl = Optional.of(eventBusImpl);
             return this;
@@ -201,6 +210,15 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 .configurationPath(configurationPath)
                 .workingDirectory(directories.getRootDirectory())
                 .build());
+
+            ExtensionConfiguration extentionConfiguration = this.extentionConfiguration.orElseGet(Throwing.supplier(
+                () -> {
+                    try {
+                        return ExtensionConfiguration.from(new PropertiesProvider(fileSystem, configurationPath).getConfiguration("extensions"));
+                    } catch (FileNotFoundException e) {
+                        return ExtensionConfiguration.DEFAULT;
+                    }
+                }));
 
             UsersRepositoryModuleChooser.Implementation usersRepositoryChoice = usersRepositoryImplementation.orElseGet(
                 () -> UsersRepositoryModuleChooser.Implementation.parse(configurationProvider));
@@ -254,6 +272,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 jmapEnabled,
                 rlsEnabled,
                 propertiesProvider,
+                extentionConfiguration,
                 eventBusImpl,
                 oidcEnabled,
                 oidcTokenCacheChoice);
