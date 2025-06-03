@@ -52,10 +52,10 @@ class RedisEventBusClientFactory @Singleton() @Inject()
 
   private def getRedisConnection(redisClient: RedisClient): StatefulRedisConnection[String, String] = redisConfiguration match {
     case _: StandaloneRedisConfiguration => redisClient.connect()
-    case masterReplicaRedisConfiguration: MasterReplicaRedisConfiguration => MasterReplica.connect(rawRedisClient.asInstanceOf[RedisClient],
+    case masterReplicaRedisConfiguration: MasterReplicaRedisConfiguration => MasterReplica.connect(redisClient,
       StringCodec.UTF8,
       masterReplicaRedisConfiguration.redisURI.value.asJava)
-    case sentinelRedisConfiguration: SentinelRedisConfiguration => MasterReplica.connect(rawRedisClient.asInstanceOf[RedisClient],
+    case sentinelRedisConfiguration: SentinelRedisConfiguration => MasterReplica.connect(redisClient,
       StringCodec.UTF8,
       sentinelRedisConfiguration.redisURI)
   }
