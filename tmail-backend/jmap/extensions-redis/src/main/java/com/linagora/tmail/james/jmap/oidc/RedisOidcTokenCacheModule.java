@@ -39,11 +39,8 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 
 import io.lettuce.core.AbstractRedisClient;
-import io.lettuce.core.ClientOptions;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
-import io.lettuce.core.TimeoutOptions;
-import io.lettuce.core.cluster.ClusterClientOptions;
 import io.lettuce.core.cluster.RedisClusterClient;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.masterreplica.MasterReplica;
@@ -67,13 +64,7 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
 
         AbstractRedisClient rawClient = redisClientFactory.rawRedisClient();
 
-        Function<AbstractRedisClient, RedisClient> toRedisClient = client -> {
-            RedisClient redisClient = (RedisClient) rawClient;
-            redisClient.setOptions(ClientOptions.builder()
-                .timeoutOptions(TimeoutOptions.enabled())
-                .build());
-            return redisClient;
-        };
+        Function<AbstractRedisClient, RedisClient> toRedisClient = client -> (RedisClient) rawClient;
 
         RedisTokenCacheCommands redisReactiveCommands = switch (redisConfiguration) {
             case StandaloneRedisConfiguration ignored ->
@@ -81,9 +72,6 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
 
             case ClusterRedisConfiguration clusterConfiguration -> {
                 RedisClusterClient client = (RedisClusterClient) rawClient;
-                client.setOptions(ClusterClientOptions.builder()
-                    .timeoutOptions(TimeoutOptions.enabled())
-                    .build());
                 client.connect().setReadFrom(clusterConfiguration.readFrom());
                 yield RedisTokenCacheCommands.of(client.connect(StringCodec.UTF8).reactive());
             }
