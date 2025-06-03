@@ -21,13 +21,14 @@ package org.apache.james.events
 import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.api.reactive.{RedisKeyReactiveCommands, RedisSetReactiveCommands}
 import io.lettuce.core.cluster.RedisClusterClient
+import io.lettuce.core.cluster.api.StatefulRedisClusterConnection
 import io.lettuce.core.codec.StringCodec
-import io.lettuce.core.masterreplica.MasterReplica
+import io.lettuce.core.masterreplica.{MasterReplica, StatefulRedisMasterReplicaConnection}
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection
 import io.lettuce.core.pubsub.api.reactive.RedisPubSubReactiveCommands
 import io.lettuce.core.{AbstractRedisClient, RedisClient}
 import jakarta.inject.{Inject, Singleton}
-import org.apache.james.backends.redis.{MasterReplicaRedisConfiguration, RedisClientFactory, RedisConfiguration, SentinelRedisConfiguration, StandaloneRedisConfiguration}
+import org.apache.james.backends.redis.{ClusterRedisConfiguration, MasterReplicaRedisConfiguration, RedisClientFactory, RedisConfiguration, SentinelRedisConfiguration, StandaloneRedisConfiguration}
 
 import scala.jdk.CollectionConverters._
 
@@ -42,22 +43,32 @@ class RedisEventBusClientFactory @Singleton() @Inject()
 
   def createRedisSetCommand(): RedisSetReactiveCommands[String, String] = rawRedisClient match {
     case client: RedisClient => getRedisConnection(client).reactive()
-    case clusterClient: RedisClusterClient => clusterClient.connect().reactive()
+    case clusterClient: RedisClusterClient => getRedisClusterConnection(clusterClient).reactive()
   }
 
   def createRedisKeyCommand(): RedisKeyReactiveCommands[String, String] = rawRedisClient match {
     case client: RedisClient => getRedisConnection(client).reactive()
-    case clusterClient: RedisClusterClient => clusterClient.connect().reactive()
+    case clusterClient: RedisClusterClient => getRedisClusterConnection(clusterClient).reactive()
   }
 
   private def getRedisConnection(redisClient: RedisClient): StatefulRedisConnection[String, String] = redisConfiguration match {
     case _: StandaloneRedisConfiguration => redisClient.connect()
-    case masterReplicaRedisConfiguration: MasterReplicaRedisConfiguration => MasterReplica.connect(redisClient,
-      StringCodec.UTF8,
-      masterReplicaRedisConfiguration.redisURI.value.asJava)
-    case sentinelRedisConfiguration: SentinelRedisConfiguration => MasterReplica.connect(redisClient,
-      StringCodec.UTF8,
-      sentinelRedisConfiguration.redisURI)
+    case masterReplicaRedisConfiguration: MasterReplicaRedisConfiguration =>
+        val masterReplicaConnection: StatefulRedisMasterReplicaConnection[String, String] = MasterReplica.connect(redisClient,
+          StringCodec.UTF8, masterReplicaRedisConfiguration.redisURI.value.asJava)
+        masterReplicaConnection.setReadFrom(masterReplicaRedisConfiguration.readFrom)
+        masterReplicaConnection
+    case sentinelRedisConfiguration: SentinelRedisConfiguration =>
+        val sentinelConnection: StatefulRedisMasterReplicaConnection[String, String] = MasterReplica.connect(redisClient,
+          StringCodec.UTF8, sentinelRedisConfiguration.redisURI)
+        sentinelConnection.setReadFrom(sentinelRedisConfiguration.readFrom)
+        sentinelConnection
+  }
+
+  private def getRedisClusterConnection(clusterClient: RedisClusterClient): StatefulRedisClusterConnection[String, String] = {
+    val clusterConnection: StatefulRedisClusterConnection[String, String] = clusterClient.connect()
+    clusterConnection.setReadFrom(redisConfiguration.asInstanceOf[ClusterRedisConfiguration].readFrom)
+    clusterConnection
   }
 
   private def getRedisPubSubConnection(redisClient: RedisClient): StatefulRedisPubSubConnection[String, String] = redisConfiguration match {
