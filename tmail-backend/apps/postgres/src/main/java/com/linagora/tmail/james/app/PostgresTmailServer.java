@@ -186,6 +186,7 @@ import com.linagora.tmail.james.jmap.settings.PostgresJmapSettingsRepositoryModu
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
@@ -503,6 +504,7 @@ public class PostgresTmailServer {
                 return List.of(
                     new OSContactAutoCompleteModule(),
                     new OpenSearchClientModule(),
+                    new TmailOpenSearchMailboxMappingModule(),
                     new OpenSearchMailboxModule(),
                     new ReIndexingModule(),
                     new OpenSearchHighlightModule());

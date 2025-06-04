@@ -59,6 +59,7 @@
         <module>mailbox/encrypted</module>
         <module>mailbox/encrypted/pgp-utils</module>
         <module>mailbox/listeners</module>
+        <module>mailbox/opensearch</module>
         <module>mailbox/plugin/welcome-listener</module>
         <module>mailbox/team-mailboxes</module>
 
@@ -418,6 +419,11 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-listeners</artifactId>
                 <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-mailbox-opensearch</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
