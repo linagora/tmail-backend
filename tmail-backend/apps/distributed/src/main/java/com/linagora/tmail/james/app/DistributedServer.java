@@ -217,6 +217,7 @@ import com.linagora.tmail.james.jmap.settings.CassandraJmapSettingsRepositoryMod
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
@@ -454,6 +455,7 @@ public class DistributedServer {
                 return ImmutableList.of(
                     new OSContactAutoCompleteModule(),
                     new OpenSearchClientModule(),
+                    new TmailOpenSearchMailboxMappingModule(),
                     new OpenSearchMailboxModule(),
                     new ReIndexingModule(),
                     new OpenSearchHighlightModule());
