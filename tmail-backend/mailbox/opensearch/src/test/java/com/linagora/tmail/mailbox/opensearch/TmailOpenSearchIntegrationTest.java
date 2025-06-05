@@ -42,6 +42,7 @@ import java.util.UUID;
 
 import org.apache.james.backends.opensearch.DockerOpenSearchExtension;
 import org.apache.james.backends.opensearch.IndexName;
+import org.apache.james.backends.opensearch.OpenSearchConfiguration;
 import org.apache.james.backends.opensearch.OpenSearchIndexer;
 import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
 import org.apache.james.backends.opensearch.ReadAliasName;
@@ -106,7 +107,7 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
         .await();
     static final int SEARCH_SIZE = 1;
-    private final QueryConverter queryConverter = new QueryConverter(new TmailCriterionConverter(openSearchMailboxConfiguration()));
+    private final QueryConverter queryConverter = new QueryConverter(new TmailCriterionConverter(openSearchMailboxConfiguration(), tmailOpenSearchMailboxConfiguration()));
 
     @RegisterExtension
     static TikaExtension tika = new TikaExtension();
@@ -148,6 +149,13 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
             .build();
     }
 
+    private TmailOpenSearchMailboxConfiguration tmailOpenSearchMailboxConfiguration() {
+        return TmailOpenSearchMailboxConfiguration.builder()
+            .subjectNgramEnabled(true)
+            .subjectNgramHeuristicEnabled(true)
+            .build();
+    }
+
     @Override
     protected void initializeMailboxManager() {
         messageIdFactory = new InMemoryMessageId.Factory();
@@ -157,10 +165,11 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
         readAliasName = new ReadAliasName(UUID.randomUUID().toString());
         writeAliasName = new WriteAliasName(UUID.randomUUID().toString());
         indexName = new IndexName(UUID.randomUUID().toString());
+        OpenSearchConfiguration openSearchConfiguration = openSearch.getDockerOpenSearch().configuration();
         MailboxIndexCreationUtil.prepareClient(
             client, readAliasName, writeAliasName, indexName,
-            openSearch.getDockerOpenSearch().configuration(),
-            new TmailMailboxMappingFactory());
+            openSearchConfiguration,
+            new TmailMailboxMappingFactory(openSearchConfiguration, tmailOpenSearchMailboxConfiguration()));
 
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.builder()
             .preProvisionnedFakeAuthenticator()
@@ -680,6 +689,36 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
                 messageId4.getUid(),
                 messageId5.getUid(),
                 messageId6.getUid());
+    }
+
+    @Test
+    void subjectWithSpaceShouldBePartiallySearchableWhenNgramEnabled() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("abc def ghi"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("ef gh")), session)).toStream())
+            .containsOnly(messageId.getUid());
+    }
+
+    @Test
+    void subjectWithSpaceShouldNotBePartiallySearchableWhenNgramHeuristicEnabledAndSearchHigherThan6Characters() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        messageManager.appendMessage(messageWithSubject("abc def ghi"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("c ef gh")), session)).toStream())
+            .isEmpty();
     }
 
     private static MessageManager.AppendCommand messageWithSubject(String subject) throws IOException {
