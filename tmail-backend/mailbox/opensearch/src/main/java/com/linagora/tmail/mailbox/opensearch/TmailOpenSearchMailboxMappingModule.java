@@ -26,13 +26,25 @@
 
 package com.linagora.tmail.mailbox.opensearch;
 
+import java.io.FileNotFoundException;
+
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.mailbox.opensearch.MailboxMappingFactory;
 import org.apache.james.mailbox.opensearch.query.CriterionConverter;
+import org.apache.james.utils.PropertiesProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.google.inject.Singleton;
 
 public class TmailOpenSearchMailboxMappingModule extends AbstractModule {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TmailOpenSearchMailboxMappingModule.class);
+    private static final String OPENSEARCH_CONFIGURATION_NAME = "opensearch";
+
     @Override
     protected void configure() {
         bind(TmailMailboxMappingFactory.class).in(Scopes.SINGLETON);
@@ -40,5 +52,17 @@ public class TmailOpenSearchMailboxMappingModule extends AbstractModule {
 
         bind(TmailCriterionConverter.class).in(Scopes.SINGLETON);
         bind(CriterionConverter.class).to(TmailCriterionConverter.class);
+    }
+
+    @Provides
+    @Singleton
+    private TmailOpenSearchMailboxConfiguration getOpenSearchMailboxConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+        try {
+            Configuration configuration = propertiesProvider.getConfiguration(OPENSEARCH_CONFIGURATION_NAME);
+            return TmailOpenSearchMailboxConfiguration.fromProperties(configuration);
+        } catch (FileNotFoundException e) {
+            LOGGER.warn("Could not find " + OPENSEARCH_CONFIGURATION_NAME + " configuration file. Providing a default TmailOpenSearchMailboxConfiguration");
+            return TmailOpenSearchMailboxConfiguration.DEFAULT_CONFIGURATION;
+        }
     }
 }
