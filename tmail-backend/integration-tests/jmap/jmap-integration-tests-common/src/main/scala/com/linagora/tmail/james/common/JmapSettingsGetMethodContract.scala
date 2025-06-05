@@ -32,12 +32,17 @@ import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HE
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
+import org.hamcrest.Matchers
 import org.hamcrest.Matchers.hasKey
-import org.junit.jupiter.api.{BeforeEach, Tag, Test}
+import org.junit.jupiter.api.{AfterEach, Tag, Test}
 
 trait JmapSettingsGetMethodContract {
-  @BeforeEach
-  def setUp(server: GuiceJamesServer): Unit = {
+  def startJmapServer(overrideJmapProperties: Map[String, Object]): GuiceJamesServer
+
+  def stopJmapServer(): Unit
+
+  private def setUpJmapServer(overrideJmapProperties: Map[String, Object]): GuiceJamesServer = {
+    val server = startJmapServer(overrideJmapProperties)
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
@@ -48,10 +53,19 @@ trait JmapSettingsGetMethodContract {
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
+
+    server
+  }
+
+  @AfterEach
+  def afterEach(): Unit = {
+    stopJmapServer()
   }
 
   @Test
-  def shouldReturnJmapSettingsCapabilityInSessionRoute(): Unit =
+  def shouldReturnJmapSettingsCapabilityWithEmptyReadOnlyPropertiesInSessionRouteByDefault(): Unit = {
+    setUpJmapServer(Map())
+
     `given`()
     .when()
       .get("/session")
@@ -59,9 +73,44 @@ trait JmapSettingsGetMethodContract {
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("capabilities", hasKey("com:linagora:params:jmap:settings"))
+      .body("capabilities.'com:linagora:params:jmap:settings'", hasKey("readOnlyProperties"))
+      .body("capabilities.'com:linagora:params:jmap:settings'.readOnlyProperties", Matchers.empty())
+  }
 
   @Test
-  def missingSettingsCapabilityShouldFail(): Unit =
+  def shouldReturnLanguageReadOnlyPropertyInSessionRouteWhenConfigureFQDNFixedLanguageReadOnlyPropertyProvider(): Unit = {
+    setUpJmapServer(Map("settings.readonly.properties.providers" -> "com.linagora.tmail.james.jmap.settings.FixedLanguageReadOnlyPropertyProvider"))
+
+    `given`()
+    .when()
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities", hasKey("com:linagora:params:jmap:settings"))
+      .body("capabilities.'com:linagora:params:jmap:settings'", hasKey("readOnlyProperties"))
+      .body("capabilities.'com:linagora:params:jmap:settings'.readOnlyProperties", Matchers.contains("language"))
+  }
+
+  @Test
+  def shouldReturnLanguageReadOnlyPropertyInSessionRouteWhenConfigureFixedLanguageReadOnlyPropertyProviderWithoutPackagePrefix(): Unit = {
+    setUpJmapServer(Map("settings.readonly.properties.providers" -> "FixedLanguageReadOnlyPropertyProvider"))
+
+    `given`()
+    .when()
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities", hasKey("com:linagora:params:jmap:settings"))
+      .body("capabilities.'com:linagora:params:jmap:settings'", hasKey("readOnlyProperties"))
+      .body("capabilities.'com:linagora:params:jmap:settings'.readOnlyProperties", Matchers.contains("language"))
+  }
+
+  @Test
+  def missingSettingsCapabilityShouldFail(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -96,10 +145,13 @@ trait JmapSettingsGetMethodContract {
            |		]
            |	]
            |}""".stripMargin))
+  }
 
 
   @Test
-  def getShouldReturnEmptySettingsByDefault(): Unit =
+  def getShouldReturnEmptySettingsByDefault(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -134,9 +186,12 @@ trait JmapSettingsGetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+  }
 
   @Test
-  def fetchNullIdsShouldReturnSettings(server: GuiceJamesServer): Unit = {
+  def fetchNullIdsShouldReturnSettings(): Unit = {
+    val server = setUpJmapServer(Map())
+
     val settingsStateUpdate = server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("key1", "value1")))
 
@@ -178,7 +233,9 @@ trait JmapSettingsGetMethodContract {
   }
 
   @Test
-  def shouldReturnNotFoundWhenIsNotSingletonId(): Unit =
+  def shouldReturnNotFoundWhenIsNotSingletonId(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -212,11 +269,14 @@ trait JmapSettingsGetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+  }
 
 
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
-  def getShouldReturnValidResponseWhenSingletonId(): Unit =
+  def getShouldReturnValidResponseWhenSingletonId(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -251,10 +311,13 @@ trait JmapSettingsGetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+  }
 
 
   @Test
-  def mixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
+  def mixedFoundAndNotFoundCase(): Unit = {
+    val server = setUpJmapServer(Map())
+
     val settingsStateUpdate = server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("key1", "value1")))
 
@@ -295,7 +358,9 @@ trait JmapSettingsGetMethodContract {
   }
 
   @Test
-  def shouldFailWhenWrongAccountId(): Unit =
+  def shouldFailWhenWrongAccountId(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -325,9 +390,12 @@ trait JmapSettingsGetMethodContract {
            |    }, "c1"]
            |  ]
            |}""".stripMargin))
+  }
 
   @Test
-  def shouldSupportDelegation(server: GuiceJamesServer): Unit = {
+  def shouldSupportDelegation(): Unit = {
+    val server = setUpJmapServer(Map())
+
     val bobAccountId: String = ACCOUNT_ID
     val settingsStateUpdate = server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("key1", "value1")))
@@ -373,7 +441,9 @@ trait JmapSettingsGetMethodContract {
   }
 
   @Test
-  def shouldFailWhenNotDelegated(server: GuiceJamesServer): Unit = {
+  def shouldFailWhenNotDelegated(): Unit = {
+    val server = setUpJmapServer(Map())
+
     val bobAccountId: String = ACCOUNT_ID
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("key1", "value1")))
@@ -410,7 +480,9 @@ trait JmapSettingsGetMethodContract {
   }
 
   @Test
-  def missingCoreCapabilityShouldFail(): Unit =
+  def missingCoreCapabilityShouldFail(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -445,5 +517,6 @@ trait JmapSettingsGetMethodContract {
            |		]
            |	]
            |}""".stripMargin))
+  }
 
 }

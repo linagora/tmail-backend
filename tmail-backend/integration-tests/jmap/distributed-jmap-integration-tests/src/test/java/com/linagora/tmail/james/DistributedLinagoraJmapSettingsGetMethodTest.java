@@ -18,14 +18,17 @@
 
 package com.linagora.tmail.james;
 
-import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerExtension;
+import java.io.File;
+
+import org.apache.james.CleanupTasksPerformer;
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.SearchConfiguration;
-import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
+import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -38,31 +41,60 @@ import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
+import scala.collection.immutable.Map;
+import scala.jdk.javaapi.CollectionConverters;
+
 public class DistributedLinagoraJmapSettingsGetMethodTest implements JmapSettingsGetMethodContract {
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
-        DistributedJamesConfiguration.builder()
-            .workingDirectory(tmpDir)
-            .configurationFromClasspath()
-            .blobStore(BlobStoreConfiguration.builder()
-                .s3()
-                .noSecondaryS3BlobStore()
-                .disableCache()
-                .deduplication()
-                .noCryptoConfig()
-                .disableSingleSave())
-            .eventBusKeysChoice(EventBusKeysChoice.REDIS)
-            .searchConfiguration(SearchConfiguration.openSearch())
-            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .build())
-        .extension(new DockerOpenSearchExtension())
-        .extension(new CassandraExtension())
-        .extension(new RabbitMQExtension())
-        .extension(new RedisExtension())
-        .extension(new AwsS3BlobStoreExtension())
-        .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule())
+    static DockerOpenSearchExtension opensearchExtension = new DockerOpenSearchExtension();
+
+    @RegisterExtension
+    static CassandraExtension cassandraExtension = new CassandraExtension();
+
+    @RegisterExtension
+    static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
+
+    @RegisterExtension
+    static AwsS3BlobStoreExtension s3Extension = new AwsS3BlobStoreExtension();
+
+    @TempDir
+    private File tmpDir;
+
+    private GuiceJamesServer guiceJamesServer;
+
+    @Override
+    public GuiceJamesServer startJmapServer(Map<String, Object> overrideJmapProperties) {
+        guiceJamesServer = DistributedServer.createServer(DistributedJamesConfiguration.builder()
+                .workingDirectory(tmpDir)
+                .configurationFromClasspath()
+                .blobStore(BlobStoreConfiguration.builder()
+                    .s3()
+                    .noSecondaryS3BlobStore()
+                    .disableCache()
+                    .deduplication()
+                    .noCryptoConfig()
+                    .disableSingleSave())
+                .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
+                .searchConfiguration(SearchConfiguration.openSearch())
+                .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+                .build())
+            .overrideWith(opensearchExtension.getModule(),
+                cassandraExtension.getModule(),
+                rabbitMQExtension.getModule(),
+                s3Extension.getModule())
+            .overrideWith((binder -> binder.bind(CleanupTasksPerformer.class).asEagerSingleton()))
             .overrideWith(new JmapSettingsProbeModule())
-            .overrideWith(new DelegationProbeModule()))
-        .build();
+            .overrideWith(new DelegationProbeModule())
+            .overrideWith(new LinagoraTestJMAPServerModule(CollectionConverters.asJava(overrideJmapProperties)));
+
+        Throwing.runnable(() -> guiceJamesServer.start()).run();
+        return guiceJamesServer;
+    }
+
+    @Override
+    public void stopJmapServer() {
+        if (guiceJamesServer != null && guiceJamesServer.isStarted()) {
+            guiceJamesServer.stop();
+        }
+    }
 }
