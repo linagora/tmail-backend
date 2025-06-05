@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -39,15 +38,13 @@ import org.apache.mailet.LoopPrevention;
 import org.apache.mailet.Mail;
 import org.apache.mailet.ProcessingState;
 import org.apache.mailet.base.GenericMailet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.linagora.tmail.mailet.LDAPMailingList.MailTransformation;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPException;
@@ -90,46 +87,6 @@ import com.unboundid.ldap.sdk.SearchScope;
  * </code></pre>
  */
 public class OBMLDAPMailingList extends GenericMailet {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OBMLDAPMailingList.class);
-
-    interface MailTransformation  {
-        Mail transform(Mail mail) throws MessagingException;
-
-        Function<MailAddress, MailTransformation> removeRecipient = rcpt -> mail -> {
-            mail.setRecipients(mail.getRecipients()
-                .stream()
-                .filter(r -> !r.equals(rcpt))
-                .collect(ImmutableList.toImmutableList()));
-            return mail;
-        };
-        Function<Collection<MailAddress>, MailTransformation> addRecipients = rcpts -> mail -> {
-            mail.setRecipients(ImmutableList.<MailAddress>builder()
-                .addAll(rcpts)
-                .addAll(mail.getRecipients())
-                .build());
-            return mail;
-        };
-        MailTransformation NOOP = mail -> mail;
-        Function<MailAddress, MailTransformation> recordListInLoopDetection = listAddress -> mail -> {
-            LoopPrevention.RecordedRecipients recordedRecipients = LoopPrevention.RecordedRecipients.fromMail(mail);
-            recordedRecipients.merge(listAddress).recordOn(mail);
-            return mail;
-        };
-
-        default MailTransformation doCompose(MailTransformation other) {
-            return mail -> transform(other.transform(mail));
-        }
-
-        default MailTransformation doComposeIf(MailTransformation other, Predicate<Mail> condition) {
-            return mail -> {
-                if (condition.apply(mail)) {
-                    return transform(other.transform(mail));
-                }
-                return transform(mail);
-            };
-        }
-    }
-
     record GroupResolutionResult(MailAddress listAddress, boolean isPublic, List<MailAddress> members) {
 
     }
