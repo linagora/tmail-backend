@@ -34,17 +34,78 @@ import jakarta.inject.Inject;
 
 import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.opensearch.OpenSearchMailboxConfiguration;
+import org.apache.james.mailbox.opensearch.json.JsonMessageConstants;
 import org.apache.james.mailbox.opensearch.query.DefaultCriterionConverter;
+import org.opensearch.client.opensearch._types.FieldValue;
+import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
+import org.opensearch.client.opensearch._types.query_dsl.MatchQuery;
+import org.opensearch.client.opensearch._types.query_dsl.Operator;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
+import org.opensearch.client.opensearch._types.query_dsl.QueryStringQuery;
+
+import com.google.common.collect.ImmutableList;
 
 public class TmailCriterionConverter extends DefaultCriterionConverter {
+    private static final String NGRAM = "ngram";
+    private static final String NGRAM_MIN_SHOULD_MATCH = "80%";
+    private static final int NGRAM_MAX_INPUT_LENGTH = 6;
+
+    private final TmailOpenSearchMailboxConfiguration tmailOpenSearchMailboxConfiguration;
+
     @Inject
-    public TmailCriterionConverter(OpenSearchMailboxConfiguration openSearchMailboxConfiguration) {
+    public TmailCriterionConverter(OpenSearchMailboxConfiguration openSearchMailboxConfiguration,
+                                   TmailOpenSearchMailboxConfiguration tmailOpenSearchMailboxConfiguration) {
         super(openSearchMailboxConfiguration);
+
+        this.tmailOpenSearchMailboxConfiguration = tmailOpenSearchMailboxConfiguration;
     }
 
     @Override
     public Query convertCriterion(SearchQuery.Criterion criterion) {
         return criterionConverterMap.get(criterion.getClass()).apply(criterion);
+    }
+
+    @Override
+    protected Query convertSubject(SearchQuery.SubjectCriterion headerCriterion) {
+        if (isNgramSubject(headerCriterion)) {
+            return new BoolQuery.Builder()
+                .should(convertRawSubject(headerCriterion))
+                .should(new MatchQuery.Builder()
+                    .field(JsonMessageConstants.SUBJECT + "." + NGRAM)
+                    .query(new FieldValue.Builder()
+                        .stringValue(headerCriterion.getSubject())
+                        .build())
+                    .minimumShouldMatch(NGRAM_MIN_SHOULD_MATCH)
+                    .build().toQuery())
+                .build()
+                .toQuery();
+        } else {
+            return convertRawSubject(headerCriterion);
+        }
+    }
+
+    private boolean isNgramSubject(SearchQuery.SubjectCriterion headerCriterion) {
+        return tmailOpenSearchMailboxConfiguration.subjectNgramEnabled() &&
+            (!tmailOpenSearchMailboxConfiguration.subjectNgramHeuristicEnabled() || headerCriterion.getSubject().length() <= NGRAM_MAX_INPUT_LENGTH);
+    }
+
+    private Query convertRawSubject(SearchQuery.SubjectCriterion headerCriterion) {
+        if (useQueryStringQuery && QUERY_STRING_CONTROL_CHAR.matchesAnyOf(headerCriterion.getSubject())) {
+            return new QueryStringQuery.Builder()
+                .fields(ImmutableList.of(JsonMessageConstants.SUBJECT))
+                .query(headerCriterion.getSubject())
+                .fuzziness(textFuzzinessSearchValue)
+                .build().toQuery();
+        } else {
+            return new MatchQuery.Builder()
+                .field(JsonMessageConstants.SUBJECT)
+                .query(new FieldValue.Builder()
+                    .stringValue(headerCriterion.getSubject())
+                    .build())
+                .fuzziness(textFuzzinessSearchValue)
+                .operator(Operator.And)
+                .build()
+                .toQuery();
+        }
     }
 }
