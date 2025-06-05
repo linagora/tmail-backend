@@ -20,19 +20,23 @@ package com.linagora.tmail.james.jmap
 
 import java.io.FileNotFoundException
 
+import com.github.fge.lambdas.Throwing
+import com.google.common.collect.ImmutableSet
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration
+import com.linagora.tmail.james.jmap.settings.ReadOnlyPropertyProvider
 import org.apache.commons.configuration2.{Configuration, PropertiesConfiguration}
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.mailbox.{MessageIdManager, SessionProvider}
-import org.apache.james.utils.PropertiesProvider
+import org.apache.james.utils.{ClassName, GuiceLoader, NamingScheme, PackageName, PropertiesProvider}
 
 import scala.util.Try
 
 class TMailJMAPModule extends AbstractModule {
 
   val JMAP_CONFIGURATION_EMPTY: Configuration = new PropertiesConfiguration()
+  val IMPLICIT_SETTINGS_READONLY_PROVIDERS_FQDN_PREFIX = PackageName.of("com.linagora.tmail.james.jmap.settings")
 
   @Provides
   @Singleton
@@ -63,4 +67,15 @@ class TMailJMAPModule extends AbstractModule {
   @Singleton
   def provideJMAPOidcConfiguration(@Named("jmap") configuration: Configuration) =
     JMAPOidcConfiguration.parseConfiguration(configuration)
+
+  @Provides
+  @Singleton
+  def provideReadOnlyPropertyProviders(guiceLoader: GuiceLoader, jmapExtensionConfiguration: JMAPExtensionConfiguration): java.util.Set[ReadOnlyPropertyProvider] =
+    jmapExtensionConfiguration.getReadOnlySettingsProvidersAsJava()
+      .orElse(java.util.List.of())
+      .stream()
+      .map(new ClassName(_))
+      .map(Throwing.function(guiceLoader.withNamingSheme[ReadOnlyPropertyProvider]
+        (new NamingScheme.OptionalPackagePrefix(IMPLICIT_SETTINGS_READONLY_PROVIDERS_FQDN_PREFIX)).instantiate))
+      .collect(ImmutableSet.toImmutableSet[ReadOnlyPropertyProvider])
 }
