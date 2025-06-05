@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap
 import java.net.{URI, URL}
 import java.time.Duration
 import java.time.temporal.ChronoUnit
-import java.util.Locale
+import java.util.{Locale, Optional}
 
 import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.{CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, TICKET_IP_VALIDATION_ENABLED}
@@ -32,6 +32,7 @@ import org.apache.james.core.MailAddress
 import org.apache.james.server.core.MissingArgumentException
 import org.apache.james.util.{DurationParser, Size}
 
+import scala.jdk.OptionConverters._
 import scala.util.{Failure, Success, Try}
 
 object JMAPExtensionConfiguration {
@@ -44,6 +45,7 @@ object JMAPExtensionConfiguration {
 
   val SUPPORT_MAIL_ADDRESS_PROPERTY: String = "support.mail.address"
   val SUPPORT_HTTP_LINK_PROPERTY: String = "support.httpLink"
+  val SETTINGS_READONLY_PROPERTIES_PROVIDERS: String = "settings.readonly.properties.providers"
 
   def from(configuration: Configuration): JMAPExtensionConfiguration = {
     val publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit = Option(configuration.getString(PUBLIC_ASSET_TOTAL_SIZE_LIMIT_PROPERTY, null))
@@ -78,13 +80,16 @@ object JMAPExtensionConfiguration {
 
     val webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.parse(configuration)
 
+    val readOnlySettingsProviders: Option[java.util.List[String]] = Optional.ofNullable(configuration.getList(classOf[String], SETTINGS_READONLY_PROPERTIES_PROVIDERS, null)).toScala
+
     JMAPExtensionConfiguration(publicAssetTotalSizeLimit = publicAssetTotalSizeLimit,
       supportMailAddress = supportMailAddressOpt,
       supportHttpLink = supportHttpLinkOpt,
       ticketIpValidationEnable = ticketIpValidationEnable,
       calendarEventReplySupportedLanguagesConfig = calendarEventReplySupportedLanguagesConfig,
       emailRecoveryActionConfiguration = emailRecoveryActionConfiguration,
-      webFingerConfiguration = webFingerConfiguration)
+      webFingerConfiguration = webFingerConfiguration,
+      readOnlySettingsProviders = readOnlySettingsProviders)
   }
 }
 
@@ -94,10 +99,13 @@ case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTota
                                       ticketIpValidationEnable: TicketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED,
                                       calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT,
                                       emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.DEFAULT,
-                                      webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.DEFAULT) {
+                                      webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.DEFAULT,
+                                      readOnlySettingsProviders: Option[java.util.List[String]] = None) {
   def this(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit) = {
     this(publicAssetTotalSizeLimit, Option.empty)
   }
+
+  def getReadOnlySettingsProvidersAsJava(): Optional[java.util.List[String]] = readOnlySettingsProviders.toJava
 }
 
 case class TicketIpValidationEnable(value: Boolean)
