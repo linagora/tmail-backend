@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -41,10 +42,10 @@ import org.apache.mailet.base.GenericMailet;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.linagora.tmail.mailet.LDAPMailingList.MailTransformation;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPException;
@@ -91,6 +92,44 @@ public class OBMLDAPMailingList extends GenericMailet {
 
     }
 
+    interface MailTransformation  {
+        Mail transform(Mail mail) throws MessagingException;
+
+        Function<MailAddress, MailTransformation> removeRecipient = rcpt -> mail -> {
+            mail.setRecipients(mail.getRecipients()
+                .stream()
+                .filter(r -> !r.equals(rcpt))
+                .collect(ImmutableList.toImmutableList()));
+            return mail;
+        };
+        Function<Collection<MailAddress>, MailTransformation> addRecipients = rcpts -> mail -> {
+            mail.setRecipients(ImmutableList.<MailAddress>builder()
+                .addAll(rcpts)
+                .addAll(mail.getRecipients())
+                .build());
+            return mail;
+        };
+        MailTransformation NOOP = mail -> mail;
+        Function<MailAddress, MailTransformation> recordListInLoopDetection = listAddress -> mail -> {
+            LoopPrevention.RecordedRecipients recordedRecipients = LoopPrevention.RecordedRecipients.fromMail(mail);
+            recordedRecipients.merge(listAddress).recordOn(mail);
+            return mail;
+        };
+
+        default MailTransformation doCompose(MailTransformation other) {
+            return mail -> transform(other.transform(mail));
+        }
+
+        default MailTransformation doComposeIf(MailTransformation other, Predicate<Mail> condition) {
+            return mail -> {
+                if (condition.apply(mail)) {
+                    return transform(other.transform(mail));
+                }
+                return transform(mail);
+            };
+        }
+    }
+
     private final LDAPConnectionPool ldapConnectionPool;
     private Filter objectClassFilter;
     private String[] listAttributes;
@@ -112,7 +151,7 @@ public class OBMLDAPMailingList extends GenericMailet {
     public void service(Mail mail) throws MessagingException {
         mail.getRecipients()
             .stream()
-            .filter(LDAPMailingList.MailingListPredicate.ANY_LOCAL.apply(getMailetContext()))
+            .filter(recipient -> getMailetContext().isLocalServer(recipient.getDomain()))
             .flatMap(Throwing.function(list -> resolveListDN(list).stream()))
             .map(Throwing.function(this::asGroupResolutionResult))
             .flatMap(Optional::stream)
