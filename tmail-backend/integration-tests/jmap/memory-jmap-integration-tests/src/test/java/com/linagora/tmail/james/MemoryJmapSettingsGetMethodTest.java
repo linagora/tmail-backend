@@ -20,11 +20,13 @@ package com.linagora.tmail.james;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
-import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerExtension;
-import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import java.io.File;
 
+import org.apache.james.GuiceJamesServer;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.junit.jupiter.api.io.TempDir;
+
+import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.JmapSettingsGetMethodContract;
@@ -32,18 +34,35 @@ import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
+import scala.collection.immutable.Map;
+import scala.jdk.javaapi.CollectionConverters;
+
 public class MemoryJmapSettingsGetMethodTest implements JmapSettingsGetMethodContract {
-    @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
-        MemoryConfiguration.builder()
-            .workingDirectory(tmpDir)
-            .configurationFromClasspath()
-            .usersRepository(DEFAULT)
-            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .build())
-        .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule())
+    @TempDir
+    private File tmpDir;
+
+    private GuiceJamesServer guiceJamesServer;
+
+    @Override
+    public GuiceJamesServer startJmapServer(Map<String, Object> overrideJmapProperties) {
+        guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
+                .workingDirectory(tmpDir)
+                .configurationFromClasspath()
+                .usersRepository(DEFAULT)
+                .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+                .build())
             .overrideWith(new JmapSettingsProbeModule())
-            .overrideWith(new DelegationProbeModule()))
-        .build();
+            .overrideWith(new DelegationProbeModule())
+            .overrideWith(new LinagoraTestJMAPServerModule(CollectionConverters.asJava(overrideJmapProperties)));
+
+        Throwing.runnable(() -> guiceJamesServer.start()).run();
+        return guiceJamesServer;
+    }
+
+    @Override
+    public void stopJmapServer() {
+        if (guiceJamesServer != null && guiceJamesServer.isStarted()) {
+            guiceJamesServer.stop();
+        }
+    }
 }

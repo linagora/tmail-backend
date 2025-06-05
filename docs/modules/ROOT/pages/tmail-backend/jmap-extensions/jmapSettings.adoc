@@ -10,7 +10,9 @@ Servers supporting the JMAP Settings extension need to advertise it through the 
 com:linagora:params:jmap:settings
 ....
 
-The associated object is empty.
+The associated object has the following field:
+
+- `readOnlyProperties`: *List[String]*. List of read-only properties the client cannot edit.
 
 == Settings object
 
