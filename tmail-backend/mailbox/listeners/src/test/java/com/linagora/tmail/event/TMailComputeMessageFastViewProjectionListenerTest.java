@@ -46,6 +46,7 @@ import java.util.UUID;
 
 import org.apache.james.backends.opensearch.DockerOpenSearchExtension;
 import org.apache.james.backends.opensearch.IndexName;
+import org.apache.james.backends.opensearch.OpenSearchConfiguration;
 import org.apache.james.backends.opensearch.OpenSearchIndexer;
 import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
 import org.apache.james.backends.opensearch.ReadAliasName;
@@ -80,7 +81,6 @@ import org.apache.james.mailbox.opensearch.MailboxIndexCreationUtil;
 import org.apache.james.mailbox.opensearch.OpenSearchMailboxConfiguration;
 import org.apache.james.mailbox.opensearch.events.OpenSearchListeningMessageSearchIndex;
 import org.apache.james.mailbox.opensearch.json.MessageToOpenSearchJson;
-import org.apache.james.mailbox.opensearch.query.CriterionConverter;
 import org.apache.james.mailbox.opensearch.query.QueryConverter;
 import org.apache.james.mailbox.opensearch.search.OpenSearchSearcher;
 import org.apache.james.mailbox.store.FakeAuthenticator;
@@ -99,6 +99,9 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.linagora.tmail.mailbox.opensearch.TmailCriterionConverter;
+import com.linagora.tmail.mailbox.opensearch.TmailMailboxMappingFactory;
+import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxConfiguration;
 
 import reactor.core.publisher.Mono;
 
@@ -152,9 +155,10 @@ class TMailComputeMessageFastViewProjectionListenerTest {
         readAliasName = new ReadAliasName(UUID.randomUUID().toString());
         writeAliasName = new WriteAliasName(UUID.randomUUID().toString());
         indexName = new IndexName(UUID.randomUUID().toString());
+        OpenSearchConfiguration openSearchConfiguration = openSearch.getDockerOpenSearch().configuration();
         MailboxIndexCreationUtil.prepareClient(
             client, readAliasName, writeAliasName, indexName,
-            openSearch.getDockerOpenSearch().configuration());
+            openSearchConfiguration, new TmailMailboxMappingFactory(openSearchConfiguration, TmailOpenSearchMailboxConfiguration.DEFAULT_CONFIGURATION));
         eventDeadLetters = new MemoryEventDeadLetters();
         // Default RetryBackoffConfiguration leads each events to be re-executed for 30s which is too long
         // Reducing the wait time for the event bus allow a faster test suite execution without harming test correctness
@@ -186,8 +190,8 @@ class TMailComputeMessageFastViewProjectionListenerTest {
                 ImmutableSet.of(),
                 new OpenSearchIndexer(client,
                     writeAliasName),
-                new OpenSearchSearcher(client, new QueryConverter(new CriterionConverter(notIndexBodyOpenSearchMailboxConfiguration)), SEARCH_SIZE,
-                    readAliasName, routingKeyFactory),
+                new OpenSearchSearcher(client, new QueryConverter(new TmailCriterionConverter(notIndexBodyOpenSearchMailboxConfiguration, TmailOpenSearchMailboxConfiguration.DEFAULT_CONFIGURATION)),
+                    SEARCH_SIZE, readAliasName, routingKeyFactory),
                 new MessageToOpenSearchJson(new DefaultTextExtractor(), ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES),
                 preInstanciationStage.getSessionProvider(), routingKeyFactory, new InMemoryMessageId.Factory(),
                 notIndexBodyOpenSearchMailboxConfiguration, new RecordingMetricFactory(),
