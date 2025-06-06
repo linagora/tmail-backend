@@ -39,7 +39,7 @@ import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
-import org.junit.jupiter.api.{BeforeEach, Tag, Test}
+import org.junit.jupiter.api.{AfterEach, Tag, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.ArgumentCaptor
@@ -52,8 +52,12 @@ object JmapSettingsSetMethodContract {
 }
 
 trait JmapSettingsSetMethodContract {
-  @BeforeEach
-  def setUp(server: GuiceJamesServer): Unit = {
+  def startJmapServer(overrideJmapProperties: Map[String, Object]): GuiceJamesServer
+
+  def stopJmapServer(): Unit
+
+  private def setUpJmapServer(overrideJmapProperties: Map[String, Object]): GuiceJamesServer = {
+    val server = startJmapServer(overrideJmapProperties)
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
@@ -68,10 +72,19 @@ trait JmapSettingsSetMethodContract {
     reset(firebasePushClient)
     when(firebasePushClient.validateToken(any())).thenReturn(Mono.just(true))
     when(firebasePushClient.push(any(classOf[FirebasePushRequest]))).thenReturn(Mono.empty)
+
+    server
+  }
+
+  @AfterEach
+  def afterEach(): Unit = {
+    stopJmapServer()
   }
 
   @Test
-  def missingSettingsCapabilityShouldFail(): Unit =
+  def missingSettingsCapabilityShouldFail(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -112,9 +125,12 @@ trait JmapSettingsSetMethodContract {
            |		]
            |	]
            |}""".stripMargin))
+  }
 
   @Test
-  def settingsSetShouldFailWhenWrongAccountId(): Unit =
+  def settingsSetShouldFailWhenWrongAccountId(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -151,10 +167,13 @@ trait JmapSettingsSetMethodContract {
            |    }, "c1"]
            |  ]
            |}""".stripMargin))
+  }
 
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
-  def fullResetShouldInsertNewSettings(): Unit =
+  def fullResetShouldInsertNewSettings(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -221,10 +240,13 @@ trait JmapSettingsSetMethodContract {
            |		]
            |	]
            |}""".stripMargin))
+  }
 
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
-  def fullResetShouldPerformFullUpdateAndOverrideExistingSettings(server: GuiceJamesServer): Unit = {
+  def fullResetShouldPerformFullUpdateAndOverrideExistingSettings(): Unit = {
+    val server = setUpJmapServer(Map())
+
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("toBeOverrideKey", "toBeOverrideValue")))
 
@@ -297,7 +319,9 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def settingsSetShouldReturnCorrectStatesAfterSuccessUpdate(server: GuiceJamesServer): Unit = {
+  def settingsSetShouldReturnCorrectStatesAfterSuccessUpdate(): Unit = {
+    val server = setUpJmapServer(Map())
+
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("toBeOverrideKey", "toBeOverrideValue")))
 
@@ -342,7 +366,9 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def settingsSetShouldReturnCorrectStatesAfterFailureUpdate(server: GuiceJamesServer): Unit = {
+  def settingsSetShouldReturnCorrectStatesAfterFailureUpdate(): Unit = {
+    val server = setUpJmapServer(Map())
+
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("toBeOverrideKey", "toBeOverrideValue")))
 
@@ -388,6 +414,8 @@ trait JmapSettingsSetMethodContract {
 
   @Test
   def settingsSetShouldReturnInitialStatesByDefault(): Unit = {
+    setUpJmapServer(Map())
+
     val failureResponse: JsonPath = `given`
       .body(
         s"""{
@@ -423,7 +451,9 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def settingsSetWithWrongSingletonIdShouldFail(): Unit =
+  def settingsSetWithWrongSingletonIdShouldFail(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -467,9 +497,12 @@ trait JmapSettingsSetMethodContract {
            |	},
            |	"c1"
            |]""".stripMargin))
+  }
 
   @Test
-  def settingsSetWithInvalidSettingKeyShouldFail(): Unit =
+  def settingsSetWithInvalidSettingKeyShouldFail(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -512,9 +545,12 @@ trait JmapSettingsSetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+  }
 
   @Test
-  def shouldFailWhenCreate(): Unit =
+  def shouldFailWhenCreate(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -558,9 +594,12 @@ trait JmapSettingsSetMethodContract {
            |	},
            |	"c1"
            |]""".stripMargin))
+  }
 
   @Test
-  def shouldFailWhenDestroy(): Unit =
+  def shouldFailWhenDestroy(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -597,9 +636,12 @@ trait JmapSettingsSetMethodContract {
            |	},
            |	"c1"
            |]""".stripMargin))
+  }
 
   @Test
-  def mixedCaseCreateAndUpdateAndDestroy(): Unit =
+  def mixedCaseCreateAndUpdateAndDestroy(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -661,9 +703,12 @@ trait JmapSettingsSetMethodContract {
            | 	},
            | 	"c1"
            | ]""".stripMargin))
+  }
 
   @Test
-  def shouldForbiddenDelegation(server: GuiceJamesServer): Unit = {
+  def shouldForbiddenDelegation(): Unit = {
+    val server = setUpJmapServer(Map())
+
     val bobAccountId: String = ACCOUNT_ID
 
     server.getProbe(classOf[DelegationProbe])
@@ -709,7 +754,9 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def updatePartialWithRemovePatchShouldWork(server: GuiceJamesServer): Unit = {
+  def updatePartialWithRemovePatchShouldWork(): Unit = {
+    val server = setUpJmapServer(Map())
+
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("key1", "value1"), ("key2", "value2")))
 
@@ -752,7 +799,9 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def updatePartialWithUpsertPatchShouldWork(server: GuiceJamesServer): Unit = {
+  def updatePartialWithUpsertPatchShouldWork(): Unit = {
+    val server = setUpJmapServer(Map())
+
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("key1", "value1")))
 
@@ -797,7 +846,9 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def updatePartialWithUpsertAndRemovePatchShouldWork(server: GuiceJamesServer): Unit = {
+  def updatePartialWithUpsertAndRemovePatchShouldWork(): Unit = {
+    val server = setUpJmapServer(Map())
+
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("key1", "value1")))
 
@@ -841,7 +892,9 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def shouldFailWhenTryToUpdateBothPartialAndFullReset(): Unit =
+  def shouldFailWhenTryToUpdateBothPartialAndFullReset(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -886,9 +939,12 @@ trait JmapSettingsSetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+  }
 
   @Test
-  def updatePartialShouldUpdateNewState(server: GuiceJamesServer): Unit = {
+  def updatePartialShouldUpdateNewState(): Unit = {
+    val server = setUpJmapServer(Map())
+
     val response =`given`
       .body(
         s"""{
@@ -924,8 +980,10 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def updateShouldNoopWhenEmptyPatchObject(): Unit =
-      `given`
+  def updateShouldNoopWhenEmptyPatchObject(): Unit = {
+    setUpJmapServer(Map())
+
+    `given`
       .body(
         s"""{
            |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
@@ -959,6 +1017,7 @@ trait JmapSettingsSetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+  }
 
   @ParameterizedTest
   @ValueSource(strings = Array(
@@ -966,7 +1025,9 @@ trait JmapSettingsSetMethodContract {
     "settings/abc/xyz",
     "settings/abc@"
   ))
-  def updatePartialShouldFailWhenInvalidKey(settingsKey: String): Unit =
+  def updatePartialShouldFailWhenInvalidKey(settingsKey: String): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -1006,9 +1067,12 @@ trait JmapSettingsSetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+  }
 
   @Test
-  def updatePartialShouldFailWhenInvalidSettingValue(): Unit =
+  def updatePartialShouldFailWhenInvalidSettingValue(): Unit = {
+    setUpJmapServer(Map())
+
     `given`
       .body(
         s"""{
@@ -1049,9 +1113,12 @@ trait JmapSettingsSetMethodContract {
            |    },
            |    "c1"
            |]""".stripMargin))
+  }
 
   @Test
-  def shouldPushToFCMWhenSettingsChanged(server: GuiceJamesServer): Unit = {
+  def shouldPushToFCMWhenSettingsChanged(): Unit = {
+    val server = setUpJmapServer(Map())
+
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("toBeOverrideKey", "toBeOverrideValue")))
 
@@ -1071,7 +1138,9 @@ trait JmapSettingsSetMethodContract {
   }
 
   @Test
-  def shouldNotPushToFCMWhenFailureSettingsSet(server: GuiceJamesServer): Unit = {
+  def shouldNotPushToFCMWhenFailureSettingsSet(): Unit = {
+    val server = setUpJmapServer(Map())
+
     server.getProbe(classOf[JmapSettingsProbe])
       .reset(BOB, Map(("toBeOverrideKey", "toBeOverrideValue")))
 
