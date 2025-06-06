@@ -53,8 +53,8 @@ public class TmailOpenSearchMailboxConfiguration {
 
         public TmailOpenSearchMailboxConfiguration build() {
             return new TmailOpenSearchMailboxConfiguration(
-                subjectNgramEnabled.orElse(DEFAULT_SUBJECT_NGRAM_ENABLED),
-                subjectNgramHeuristicEnabled.orElse(DEFAULT_SUBJECT_NGRAM_HEURISTIC_ENABLED)
+                subjectNgramEnabled.orElse(DEFAULT_SUBJECT_NGRAM_DISABLED),
+                subjectNgramHeuristicEnabled.orElse(DEFAULT_SUBJECT_NGRAM_HEURISTIC_DISABLED)
             );
         }
     }
@@ -72,8 +72,8 @@ public class TmailOpenSearchMailboxConfiguration {
 
     private static final String SUBJECT_NGRAM_ENABLED = "subject.ngram.enabled";
     private static final String SUBJECT_NGRAM_HEURISTIC_ENABLED = "subject.ngram.heuristic.enabled";
-    private static final boolean DEFAULT_SUBJECT_NGRAM_ENABLED = false;
-    private static final boolean DEFAULT_SUBJECT_NGRAM_HEURISTIC_ENABLED = false;
+    private static final boolean DEFAULT_SUBJECT_NGRAM_DISABLED = false;
+    private static final boolean DEFAULT_SUBJECT_NGRAM_HEURISTIC_DISABLED = false;
 
     public static final TmailOpenSearchMailboxConfiguration DEFAULT_CONFIGURATION = builder().build();
 

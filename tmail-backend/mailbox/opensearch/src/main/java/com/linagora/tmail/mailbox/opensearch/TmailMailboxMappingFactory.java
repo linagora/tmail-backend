@@ -80,10 +80,12 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
     private static final int DEFAULT_MAX_NGRAM = 6;
 
     private final OpenSearchConfiguration openSearchConfiguration;
+    private final TmailOpenSearchMailboxConfiguration tmailOpenSearchMailboxConfiguration;
 
     @Inject
-    public TmailMailboxMappingFactory(OpenSearchConfiguration openSearchConfiguration) {
+    public TmailMailboxMappingFactory(OpenSearchConfiguration openSearchConfiguration, TmailOpenSearchMailboxConfiguration tmailOpenSearchMailboxConfiguration) {
         this.openSearchConfiguration = openSearchConfiguration;
+        this.tmailOpenSearchMailboxConfiguration = tmailOpenSearchMailboxConfiguration;
     }
 
     @Override
@@ -200,13 +202,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
             .put(JsonMessageConstants.SUBJECT, new Property.Builder()
                 .text(new TextProperty.Builder()
                     .analyzer(KEEP_MAIL_AND_URL)
-                    .fields(ImmutableMap.of(
-                        RAW, new Property.Builder()
-                            .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
-                            .build(),
-                        NGRAM, new Property.Builder()
-                            .text(new TextProperty.Builder().analyzer(NGRAM_ANALYZER).searchAnalyzer(STANDARD).build())
-                            .build()))
+                    .fields(getSubjectFieds())
                     .build())
                 .build())
             .put(JsonMessageConstants.TO, new Property.Builder()
@@ -334,6 +330,21 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                     .build())
                 .build())
             .build();
+    }
+
+    private Map<String, Property> getSubjectFieds() {
+        ImmutableMap.Builder<String, Property> subjectFields = new ImmutableMap.Builder<String, Property>()
+            .put(RAW, new Property.Builder()
+                .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
+                .build());
+
+        if (tmailOpenSearchMailboxConfiguration.subjectNgramEnabled()) {
+            subjectFields.put(NGRAM, new Property.Builder()
+                .text(new TextProperty.Builder().analyzer(NGRAM_ANALYZER).searchAnalyzer(STANDARD).build())
+                .build());
+        }
+
+        return subjectFields.build();
     }
 
     @Override

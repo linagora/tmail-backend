@@ -169,7 +169,7 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
         MailboxIndexCreationUtil.prepareClient(
             client, readAliasName, writeAliasName, indexName,
             openSearchConfiguration,
-            new TmailMailboxMappingFactory(openSearchConfiguration));
+            new TmailMailboxMappingFactory(openSearchConfiguration, tmailOpenSearchMailboxConfiguration()));
 
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.builder()
             .preProvisionnedFakeAuthenticator()

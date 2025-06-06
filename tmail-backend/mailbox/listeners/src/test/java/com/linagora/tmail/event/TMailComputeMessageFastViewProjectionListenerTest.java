@@ -158,7 +158,7 @@ class TMailComputeMessageFastViewProjectionListenerTest {
         OpenSearchConfiguration openSearchConfiguration = openSearch.getDockerOpenSearch().configuration();
         MailboxIndexCreationUtil.prepareClient(
             client, readAliasName, writeAliasName, indexName,
-            openSearchConfiguration, new TmailMailboxMappingFactory(openSearchConfiguration));
+            openSearchConfiguration, new TmailMailboxMappingFactory(openSearchConfiguration, TmailOpenSearchMailboxConfiguration.DEFAULT_CONFIGURATION));
         eventDeadLetters = new MemoryEventDeadLetters();
         // Default RetryBackoffConfiguration leads each events to be re-executed for 30s which is too long
         // Reducing the wait time for the event bus allow a faster test suite execution without harming test correctness
