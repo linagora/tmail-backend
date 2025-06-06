@@ -20,48 +20,70 @@ package com.linagora.tmail.james;
 
 import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY;
 
-import org.apache.james.ClockExtension;
-import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerExtension;
+import java.io.File;
+
+import org.apache.james.CleanupTasksPerformer;
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
-import com.google.inject.util.Modules;
+import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.JmapSettingsSetMethodContract;
-import com.linagora.tmail.james.common.module.JmapGuiceLabelModule;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class PostgresLinagoraJmapSettingsSetMethodTest implements JmapSettingsSetMethodContract {
+import scala.collection.immutable.Map;
+import scala.jdk.javaapi.CollectionConverters;
 
+public class PostgresLinagoraJmapSettingsSetMethodTest implements JmapSettingsSetMethodContract {
     @RegisterExtension
-    static JamesServerExtension testExtension = new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
-        PostgresTmailConfiguration.builder()
-            .workingDirectory(tmpDir)
-            .configurationFromClasspath()
-            .blobStore(BlobStoreConfiguration.builder()
-                .postgres()
-                .disableCache()
-                .deduplication()
-                .noCryptoConfig()
-                .disableSingleSave())
-            .searchConfiguration(SearchConfiguration.scanning())
-            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
-            .eventBusImpl(IN_MEMORY)
-            .build())
-        .server(configuration -> PostgresTmailServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule())
+    static PostgresExtension postgresExtension = PostgresExtension.empty();
+
+    @TempDir
+    private File tmpDir;
+
+    private GuiceJamesServer guiceJamesServer;
+
+    @Override
+    public GuiceJamesServer startJmapServer(Map<String, Object> overrideJmapProperties) {
+        guiceJamesServer = PostgresTmailServer.createServer(PostgresTmailConfiguration.builder()
+                .workingDirectory(tmpDir)
+                .configurationFromClasspath()
+                .blobStore(BlobStoreConfiguration.builder()
+                    .postgres()
+                    .disableCache()
+                    .deduplication()
+                    .noCryptoConfig()
+                    .disableSingleSave())
+                .searchConfiguration(SearchConfiguration.scanning())
+                .mailbox(new MailboxConfiguration(false))
+                .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
+                .eventBusImpl(IN_MEMORY)
+                .build())
+            .overrideWith(postgresExtension.getModule())
+            .overrideWith((binder -> binder.bind(CleanupTasksPerformer.class).asEagerSingleton()))
             .overrideWith(new JmapSettingsProbeModule())
             .overrideWith(new DelegationProbeModule())
-            .overrideWith(Modules.combine(new JmapGuiceLabelModule(), binder -> binder.bind(FirebasePushClient.class).toInstance(JmapSettingsSetMethodContract.firebasePushClient()))))
-        .extension(PostgresExtension.empty())
-        .extension(new ClockExtension())
-        .build();
+            .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(JmapSettingsSetMethodContract.firebasePushClient()))
+            .overrideWith(new LinagoraTestJMAPServerModule(CollectionConverters.asJava(overrideJmapProperties)));
+
+        Throwing.runnable(() -> guiceJamesServer.start()).run();
+        return guiceJamesServer;
+    }
+
+    @Override
+    public void stopJmapServer() {
+        if (guiceJamesServer != null && guiceJamesServer.isStarted()) {
+            guiceJamesServer.stop();
+        }
+    }
 }
