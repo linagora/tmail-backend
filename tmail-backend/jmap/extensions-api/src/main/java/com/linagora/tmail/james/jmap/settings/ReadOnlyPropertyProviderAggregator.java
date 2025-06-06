@@ -29,6 +29,9 @@ import org.apache.james.core.Username;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 public class ReadOnlyPropertyProviderAggregator implements ReadOnlyPropertyProvider {
     private final Set<ReadOnlyPropertyProvider> providers;
 
@@ -45,9 +48,10 @@ public class ReadOnlyPropertyProviderAggregator implements ReadOnlyPropertyProvi
     }
 
     @Override
-    public Map<JmapSettingsKey, JmapSettingsValue> resolveSettings(Username username) {
-        return providers.stream()
-            .flatMap(provider -> provider.resolveSettings(username).entrySet().stream())
+    public Mono<Map<JmapSettingsKey, JmapSettingsValue>> resolveSettings(Username username) {
+        return Flux.fromIterable(providers)
+            .flatMap(provider -> Mono.from(provider.resolveSettings(username))
+                .flatMapIterable(Map::entrySet))
             .collect(ImmutableMap.toImmutableMap(
                 Map.Entry::getKey,
                 Map.Entry::getValue,

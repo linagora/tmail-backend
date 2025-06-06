@@ -22,9 +22,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.james.core.Username;
+import org.reactivestreams.Publisher;
 
 public interface ReadOnlyPropertyProvider {
     List<JmapSettingsKey> readOnlySettings();
 
-    Map<JmapSettingsKey, JmapSettingsValue> resolveSettings(Username username);
+    Publisher<Map<JmapSettingsKey, JmapSettingsValue>> resolveSettings(Username username);
 }

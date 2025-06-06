@@ -26,6 +26,8 @@ import org.apache.james.core.Username;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import reactor.core.publisher.Mono;
+
 public class FixedLanguageReadOnlyPropertyProvider implements ReadOnlyPropertyProvider {
     private static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
     private static final JmapSettingsValue ENGLISH = new JmapSettingsValue("en");
@@ -38,7 +40,7 @@ public class FixedLanguageReadOnlyPropertyProvider implements ReadOnlyPropertyPr
     }
 
     @Override
-    public Map<JmapSettingsKey, JmapSettingsValue> resolveSettings(Username username) {
-        return SETTINGS;
+    public Mono<Map<JmapSettingsKey, JmapSettingsValue>> resolveSettings(Username username) {
+        return Mono.just(SETTINGS);
     }
 }

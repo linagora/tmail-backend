@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 
 import org.apache.james.core.Username;
 
+import reactor.core.publisher.Mono;
+
 public class TestingReadOnlyPropertyProvider implements ReadOnlyPropertyProvider {
     public static TestingReadOnlyPropertyProvider of(Map<String, String> settings) {
         return new TestingReadOnlyPropertyProvider(settings
@@ -46,7 +48,7 @@ public class TestingReadOnlyPropertyProvider implements ReadOnlyPropertyProvider
     }
 
     @Override
-    public Map<JmapSettingsKey, JmapSettingsValue> resolveSettings(Username username) {
-        return settings;
+    public Mono<Map<JmapSettingsKey, JmapSettingsValue>> resolveSettings(Username username) {
+        return Mono.just(settings);
     }
 }
