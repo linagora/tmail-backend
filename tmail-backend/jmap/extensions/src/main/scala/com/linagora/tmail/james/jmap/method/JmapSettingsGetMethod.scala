@@ -24,7 +24,7 @@ import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.{JmapSettingsSerializer => Serializer}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SETTINGS
 import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsGetResult, JmapSettingsObject}
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsRepository, ReadOnlyPropertyProviderAggregator, SettingsTypeName}
+import com.linagora.tmail.james.jmap.settings.{JmapSettings, JmapSettingsKey, JmapSettingsRepository, JmapSettingsStateFactory, JmapSettingsValue, ReadOnlyPropertyProviderAggregator, SettingsTypeName}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.core.Username
@@ -88,6 +88,7 @@ class JmapSettingsMethodModule extends AbstractModule {
 }
 
 class JmapSettingsGetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRepository,
+                                      val readOnlyPropertiesProvider: ReadOnlyPropertyProviderAggregator,
                                       val metricFactory: MetricFactory,
                                       val sessionTranslator: SessionTranslator,
                                       val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[JmapSettingsGet] {
@@ -125,6 +126,21 @@ class JmapSettingsGetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRe
 
   private def retrieveJmapSettingsSingleton(username: Username): SMono[JmapSettingsGetResult] =
     SMono(jmapSettingsRepository.get(username))
+      .flatMap(userSettings => SMono.fromPublisher(readOnlyPropertiesProvider.resolveSettings(username)
+        .map(readOnlySettings => mergeSettings(Some(userSettings), readOnlySettings))))
+      .switchIfEmpty(SMono.fromPublisher(readOnlyPropertiesProvider.resolveSettings(username)
+        .map(readOnlySettings => mergeSettings(maybeUserSettings = None, readOnlySettings))))
       .map(jmapSettings => JmapSettingsGetResult.singleton(jmapSettings))
-      .switchIfEmpty(SMono.just(JmapSettingsGetResult.emptySingleton()))
+
+  private def mergeSettings(maybeUserSettings: Option[JmapSettings], readOnlySettings: java.util.Map[JmapSettingsKey, JmapSettingsValue]): JmapSettings =
+    maybeUserSettings match {
+      case Some(userSettings) =>
+        val filteredSettings: Map[JmapSettingsKey, JmapSettingsValue] = userSettings.settings
+          .filterNot { case (key, _) => readOnlyPropertiesProvider.readOnlySettings().asScala.contains(key) }
+        val mergedSettings: Map[JmapSettingsKey, JmapSettingsValue] = filteredSettings ++ readOnlySettings.asScala
+        userSettings.copy(settings = mergedSettings)
+
+      case None =>
+        JmapSettings(readOnlySettings.asScala.toMap, JmapSettingsStateFactory.INITIAL)
+    }
 }
