@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableMap;
 
+import reactor.core.publisher.Mono;
+
 class ReadOnlyPropertyProviderAggregatorTest {
     private static final JmapSettingsKey LANGUAGE_KEY = JmapSettingsKey.liftOrThrow("language");
     private static final JmapSettingsValue ENGLISH_VALUE = new JmapSettingsValue("en");
@@ -42,7 +44,7 @@ class ReadOnlyPropertyProviderAggregatorTest {
         ReadOnlyPropertyProviderAggregator testee = new ReadOnlyPropertyProviderAggregator(Set.of());
 
         assertThat(testee.readOnlySettings()).isEmpty();
-        assertThat(testee.resolveSettings(Username.of("user"))).isEmpty();
+        assertThat(Mono.from(testee.resolveSettings(Username.of("user"))).block()).isEmpty();
     }
 
     @Test
@@ -53,7 +55,7 @@ class ReadOnlyPropertyProviderAggregatorTest {
         ReadOnlyPropertyProviderAggregator testee = new ReadOnlyPropertyProviderAggregator(Set.of(fixedLanguageReadOnlyPropertyProvider, timeZoneProvider));
 
         assertThat(testee.readOnlySettings()).containsExactlyInAnyOrder(LANGUAGE_KEY, TIMEZONE_KEY);
-        assertThat(testee.resolveSettings(Username.of("user")))
+        assertThat(Mono.from(testee.resolveSettings(Username.of("user"))).block())
             .containsExactlyInAnyOrderEntriesOf(ImmutableMap.of(
                 LANGUAGE_KEY, ENGLISH_VALUE,
                 TIMEZONE_KEY, UTC_VALUE));
@@ -67,7 +69,7 @@ class ReadOnlyPropertyProviderAggregatorTest {
         ReadOnlyPropertyProviderAggregator testee = new ReadOnlyPropertyProviderAggregator(Set.of(provider1, provider2));
 
         assertThat(testee.readOnlySettings()).containsOnly(DUPLICATE_KEY);
-        assertThat(testee.resolveSettings(Username.of("user")))
+        assertThat(Mono.from(testee.resolveSettings(Username.of("user"))).block())
             .containsExactlyInAnyOrderEntriesOf(ImmutableMap.of(DUPLICATE_KEY, VALUE_1));
     }
 }
