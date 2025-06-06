@@ -1150,6 +1150,147 @@ trait JmapSettingsSetMethodContract {
     verify(firebasePushClient, times(0)).push(any())
   }
 
+  @Test
+  def fullResetShouldFailWhenModifyingReadOnlySettings(): Unit = {
+    setUpJmapServer(Map("settings.readonly.properties.providers" -> "FixedLanguageReadOnlyPropertyProvider"))
+
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |						"settings": {
+           |							"language": "fr",
+           |							"key2": "value2"
+           |						}
+           |					}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/set",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "$${json-unit.ignore}",
+           |        "newState": "$${json-unit.ignore}",
+           |        "notUpdated": {
+           |            "singleton": {
+           |                "type": "invalidArguments",
+           |                "description": "Cannot modify read-only settings: language"
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+  }
+
+  @Test
+  def updatePartialShouldFailWhenModifyingReadOnlySettings(): Unit = {
+    setUpJmapServer(Map("settings.readonly.properties.providers" -> "FixedLanguageReadOnlyPropertyProvider"))
+
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |						"settings/language": "fr"
+           |					}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/set",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "$${json-unit.ignore}",
+           |        "newState": "$${json-unit.ignore}",
+           |        "notUpdated": {
+           |            "singleton": {
+           |                "type": "invalidArguments",
+           |                "description": "Cannot modify read-only settings: language"
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+  }
+
+  @Test
+  def updatePartialShouldFailWhenRemovingReadOnlySettings(): Unit = {
+    setUpJmapServer(Map("settings.readonly.properties.providers" -> "FixedLanguageReadOnlyPropertyProvider"))
+
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"update": {
+           |					"singleton": {
+           |						"settings/language": null
+           |					}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/set",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "oldState": "$${json-unit.ignore}",
+           |        "newState": "$${json-unit.ignore}",
+           |        "notUpdated": {
+           |            "singleton": {
+           |                "type": "invalidArguments",
+           |                "description": "Cannot modify read-only settings: language"
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+  }
+
   private def registerSettingsChangesViaFCM(): Unit =
     `given`
       .body(

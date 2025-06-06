@@ -22,7 +22,7 @@ import com.linagora.tmail.james.jmap.json.JmapSettingsSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SETTINGS
 import com.linagora.tmail.james.jmap.model.SettingsSet.OBJECT_ID
 import com.linagora.tmail.james.jmap.model.{SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, SettingsTypeName}
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsRepository, ReadOnlyPropertyProviderAggregator, SettingsTypeName}
 import eu.timepit.refined.auto._
 import jakarta.inject.{Inject, Named}
 import org.apache.james.core.Username
@@ -41,6 +41,8 @@ import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
+
+import scala.jdk.CollectionConverters._
 
 object SettingsSetUpdateResults {
   def empty(): SettingsSetUpdateResults =
@@ -102,6 +104,7 @@ case class SettingsUpdateFailure(id: String, exception: Throwable) extends Setti
 
 class SettingsSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
                                   val jmapSettingsRepository: JmapSettingsRepository,
+                                  val readOnlyPropertyProviderAggregator: ReadOnlyPropertyProviderAggregator,
                                   val metricFactory: MetricFactory,
                                   val sessionSupplier: SessionSupplier,
                                   val sessionTranslator: SessionTranslator) extends MethodRequiringAccountId[SettingsSetRequest] {
@@ -185,14 +188,40 @@ class SettingsSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
   private def doUpdateFullReset(username: Username, updateRequest: SettingsSetUpdateRequest): SMono[SettingsUpdateResult] =
     SMono.fromCallable(() => updateRequest.getResetRequest)
       .flatMap(SMono.justOrEmpty)
-      .flatMap(resetRequest => SMono.fromPublisher(jmapSettingsRepository.reset(username, resetRequest)))
-      .map(stateUpdate => SettingsUpdateSuccess(stateUpdate.oldState, stateUpdate.newState))
+      .flatMap(resetRequest => {
+        val readOnlySettingsKeys: Set[JmapSettingsKey] = readOnlyPropertyProviderAggregator.readOnlySettings().asScala.toSet
+        val requestedKeys: Set[JmapSettingsKey] = resetRequest.settings.keySet
+
+        val readOnlyRequestedKeys: Set[JmapSettingsKey] = requestedKeys.intersect(readOnlySettingsKeys)
+
+        if (readOnlyRequestedKeys.nonEmpty) {
+          val affectedKeys: String = readOnlyRequestedKeys.map(_.asString()).mkString(", ")
+          SMono.error(new IllegalArgumentException(s"Cannot modify read-only settings: $affectedKeys"))
+        } else {
+          SMono.fromPublisher(jmapSettingsRepository.reset(username, resetRequest))
+            .map(stateUpdate => SettingsUpdateSuccess(stateUpdate.oldState, stateUpdate.newState))
+        }
+      })
 
   private def doUpdatePartial(username: Username, updateRequest: SettingsSetUpdateRequest): SMono[SettingsUpdateResult] =
     SMono.fromCallable(() => updateRequest.getUpdatePartialRequest)
       .flatMap(SMono.justOrEmpty)
-      .flatMap(updatePartialRequest => SMono.fromPublisher(jmapSettingsRepository.updatePartial(username, updatePartialRequest)))
-      .map(stateUpdate => SettingsUpdateSuccess(stateUpdate.oldState, stateUpdate.newState))
+      .flatMap(updatePartialRequest => {
+        val readOnlySettings: Set[JmapSettingsKey] = readOnlyPropertyProviderAggregator.readOnlySettings().asScala.toSet
+        val requestedUpsertKeys: Set[JmapSettingsKey] = updatePartialRequest.toUpsert.settings.keySet
+        val requestedRemoveKeys: Set[JmapSettingsKey] = updatePartialRequest.toRemove.toSet
+
+        val readOnlyUpsertKeys: Set[JmapSettingsKey] = requestedUpsertKeys.intersect(readOnlySettings)
+        val readOnlyRemoveKeys: Set[JmapSettingsKey] = requestedRemoveKeys.intersect(readOnlySettings)
+
+        if (readOnlyUpsertKeys.nonEmpty || readOnlyRemoveKeys.nonEmpty) {
+          val affectedKeys: String = (readOnlyUpsertKeys ++ readOnlyRemoveKeys).map(_.asString()).mkString(", ")
+          SMono.error(new IllegalArgumentException(s"Cannot modify read-only settings: $affectedKeys"))
+        } else {
+          SMono.fromPublisher(jmapSettingsRepository.updatePartial(username, updatePartialRequest))
+            .map(stateUpdate => SettingsUpdateSuccess(stateUpdate.oldState, stateUpdate.newState))
+        }
+      })
 
   private def createResponse(invocation: Invocation,
                              settingsSetRequest: SettingsSetRequest,
