@@ -57,6 +57,7 @@ This is a standard “/get” method for the Settings object:
 This is a standard `/set` method for the Settings object:
 
 - As this is a singleton object, `create` and `destroy` are not supported.
+- Attempts to modify read-only settings (as listed in the `readOnlyProperties` capability property) will be rejected.
 
 === Examples
 
@@ -266,7 +267,3 @@ Optional. String. One in these values (`single`, `monthly`, `yearly`). Default v
 - `single`: Mails are archived under the `Archive` mailbox.
 - `yearly`: Mails are archived in sub-mailboxes representing years, eg `Archive.2021`, `Archive.2022`...
 - `monthly`: Mails are archived in nested sub-mailboxes representing months and years, eg `Archive.2021.1`, `Archive.2021.12`...
-
-
-
-
