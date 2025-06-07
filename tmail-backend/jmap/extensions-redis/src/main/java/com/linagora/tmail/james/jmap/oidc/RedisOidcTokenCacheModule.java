@@ -39,14 +39,12 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 
 import io.lettuce.core.AbstractRedisClient;
-import io.lettuce.core.ClientOptions;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
-import io.lettuce.core.TimeoutOptions;
-import io.lettuce.core.cluster.ClusterClientOptions;
 import io.lettuce.core.cluster.RedisClusterClient;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.masterreplica.MasterReplica;
+import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
 
 public class RedisOidcTokenCacheModule extends AbstractModule {
     public static final Logger LOGGER = LoggerFactory.getLogger(RedisOidcTokenCacheModule.class);
@@ -66,33 +64,31 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
 
         AbstractRedisClient rawClient = redisClientFactory.rawRedisClient();
 
-        Function<AbstractRedisClient, RedisClient> toRedisClient = client -> {
-            RedisClient redisClient = (RedisClient) rawClient;
-            redisClient.setOptions(ClientOptions.builder()
-                .timeoutOptions(TimeoutOptions.enabled())
-                .build());
-            return redisClient;
-        };
+        Function<AbstractRedisClient, RedisClient> toRedisClient = client -> (RedisClient) rawClient;
 
         RedisTokenCacheCommands redisReactiveCommands = switch (redisConfiguration) {
             case StandaloneRedisConfiguration ignored ->
                 RedisTokenCacheCommands.of(toRedisClient.apply(rawClient).connect(StringCodec.UTF8).reactive());
 
-            case ClusterRedisConfiguration ignored -> {
+            case ClusterRedisConfiguration clusterConfiguration -> {
                 RedisClusterClient client = (RedisClusterClient) rawClient;
-                client.setOptions(ClusterClientOptions.builder()
-                    .timeoutOptions(TimeoutOptions.enabled())
-                    .build());
+                client.connect().setReadFrom(clusterConfiguration.readFrom());
                 yield RedisTokenCacheCommands.of(client.connect(StringCodec.UTF8).reactive());
             }
 
-            case SentinelRedisConfiguration sentinelConf ->
-                RedisTokenCacheCommands.of(MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, sentinelConf.redisURI()).reactive());
+            case SentinelRedisConfiguration sentinelConf -> {
+                StatefulRedisMasterReplicaConnection<String, String> sentinelConnection = MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, sentinelConf.redisURI());
+                sentinelConnection.setReadFrom(sentinelConf.readFrom());
+                yield RedisTokenCacheCommands.of(sentinelConnection.reactive());
+            }
 
             case MasterReplicaRedisConfiguration replicaConf -> {
                 List<RedisURI> uris = RedisConfigurationUtils.asJavaRedisUris(replicaConf.redisURI());
-                yield RedisTokenCacheCommands.of(MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, uris).reactive());
+                StatefulRedisMasterReplicaConnection<String, String> masterReplicaConnection = MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, uris);
+                masterReplicaConnection.setReadFrom(replicaConf.readFrom());
+                yield RedisTokenCacheCommands.of(masterReplicaConnection.reactive());
             }
+
             default ->
                 throw new RuntimeException("Unknown redis configuration type: " + redisConfiguration.getClass().getName());
         };
