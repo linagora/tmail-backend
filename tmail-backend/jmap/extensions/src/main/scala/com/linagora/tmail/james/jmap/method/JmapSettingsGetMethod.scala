@@ -18,12 +18,13 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.google.common.collect.ImmutableList
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.{JmapSettingsSerializer => Serializer}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SETTINGS
 import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsGetResult, JmapSettingsObject}
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsRepository, SettingsTypeName}
+import com.linagora.tmail.james.jmap.settings.{JmapSettings, JmapSettingsKey, JmapSettingsRepository, JmapSettingsStateFactory, JmapSettingsValue, ReadOnlyPropertyProviderAggregator, SettingsTypeName}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.core.Username
@@ -40,24 +41,33 @@ import org.reactivestreams.Publisher
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-case object JmapSettingsCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = JmapSettingsCapability
+import scala.jdk.CollectionConverters._
+
+case class JmapSettingsCapabilityFactory @Inject()(readOnlyPropertyProviderAggregator: ReadOnlyPropertyProviderAggregator) extends CapabilityFactory {
+  override def create(urlPrefixes: UrlPrefixes): Capability =
+    JmapSettingsCapability(JmapSettingsCapabilityProperties(readOnlyPropertyProviderAggregator.readOnlySettings()))
 
   override def id(): CapabilityIdentifier = LINAGORA_SETTINGS
 }
 
-case object JmapSettingsCapability extends Capability {
-  val properties: CapabilityProperties = JmapSettingsCapabilityProperties
+case class JmapSettingsCapability(settingsProperties: JmapSettingsCapabilityProperties) extends Capability {
+  val properties: CapabilityProperties = settingsProperties
   val identifier: CapabilityIdentifier = LINAGORA_SETTINGS
 }
 
-case object JmapSettingsCapabilityProperties extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj()
+case class JmapSettingsCapabilityProperties(readOnlySettings: java.util.List[JmapSettingsKey]) extends CapabilityProperties {
+  override def jsonify(): JsObject = Json.obj(
+    "readOnlyProperties" -> readOnlySettings
+      .stream()
+      .map(key => key.asString())
+      .collect(ImmutableList.toImmutableList[String])
+      .asScala)
 }
 
 class JmapSettingsCapabilitiesModule extends AbstractModule {
   @ProvidesIntoSet
-  private def capability(): CapabilityFactory = JmapSettingsCapabilityFactory
+  private def capability(jmapSettingsCapabilityFactory: JmapSettingsCapabilityFactory): CapabilityFactory =
+    jmapSettingsCapabilityFactory
 }
 
 class JmapSettingsMethodModule extends AbstractModule {
@@ -78,6 +88,7 @@ class JmapSettingsMethodModule extends AbstractModule {
 }
 
 class JmapSettingsGetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRepository,
+                                      val readOnlyPropertiesProvider: ReadOnlyPropertyProviderAggregator,
                                       val metricFactory: MetricFactory,
                                       val sessionTranslator: SessionTranslator,
                                       val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[JmapSettingsGet] {
@@ -115,6 +126,21 @@ class JmapSettingsGetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRe
 
   private def retrieveJmapSettingsSingleton(username: Username): SMono[JmapSettingsGetResult] =
     SMono(jmapSettingsRepository.get(username))
+      .flatMap(userSettings => SMono.fromPublisher(readOnlyPropertiesProvider.resolveSettings(username)
+        .map(readOnlySettings => mergeSettings(Some(userSettings), readOnlySettings))))
+      .switchIfEmpty(SMono.fromPublisher(readOnlyPropertiesProvider.resolveSettings(username)
+        .map(readOnlySettings => mergeSettings(maybeUserSettings = None, readOnlySettings))))
       .map(jmapSettings => JmapSettingsGetResult.singleton(jmapSettings))
-      .switchIfEmpty(SMono.just(JmapSettingsGetResult.emptySingleton()))
+
+  private def mergeSettings(maybeUserSettings: Option[JmapSettings], readOnlySettings: java.util.Map[JmapSettingsKey, JmapSettingsValue]): JmapSettings =
+    maybeUserSettings match {
+      case Some(userSettings) =>
+        val filteredSettings: Map[JmapSettingsKey, JmapSettingsValue] = userSettings.settings
+          .filterNot { case (key, _) => readOnlyPropertiesProvider.readOnlySettings().asScala.contains(key) }
+        val mergedSettings: Map[JmapSettingsKey, JmapSettingsValue] = filteredSettings ++ readOnlySettings.asScala
+        userSettings.copy(settings = mergedSettings)
+
+      case None =>
+        JmapSettings(readOnlySettings.asScala.toMap, JmapSettingsStateFactory.INITIAL)
+    }
 }
