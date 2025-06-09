@@ -1,0 +1,19 @@
+From: sender@example.com
+To: receiver@example.com
+Subject: Test attachment filename
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="boundary1"
+
+--boundary1
+Content-Type: text/plain; charset="UTF-8"
+
+This is the body.
+
+--boundary1
+Content-Type: text/plain; name="{{attachmentFilename}}"
+Content-Disposition: attachment; filename="{{attachmentFilename}}"
+Content-Transfer-Encoding: base64
+
+dGVzdCBmaWxlIGNvbnRlbnQ=
+--boundary1--
+

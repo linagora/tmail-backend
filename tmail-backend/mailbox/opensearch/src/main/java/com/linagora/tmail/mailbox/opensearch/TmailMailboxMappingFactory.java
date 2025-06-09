@@ -72,9 +72,12 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
     private static final String SIMPLE = "simple";
     private static final String NGRAM = "ngram";
     private static final String NGRAM_ANALYZER = "ngram_analyzer";
+    private static final String FILENAME_ANALYZER = "filename_analyzer";
     private static final String NGRAM_TOKENIZER = "ngram_tokenizer";
+    private static final String WHITESPACE_TOKENIZER = "whitespace";
     private static final String LOWERCASE = "lowercase";
     private static final String ASCIIFOLDING = "asciifolding";
+    private static final String WORD_DELIMITER_GRAPH = "word_delimiter_graph";
     private static final int DEFAULT_MAX_NGRAM_DIFF = 4;
     private static final int DEFAULT_MIN_NGRAM = 2;
     private static final int DEFAULT_MAX_NGRAM = 6;
@@ -308,9 +311,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
             .put(JsonMessageConstants.ATTACHMENTS, new Property.Builder()
                 .object(new ObjectProperty.Builder()
                     .properties(ImmutableMap.of(
-                        JsonMessageConstants.Attachment.FILENAME, new Property.Builder()
-                            .text(new TextProperty.Builder().analyzer(STANDARD).build())
-                            .build(),
+                        JsonMessageConstants.Attachment.FILENAME, buildAttachmentFilenameProperty(),
                         JsonMessageConstants.Attachment.TEXT_CONTENT, new Property.Builder()
                             .text(new TextProperty.Builder().analyzer(STANDARD).build())
                             .build(),
@@ -347,6 +348,27 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
         return subjectFields.build();
     }
 
+    private Property buildAttachmentFilenameProperty() {
+        if (tmailOpenSearchMailboxConfiguration.attachmentFilenameNgramEnabled()) {
+            return new Property.Builder()
+                .text(new TextProperty.Builder()
+                    .analyzer(FILENAME_ANALYZER)
+                    .searchAnalyzer(FILENAME_ANALYZER)
+                    .fields(NGRAM, new Property.Builder()
+                        .text(new TextProperty.Builder()
+                            .analyzer(NGRAM_ANALYZER)
+                            .searchAnalyzer(FILENAME_ANALYZER)
+                            .build())
+                        .build())
+                    .build())
+                .build();
+        } else {
+            return new Property.Builder()
+                .text(new TextProperty.Builder().analyzer(STANDARD).build())
+                .build();
+        }
+    }
+
     @Override
     public Optional<IndexSettings> getIndexSettings() {
         return Optional.of(new IndexSettings.Builder()
@@ -372,6 +394,12 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                         .tokenizer(NGRAM_TOKENIZER)
                         .filter(ASCIIFOLDING, LOWERCASE)
                         .build()))
+                    .put(FILENAME_ANALYZER, new Analyzer.Builder()
+                        .custom(new CustomAnalyzer.Builder()
+                            .tokenizer(WHITESPACE_TOKENIZER)
+                            .filter(WORD_DELIMITER_GRAPH, ASCIIFOLDING, LOWERCASE)
+                            .build())
+                        .build())
                     .build())
                 .tokenizer(new ImmutableMap.Builder<String, Tokenizer>()
                     .put(NGRAM_TOKENIZER, new Tokenizer.Builder()

@@ -35,9 +35,13 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.apache.james.backends.opensearch.DockerOpenSearchExtension;
@@ -86,6 +90,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.client.opensearch._types.query_dsl.MatchAllQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
@@ -95,6 +101,9 @@ import org.opensearch.client.opensearch.core.GetResponse;
 import org.opensearch.client.opensearch.core.SearchRequest;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.mustachejava.DefaultMustacheFactory;
+import com.github.mustachejava.Mustache;
+import com.github.mustachejava.MustacheFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -153,6 +162,8 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
         return TmailOpenSearchMailboxConfiguration.builder()
             .subjectNgramEnabled(true)
             .subjectNgramHeuristicEnabled(true)
+            .attachmentFilenameNgramEnabled(true)
+            .attachmentFilenameNgramHeuristicEnabled(true)
             .build();
     }
 
@@ -721,6 +732,66 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
             .isEmpty();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "big bad wolf 1.txt",
+        "big bad wolf.txt",
+        "bad wolf.txt",
+        "wolf.txt",
+        "1.txt",
+        "big bad wolf",
+        "big bad",
+        "big",
+        "bad",
+        "wolf",
+        "1",
+        "txt",
+    })
+    void attachmentFilenameShouldBeSearchableByWords(String searchInput) throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(MessageManager.AppendCommand.builder()
+                .build(emlWithAttachmentFilename("big_bad wolf-1.txt")),
+            session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.attachmentFileName(searchInput)), session)).toStream())
+            .containsOnly(messageId.getUid());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "bi",
+        "ig",
+        "ba",
+        "ad",
+        "wo",
+        "wol",
+        "20",
+        "202",
+        "wol 20",
+        "doc"
+    })
+    void attachmentFilenameShouldBeSearchableByPartialOfWords(String searchInput) throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(MessageManager.AppendCommand.builder()
+                .build(emlWithAttachmentFilename("big_bad wolf-2025.docx")),
+            session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.attachmentFileName(searchInput)), session)).toStream())
+            .contains(messageId.getUid());
+    }
+
     private static MessageManager.AppendCommand messageWithSubject(String subject) throws IOException {
         return MessageManager.AppendCommand.builder().build(
             Message.Builder
@@ -744,5 +815,16 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(messageSearchIndex.search(session, List.of(mailboxId), SearchQuery.matchAll(), 100L).toStream().count())
                 .isEqualTo(expectedCountResult));
+    }
+
+    private String emlWithAttachmentFilename(String attachmentFilename) throws IOException {
+        String template = ClassLoaderUtils.getSystemResourceAsString("eml/template/attachment-filename.eml.mustache");
+        MustacheFactory mustacheFactory = new DefaultMustacheFactory();
+        Mustache mustache = mustacheFactory.compile(new StringReader(template), "attachment-filename");
+        Map<String, Object> params = new HashMap<>();
+        params.put("attachmentFilename", attachmentFilename);
+        StringWriter writer = new StringWriter();
+        mustache.execute(writer, params).flush();
+        return writer.toString();
     }
 }

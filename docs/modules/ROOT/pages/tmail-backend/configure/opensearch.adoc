@@ -34,6 +34,12 @@ Specified to TMail backend, we can configure the following configurations in the
 | Allows ngram search on the subject. Optional. Defaults to false.
 
 | subject.ngram.heuristic.enabled
-| Allows a heuristic search when ngram is enabled. It will do the ngram search only if the number of characters inm the search is less than 6 characters. If disabled there is no limit (but could have a significant performance cost). Optional. Defaults to false.
+| Allows a heuristic search when ngram is enabled. It will do the ngram search only if the number of characters in the search is less than 6 characters. If disabled there is no limit (but could have a significant performance cost). Optional. Defaults to false.
+
+| attachment.filename.ngram.enabled
+| Allows ngram search on the attachment filename. Optional. Defaults to false.
+
+| attachment.filename.ngram.heuristic.enabled
+| Allows a heuristic search when ngram is enabled. It will do the ngram search for attachment filename only if the number of characters in the search is less than 6 characters. If disabled there is no limit (but could have a significant performance cost). Optional. Defaults to false.
 
 |===
