@@ -341,7 +341,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
 
         if (tmailOpenSearchMailboxConfiguration.subjectNgramEnabled()) {
             subjectFields.put(NGRAM, new Property.Builder()
-                .text(new TextProperty.Builder().analyzer(NGRAM_ANALYZER).searchAnalyzer(STANDARD).build())
+                .text(new TextProperty.Builder().analyzer(NGRAM_ANALYZER).searchAnalyzer(FILENAME_ANALYZER).build())
                 .build());
         }
 
