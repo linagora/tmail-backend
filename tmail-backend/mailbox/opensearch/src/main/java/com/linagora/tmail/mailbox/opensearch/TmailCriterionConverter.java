@@ -42,6 +42,7 @@ import org.opensearch.client.opensearch._types.query_dsl.MatchQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Operator;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch._types.query_dsl.QueryStringQuery;
+import org.opensearch.client.opensearch._types.query_dsl.TermQuery;
 
 import com.google.common.collect.ImmutableList;
 
@@ -107,5 +108,59 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
                 .build()
                 .toQuery();
         }
+    }
+
+    @Override
+    protected Query convertTextCriterion(SearchQuery.TextCriterion textCriterion) {
+        switch (textCriterion.getType()) {
+            case ATTACHMENT_FILE_NAME:
+                if (isNgramFilename(textCriterion)) {
+                    return new BoolQuery.Builder()
+                        .should(new MatchQuery.Builder()
+                            .field(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.FILENAME)
+                            .query(new FieldValue.Builder().stringValue(textCriterion.getOperator().getValue()).build())
+                            .fuzziness(textFuzzinessSearchValue)
+                            .operator(Operator.And)
+                            .boost(2.0F)
+                            .build()
+                            .toQuery())
+                        .should(new MatchQuery.Builder()
+                            .field(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.FILENAME + "." + NGRAM)
+                            .query(new FieldValue.Builder().stringValue(textCriterion.getOperator().getValue()).build())
+                            .minimumShouldMatch(NGRAM_MIN_SHOULD_MATCH)
+                            .build()
+                            .toQuery())
+                        .should(new TermQuery.Builder()
+                            .field(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.FILE_EXTENSION)
+                            .value(new FieldValue.Builder().stringValue(textCriterion.getOperator().getValue()).build())
+                            .build()
+                            .toQuery())
+                        .build()
+                        .toQuery();
+                } else {
+                    return new BoolQuery.Builder()
+                        .should(new MatchQuery.Builder()
+                            .field(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.FILENAME)
+                            .query(new FieldValue.Builder().stringValue(textCriterion.getOperator().getValue()).build())
+                            .fuzziness(textFuzzinessSearchValue)
+                            .operator(Operator.And)
+                            .build()
+                            .toQuery())
+                        .should(new TermQuery.Builder()
+                            .field(JsonMessageConstants.ATTACHMENTS + "." + JsonMessageConstants.Attachment.FILE_EXTENSION)
+                            .value(new FieldValue.Builder().stringValue(textCriterion.getOperator().getValue()).build())
+                            .build()
+                            .toQuery())
+                        .build()
+                        .toQuery();
+                }
+            default:
+                return super.convertTextCriterion(textCriterion);
+        }
+    }
+
+    private boolean isNgramFilename(SearchQuery.TextCriterion textCriterion) {
+        return tmailOpenSearchMailboxConfiguration.attachmentFilenameNgramEnabled() &&
+            (!tmailOpenSearchMailboxConfiguration.attachmentFilenameNgramHeuristicEnabled() || textCriterion.getOperator().getValue().length() <= NGRAM_MAX_INPUT_LENGTH);
     }
 }
