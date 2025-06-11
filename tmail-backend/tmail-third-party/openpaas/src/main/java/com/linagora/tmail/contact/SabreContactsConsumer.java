@@ -50,6 +50,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.AcknowledgableDelivery;
+import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
 
 public class SabreContactsConsumer implements Closeable {
@@ -107,7 +108,7 @@ public class SabreContactsConsumer implements Closeable {
 
     public Flux<AcknowledgableDelivery> delivery(String queue) {
         return Flux.using(receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(queue),
+            receiver -> receiver.consumeManualAck(queue, new ConsumeOptions().qos(DEFAULT_CONCURRENCY)),
             Receiver::close);
     }
 
