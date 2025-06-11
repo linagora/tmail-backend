@@ -19,6 +19,7 @@
 package com.linagora.tmail.contact;
 
 import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
+import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
 import java.util.Map;
@@ -100,7 +101,7 @@ public class SabreContactsConsumer implements Closeable {
 
     private Disposable doConsumeContactMessages(String queue, ContactHandler contactHandler) {
         return delivery(queue)
-            .flatMap(delivery -> messageConsume(delivery, delivery.getBody(), contactHandler))
+            .flatMap(delivery -> messageConsume(delivery, delivery.getBody(), contactHandler), DEFAULT_CONCURRENCY)
             .subscribe();
     }
 
