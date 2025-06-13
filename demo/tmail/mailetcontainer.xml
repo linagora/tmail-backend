@@ -96,13 +96,8 @@
             <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
                 <consume>false</consume>
             </mailet>
+            <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@tmail.com" class="com.linagora.tmail.mailet.AIBotMailet"/>
 
-            <!-- Put the OpenAIMailet after LocalDelivery so the GPT reply would come after the asking question -->
-            <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@tmail.com" class="com.linagora.tmail.mailet.AIBotMailet">
-                <apiKey>demo</apiKey>
-                <botAddress>gpt@tmail.com</botAddress>
-                <model>gpt-4o-mini</model>
-            </mailet>
         </processor>
 
         <processor state="relay" enableJmx="true">

@@ -32,7 +32,9 @@ services:
       - ./tmail/mailetcontainer.xml:/root/conf/mailetcontainer.xml
       - ./tmail/domainlist.xml:/root/conf/domainlist.xml
       - ./tmail/smtpserver.xml:/root/conf/smtpserver.xml
-      - ./tmail/extensions-jars:/root/extensions-jars
+      - ./tmail/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar:/root/libs/tmail-ai-bot-jar-with-dependencies.jar
+      - ./tmail/ai.properties:/root/conf/ai.properties
+      - ./tmail/extensions.properties:/root/conf/extensions.properties
     networks:
       - tmail
     restart: on-failure
