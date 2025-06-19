@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 import jakarta.inject.Inject;
@@ -46,6 +47,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPException;
@@ -102,11 +104,15 @@ public class OBMLDAPMailingList extends GenericMailet {
                 .collect(ImmutableList.toImmutableList()));
             return mail;
         };
-        Function<Collection<MailAddress>, MailTransformation> addRecipients = rcpts -> mail -> {
-            mail.setRecipients(ImmutableList.<MailAddress>builder()
-                .addAll(rcpts)
-                .addAll(mail.getRecipients())
-                .build());
+        Function<Collection<MailAddress>, MailTransformation> removeRecipients = rcpts -> mail -> {
+            Set<MailAddress> toBeRemoved = Sets.intersection(
+                ImmutableSet.copyOf(rcpts),
+                ImmutableSet.copyOf(mail.getRecipients()));
+
+            mail.setRecipients(mail.getRecipients()
+                .stream()
+                .filter(r -> !toBeRemoved.contains(r))
+                .collect(ImmutableList.toImmutableList()));
             return mail;
         };
         MailTransformation NOOP = mail -> mail;
@@ -256,34 +262,34 @@ public class OBMLDAPMailingList extends GenericMailet {
 
         List<MailAddress> memberAddresses = list.members();
 
+        MailTransformation sendEmailToGroup = mail -> {
+            if (!memberAddresses.isEmpty()) {
+                Mail duplicate = mail.duplicate();
+                try {
+                    MailTransformation.recordListInLoopDetection.apply(listAddress).transform(duplicate);
+                    duplicate.setRecipients(memberAddresses);
+                    addListHeaders(duplicate.getMessage(), listAddress);
+                    getMailetContext().sendMail(duplicate);
+                    AuditTrail.entry()
+                        .protocol("mailetcontainer")
+                        .action("list")
+                        .parameters(Throwing.supplier(() -> ImmutableMap.of("mailId", mail.getName(),
+                            "mimeMessageId", Optional.ofNullable(mail.getMessage())
+                                .map(Throwing.function(MimeMessage::getMessageID))
+                                .orElse(""),
+                            "sender", maybeSender.asString(),
+                            "listAddress", listAddress.asString())))
+                        .log("Sent a mail to a mailing list.");
+                } finally {
+                    LifecycleUtil.dispose(duplicate);
+                }
+            }
+
+            return mail;
+        };
         return MailTransformation.removeRecipient.apply(listAddress)
             .doComposeIf(
-                mail -> {
-
-                    if (!memberAddresses.isEmpty()) {
-                        Mail duplicate = mail.duplicate();
-                        try {
-                            MailTransformation.recordListInLoopDetection.apply(listAddress).transform(duplicate);
-                            duplicate.setRecipients(memberAddresses);
-                            addListHeaders(duplicate.getMessage(), listAddress);
-                            getMailetContext().sendMail(duplicate);
-                            AuditTrail.entry()
-                                .protocol("mailetcontainer")
-                                .action("list")
-                                .parameters(Throwing.supplier(() -> ImmutableMap.of("mailId", mail.getName(),
-                                    "mimeMessageId", Optional.ofNullable(mail.getMessage())
-                                        .map(Throwing.function(MimeMessage::getMessageID))
-                                        .orElse(""),
-                                    "sender", maybeSender.asString(),
-                                    "listAddress", listAddress.asString())))
-                                .log("Sent a mail to a mailing list.");
-                        } finally {
-                            LifecycleUtil.dispose(duplicate);
-                        }
-                    }
-
-                    return mail;
-                },
+                sendEmailToGroup.doCompose(MailTransformation.removeRecipients.apply(memberAddresses)),
                 mail -> !LoopPrevention.RecordedRecipients.fromMail(mail).getRecipients().contains(listAddress));
     }
 
