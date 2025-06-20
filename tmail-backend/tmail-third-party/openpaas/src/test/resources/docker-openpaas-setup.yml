@@ -53,7 +53,7 @@ services:
       retries: 30
 
   rabbitmq:
-    image: rabbitmq:3.13.3-management
+    image: rabbitmq:4.0.9-management
     hostname: esn-rabbit
     networks:
       - emaily
