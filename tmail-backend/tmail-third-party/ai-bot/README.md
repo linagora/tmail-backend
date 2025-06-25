@@ -58,6 +58,10 @@ curl <baseURL>/chat/completions \
 
 ### Mailet configuration
 
+> [!WARNING] AI Security warning
+> 
+> By default, AIBot is vulnerable to Denial of Service (DoS) attacks and must be defended explicitly. The configuration files below and in `sample_conf/` need to be adjusted. See [rate-limiting](#rate-limiting) for more details.
+
 Modify the `mailetcontainer.xml` file by adding the following lines:
 
 ```xml
@@ -66,6 +70,7 @@ Modify the `mailetcontainer.xml` file by adding the following lines:
     <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
         <consume>false</consume>
     </mailet>
+
     <!-- Put the AIBotMailet after LocalDelivery so the GPT reply would come after the asking question -->
     <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}"
             class="com.linagora.tmail.mailet.AIBotMailet"/>
@@ -76,7 +81,7 @@ Modify the `mailetcontainer.xml` file by adding the following lines:
 
 ###  Clean Install (In-Memory)
 
-The following steps will start the AIBot extension in memory.
+The following steps will start the AIBot extension in memory, without rate-limiting.
 
 1. **Compile the extension**
 
@@ -113,14 +118,90 @@ The following steps will start the AIBot extension in memory.
 
 You can test the AIBot extension with the demo server.
 
-Sample configuration files are located in the `demo/tmail` directory. Modify these files as needed, and proceed with the [demo instructions](../../../demo/README.md).
+Sample configuration files are located in the `demo/tmail` directory. Modify these files as needed, and proceed with the [demo instructions](../../../demo/README.md). The default bot address is `gpt@tmail.com`.
+
+# Security configuration
+
+The AIBot extension must be defended against [cybersecurity attacks](https://genai.owasp.org/llm-top-10/) for deployment. Recommended configuration steps are described below.
+
+## Rate-limiting
+
+This section provides more details on configuring rate limits for AIBot.
+
+### Threat model
+
+<details>
+  <summary>Read more...</summary>
+Rate-limiting is critical to mitigate [Denial of Service attacks on LLMs](https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/). Indeed, a malicious user could send a high volume of emails to AIBot, forcing the extension to make API requests to the LLM service for each interaction. This could lead to:
+
+- **Server overload** on the email or the LLM provider, potentially causing service degradation or complete unavailability.
+- [**Denial of Wallet**](https://www.sciencedirect.com/science/article/pii/S221421262100079X) due to API credit overconsumption, which could cause financial exhaustion and service blocking by the LLM provider.
+ 
+</details>
+
+### Configuration
+
+Use the [`rate-limiter` mailet](https://github.com/apache/james-project/tree/master/server/mailet/rate-limiter) from Apache James by following its setup instructions.
+
+We suggest to add the two following rate-limiting rules in `mailetcontainer.xml`:
+
+```xml
+<processor state="local-delivery" enableJmx="true">
+    ...
+    <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
+        <consume>false</consume>
+    </mailet>
+    <!-- Put the rate limit before AIBotMailet -->
+    <mailet matcher="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="PerSenderRateLimit">
+      <keyPrefix>AIBotPerSenderRateLimit</keyPrefix>
+      <duration>1d</duration>
+      <precision>1h</precision>
+      <count>100</count>
+      <size>100K</size>
+      <totalSize>200K</totalSize>
+      <exceededProcessor>tooMuchMails</exceededProcessor>
+  </mailet>
+  <mailet matcher="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="PerRecipientRateLimitMailet">
+    <keyPrefix>AIBotRecipientRateLimit</keyPrefix>
+    <duration>1d</duration>
+    <precision>1h</precision>
+    <count>1000</count>
+    <size>100K</size>
+    <exceededProcessor>tooMuchMails</exceededProcessor>
+  </mailet>
+
+  <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="com.linagora.tmail.mailet.AIBotMailet"/>
+</processor>
+```
+
+**Configuration explanation:**
+
+1. **PerSenderRateLimit**
+
+    This mailet bounds the mails _per sender_ to the bot address, which addresses Denial of Service attacks.
+
+2. **PerRecipientRateLimit**
+
+    This mailet bounds all the mails received by AIBot, regardless of the sender, preventing [Denial of Wallet attacks](https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/).
+
+You must modify these values taking into account your threat model (e.g. number of email accounts used for DDoS) and LLM-specific factors such as budget, server performance and context size. You may also configure [throttling](https://github.com/apache/james-project/tree/master/server/mailet/rate-limiter#throttling) if the bot answers don't need to be instantaneous.
+
+## Controlling costs of LLM answers
+
+LLMs can consume significant amounts of API credits, especially when generating long responses. If left unbounded, this can lead to Denial of Wallet attacks.
+
+If you can configure the default chat parameters of your model, we recommend to set the following parameters according to your needs:
+
+- maximum completion tokens 
+- reasoning effort (if applicable)
 
 # Troubleshooting
 
 ## No response received
 
-1. [Verify your configuration](#sanity-check)
+1. [Verify your API configuration](#sanity-check)
 2. Make sure the same bot address is used in the mailet configuration and in the properties file
+3. [Review your rate limit configuration](#rate-limiting)
 
 ## API quota issues
 

@@ -92,6 +92,15 @@
             <mailet match="All" class="AddDeliveredToHeader"/>
             <mailet match="All" class="org.apache.james.jmap.mailet.filter.JMAPFiltering"/>
             <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery"/>
+
+            <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
+                <consume>false</consume>
+            </mailet>
+
+            <!-- Put rate limit mailets for AIBot here -->
+
+            <!-- Replace gpt@example.com with your bot address -->
+            <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@example.com" class="com.linagora.tmail.mailet.AIBotMailet"/>
         </processor>
 
         <processor state="relay" enableJmx="true">
