@@ -92,7 +92,7 @@ public class TMailPathConverter implements PathConverter {
             }
             return MailboxQuery.builder()
                 .userAndNamespaceFrom(teamMailboxPath)
-                .expression(new PrefixedRegex(teamMailboxPath.getName(), decodedMailboxName, mailboxSession.getPathDelimiter()))
+                .expression(new PrefixedRegex("", teamMailboxPath.getName(), mailboxSession.getPathDelimiter()))
                 .build();
         }
 
