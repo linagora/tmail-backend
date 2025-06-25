@@ -1,0 +1,86 @@
+/********************************************************************
+ *  As a subpart of Twake Mail, this file is edited by Linagora.    *
+ *                                                                  *
+ *  https://twake-mail.com/                                         *
+ *  https://linagora.com                                            *
+ *                                                                  *
+ *  This file is subject to The Affero Gnu Public License           *
+ *  version 3.                                                      *
+ *                                                                  *
+ *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
+ *                                                                  *
+ *  This program is distributed in the hope that it will be         *
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
+ *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
+ *  PURPOSE. See the GNU Affero General Public License for          *
+ *  more details.                                                   *
+ ********************************************************************/
+package com.linagora.tmail.mailet.rag;
+
+import org.apache.james.events.Event;
+import org.apache.james.events.EventListener;
+import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MessageIdManager;
+import org.apache.james.mailbox.events.MailboxEvents;
+import org.apache.james.mailbox.model.FetchGroup;
+import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.mime4j.dom.Message;
+import org.apache.james.mime4j.message.DefaultMessageBuilder;
+import org.apache.james.mime4j.stream.MimeConfig;
+import org.apache.james.util.ReactorUtils;
+import org.apache.james.util.mime.MessageContentExtractor;
+import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.inject.Inject;
+
+import reactor.core.publisher.Mono;
+
+public class RagListener implements EventListener.ReactiveEventListener {
+
+    private final MailboxManager mailboxManager;
+    private final MessageIdManager messageIdManager;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RagListener.class);
+
+    @Inject
+    RagListener(MailboxManager mailboxManager1, MessageIdManager messageIdManager) {
+        this.mailboxManager = mailboxManager1;
+        this.messageIdManager = messageIdManager;
+    }
+
+    @Override
+    public boolean isHandling(Event event) {
+        return true;
+    }
+
+    @Override
+    public Publisher<Void> reactiveEvent(Event event) {
+        if (event instanceof MailboxEvents.Added addedEvent) {
+            LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
+            MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
+
+            return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
+                .flatMap(this::extractEmailContent)
+                .doOnNext(text -> LOGGER.info("RAG Listener successfully processed mailContent {}", text))
+                .then();
+        }
+        if (event instanceof MailboxEvents.Expunged) {
+            MailboxEvents.Expunged deletedEvent = (MailboxEvents.Expunged) event;
+            LOGGER.info("RAG Listener triggered for mailbox deletion: {}", deletedEvent.getMailboxId());
+        }
+        return Mono.empty();
+    }
+
+    private Mono<String> extractEmailContent(MessageResult messageResult) {
+        return Mono.fromCallable(() -> {
+            DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
+            messageBuilder.setMimeEntityConfig(MimeConfig.DEFAULT);
+            Message mimeMessage = messageBuilder.parseMessage(messageResult.getFullContent().getInputStream());
+            MessageContentExtractor.MessageContent extractor = new MessageContentExtractor().extract(mimeMessage);
+            return extractor.getTextBody();
+        }).handle(ReactorUtils.publishIfPresent());
+    }
+}
