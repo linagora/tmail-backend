@@ -23,7 +23,6 @@ import org.apache.james.json.DTOModule;
 import org.apache.james.server.task.json.dto.TaskDTO;
 import org.apache.james.server.task.json.dto.TaskDTOModule;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record RecomputeQuotaTeamMailboxesTaskDTO(@JsonProperty("type") String type,
@@ -39,7 +38,6 @@ public record RecomputeQuotaTeamMailboxesTaskDTO(@JsonProperty("type") String ty
     }
 
     @Override
-    @JsonIgnore
     public String getType() {
         return type;
     }

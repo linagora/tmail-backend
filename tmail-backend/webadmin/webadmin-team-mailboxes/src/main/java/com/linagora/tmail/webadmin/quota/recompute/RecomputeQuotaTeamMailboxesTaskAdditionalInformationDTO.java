@@ -26,7 +26,6 @@ import org.apache.james.json.DTOModule;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record RecomputeQuotaTeamMailboxesTaskAdditionalInformationDTO(@JsonProperty("type") String type,
@@ -53,13 +52,11 @@ public record RecomputeQuotaTeamMailboxesTaskAdditionalInformationDTO(@JsonPrope
 
 
     @Override
-    @JsonIgnore
     public String getType() {
         return type;
     }
 
     @Override
-    @JsonIgnore
     public Instant getTimestamp() {
         return timestamp;
     }
