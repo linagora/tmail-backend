@@ -244,6 +244,26 @@ public class IMAPTeamMailboxIntegrationTest {
     }
 
     @Test
+    void listShouldFilterTeamMailboxWhenMailboxNameWithRegexParameterIsProvidedAndTeamMailboxName() throws Exception {
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("LIST \"\" \"#TeamMailbox.marketing.*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.Drafts\"")
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.INBOX\"")
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.Outbox\"")
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.Sent\"")
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.Trash\"");
+    }
+
+    @Test
+    void listShouldFilterTeamMailboxWhenExactMailboxNameIsProvided() throws Exception {
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(MINISTER, MINISTER_PASSWORD)
+            .sendCommand("LIST \"\" \"#TeamMailbox.marketing.INBOX\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.INBOX\"");
+    }
+
+    @Test
     void listShouldFilterTeamMailboxWhenSUBSCRIBEDOptionANDMailboxNameWithRegexParameterIsProvided() throws Exception {
         assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(MINISTER, MINISTER_PASSWORD)
