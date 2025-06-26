@@ -20,7 +20,7 @@ package com.linagora.tmail.dav.xml;
 
 import java.util.Optional;
 
-import javax.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlElement;
 
 import com.google.common.base.MoreObjects;
 

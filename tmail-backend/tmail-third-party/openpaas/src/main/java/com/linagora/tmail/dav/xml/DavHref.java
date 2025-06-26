@@ -20,7 +20,7 @@ package com.linagora.tmail.dav.xml;
 
 import java.util.Optional;
 
-import javax.xml.bind.annotation.XmlValue;
+import jakarta.xml.bind.annotation.XmlValue;
 
 public class DavHref {
     @XmlValue
