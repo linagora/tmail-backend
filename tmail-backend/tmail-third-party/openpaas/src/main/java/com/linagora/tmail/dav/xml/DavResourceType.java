@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import javax.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlElement;
 
 import com.linagora.tmail.dav.xml.resourcetypes.CalCalendar;
 import com.linagora.tmail.dav.xml.resourcetypes.DavCollection;

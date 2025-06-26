@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.dav.xml;
 
-import javax.xml.bind.annotation.XmlValue;
+import jakarta.xml.bind.annotation.XmlValue;
 
 import com.google.common.base.MoreObjects;
 
