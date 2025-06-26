@@ -143,7 +143,7 @@ Rate-limiting is critical to mitigate [Denial of Service attacks on LLMs](https:
 
 Use the [`rate-limiter` mailet](https://github.com/apache/james-project/tree/master/server/mailet/rate-limiter) from Apache James by following its setup instructions.
 
-We suggest to add the two following rate-limiting rules in `mailetcontainer.xml`:
+We suggest to add at least two rate-limiting rules in `mailetcontainer.xml` such as below:
 
 ```xml
 <processor state="local-delivery" enableJmx="true">
@@ -152,25 +152,30 @@ We suggest to add the two following rate-limiting rules in `mailetcontainer.xml`
         <consume>false</consume>
     </mailet>
     <!-- Put the rate limit before AIBotMailet -->
-    <mailet matcher="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="PerSenderRateLimit">
-      <keyPrefix>AIBotPerSenderRateLimit</keyPrefix>
-      <duration>1d</duration>
-      <precision>1h</precision>
-      <count>100</count>
-      <size>100K</size>
-      <totalSize>200K</totalSize>
-      <exceededProcessor>tooMuchMails</exceededProcessor>
-  </mailet>
-  <mailet matcher="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="PerRecipientRateLimitMailet">
-    <keyPrefix>AIBotRecipientRateLimit</keyPrefix>
-    <duration>1d</duration>
-    <precision>1h</precision>
-    <count>1000</count>
-    <size>100K</size>
-    <exceededProcessor>tooMuchMails</exceededProcessor>
-  </mailet>
+    <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="PerSenderRateLimit">
+        <keyPrefix>AIBotPerSenderRateLimit</keyPrefix>
+        <duration>1d</duration>
+        <precision>1h</precision>
+        <count>100</count>
+        <size>100K</size>
+        <exceededProcessor>tooMuchMails</exceededProcessor>
+    </mailet>
+    <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="PerRecipientRateLimit">
+        <keyPrefix>AIBotRecipientRateLimit</keyPrefix>
+        <duration>1d</duration>
+        <precision>1h</precision>
+        <count>1000</count>
+        <size>100K</size>
+        <exceededProcessor>tooMuchMails</exceededProcessor>
+    </mailet>
 
-  <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="com.linagora.tmail.mailet.AIBotMailet"/>
+    <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="com.linagora.tmail.mailet.AIBotMailet"/>
+</processor>
+
+<processor state="tooMuchMails" enableJmx="true">
+    <mailet match="All" class="Bounce">
+        <message>Rate limit exceeded!</message>
+    </mailet>
 </processor>
 ```
 
