@@ -155,11 +155,10 @@ We suggest to add at least two rate-limiting rules in `mailetcontainer.xml` such
 
 ```xml
 <processor state="local-delivery" enableJmx="true">
-   <matcher name="allow-aibot" match="org.apache.james.mailetcontainer.impl.matchers.And">
-       <matcher match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}"/>
-       <matcher match="SenderIsLocal"/>
-   </matcher>
-   ...
+    <matcher name="allow-aibot" match="org.apache.james.mailetcontainer.impl.matchers.And">
+        <matcher match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}"/>
+        <matcher match="SenderIsLocal"/>
+    </matcher>
     ...
     <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
         <consume>false</consume>
