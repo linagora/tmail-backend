@@ -62,14 +62,20 @@ Modify the `mailetcontainer.xml` file by adding the following lines:
 
 ```xml
 <processor state="local-delivery" enableJmx="true">
+    <matcher name="aibot-allowed" match="org.apache.james.mailetcontainer.impl.matchers.And">
+        <!-- Only answer to local users -->
+        <matcher match="SenderIsLocal"/>
+        <matcher match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}"/>
+    </matcher>
+
     ...
     <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
         <consume>false</consume>
     </mailet>
 
     <!-- Put the AIBotMailet after LocalDelivery so the GPT reply would come after the asking question -->
-    <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}"
-            class="com.linagora.tmail.mailet.AIBotMailet"/>
+    <mailet match="aibot-allowed" class="com.linagora.tmail.mailet.AIBotMailet"/>
+    <mailet match="All" class="Null"/>
 </processor>
 ```
 
@@ -153,8 +159,9 @@ We suggest to add at least two rate-limiting rules in `mailetcontainer.xml` such
     <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
         <consume>false</consume>
     </mailet>
+
     <!-- Put the rate limit before AIBotMailet -->
-    <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="PerSenderRateLimit">
+    <mailet match="aibot-allowed" class="PerSenderRateLimit">
         <keyPrefix>AIBotPerSenderRateLimit</keyPrefix>
         <duration>1d</duration>
         <precision>1h</precision>
@@ -162,7 +169,7 @@ We suggest to add at least two rate-limiting rules in `mailetcontainer.xml` such
         <size>100K</size>
         <exceededProcessor>tooMuchMails</exceededProcessor>
     </mailet>
-    <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="PerRecipientRateLimit">
+    <mailet match="aibot-allowed" class="PerRecipientRateLimit">
         <keyPrefix>AIBotRecipientRateLimit</keyPrefix>
         <duration>1d</duration>
         <precision>1h</precision>
@@ -170,8 +177,7 @@ We suggest to add at least two rate-limiting rules in `mailetcontainer.xml` such
         <size>100K</size>
         <exceededProcessor>tooMuchMails</exceededProcessor>
     </mailet>
-
-    <mailet match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}" class="com.linagora.tmail.mailet.AIBotMailet"/>
+    <mailet match="aibot-allowed" class="com.linagora.tmail.mailet.AIBotMailet"/>
 </processor>
 
 <processor state="tooMuchMails" enableJmx="true">
