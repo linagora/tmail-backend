@@ -54,6 +54,10 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>org.apache.james</groupId>
+            <artifactId>apache-james-mailbox-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>tmail-guice-jmap</artifactId>
             <type>test-jar</type>
