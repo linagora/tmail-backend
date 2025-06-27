@@ -58,10 +58,6 @@ curl <baseURL>/chat/completions \
 
 ### Mailet configuration
 
-> [!WARNING] AI Security warning
-> 
-> By default, AIBot is vulnerable to Denial of Service (DoS) attacks and must be defended explicitly. The configuration files below and in `sample_conf/` need to be adjusted. See [rate-limiting](#rate-limiting) for more details.
-
 Modify the `mailetcontainer.xml` file by adding the following lines:
 
 ```xml
@@ -120,26 +116,32 @@ You can test the AIBot extension with the demo server.
 
 Sample configuration files are located in the `demo/tmail` directory. Modify these files as needed, and proceed with the [demo instructions](../../../demo/README.md). The default bot address is `gpt@tmail.com`.
 
-# Security configuration
+## Considerations for deployment
 
-The AIBot extension must be defended against [cybersecurity attacks](https://genai.owasp.org/llm-top-10/) for deployment. Recommended configuration steps are described below.
-
-## Rate-limiting
-
-This section provides more details on configuring rate limits for AIBot.
-
-### Threat model
+> [!NOTE] Scope of this section
+> 
+> AIBot is still in development phase. It lacks the robustness, scalability and security hardening required for real-world deployment.
+>
+> This section provides general guidance for operators who still wish to experiment with deploying AIBot in a production environment. These recommendations are **not a substitute for comprehensive security practices** and should be treated as starting points for curious readers.
 
 <details>
   <summary>Read more...</summary>
+
+---
+The AIBot extension must be defended against [cybersecurity attacks](https://genai.owasp.org/llm-top-10/) for production deployment. Recommended configuration steps are described below.
+
+### Rate-limiting
+
+This section provides more details on configuring rate limits for AIBot.
+
+#### Threat model
+
 Rate-limiting is critical to mitigate [Denial of Service attacks on LLMs](https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/). Indeed, a malicious user could send a high volume of emails to AIBot, forcing the extension to make API requests to the LLM service for each interaction. This could lead to:
 
 - **Server overload** on the email or the LLM provider, potentially causing service degradation or complete unavailability.
 - [**Denial of Wallet**](https://www.sciencedirect.com/science/article/pii/S221421262100079X) due to API credit overconsumption, which could cause financial exhaustion and service blocking by the LLM provider.
- 
-</details>
 
-### Configuration
+#### Configuration
 
 Use the [`rate-limiter` mailet](https://github.com/apache/james-project/tree/master/server/mailet/rate-limiter) from Apache James by following its setup instructions.
 
@@ -189,9 +191,9 @@ We suggest to add at least two rate-limiting rules in `mailetcontainer.xml` such
 
     This mailet bounds all the mails received by AIBot, regardless of the sender, preventing [Denial of Wallet attacks](https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/).
 
-You must modify these values taking into account your threat model (e.g. number of email accounts used for DDoS) and LLM-specific factors such as budget, server performance and context size. You may also configure [throttling](https://github.com/apache/james-project/tree/master/server/mailet/rate-limiter#throttling) if the bot answers don't need to be instantaneous.
+You must modify these values taking into account your threat model (e.g. number of email accounts used for DDoS) and LLM-specific factors such as budget, server performance and context size. Beware that the email headers add a constant factor to all mails, and the traffic volume of an email thread is quadratic with respect to its length. You may also configure [throttling](https://github.com/apache/james-project/tree/master/server/mailet/rate-limiter#throttling) if the bot answers don't need to be instantaneous.
 
-## Controlling costs of LLM answers
+### Controlling costs of LLM answers
 
 LLMs can consume significant amounts of API credits, especially when generating long responses. If left unbounded, this can lead to Denial of Wallet attacks.
 
@@ -200,14 +202,15 @@ If you can configure the default chat parameters of your model, we recommend to 
 - maximum completion tokens 
 - reasoning effort (if applicable)
 
-# Troubleshooting
+</details>
 
-## No response received
+## Troubleshooting
+
+### No response received
 
 1. [Verify your API configuration](#sanity-check)
 2. Make sure the same bot address is used in the mailet configuration and in the properties file
-3. [Review your rate limit configuration](#rate-limiting)
 
-## API quota issues
+### API quota issues
 
 Demo APIs often have usage quotas. Ensure your requests are not being rate limited due to heavy usage or automated scripts.
