@@ -92,9 +92,10 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
                 .with(new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty()))))
         .build();
 
+    @Override
     @Disabled("This is responsibility of the OpenPaas server")
     @Test
-    void contactIndexingTaskShouldIndexContact(GuiceJamesServer server) throws Exception {
+    public void contactIndexingTaskShouldIndexContact(GuiceJamesServer server) throws Exception {
     }
 
     @Test

@@ -134,7 +134,7 @@ public abstract class ContactIndexingIntegrationContract {
     }
 
     @Test
-    void contactIndexingTaskShouldIndexContact(GuiceJamesServer server) throws Exception {
+    public void contactIndexingTaskShouldIndexContact(GuiceJamesServer server) throws Exception {
         // Given some contacts.
         // Bob: Andre, Cedric, David
         // Andre: andretwo
