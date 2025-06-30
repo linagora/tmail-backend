@@ -17,6 +17,9 @@
  ********************************************************************/
 package com.linagora.tmail.mailet.rag;
 
+import java.util.Set;
+
+import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
 import org.apache.james.mailbox.MailboxManager;
@@ -49,12 +52,14 @@ public class RagListener implements EventListener.ReactiveEventListener {
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
     private final SystemMailboxesProvider systemMailboxesProvider;
+    private final Set<Username> whitelist;
 
     @Inject
-    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider) {
+    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, Set<Username> whitelist) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.systemMailboxesProvider = systemMailboxesProvider;
+        this.whitelist = whitelist;
     }
 
     @Override
@@ -65,28 +70,32 @@ public class RagListener implements EventListener.ReactiveEventListener {
 
     @Override
     public Publisher<Void> reactiveEvent(Event event) {
-        if (event instanceof MailboxEvents.Added addedEvent && addedEvent.isAppended()) {
-            return Flux.concat(
-                    systemMailboxesProvider.getMailboxByRole(Role.SPAM, addedEvent.getUsername()),
-                    systemMailboxesProvider.getMailboxByRole(Role.TRASH, addedEvent.getUsername()))
-                .map(MessageManager::getId)
-                .any(mailboxId -> mailboxId.equals(addedEvent.getMailboxId()))
-                .flatMap(isSpamOrTrash -> {
-                    if (isSpamOrTrash) {
-                        return Mono.empty();
-                    }
-                    LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
-                    MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
-                return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
-                        .doOnError(error -> System.err.println("Error occurred: " + error.getMessage()))
-                        .flatMap(this::extractEmailContent)
-                        .doOnNext(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** {} *****", text))
-                        .then();
-                });
-        }
-        if (event instanceof MailboxEvents.Expunged) {
-            MailboxEvents.Expunged deletedEvent = (MailboxEvents.Expunged) event;
-            LOGGER.info("RAG Listener triggered for mailbox deletion: {}", deletedEvent.getMailboxId());
+        if (isUserAllowed(event.getUsername())) {
+            if (event instanceof MailboxEvents.Added addedEvent && addedEvent.isAppended()) {
+                return Flux.concat(
+                        systemMailboxesProvider.getMailboxByRole(Role.SPAM, addedEvent.getUsername()),
+                        systemMailboxesProvider.getMailboxByRole(Role.TRASH, addedEvent.getUsername()))
+                    .map(MessageManager::getId)
+                    .any(mailboxId -> mailboxId.equals(addedEvent.getMailboxId()))
+                    .flatMap(isSpamOrTrash -> {
+                        if (isSpamOrTrash) {
+                            return Mono.empty();
+                        }
+                        LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
+                        MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
+                    return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
+                            .doOnError(error -> System.err.println("Error occurred: " + error.getMessage()))
+                            .flatMap(this::extractEmailContent)
+                            .doOnNext(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** {} *****", text))
+                            .then();
+                    });
+            }
+            if (event instanceof MailboxEvents.Expunged) {
+                MailboxEvents.Expunged deletedEvent = (MailboxEvents.Expunged) event;
+                LOGGER.info("RAG Listener triggered for mailbox deletion: {}", deletedEvent.getMailboxId());
+            }
+        } else {
+            LOGGER.info("RAG Listener skipped for user: {}", event.getUsername().getLocalPart());
         }
         return Mono.empty();
     }
@@ -99,5 +108,9 @@ public class RagListener implements EventListener.ReactiveEventListener {
             MessageContentExtractor.MessageContent extractor = new MessageContentExtractor().extract(mimeMessage);
             return extractor.getTextBody();
         }).handle(ReactorUtils.publishIfPresent());
+    }
+
+    public boolean isUserAllowed(Username userEmail) {
+        return whitelist.contains(userEmail);
     }
 }
