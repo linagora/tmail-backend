@@ -115,6 +115,38 @@ The following steps will start the AIBot extension in memory, without rate-limit
       --volume "$PWD/target/tmail-ai-bot-jar-with-dependencies.jar:/root/libs/tmail-ai-bot-jar-with-dependencies.jar" \
       linagora/tmail-backend-memory
     ```
+### Command with RAG System Integration
+To enhance context understanding, AIBot can be extended with a RAG (Retrieval-Augmented Generation) system. This system handles all emails in the mailbox except those in the trash or spam folders.
+
+To enable RAG, you need to mount a configuration file called listeners.xml, which contains the RAG listener:
+```xml
+<listeners>
+    <listener>
+        <class>com.linagora.tmail.aibot.RagListener</class>
+        <users>btellier@linagora.com,ptranvan@linagora.com</users>
+    </listener>
+</listeners>
+```
+The RagListener is responsible for event processing.
+
+You can specify a whitelist of users authorized to use the RAG feature in the <users> tag.
+
+To enable this functionality, add the following mount to your Docker command:
+```bash
+      --mount type=bind,source="$PWD/sample_conf/listener.xml",target="/root/conf/listeners.xml" \
+```
+***the final docker command to run the server with RAG listener will be looking like this:***
+```bash
+    docker run \
+      --mount type=bind,source="$PWD/sample_conf/jwt_publickey",target="/root/conf/jwt_publickey" \
+      --mount type=bind,source="$PWD/sample_conf/jwt_privatekey",target="/root/conf/jwt_privatekey" \
+      --mount type=bind,source="$PWD/sample_conf/mailetcontainer.xml",target="/root/conf/mailetcontainer.xml" \
+      --mount type=bind,source="$PWD/sample_conf/ai.properties",target="/root/conf/ai.properties" \
+      --mount type=bind,source="$PWD/sample_conf/extensions.properties",target="/root/conf/extensions.properties" \
+      --mount type=bind,source="$PWD/sample_conf/listeners.xml",target="/root/conf/listeners.xml" \
+      --volume "$PWD/target/tmail-ai-bot-jar-with-dependencies.jar:/root/libs/tmail-ai-bot-jar-with-dependencies.jar" \
+      linagora/tmail-backend-memory
+```
 
 ### With the demo server
 
