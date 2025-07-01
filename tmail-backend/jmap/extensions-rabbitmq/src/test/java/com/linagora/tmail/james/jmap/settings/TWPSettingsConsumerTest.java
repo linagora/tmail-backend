@@ -66,8 +66,8 @@ public class TWPSettingsConsumerTest {
     private static final String LANGUAGE_EN = "en";
     private static final String EXCHANGE_NAME = "settings";
     private static final String ROUTING_KEY = "user.settings.updated";
-    private static final Username ALICE_WITHOUT_DOMAIN_PART = Username.of("alice");
     private static final Username ALICE = Username.of("alice@james.org");
+    private static final Username NON_EXISTING_USER = Username.of("nonExisting@james.org");
 
     private final ConditionFactory calmlyAwait = Awaitility.with()
         .pollInterval(Duration.ofMillis(500))
@@ -172,9 +172,8 @@ public class TWPSettingsConsumerTest {
     }
 
     @Test
-    void shouldSetLanguageSettingWhenValidMessageHavingNicknameWithoutDomainPart() {
-        // the consumer should resolve usernames without the domain part
-        String languageUpdate = createSettingsUpdateMessage(ALICE_WITHOUT_DOMAIN_PART,
+    void shouldSetLanguageSettingForExistingUser() {
+        String languageUpdate = createSettingsUpdateMessage(ALICE,
             Map.of(LANGUAGE_KEY, LANGUAGE_FR),
             1L);
         publishAmqpSettingsMessage(languageUpdate);
@@ -188,18 +187,15 @@ public class TWPSettingsConsumerTest {
     }
 
     @Test
-    void shouldSetLanguageSettingWhenValidMessageHavingNicknameWithDomainPart() {
-        // the consumer should resolve usernames with the domain part
-        String languageUpdate = createSettingsUpdateMessage(ALICE,
+    void shouldNotSetLanguageSettingForNonExistingUser() {
+        String languageUpdate = createSettingsUpdateMessage(NON_EXISTING_USER,
             Map.of(LANGUAGE_KEY, LANGUAGE_FR),
             1L);
         publishAmqpSettingsMessage(languageUpdate);
 
         awaitAtMost.untilAsserted(() -> {
-            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
-            assertThat(settings).isNotNull();
-            assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
-                .isEqualTo(new JmapSettingsValue(LANGUAGE_FR));
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(NON_EXISTING_USER)).block();
+            assertThat(settings).isNull();
         });
     }
 
