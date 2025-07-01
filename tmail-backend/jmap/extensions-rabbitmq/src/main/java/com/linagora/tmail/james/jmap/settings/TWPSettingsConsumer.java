@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.jmap.settings;
 
+import static com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION;
+import static com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION_DEFAULT;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
@@ -53,6 +55,7 @@ import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
+import scala.jdk.javaapi.OptionConverters;
 
 public class TWPSettingsConsumer implements Closeable, Startable, SimpleConnectionPool.ReconnectionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsConsumer.class);
@@ -159,11 +162,37 @@ public class TWPSettingsConsumer implements Closeable, Startable, SimpleConnecti
     private Mono<Void> handleSettingsMessage(TWPCommonSettingsMessage message) {
         return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(message.payload().email())))
             .map(User::getUserName)
-            .flatMap(username -> Mono.justOrEmpty(message.payload().language())
-                .flatMap(language -> Mono.from(jmapSettingsRepository.updatePartial(username,
-                    JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, language))))
-                .doOnNext(updatedLanguage -> LOGGER.info("Updated language setting for user {} to {}", username.asString(), updatedLanguage)))
+            .flatMap(username -> getStoredSettingsVersion(username)
+                .flatMap(storedVersion -> {
+                    if (message.version() > storedVersion) {
+                        return updateSettings(message, username);
+                    } else {
+                        LOGGER.warn("Received outdated TWP settings update for user {}. Current stored version: {}, received version: {}. Ignoring update.",
+                            username.asString(), storedVersion, message.version());
+                        return Mono.empty();
+                    }
+                }))
             .then();
+    }
+
+    private Mono<Void> updateSettings(TWPCommonSettingsMessage message, Username username) {
+        return Mono.justOrEmpty(message.payload().language())
+            .flatMap(language -> {
+                JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, language);
+                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWP_SETTINGS_VERSION, message.version().toString());
+                JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
+
+                return Mono.from(jmapSettingsRepository.updatePartial(username, combinedPatch))
+                    .doOnNext(updatedSettings -> LOGGER.info("Updated language setting for user {} to {}", username.asString(), language));
+            })
+            .then();
+    }
+
+    private Mono<Long> getStoredSettingsVersion(Username username) {
+        return Mono.from(jmapSettingsRepository.get(username))
+            .map(jmapSettings -> OptionConverters.toJava(JmapSettingsUtil.getTWPSettingsVersion(jmapSettings))
+                .orElse(TWP_SETTINGS_VERSION_DEFAULT))
+            .switchIfEmpty(Mono.just(TWP_SETTINGS_VERSION_DEFAULT));
     }
 
     @Override

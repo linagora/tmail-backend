@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.settings;
 
+import static com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
 import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN;
@@ -252,6 +253,96 @@ public class TWPSettingsConsumerTest {
             assertThat(settings).isNotNull();
             assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
                 .isEqualTo(new JmapSettingsValue(LANGUAGE_EN));
+        });
+    }
+
+    @Test
+    void givenUserHasNoSettingsVersionYetThenConsumerShouldUpdateTheSettings() {
+        // GIVEN Alice has no TWP settings version yet (not received any TWP settings before)
+        JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(JMAP_LANGUAGE_KEY, LANGUAGE_EN);
+        Mono.from(jmapSettingsRepository.updatePartial(ALICE, languagePatch)).block();
+
+        // WHEN a TWP settings update
+        publishAmqpSettingsMessage(createSettingsUpdateMessage(ALICE,
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L));
+
+        // THEN Alice settings should be updated
+        awaitAtMost.untilAsserted(() -> {
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
+            assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
+                .isEqualTo(new JmapSettingsValue(LANGUAGE_FR));
+            assertThat(settings.settings().get(TWP_SETTINGS_VERSION).get())
+                .isEqualTo(new JmapSettingsValue(String.valueOf(1L)));
+        });
+    }
+
+    @Test
+    void shouldUpdateTheSettingsWhenNewerVersion() {
+        // GIVEN Alice has settings with version 1
+        JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(JMAP_LANGUAGE_KEY, LANGUAGE_EN);
+        JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWP_SETTINGS_VERSION, String.valueOf(1L));
+        JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
+        Mono.from(jmapSettingsRepository.updatePartial(ALICE, combinedPatch)).block();
+
+        // WHEN a TWP settings update with version 2
+        publishAmqpSettingsMessage(createSettingsUpdateMessage(ALICE,
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            2L));
+
+        // THEN Alice settings should be updated
+        awaitAtMost.untilAsserted(() -> {
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
+            assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
+                .isEqualTo(new JmapSettingsValue(LANGUAGE_FR));
+            assertThat(settings.settings().get(TWP_SETTINGS_VERSION).get())
+                .isEqualTo(new JmapSettingsValue(String.valueOf(2L)));
+        });
+    }
+
+    @Test
+    void shouldRejectOutdatedVersionUpdate() {
+        // GIVEN Alice has settings with version 2
+        JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(JMAP_LANGUAGE_KEY, LANGUAGE_EN);
+        JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWP_SETTINGS_VERSION, String.valueOf(2L));
+        JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
+        Mono.from(jmapSettingsRepository.updatePartial(ALICE, combinedPatch)).block();
+
+        // WHEN an outdated update with version 1
+        publishAmqpSettingsMessage(createSettingsUpdateMessage(ALICE,
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L));
+
+        // THEN Alice settings should not be updated
+        awaitAtMost.untilAsserted(() -> {
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
+            assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
+                .isEqualTo(new JmapSettingsValue(LANGUAGE_EN));
+            assertThat(settings.settings().get(TWP_SETTINGS_VERSION).get())
+                .isEqualTo(new JmapSettingsValue(String.valueOf(2L)));
+        });
+    }
+
+    @Test
+    void shouldRejectDuplicatedVersionUpdate() {
+        // GIVEN Alice has settings with version 1
+        JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(JMAP_LANGUAGE_KEY, LANGUAGE_EN);
+        JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWP_SETTINGS_VERSION, String.valueOf(1L));
+        JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
+        Mono.from(jmapSettingsRepository.updatePartial(ALICE, combinedPatch)).block();
+
+        // WHEN a duplicated update with version 1
+        publishAmqpSettingsMessage(createSettingsUpdateMessage(ALICE,
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L));
+
+        // THEN Alice settings should not be updated
+        awaitAtMost.untilAsserted(() -> {
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
+            assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
+                .isEqualTo(new JmapSettingsValue(LANGUAGE_EN));
+            assertThat(settings.settings().get(TWP_SETTINGS_VERSION).get())
+                .isEqualTo(new JmapSettingsValue(String.valueOf(1L)));
         });
     }
 
