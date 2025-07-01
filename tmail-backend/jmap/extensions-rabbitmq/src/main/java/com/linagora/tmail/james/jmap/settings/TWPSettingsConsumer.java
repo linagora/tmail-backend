@@ -63,6 +63,7 @@ public class TWPSettingsConsumer implements Closeable, Startable, SimpleConnecti
     private static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
     private static final String TWP_SETTINGS_QUEUE = "tmail-settings";
     private static final String TWP_SETTINGS_DEAD_LETTER_QUEUE = "tmail-settings-dead-letter";
+    public static final String TWP_SETTINGS_INJECTION_KEY = "twp-settings";
 
     private final ReceiverProvider receiverProvider;
     private final UsersRepository usersRepository;
@@ -73,8 +74,8 @@ public class TWPSettingsConsumer implements Closeable, Startable, SimpleConnecti
     private Disposable consumeSettingsDisposable;
 
     @Inject
-    public TWPSettingsConsumer(@Named(TWPSettingsModule.TWP_SETTINGS_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
-                               @Named(TWPSettingsModule.TWP_SETTINGS_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+    public TWPSettingsConsumer(@Named(TWP_SETTINGS_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
+                               @Named(TWP_SETTINGS_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
                                UsersRepository usersRepository,
                                JmapSettingsRepository jmapSettingsRepository,
                                TWPCommonSettingsConfiguration twpCommonSettingsConfiguration) {
