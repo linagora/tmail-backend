@@ -157,7 +157,7 @@ public class TWPSettingsConsumer implements Closeable, Startable, SimpleConnecti
     }
 
     private Mono<Void> handleSettingsMessage(TWPCommonSettingsMessage message) {
-        return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(message.nickname())))
+        return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(message.payload().email())))
             .map(User::getUserName)
             .flatMap(username -> Mono.justOrEmpty(message.payload().language())
                 .flatMap(language -> Mono.from(jmapSettingsRepository.updatePartial(username,
