@@ -43,7 +43,9 @@ public class TWPCommonSettingsMessageDeserializerTest {
                 "nickname": "alice",
                 "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
                 "timestamp": 176248374356283740,
+                "version": 1,
                 "payload": {
+                    "email": "alice@domain.tld",
                     "language": "fr"
                 }
             }
@@ -67,7 +69,9 @@ public class TWPCommonSettingsMessageDeserializerTest {
                 "nickname": "alice",
                 "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
                 "timestamp": 176248374356283740,
+                "version": 1,
                 "payload": {
+                    "email": "alice@domain.tld",
                     "language": "fr"
                 }
             }
@@ -85,7 +89,9 @@ public class TWPCommonSettingsMessageDeserializerTest {
                 "source": "twake-mail",
                 "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
                 "timestamp": 176248374356283740,
+                "version": 1,
                 "payload": {
+                    "email": "alice@domain.tld",
                     "language": "fr"
                 }
             }
@@ -103,7 +109,9 @@ public class TWPCommonSettingsMessageDeserializerTest {
                 "source": "twake-mail",
                 "nickname": "alice",
                 "timestamp": 176248374356283740,
+                "version": 1,
                 "payload": {
+                    "email": "alice@domain.tld",
                     "language": "fr"
                 }
             }
@@ -120,8 +128,10 @@ public class TWPCommonSettingsMessageDeserializerTest {
             {
                 "source": "twake-mail",
                 "nickname": "alice",
+                "version": 1,
                 "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
                 "payload": {
+                    "email": "alice@domain.tld",
                     "language": "fr"
                 }
             }
@@ -138,6 +148,7 @@ public class TWPCommonSettingsMessageDeserializerTest {
             {
                 "source": "twake-mail",
                 "nickname": "alice",
+                "version": 1,
                 "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
                 "timestamp": 176248374356283740
             }
@@ -149,26 +160,43 @@ public class TWPCommonSettingsMessageDeserializerTest {
     }
 
     @Test
-    void parseEmptyPayloadShouldNotFail() {
+    void parseMissingRequiredEmailShouldThrowException() {
         String amqpMessage = """
             {
                 "source": "twake-mail",
                 "nickname": "alice",
                 "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
                 "timestamp": 176248374356283740,
-                "payload": {}
+                "version": 1,
+                "payload": {
+                    "language": "fr"
+                }
             }
             """;
 
-        TWPCommonSettingsMessage twpCommonSettingsMessage = TWPCommonSettingsMessage.Deserializer.parseAMQPMessage(amqpMessage);
+        assertThatThrownBy(() -> TWPCommonSettingsMessage.Deserializer.parseAMQPMessage(amqpMessage))
+            .isInstanceOf(TWPCommonSettingsMessage.TWPSettingsMessageParseException.class)
+            .hasMessageContaining("Failed to parse TWP settings message");
+    }
 
-        SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(twpCommonSettingsMessage.source()).isEqualTo("twake-mail");
-            softly.assertThat(twpCommonSettingsMessage.nickname()).isEqualTo("alice");
-            softly.assertThat(twpCommonSettingsMessage.requestId()).isEqualTo("6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7");
-            softly.assertThat(twpCommonSettingsMessage.timestamp().longValue()).isEqualTo(176248374356283740L);
-            softly.assertThat(twpCommonSettingsMessage.payload().language()).isEmpty();
-        });
+    @Test
+    void parseMissingRequiredVersionShouldThrowException() {
+        String amqpMessage = """
+            {
+                "nickname": "alice",
+                "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
+                "timestamp": 176248374356283740,
+                "version": 1,
+                "payload": {
+                    "email": "alice@domain.tld",
+                    "language": "fr"
+                }
+            }
+            """;
+
+        assertThatThrownBy(() -> TWPCommonSettingsMessage.Deserializer.parseAMQPMessage(amqpMessage))
+            .isInstanceOf(TWPCommonSettingsMessage.TWPSettingsMessageParseException.class)
+            .hasMessageContaining("Failed to parse TWP settings message");
     }
 
     @Test
@@ -179,7 +207,9 @@ public class TWPCommonSettingsMessageDeserializerTest {
                 "nickname": "alice",
                 "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
                 "timestamp": 176248374356283740,
+                "version": 1,
                 "payload": {
+                    "email": "alice@domain.tld",
                     "language": "fr",
                     "who_care": "whatever"
                 },

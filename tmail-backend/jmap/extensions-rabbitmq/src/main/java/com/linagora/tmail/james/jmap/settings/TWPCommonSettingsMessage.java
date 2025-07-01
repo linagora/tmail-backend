@@ -31,7 +31,7 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.google.common.base.Preconditions;
 
 public record TWPCommonSettingsMessage(String source, String nickname, String requestId,
-                                       Long timestamp, Payload payload) {
+                                       Long timestamp, Long version, Payload payload) {
     public static class TWPSettingsMessageParseException extends RuntimeException {
         TWPSettingsMessageParseException(String message, Throwable cause) {
             super(message, cause);
@@ -67,9 +67,14 @@ public record TWPCommonSettingsMessage(String source, String nickname, String re
         }
     }
 
-    public record Payload(Optional<String> language) {
+    public record Payload(String email,
+                          Optional<String> language) {
         @JsonCreator
-        public Payload(@JsonProperty("language") Optional<String> language) {
+        public Payload(@JsonProperty("email") String email,
+                       @JsonProperty("language") Optional<String> language) {
+            Preconditions.checkNotNull(email, "email cannot be null");
+
+            this.email = email;
             this.language = language;
         }
     }
@@ -79,17 +84,20 @@ public record TWPCommonSettingsMessage(String source, String nickname, String re
                                     @JsonProperty("nickname") String nickname,
                                     @JsonProperty("request_id") String requestId,
                                     @JsonProperty("timestamp") Long timestamp,
+                                    @JsonProperty("version") Long version,
                                     @JsonProperty("payload") Payload payload) {
         Preconditions.checkNotNull(source, "source cannot be null");
         Preconditions.checkNotNull(nickname, "nickname cannot be null");
         Preconditions.checkNotNull(requestId, "request_id cannot be null");
         Preconditions.checkNotNull(timestamp, "timestamp cannot be null");
+        Preconditions.checkNotNull(version, "version cannot be null");
         Preconditions.checkNotNull(payload, "payload cannot be null");
 
         this.source = source;
         this.nickname = nickname;
         this.requestId = requestId;
         this.timestamp = timestamp;
+        this.version = version;
         this.payload = payload;
     }
 }

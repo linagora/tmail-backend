@@ -54,6 +54,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.common.collect.ImmutableMap;
+
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
@@ -173,7 +175,8 @@ public class TWPSettingsConsumerTest {
     void shouldSetLanguageSettingWhenValidMessageHavingNicknameWithoutDomainPart() {
         // the consumer should resolve usernames without the domain part
         String languageUpdate = createSettingsUpdateMessage(ALICE_WITHOUT_DOMAIN_PART,
-            Map.of(LANGUAGE_KEY, LANGUAGE_FR));
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L);
         publishAmqpSettingsMessage(languageUpdate);
 
         awaitAtMost.untilAsserted(() -> {
@@ -188,7 +191,8 @@ public class TWPSettingsConsumerTest {
     void shouldSetLanguageSettingWhenValidMessageHavingNicknameWithDomainPart() {
         // the consumer should resolve usernames with the domain part
         String languageUpdate = createSettingsUpdateMessage(ALICE,
-            Map.of(LANGUAGE_KEY, LANGUAGE_FR));
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L);
         publishAmqpSettingsMessage(languageUpdate);
 
         awaitAtMost.untilAsserted(() -> {
@@ -205,7 +209,8 @@ public class TWPSettingsConsumerTest {
             JmapSettingsPatch$.MODULE$.toUpsert(JMAP_LANGUAGE_KEY, LANGUAGE_EN))).block();
 
         String languageUpdate = createSettingsUpdateMessage(ALICE,
-            Map.of(LANGUAGE_KEY, LANGUAGE_FR));
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L);
         publishAmqpSettingsMessage(languageUpdate);
 
         awaitAtMost.untilAsserted(() -> {
@@ -221,7 +226,8 @@ public class TWPSettingsConsumerTest {
         Mono.from(jmapSettingsRepository.updatePartial(ALICE, JmapSettingsPatch$.MODULE$.toUpsert(JMAP_LANGUAGE_KEY, LANGUAGE_EN))).block();
 
         String emptyUpdate = createSettingsUpdateMessage(ALICE,
-            Map.of());
+            Map.of(),
+            1L);
         publishAmqpSettingsMessage(emptyUpdate);
 
         awaitAtMost.untilAsserted(() -> {
@@ -240,7 +246,8 @@ public class TWPSettingsConsumerTest {
 
         // WHEN alice updates her language setting
         String languageUpdate = createSettingsUpdateMessage(ALICE,
-            Map.of(LANGUAGE_KEY, LANGUAGE_FR));
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L);
         publishAmqpSettingsMessage(languageUpdate);
 
         // THEN only james-user's language setting is not updated
@@ -259,7 +266,8 @@ public class TWPSettingsConsumerTest {
 
         // Verify that the consumer doesn't crash and continues to process valid messages
         String languageUpdate = createSettingsUpdateMessage(ALICE,
-            Map.of(LANGUAGE_KEY, LANGUAGE_FR));
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L);
         publishAmqpSettingsMessage(languageUpdate);
 
         awaitAtMost.untilAsserted(() -> {
@@ -270,8 +278,13 @@ public class TWPSettingsConsumerTest {
         });
     }
 
-    private String createSettingsUpdateMessage(Username username, Map<String, String> settingsUpdatePayload) {
-        String settingsUpdatePayloadAsJson = settingsUpdatePayload.entrySet().stream()
+    private String createSettingsUpdateMessage(Username username, Map<String, String> settingsUpdatePayload, long version) {
+        ImmutableMap<String, String> payload = ImmutableMap.<String, String>builder()
+            .putAll(settingsUpdatePayload)
+            .put("email", username.asString())
+            .build();
+
+        String settingsUpdatePayloadAsJson = payload.entrySet().stream()
             .map(entry -> String.format("\"%s\": \"%s\"", entry.getKey(), entry.getValue()))
             .collect(Collectors.joining(",\n"));
 
@@ -283,12 +296,14 @@ public class TWPSettingsConsumerTest {
             "timestamp": %d,
             "payload": {
                 %s
-            }
+            },
+            "version": %d
         }
         """, username.asString(),
             UUID.randomUUID(),
             System.currentTimeMillis(),
-            settingsUpdatePayloadAsJson);
+            settingsUpdatePayloadAsJson,
+            version);
     }
 
     private void publishAmqpSettingsMessage(String message) {
