@@ -24,6 +24,7 @@ import java.io.File;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.github.fge.lambdas.Throwing;
@@ -64,5 +65,12 @@ public class MemoryJmapSettingsGetMethodTest implements JmapSettingsGetMethodCon
         if (guiceJamesServer != null && guiceJamesServer.isStarted()) {
             guiceJamesServer.stop();
         }
+    }
+
+    @Override
+    @Disabled("Memory app can not load TWPReadOnlyPropertyProvider class, as it is not in the classpath." +
+        "TWP only uses the distributed app anyway.")
+    public void languageSettingsShouldBeReturnedWhenTwpReadOnlyProvider() {
+
     }
 }
