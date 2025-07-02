@@ -136,7 +136,7 @@ class JmapSettingsGetMethod @Inject()(val jmapSettingsRepository: JmapSettingsRe
     maybeUserSettings match {
       case Some(userSettings) =>
         val filteredSettings: Map[JmapSettingsKey, JmapSettingsValue] = userSettings.settings
-          .filterNot { case (key, _) => readOnlyPropertiesProvider.readOnlySettings().asScala.contains(key) }
+          .filterNot { case (key, _) => readOnlySettings.asScala.contains(key) }
         val mergedSettings: Map[JmapSettingsKey, JmapSettingsValue] = filteredSettings ++ readOnlySettings.asScala
         userSettings.copy(settings = mergedSettings)
 

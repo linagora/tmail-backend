@@ -322,6 +322,51 @@ trait JmapSettingsGetMethodContract {
   }
 
   @Test
+  def languageSettingsShouldBeReturnedWhenTwpReadOnlyProvider(): Unit = {
+    val server = setUpJmapServer(Map("settings.readonly.properties.providers" -> "TWPReadOnlyPropertyProvider"))
+
+    // Assume user BOB had set FR language setting origin from TWP settings service
+    val settingsStateUpdate = server.getProbe(classOf[JmapSettingsProbe])
+      .reset(BOB, Map(("language", "fr")))
+
+    // Settings/get should return the language setting
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/get",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"ids": null
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/get",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "state": "${settingsStateUpdate.newState.serialize}",
+           |        "list": [{
+           |                "id": "singleton",
+           |                "settings": {
+           |                    "language": "fr"
+           |                }
+           |            }],
+           |        "notFound": [] },"c1"
+           |]""".stripMargin))
+  }
+
+  @Test
   def fetchNullIdsShouldReturnSettings(): Unit = {
     val server = setUpJmapServer(Map())
 
