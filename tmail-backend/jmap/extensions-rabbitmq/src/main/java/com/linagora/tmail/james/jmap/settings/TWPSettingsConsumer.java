@@ -48,6 +48,7 @@ import com.rabbitmq.client.Connection;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.BindingSpecification;
 import reactor.rabbitmq.ConsumeOptions;
@@ -136,6 +137,7 @@ public class TWPSettingsConsumer implements Closeable, Startable, SimpleConnecti
     private Disposable consumeSettingsQueue() {
         return delivery(TWP_SETTINGS_QUEUE)
             .flatMap(delivery -> consumeSettingsUpdate(delivery, delivery.getBody()), DEFAULT_CONCURRENCY)
+            .subscribeOn(Schedulers.boundedElastic())
             .subscribe();
     }
 
