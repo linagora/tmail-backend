@@ -167,6 +167,17 @@ trait JmapSettingsRepositoryContract {
   }
 
   @Test
+  def updatePartialShouldInsertSettingsWhenUserHasNoSettings(): Unit = {
+    val settingsStateUpdate: SettingsStateUpdate = SMono(testee.updatePartial(BOB, JmapSettingsPatch(
+      JmapSettingsUpsertRequest(Map("key3".asSettingKey -> JmapSettingsValue("value3"))),
+      Seq()))).block()
+
+    assertThat(settingsStateUpdate.oldState).isEqualTo(JmapSettingsStateFactory.INITIAL)
+    assertThat(SMono(testee.get(BOB)).block().settings.asJava)
+      .containsExactlyInAnyOrderEntriesOf(java.util.Map.ofEntries(entry("key3".asSettingKey, JmapSettingsValue("value3"))))
+  }
+
+  @Test
   def updatePartialShouldAppendNewSettingEntryInPatch(): Unit = {
     SMono(testee.reset(BOB, Map(("key1", "value1")).asUpsertRequest)).block()
     SMono(testee.updatePartial(BOB, JmapSettingsPatch(
