@@ -48,6 +48,7 @@ class CassandraJmapSettingsRepository @Inject()(dao: CassandraJmapSettingsDAO) e
 
     val newState: UuidState = JmapSettingsStateFactory.generateState()
     dao.selectState(username)
+      .defaultIfEmpty(INITIAL)
       .flatMap(oldState => dao.updateSetting(username, newState, settingsPatch.toUpsert.settings, settingsPatch.toRemove)
           .`then`(SMono.just(SettingsStateUpdate(oldState, newState))))
   }
