@@ -22,6 +22,7 @@ import static com.linagora.tmail.james.jmap.settings.TWPCommonSettingsConfigurat
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.net.URI;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
@@ -37,6 +38,7 @@ public class TWPCommonSettingsConfigurationTest {
 
         assertThat(twpCommonSettingsConfiguration).isEqualTo(new TWPCommonSettingsConfiguration(
             Optional.empty(),
+            Optional.empty(),
             TWP_QUEUES_QUORUM_BYPASS_DISABLED,
             "settings",
             "user.settings.updated"));
@@ -46,25 +48,31 @@ public class TWPCommonSettingsConfigurationTest {
     void parsingAmqpUrisShouldSucceedWhenValidTWPRabbitMqUri() {
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         rabbitConfiguration.addProperty("twp.rabbitmq.uri", "amqp://james:password@rabbitmqhost:5672/twp-vhost");
+        rabbitConfiguration.addProperty("twp.rabbitmq.management.uri", "http://james:password@rabbitmqhost:15672/api/");
 
         AmqpUri amqpUri = TWPCommonSettingsConfiguration.from(rabbitConfiguration)
             .amqpUri().get().getFirst();
+        URI managementUri = TWPCommonSettingsConfiguration.from(rabbitConfiguration)
+            .managementUri().get();
 
         assertThat(amqpUri.getUri().toString()).isEqualTo("amqp://james:password@rabbitmqhost:5672/twp-vhost");
         assertThat(amqpUri.getUserInfo().username()).isEqualTo("james");
         assertThat(amqpUri.getUserInfo().password()).isEqualTo("password");
         assertThat(amqpUri.getVhost()).contains("twp-vhost");
         assertThat(amqpUri.getPort()).isEqualTo(5672);
+        assertThat(managementUri.toString()).isEqualTo("http://james:password@rabbitmqhost:15672/api/");
     }
 
     @Test
     void amqpUrisShouldBeEmptyWhenTWPRabbitMqUriIsBlank() {
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         rabbitConfiguration.addProperty("twp.rabbitmq.uri", "  ");
+        rabbitConfiguration.addProperty("twp.rabbitmq.management.uri", "  ");
 
         TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(rabbitConfiguration);
 
         assertThat(twpCommonSettingsConfiguration.amqpUri()).isEmpty();
+        assertThat(twpCommonSettingsConfiguration.managementUri()).isEmpty();
     }
 
     @Test
@@ -75,6 +83,16 @@ public class TWPCommonSettingsConfigurationTest {
         assertThatThrownBy(() -> TWPCommonSettingsConfiguration.from(rabbitConfiguration))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Invalid Twake RabbitMQ URI in rabbitmq.properties");
+    }
+
+    @Test
+    void parsingManagementUriShouldThrowWhenTWPManagementUriIsInvalid() {
+        PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
+        rabbitConfiguration.addProperty("twp.rabbitmq.management.uri", "BAD_SCHEME://james:password@rabbitmqhost:15672/api/");
+
+        assertThatThrownBy(() -> TWPCommonSettingsConfiguration.from(rabbitConfiguration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("You need to specify a valid URI");
     }
 
     @Test

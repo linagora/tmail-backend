@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.settings;
 import static com.linagora.tmail.james.jmap.settings.TWPSettingsConsumer.TWP_SETTINGS_INJECTION_KEY;
 
 import java.io.FileNotFoundException;
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -112,13 +113,14 @@ public class TWPSettingsModule extends AbstractModule {
                                                                          TWPCommonSettingsConfiguration twpCommonSettingsConfiguration) {
         Optional<List<AmqpUri>> maybeTwpAmqpUris = twpCommonSettingsConfiguration.amqpUri();
 
-        return maybeTwpAmqpUris.map(withTwpAmqpUris(commonRabbitMQConfiguration))
+        return maybeTwpAmqpUris.map(withTwpAmqpUris(commonRabbitMQConfiguration, twpCommonSettingsConfiguration.managementUri()))
             .orElse(commonRabbitMQConfiguration);
     }
 
-    private Function<List<AmqpUri>, RabbitMQConfiguration> withTwpAmqpUris(RabbitMQConfiguration commonRabbitMQConfiguration) {
+    private Function<List<AmqpUri>, RabbitMQConfiguration> withTwpAmqpUris(RabbitMQConfiguration commonRabbitMQConfiguration,
+                                                                           Optional<URI> managementUri) {
         return uris -> uris.getFirst()
-            .toRabbitMqConfiguration(commonRabbitMQConfiguration)
+            .toRabbitMqConfiguration(commonRabbitMQConfiguration, managementUri)
             .hosts(uris.stream().map(uri -> Host.from(uri.getUri().getHost(), uri.getPort())).collect(ImmutableList.toImmutableList()))
             .build();
     }
