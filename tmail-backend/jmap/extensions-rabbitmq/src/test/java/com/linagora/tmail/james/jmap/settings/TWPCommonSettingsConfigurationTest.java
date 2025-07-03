@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.james.jmap.settings;
 
-import static com.linagora.tmail.james.jmap.settings.TWPCommonSettingsConfiguration.TWP_COMMON_SETTINGS_DISABLED;
 import static com.linagora.tmail.james.jmap.settings.TWPCommonSettingsConfiguration.TWP_QUEUES_QUORUM_BYPASS_DISABLED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,19 +26,16 @@ import java.util.Optional;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.AmqpUri;
 
 public class TWPCommonSettingsConfigurationTest {
     @Test
-    void twpCommonSettingsShouldBeDisabledByDefault() {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
+    void shouldFallbackToDefaultConfig() {
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
-        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration);
+        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(rabbitConfiguration);
 
-        assertThat(twpCommonSettingsConfiguration).isEqualTo(new TWPCommonSettingsConfiguration(TWP_COMMON_SETTINGS_DISABLED,
+        assertThat(twpCommonSettingsConfiguration).isEqualTo(new TWPCommonSettingsConfiguration(
             Optional.empty(),
             TWP_QUEUES_QUORUM_BYPASS_DISABLED,
             "settings",
@@ -47,36 +43,11 @@ public class TWPCommonSettingsConfigurationTest {
     }
 
     @Test
-    void twpCommonSettingsShouldBeDisabledWhenTWPReadOnlyPropertyProviderNotConfigured() {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
-        PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
-        jmapConfiguration.addProperty("settings.readonly.properties.providers", "com.linagora.tmail.james.jmap.settings.FixedLanguageReadOnlyPropertyProvider");
-        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration);
-
-        assertThat(twpCommonSettingsConfiguration.enabled()).isFalse();
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-        "TWPReadOnlyPropertyProvider",
-        "com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider",
-        "com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider, com.linagora.tmail.james.jmap.settings.FixedLanguageReadOnlyPropertyProvider"})
-    void twpCommonSettingsShouldBeEnabledWhenTWPReadOnlyPropertyProviderConfigured(String readOnlyPropertyProviders) {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
-        PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
-        jmapConfiguration.addProperty("settings.readonly.properties.providers", readOnlyPropertyProviders);
-        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration);
-
-        assertThat(twpCommonSettingsConfiguration.enabled()).isTrue();
-    }
-
-    @Test
     void parsingAmqpUrisShouldSucceedWhenValidTWPRabbitMqUri() {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         rabbitConfiguration.addProperty("twp.rabbitmq.uri", "amqp://james:password@rabbitmqhost:5672/twp-vhost");
 
-        AmqpUri amqpUri = TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration)
+        AmqpUri amqpUri = TWPCommonSettingsConfiguration.from(rabbitConfiguration)
             .amqpUri().get().getFirst();
 
         assertThat(amqpUri.getUri().toString()).isEqualTo("amqp://james:password@rabbitmqhost:5672/twp-vhost");
@@ -88,55 +59,50 @@ public class TWPCommonSettingsConfigurationTest {
 
     @Test
     void amqpUrisShouldBeEmptyWhenTWPRabbitMqUriIsBlank() {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         rabbitConfiguration.addProperty("twp.rabbitmq.uri", "  ");
 
-        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration);
+        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(rabbitConfiguration);
 
         assertThat(twpCommonSettingsConfiguration.amqpUri()).isEmpty();
     }
 
     @Test
     void parsingAmqpUrisShouldThrowWhenTWPRabbitMqUriIsInvalid() {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         rabbitConfiguration.addProperty("twp.rabbitmq.uri", "BAD_SCHEME://james:james@rabbitmqhost:5672");
 
-        assertThatThrownBy(() -> TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration))
+        assertThatThrownBy(() -> TWPCommonSettingsConfiguration.from(rabbitConfiguration))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Invalid Twake RabbitMQ URI in rabbitmq.properties");
     }
 
     @Test
     void quorumQueuesByPassShouldBeEnabledWhenConfigured() {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         rabbitConfiguration.addProperty("twp.queues.quorum.bypass", "true");
 
-        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration);
+        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(rabbitConfiguration);
 
         assertThat(twpCommonSettingsConfiguration.quorumQueuesBypass()).isTrue();
     }
 
     @Test
     void configuringExchangeShouldWork() {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         rabbitConfiguration.addProperty("twp.settings.exchange", "TWPSettingsExchange");
 
-        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration);
+        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(rabbitConfiguration);
 
         assertThat(twpCommonSettingsConfiguration.exchange()).isEqualTo("TWPSettingsExchange");
     }
 
     @Test
     void configuringRoutingKeyShouldWork() {
-        PropertiesConfiguration jmapConfiguration = new PropertiesConfiguration();
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         rabbitConfiguration.addProperty("twp.settings.routingKey", "TWPSettingsRoutingKey");
 
-        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(jmapConfiguration, rabbitConfiguration);
+        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = TWPCommonSettingsConfiguration.from(rabbitConfiguration);
 
         assertThat(twpCommonSettingsConfiguration.routingKey()).isEqualTo("TWPSettingsRoutingKey");
     }

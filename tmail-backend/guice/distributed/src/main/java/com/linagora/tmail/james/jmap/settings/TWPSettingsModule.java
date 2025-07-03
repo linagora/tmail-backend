@@ -68,8 +68,7 @@ public class TWPSettingsModule extends AbstractModule {
     @Provides
     @Singleton
     TWPCommonSettingsConfiguration provideCommonSettingsConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
-        return TWPCommonSettingsConfiguration.from(propertiesProvider.getConfiguration("jmap"),
-            propertiesProvider.getConfiguration("rabbitmq"));
+        return TWPCommonSettingsConfiguration.from(propertiesProvider.getConfiguration("rabbitmq"));
     }
 
     @Provides

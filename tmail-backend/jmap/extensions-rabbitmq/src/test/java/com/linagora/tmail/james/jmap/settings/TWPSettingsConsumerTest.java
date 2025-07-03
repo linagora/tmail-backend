@@ -145,7 +145,6 @@ public class TWPSettingsConsumerTest {
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
 
         TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = new TWPCommonSettingsConfiguration(
-            true,
             Optional.empty(),
             false,
             EXCHANGE_NAME,
