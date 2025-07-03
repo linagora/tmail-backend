@@ -46,6 +46,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 
 public record DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                             MailboxConfiguration mailboxConfiguration,
@@ -56,6 +57,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                             LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
                                             OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration,
+                                            TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration,
                                             boolean jmapEnabled,
                                             PropertiesProvider propertiesProvider,
                                             FileConfigurationProvider fileConfigurationProvider,
@@ -77,6 +79,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
         private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
+        private Optional<TWPSettingsModuleChooserConfiguration> twpSettingsModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<EventBusKeysChoice> eventBusKeysChoice;
         private Optional<Boolean> quotaCompatibilityMode;
@@ -97,6 +100,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
             openPaasModuleChooserConfiguration = Optional.empty();
+            twpSettingsModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             quotaCompatibilityMode = Optional.empty();
             eventBusKeysChoice = Optional.empty();
@@ -172,6 +176,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
 
         public Builder openPassModuleChooserConfiguration(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {
             this.openPaasModuleChooserConfiguration = Optional.of(openPaasModuleChooserConfiguration);
+            return this;
+        }
+
+        public Builder twpSettingsModuleChooserConfiguration(TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration) {
+            this.twpSettingsModuleChooserConfiguration = Optional.of(twpSettingsModuleChooserConfiguration);
             return this;
         }
 
@@ -260,6 +269,9 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 }
             });
 
+            TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration = this.twpSettingsModuleChooserConfiguration
+                .orElseGet(Throwing.supplier(() -> TWPSettingsModuleChooserConfiguration.parse(propertiesProvider)));
+
             boolean quotaCompatibilityMode = this.quotaCompatibilityMode.orElseGet(() -> {
                 try {
                     return propertiesProvider.getConfiguration("cassandra").getBoolean("quota.compatibility.mode", false);
@@ -326,6 +338,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
                 openPaasModuleChooserConfiguration,
+                twpSettingsModuleChooserConfiguration,
                 jmapEnabled,
                 propertiesProvider,
                 configurationProvider,

@@ -39,8 +39,8 @@ public record TWPCommonSettingsConfiguration(boolean enabled,
     private static final String TWP_SETTINGS_ROUTING_KEY_PROPERTY = "twp.settings.routingKey";
     public static final boolean TWP_COMMON_SETTINGS_DISABLED = false;
     public static final boolean TWP_QUEUES_QUORUM_BYPASS_DISABLED = false;
-    private static final String TWP_SETTINGS_EXCHANGE_DEFAULT = "settings";
-    private static final String TWP_SETTINGS_ROUTING_KEY_DEFAULT = "user.settings.updated";
+    public static final String TWP_SETTINGS_EXCHANGE_DEFAULT = "settings";
+    public static final String TWP_SETTINGS_ROUTING_KEY_DEFAULT = "user.settings.updated";
 
     public static TWPCommonSettingsConfiguration from(Configuration jmapConfiguration, Configuration rabbitMQConfiguration) {
         boolean enabled = Optional.ofNullable(jmapConfiguration.getString("settings.readonly.properties.providers", null))
