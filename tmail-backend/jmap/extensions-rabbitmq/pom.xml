@@ -110,6 +110,13 @@
                     <config>${project.parent.parent.basedir}/.scalafix.conf</config>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <reuseForks>false</reuseForks>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

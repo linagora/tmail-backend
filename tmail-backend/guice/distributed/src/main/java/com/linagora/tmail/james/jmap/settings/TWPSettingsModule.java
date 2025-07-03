@@ -33,6 +33,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQConnectionFactory;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
+import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.Host;
@@ -46,6 +47,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.AmqpUri;
 
@@ -56,6 +58,9 @@ public class TWPSettingsModule extends AbstractModule {
     protected void configure() {
         bind(TWPReadOnlyPropertyProvider.class).in(Scopes.SINGLETON);
         bind(TWPSettingsConsumer.class).in(Scopes.SINGLETON);
+
+        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
+            .to(TWPSettingsDeadLetterQueueHealthCheck.class);
     }
 
     @ProvidesIntoSet
