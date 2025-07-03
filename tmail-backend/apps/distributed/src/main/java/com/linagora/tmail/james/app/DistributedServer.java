@@ -214,6 +214,8 @@ import com.linagora.tmail.james.jmap.routes.DownloadAllRoutesModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.CassandraJmapSettingsRepositoryModule;
+import com.linagora.tmail.james.jmap.settings.TWPSettingsModule;
+import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
@@ -440,6 +442,7 @@ public class DistributedServer {
                 binder.bind(NoopGuiceLoader.class).in(Singleton.class);
             })
             .overrideWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
+            .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
@@ -555,6 +558,13 @@ public class DistributedServer {
             return moduleBuilder.build();
         }
         return List.of(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED));
+    }
+
+    private static List<Module> chooseTWPSettingsModule(TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration) {
+        if (twpSettingsModuleChooserConfiguration.enabled()) {
+            return List.of(new TWPSettingsModule());
+        }
+        return List.of();
     }
 
     private static List<Module> chooseRedisRateLimiterModule(DistributedJamesConfiguration configuration) {
