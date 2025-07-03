@@ -62,6 +62,8 @@ public class TWPSettingsModule extends AbstractModule {
 
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
             .to(TWPSettingsDeadLetterQueueHealthCheck.class);
+        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
+            .to(TWPSettingsQueueConsumerHealthCheck.class);
     }
 
     @ProvidesIntoSet

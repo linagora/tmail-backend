@@ -19,7 +19,9 @@
 package com.linagora.tmail.integration.distributed;
 
 import static io.restassured.RestAssured.given;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItems;
 
@@ -112,5 +114,22 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
             .statusCode(HttpStatus.OK_200)
             .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
             .body("checks.componentName", hasItems("TWPSettingsDeadLetterQueueHealthCheck"));
+    }
+
+    @Test
+    void twpSettingsConsumerHealthcheckShouldBeHealthyWhenTWPSettingEnabled(GuiceJamesServer jamesServer) {
+        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
+        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
+
+        await().atMost(30, SECONDS)
+            .untilAsserted(() ->
+                given()
+                    .queryParam("check", "TWPSettingsQueueConsumerHealthCheck")
+                .when()
+                    .get("/healthcheck")
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
+                    .body("checks.componentName", hasItems("TWPSettingsQueueConsumerHealthCheck")));
     }
 }

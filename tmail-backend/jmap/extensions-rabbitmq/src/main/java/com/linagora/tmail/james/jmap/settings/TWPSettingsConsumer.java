@@ -33,17 +33,14 @@ import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
-import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.core.Username;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.model.User;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.Connection;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -58,11 +55,11 @@ import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 import scala.jdk.javaapi.OptionConverters;
 
-public class TWPSettingsConsumer implements Closeable, Startable, SimpleConnectionPool.ReconnectionHandler {
+public class TWPSettingsConsumer implements Closeable, Startable {
     private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
     private static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
-    private static final String TWP_SETTINGS_QUEUE = "tmail-settings";
+    public static final String TWP_SETTINGS_QUEUE = "tmail-settings";
     public static final String TWP_SETTINGS_DEAD_LETTER_QUEUE = "tmail-settings-dead-letter";
     public static final String TWP_SETTINGS_INJECTION_KEY = "twp-settings";
 
@@ -201,12 +198,5 @@ public class TWPSettingsConsumer implements Closeable, Startable, SimpleConnecti
     @Override
     public void close() {
         Optional.ofNullable(consumeSettingsDisposable).ifPresent(Disposable::dispose);
-    }
-
-    @Override
-    public Publisher<Void> handleReconnection(Connection connection) {
-        return Mono.fromRunnable(this::restartConsumer)
-            .doOnError(error -> LOGGER.error("Error while handle reconnection for TWP settings consumer", error))
-            .then();
     }
 }
