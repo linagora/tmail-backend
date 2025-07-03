@@ -143,9 +143,14 @@ public final class AmqpUri {
      * @return a `RabbitMQConfiguration` object representing the AMQP URI
      */
     public RabbitMQConfiguration.Builder toRabbitMqConfiguration(RabbitMQConfiguration commonRabbitMQConfiguration) {
+        return toRabbitMqConfiguration(commonRabbitMQConfiguration, Optional.empty());
+    }
+
+    public RabbitMQConfiguration.Builder toRabbitMqConfiguration(RabbitMQConfiguration commonRabbitMQConfiguration,
+                                                                 Optional<URI> managementUri) {
         return RabbitMQConfiguration.builder()
             .amqpUri(uri)
-            .managementUri(uri)
+            .managementUri(managementUri.orElse(commonRabbitMQConfiguration.getManagementUri()))
             .managementCredentials(userInfo.asManagementCredentials())
             .vhost(getVhost())
             .useSsl(commonRabbitMQConfiguration.useSsl())

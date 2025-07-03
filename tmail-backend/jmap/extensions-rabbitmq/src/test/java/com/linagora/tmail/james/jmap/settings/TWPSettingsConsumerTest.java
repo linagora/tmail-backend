@@ -146,6 +146,7 @@ public class TWPSettingsConsumerTest {
 
         TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = new TWPCommonSettingsConfiguration(
             Optional.empty(),
+            Optional.empty(),
             false,
             EXCHANGE_NAME,
             ROUTING_KEY);
