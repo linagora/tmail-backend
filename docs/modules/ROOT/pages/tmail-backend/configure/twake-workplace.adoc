@@ -1,0 +1,42 @@
+= Twake Workplace Integration
+:navtitle: Twake Workplace Integration
+
+== Twake Workplace Settings synchronization
+
+The Twake Workplace (TWP) Settings module allows TMail to integrate with Twake Workplace for user settings synchronization. This module enables TMail to receive and apply user settings updates from Twake Workplace through RabbitMQ.
+
+=== How It Works
+
+When enabled, the TWP Settings module:
+
+1. Connects to the configured RabbitMQ server
+2. Listens for user settings updates on the specified exchange and routing key
+3. Applies the received settings to the corresponding user in TMail
+
+This allows for seamless integration between Twake Workplace and TMail, ensuring that user settings are synchronized across the TWP platform.
+
+Users will not be able to modify related TWP settings from TMail, as they are read-only. Any changes to TWP settings must be made in Twake Workplace, and those changes will be reflected in TMail through the RabbitMQ updates.
+
+=== Enabling TWP Settings Module
+
+By default, the TWP Settings module is disabled.
+
+To enable the TWP Settings module, you need to configure the `TWPReadOnlyPropertyProvider` in the `jmap.properties` file:
+
+- `settings.readonly.properties.providers`: Add the `TWPReadOnlyPropertyProvider` class to the list of property providers.
+
+Example configuration in `jmap.properties`:
+
+....
+settings.readonly.properties.providers=com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider
+....
+
+If you have multiple property providers, separate them with commas:
+
+....
+settings.readonly.properties.providers=com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider,com.linagora.tmail.james.jmap.settings.FixedLanguageReadOnlyPropertyProvider
+....
+
+=== RabbitMQ Configuration
+
+The TWP Settings module may require RabbitMQ configuration to function properly. See the xref:tmail-backend/configure/rabbitmq.adoc#_twp_settings_configuration[RabbitMQ TWP Settings Configuration] section for details on configuring the RabbitMQ properties.

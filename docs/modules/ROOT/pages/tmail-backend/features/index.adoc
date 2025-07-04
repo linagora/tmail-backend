@@ -129,3 +129,11 @@ This feature allows users to:
 The PublicAsset extension ensures that images can be properly integrated into email signatures, improving personalization and branding efforts.
 
 xref:tmail-backend/jmap-extensions/publicAssets.adoc[Read more]...
+
+== Twake Workplace Sync
+
+TMail integrates with Twake Workplace to synchronize user settings between the platforms.
+
+The Twake Workplace Settings module ensures that user preferences set in Twake Workplace are automatically reflected in TMail, providing a seamless experience across the Linagora ecosystem.
+
+xref:tmail-backend/features/twake-workplace-integration.adoc[Read more]...
