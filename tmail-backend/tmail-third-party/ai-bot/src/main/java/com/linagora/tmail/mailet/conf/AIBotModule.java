@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.google.inject.AbstractModule;
@@ -32,6 +33,7 @@ import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.AIRedactionalHelper;
 import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
+import com.linagora.tmail.mailet.rag.RagListenerConfiguration;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
@@ -49,8 +51,20 @@ public class AIBotModule extends AbstractModule {
     }
 
     @Provides
+    @Singleton
+    @Named("rag")
+    public  Configuration getRAGConfigurations(ConfigurationProvider configurationProvider) throws ConfigurationException {
+        return configurationProvider.getConfiguration("listeners");
+    }
+
+    @Provides
     public static AIBotConfig provideAiBotExtensionConfiguration(@Named("ai") Configuration configuration) {
         return AIBotConfig.from(configuration);
+    }
+
+    @Provides
+    public RagListenerConfiguration provideRagExtensionConfiguration(@Named("rag") Configuration configuration) throws ConfigurationException {
+        return RagListenerConfiguration.from(configuration);
     }
 
     @Provides
