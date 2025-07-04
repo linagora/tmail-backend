@@ -17,11 +17,10 @@
  ********************************************************************/
 package com.linagora.tmail.mailet.rag;
 
-import java.util.Set;
-
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
+import org.apache.james.events.Group;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -45,9 +44,13 @@ import com.google.inject.Inject;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class RagListener implements EventListener.ReactiveEventListener {
+public class RagListener implements EventListener.ReactiveGroupEventListener {
+    public static class RagListenerGroup extends Group {
+
+    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RagListener.class);
+    private static final Group GROUP = new RagListenerGroup();
 
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
@@ -63,10 +66,14 @@ public class RagListener implements EventListener.ReactiveEventListener {
     }
 
     @Override
+    public ExecutionMode getExecutionMode() {
+        return ReactiveGroupEventListener.super.getExecutionMode();
+    }
+
+    @Override
     public boolean isHandling(Event event) {
         return event instanceof MailboxEvents.Added addedEvent && addedEvent.isAppended() || event instanceof MailboxEvents.Expunged;
     }
-
 
     @Override
     public Publisher<Void> reactiveEvent(Event event) {
