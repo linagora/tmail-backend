@@ -55,14 +55,14 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
     private final SystemMailboxesProvider systemMailboxesProvider;
-    private final Set<Username> whitelist;
+    private final RagListenerConfiguration config;
 
     @Inject
-    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, Set<Username> whitelist) {
+    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, RagListenerConfiguration config) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.systemMailboxesProvider = systemMailboxesProvider;
-        this.whitelist = whitelist;
+        this.config = config;
     }
 
     @Override
@@ -118,6 +118,12 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     }
 
     public boolean isUserAllowed(Username userEmail) {
-        return whitelist.contains(userEmail);
+        return config.getWhitelist().isEmpty() || config.getWhitelist().get().contains(userEmail);
     }
+
+    @Override
+    public Group getDefaultGroup() {
+        return GROUP;
+    }
+
 }
