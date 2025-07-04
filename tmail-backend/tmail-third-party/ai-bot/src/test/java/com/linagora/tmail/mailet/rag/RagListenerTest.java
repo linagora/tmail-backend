@@ -23,46 +23,32 @@ import static org.mockito.Mockito.spy;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.core.read.ListAppender;
 
-import com.google.common.collect.ImmutableSortedMap;
-
-import jakarta.mail.Flags;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.james.core.Username;
-import org.apache.james.events.Event;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.MailboxSession;
-import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MessageIdManager;
-import org.apache.james.mailbox.MessageUid;
-import org.apache.james.mailbox.ModSeq;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.MailboxSessionUtil;
-import org.apache.james.mailbox.events.MailboxEvents;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
 import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.mailbox.model.MessageMetaData;
-import org.apache.james.mailbox.model.ThreadId;
-import org.apache.james.mailbox.model.ByteContent;
 import org.apache.james.mailbox.model.MailboxId;
-import org.apache.james.mailbox.model.TestMessageId;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.store.FakeAuthenticator;
+import org.apache.james.mailbox.store.StoreMailboxManager;
 import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
-import org.apache.james.mailbox.store.mail.model.impl.PropertyBuilder;
-import org.apache.james.mailbox.store.mail.model.impl.SimpleMailboxMessage;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.AfterEach;
@@ -70,7 +56,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 class RagListenerTest {
 
@@ -79,15 +64,16 @@ class RagListenerTest {
     private static final MailboxPath BOB_INBOX_PATH = MailboxPath.inbox(BOB);
     private static final MailboxPath ALICE_INBOX_PATH = MailboxPath.inbox(ALICE);
     private static final MailboxPath BOB_SPAM_PATH = MailboxPath.forUser(BOB, "Spam");
+    private static final MailboxPath BOB_MAILBOX_PATH = MailboxPath.forUser(BOB, "mailbox");
     private static final MailboxPath BOB_TRASH_PATH = MailboxPath.forUser(BOB, "Trash");
-    private static final TestMessageId MESSAGE_ID = TestMessageId.of(18);
-    private static final MessageUid MESSAGE_UID_1 = MessageUid.of(25);
+
     private static final byte[] CONTENT = "Subject: test\r\n\r\nBody of the email".getBytes(StandardCharsets.UTF_8);
 
+    StoreMailboxManager mailboxManager;
     RagListener ragListener;
-    MailboxManager mailboxManager;
     MessageIdManager messageIdManager;
     MessageManager aliceInboxMessageManager;
+    MessageManager bobMailBoxMessageManager;
     MessageManager bobInboxMessageManager;
     MessageManager spamMessageManager;
     MessageManager trashMessageManager;
@@ -99,6 +85,7 @@ class RagListenerTest {
     UpdatableTickingClock clock;
     MailboxSessionMapperFactory mapperFactory;
     MailboxId bobInboxId;
+    MailboxId bobMailBoxId;
     MailboxId aliceInboxId;
     MemoryEventDeadLetters eventDeadLetters;
     ListAppender<ILoggingEvent> listAppender;
@@ -131,7 +118,7 @@ class RagListenerTest {
             .storeQuotaManager()
             .build();
 
-        mailboxManager = resources.getMailboxManager();
+        mailboxManager = resources.getMailboxManager();;
         messageIdManager = spy(resources.getMessageIdManager());
         FakeAuthenticator authenticator = new FakeAuthenticator();
         authenticator.addUser(BOB, "12345");
@@ -140,12 +127,14 @@ class RagListenerTest {
         bobMailboxSession = MailboxSessionUtil.create(BOB);
         aliceMailboxSession = MailboxSessionUtil.create(ALICE);
         bobInboxId = mailboxManager.createMailbox(BOB_INBOX_PATH, bobMailboxSession).get();
+        bobMailBoxId = mailboxManager.createMailbox(BOB_MAILBOX_PATH, bobMailboxSession).get();
         aliceInboxId = mailboxManager.createMailbox(ALICE_INBOX_PATH, aliceMailboxSession).get();
         spamMailboxId = mailboxManager.createMailbox(BOB_SPAM_PATH, bobMailboxSession).get();
         trashMailboxId = mailboxManager.createMailbox(BOB_TRASH_PATH, bobMailboxSession).get();
         spamMessageManager = mailboxManager.getMailbox(spamMailboxId, bobMailboxSession);
         trashMessageManager = mailboxManager.getMailbox(trashMailboxId, bobMailboxSession);
         bobInboxMessageManager = mailboxManager.getMailbox(bobInboxId, bobMailboxSession);
+        bobMailBoxMessageManager = mailboxManager.getMailbox(bobMailBoxId, bobMailboxSession);
         aliceInboxMessageManager = mailboxManager.getMailbox(aliceInboxId, aliceMailboxSession);
         systemMailboxesProvider = new SystemMailboxesProviderImpl(mailboxManager);
         Set<Username> whitelist = Set.of(BOB);
@@ -173,34 +162,14 @@ class RagListenerTest {
             .uid(MESSAGE_UID_1)
             .build();
 
-        MessageManager.AppendResult messageResult = spamMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(message.getFullContent().readAllBytes())),
+        bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
-
-        MessageMetaData messageMetaData = new MessageMetaData(messageResult.getId().getUid(),
-            message.getModSeq(),
-            message.metaData().getFlags(),
-            25,
-            message.getInternalDate(),
-            message.getSaveDate(),
-            messageResult.getId().getMessageId(),
-            message.getThreadId());
-
-        MailboxEvents.Added added= new MailboxEvents.Added(bobMailboxSession.getSessionId(),
-            BOB,
-            BOB_INBOX_PATH,
-            bobInboxId,
-            ImmutableSortedMap.of(messageResult.getId().getUid(), messageMetaData),
-            Event.EventId.random(),
-            true,
-            true, Optional.empty());
-
-        Mono.from(ragListener.reactiveEvent(added)).block();
 
         assertThat(listAppender.list)
             .extracting(ILoggingEvent::getFormattedMessage)
             .contains(
-                "RAG Listener triggered for mailbox: 1",
+                "RAG Listener triggered for mailbox: " + bobInboxId,
                 "RAG Listener successfully processed mailContent ***** Body of the email *****");
     }
 
@@ -220,26 +189,25 @@ class RagListenerTest {
             .uid(MESSAGE_UID_1)
             .build();
 
-        MessageManager.AppendResult messageResult = spamMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(message.getFullContent().readAllBytes())),
+        MessageManager.AppendResult messageResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        MessageMetaData messageMetaData = new MessageMetaData(messageResult.getId().getUid(),
-            message.getModSeq(),
-            message.metaData().getFlags(),
-            25,
-            message.getInternalDate(),
-            message.getSaveDate(),
-            messageResult.getId().getMessageId(),
-            message.getThreadId());
+        mailboxManager.moveMessagesReactive(
+            MessageRange.from(messageResult.getId().getUid()),
+            bobInboxId,
+            bobMailBoxId,
+            bobMailboxSession
+        ).collectList().block();
 
-        MailboxEvents.Added added= new MailboxEvents.Added(bobMailboxSession.getSessionId(),
-            BOB, BOB_INBOX_PATH, bobInboxId, ImmutableSortedMap.of(messageResult.getId().getUid(), messageMetaData),
-            Event.EventId.random(), true, false, Optional.empty());
+        List<MessageRange> mess = mailboxManager.copyMessages(MessageRange.from(messageResult.getId().getUid()), bobInboxId,bobMailBoxId,bobMailboxSession);
 
-        Mono.from(ragListener.reactiveEvent(added)).block();
-
-        assertThat(listAppender.list).isEmpty();
+        assertThat(listAppender.list)
+            .extracting(ILoggingEvent::getFormattedMessage)
+            .contains(
+                "RAG Listener triggered for mailbox: " + bobInboxId,
+                "RAG Listener successfully processed mailContent ***** Body of the email *****",
+                "RAG Listener triggered for mailbox deletion: " + bobInboxId);
     }
 
     @Test
@@ -259,60 +227,18 @@ class RagListenerTest {
             .build();
 
         MessageManager.AppendResult messageResult = spamMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(message.getFullContent().readAllBytes())),
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        MessageMetaData messageMetaData = new MessageMetaData(messageResult.getId().getUid(),
-            message.getModSeq(),
-            message.metaData().getFlags(),
-            25,
-            message.getInternalDate(),
-            message.getSaveDate(),
-            messageResult.getId().getMessageId(),
-            message.getThreadId());
-
-        MailboxEvents.Added added = new MailboxEvents.Added(bobMailboxSession.getSessionId(),
-            BOB, BOB_SPAM_PATH, spamMailboxId, ImmutableSortedMap.of(messageResult.getId().getUid(), messageMetaData),
-            Event.EventId.random(), true, true, Optional.empty());
-
-        Mono.from(ragListener.reactiveEvent(added)).block();
         assertThat(listAppender.list).isEmpty();
     }
 
     @Test
     void reactiveEventShouldRetuenNullWhenEvendIsTrush() throws Exception {
-        SimpleMailboxMessage message = SimpleMailboxMessage.builder()
-            .mailboxId(trashMailboxId)
-            .flags(new Flags())
-            .bodyStartOctet(100)
-            .internalDate(new Date(1433628000000L))
-            .size(25)
-            .content(new ByteContent(CONTENT))
-            .properties(new PropertyBuilder())
-            .modseq(ModSeq.of(42L))
-            .messageId(MESSAGE_ID)
-            .threadId(ThreadId.fromBaseMessageId(MESSAGE_ID))
-            .uid(MESSAGE_UID_1)
-            .build();
-
-        MessageManager.AppendResult messageResult = spamMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(message.getFullContent().readAllBytes())),
+        MessageManager.AppendResult messageResult = trashMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        MessageMetaData messageMetaData = new MessageMetaData(messageResult.getId().getUid(),
-            message.getModSeq(),
-            message.metaData().getFlags(),
-            25,
-            message.getInternalDate(),
-            message.getSaveDate(),
-            messageResult.getId().getMessageId(),
-            message.getThreadId());
-
-        MailboxEvents.Added added = new MailboxEvents.Added(bobMailboxSession.getSessionId(),
-            BOB, BOB_TRASH_PATH, spamMailboxId, ImmutableSortedMap.of(messageResult.getId().getUid(), messageMetaData),
-            Event.EventId.random(), true, true, Optional.empty());
-
-        Mono.from(ragListener.reactiveEvent(added)).block();
         assertThat(listAppender.list).isEmpty();
     }
 
@@ -332,28 +258,17 @@ class RagListenerTest {
             .uid(MESSAGE_UID_1)
             .build();
 
-        MessageManager.AppendResult messageResult = spamMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(message.getFullContent().readAllBytes())),
+        MessageManager.AppendResult messageResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        MessageMetaData messageMetaData = new MessageMetaData(messageResult.getId().getUid(),
-            message.getModSeq(),
-            message.metaData().getFlags(),
-            25,
-            message.getInternalDate(),
-            message.getSaveDate(),
-            messageResult.getId().getMessageId(),
-            message.getThreadId());
+        bobInboxMessageManager.delete(List.of(messageResult.getId().getUid()), bobMailboxSession);
 
-        MailboxEvents.Expunged expunged = new MailboxEvents.Expunged(bobMailboxSession.getSessionId(),
-            BOB, BOB_TRASH_PATH, spamMailboxId, ImmutableSortedMap.of(messageResult.getId().getUid(), messageMetaData),
-            Event.EventId.random(),  Optional.empty());
-
-        Mono.from(ragListener.reactiveEvent(expunged)).block();
         assertThat(listAppender.list)
             .extracting(ILoggingEvent::getFormattedMessage)
             .contains("RAG Listener triggered for mailbox deletion: " + expunged.getMailboxId().toString() );
     }
+
     @Test
     void reactiveEventShouldSkipListenerWhenUserNotInWhiteList() throws Exception {
         SimpleMailboxMessage message = SimpleMailboxMessage.builder()
@@ -371,28 +286,8 @@ class RagListenerTest {
             .build();
 
         MessageManager.AppendResult messageResult = aliceInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(message.getFullContent().readAllBytes())),
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             aliceMailboxSession);
-
-        MessageMetaData messageMetaData = new MessageMetaData(messageResult.getId().getUid(),
-            message.getModSeq(),
-            message.metaData().getFlags(),
-            25,
-            message.getInternalDate(),
-            message.getSaveDate(),
-            messageResult.getId().getMessageId(),
-            message.getThreadId());
-
-        MailboxEvents.Added added= new MailboxEvents.Added(aliceMailboxSession.getSessionId(),
-            ALICE,
-            ALICE_INBOX_PATH,
-            aliceInboxId,
-            ImmutableSortedMap.of(messageResult.getId().getUid(), messageMetaData),
-            Event.EventId.random(),
-            true,
-            true, Optional.empty());
-
-        Mono.from(ragListener.reactiveEvent(added)).block();
 
         assertThat(listAppender.list)
             .extracting(ILoggingEvent::getFormattedMessage)
