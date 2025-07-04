@@ -17,3 +17,24 @@ scheduled.consumer.reconnection.enabled=true
 scheduled.consumer.reconnection.interval=60s
 ....
 
+== Twake Workplace Settings Configuration
+
+The Twake Workplace settings module may require RabbitMQ configuration to function properly. The following properties should be added to `rabbitmq.properties`:
+
+- `twp.rabbitmq.uri`: Optional. The URI(s) to connect to the RabbitMQ server for TWP settings. Multiple URIs can be specified by separating them with commas.
+  Default to TMail RabbitMQ URI if not specified.
+- `twp.rabbitmq.management.uri`: Optional. The URI for the RabbitMQ management API.
+  Default to TMail RabbitMQ management URI if not specified.
+- `twp.queues.quorum.bypass`: Optional. Boolean, default to false. Whether to bypass quorum queues.
+- `twp.settings.exchange`: Optional. The exchange name for TWP settings. Default to `settings`.
+- `twp.settings.routingKey`: Optional. The routing key for TWP settings. Default to `user.settings.updated`.
+
+Example configuration:
+
+....
+twp.rabbitmq.uri=amqp://guest:guest@localhost:5672/twp-vhost
+twp.rabbitmq.management.uri=http://localhost:15672
+twp.queues.quorum.bypass=false
+twp.settings.exchange=settings
+twp.settings.routingKey=user.settings.updated
+....

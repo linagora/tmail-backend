@@ -1,0 +1,6 @@
+= Twake Workplace Integration
+:navtitle: Twake Workplace Integration
+
+https://twake.app/[Twake], developed by Linagora, is a collaborative platform offering features such as team messaging, file sharing, and more. TMail integrates with Twake Workplace to synchronize user settings between the platforms.
+
+See xref:tmail-backend/configure/twake-workplace.adoc[this page for configuring the Twake integration].
