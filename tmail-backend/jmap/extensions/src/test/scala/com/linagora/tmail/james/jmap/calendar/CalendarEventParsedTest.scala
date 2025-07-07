@@ -76,6 +76,47 @@ class CalendarEventParsedTest {
   }
 
   @Test
+  def parseShouldNotFailWhenUnknownTimezoneIdentifier(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+                       |CALSCALE:GREGORIAN
+                       |METHOD:REQUEST
+                       |BEGIN:VTIMEZONE
+                       |TZID:Asia/Ho_Chi_Minh
+                       |BEGIN:STANDARD
+                       |TZOFFSETFROM:+0700
+                       |TZOFFSETTO:+0700
+                       |TZNAME:ICT
+                       |DTSTART:19700101T000000
+                       |END:STANDARD
+                       |END:VTIMEZONE
+                       |BEGIN:VEVENT
+                       |UID:e253f5b5-fbc4-4aa8-81b3-312d8310aedc
+                       |TRANSP:OPAQUE
+                       |DTSTART;TZID=Asia/Saigon:20250708T120000
+                       |DTEND;TZID=Asia/Saigon:20250708T130000
+                       |CLASS:PUBLIC
+                       |X-OPENPAAS-VIDEOCONFERENCE:
+                       |SUMMARY:test counter event
+                       |ORGANIZER;CN=John Doe:mailto:johndoe@example.com
+                       |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI
+                       | DUAL;CN=Jane Roe:mailto:janeroe@example.com
+                       |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:jo
+                       | hndoe@example.com
+                       |DTSTAMP:20250707T040720Z
+                       |SEQUENCE:0
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    assertThat(calendarEventParsed.end.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+      .isEqualTo("2025-07-08T13:00:00+07")
+  }
+
+  @Test
   def multipleVEventCase(): Unit = {
     val icsPayload =
       """BEGIN:VCALENDAR
