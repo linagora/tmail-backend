@@ -18,13 +18,17 @@
 
 package com.linagora.tmail.mailet;
 
+import static org.apache.james.jmap.send.MailMetadata.MAIL_METADATA_USERNAME_ATTRIBUTE;
+
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.util.FunctionalUtils;
+import org.apache.mailet.AttributeUtils;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
@@ -57,24 +61,43 @@ public class CardDavCollectedContact extends GenericMailet {
     @Override
     public void service(Mail mail) throws MessagingException {
         if (!mail.getRecipients().isEmpty()) {
-            mail.getMaybeSender().asOptional()
+            getSender(mail)
                 .ifPresent(sender -> collectedContactProcess(sender, ImmutableList.copyOf(mail.getRecipients()))
                     .block());
         }
     }
 
-    private Mono<Void> collectedContactProcess(MailAddress sender, List<MailAddress> recipients) {
-        return openPaasRestClient.searchOpenPaasUserId(sender.asString())
+    private Optional<String> getSender(Mail mail) {
+        return getSmtpAuthenticatedUser(mail)
+            .or(() -> getJmapAuthenticatedUser(mail))
+            .or(() -> maybeSender(mail));
+    }
+
+    private Optional<String> maybeSender(Mail mail) {
+        return mail.getMaybeSender().asOptional()
+            .map(MailAddress::asString);
+    }
+
+    private Optional<String> getJmapAuthenticatedUser(Mail mail) {
+        return AttributeUtils.getValueAndCastFromMail(mail, MAIL_METADATA_USERNAME_ATTRIBUTE, String.class);
+    }
+
+    private Optional<String> getSmtpAuthenticatedUser(Mail mail) {
+        return AttributeUtils.getValueAndCastFromMail(mail, Mail.SMTP_AUTH_USER, String.class);
+    }
+
+    private Mono<Void> collectedContactProcess(String sender, List<MailAddress> recipients) {
+        return openPaasRestClient.searchOpenPaasUserId(sender)
             .flatMapMany(openPassUserId -> Flux.fromIterable(recipients)
                 .map(CardDavUtils::createObjectCreationRequest)
                 .flatMap(cardDavCreationObjectRequest -> createCollectedContactIfNotExists(sender, openPassUserId, cardDavCreationObjectRequest)))
             .then();
     }
 
-    private Mono<Void> createCollectedContactIfNotExists(MailAddress sender, String openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
-        return davClient.existsCollectedContact(sender.asString(), openPassUserId, cardDavCreationObjectRequest.uid())
+    private Mono<Void> createCollectedContactIfNotExists(String sender, String openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
+        return davClient.existsCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest.uid())
             .filter(FunctionalUtils.identityPredicate().negate())
-            .flatMap(exists -> davClient.createCollectedContact(sender.asString(), openPassUserId, cardDavCreationObjectRequest))
+            .flatMap(exists -> davClient.createCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest))
             .onErrorResume(error -> {
                 LOGGER.error("Error while creating collected contact if not exists.", error);
                 return Mono.empty();
