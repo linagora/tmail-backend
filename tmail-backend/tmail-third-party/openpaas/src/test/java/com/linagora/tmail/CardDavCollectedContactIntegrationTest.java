@@ -271,6 +271,45 @@ public class CardDavCollectedContactIntegrationTest {
         davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid, 1);
     }
 
+    @Test
+    void aliceShouldHaveCollectedContactAddedWhenAliceUsesAliasToSendMail() throws Exception {
+        // add an alias for Alice
+        String aliceAlias = "alice-alias@" + DEFAULT_DOMAIN;
+        jamesServer.getProbe(DataProbeImpl.class)
+            .addUserAliasMapping(ALICE.getLocalPart(), DEFAULT_DOMAIN, aliceAlias);
+
+        // Setup mock server
+        String bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        String cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
+        String aliceOpenPassId = UUID.randomUUID().toString();
+        openPaasServerExtension.setSearchEmailExist(ALICE.asString(), aliceOpenPassId);
+        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid);
+        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid);
+
+        // when Alice uses her alias to email Bob
+        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
+            .authenticate(ALICE.asString(), PASSWORD)
+            .sendMessage(FakeMail.builder()
+                .name("name")
+                .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                    .setSender(aliceAlias)
+                    .addToRecipient(BOB.asString())
+                    .setSubject("Contact collection Rocks")
+                    .setText("This is my email"))
+                .sender(aliceAlias)
+                .recipients(BOB.asString()));
+
+        testIMAPClient.connect(LOCALHOST_IP, jamesServer.getProbe(ImapGuiceProbe.class).getImapPort())
+            .login(BOB, PASSWORD)
+            .select(TestIMAPClient.INBOX)
+            .awaitMessage(awaitAtMostOneMinute);
+
+        // then Alice should have a collected contact created for BOB
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, 1);
+    }
+
     private void aliceSendAnEmailToBob() throws MessagingException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException {
         messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
             .authenticate(ALICE.asString(), PASSWORD)
