@@ -24,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.Logger;
@@ -32,6 +31,9 @@ import ch.qos.logback.core.read.ListAppender;
 
 import jakarta.mail.util.SharedByteArrayInputStream;
 
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
@@ -68,8 +70,14 @@ class RagListenerTest {
     private static final MailboxPath BOB_MAILBOX_PATH = MailboxPath.forUser(BOB, "mailbox");
     private static final MailboxPath BOB_TRASH_PATH = MailboxPath.forUser(BOB, "Trash");
 
-    private static final byte[] CONTENT = "Subject: test\r\n\r\nBody of the email".getBytes(StandardCharsets.UTF_8);
-
+    private static final byte[] CONTENT = (
+        "Subject: Test Subject\r\n" +
+            "From: sender@example.com\r\n" +
+            "To: recipient@example.com\r\n" +
+            "Cc: cc@example.com\r\n" +
+            "Date: Tue, 10 Oct 2023 10:00:00 +0000\r\n" +
+            "\r\n" +
+            "Body of the email").getBytes(StandardCharsets.UTF_8);
     StoreMailboxManager mailboxManager;
     RagListener ragListener;
     MessageIdManager messageIdManager;
@@ -91,7 +99,7 @@ class RagListenerTest {
     MemoryEventDeadLetters eventDeadLetters;
     ListAppender<ILoggingEvent> listAppender;
     Logger logger;
-    RagListenerConfiguration ragListenerConfiguration;
+    HierarchicalConfiguration<ImmutableNode> config;
 
     @BeforeEach
     void setup() throws Exception {
@@ -139,8 +147,10 @@ class RagListenerTest {
         bobMailBoxMessageManager = mailboxManager.getMailbox(bobMailBoxId, bobMailboxSession);
         aliceInboxMessageManager = mailboxManager.getMailbox(aliceInboxId, aliceMailboxSession);
         systemMailboxesProvider = new SystemMailboxesProviderImpl(mailboxManager);
-
-        }
+        Configurations configurations = new Configurations();
+        config = configurations.xml("listeners.xml");
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config);
+    }
 
     @AfterEach
     void tearDown() {
@@ -149,10 +159,7 @@ class RagListenerTest {
 
     @Test
     void reactiveEventShouldProcessAddedEventAndExtractContent() throws Exception {
-        ragListenerConfiguration = new RagListenerConfiguration(Optional.of(List.of(BOB)));
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, ragListenerConfiguration);
         mailboxManager.getEventBus().register(ragListener);
-
         bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
@@ -161,43 +168,42 @@ class RagListenerTest {
             .extracting(ILoggingEvent::getFormattedMessage)
             .contains(
                 "RAG Listener triggered for mailbox: " + bobInboxId,
-                "RAG Listener successfully processed mailContent ***** Body of the email *****");
+                "RAG Listener successfully processed mailContent ***** \n" +
+                    "Subject: Test Subject\n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Cc: cc@example.com\n" +
+                    "Date: Tue Oct 10 12:00:00 CEST 2023\n" +
+                    "\n" +
+                    "Body of the email\n" +
+                    " *****");
     }
 
     @Test
-    void reactiveEventShouldRetuenNullWhenEvendIsNotAppended() throws Exception {
-        ragListenerConfiguration = new RagListenerConfiguration(Optional.of(List.of(BOB)));
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, ragListenerConfiguration);
-        mailboxManager.getEventBus().register(ragListener);
+    void reactiveEventShouldLogNothingWhenEventIsNotAppended() throws Exception {
 
-        MessageManager.AppendResult messageResult = bobInboxMessageManager.appendMessage(
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
+        mailboxManager.getEventBus().register(ragListener);
 
         mailboxManager.moveMessagesReactive(
-            MessageRange.from(messageResult.getId().getUid()),
+            MessageRange.from(appendResult.getId().getUid()),
             bobInboxId,
             bobMailBoxId,
             bobMailboxSession
         ).collectList().block();
 
-        List<MessageRange> mess = mailboxManager.copyMessages(MessageRange.from(messageResult.getId().getUid()), bobInboxId,bobMailBoxId,bobMailboxSession);
+        mailboxManager.copyMessages(MessageRange.from(appendResult.getId().getUid()), bobInboxId,bobMailBoxId,bobMailboxSession);
 
-        assertThat(listAppender.list)
-            .extracting(ILoggingEvent::getFormattedMessage)
-            .contains(
-                "RAG Listener triggered for mailbox: " + bobInboxId,
-                "RAG Listener successfully processed mailContent ***** Body of the email *****",
-                "RAG Listener triggered for mailbox deletion: " + bobInboxId);
+        assertThat(listAppender.list).isEmpty();
     }
 
     @Test
-    void reactiveEventShouldRetuenNullWhenEvendIsSpam() throws Exception {
-        ragListenerConfiguration = new RagListenerConfiguration(Optional.of(List.of(BOB)));
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, ragListenerConfiguration);
-        mailboxManager.getEventBus().register(ragListener);
+    void reactiveEventShouldLogNothingWhenEventIsSpam() throws Exception {
 
-        MessageManager.AppendResult messageResult = spamMessageManager.appendMessage(
+        mailboxManager.getEventBus().register(ragListener);
+        MessageManager.AppendResult appendResult = spamMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
@@ -205,42 +211,21 @@ class RagListenerTest {
     }
 
     @Test
-    void reactiveEventShouldRetuenNullWhenEvendIsTrush() throws Exception {
-        ragListenerConfiguration = new RagListenerConfiguration(Optional.of(List.of(BOB)));
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, ragListenerConfiguration);
+    void reactiveEventShouldLogNothingWhenEventIsTrash() throws Exception {
         mailboxManager.getEventBus().register(ragListener);
 
-        MessageManager.AppendResult messageResult = trashMessageManager.appendMessage(
+        MessageManager.AppendResult appendResult = trashMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         assertThat(listAppender.list).isEmpty();
-    }
-
-    @Test
-    void reactiveEventShouldReturnDeletedWhenDletedEvent() throws Exception {
-        ragListenerConfiguration = new RagListenerConfiguration(Optional.of(List.of(BOB)));
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, ragListenerConfiguration);
-        mailboxManager.getEventBus().register(ragListener);
-
-        MessageManager.AppendResult messageResult = bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
-            bobMailboxSession);
-
-        bobInboxMessageManager.delete(List.of(messageResult.getId().getUid()), bobMailboxSession);
-
-        assertThat(listAppender.list)
-            .extracting(ILoggingEvent::getFormattedMessage)
-            .contains("RAG Listener triggered for mailbox deletion: " + bobInboxId );
     }
 
     @Test
     void reactiveEventShouldSkipListenerWhenUserNotInWhiteList() throws Exception {
-        ragListenerConfiguration = new RagListenerConfiguration(Optional.of(List.of(BOB)));
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, ragListenerConfiguration);
         mailboxManager.getEventBus().register(ragListener);
 
-        MessageManager.AppendResult messageResult = aliceInboxMessageManager.appendMessage(
+        MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             aliceMailboxSession);
 
@@ -251,23 +236,80 @@ class RagListenerTest {
 
     @Test
     void reactiveEventShouldAllowAllUsersWhenWhiteListIsEmpty() throws Exception {
-        ragListenerConfiguration = new RagListenerConfiguration(Optional.empty());
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, ragListenerConfiguration);
+        config.setProperty("listener.configuration.users", "");
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config);
         mailboxManager.getEventBus().register(ragListener);
 
-        MessageManager.AppendResult messageResult = aliceInboxMessageManager.appendMessage(
+        MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             aliceMailboxSession);
-        MessageManager.AppendResult messageResult2 = bobInboxMessageManager.appendMessage(
+        MessageManager.AppendResult appendResult2 = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         assertThat(listAppender.list)
             .extracting(ILoggingEvent::getFormattedMessage)
             .contains("RAG Listener triggered for mailbox: " + aliceInboxId,
-                "RAG Listener successfully processed mailContent ***** Body of the email *****",
+                "RAG Listener successfully processed mailContent ***** \n" +
+                    "Subject: Test Subject\n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Cc: cc@example.com\n" +
+                    "Date: Tue Oct 10 12:00:00 CEST 2023\n" +
+                    "\n" +
+                    "Body of the email\n" +
+                    " *****",
                 "RAG Listener triggered for mailbox: " + bobInboxId,
-                "RAG Listener successfully processed mailContent ***** Body of the email *****");
+                "RAG Listener successfully processed mailContent ***** \n" +
+                    "Subject: Test Subject\n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Cc: cc@example.com\n" +
+                    "Date: Tue Oct 10 12:00:00 CEST 2023\n" +
+                    "\n" +
+                    "Body of the email\n" +
+                    " *****");
+    }
+
+    @Test
+    void reactiveEventShouldProcessEmailWithAttachment() throws Exception {
+        mailboxManager.getEventBus().register(ragListener);
+
+        byte[] emailWithAttachment = (
+            "Subject: Test Email with Attachment\r\n" +
+                "From: sender@example.com\r\n" +
+                "To: recipient@example.com\r\n" +
+                "Date: Tue, 10 Oct 2023 10:00:00 +0000\r\n" +
+                "Content-Type: multipart/mixed; boundary=\"boundary\"\r\n" +
+                "\r\n" +
+                "--boundary\r\n" +
+                "Content-Type: text/plain; charset=UTF-8\r\n" +
+                "\r\n" +
+                "This is the body of the email.\r\n" +
+                "--boundary\r\n" +
+                "Content-Type: application/octet-stream\r\n" +
+                "Content-Disposition: attachment; filename=\"test.txt\"\r\n" +
+                "\r\n" +
+                "This is the content of the attachment.\r\n" +
+                "--boundary--").getBytes(StandardCharsets.UTF_8);
+
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(emailWithAttachment)),
+            bobMailboxSession);
+
+        assertThat(listAppender.list)
+            .extracting(ILoggingEvent::getFormattedMessage)
+            .contains(
+                "RAG Listener triggered for mailbox: " + bobInboxId,
+                "RAG Listener successfully processed mailContent ***** \n" +
+                    "Subject: Test Email with Attachment\n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Date: Tue Oct 10 12:00:00 CEST 2023\n" +
+                    "Attachments: test.txt\n" +
+                    "\n" +
+                    "This is the body of the email.\n" +
+                    " *****");
     }
 
 }
