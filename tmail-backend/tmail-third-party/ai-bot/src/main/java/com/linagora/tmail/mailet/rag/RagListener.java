@@ -17,10 +17,20 @@
  ********************************************************************/
 package com.linagora.tmail.mailet.rag;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
+import org.apache.james.jmap.mime4j.AvoidBinaryBodyReadingBodyFactory;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -30,10 +40,12 @@ import org.apache.james.mailbox.SystemMailboxesProvider;
 import org.apache.james.mailbox.events.MailboxEvents;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.mime4j.dom.Body;
+import org.apache.james.mime4j.dom.Entity;
 import org.apache.james.mime4j.dom.Message;
+import org.apache.james.mime4j.dom.Multipart;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
-import org.apache.james.util.ReactorUtils;
 import org.apache.james.util.mime.MessageContentExtractor;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -55,14 +67,31 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
     private final SystemMailboxesProvider systemMailboxesProvider;
-    private final RagListenerConfiguration config;
+    private final Optional<List<Username>> whitelist;
 
     @Inject
-    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, RagListenerConfiguration config) {
+    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, HierarchicalConfiguration<ImmutableNode> config) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.systemMailboxesProvider = systemMailboxesProvider;
-        this.config = config;
+        this.whitelist = parseWhitelist(config);
+    }
+
+    private Optional<List<Username>> parseWhitelist(HierarchicalConfiguration<ImmutableNode> config) {
+        String users = config.getString("listener.configuration.users", null);
+        if (users == null || users.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(List.of(users.split(","))
+            .stream()
+            .map(String::trim)
+            .filter(user -> !user.isEmpty())
+            .map(Username::of)
+            .collect(Collectors.toList()));
+    }
+
+    public Optional<List<Username>> getWhitelist() {
+        return whitelist;
     }
 
     @Override
@@ -72,7 +101,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
 
     @Override
     public boolean isHandling(Event event) {
-        return event instanceof MailboxEvents.Added addedEvent && addedEvent.isAppended() || event instanceof MailboxEvents.Expunged;
+        return event instanceof MailboxEvents.Added addedEvent && addedEvent.isAppended();
     }
 
     @Override
@@ -90,16 +119,12 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                         }
                         LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
                         MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
-                    return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
-                            .doOnError(error -> System.err.println("Error occurred: " + error.getMessage()))
-                            .flatMap(this::extractEmailContent)
-                            .doOnNext(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** {} *****", text))
+                        return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
+                            .doOnError(error -> LOGGER.error("Error occurred: ", error.getMessage()))
+                            .flatMap(this::asRagLearnableContent)
+                            .doOnNext(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** \n{}\n *****", text))
                             .then();
                     });
-            }
-            if (event instanceof MailboxEvents.Expunged) {
-                MailboxEvents.Expunged deletedEvent = (MailboxEvents.Expunged) event;
-                LOGGER.info("RAG Listener triggered for mailbox deletion: {}", deletedEvent.getMailboxId());
             }
         } else {
             LOGGER.info("RAG Listener skipped for user: {}", event.getUsername().getLocalPart());
@@ -107,18 +132,60 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         return Mono.empty();
     }
 
-    private Mono<String> extractEmailContent(MessageResult messageResult) {
+    private Mono<String> asRagLearnableContent(MessageResult messageResult) {
         return Mono.fromCallable(() -> {
-            DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
-            messageBuilder.setMimeEntityConfig(MimeConfig.DEFAULT);
-            Message mimeMessage = messageBuilder.parseMessage(messageResult.getFullContent().getInputStream());
-            MessageContentExtractor.MessageContent extractor = new MessageContentExtractor().extract(mimeMessage);
-            return extractor.getTextBody();
-        }).handle(ReactorUtils.publishIfPresent());
+            Message mimeMessage = parseMessage(messageResult.getFullContent().getInputStream());
+            StringBuilder markdownBuilder = new StringBuilder();
+            markdownBuilder.append(mimeMessage.getSubject() != null ? "Subject: " + mimeMessage.getSubject().trim() : "");
+            markdownBuilder.append(mimeMessage.getFrom() != null ? "\nFrom: " + mimeMessage.getFrom().stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")) : "");
+            markdownBuilder.append(mimeMessage.getTo() != null ? "\nTo: " + mimeMessage.getTo().stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")) : "");
+            markdownBuilder.append(mimeMessage.getCc() != null ? "\nCc: " + mimeMessage.getCc().stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")) : "");
+            markdownBuilder.append("\nDate: " + mimeMessage.getDate().toString());
+            List<String> attachmentNames = findAttachmentNames(mimeMessage);
+            if (!attachmentNames.isEmpty()) {
+                markdownBuilder.append("\nAttachments: " + String.join(", ", attachmentNames));
+            }
+            markdownBuilder.append("\n\n").append(new MessageContentExtractor().extract(mimeMessage).getTextBody().get());
+            return markdownBuilder.toString();
+        });
+    }
+
+    private Message parseMessage(InputStream inputStream) throws IOException {
+        DefaultMessageBuilder defaultMessageBuilder = new DefaultMessageBuilder();
+        defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
+        defaultMessageBuilder.setBodyFactory(new AvoidBinaryBodyReadingBodyFactory());
+        return defaultMessageBuilder.parseMessage(inputStream);
     }
 
     public boolean isUserAllowed(Username userEmail) {
-        return config.getWhitelist().isEmpty() || config.getWhitelist().get().contains(userEmail);
+        return this.whitelist.isEmpty() || this.whitelist.get().contains(userEmail);
+    }
+
+    private List<String> findAttachmentNames(Entity entity) {
+        List<String> attachmentNames = new ArrayList<>();
+        Body body = entity.getBody();
+
+        if (body instanceof Multipart) {
+            Multipart multipart = (Multipart) body;
+            for (Entity part : multipart.getBodyParts()) {
+                attachmentNames.addAll(findAttachmentNames(part));
+            }
+        } else {
+            String dispositionType = entity.getDispositionType();
+            if ("attachment".equalsIgnoreCase(dispositionType)) {
+                String fileName = entity.getFilename();
+                if (fileName != null && !fileName.trim().isEmpty()) {
+                    attachmentNames.add(fileName);
+                }
+            }
+        }
+        return attachmentNames;
     }
 
     @Override
