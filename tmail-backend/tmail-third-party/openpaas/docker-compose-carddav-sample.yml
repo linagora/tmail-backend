@@ -40,7 +40,7 @@ services:
 
   redis:
     container_name: esn_redis
-    image: redis:latest
+    image: redis:8.0.2
     ports:
       - "6379:6379"
     networks:

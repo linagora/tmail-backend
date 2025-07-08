@@ -107,7 +107,7 @@ services:
       - emaily
 
   redis:
-    image: redis:7.0.12
+    image: redis:8.0.2
     networks:
       - emaily
 
