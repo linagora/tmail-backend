@@ -50,7 +50,7 @@ docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALIT
 
 docker run -d --network emaily --name=opensearch --env 'discovery.type=single-node' opensearchproject/opensearch:2.19.2
 
-docker run -d --network emaily --name=tika apache/tika:2.8.0.0 #Optional
+docker run -d --network emaily --name=tika apache/tika:3.2.0.0 #Optional
 ```
 
 Then you can finally start the James distributed server. If you included the JWT keys in the build:
