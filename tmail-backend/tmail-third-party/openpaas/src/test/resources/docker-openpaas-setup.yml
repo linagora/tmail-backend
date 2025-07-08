@@ -43,7 +43,7 @@ services:
       retries: 15
 
   redis:
-    image: redis:latest
+    image: redis:8.0.2
     networks:
       - emaily
     healthcheck:
