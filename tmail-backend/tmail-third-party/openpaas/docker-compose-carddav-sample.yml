@@ -48,7 +48,7 @@ services:
 
   rabbitmq:
     container_name: esn_rabbitmq
-    image: rabbitmq:3.13.3-management
+    image: rabbitmq:4.0.9-management
     hostname: esn-rabbit
     ports:
       - 5672:5672

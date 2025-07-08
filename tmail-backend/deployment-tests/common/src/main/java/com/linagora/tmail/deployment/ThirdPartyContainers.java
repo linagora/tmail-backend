@@ -61,7 +61,7 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createRabbitMQ(Network network) {
-        return new GenericContainer<>("rabbitmq:3.13.3-management")
+        return new GenericContainer<>("rabbitmq:4.0.9-management")
             .withNetworkAliases("rabbitmq")
             .withNetwork(network)
             .withExposedPorts(5672, 15672)

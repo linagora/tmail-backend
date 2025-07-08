@@ -44,7 +44,7 @@ You can then start in that newly created network all the other softwares the dis
 ```
 docker run -d --network emaily --name=cassandra cassandra:4.1.9
 
-docker run -d --network emaily --name=rabbitmq rabbitmq:3.12.1-management
+docker run -d --network emaily --name=rabbitmq rabbitmq:4.0.9-management
 
 docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test ghcr.io/scality/cloudserver:c1ba296859690c1cbbec609aaae430f6b04b4745
 
