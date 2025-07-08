@@ -87,7 +87,7 @@ services:
       - emaily
 
   rabbitmq:
-    image: rabbitmq:3.12.1-management
+    image: rabbitmq:4.0.9-management
     ports:
       - "5672:5672"
       - "15672:15672"
