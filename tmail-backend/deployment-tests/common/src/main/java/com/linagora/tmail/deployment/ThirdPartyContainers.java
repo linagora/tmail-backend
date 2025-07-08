@@ -28,7 +28,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 public class ThirdPartyContainers {
-    public static String OS_IMAGE_NAME = "opensearchproject/opensearch:2.14.0";
+    public static String OS_IMAGE_NAME = "opensearchproject/opensearch:2.19.2";
     public static String OS_NETWORK_ALIAS = "opensearch";
 
     @SuppressWarnings("resource")
