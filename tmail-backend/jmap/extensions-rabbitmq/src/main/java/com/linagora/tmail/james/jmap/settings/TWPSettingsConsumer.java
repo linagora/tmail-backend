@@ -40,7 +40,9 @@ import org.apache.james.user.api.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.ShutdownSignalException;
 
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -92,8 +94,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
 
     public void declareExchangeAndQueue(String exchange, String queue, String deadLetter) {
         Flux.concat(
-                sender.declareExchange(ExchangeSpecification.exchange(exchange)
-                    .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
+                declareExchange(exchange),
                 sender.declareQueue(QueueSpecification
                     .queue(deadLetter)
                     .durable(DURABLE)
@@ -111,6 +112,16 @@ public class TWPSettingsConsumer implements Closeable, Startable {
                     .routingKey(twpCommonSettingsConfiguration.routingKey())))
             .then()
             .block();
+    }
+
+    private Mono<AMQP.Exchange.DeclareOk> declareExchange(String exchange) {
+        return sender.declareExchange(ExchangeSpecification.exchange(exchange)
+                .durable(DURABLE).type(BuiltinExchangeType.TOPIC.getType()))
+            .onErrorResume(error -> error instanceof ShutdownSignalException && error.getMessage().contains("reply-code=406, reply-text=PRECONDITION_FAILED"),
+                error -> {
+                    LOGGER.warn("Exchange `{}` already exists but with different configuration. Ignoring this error. \nError message: {}", exchange, error.getMessage());
+                    return Mono.empty();
+                });
     }
 
     private QueueArguments.Builder queueArgumentSupplier() {
