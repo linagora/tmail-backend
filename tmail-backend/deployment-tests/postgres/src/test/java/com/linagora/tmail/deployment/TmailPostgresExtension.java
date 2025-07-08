@@ -80,7 +80,7 @@ public class TmailPostgresExtension implements BeforeEachCallback, AfterEachCall
 
     @SuppressWarnings("resource")
     protected static GenericContainer<?> createPostgres(Network network) {
-        return new GenericContainer<>("postgres:16.1")
+        return new GenericContainer<>("postgres:16.9")
             .withNetworkAliases("postgres")
             .withNetwork(network)
             .withEnv("POSTGRES_USER", "tmail")
