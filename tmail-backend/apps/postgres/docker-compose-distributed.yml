@@ -51,7 +51,7 @@ services:
       - tmail
 
   opensearch:
-    image: opensearchproject/opensearch:2.8.0
+    image: opensearchproject/opensearch:2.19.2
     container_name: opensearch
     healthcheck:
       test: ["CMD", "curl", "-s", "http://opensearch:9200"]
