@@ -58,7 +58,7 @@ services:
       - emaily
 
   cassandra:
-    image: cassandra:4.1.3
+    image: cassandra:4.1.9
     ports:
       - "9042:9042"
     healthcheck:

@@ -33,7 +33,7 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createCassandra(Network network) {
-        return new GenericContainer<>("cassandra:4.1.5")
+        return new GenericContainer<>("cassandra:4.1.9")
             .withNetworkAliases("cassandra")
             .withNetwork(network)
             .withEnv("JVM_OPTS", "-Dcassandra.skip_wait_for_gossip_to_settle=0 -Dcassandra.initial_token=1")

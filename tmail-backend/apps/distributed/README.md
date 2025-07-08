@@ -42,7 +42,7 @@ docker network create --driver bridge emaily
 You can then start in that newly created network all the other softwares the distributed James is relying on:
 
 ```
-docker run -d --network emaily --name=cassandra cassandra:4.1.3
+docker run -d --network emaily --name=cassandra cassandra:4.1.9
 
 docker run -d --network emaily --name=rabbitmq rabbitmq:3.12.1-management
 
