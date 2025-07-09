@@ -21,10 +21,7 @@ package com.linagora.tmail.mailet.conf;
 import java.io.FileNotFoundException;
 
 import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.commons.configuration2.tree.ImmutableNode;
-import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.google.inject.AbstractModule;
@@ -49,13 +46,6 @@ public class AIBotModule extends AbstractModule {
     @Named("ai")
     public  Configuration getAIBotConfigurations(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
         return propertiesProvider.getConfiguration("ai");
-    }
-
-    @Provides
-    @Singleton
-    @Named("rag")
-    public HierarchicalConfiguration<ImmutableNode> getRAGConfigurations(ConfigurationProvider configurationProvider) throws ConfigurationException {
-        return configurationProvider.getConfiguration("listeners");
     }
 
     @Provides

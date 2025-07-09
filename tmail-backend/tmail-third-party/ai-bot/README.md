@@ -116,6 +116,7 @@ The following steps will start the AIBot extension in memory, without rate-limit
       linagora/tmail-backend-memory
     ```
 ### Command with RAG System Integration
+> ⚠️ **Disclaimer:** This feature is currently a work in progress and may be subject to changes or improvements. Use it for testing or development purposes only until it is finalized.
 To enhance context understanding, AIBot can be extended with a RAG (Retrieval-Augmented Generation) system. This system handles all emails in the mailbox except those in the trash or spam folders.
 
 To enable RAG, you need to mount a configuration file called listeners.xml, which contains the RAG listener:
