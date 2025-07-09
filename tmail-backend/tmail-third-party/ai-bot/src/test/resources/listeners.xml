@@ -21,7 +21,7 @@
 
 <listeners>
     <listener>
-        <class>com.linagora.tmail.aibot.RagListener</class>
+        <class>com.linagora.tmail.mailet.rag.RagListener</class>
         <configuration>
             <users>bob</users>
         </configuration>
