@@ -27,6 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -72,6 +75,15 @@ class AIBotIntegrationTest {
 
     @BeforeEach
     void setup(@TempDir File temporaryFolder) throws Exception {
+        // Copy the custom resource `ai.properties` to the `conf/` directory
+        // used by James temporary server
+        String resourceName = "ai.properties";
+        Path resourcesFolder = Paths.get(temporaryFolder.getAbsolutePath(), "conf");
+        Path resolvedResource = resourcesFolder.resolve(resourceName);
+        String content = "apiKey=demo\nmodel=" + DEMO_MODEL + "\n";
+        Files.createDirectories(resourcesFolder);
+        Files.writeString(resolvedResource, content);
+
         MailetContainer.Builder mailetContainer = TemporaryJamesServer.simpleMailetContainerConfiguration()
             .putProcessor(ProcessorConfiguration.error()
                 .enableJmx(false)
@@ -85,9 +97,7 @@ class AIBotIntegrationTest {
                     .matcher(RecipientsContain.class)
                     .matcherCondition(BOT_ADDRESS)
                     .mailet(AIBotMailet.class)
-                    .addProperty("apiKey", "demo")
                     .addProperty("botAddress", BOT_ADDRESS)
-                    .addProperty("model", DEMO_MODEL)
                     .build())
                 .addMailetsFrom(CommonProcessors.transport()));
 

@@ -89,6 +89,10 @@
         </processor>
 
         <processor state="local-delivery" enableJmx="true">
+            <matcher name="aibot-allowed" match="org.apache.james.mailetcontainer.impl.matchers.And">
+                <matcher match="SenderIsLocal"/>
+                <matcher match="com.linagora.tmail.mailet.RecipientsContain=gpt@tmail.com"/>
+            </matcher>
             <mailet match="All" class="VacationMailet"/>
             <mailet match="All" class="Sieve"/>
             <mailet match="All" class="AddDeliveredToHeader"/>
@@ -96,8 +100,10 @@
             <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
                 <consume>false</consume>
             </mailet>
-            <mailet match="com.linagora.tmail.mailet.RecipientsContain=gpt@tmail.com" class="com.linagora.tmail.mailet.AIBotMailet"/>
-
+            <mailet match="aibot-allowed" class="com.linagora.tmail.mailet.AIBotMailet">
+                <botAddress>gpt@tmail.com</botAddress>
+            </mailet>
+            <mailet match="All" class="Null"/>
         </processor>
 
         <processor state="relay" enableJmx="true">
