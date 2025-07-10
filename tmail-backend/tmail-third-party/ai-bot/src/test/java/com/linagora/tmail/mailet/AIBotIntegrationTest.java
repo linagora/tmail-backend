@@ -31,6 +31,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.linagora.tmail.mailet.conf.AIBotModule;
+
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
@@ -80,7 +82,9 @@ class AIBotIntegrationTest {
         String resourceName = "ai.properties";
         Path resourcesFolder = Paths.get(temporaryFolder.getAbsolutePath(), "conf");
         Path resolvedResource = resourcesFolder.resolve(resourceName);
-        String content = "apiKey=demo\nmodel=" + DEMO_MODEL + "\n";
+        String content = "apiKey=demo\n"
+                       + "baseURL=\n"
+                       + "model=" + DEMO_MODEL + "\n";
         Files.createDirectories(resourcesFolder);
         Files.writeString(resolvedResource, content);
 
@@ -102,6 +106,7 @@ class AIBotIntegrationTest {
                 .addMailetsFrom(CommonProcessors.transport()));
 
         jamesServer = TemporaryJamesServer.builder()
+            .withOverrides(new AIBotModule())
             .withMailetContainer(mailetContainer)
             .build(temporaryFolder);
         jamesServer.start();
