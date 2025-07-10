@@ -31,12 +31,17 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
+import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryLinagoraEncryptedEmailDetailedViewGetMethodTest implements LinagoraEncryptedEmailDetailedViewGetMethodContract {
@@ -54,6 +59,7 @@ public class MemoryLinagoraEncryptedEmailDetailedViewGetMethodTest implements Li
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new InMemoryEncryptedEmailContentStoreModule())
+            .overrideWith(new KeystoreMemoryModule(), new KeystoreSetMethodModule(), new KeystoreGetMethodModule(), new EncryptedEmailDetailedViewGetMethodModule(), new EncryptedEmailFastViewGetMethodModule(), new InMemoryEncryptedEmailContentStoreModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceEncryptedEmailContentStoreProbe.class)))

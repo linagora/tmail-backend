@@ -14,3 +14,20 @@ Example: `mailbox.properties`
 ....
 gpg.encryption.enable=false
 ....
+
+Additionally one need to load the corresponding extension Guice modules in order to use the feature:
+
+....
+com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule
+com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule
+com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule
+com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule
+
+# Choose based on your distribution
+com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule
+com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule
+com.linagora.tmail.encrypted.KeystoreMemoryModule
+com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule
+com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule
+com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreModule
+....

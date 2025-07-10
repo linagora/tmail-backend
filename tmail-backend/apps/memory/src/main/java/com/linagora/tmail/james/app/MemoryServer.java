@@ -80,9 +80,7 @@ import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.encrypted.ClearEmailContentFactory;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore;
-import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
 import com.linagora.tmail.encrypted.KeystoreManager;
-import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryDownloadAllModule;
@@ -101,15 +99,11 @@ import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailRecoveryActionMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
-import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
-import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
-import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
-import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
@@ -160,17 +154,11 @@ public class MemoryServer {
         new ContactAutocompleteMethodModule(),
         new ContactIndexingModule(),
         new CustomMethodModule(),
-        new EncryptedEmailDetailedViewGetMethodModule(),
-        new EncryptedEmailFastViewGetMethodModule(),
         new EmailSendMethodModule(),
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
         new ForwardGetMethodModule(),
-        new InMemoryEncryptedEmailContentStoreModule(),
-        new KeystoreMemoryModule(),
         new ForwardSetMethodModule(),
-        new KeystoreSetMethodModule(),
-        new KeystoreGetMethodModule(),
         new TicketRoutesModule(),
         new WebFingerModule(),
         new EmailRecoveryActionMethodModule(),

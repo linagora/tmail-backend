@@ -23,13 +23,21 @@ import static com.linagora.tmail.james.TmailJmapBase.JAMES_SERVER_EXTENSION_FUNC
 import org.apache.james.JamesServerExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.inject.util.Modules;
+import com.linagora.tmail.encrypted.postgres.PostgresEncryptedEmailContentStoreModule;
+import com.linagora.tmail.encrypted.postgres.PostgresKeystoreModule;
 import com.linagora.tmail.james.common.LinagoraKeystoreGetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 
 public class PostgresLinagoraKeystoreGetMethodTest implements LinagoraKeystoreGetMethodContract {
-
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION
-        .apply(new JmapGuiceKeystoreManagerModule())
+        .apply(Modules.combine(new JmapGuiceKeystoreManagerModule(), new PostgresKeystoreModule(), new KeystoreSetMethodModule(),
+            new KeystoreGetMethodModule(), new EncryptedEmailDetailedViewGetMethodModule(), new EncryptedEmailFastViewGetMethodModule(),
+            new PostgresEncryptedEmailContentStoreModule()))
         .build();
 }

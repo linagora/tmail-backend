@@ -25,11 +25,17 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
+import com.linagora.tmail.encrypted.KeystoreMemoryModule;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraKeystoreSetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 class MemoryLinagoraKeystoreSetMethodTest implements LinagoraKeystoreSetMethodContract {
@@ -44,6 +50,7 @@ class MemoryLinagoraKeystoreSetMethodTest implements LinagoraKeystoreSetMethodCo
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DelegationProbeModule())
-            .overrideWith(new JmapGuiceKeystoreManagerModule()))
+            .overrideWith(new JmapGuiceKeystoreManagerModule())
+            .overrideWith(new KeystoreMemoryModule(), new KeystoreSetMethodModule(), new KeystoreGetMethodModule(), new EncryptedEmailDetailedViewGetMethodModule(), new EncryptedEmailFastViewGetMethodModule(), new InMemoryEncryptedEmailContentStoreModule()))
         .build();
 }

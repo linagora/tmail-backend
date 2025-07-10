@@ -26,6 +26,8 @@ import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
+import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -35,6 +37,10 @@ import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraKeystoreSetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
+import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
+import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 class DistributedLinagoraKeystoreSetMethodTest implements LinagoraKeystoreSetMethodContract {
@@ -61,6 +67,7 @@ class DistributedLinagoraKeystoreSetMethodTest implements LinagoraKeystoreSetMet
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DelegationProbeModule())
-            .overrideWith(new JmapGuiceKeystoreManagerModule()))
+            .overrideWith(new JmapGuiceKeystoreManagerModule())
+            .overrideWith(new KeystoreCassandraModule(), new KeystoreSetMethodModule(), new KeystoreGetMethodModule(), new EncryptedEmailContentStoreCassandraModule(), new EncryptedEmailDetailedViewGetMethodModule(), new EncryptedEmailFastViewGetMethodModule()))
         .build();
 }

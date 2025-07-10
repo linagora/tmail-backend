@@ -165,8 +165,6 @@ import com.linagora.tmail.encrypted.EncryptedMailboxManager;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore;
-import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
-import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
@@ -189,15 +187,11 @@ import com.linagora.tmail.james.jmap.method.ContactAutocompleteMethodModule;
 import com.linagora.tmail.james.jmap.method.CustomMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailRecoveryActionMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
-import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
-import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
-import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
-import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
@@ -292,9 +286,6 @@ public class DistributedServer {
         new ContactAutocompleteMethodModule(),
         new CassandraJmapModule(),
         new CustomMethodModule(),
-        new EncryptedEmailContentStoreCassandraModule(),
-        new EncryptedEmailDetailedViewGetMethodModule(),
-        new EncryptedEmailFastViewGetMethodModule(),
         new EmailSendMethodModule(),
         new FilterGetMethodModule(),
         new FilterSetMethodModule(),
@@ -306,9 +297,6 @@ public class DistributedServer {
         new TMailCleverBlobResolverModule(),
         new JmapEventBusModule(),
         new PublicAssetsModule(),
-        new KeystoreCassandraModule(),
-        new KeystoreGetMethodModule(),
-        new KeystoreSetMethodModule(),
         new TicketRoutesModule(),
         new MessageVaultCapabilitiesModule(),
         new WebFingerModule(),
