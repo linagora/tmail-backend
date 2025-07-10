@@ -24,6 +24,7 @@ import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
+import java.time.Duration;
 import java.util.Optional;
 
 import jakarta.inject.Inject;
@@ -105,6 +106,8 @@ public class TWPSettingsConsumer implements Closeable, Startable {
                     .durable(DURABLE)
                     .arguments(queueArgumentSupplier()
                         .deadLetter(deadLetter)
+                        .singleActiveConsumer()
+                        .consumerTimeout(Duration.ofMinutes(10L).toMillis())
                         .build())),
                 sender.bind(BindingSpecification.binding()
                     .exchange(exchange)
@@ -144,7 +147,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
 
     private Disposable consumeSettingsQueue() {
         return delivery(TWP_SETTINGS_QUEUE)
-            .flatMap(delivery -> consumeSettingsUpdate(delivery, delivery.getBody()), DEFAULT_CONCURRENCY)
+            .concatMap(delivery -> consumeSettingsUpdate(delivery, delivery.getBody()))
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe();
     }
