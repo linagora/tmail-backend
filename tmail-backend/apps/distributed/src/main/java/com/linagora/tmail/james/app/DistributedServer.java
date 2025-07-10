@@ -79,7 +79,6 @@ import org.apache.james.modules.data.CassandraVacationModule;
 import org.apache.james.modules.event.JMAPEventBusModule;
 import org.apache.james.modules.event.MailboxEventBusModule;
 import org.apache.james.modules.eventstore.CassandraEventStoreModule;
-import org.apache.james.modules.mailbox.CassandraBlobStoreDependenciesModule;
 import org.apache.james.modules.mailbox.CassandraDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.CassandraMailboxModule;
 import org.apache.james.modules.mailbox.CassandraMailboxQuotaLegacyModule;
@@ -336,7 +335,6 @@ public class DistributedServer {
             .toInstance(ImmutableSet.of());
 
     public static final Module CASSANDRA_SERVER_CORE_MODULE = Modules.combine(
-        new CassandraBlobStoreDependenciesModule(),
         new CassandraDomainListModule(),
         new CassandraDLPConfigurationStoreModule(),
         new CassandraEventStoreModule(),
