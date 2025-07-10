@@ -35,10 +35,11 @@ import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
-import org.junit.jupiter.api.{AfterEach, Tag, Test}
+import org.junit.jupiter.api.{AfterEach, RepeatedTest, Tag, Test}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, reset, when}
 import reactor.core.publisher.Mono
+import reactor.core.scala.publisher.{SFlux, SMono}
 
 object TWPSettingsContract {
   val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
@@ -391,6 +392,80 @@ trait TWPSettingsContract {
          |    },
          |    "version": 2
          |}""".stripMargin)
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+    `given`
+      .body(
+        s"""{
+           |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:settings"],
+           |	"methodCalls": [
+           |		[
+           |			"Settings/get",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"ids": null
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0]", jsonEquals(
+        s"""[
+           |    "Settings/get",
+           |    {
+           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "state": "$${json-unit.ignore}",
+           |        "list": [
+           |            {
+           |                "id": "singleton",
+           |                "settings": {
+           |                    "language": "fr",
+           |                    "twp.settings.version": "2"
+           |                }
+           |            }
+           |        ],
+           |        "notFound": []
+           |    },
+           |    "c1"
+           |]""".stripMargin))
+    }
+  }
+
+  @RepeatedTest(3)
+  def shouldUpdateTheLatestVersionSettingsWhenConcurrentAmqpUpdates(): Unit = {
+    setUpJmapServer(Map("settings.readonly.properties.providers" -> "TWPReadOnlyPropertyProvider"))
+
+    SFlux.zip(SMono.fromCallable(() => publishAmqpSettingsMessage(
+      s"""{
+         |    "source": "twake-mail",
+         |    "nickname": "${BOB.getLocalPart}",
+         |    "request_id": "7e52493c-e396-4162-b675-496c52b6ba1b",
+         |    "timestamp": 176248374356283740,
+         |    "payload": {
+         |        "language": "fr",
+         |        "email": "${BOB.asString()}"
+         |    },
+         |    "version": 2
+         |}""".stripMargin)),
+      SMono.fromCallable(() => publishAmqpSettingsMessage(
+        s"""{
+           |    "source": "twake-mail",
+           |    "nickname": "${BOB.getLocalPart}",
+           |    "request_id": "7e52493c-e396-4162-b675-496c52b6ba1b",
+           |    "timestamp": 176248374356283740,
+           |    "payload": {
+           |        "language": "en",
+           |        "email": "${BOB.asString()}"
+           |    },
+           |    "version": 1
+           |}""".stripMargin)))
+      .collectSeq()
+      .block()
 
     awaitAtMostTenSeconds.untilAsserted { () =>
     `given`
