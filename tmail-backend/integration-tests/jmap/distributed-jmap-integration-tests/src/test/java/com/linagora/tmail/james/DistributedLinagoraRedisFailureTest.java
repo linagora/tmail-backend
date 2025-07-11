@@ -60,7 +60,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -94,7 +93,6 @@ public class DistributedLinagoraRedisFailureTest {
                     .noCryptoConfig()
                     .disableSingleSave())
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
-                .mailbox(new MailboxConfiguration(true))
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .build())
             .extension(new DockerOpenSearchExtension())
@@ -267,7 +265,6 @@ public class DistributedLinagoraRedisFailureTest {
                     .noCryptoConfig()
                     .disableSingleSave())
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
-                .mailbox(new MailboxConfiguration(true))
                 .build())
             .extension(new DockerOpenSearchExtension())
             .extension(new CassandraExtension())

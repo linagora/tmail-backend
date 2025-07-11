@@ -37,8 +37,6 @@ import org.apache.james.JamesServerMain;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.jmap.JMAPListenerModule;
-import org.apache.james.mailbox.MailboxManager;
-import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.BlobMemoryModule;
 import org.apache.james.modules.MailboxModule;
@@ -77,11 +75,6 @@ import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
-import com.linagora.tmail.encrypted.ClearEmailContentFactory;
-import com.linagora.tmail.encrypted.EncryptedMailboxManager;
-import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStore;
-import com.linagora.tmail.encrypted.KeystoreManager;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryDownloadAllModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactModule;
@@ -221,7 +214,6 @@ public class MemoryServer {
             .combineWith(chooseDropListsModule(configuration))
             .overrideWith(ExtensionModuleProvider.extentionModules(configuration.extentionConfiguration()))
             .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
-            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseJmapModule(configuration))
@@ -237,23 +229,6 @@ public class MemoryServer {
         }
         return binder -> {
         };
-    }
-
-    private static class EncryptedMailboxModule extends AbstractModule {
-        @Provides
-        @Singleton
-        MailboxManager provide(InMemoryMailboxManager mailboxManager, KeystoreManager keystoreManager,
-                               ClearEmailContentFactory clearEmailContentFactory,
-                               InMemoryEncryptedEmailContentStore contentStore) {
-            return new EncryptedMailboxManager(mailboxManager, keystoreManager, clearEmailContentFactory, contentStore);
-        }
-    }
-
-    private static List<Module> chooseMailbox(MailboxConfiguration mailboxConfiguration) {
-        if (mailboxConfiguration.isEncryptionEnabled()) {
-            return ImmutableList.of(new EncryptedMailboxModule());
-        }
-        return ImmutableList.of();
     }
 
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {

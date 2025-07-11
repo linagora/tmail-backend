@@ -46,9 +46,7 @@ import org.apache.james.jmap.JMAPModule;
 import org.apache.james.jmap.rfc8621.RFC8621MethodsModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
-import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
-import org.apache.james.mailbox.cassandra.CassandraMailboxManager;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
@@ -140,7 +138,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
-import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
@@ -160,11 +157,6 @@ import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
-import com.linagora.tmail.encrypted.ClearEmailContentFactory;
-import com.linagora.tmail.encrypted.EncryptedMailboxManager;
-import com.linagora.tmail.encrypted.KeystoreManager;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
-import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
@@ -432,7 +424,6 @@ public class DistributedServer {
             .overrideWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
             .overrideWith(chooseModules(searchConfiguration))
-            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(overrideEventBusModule(configuration))
             .overrideWith(chooseDropListsModule(configuration))
@@ -491,23 +482,6 @@ public class DistributedServer {
         }
         return binder -> {
         };
-    }
-
-    private static class EncryptedMailboxModule extends AbstractModule {
-        @Provides
-        @Singleton
-        MailboxManager provide(CassandraMailboxManager mailboxManager, KeystoreManager keystoreManager,
-                               ClearEmailContentFactory clearEmailContentFactory,
-                               CassandraEncryptedEmailContentStore contentStore) {
-            return new EncryptedMailboxManager(mailboxManager, keystoreManager, clearEmailContentFactory, contentStore);
-        }
-    }
-
-    private static List<Module> chooseMailbox(MailboxConfiguration mailboxConfiguration) {
-        if (mailboxConfiguration.isEncryptionEnabled()) {
-            return ImmutableList.of(new EncryptedMailboxModule());
-        }
-        return ImmutableList.of();
     }
 
     private static class FirebaseListenerDistributedModule extends AbstractModule {

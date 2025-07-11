@@ -135,8 +135,6 @@ import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
-import com.linagora.tmail.encrypted.postgres.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
@@ -256,7 +254,6 @@ public class PostgresTmailServer {
                 binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
                 binder.bind(NoopGuiceLoader.class).in(Scopes.SINGLETON);
             })
-            .overrideWith(chooseMailbox(configuration.mailboxConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
             .overrideWith(chooseJmapOidc(configuration))
@@ -519,13 +516,6 @@ public class PostgresTmailServer {
             return List.of(new LinagoraServicesDiscoveryModule());
         }
         return List.of();
-    }
-
-    private static Module chooseMailbox(MailboxConfiguration mailboxConfiguration) {
-        if (mailboxConfiguration.isEncryptionEnabled()) {
-            return new PostgresEncryptedMailboxModule();
-        }
-        return Modules.EMPTY_MODULE;
     }
 
     private static Module chooseRLSSupportPostgresMailboxModule(PostgresTmailConfiguration configuration) {

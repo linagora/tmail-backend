@@ -41,14 +41,7 @@ import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
-import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
-import com.linagora.tmail.encrypted.cassandra.KeystoreCassandraModule;
-import com.linagora.tmail.james.jmap.method.EncryptedEmailDetailedViewGetMethodModule;
-import com.linagora.tmail.james.jmap.method.EncryptedEmailFastViewGetMethodModule;
-import com.linagora.tmail.james.jmap.method.KeystoreGetMethodModule;
-import com.linagora.tmail.james.jmap.method.KeystoreSetMethodModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 class EncryptedDistributedServerTest implements JamesServerConcreteContract, JmapJamesServerContract {
@@ -82,7 +75,6 @@ class EncryptedDistributedServerTest implements JamesServerConcreteContract, Jma
                     .build())
                 .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(true))
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)
@@ -90,7 +82,7 @@ class EncryptedDistributedServerTest implements JamesServerConcreteContract, Jma
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(BlobStoreDaoClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))
-            .overrideWith(new KeystoreCassandraModule(), new KeystoreSetMethodModule(), new KeystoreGetMethodModule(), new EncryptedEmailContentStoreCassandraModule(), new EncryptedEmailDetailedViewGetMethodModule(), new EncryptedEmailFastViewGetMethodModule()))
+            .overrideWith(new DistributedEncryptedMailboxModule()))
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())

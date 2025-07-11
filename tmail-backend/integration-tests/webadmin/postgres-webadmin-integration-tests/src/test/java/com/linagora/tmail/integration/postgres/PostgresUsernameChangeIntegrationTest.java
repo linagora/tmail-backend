@@ -43,7 +43,6 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.integration.UsernameChangeIntegrationContract;
 import com.linagora.tmail.integration.probe.RateLimitingProbe;
@@ -78,7 +77,6 @@ public class PostgresUsernameChangeIntegrationTest extends UsernameChangeIntegra
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(IN_MEMORY)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
