@@ -17,8 +17,11 @@
  ********************************************************************/
 package com.linagora.tmail.mailet.rag;
 
+import static org.apache.mailet.base.DateFormats.RFC822_DATE_FORMAT;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +58,7 @@ import com.google.inject.Inject;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
 
 public class RagListener implements EventListener.ReactiveGroupEventListener {
     public static class RagListenerGroup extends Group {
@@ -146,7 +150,10 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
             markdownBuilder.append(mimeMessage.getCc() != null ? "\nCc: " + mimeMessage.getCc().stream()
                 .map(Object::toString)
                 .collect(Collectors.joining(", ")) : "");
-            markdownBuilder.append("\nDate: " + mimeMessage.getDate().toString());
+            markdownBuilder.append("\nDate: " + mimeMessage.getDate()
+                .toInstant()
+                .atZone(ZoneId.of("UTC"))
+                .format(RFC822_DATE_FORMAT));
             List<String> attachmentNames = findAttachmentNames(mimeMessage);
             if (!attachmentNames.isEmpty()) {
                 markdownBuilder.append("\nAttachments: " + String.join(", ", attachmentNames));

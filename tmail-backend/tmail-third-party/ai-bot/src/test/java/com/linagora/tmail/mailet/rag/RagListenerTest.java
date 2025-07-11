@@ -173,7 +173,7 @@ class RagListenerTest {
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
-                    "Date: Tue Oct 10 12:00:00 CEST 2023\n" +
+                    "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "\n" +
                     "Body of the email\n" +
                     " *****");
@@ -255,7 +255,7 @@ class RagListenerTest {
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
-                    "Date: Tue Oct 10 12:00:00 CEST 2023\n" +
+                    "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "\n" +
                     "Body of the email\n" +
                     " *****",
@@ -265,7 +265,7 @@ class RagListenerTest {
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
-                    "Date: Tue Oct 10 12:00:00 CEST 2023\n" +
+                    "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "\n" +
                     "Body of the email\n" +
                     " *****");
@@ -305,7 +305,7 @@ class RagListenerTest {
                     "Subject: Test Email with Attachment\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
-                    "Date: Tue Oct 10 12:00:00 CEST 2023\n" +
+                    "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "Attachments: test.txt\n" +
                     "\n" +
                     "This is the body of the email.\n" +
