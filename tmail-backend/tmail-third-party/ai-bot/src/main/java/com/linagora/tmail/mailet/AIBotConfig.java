@@ -25,14 +25,12 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
-import org.apache.james.core.MailAddress;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
 public class AIBotConfig {
     public static String API_KEY_PARAMETER_NAME = "apiKey";
-    public static String BOT_ADDRESS_PARAMETER_NAME = "botAddress";
     public static String MODEL_PARAMETER_NAME = "model";
     public static String BASE_URL_PARAMETER_NAME = "baseURL";
 
@@ -41,26 +39,21 @@ public class AIBotConfig {
 
     private final String apiKey;
     private final Optional<URL> baseURLOpt;
-    private final MailAddress botAddress;
     private final LlmModel llmModel;
 
-    public AIBotConfig(String apiKey, MailAddress botAddress, LlmModel llmModel, Optional<URL> baseURLOpt) {
+    public AIBotConfig(String apiKey, LlmModel llmModel, Optional<URL> baseURLOpt) {
         Preconditions.checkNotNull(apiKey);
-        Preconditions.checkNotNull(botAddress);
         Preconditions.checkNotNull(llmModel);
         Preconditions.checkNotNull(baseURLOpt);
 
         this.apiKey = apiKey;
         this.baseURLOpt = baseURLOpt;
-        this.botAddress = botAddress;
         this.llmModel = llmModel;
     }
 
     public static AIBotConfig from(Configuration configuration) throws IllegalArgumentException {
         String apiKeyParam = Optional.ofNullable(configuration.getString(API_KEY_PARAMETER_NAME, null))
             .orElseThrow(() ->  new IllegalArgumentException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided."));
-        String gptAddressParam = Optional.ofNullable(configuration.getString(BOT_ADDRESS_PARAMETER_NAME, null))
-            .orElseThrow(() ->  new IllegalArgumentException("No value for " + BOT_ADDRESS_PARAMETER_NAME + " parameter was provided."));
         LlmModel llmModelParam = Optional.ofNullable(configuration.getString(MODEL_PARAMETER_NAME))
             .filter(modelString -> !Strings.isNullOrEmpty(modelString))
             .map(LlmModel::new).orElse(DEFAULT_LLM_MODEL);
@@ -72,7 +65,7 @@ public class AIBotConfig {
             .flatMap(AIBotConfig::baseURLStringToURL);
 
         try {
-            return new AIBotConfig(apiKeyParam, new MailAddress(gptAddressParam), llmModelParam, baseURLOpt);
+            return new AIBotConfig(apiKeyParam, llmModelParam, baseURLOpt);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -96,7 +89,6 @@ public class AIBotConfig {
         }
         AIBotConfig that = (AIBotConfig) o;
         return Objects.equals(apiKey, that.apiKey) &&
-            Objects.equals(botAddress, that.botAddress) &&
             Objects.equals(llmModel, that.llmModel) &&
             Objects.equals(Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
                 Optional.ofNullable(that.baseURLOpt).map(opt -> opt.map(URL::toString)));
@@ -104,16 +96,12 @@ public class AIBotConfig {
 
     @Override
     public int hashCode() {
-        return Objects.hash(apiKey, botAddress, llmModel,
+        return Objects.hash(apiKey, llmModel,
             Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)));
     }
 
     public String getApiKey() {
         return apiKey;
-    }
-
-    public MailAddress getBotAddress() {
-        return botAddress;
     }
 
     public LlmModel getLlmModel() {

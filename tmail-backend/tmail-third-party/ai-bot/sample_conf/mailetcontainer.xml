@@ -100,7 +100,9 @@
                 <consume>false</consume>
             </mailet>
 
-            <mailet match="aibot-allowed" class="com.linagora.tmail.mailet.AIBotMailet"/>
+            <mailet match="aibot-allowed" class="com.linagora.tmail.mailet.AIBotMailet">
+                <botAddress>gpt@example.com</botAddress>
+            </mailet>
             <mailet match="All" class="Null"/>
         </processor>
 
