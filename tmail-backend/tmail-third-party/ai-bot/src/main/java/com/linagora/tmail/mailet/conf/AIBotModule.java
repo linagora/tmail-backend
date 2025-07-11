@@ -32,6 +32,7 @@ import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.AIRedactionalHelper;
 import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
+import com.linagora.tmail.mailet.rag.RagConfig;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
@@ -51,6 +52,11 @@ public class AIBotModule extends AbstractModule {
     @Provides
     public static AIBotConfig provideAiBotExtensionConfiguration(@Named("ai") Configuration configuration) {
         return AIBotConfig.from(configuration);
+    }
+
+    @Provides
+    public static RagConfig provideRagConfiguration(@Named("ai") Configuration configuration) {
+        return RagConfig.from(configuration);
     }
 
     @Provides
