@@ -37,13 +37,11 @@ import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 
 public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
-                                  MailboxConfiguration mailboxConfiguration,
                                   UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
                                   FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                   LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
@@ -54,7 +52,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   boolean dropListEnabled,
                                   boolean oidcEnabled) implements Configuration {
     public static class Builder {
-        private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<String> rootDirectory;
         private Optional<ConfigurationPath> configurationPath;
         private Optional<UsersRepositoryModuleChooser.Implementation> usersRepositoryImplementation;
@@ -68,7 +65,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
 
 
         private Builder() {
-            mailboxConfiguration = Optional.empty();
             rootDirectory = Optional.empty();
             configurationPath = Optional.empty();
             usersRepositoryImplementation = Optional.empty();
@@ -106,11 +102,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
 
         public Builder configurationFromClasspath() {
             configurationPath = Optional.of(new ConfigurationPath(FileSystem.CLASSPATH_PROTOCOL));
-            return this;
-        }
-
-        public Builder mailbox(MailboxConfiguration mailboxConfiguration) {
-            this.mailboxConfiguration = Optional.of(mailboxConfiguration);
             return this;
         }
 
@@ -162,10 +153,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             FileSystemImpl fileSystem = new FileSystemImpl(directories);
 
             PropertiesProvider propertiesProvider = new PropertiesProvider(fileSystem, configurationPath);
-
-            MailboxConfiguration mailboxConfiguration = this.mailboxConfiguration.orElseGet(Throwing.supplier(
-                () -> MailboxConfiguration.parse(
-                    propertiesProvider)));
 
             ExtensionConfiguration extentionConfiguration = this.extentionConfiguration.orElseGet(Throwing.supplier(
                 () -> {
@@ -226,7 +213,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return new MemoryConfiguration(
                 configurationPath,
                 directories,
-                mailboxConfiguration,
                 usersRepositoryChoice,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,

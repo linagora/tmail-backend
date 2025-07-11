@@ -53,7 +53,6 @@ import com.google.common.base.Strings;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -73,7 +72,6 @@ class DistributedPostgresTmailServerTest implements JamesServerConcreteContract 
                 .noCryptoConfig()
                 .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(RABBITMQ)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)

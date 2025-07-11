@@ -43,7 +43,6 @@ import com.linagora.tmail.OpenPaasTestModule;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.dav.DavServerExtension;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -66,7 +65,6 @@ class MemoryServerWithOpenPaasConfiguredTest {
             MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
                 .configurationFromClasspath()
-                .mailbox(new MailboxConfiguration(false))
                 .usersRepository(DEFAULT)
                 .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_CONSUMER)
                 .build())
@@ -95,7 +93,6 @@ class MemoryServerWithOpenPaasConfiguredTest {
             MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
                 .configurationFromClasspath()
-                .mailbox(new MailboxConfiguration(false))
                 .usersRepository(DEFAULT)
                 .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_DAV)
                 .build())

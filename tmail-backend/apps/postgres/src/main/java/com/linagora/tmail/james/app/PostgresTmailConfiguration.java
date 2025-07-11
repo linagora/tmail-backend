@@ -41,14 +41,12 @@ import org.apache.james.utils.PropertiesProvider;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 
 public record PostgresTmailConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
-                                         MailboxConfiguration mailboxConfiguration,
                                          BlobStoreConfiguration blobStoreConfiguration,
                                          SearchConfiguration searchConfiguration,
                                          UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
@@ -63,7 +61,6 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          boolean oidcEnabled,
                                          OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) implements Configuration {
     public static class Builder {
-        private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
         private Optional<BlobStoreConfiguration> blobStoreConfiguration;
         private Optional<String> rootDirectory;
@@ -81,7 +78,6 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
 
         private Builder() {
             searchConfiguration = Optional.empty();
-            mailboxConfiguration = Optional.empty();
             rootDirectory = Optional.empty();
             configurationPath = Optional.empty();
             blobStoreConfiguration = Optional.empty();
@@ -127,11 +123,6 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
 
         public Builder blobStore(BlobStoreConfiguration blobStoreConfiguration) {
             this.blobStoreConfiguration = Optional.of(blobStoreConfiguration);
-            return this;
-        }
-
-        public Builder mailbox(MailboxConfiguration mailboxConfiguration) {
-            this.mailboxConfiguration = Optional.of(mailboxConfiguration);
             return this;
         }
 
@@ -203,9 +194,6 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             SearchConfiguration searchConfiguration = this.searchConfiguration.orElseGet(Throwing.supplier(
                 () -> SearchConfiguration.parse(propertiesProvider)));
 
-            MailboxConfiguration mailboxConfiguration = this.mailboxConfiguration.orElseGet(Throwing.supplier(
-                () -> MailboxConfiguration.parse(propertiesProvider)));
-
             FileConfigurationProvider configurationProvider = new FileConfigurationProvider(fileSystem, Basic.builder()
                 .configurationPath(configurationPath)
                 .workingDirectory(directories.getRootDirectory())
@@ -262,7 +250,6 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return new PostgresTmailConfiguration(
                 configurationPath,
                 directories,
-                mailboxConfiguration,
                 blobStoreConfiguration,
                 searchConfiguration,
                 usersRepositoryChoice,

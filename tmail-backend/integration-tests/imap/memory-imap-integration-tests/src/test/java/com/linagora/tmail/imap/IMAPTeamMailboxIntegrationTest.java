@@ -50,7 +50,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
@@ -60,8 +59,7 @@ import com.linagora.tmail.team.TeamMailboxProbe;
 
 import scala.jdk.javaapi.CollectionConverters;
 
-
-public class IMAPTeamMailboxIntegrationTest {
+class IMAPTeamMailboxIntegrationTest {
     static final String DOMAIN = "domain.tld";
     static final Username MINISTER = Username.of("minister@" + DOMAIN);
     static final Username SECRETARY = Username.of("secretary@" + DOMAIN);
@@ -85,7 +83,6 @@ public class IMAPTeamMailboxIntegrationTest {
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
-            .mailbox(new MailboxConfiguration(false))
             .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)

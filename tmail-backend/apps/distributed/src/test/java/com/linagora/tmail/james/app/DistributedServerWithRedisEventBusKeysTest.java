@@ -47,7 +47,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -67,7 +66,6 @@ class DistributedServerWithRedisEventBusKeysTest implements JamesServerConcreteC
                 .noCryptoConfig()
                 .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(false))
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)

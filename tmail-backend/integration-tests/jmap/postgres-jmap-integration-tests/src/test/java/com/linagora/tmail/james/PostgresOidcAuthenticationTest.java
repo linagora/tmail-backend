@@ -40,7 +40,6 @@ import com.google.inject.name.Names;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.common.OidcAuthenticationContract;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
@@ -66,7 +65,6 @@ public class PostgresOidcAuthenticationTest extends OidcAuthenticationContract {
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.scanning())
-            .mailbox(new MailboxConfiguration(false))
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .eventBusImpl(IN_MEMORY)
             .oidcEnabled(true)

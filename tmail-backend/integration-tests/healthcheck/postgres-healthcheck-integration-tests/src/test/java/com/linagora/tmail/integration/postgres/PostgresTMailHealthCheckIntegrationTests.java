@@ -32,7 +32,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.integration.TMailHealthCheckIntegrationTests;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
@@ -57,7 +56,6 @@ public class PostgresTMailHealthCheckIntegrationTests extends TMailHealthCheckIn
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(RABBITMQ)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)

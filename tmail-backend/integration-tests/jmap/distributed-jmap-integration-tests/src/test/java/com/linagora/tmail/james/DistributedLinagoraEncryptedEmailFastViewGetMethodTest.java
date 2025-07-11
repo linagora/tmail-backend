@@ -31,12 +31,12 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.cassandra.EncryptedEmailContentStoreCassandraModule;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
+import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailFastViewGetMethodContract;
@@ -63,7 +63,6 @@ public class DistributedLinagoraEncryptedEmailFastViewGetMethodTest implements L
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .mailbox(new MailboxConfiguration(true))
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
@@ -74,6 +73,7 @@ public class DistributedLinagoraEncryptedEmailFastViewGetMethodTest implements L
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DelegationProbeModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule())
+            .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(new EncryptedEmailContentStoreCassandraModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()

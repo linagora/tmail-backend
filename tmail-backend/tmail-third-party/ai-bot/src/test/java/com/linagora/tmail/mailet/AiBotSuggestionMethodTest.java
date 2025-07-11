@@ -19,10 +19,8 @@
 package com.linagora.tmail.mailet;
 
 import com.google.inject.util.Modules;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.jmap.aibot.AiBotMethodModule;
 import com.linagora.tmail.mailet.conf.AIBotModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import io.restassured.response.Response;
@@ -79,7 +77,6 @@ public class AiBotSuggestionMethodTest {
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
-            .mailbox(new MailboxConfiguration(false))
             .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)

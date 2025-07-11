@@ -41,7 +41,6 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
@@ -49,7 +48,6 @@ import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscovery
 import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 
 public record DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
-                                            MailboxConfiguration mailboxConfiguration,
                                             BlobStoreConfiguration blobStoreConfiguration,
                                             SearchConfiguration searchConfiguration,
                                             UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
@@ -69,7 +67,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             boolean oidcEnabled,
                                             OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) implements Configuration {
     public static class Builder {
-        private Optional<MailboxConfiguration> mailboxConfiguration;
         private Optional<SearchConfiguration> searchConfiguration;
         private Optional<BlobStoreConfiguration> blobStoreConfiguration;
         private Optional<String> rootDirectory;
@@ -91,7 +88,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
 
         private Builder() {
             searchConfiguration = Optional.empty();
-            mailboxConfiguration = Optional.empty();
             rootDirectory = Optional.empty();
             configurationPath = Optional.empty();
             blobStoreConfiguration = Optional.empty();
@@ -141,11 +137,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
 
         public Builder blobStore(BlobStoreConfiguration blobStoreConfiguration) {
             this.blobStoreConfiguration = Optional.of(blobStoreConfiguration);
-            return this;
-        }
-
-        public Builder mailbox(MailboxConfiguration mailboxConfiguration) {
-            this.mailboxConfiguration = Optional.of(mailboxConfiguration);
             return this;
         }
 
@@ -237,9 +228,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             SearchConfiguration searchConfiguration = this.searchConfiguration.orElseGet(Throwing.supplier(
                 () -> SearchConfiguration.parse(propertiesProvider)));
 
-            MailboxConfiguration mailboxConfiguration = this.mailboxConfiguration.orElseGet(Throwing.supplier(
-                () -> MailboxConfiguration.parse(propertiesProvider)));
-
             FileConfigurationProvider configurationProvider = new FileConfigurationProvider(fileSystem, Basic.builder()
                 .configurationPath(configurationPath)
                 .workingDirectory(directories.getRootDirectory())
@@ -330,7 +318,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
-                mailboxConfiguration,
                 blobStoreConfiguration,
                 searchConfiguration,
                 usersRepositoryChoice,

@@ -48,7 +48,6 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
@@ -66,7 +65,7 @@ import com.linagora.tmail.team.TeamMailboxProbe;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
-public class PostgresLinagoraContactAutoCompleteMethodTest implements LinagoraContactAutocompleteMethodContract {
+class PostgresLinagoraContactAutoCompleteMethodTest implements LinagoraContactAutocompleteMethodContract {
 
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
         .with().pollInterval(ONE_HUNDRED_MILLISECONDS)
@@ -94,7 +93,6 @@ public class PostgresLinagoraContactAutoCompleteMethodTest implements LinagoraCo
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(false))
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .eventBusImpl(RABBITMQ)
             .build())

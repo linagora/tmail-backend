@@ -55,7 +55,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
@@ -71,7 +70,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.team.TeamMailboxProbe;
 
-public class PostgresEmailGetMethodTest implements EmailGetMethodContract {
+class PostgresEmailGetMethodTest implements EmailGetMethodContract {
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
@@ -85,7 +84,6 @@ public class PostgresEmailGetMethodTest implements EmailGetMethodContract {
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(false))
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .eventBusImpl(RABBITMQ)
             .build())

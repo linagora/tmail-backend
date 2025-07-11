@@ -9,8 +9,10 @@ Encrypting messages is costly thus we understand an administrator might choose n
 
 We provide an easy way to disable completely the **Encrypted Mailbox** through the configuration.
 
-Example: `mailbox.properties`
+One need to load the corresponding extension Guice modules in order to use the feature:
 
 ....
-gpg.encryption.enable=false
+com.linagora.tmail.james.app.DistributedEncryptedMailboxModule
+com.linagora.tmail.james.app.PostgresEncryptedMailboxModule
+com.linagora.tmail.james.app.MemoryEncryptedMailboxModule
 ....

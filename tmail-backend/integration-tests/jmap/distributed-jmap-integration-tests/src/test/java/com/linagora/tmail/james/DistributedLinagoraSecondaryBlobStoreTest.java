@@ -84,7 +84,6 @@ import com.linagora.tmail.blob.guice.SecondaryS3BlobStoreConfiguration;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobEvents;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -167,7 +166,6 @@ class DistributedLinagoraSecondaryBlobStoreTest {
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .mailbox(new MailboxConfiguration(true))
             .build())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())

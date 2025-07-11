@@ -61,7 +61,6 @@ import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -148,7 +147,6 @@ class SchedulerReconnectionHandlerIntegrationTest {
                     .noCryptoConfig()
                     .enableSingleSave())
                 .searchConfiguration(SearchConfiguration.openSearch())
-                .mailbox(new MailboxConfiguration(false))
                 .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
                 .vaultConfiguration(VaultConfiguration.ENABLED_WORKQUEUE)
                 .build())
@@ -199,7 +197,6 @@ class SchedulerReconnectionHandlerIntegrationTest {
                     .noCryptoConfig()
                     .enableSingleSave())
                 .searchConfiguration(SearchConfiguration.openSearch())
-                .mailbox(new MailboxConfiguration(false))
                 .eventBusKeysChoice(EventBusKeysChoice.REDIS)
                 .vaultConfiguration(VaultConfiguration.ENABLED_WORKQUEUE)
                 .build())
@@ -251,7 +248,6 @@ class SchedulerReconnectionHandlerIntegrationTest {
                     .noCryptoConfig()
                     .enableSingleSave())
                 .searchConfiguration(SearchConfiguration.openSearch())
-                .mailbox(new MailboxConfiguration(false))
                 .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
                 .vaultConfiguration(VaultConfiguration.DEFAULT)
                 .build())
