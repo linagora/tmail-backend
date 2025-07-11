@@ -17,21 +17,30 @@
  ********************************************************************/
 package com.linagora.tmail.mailet.rag;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.mockito.Mockito.spy;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.core.read.ListAppender;
 
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
@@ -40,31 +49,33 @@ import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
-import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.store.FakeAuthenticator;
+import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.StoreMailboxManager;
 import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
-import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import org.slf4j.LoggerFactory;
+import com.github.tomakehurst.wiremock.WireMockServer;
 
 class RagListenerTest {
 
-    private static final Username BOB = Username.of("bob");
-    private static final Username ALICE = Username.of("alice");
+    private static final Username BOB = Username.of("bob@test.com");
+    private static final Username ALICE = Username.of("alice@test.com");
+    private static final Username USER_WITH_NO_DOMAIN = Username.of("user");
     private static final MailboxPath BOB_INBOX_PATH = MailboxPath.inbox(BOB);
+    private static final MailboxPath USER_WITH_NO_DOMAIN_INBOX_PATH = MailboxPath.inbox(USER_WITH_NO_DOMAIN );
     private static final MailboxPath ALICE_INBOX_PATH = MailboxPath.inbox(ALICE);
     private static final MailboxPath BOB_SPAM_PATH = MailboxPath.forUser(BOB, "Spam");
     private static final MailboxPath BOB_MAILBOX_PATH = MailboxPath.forUser(BOB, "mailbox");
@@ -83,6 +94,7 @@ class RagListenerTest {
     MessageIdManager messageIdManager;
     MessageManager aliceInboxMessageManager;
     MessageManager bobMailBoxMessageManager;
+    MessageManager userWithNoDomainMailBoxMessageManager;
     MessageManager bobInboxMessageManager;
     MessageManager spamMessageManager;
     MessageManager trashMessageManager;
@@ -91,22 +103,27 @@ class RagListenerTest {
     SystemMailboxesProviderImpl systemMailboxesProvider;
     MailboxSession bobMailboxSession;
     MailboxSession aliceMailboxSession;
+    MailboxSession userWithNoDomainMailboxSession;
     UpdatableTickingClock clock;
     MailboxSessionMapperFactory mapperFactory;
     MailboxId bobInboxId;
+    MailboxId userWithNoDomainInboxId;
     MailboxId bobMailBoxId;
     MailboxId aliceInboxId;
     MemoryEventDeadLetters eventDeadLetters;
-    ListAppender<ILoggingEvent> listAppender;
-    Logger logger;
     HierarchicalConfiguration<ImmutableNode> config;
+    WireMockServer wireMockServer;
+    RagConfig ragConfig;
 
     @BeforeEach
     void setup() throws Exception {
-        logger = (Logger) LoggerFactory.getLogger(RagListener.class);
-        listAppender = new ListAppender<>();
-        listAppender.start();
-        logger.addAppender(listAppender);
+        wireMockServer = new WireMockServer();
+        wireMockServer.start();
+        configureFor("localhost", wireMockServer.port());
+        stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
+            .willReturn(aResponse()
+                .withStatus(200)
+                .withBody("{\"task_status_url\":\"http://localhost:8080/status/1234\"}")));
 
         clock = new UpdatableTickingClock(Instant.now());
         mapperFactory = new InMemoryMailboxSessionMapperFactory(clock);
@@ -136,7 +153,10 @@ class RagListenerTest {
 
         bobMailboxSession = MailboxSessionUtil.create(BOB);
         aliceMailboxSession = MailboxSessionUtil.create(ALICE);
+        userWithNoDomainMailboxSession = MailboxSessionUtil.create(USER_WITH_NO_DOMAIN);
         bobInboxId = mailboxManager.createMailbox(BOB_INBOX_PATH, bobMailboxSession).get();
+        userWithNoDomainInboxId = mailboxManager.createMailbox(USER_WITH_NO_DOMAIN_INBOX_PATH, userWithNoDomainMailboxSession).get();
+
         bobMailBoxId = mailboxManager.createMailbox(BOB_MAILBOX_PATH, bobMailboxSession).get();
         aliceInboxId = mailboxManager.createMailbox(ALICE_INBOX_PATH, aliceMailboxSession).get();
         spamMailboxId = mailboxManager.createMailbox(BOB_SPAM_PATH, bobMailboxSession).get();
@@ -144,39 +164,102 @@ class RagListenerTest {
         spamMessageManager = mailboxManager.getMailbox(spamMailboxId, bobMailboxSession);
         trashMessageManager = mailboxManager.getMailbox(trashMailboxId, bobMailboxSession);
         bobInboxMessageManager = mailboxManager.getMailbox(bobInboxId, bobMailboxSession);
+        userWithNoDomainMailBoxMessageManager = mailboxManager.getMailbox(userWithNoDomainInboxId, userWithNoDomainMailboxSession);
         bobMailBoxMessageManager = mailboxManager.getMailbox(bobMailBoxId, bobMailboxSession);
         aliceInboxMessageManager = mailboxManager.getMailbox(aliceInboxId, aliceMailboxSession);
         systemMailboxesProvider = new SystemMailboxesProviderImpl(mailboxManager);
         Configurations configurations = new Configurations();
         config = configurations.xml("listeners.xml");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config);
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("openrag.url", "http://localhost:8080");
+        configuration.addProperty("openrag.token", "dummy-token");
+        configuration.addProperty("openrag.ssl.trust.all.certs", "true");
+        configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
+        ragConfig = RagConfig.from(configuration);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
     }
 
     @AfterEach
     void tearDown() {
-        logger.detachAppender(listAppender);
+        wireMockServer.stop();
     }
 
     @Test
     void reactiveEventShouldProcessAddedEventAndExtractContent() throws Exception {
         mailboxManager.getEventBus().register(ragListener);
-        bobInboxMessageManager.appendMessage(
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        assertThat(listAppender.list)
-            .extracting(ILoggingEvent::getFormattedMessage)
-            .contains(
-                "RAG Listener triggered for mailbox: " + bobInboxId,
-                "RAG Listener successfully processed mailContent ***** \n" +
+        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+            .withHeader("Authorization", equalTo("Bearer dummy-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
                     "Subject: Test Subject\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "\n" +
-                    "Body of the email\n" +
-                    " *****");
+                    "# Email Content\n" +
+                    "\n" +
+                    "Body of the email"))
+                .build()));
+    }
+
+    @Test
+    void HttpClientShouldSendPutRequestWhenDocumentAlreadyIndexed() throws Exception {
+
+        stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
+            .willReturn(aResponse()
+                .withStatus(409)
+                .withBody("{\"details\":\"Document already exists\"}")));
+
+        stubFor(put(urlPathMatching("/indexer/partition/.*/file/.*"))
+            .willReturn(aResponse()
+                .withStatus(200)
+                .withBody("{\"task_status_url\":\"http://localhost:8080/status/1234\"}")));
+
+        mailboxManager.getEventBus().register(ragListener);
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            bobMailboxSession);
+
+        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(1, putRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        verify(putRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+            .withHeader("Authorization", equalTo("Bearer dummy-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
+                    "Subject: Test Subject\n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Cc: cc@example.com\n" +
+                    "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
+                    "\n" +
+                    "# Email Content\n" +
+                    "\n" +
+                    "Body of the email"))
+                .build()));
     }
 
     @Test
@@ -196,7 +279,7 @@ class RagListenerTest {
 
         mailboxManager.copyMessages(MessageRange.from(appendResult.getId().getUid()), bobInboxId,bobMailBoxId,bobMailboxSession);
 
-        assertThat(listAppender.list).isEmpty();
+        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
     }
 
     @Test
@@ -207,7 +290,7 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        assertThat(listAppender.list).isEmpty();
+        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
     }
 
     @Test
@@ -218,7 +301,7 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        assertThat(listAppender.list).isEmpty();
+        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
     }
 
     @Test
@@ -229,15 +312,13 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             aliceMailboxSession);
 
-        assertThat(listAppender.list)
-            .extracting(ILoggingEvent::getFormattedMessage)
-            .contains("RAG Listener skipped for user: alice");
+        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
     }
 
     @Test
     void reactiveEventShouldAllowAllUsersWhenWhiteListIsEmpty() throws Exception {
         config.setProperty("listener.configuration.users", "");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
         mailboxManager.getEventBus().register(ragListener);
 
         MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
@@ -247,28 +328,54 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        assertThat(listAppender.list)
-            .extracting(ILoggingEvent::getFormattedMessage)
-            .contains("RAG Listener triggered for mailbox: " + aliceInboxId,
-                "RAG Listener successfully processed mailContent ***** \n" +
+        verify(2, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_1"))
+            .withHeader("Authorization", equalTo("Bearer dummy-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
                     "Subject: Test Subject\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "\n" +
-                    "Body of the email\n" +
-                    " *****",
-                "RAG Listener triggered for mailbox: " + bobInboxId,
-                "RAG Listener successfully processed mailContent ***** \n" +
+                    "# Email Content\n" +
+                    "\n" +
+                    "Body of the email"))
+                .build()));
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_2"))
+            .withHeader("Authorization", equalTo("Bearer dummy-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
                     "Subject: Test Subject\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "\n" +
-                    "Body of the email\n" +
-                    " *****");
+                    "# Email Content\n" +
+                    "\n" +
+                    "Body of the email"))
+                .build()));
+
     }
 
     @Test
@@ -297,19 +404,43 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(emailWithAttachment)),
             bobMailboxSession);
 
-        assertThat(listAppender.list)
-            .extracting(ILoggingEvent::getFormattedMessage)
-            .contains(
-                "RAG Listener triggered for mailbox: " + bobInboxId,
-                "RAG Listener successfully processed mailContent ***** \n" +
+        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_1"))
+            .withHeader("Authorization", equalTo("Bearer dummy-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
+                .build())
+             .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
                     "Subject: Test Email with Attachment\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "Attachments: test.txt\n" +
                     "\n" +
-                    "This is the body of the email.\n" +
-                    " *****");
+                    "# Email Content\n" +
+                    "\n" +
+                    "This is the body of the email."))
+                .build()));
+
     }
 
+    @Test
+    void reactiveEventShouldNotIndexMessageWhenDomainNameIsMissing() throws Exception {
+        config.setProperty("listener.configuration.users", "user");
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        mailboxManager.getEventBus().register(ragListener);
+
+        userWithNoDomainMailBoxMessageManager.appendMessage(
+                MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+                userWithNoDomainMailboxSession);
+
+        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+    }
 }
