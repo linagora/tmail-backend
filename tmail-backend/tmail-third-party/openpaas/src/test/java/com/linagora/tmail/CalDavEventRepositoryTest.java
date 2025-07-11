@@ -81,6 +81,7 @@ public class CalDavEventRepositoryTest {
     static DockerOpenPaasExtension dockerOpenPaasExtension = new DockerOpenPaasExtension(DockerOpenPaasSetup.SINGLETON);
 
     private static OpenPaasUser openPaasUser;
+    private static OpenPaasUser aliceOpenPaasUser;
 
     private DavClient davClient;
     private CalDavEventRepository testee;
@@ -107,6 +108,7 @@ public class CalDavEventRepositoryTest {
     private void setupNewTestUser() {
         openPaasUser = dockerOpenPaasExtension.newTestUser();
         testUser = Username.of(openPaasUser.email());
+        aliceOpenPaasUser = dockerOpenPaasExtension.newTestUser();
     }
 
     private BlobId setupCalendarResolver(String eventUid) {
@@ -452,6 +454,86 @@ public class CalDavEventRepositoryTest {
         assertThat(calendarEventAttendanceResults.done().size()).isEqualTo(1);
         assertThat(OptionConverters.toJava(CollectionConverters.asJava(calendarEventAttendanceResults.done()).getFirst().isFree()))
             .isEqualTo(Optional.of(false));
+    }
+
+    @Test
+    void updateEventOnOrganizerCalendarShouldImplicitlyUpdateAttendeeCalendar() {
+        String eventUidA = UUID.randomUUID().toString();
+        String calendarAsString = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+            "CALSCALE:GREGORIAN\n" +
+            "BEGIN:VTIMEZONE\n" +
+            "TZID:Europe/Paris\n" +
+            "BEGIN:STANDARD\n" +
+            "TZOFFSETFROM:+0700\n" +
+            "TZOFFSETTO:+0700\n" +
+            "TZNAME:WIB\n" +
+            "DTSTART:19700101T000000\n" +
+            "END:STANDARD\n" +
+            "END:VTIMEZONE\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUidA + "\n" +
+            "TRANSP:OPAQUE\n" +
+            "DTSTART;TZID=Europe/Paris:20250401T150000\n" +
+            "DTEND;TZID=Europe/Paris:20250401T153000\n" +
+            "CLASS:PUBLIC\n" +
+            "SUMMARY:Loop3\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
+            " DUAL;CN=John2 Doe2:mailto:" + aliceOpenPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email() + "\n" +
+            "DTSTAMP:20250331T075231Z\n" +
+            "SEQUENCE:0\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        Calendar calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarAsString.getBytes(StandardCharsets.UTF_8)));
+
+        // Create the event on organizer (OpenPaas user) calendar
+        davClient.createCalendar(openPaasUser.email(),
+                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                calendar)
+            .block();
+        // Create the event on attendee (Alice) calendar
+        davClient.createCalendar(aliceOpenPaasUser.email(),
+                URI.create("/calendars/" + aliceOpenPaasUser.id() + "/" + aliceOpenPaasUser.id() + "/" + eventUidA + ".ics"),
+                calendar)
+            .block();
+
+        // Alice proposes a counter to OpenPaas user to modify the event start time
+        String newStartTime = "20250320T160000";
+        ZonedDateTime proposedStartDate = LocalDateTime.parse(newStartTime, DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))
+            .atZone(ZoneId.of("Europe/Paris"));
+        ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
+        String counterEvent = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "METHOD:COUNTER\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUidA + "\n" +
+            "DTSTART;TZID=Europe/Paris:" + proposedStartDate.format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")) + "\n" +
+            "DTEND;TZID=Europe/Paris:" + proposedEndDate.format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")) + "\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + aliceOpenPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email() + "\n" +
+            "DTSTAMP:20250331T075231Z\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+        CalendarEventModifier calendarEventModifier = CalendarEventModifier.of(
+            CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(counterEvent.getBytes(StandardCharsets.UTF_8))), 
+            testUser);
+
+        // OpenPaas user accepts the counter proposal
+        assertThatCode(() -> testee.updateEvent(Username.of(openPaasUser.email()), eventUidA, calendarEventModifier).block())
+            .doesNotThrowAnyException();
+
+        DavCalendarObject openPaasUserCalendar = davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
+        DavCalendarObject aliceDavCalendarObject = davClient.getCalendarObject(new DavUser(aliceOpenPaasUser.id(), aliceOpenPaasUser.email()), new EventUid(eventUidA)).block();
+
+        // the event should be updated in both organizer (OpenPaas user) calendar and attendee (Alice) calendar
+        assertThat(openPaasUserCalendar.uri()).isNotEqualTo(aliceDavCalendarObject.uri());
+        assertThat(openPaasUserCalendar.calendarData().toString()).contains(newStartTime);
+        assertThat(aliceDavCalendarObject.calendarData().toString()).contains(newStartTime);
     }
 
     @Test
