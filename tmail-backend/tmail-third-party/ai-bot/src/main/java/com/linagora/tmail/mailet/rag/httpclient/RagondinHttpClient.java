@@ -42,7 +42,6 @@ public class RagondinHttpClient {
     private final RagConfig configuration;
     private final ObjectMapper objectMapper;
 
-
     public RagondinHttpClient(RagConfig configuration) {
         this.configuration = configuration;
         this.objectMapper = new ObjectMapper().registerModule(new Jdk8Module());
@@ -51,34 +50,30 @@ public class RagondinHttpClient {
 
     Mono<Void> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, String> metadata) throws JsonProcessingException {
         String url = String.format("/indexer/partition/%s/file/%s", partition.partitionName(), documentId.asString());
-        String metadataJson;
+        String metadataJson = this.objectMapper.writeValueAsString(metadata);
 
-        try {
-            metadataJson = this.objectMapper.writeValueAsString(metadata);
-        } catch (Exception e) {
-            return Mono.error(new RuntimeException("Invalid metadata", e));
-        }
         return httpClient
             .headers(headers -> headers
                 .add(CONTENT_TYPE_HEADER, "multipart/form-data"))
             .post()
             .uri(url)
             .sendForm((req, form) -> form
+                .multipart(true)
                 .attr("metadata", metadataJson)
-                .file(documentId.asString(), new ByteArrayInputStream(textualContent.getBytes(StandardCharsets.UTF_8)), "text/plain"))
+                .file("file", documentId.asString() + ".txt", new ByteArrayInputStream(textualContent.getBytes(StandardCharsets.UTF_8)), "text/plain"))
             .responseSingle((res, content) -> {
-                if (res.status().code() == 200) {
+                if (res.status().code() == 201 || res.status().code() == 200) {
+                    LOGGER.info("Successfully added document {}", documentId.asString());
                     return content.then();
                 } else {
                     return content
                         .asString(StandardCharsets.UTF_8)
-                        .flatMap(body -> Mono.error(new RuntimeException("Failed to add document: " + body)));
+                        .flatMap(body -> Mono.error(new RuntimeException("Failed to add document: " + body + " (status code: " + res.status().code() + ")")));
                 }
             });
     }
 
     private HttpClient buildReactorNettyHttpClient(RagConfig configuration) {
-
         HttpClient client = HttpClient.create()
             .baseUrl(configuration.getBaseURLOpt().get().toString())
             .headers(headers -> headers.add(API_KEY_HEADER, "Bearer " + configuration.getAuthorizationToken())
