@@ -35,7 +35,6 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract;
-import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -65,8 +64,7 @@ public class DistributedLinagoraEmailSendMethodTest implements LinagoraEmailSend
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new JmapGuiceKeystoreManagerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 
     @Override

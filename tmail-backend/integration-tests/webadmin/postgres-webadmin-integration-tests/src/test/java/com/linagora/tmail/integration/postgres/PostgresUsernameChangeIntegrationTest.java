@@ -47,6 +47,7 @@ import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.integration.UsernameChangeIntegrationContract;
 import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
+import com.linagora.tmail.james.app.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
@@ -81,6 +82,7 @@ public class PostgresUsernameChangeIntegrationTest extends UsernameChangeIntegra
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new PostgresEncryptedMailboxModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(TeamMailboxProbe.class))

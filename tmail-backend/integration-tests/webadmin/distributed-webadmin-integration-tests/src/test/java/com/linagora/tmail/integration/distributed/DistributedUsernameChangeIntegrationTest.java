@@ -43,6 +43,7 @@ import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.integration.UsernameChangeIntegrationContract;
 import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
@@ -86,6 +87,7 @@ public class DistributedUsernameChangeIntegrationTest extends UsernameChangeInte
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceContactAutocompleteProbe.class))

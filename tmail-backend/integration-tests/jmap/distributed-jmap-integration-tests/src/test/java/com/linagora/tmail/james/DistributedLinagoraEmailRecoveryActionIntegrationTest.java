@@ -34,7 +34,6 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.EmailRecoveryActionIntegrationTest;
-import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -64,7 +63,6 @@ public class DistributedLinagoraEmailRecoveryActionIntegrationTest implements Em
         .extension(new RedisExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule()))
         .build();
 }

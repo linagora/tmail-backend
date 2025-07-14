@@ -26,6 +26,7 @@ import java.io.IOException;
 
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
+import org.apache.james.utils.GuiceProbe;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
@@ -35,8 +36,13 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
 import org.opensearch.client.opensearch.core.SearchRequest;
 
+import com.google.inject.multibindings.Multibinder;
+import com.google.inject.util.Modules;
 import com.linagora.tmail.integration.UserDeletionIntegrationContract;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
+import com.linagora.tmail.james.app.PostgresEncryptedMailboxModule;
+import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
+import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
 
 @Disabled("TODO https://github.com/linagora/james-project/issues/5143")
 public class PostgresUserDeletionIntegrationTest extends UserDeletionIntegrationContract {
@@ -49,7 +55,9 @@ public class PostgresUserDeletionIntegrationTest extends UserDeletionIntegration
     static DockerOpenSearchExtension opensearchExtension = new DockerOpenSearchExtension();
 
     @RegisterExtension
-    static JamesServerExtension testExtension = PostgresWebAdminBase.JAMES_SERVER_EXTENSION_SUPPLIER.get()
+    static JamesServerExtension testExtension = PostgresWebAdminBase.JAMES_SERVER_EXTENSION_FUNCTION
+        .apply(Modules.combine(new JmapGuiceKeystoreManagerModule(), new PostgresEncryptedMailboxModule(),
+            binder -> Multibinder.newSetBinder(binder, GuiceProbe .class).addBinding().to(JmapGuiceKeystoreManagerProbe .class)))
         .extensions(opensearchExtension)
         .build();
 
