@@ -29,6 +29,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
@@ -64,6 +65,7 @@ public class DistributedLinagoraEmailSendMethodTest implements LinagoraEmailSend
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
+            .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 

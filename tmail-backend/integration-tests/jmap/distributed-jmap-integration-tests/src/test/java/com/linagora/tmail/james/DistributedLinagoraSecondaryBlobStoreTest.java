@@ -85,6 +85,7 @@ import com.linagora.tmail.blob.secondaryblobstore.FailedBlobEvents;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
 import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
@@ -171,6 +172,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(BlobStoreProbe.class)))
         .build();
 
