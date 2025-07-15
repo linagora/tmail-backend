@@ -66,7 +66,6 @@ import org.apache.james.modules.DistributedTaskSerializationModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
-import org.apache.james.modules.data.CassandraDelegationStoreModule;
 import org.apache.james.modules.data.CassandraDomainListModule;
 import org.apache.james.modules.data.CassandraDropListsModule;
 import org.apache.james.modules.data.CassandraJmapModule;
@@ -219,6 +218,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
+import com.linagora.tmail.modules.data.TMailCassandraDelegationStoreModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
@@ -345,7 +345,7 @@ public class DistributedServer {
         new CassandraSieveRepositoryModule(),
         BLOB_MODULE,
         CASSANDRA_EVENT_STORE_JSON_SERIALIZATION_DEFAULT_MODULE,
-        new CassandraDelegationStoreModule());
+        new TMailCassandraDelegationStoreModule());
 
     public static final Module CASSANDRA_MAILBOX_MODULE = Modules.combine(
         new CassandraConsistencyTaskSerializationModule(),
