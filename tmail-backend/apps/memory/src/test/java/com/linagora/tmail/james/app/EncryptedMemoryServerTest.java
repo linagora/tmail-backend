@@ -67,7 +67,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.encrypted.EncryptedMailboxManager;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.team.TeamMailbox;
@@ -83,14 +82,13 @@ class EncryptedMemoryServerTest implements JamesServerConcreteContract, JmapJame
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
-            .mailbox(new MailboxConfiguration(true))
             .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
-                .addBinding().to(TeamMailboxProbe.class)))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(TeamMailboxProbe.class))
+            .overrideWith(new MemoryEncryptedMailboxModule()))
         .build();
 
     @RegisterExtension

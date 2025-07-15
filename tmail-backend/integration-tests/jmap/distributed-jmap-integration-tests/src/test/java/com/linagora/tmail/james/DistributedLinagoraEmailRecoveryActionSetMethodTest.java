@@ -31,7 +31,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -40,7 +39,6 @@ import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.DeletedMessageVaultProbeModule;
 import com.linagora.tmail.james.common.EmailRecoveryActionSetMethodContract;
-import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -63,7 +61,6 @@ public class DistributedLinagoraEmailRecoveryActionSetMethodTest implements Emai
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .mailbox(new MailboxConfiguration(true))
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
@@ -73,8 +70,7 @@ public class DistributedLinagoraEmailRecoveryActionSetMethodTest implements Emai
         .extension(new ClockExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new DeletedMessageVaultProbeModule())
-            .overrideWith(new JmapGuiceKeystoreManagerModule()))
+            .overrideWith(new DeletedMessageVaultProbeModule()))
         .build();
 
     @Override

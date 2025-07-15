@@ -50,7 +50,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.io.Resources;
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import reactor.core.publisher.Flux;
@@ -72,7 +71,6 @@ public class DistributedServerWithoutDeletedMessageVaultTest {
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(false))
             .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
             .vaultConfiguration(VaultConfiguration.DEFAULT)
             .build())

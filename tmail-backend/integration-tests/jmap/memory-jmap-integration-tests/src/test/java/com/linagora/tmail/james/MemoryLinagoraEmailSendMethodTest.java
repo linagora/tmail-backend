@@ -28,8 +28,8 @@ import org.apache.james.mailbox.inmemory.InMemoryMessageId;
 import org.apache.james.mailbox.model.MessageId;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
+import com.linagora.tmail.james.app.MemoryEncryptedMailboxModule;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -43,11 +43,11 @@ public class MemoryLinagoraEmailSendMethodTest implements LinagoraEmailSendMetho
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
-            .mailbox(new MailboxConfiguration(true))
             .usersRepository(DEFAULT)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
+            .overrideWith(new MemoryEncryptedMailboxModule())
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 

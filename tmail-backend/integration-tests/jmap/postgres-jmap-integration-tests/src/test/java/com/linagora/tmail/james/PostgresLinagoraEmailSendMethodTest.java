@@ -18,16 +18,22 @@
 
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.james.TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION;
+
 import org.apache.james.JamesServerExtension;
 import org.apache.james.mailbox.model.MessageId;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.inject.util.Modules;
+import com.linagora.tmail.james.app.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract;
 
 public class PostgresLinagoraEmailSendMethodTest implements LinagoraEmailSendMethodContract {
 
     @RegisterExtension
-    static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_SUPPLIER.get().build();
+    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION
+        .apply(Modules.combine(new PostgresEncryptedMailboxModule()))
+        .build();
 
     @Override
     public MessageId randomMessageId() {

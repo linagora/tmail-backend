@@ -25,6 +25,7 @@ import org.apache.james.JamesServerExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
+import com.linagora.tmail.james.app.MemoryEncryptedMailboxModule;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraKeystoreGetMethodContract;
 import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
@@ -43,6 +44,7 @@ public class MemoryLinagoraKeystoreGetMethodTest implements LinagoraKeystoreGetM
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new JmapGuiceKeystoreManagerModule()))
+            .overrideWith(new JmapGuiceKeystoreManagerModule())
+            .overrideWith(new MemoryEncryptedMailboxModule()))
         .build();
 }

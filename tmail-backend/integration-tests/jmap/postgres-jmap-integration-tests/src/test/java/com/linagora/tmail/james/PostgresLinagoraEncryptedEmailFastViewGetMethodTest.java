@@ -35,8 +35,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
+import com.linagora.tmail.james.app.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailFastViewGetMethodContract;
@@ -58,7 +58,6 @@ public class PostgresLinagoraEncryptedEmailFastViewGetMethodTest implements Lina
                 .noCryptoConfig()
                 .enableSingleSave())
             .searchConfiguration(SearchConfiguration.scanning())
-            .mailbox(new MailboxConfiguration(true))
             .eventBusImpl(IN_MEMORY)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
@@ -68,7 +67,8 @@ public class PostgresLinagoraEncryptedEmailFastViewGetMethodTest implements Lina
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(TeamMailboxProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapGuiceEncryptedEmailContentStoreProbe.class))
-            .overrideWith(new DelegationProbeModule()))
+            .overrideWith(new DelegationProbeModule())
+            .overrideWith(new PostgresEncryptedMailboxModule()))
         .extension(PostgresExtension.empty())
         .extension(new ClockExtension())
         .build();

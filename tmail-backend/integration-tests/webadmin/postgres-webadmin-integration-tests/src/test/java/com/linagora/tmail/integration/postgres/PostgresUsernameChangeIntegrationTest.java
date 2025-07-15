@@ -43,11 +43,11 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.integration.UsernameChangeIntegrationContract;
 import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
+import com.linagora.tmail.james.app.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
@@ -78,11 +78,11 @@ public class PostgresUsernameChangeIntegrationTest extends UsernameChangeIntegra
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(IN_MEMORY)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new PostgresEncryptedMailboxModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(TeamMailboxProbe.class))

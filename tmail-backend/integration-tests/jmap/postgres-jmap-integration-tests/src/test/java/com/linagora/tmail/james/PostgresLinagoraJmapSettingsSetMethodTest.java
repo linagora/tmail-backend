@@ -32,7 +32,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.JmapSettingsSetMethodContract;
@@ -65,7 +64,6 @@ public class PostgresLinagoraJmapSettingsSetMethodTest implements JmapSettingsSe
                     .noCryptoConfig()
                     .disableSingleSave())
                 .searchConfiguration(SearchConfiguration.scanning())
-                .mailbox(new MailboxConfiguration(false))
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
                 .eventBusImpl(IN_MEMORY)
                 .build())

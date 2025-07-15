@@ -42,6 +42,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.integration.UserDeletionIntegrationContract;
 import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
@@ -86,6 +87,7 @@ public class DistributedUserDeletionIntegrationTest extends UserDeletionIntegrat
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()

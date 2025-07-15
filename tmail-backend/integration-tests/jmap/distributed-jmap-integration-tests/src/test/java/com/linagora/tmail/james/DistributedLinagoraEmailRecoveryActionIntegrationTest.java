@@ -27,15 +27,14 @@ import org.apache.james.modules.vault.TestDeleteMessageVaultPreDeletionHookModul
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.EmailRecoveryActionIntegrationTest;
-import com.linagora.tmail.james.common.module.JmapGuiceKeystoreManagerModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -56,7 +55,6 @@ public class DistributedLinagoraEmailRecoveryActionIntegrationTest implements Em
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .mailbox(new MailboxConfiguration(true))
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
@@ -66,7 +64,7 @@ public class DistributedLinagoraEmailRecoveryActionIntegrationTest implements Em
         .extension(new RedisExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new JmapGuiceKeystoreManagerModule())
+            .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule()))
         .build();
 }

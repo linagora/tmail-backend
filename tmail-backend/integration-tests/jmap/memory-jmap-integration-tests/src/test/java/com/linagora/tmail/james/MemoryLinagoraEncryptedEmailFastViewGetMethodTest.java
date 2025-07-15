@@ -32,8 +32,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.encrypted.InMemoryEncryptedEmailContentStoreModule;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
+import com.linagora.tmail.james.app.MemoryEncryptedMailboxModule;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailFastViewGetMethodContract;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;
@@ -48,13 +48,13 @@ public class MemoryLinagoraEncryptedEmailFastViewGetMethodTest implements Linago
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
-            .mailbox(new MailboxConfiguration(true))
             .usersRepository(DEFAULT)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new InMemoryEncryptedEmailContentStoreModule())
+            .overrideWith(new MemoryEncryptedMailboxModule())
             .overrideWith(new DelegationProbeModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()

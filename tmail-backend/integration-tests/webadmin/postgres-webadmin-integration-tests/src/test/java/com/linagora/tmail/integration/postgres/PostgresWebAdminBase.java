@@ -34,13 +34,11 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
-import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe;
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -59,7 +57,6 @@ public class PostgresWebAdminBase {
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.scanning())
-            .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(IN_MEMORY)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
@@ -71,7 +68,6 @@ public class PostgresWebAdminBase {
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapSettingsProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapGuiceLabelProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(RateLimitingProbe.class))
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapGuiceKeystoreManagerProbe.class))
             .overrideWith(overrideWithModule))
         .extension(PostgresExtension.empty())
         .extension(new ClockExtension());

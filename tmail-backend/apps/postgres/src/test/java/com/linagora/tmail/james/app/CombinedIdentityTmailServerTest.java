@@ -38,7 +38,6 @@ import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.CombinedUsersRepository;
 import com.linagora.tmail.combined.identity.LdapExtension;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
-import com.linagora.tmail.encrypted.MailboxConfiguration;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -59,7 +58,6 @@ class CombinedIdentityTmailServerTest {
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.scanning())
             .usersRepository(UsersRepositoryModuleChooser.Implementation.COMBINED)
-            .mailbox(new MailboxConfiguration(false))
             .eventBusImpl(IN_MEMORY)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
