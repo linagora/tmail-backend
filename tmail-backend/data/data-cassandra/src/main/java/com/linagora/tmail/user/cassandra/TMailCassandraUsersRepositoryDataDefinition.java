@@ -29,10 +29,16 @@ package com.linagora.tmail.user.cassandra;
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.user.cassandra.tables.CassandraUserTable;
 
+import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.type.DataTypes;
 
 public interface TMailCassandraUsersRepositoryDataDefinition {
-    CassandraDataDefinition MODULE = CassandraDataDefinition.table(CassandraUserTable.TABLE_NAME)
+    String TABLE_NAME = CassandraUserTable.TABLE_NAME;
+    CqlIdentifier USER = CassandraUserTable.NAME;
+    CqlIdentifier SETTINGS = CqlIdentifier.fromCql("settings");
+    CqlIdentifier SETTINGS_STATE = CqlIdentifier.fromCql("settings_state");
+
+    CassandraDataDefinition MODULE = CassandraDataDefinition.table(TABLE_NAME)
         .comment("Holds users and their associated data.")
         .statement(statement -> types -> statement
             .withPartitionKey(CassandraUserTable.NAME, DataTypes.TEXT)
@@ -40,6 +46,8 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
             .withColumn(CassandraUserTable.PASSWORD, DataTypes.TEXT)
             .withColumn(CassandraUserTable.ALGORITHM, DataTypes.TEXT)
             .withColumn(CassandraUserTable.AUTHORIZED_USERS, DataTypes.setOf(DataTypes.TEXT))
-            .withColumn(CassandraUserTable.DELEGATED_USERS, DataTypes.setOf(DataTypes.TEXT)))
+            .withColumn(CassandraUserTable.DELEGATED_USERS, DataTypes.setOf(DataTypes.TEXT))
+            .withColumn(SETTINGS, DataTypes.mapOf(DataTypes.TEXT, DataTypes.TEXT))
+            .withColumn(SETTINGS_STATE, DataTypes.UUID))
         .build();
 }
