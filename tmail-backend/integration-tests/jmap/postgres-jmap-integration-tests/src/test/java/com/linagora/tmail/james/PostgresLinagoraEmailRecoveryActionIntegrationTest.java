@@ -23,6 +23,7 @@ import org.apache.james.modules.vault.TestDeleteMessageVaultPreDeletionHookModul
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.util.Modules;
+import com.linagora.tmail.james.app.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.james.common.DeletedMessageVaultProbeModule;
 import com.linagora.tmail.james.common.EmailRecoveryActionIntegrationTest;
 
@@ -30,7 +31,8 @@ public class PostgresLinagoraEmailRecoveryActionIntegrationTest implements Email
 
     @RegisterExtension
     static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION
-        .apply(Modules.combine(new DeletedMessageVaultProbeModule(), new TestDeleteMessageVaultPreDeletionHookModule()))
+        .apply(Modules.combine(new DeletedMessageVaultProbeModule(), new TestDeleteMessageVaultPreDeletionHookModule(),
+            new PostgresEncryptedMailboxModule()))
         .build();
 
 }

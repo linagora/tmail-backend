@@ -28,6 +28,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
@@ -63,6 +64,7 @@ public class DistributedLinagoraEmailRecoveryActionIntegrationTest implements Em
         .extension(new RedisExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule()))
         .build();
 }

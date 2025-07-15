@@ -23,15 +23,16 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 import org.apache.james.ClockExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.modules.vault.TestDeleteMessageVaultPreDeletionHookModule;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
+import com.linagora.tmail.james.app.MemoryEncryptedMailboxModule;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.DeletedMessageVaultProbeModule;
 import com.linagora.tmail.james.common.EmailRecoveryActionIntegrationTest;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
-import org.apache.james.modules.vault.TestDeleteMessageVaultPreDeletionHookModule;
 
 public class MemoryEmailRecoveryActionIntegrationTest implements EmailRecoveryActionIntegrationTest {
 
@@ -46,6 +47,7 @@ public class MemoryEmailRecoveryActionIntegrationTest implements EmailRecoveryAc
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new DeletedMessageVaultProbeModule())
             .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new MemoryEncryptedMailboxModule())
             .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule()))
         .extension(new ClockExtension())
         .build();

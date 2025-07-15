@@ -61,6 +61,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.CassandraExtension;
+import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
@@ -107,6 +108,7 @@ public class DistributedLinagoraRedisFailureTest {
                         return new RedisEventBusConfiguration(true, Duration.ofSeconds(3));
                     }
                 })
+                .overrideWith(new DistributedEncryptedMailboxModule())
                 .overrideWith(new LinagoraTestJMAPServerModule()))
             .build();
 
@@ -277,6 +279,7 @@ public class DistributedLinagoraRedisFailureTest {
                         return new RedisEventBusConfiguration(false, Duration.ofSeconds(3));
                     }
                 })
+                .overrideWith(new DistributedEncryptedMailboxModule())
                 .overrideWith(new LinagoraTestJMAPServerModule()))
             .build();
 
