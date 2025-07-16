@@ -45,6 +45,7 @@
 
         <module>data/data-cassandra</module>
         <module>data/data-rabbitmq</module>
+        <module>data/data-postgres</module>
 
         <module>deployment-tests</module>
 
@@ -216,6 +217,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-data-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-data-postgres</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
