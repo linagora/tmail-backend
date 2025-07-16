@@ -34,7 +34,7 @@ class CassandraRateLimitingPlanUserRepository @Inject()(dao: CassandraRateLimitP
 
   override def revokePlan(username: Username): SMono[Unit] = {
     Preconditions.checkNotNull(username)
-    dao.deleteRecord(username).`then`()
+    dao.clearPlanId(username).`then`()
   }
 
   override def listUsers(planId: RateLimitingPlanId): SFlux[Username] = {

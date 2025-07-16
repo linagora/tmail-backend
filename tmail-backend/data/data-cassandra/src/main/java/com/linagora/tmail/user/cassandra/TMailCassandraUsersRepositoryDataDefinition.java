@@ -37,6 +37,7 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
     CqlIdentifier USER = CassandraUserTable.NAME;
     CqlIdentifier SETTINGS = CqlIdentifier.fromCql("settings");
     CqlIdentifier SETTINGS_STATE = CqlIdentifier.fromCql("settings_state");
+    CqlIdentifier RATE_LIMITING_PLAN_ID = CqlIdentifier.fromCql("rate_limiting_plan_id");
 
     CassandraDataDefinition MODULE = CassandraDataDefinition.table(TABLE_NAME)
         .comment("Holds users and their associated data.")
@@ -48,6 +49,7 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
             .withColumn(CassandraUserTable.AUTHORIZED_USERS, DataTypes.setOf(DataTypes.TEXT))
             .withColumn(CassandraUserTable.DELEGATED_USERS, DataTypes.setOf(DataTypes.TEXT))
             .withColumn(SETTINGS, DataTypes.mapOf(DataTypes.TEXT, DataTypes.TEXT))
-            .withColumn(SETTINGS_STATE, DataTypes.UUID))
+            .withColumn(SETTINGS_STATE, DataTypes.UUID)
+            .withColumn(RATE_LIMITING_PLAN_ID, DataTypes.UUID))
         .build();
 }
