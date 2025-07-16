@@ -87,6 +87,17 @@ trait RateLimitingPlanUserRepositoryContract {
   }
 
   @Test
+  def insertSettingsAfterDeletingSettingsShouldWorkWell(): Unit = {
+    // This test simulates a scenario where the user record exists but has no settings yet.
+    SMono.fromPublisher(testee.applyPlan(BOB, PLAN_ID_1)).block()
+    SMono.fromPublisher(testee.revokePlan(BOB)).block()
+
+    SMono.fromPublisher(testee.applyPlan(BOB, PLAN_ID_2)).block()
+
+    assertThat(SMono.fromPublisher(testee.getPlanByUser(BOB)).block()).isEqualTo(PLAN_ID_2)
+  }
+
+  @Test
   def revokePlanShouldThrowWhenUsernameIsNull(): Unit = {
     assertThatThrownBy(() => SMono.fromPublisher(testee.revokePlan(null)).block())
       .isInstanceOf(classOf[NullPointerException])
