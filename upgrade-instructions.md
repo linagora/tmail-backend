@@ -37,6 +37,29 @@ DROP TABLE tmail_keyspace.rate_limit_plan_user;
 DROP TABLE tmail_keyspace.settings;
 ```
 
+### Adding settings and rate limiting plan id columns to Postgres users table
+
+Date: 17/07/2025
+
+Issue: https://github.com/linagora/tmail-backend/issues/1835
+
+Concerned product: Postgres TMail
+
+Add `settings`, `settings_state`, and `rate_limiting_plan_id` columns to the `users` table to store user-bound settings and rate limiting plan information.
+
+To add these columns, you need to run the following SQL commands:
+```sql
+ALTER TABLE tmail_schema.users ADD COLUMN settings HSTORE;
+ALTER TABLE tmail_schema.users ADD COLUMN settings_state UUID;
+ALTER TABLE tmail_schema.users ADD COLUMN rate_limiting_plan_id UUID;
+```
+
+The `rate_limit_plan_user` table and `jmap_settings` table can be dropped now:
+```sql
+DROP TABLE tmail_schema.rate_limit_plan_user;
+DROP TABLE tmail_schema.jmap_settings;
+```
+
 ## 1.0.5
 
 - [Add new field to user contact index](#add-new-field-to-user-contact-index)
