@@ -17,6 +17,10 @@
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-data-postgres</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-rate-limiter-api</artifactId>
         </dependency>
         <dependency>

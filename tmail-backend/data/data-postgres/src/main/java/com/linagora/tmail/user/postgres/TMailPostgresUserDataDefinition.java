@@ -29,6 +29,7 @@ package com.linagora.tmail.user.postgres;
 import java.util.UUID;
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
+import org.apache.james.backends.postgres.PostgresIndex;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.apache.james.user.postgres.PostgresUserDataDefinition;
 import org.jooq.Field;
@@ -47,6 +48,7 @@ public interface TMailPostgresUserDataDefinition {
         Field<String> USERNAME = PostgresUserDataDefinition.PostgresUserTable.USERNAME;
         Field<Hstore> SETTINGS = DSL.field("settings", DefaultDataType.getDefaultDataType("hstore").asConvertedDataType(new HstoreBinding()));
         Field<UUID> SETTINGS_STATE = DSL.field("settings_state", SQLDataType.UUID);
+        Field<UUID> RATE_LIMITING_PLAN_ID = DSL.field("rate_limiting_plan_id", SQLDataType.UUID);
 
         PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
             .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
@@ -57,12 +59,18 @@ public interface TMailPostgresUserDataDefinition {
                 .column(PostgresUserDataDefinition.PostgresUserTable.DELEGATED_USERS)
                 .column(SETTINGS)
                 .column(SETTINGS_STATE)
+                .column(RATE_LIMITING_PLAN_ID)
                 .constraint(DSL.constraint(PostgresUserDataDefinition.PostgresUserTable.USERNAME_PRIMARY_KEY).primaryKey(USERNAME))))
             .disableRowLevelSecurity()
             .build();
+
+        PostgresIndex RATE_LIMITING_PLAN_ID_INDEX = PostgresIndex.name("index_user_rate_limiting_plan_id")
+            .createIndexStep((dslContext, indexName) -> dslContext.createIndexIfNotExists(indexName)
+            .on(TABLE_NAME, RATE_LIMITING_PLAN_ID));
     }
 
     PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
         .addTable(PostgresUserTable.TABLE)
+        .addIndex(PostgresUserTable.RATE_LIMITING_PLAN_ID_INDEX)
         .build();
 }
