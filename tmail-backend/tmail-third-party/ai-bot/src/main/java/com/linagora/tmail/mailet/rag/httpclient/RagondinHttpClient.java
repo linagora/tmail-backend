@@ -48,9 +48,15 @@ public class RagondinHttpClient {
         this.httpClient = buildReactorNettyHttpClient(configuration);
     }
 
-    Mono<Void> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, String> metadata) throws JsonProcessingException {
+    public Mono<Void> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, String> metadata) {
         String url = String.format("/indexer/partition/%s/file/%s", partition.partitionName(), documentId.asString());
-        String metadataJson = this.objectMapper.writeValueAsString(metadata);
+        String metadataJson;
+        try {
+            metadataJson = this.objectMapper.writeValueAsString(metadata);
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Failed to serialize metadata to JSON", e);
+            return Mono.error(new RuntimeException("Failed to serialize metadata to JSON"));
+        }
 
         return httpClient
             .headers(headers -> headers

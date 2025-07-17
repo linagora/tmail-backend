@@ -19,7 +19,7 @@ package com.linagora.tmail.mailet.rag.httpclient;
 
 import org.apache.james.mailbox.model.ThreadId;
 
-record DocumentId(ThreadId id) {
+public record DocumentId(ThreadId id) {
     public String asString() {
         return "tmail_" + id.serialize();
     }
