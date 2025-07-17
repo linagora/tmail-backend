@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.james.jmap.settings;
 
-import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.user.api.DeleteUserDataTaskStep;
 import org.apache.james.user.api.UsernameChangeTaskStep;
 
@@ -35,7 +34,5 @@ public class PostgresJmapSettingsRepositoryModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class).addBinding().to(JmapSettingsUsernameChangeTaskStep.class);
         Multibinder.newSetBinder(binder(), DeleteUserDataTaskStep.class).addBinding().to(JmapSettingsUserDeletionTaskStep.class);
 
-        Multibinder<PostgresDataDefinition> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresDataDefinition.class);
-        postgresDataDefinitions.addBinding().toInstance(PostgresJmapSettingsModule.MODULE);
     }
 }
