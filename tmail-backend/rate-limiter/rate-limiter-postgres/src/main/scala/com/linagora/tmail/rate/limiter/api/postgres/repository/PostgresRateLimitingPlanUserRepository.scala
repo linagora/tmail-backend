@@ -21,46 +21,39 @@ package com.linagora.tmail.rate.limiter.api.postgres.repository
 import com.google.common.base.Preconditions
 import com.linagora.tmail.rate.limiter.api.postgres.dao.PostgresRateLimitPlanUserDAO
 import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanId, RateLimitingPlanNotFoundException, RateLimitingPlanUserRepository}
-import jakarta.inject.{Inject, Named}
-import org.apache.james.backends.postgres.utils.PostgresExecutor
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 
-class PostgresRateLimitingPlanUserRepository @Inject()(executorFactory: PostgresExecutor.Factory,
-                                                      @Named(PostgresExecutor.BY_PASS_RLS_INJECT) bypassRlsExecutor: PostgresExecutor) extends RateLimitingPlanUserRepository {
-  private val byPassRlsDao: PostgresRateLimitPlanUserDAO =
-    PostgresRateLimitPlanUserDAO(bypassRlsExecutor)
+class PostgresRateLimitingPlanUserRepository @Inject()(dao: PostgresRateLimitPlanUserDAO) extends RateLimitingPlanUserRepository {
 
   override def applyPlan(username: Username, planId: RateLimitingPlanId): Publisher[Unit] = {
     Preconditions.checkNotNull(username)
     Preconditions.checkNotNull(planId)
 
-    SMono(dao(username).insert(username, planId))
+    SMono(dao.insert(username, planId))
       .`then`()
   }
 
   override def revokePlan(username: Username): Publisher[Unit] = {
     Preconditions.checkNotNull(username)
 
-    SMono(dao(username).delete(username))
+    SMono(dao.clearPlan(username))
       .`then`()
   }
 
   override def listUsers(planId: RateLimitingPlanId): Publisher[Username] = {
     Preconditions.checkNotNull(planId)
 
-    byPassRlsDao.getUsersByPlanId(planId)
+    dao.getUsersByPlanId(planId)
   }
 
   override def getPlanByUser(username: Username): Publisher[RateLimitingPlanId] = {
     Preconditions.checkNotNull(username)
 
-    dao(username).getPlanIdByUser(username)
+    dao.getPlanIdByUser(username)
       .switchIfEmpty(Mono.error(() => RateLimitingPlanNotFoundException()))
   }
-
-  private def dao(username: Username) =
-    PostgresRateLimitPlanUserDAO(executorFactory.create(username.getDomainPart))
 }

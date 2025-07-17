@@ -18,34 +18,40 @@
 
 package com.linagora.tmail.rate.limiter.api.postgres.dao
 
+import java.util.UUID
+
 import com.linagora.tmail.rate.limiter.api.RateLimitingPlanId
-import com.linagora.tmail.rate.limiter.api.postgres.table.PostgresRateLimitPlanUserTable.{PLAN_ID, TABLE_NAME, USERNAME}
+import com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.{RATE_LIMITING_PLAN_ID, TABLE_NAME, USERNAME}
+import jakarta.inject.Inject
 import org.apache.james.backends.postgres.utils.PostgresExecutor
 import org.apache.james.core.Username
 import reactor.core.publisher.{Flux, Mono}
 
-case class PostgresRateLimitPlanUserDAO(postgresExecutor: PostgresExecutor) {
+class PostgresRateLimitPlanUserDAO @Inject()(postgresExecutor: PostgresExecutor) {
   def insert(username: Username, rateLimitingPlanId: RateLimitingPlanId): Mono[Void] =
     postgresExecutor.executeVoid(dsl => Mono.from(dsl.insertInto(TABLE_NAME)
       .set(USERNAME, username.asString())
-      .set(PLAN_ID, rateLimitingPlanId.value)
+      .set(RATE_LIMITING_PLAN_ID, rateLimitingPlanId.value)
       .onConflict(USERNAME)
       .doUpdate()
-      .set(PLAN_ID, rateLimitingPlanId.value)))
+      .set(RATE_LIMITING_PLAN_ID, rateLimitingPlanId.value)))
 
   def getPlanIdByUser(username: Username): Mono[RateLimitingPlanId] =
-    postgresExecutor.executeRow(dsl => Mono.from(dsl.select(PLAN_ID)
+    postgresExecutor.executeRow(dsl => Mono.from(dsl.select(RATE_LIMITING_PLAN_ID)
       .from(TABLE_NAME)
       .where(USERNAME.eq(username.asString()))))
-      .map(record => RateLimitingPlanId(record.get(PLAN_ID)))
+      .filter(_.get(RATE_LIMITING_PLAN_ID) != null)
+      .map(record => RateLimitingPlanId(record.get(RATE_LIMITING_PLAN_ID)))
 
   def getUsersByPlanId(planId: RateLimitingPlanId): Flux[Username] =
     postgresExecutor.executeRows(dsl => Flux.from(dsl.select(USERNAME)
       .from(TABLE_NAME)
-      .where(PLAN_ID.eq(planId.value))))
+      .where(RATE_LIMITING_PLAN_ID.eq(planId.value))))
+      .filter(_.get(USERNAME) != null)
       .map(record => Username.of(record.get(USERNAME)))
 
-  def delete(username: Username): Mono[Void] =
-    postgresExecutor.executeVoid(dsl => Mono.from(dsl.deleteFrom(TABLE_NAME)
+  def clearPlan(username: Username): Mono[Void] =
+    postgresExecutor.executeVoid(dsl => Mono.from(dsl.update(TABLE_NAME)
+      .set(RATE_LIMITING_PLAN_ID, null.asInstanceOf[UUID])
       .where(USERNAME.eq(username.asString()))))
 }
