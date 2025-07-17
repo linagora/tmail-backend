@@ -63,6 +63,10 @@ public class RagConfig {
         String partitionPattern = Optional.ofNullable(configuration.getString(PARTITION_PATTERN_PARAMETER_NAME))
             .filter(pattern -> !Strings.isNullOrEmpty(pattern))
             .orElse(DEFAULT_PARTITION_PATTERN);
+        if (!partitionPattern.contains("{domainName}") || !partitionPattern.contains("{localPart}")) {
+            throw new IllegalArgumentException("The partition pattern must contain {domainName} and {localPart} placeholders. " +
+                "Current pattern: " + partitionPattern);
+        }
         Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
             .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
             .flatMap(RagConfig::baseURLStringToURL);

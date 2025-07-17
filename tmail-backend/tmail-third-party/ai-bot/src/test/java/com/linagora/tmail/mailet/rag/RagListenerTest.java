@@ -23,7 +23,6 @@ import static org.mockito.Mockito.spy;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.Logger;
@@ -32,6 +31,7 @@ import ch.qos.logback.core.read.ListAppender;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
@@ -62,10 +62,14 @@ import org.slf4j.LoggerFactory;
 
 class RagListenerTest {
 
-    private static final Username BOB = Username.of("bob");
-    private static final Username ALICE = Username.of("alice");
+    private static final Username BOB = Username.of("bob@test.com");
+    private static final Username ALICE = Username.of("alice@test.com");
+    private static final Username USER = Username.of("user+@test.com");
+    private static final Username USER_WITH_NO_DOMAIN = Username.of("user");
     private static final MailboxPath BOB_INBOX_PATH = MailboxPath.inbox(BOB);
+    private static final MailboxPath USER_WITH_NO_DOMAIN_INBOX_PATH = MailboxPath.inbox(USER_WITH_NO_DOMAIN );
     private static final MailboxPath ALICE_INBOX_PATH = MailboxPath.inbox(ALICE);
+    private static final MailboxPath USER_INBOX_PATH = MailboxPath.inbox(USER);
     private static final MailboxPath BOB_SPAM_PATH = MailboxPath.forUser(BOB, "Spam");
     private static final MailboxPath BOB_MAILBOX_PATH = MailboxPath.forUser(BOB, "mailbox");
     private static final MailboxPath BOB_TRASH_PATH = MailboxPath.forUser(BOB, "Trash");
@@ -83,6 +87,8 @@ class RagListenerTest {
     MessageIdManager messageIdManager;
     MessageManager aliceInboxMessageManager;
     MessageManager bobMailBoxMessageManager;
+    MessageManager userMailBoxMessageManager;
+    MessageManager userWithNoDomainMailBoxMessageManager;
     MessageManager bobInboxMessageManager;
     MessageManager spamMessageManager;
     MessageManager trashMessageManager;
@@ -91,15 +97,20 @@ class RagListenerTest {
     SystemMailboxesProviderImpl systemMailboxesProvider;
     MailboxSession bobMailboxSession;
     MailboxSession aliceMailboxSession;
+    MailboxSession userMailboxSession;
+    MailboxSession userWithNoDomainMailboxSession;
     UpdatableTickingClock clock;
     MailboxSessionMapperFactory mapperFactory;
     MailboxId bobInboxId;
+    MailboxId userInboxId;
+    MailboxId userWithNoDomainInboxId;
     MailboxId bobMailBoxId;
     MailboxId aliceInboxId;
     MemoryEventDeadLetters eventDeadLetters;
     ListAppender<ILoggingEvent> listAppender;
     Logger logger;
     HierarchicalConfiguration<ImmutableNode> config;
+    RagConfig ragConfig;
 
     @BeforeEach
     void setup() throws Exception {
@@ -136,7 +147,12 @@ class RagListenerTest {
 
         bobMailboxSession = MailboxSessionUtil.create(BOB);
         aliceMailboxSession = MailboxSessionUtil.create(ALICE);
+        userMailboxSession = MailboxSessionUtil.create(USER);
+        userWithNoDomainMailboxSession = MailboxSessionUtil.create(USER_WITH_NO_DOMAIN);
         bobInboxId = mailboxManager.createMailbox(BOB_INBOX_PATH, bobMailboxSession).get();
+        userInboxId = mailboxManager.createMailbox(USER_INBOX_PATH, userMailboxSession).get();
+        userWithNoDomainInboxId = mailboxManager.createMailbox(USER_WITH_NO_DOMAIN_INBOX_PATH, userWithNoDomainMailboxSession).get();
+
         bobMailBoxId = mailboxManager.createMailbox(BOB_MAILBOX_PATH, bobMailboxSession).get();
         aliceInboxId = mailboxManager.createMailbox(ALICE_INBOX_PATH, aliceMailboxSession).get();
         spamMailboxId = mailboxManager.createMailbox(BOB_SPAM_PATH, bobMailboxSession).get();
@@ -144,12 +160,20 @@ class RagListenerTest {
         spamMessageManager = mailboxManager.getMailbox(spamMailboxId, bobMailboxSession);
         trashMessageManager = mailboxManager.getMailbox(trashMailboxId, bobMailboxSession);
         bobInboxMessageManager = mailboxManager.getMailbox(bobInboxId, bobMailboxSession);
+        userMailBoxMessageManager = mailboxManager.getMailbox(userInboxId, userMailboxSession);
+        userWithNoDomainMailBoxMessageManager = mailboxManager.getMailbox(userWithNoDomainInboxId, userWithNoDomainMailboxSession);
         bobMailBoxMessageManager = mailboxManager.getMailbox(bobMailBoxId, bobMailboxSession);
         aliceInboxMessageManager = mailboxManager.getMailbox(aliceInboxId, aliceMailboxSession);
         systemMailboxesProvider = new SystemMailboxesProviderImpl(mailboxManager);
         Configurations configurations = new Configurations();
         config = configurations.xml("listeners.xml");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config);
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("ragondin.url", "https://ragondin-twake-staging.linagora.com/");
+        configuration.addProperty("ragondin.Token", "fake");
+        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
+        configuration.addProperty("ragondin.partition.pattern", "{localPart}.twake.{domainName}");
+        ragConfig = RagConfig.from(configuration);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
     }
 
     @AfterEach
@@ -169,12 +193,13 @@ class RagListenerTest {
             .contains(
                 "RAG Listener triggered for mailbox: " + bobInboxId,
                 "RAG Listener successfully processed mailContent ***** \n" +
+                    "# Email Headers\n\n" +
                     "Subject: Test Subject\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
-                    "\n" +
+                    "\n# Email Content\n\n" +
                     "Body of the email\n" +
                     " *****");
     }
@@ -237,7 +262,7 @@ class RagListenerTest {
     @Test
     void reactiveEventShouldAllowAllUsersWhenWhiteListIsEmpty() throws Exception {
         config.setProperty("listener.configuration.users", "");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
         mailboxManager.getEventBus().register(ragListener);
 
         MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
@@ -251,22 +276,50 @@ class RagListenerTest {
             .extracting(ILoggingEvent::getFormattedMessage)
             .contains("RAG Listener triggered for mailbox: " + aliceInboxId,
                 "RAG Listener successfully processed mailContent ***** \n" +
+                    "# Email Headers\n\n" +
                     "Subject: Test Subject\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
-                    "\n" +
+                    "\n# Email Content\n\n" +
                     "Body of the email\n" +
                     " *****",
                 "RAG Listener triggered for mailbox: " + bobInboxId,
                 "RAG Listener successfully processed mailContent ***** \n" +
+                    "# Email Headers\n\n" +
                     "Subject: Test Subject\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
-                    "\n" +
+                    "\n# Email Content\n\n" +
+                    "Body of the email\n" +
+                    " *****");
+    }
+
+    @Test
+    void reactiveEventShouldFormatUsernameWhenWhiteContainBadUsername() throws Exception {
+        config.setProperty("listener.configuration.users", "user+@test.com");
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        mailboxManager.getEventBus().register(ragListener);
+
+        MessageManager.AppendResult appendResult = userMailBoxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            userMailboxSession);
+
+        assertThat(listAppender.list)
+            .extracting(ILoggingEvent::getFormattedMessage)
+            .contains(
+                "RAG Listener triggered for mailbox: " + userInboxId,
+                "RAG Listener successfully processed mailContent ***** \n" +
+                    "# Email Headers\n\n" +
+                    "Subject: Test Subject\n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Cc: cc@example.com\n" +
+                    "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
+                    "\n# Email Content\n\n" +
                     "Body of the email\n" +
                     " *****");
     }
@@ -302,14 +355,30 @@ class RagListenerTest {
             .contains(
                 "RAG Listener triggered for mailbox: " + bobInboxId,
                 "RAG Listener successfully processed mailContent ***** \n" +
+                    "# Email Headers\n\n" +
                     "Subject: Test Email with Attachment\n" +
                     "From: sender@example.com\n" +
                     "To: recipient@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
                     "Attachments: test.txt\n" +
-                    "\n" +
+                    "\n# Email Content\n\n" +
                     "This is the body of the email.\n" +
                     " *****");
+    }
+
+    @Test
+    void reactiveEventShouldThrowExceptionWhenDomainNameIsMissing() throws Exception {
+        config.setProperty("listener.configuration.users", "user");
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        mailboxManager.getEventBus().register(ragListener);
+
+        userWithNoDomainMailBoxMessageManager.appendMessage(
+                MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+                userWithNoDomainMailboxSession);
+
+        assertThat(listAppender.list)
+            .extracting(ILoggingEvent::getFormattedMessage)
+            .contains("Error occurred: Username must have a domain part for RAG partitioning");
     }
 
 }

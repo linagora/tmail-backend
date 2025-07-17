@@ -105,6 +105,17 @@ public class RagConfigTest {
         //Assertions
         assertThat(actual).isEqualTo(expected);
     }
+    @Test
+    public void shouldVerifyPatternContainLocalPartAndDomainName() throws Exception {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("ragondin.url", "https://ragondin.linagora.com");
+        configuration.addProperty("ragondin.Token", "fake-token");
+        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
+        configuration.addProperty("ragondin.partition.pattern", "{locart}.twake.{domame}");
+        assertThatThrownBy(() -> RagConfig.from(configuration)).isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("The partition pattern must contain {domainName} and {localPart} placeholders. " +
+                "Current pattern: " + configuration.getProperty("ragondin.partition.pattern"));
+    }
     
     @Test
     void shouldRespectEqualsAndHashCodeContract() {
