@@ -52,6 +52,7 @@
         <module>guice/blob-guice</module>
         <module>guice/common</module>
         <module>guice/data-cassandra</module>
+        <module>guice/data-postgres</module>
         <module>guice/distributed</module>
         <module>guice/encrypted-mailbox</module>
         <module>guice/protocols/jmap</module>
@@ -242,6 +243,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-guice-data-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-guice-data-postgres</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

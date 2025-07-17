@@ -63,7 +63,6 @@ import org.apache.james.modules.data.PostgresDataJmapModule;
 import org.apache.james.modules.data.PostgresDataModule;
 import org.apache.james.modules.data.PostgresDelegationStoreModule;
 import org.apache.james.modules.data.PostgresEventStoreModule;
-import org.apache.james.modules.data.PostgresUsersRepositoryModule;
 import org.apache.james.modules.data.PostgresVacationModule;
 import org.apache.james.modules.data.SievePostgresRepositoryModules;
 import org.apache.james.modules.event.JMAPEventBusModule;
@@ -179,6 +178,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
+import com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
@@ -426,10 +426,10 @@ public class PostgresTmailServer {
     }
 
     public static Module chooseUserRepositoryModule(PostgresTmailConfiguration configuration) {
-        return Modules.combine(PostgresUsersRepositoryModule.USER_CONFIGURATION_MODULE,
+        return Modules.combine(TMailPostgresUsersRepositoryModule.USER_CONFIGURATION_MODULE,
             new UsersRepositoryModuleChooser(
                 DatabaseCombinedUserRequireModule.of(PostgresUsersDAO.class),
-                new PostgresUsersRepositoryModule())
+                new TMailPostgresUsersRepositoryModule())
                 .chooseModule(configuration.usersRepositoryImplementation()));
     }
 
