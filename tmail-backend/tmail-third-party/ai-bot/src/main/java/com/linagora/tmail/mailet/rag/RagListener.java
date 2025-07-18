@@ -21,14 +21,19 @@ import static org.apache.mailet.base.DateFormats.RFC822_DATE_FORMAT;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
@@ -55,6 +60,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
+import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
+import com.linagora.tmail.mailet.rag.httpclient.Partition;
+import com.linagora.tmail.mailet.rag.httpclient.RagondinHttpClient;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -72,13 +80,15 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     private final MessageIdManager messageIdManager;
     private final SystemMailboxesProvider systemMailboxesProvider;
     private final Optional<List<Username>> whitelist;
+    private final RagConfig ragConfig;
 
     @Inject
-    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, HierarchicalConfiguration<ImmutableNode> config) {
+    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, HierarchicalConfiguration<ImmutableNode> config, RagConfig ragConfig) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.systemMailboxesProvider = systemMailboxesProvider;
         this.whitelist = parseWhitelist(config);
+        this.ragConfig = ragConfig;
     }
 
     private Optional<List<Username>> parseWhitelist(HierarchicalConfiguration<ImmutableNode> config) {
@@ -123,10 +133,24 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                         }
                         LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
                         MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
+                        RagondinHttpClient ragondinHttpClient = new RagondinHttpClient(ragConfig);
                         return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
-                            .doOnError(error -> LOGGER.error("Error occurred: ", error.getMessage()))
-                            .flatMap(this::asRagLearnableContent)
-                            .doOnNext(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** \n{}\n *****", text))
+                            .doOnError(error -> LOGGER.error("Error occurred: {}", error.getMessage()))
+                            .flatMap(messageResult ->
+                                asRagLearnableContent(messageResult)
+                                    .doOnSuccess(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** \n{}\n *****", text))
+                                    .flatMap(content -> new RagondinHttpClient(ragConfig)
+                                        .addDocument(
+                                            Partition.fromPattern(
+                                                ragConfig.getPartitionPattern(),
+                                                URLEncoder.encode(addedEvent.getUsername().getLocalPart(), StandardCharsets.UTF_8),
+                                                addedEvent.getUsername().getDomainPart()
+                                                    .map(Domain::asString)
+                                                    .orElseThrow(() -> new NoSuchElementException("Username must have a domain part for RAG partitioning"))),
+                                        new DocumentId(messageResult.getThreadId()),
+                                        content,
+                                        Map.of("username", addedEvent.getUsername().asString()))))
+                            .doOnError(error -> LOGGER.error("Error occurred: {}", error.getMessage()))
                             .then();
                     });
             }
@@ -140,6 +164,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         return Mono.fromCallable(() -> {
             Message mimeMessage = parseMessage(messageResult.getFullContent().getInputStream());
             StringBuilder markdownBuilder = new StringBuilder();
+            markdownBuilder.append("# Email Headers\n\n");
             markdownBuilder.append(mimeMessage.getSubject() != null ? "Subject: " + mimeMessage.getSubject().trim() : "");
             markdownBuilder.append(mimeMessage.getFrom() != null ? "\nFrom: " + mimeMessage.getFrom().stream()
                 .map(Object::toString)
@@ -158,7 +183,8 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
             if (!attachmentNames.isEmpty()) {
                 markdownBuilder.append("\nAttachments: " + String.join(", ", attachmentNames));
             }
-            markdownBuilder.append("\n\n").append(new MessageContentExtractor().extract(mimeMessage).getTextBody().get());
+            markdownBuilder.append("\n\n# Email Content\n\n");
+            markdownBuilder.append(new MessageContentExtractor().extract(mimeMessage).getTextBody().get());
             return markdownBuilder.toString();
         });
     }
