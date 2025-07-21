@@ -45,6 +45,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -108,7 +109,7 @@ public class RagondinHttpClientTest {
 
         Mono<Void> response = ragondinHttpClient.addDocument(
                 Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
-                new DocumentId(new ThreadId(TestMessageId.of(3))),
+                new DocumentId(new ThreadId(TestMessageId.of(9))),
                 "Contenu du fichier RAG on Twake Mail",
                 Map.of());
 
@@ -116,6 +117,32 @@ public class RagondinHttpClientTest {
             .verifyComplete();
         assertThat(listAppender.list)
             .extracting(ILoggingEvent::getFormattedMessage)
-            .contains("Successfully added document tmail_3");
+            .isEqualTo(List.of("Indexation Task completed successfully for document tmail_9"));
+    }
+
+    @Disabled("Disabled because the test requires a real authentificationToken to run")
+    @Test
+    void shouldRecieveResponseWhenDocumentAlreadyExists() throws Exception {
+        RagConfig ragConf = new RagConfig("fake", true, Optional.of(URI.create("https://ragondin-twake-staging.linagora.com/").toURL()), "{localPart}.twake.{domainName}");
+        RagondinHttpClient ragondinHttpClient = new RagondinHttpClient(ragConf);
+
+        ragondinHttpClient.addDocument(
+            Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
+            new DocumentId(new ThreadId(TestMessageId.of(9))),
+            "message content",
+            Map.of()).block();
+
+        ragondinHttpClient.addDocument(
+            Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
+            new DocumentId(new ThreadId(TestMessageId.of(9))),
+            "Updated version for message content",
+            Map.of()).block();
+
+        assertThat(listAppender.list)
+            .extracting(ILoggingEvent::getFormattedMessage)
+            .isEqualTo(List.of("Indexation Task completed successfully for document tmail_9",
+                "Document already exists. Retrying with PUT.",
+                "Indexation Task completed successfully for document tmail_9"));
+
     }
 }
