@@ -26,7 +26,6 @@ import nl.jqno.equalsverifier.EqualsVerifier;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
-import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
@@ -40,7 +39,6 @@ public class AIBotConfigTest {
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenApiKeyIsNull() {
         Configuration configuration = new PropertiesConfiguration();
-        configuration.addProperty("botAddress", "gpt@localhost");
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
@@ -50,22 +48,9 @@ public class AIBotConfigTest {
     }
 
     @Test
-    public void shouldThrowIllegalArgumentExceptionWhenBotAdressIsNull() {
-        Configuration configuration = new PropertiesConfiguration();
-        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
-        configuration.addProperty("model", "Lucie");
-        configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
-
-        assertThatThrownBy(() -> AIBotConfig.from(configuration))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("No value for botAddress parameter was provided.");
-    }
-
-    @Test
     public void shouldThrowRuntimeExceptionWhenURLIsWrong() {
         Configuration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
-        configuration.addProperty("botAddress", "gpt@localhost");
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "htp://example.com");
 
@@ -79,15 +64,27 @@ public class AIBotConfigTest {
         //Arrange
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
-        configuration.addProperty("botAddress", "gpt@localhost");
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
         //act
-        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new MailAddress("gpt@localhost"), new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()));
+        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()));
         AIBotConfig actual = AIBotConfig.from(configuration);
 
         //Assertions
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    public void shouldAcceptBlankBaseUrl() throws Exception {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
+        configuration.addProperty("model", "Lucie");
+        configuration.addProperty("baseURL", "");
+
+        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.empty());
+        AIBotConfig actual = AIBotConfig.from(configuration);
+
         assertThat(actual).isEqualTo(expected);
     }
     
