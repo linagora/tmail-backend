@@ -49,9 +49,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class RagondinHttpClientTest {
+public class OpenRagHttpClientTest {
     private WireMockServer wireMockServer;
-    private RagondinHttpClient ragondinHttpClient;
+    private OpenRagHttpClient openRagHttpClient;
     private RagConfig ragConfig;
     private  DocumentId documentId;
     private Partition partition;
@@ -69,7 +69,7 @@ public class RagondinHttpClientTest {
 
         ragConfig = new RagConfig("fake-token", true, Optional.of(URI.create(wireMockServer.baseUrl()).toURL()), "{localPart}.twake.{domainName}");
 
-        ragondinHttpClient = new RagondinHttpClient(ragConfig);
+        openRagHttpClient = new OpenRagHttpClient(ragConfig);
         documentId = new DocumentId(new ThreadId(TestMessageId.of(123)));
         partition = Partition.fromPattern(ragConfig.getPartitionPattern(), "testPartition", "testDomain");
     }
@@ -89,7 +89,7 @@ public class RagondinHttpClientTest {
         wireMockServer.stubFor(post(urlEqualTo(url))
             .willReturn(aResponse()
                 .withStatus(200)));
-        StepVerifier.create(ragondinHttpClient.addDocument(
+        StepVerifier.create(openRagHttpClient.addDocument(
                 partition,
                 documentId,
                 "test content for the email that should  be indexed",
@@ -105,9 +105,9 @@ public class RagondinHttpClientTest {
     @Test
     void shouldReceiveRealServerResponsee() throws Exception {
         RagConfig ragConf = new RagConfig("fake", true, Optional.of(URI.create("https://ragondin-twake-staging.linagora.com/").toURL()), "{localPart}.twake.{domainName}");
-        RagondinHttpClient ragondinHttpClient = new RagondinHttpClient(ragConf);
+        OpenRagHttpClient openRagHttpClient = new OpenRagHttpClient(ragConf);
 
-        Mono<Void> response = ragondinHttpClient.addDocument(
+        Mono<Void> response = openRagHttpClient.addDocument(
                 Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
                 new DocumentId(new ThreadId(TestMessageId.of(9))),
                 "Contenu du fichier RAG on Twake Mail",
@@ -125,15 +125,15 @@ public class RagondinHttpClientTest {
     @Test
     void shouldRecieveResponseWhenDocumentAlreadyExists() throws Exception {
         RagConfig ragConf = new RagConfig("fake", true, Optional.of(URI.create("https://ragondin-twake-staging.linagora.com/").toURL()), "{localPart}.twake.{domainName}");
-        RagondinHttpClient ragondinHttpClient = new RagondinHttpClient(ragConf);
+        OpenRagHttpClient openRagHttpClient = new OpenRagHttpClient(ragConf);
 
-        ragondinHttpClient.addDocument(
+        openRagHttpClient.addDocument(
             Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
             new DocumentId(new ThreadId(TestMessageId.of(9))),
             "message content",
             Map.of()).block();
 
-        ragondinHttpClient.addDocument(
+        openRagHttpClient.addDocument(
             Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
             new DocumentId(new ThreadId(TestMessageId.of(9))),
             "Updated version for message content",
