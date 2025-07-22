@@ -21,19 +21,15 @@ import static org.apache.mailet.base.DateFormats.RFC822_DATE_FORMAT;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
-import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
@@ -141,16 +137,11 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                                     .doOnSuccess(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** \n{}\n *****", text))
                                     .flatMap(content -> new RagondinHttpClient(ragConfig)
                                         .addDocument(
-                                            Partition.fromPattern(
-                                                ragConfig.getPartitionPattern(),
-                                                URLEncoder.encode(addedEvent.getUsername().getLocalPart(), StandardCharsets.UTF_8),
-                                                addedEvent.getUsername().getDomainPart()
-                                                    .map(Domain::asString)
-                                                    .orElseThrow(() -> new NoSuchElementException("Username must have a domain part for RAG partitioning"))),
-                                        new DocumentId(messageResult.getThreadId()),
-                                        content,
-                                        Map.of("username", addedEvent.getUsername().asString()))))
-                            .doOnError(error -> LOGGER.error("Error occurred: {}", error.getMessage()))
+                                            Partition.Factory.fromPattern(ragConfig.getPartitionPattern())
+                                                    .forUsername(addedEvent.getUsername()),
+                                            new DocumentId(messageResult.getThreadId()),
+                                            content,
+                                            getMetaData(addedEvent, messageResult))))
                             .then();
                     });
             }
@@ -158,6 +149,17 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
             LOGGER.info("RAG Listener skipped for user: {}", event.getUsername().getLocalPart());
         }
         return Mono.empty();
+    }
+
+    private Map<String, String> getMetaData(MailboxEvents.Added addedEvent, MessageResult messageResult) {
+        try {
+            return  Map.of("username", addedEvent.getUsername().asString(),
+                "link to message", String.format("https://tmail/%s/dashboard/%s", addedEvent.getUsername().getDomainPart().get().asString(), messageResult.getThreadId().toString()),
+                "date", parseMessage(messageResult.getFullContent().getInputStream()).getDate().toString(),
+                "doctype", parseMessage(messageResult.getFullContent().getInputStream()).getMimeType());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Mono<String> asRagLearnableContent(MessageResult messageResult) {

@@ -111,7 +111,8 @@ public class RagondinHttpClientTest {
                 Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
                 new DocumentId(new ThreadId(TestMessageId.of(9))),
                 "Contenu du fichier RAG on Twake Mail",
-                Map.of());
+                Map.of("link", "https://example.com",
+                    "date", "2023-10-01"));
 
         StepVerifier.create(response)
             .verifyComplete();
