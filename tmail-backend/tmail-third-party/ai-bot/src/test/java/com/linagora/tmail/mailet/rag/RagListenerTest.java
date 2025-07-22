@@ -163,10 +163,10 @@ class RagListenerTest {
         Configurations configurations = new Configurations();
         config = configurations.xml("listeners.xml");
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("ragondin.url", "https://ragondin-twake-staging.linagora.com/");
-        configuration.addProperty("ragondin.Token", "fake");
-        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
-        configuration.addProperty("ragondin.partition.pattern", "{localPart}.twake.{domainName}");
+        configuration.addProperty("openrag.url", "http://localhost:8080");
+        configuration.addProperty("openrag.token", "dummy-token");
+        configuration.addProperty("openrag.ssl.trust.all.certs", "true");
+        configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         ragConfig = RagConfig.from(configuration);
         ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
     }

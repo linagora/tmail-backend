@@ -57,8 +57,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
 import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
-import com.linagora.tmail.mailet.rag.httpclient.RagondinHttpClient;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -129,13 +129,13 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                         }
                         LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
                         MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
-                        RagondinHttpClient ragondinHttpClient = new RagondinHttpClient(ragConfig);
+                        OpenRagHttpClient ragondinHttpClient = new OpenRagHttpClient(ragConfig);
                         return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
                             .doOnError(error -> LOGGER.error("Error occurred: {}", error.getMessage()))
                             .flatMap(messageResult ->
                                 asRagLearnableContent(messageResult)
                                     .doOnSuccess(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** \n{}\n *****", text))
-                                    .flatMap(content -> new RagondinHttpClient(ragConfig)
+                                    .flatMap(content -> new OpenRagHttpClient(ragConfig)
                                         .addDocument(
                                             Partition.Factory.fromPattern(ragConfig.getPartitionPattern())
                                                     .forUsername(addedEvent.getUsername()),

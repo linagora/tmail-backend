@@ -37,8 +37,8 @@ import io.netty.handler.codec.http.HttpMethod;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
-public class RagondinHttpClient {
-    private static final Logger LOGGER = LoggerFactory.getLogger(RagondinHttpClient.class);
+public class OpenRagHttpClient {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenRagHttpClient.class);
     private static final String API_KEY_HEADER = "Authorization";
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
@@ -47,7 +47,7 @@ public class RagondinHttpClient {
     private final RagConfig configuration;
     private final ObjectMapper objectMapper;
 
-    public RagondinHttpClient(RagConfig configuration) {
+    public OpenRagHttpClient(RagConfig configuration) {
         this.configuration = configuration;
         this.objectMapper = new ObjectMapper().registerModule(new Jdk8Module());
         this.httpClient = buildReactorNettyHttpClient(configuration);

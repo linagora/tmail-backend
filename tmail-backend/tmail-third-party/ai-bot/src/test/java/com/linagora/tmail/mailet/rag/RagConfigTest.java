@@ -34,33 +34,33 @@ public class RagConfigTest {
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenApiKeyIsNull() {
         Configuration configuration = new PropertiesConfiguration();
-        configuration.addProperty("ragondin.url", "https://ragondin.linagora.com");
-        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
+        configuration.addProperty("openrag.url", "https://ragondin.linagora.com");
+        configuration.addProperty("openrag.ssl.trust.all.certs", "true");
 
         assertThatThrownBy(() -> RagConfig.from(configuration))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("No value for ragondin.Token parameter was provided.");
+                .hasMessageContaining("No value for openrag.token parameter was provided.");
     }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenMissingURL() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("ragondin.Token", "fake-token");
-        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
-        configuration.addProperty("ragondin.partition.pattern", "{localPart}.twake.{domainName}");
+        configuration.addProperty("openrag.token", "fake-token");
+        configuration.addProperty("openrag.ssl.trust.all.certs", "true");
+        configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
 
         assertThatThrownBy(() -> RagConfig.from(configuration))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("No value for ragondin.url parameter was provided.");
+            .hasMessageContaining("No value for openrag.url parameter was provided.");
     }
 
     @Test
     public void shouldThrowRuntimeExceptionWhenUrlFormatIsWorng() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("ragondin.url", "htp://ragondin.linagora.com");
-        configuration.addProperty("ragondin.Token", "fake-token");
-        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
-        configuration.addProperty("ragondin.partition.pattern", "{localPart}.twake.{domainName}");
+        configuration.addProperty("openrag.url", "htp://ragondin.linagora.com");
+        configuration.addProperty("openrag.token", "fake-token");
+        configuration.addProperty("openrag.ssl.trust.all.certs", "true");
+        configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
 
         assertThatThrownBy(() -> RagConfig.from(configuration))
             .isInstanceOf(RuntimeException.class)
@@ -70,9 +70,9 @@ public class RagConfigTest {
     @Test
     public void shouldConfigureTrustAllCertsTrueWhenMissingTrustAllCerts() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("ragondin.url", "https://ragondin.linagora.com");
-        configuration.addProperty("ragondin.Token", "fake-token");
-        configuration.addProperty("ragondin.partition.pattern", "{localPart}.twake.{domainName}");
+        configuration.addProperty("openrag.url", "https://ragondin.linagora.com");
+        configuration.addProperty("openrag.token", "fake-token");
+        configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         RagConfig actual = RagConfig.from(configuration);
 
         assertThat(actual.getTrustAllCertificates()).isTrue();
@@ -81,9 +81,9 @@ public class RagConfigTest {
     @Test
     public void shouldConfigureDefaultPartitionPatternWhenMissingPartitionPatternProperty() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("ragondin.url", "https://ragondin.linagora.com");
-        configuration.addProperty("ragondin.Token", "fake-token");
-        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
+        configuration.addProperty("openrag.url", "https://ragondin.linagora.com");
+        configuration.addProperty("openrag.token", "fake-token");
+        configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         RagConfig actual = RagConfig.from(configuration);
 
         assertThat(actual.getPartitionPattern()).isEqualTo(RagConfig.DEFAULT_PARTITION_PATTERN);
@@ -93,10 +93,10 @@ public class RagConfigTest {
     public void shouldVerifyCorrectConfiguration() throws Exception {
         //Arrange
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("ragondin.url", "https://ragondin.linagora.com");
-        configuration.addProperty("ragondin.Token", "fake-token");
-        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
-        configuration.addProperty("ragondin.partition.pattern", "{localPart}.twake.{domainName}");
+        configuration.addProperty("openrag.url", "https://ragondin.linagora.com");
+        configuration.addProperty("openrag.token", "fake-token");
+        configuration.addProperty("openrag.ssl.trust.all.certs", "true");
+        configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
 
         //act
         RagConfig expected = new RagConfig("fake-token", true, Optional.of(URI.create("https://ragondin.linagora.com").toURL()), "{localPart}.twake.{domainName}");
@@ -108,13 +108,13 @@ public class RagConfigTest {
     @Test
     public void shouldVerifyPatternContainLocalPartAndDomainName() throws Exception {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("ragondin.url", "https://ragondin.linagora.com");
-        configuration.addProperty("ragondin.Token", "fake-token");
-        configuration.addProperty("ragondin.ssl.trust.all.certs", "true");
-        configuration.addProperty("ragondin.partition.pattern", "{locart}.twake.{domame}");
+        configuration.addProperty("openrag.url", "https://ragondin.linagora.com");
+        configuration.addProperty("openrag.token", "fake-token");
+        configuration.addProperty("openrag.ssl.trust.all.certs", "true");
+        configuration.addProperty("openrag.partition.pattern", "{locart}.twake.{domame}");
         assertThatThrownBy(() -> RagConfig.from(configuration)).isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("The partition pattern must contain {domainName} and {localPart} placeholders. " +
-                "Current pattern: " + configuration.getProperty("ragondin.partition.pattern"));
+                "Current pattern: " + configuration.getProperty("openrag.partition.pattern"));
     }
     
     @Test
