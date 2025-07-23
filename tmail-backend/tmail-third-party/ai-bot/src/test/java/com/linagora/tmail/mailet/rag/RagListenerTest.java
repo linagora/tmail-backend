@@ -17,15 +17,26 @@
  ********************************************************************/
 package com.linagora.tmail.mailet.rag;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
-
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.mockito.Mockito.spy;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
@@ -38,23 +49,25 @@ import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
-import org.apache.james.mailbox.model.MailboxPath;
-import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.store.FakeAuthenticator;
+import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.StoreMailboxManager;
 import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
-import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
 
 class RagListenerTest {
 
@@ -111,11 +124,6 @@ class RagListenerTest {
             .willReturn(aResponse()
                 .withStatus(200)
                 .withBody("{\"task_status_url\":\"http://localhost:8080/status/1234\"}")));
-
-        stubFor(get(urlEqualTo("/status/1234"))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withBody("{\"task_state\":\"COMPLETED\"}")));
 
         clock = new UpdatableTickingClock(Instant.now());
         mapperFactory = new InMemoryMailboxSessionMapperFactory(clock);
@@ -183,15 +191,37 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        verify(2, anyRequestedFor(anyUrl()));
+        verify(1, anyRequestedFor(anyUrl()));
 
         verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data")));
+    }
 
-        verify(getRequestedFor(urlEqualTo("/status/1234"))
+    @Test
+    void HttpClientShouldSendPutRequestWhenDocumentAlreadyIndexed() throws Exception {
+
+        stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
+            .willReturn(aResponse()
+                .withStatus(409)
+                .withBody("{\"details\":\"Document already exists\"}")));
+
+        stubFor(put(urlPathMatching("/indexer/partition/.*/file/.*"))
+            .willReturn(aResponse()
+                .withStatus(200)
+                .withBody("{\"task_status_url\":\"http://localhost:8080/status/1234\"}")));
+
+        mailboxManager.getEventBus().register(ragListener);
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            bobMailboxSession);
+
+        verify(2, anyRequestedFor(anyUrl()));
+
+        verify(putRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
-            .withHeader("Accept", equalTo("application/json")));
+            .withHeader("Content-Type", containing("multipart/form-data")));
+
     }
 
     @Test
@@ -260,7 +290,7 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        verify(4, anyRequestedFor(anyUrl()));
+        verify(2, anyRequestedFor(anyUrl()));
 
         verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_1"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
@@ -270,9 +300,6 @@ class RagListenerTest {
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data")));
 
-        verify(getRequestedFor(urlEqualTo("/status/1234"))
-            .withHeader("Authorization", equalTo("Bearer dummy-token"))
-            .withHeader("Accept", equalTo("application/json")));
     }
 
     @Test
@@ -301,15 +328,12 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(emailWithAttachment)),
             bobMailboxSession);
 
-        verify(2, anyRequestedFor(anyUrl()));
+        verify(1, anyRequestedFor(anyUrl()));
 
         verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_1"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data")));
 
-        verify(getRequestedFor(urlEqualTo("/status/1234"))
-            .withHeader("Authorization", equalTo("Bearer dummy-token"))
-            .withHeader("Accept", equalTo("application/json")));
     }
 
     @Test

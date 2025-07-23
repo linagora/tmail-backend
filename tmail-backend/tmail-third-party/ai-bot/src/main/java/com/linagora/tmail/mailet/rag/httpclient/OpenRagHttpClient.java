@@ -18,17 +18,12 @@
 package com.linagora.tmail.mailet.rag.httpclient;
 
 import java.io.ByteArrayInputStream;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Map;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.linagora.tmail.mailet.rag.RagConfig;
@@ -53,7 +48,7 @@ public class OpenRagHttpClient {
         this.httpClient = buildReactorNettyHttpClient(configuration);
     }
 
-    public Mono<Void> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, String> metadata) {
+    public Mono<String> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, String> metadata) {
         String url = String.format("/indexer/partition/%s/file/%s", partition.partitionName(), documentId.asString());
         return Mono.fromCallable(() -> objectMapper.writeValueAsString(metadata))
             .flatMap(metadataJson ->
@@ -65,14 +60,10 @@ public class OpenRagHttpClient {
                         }
                         return Mono.error(throwable);
                     }))
-            .onErrorResume(JsonProcessingException.class, e -> {
-                LOGGER.error("Failed to serialize metadata to JSON", e);
-                return Mono.error(new RuntimeException("Failed to serialize metadata to JSON", e));
-            });
+            .onErrorResume(e -> Mono.empty());
     }
 
-
-    private Mono<Void> sendFormRequest(HttpMethod method, String url, DocumentId documentId, String textualContent, String metadataJson) {
+    private Mono<String> sendFormRequest(HttpMethod method, String url, DocumentId documentId, String textualContent, String metadataJson) {
         return httpClient
             .headers(headers -> headers.add(CONTENT_TYPE_HEADER, "multipart/form-data"))
             .request(method)
@@ -85,7 +76,8 @@ public class OpenRagHttpClient {
                 if (res.status().code() / 100 == 2) {
                     return content.asString(StandardCharsets.UTF_8)
                         .flatMap(contentString -> {
-                            return getTaskState(documentId, extractUrl(contentString));
+                            LOGGER.info("document {} is add to indexation ", documentId.asString());
+                            return Mono.just(contentString);
                         });
                 } else if (res.status().code() == 409 && method == HttpMethod.POST) {
                     return Mono.error(new DocumentConflictException());
@@ -94,37 +86,6 @@ public class OpenRagHttpClient {
                         .flatMap(body -> Mono.error(new RuntimeException("Failed to " + method.name() + " document: " + body + " (status: " + res.status().code() + ")")));
                 }
             });
-    }
-
-    private @NotNull Mono<Void> getTaskState(DocumentId documentId, String extractedUrl) {
-        return Mono.delay(Duration.ofSeconds(1))
-            .then(httpClient
-                .get()
-                .uri(extractedUrl)
-                    .responseSingle((res, content) ->
-                        content.asString(StandardCharsets.UTF_8)
-                            .flatMap(body -> Mono.fromCallable(() -> objectMapper.readValue(body, new TypeReference<Map<String, Object>>() {}))
-                                .flatMap(jsonMap -> logState(documentId, (String) jsonMap.get("task_state")))
-                                .onErrorResume(JsonProcessingException.class, e -> {
-                                    LOGGER.error("Failed to parse JSON content for document {}: {}", documentId.asString(), body, e);
-                                    return Mono.error(new RuntimeException("Failed to parse task state JSON", e));
-                                }))));
-    }
-
-    private static @NotNull Mono<Void> logState(DocumentId documentId, String taskState) {
-        switch (taskState) {
-            case "COMPLETED":
-                LOGGER.info("Indexation Task completed successfully for document {}", documentId.asString());
-                return Mono.empty();
-
-            case "SERIALIZING":
-                LOGGER.info("Indexation in progress for document {}: state={}", documentId.asString(), taskState);
-                return Mono.empty();
-
-            default:
-                LOGGER.warn("Unexpected task state '{}' for document {}", taskState, documentId.asString());
-                return Mono.error(new RuntimeException("Unexpected task state: " + taskState));
-        }
     }
 
     private HttpClient buildReactorNettyHttpClient(RagConfig configuration) {
@@ -137,21 +98,6 @@ public class OpenRagHttpClient {
             client = client.secure();
         }
         return client;
-    }
-
-    private String extractUrl(String content) {
-        try {
-            String fullUrl = objectMapper.readValue(content, new TypeReference<Map<String, String>>() {})
-                .get("task_status_url");
-            if (fullUrl != null) {
-                URI uri = URI.create(fullUrl);
-                return uri.getPath();
-            }
-            throw new RuntimeException("URL not found in content");
-        } catch (JsonProcessingException e) {
-            LOGGER.error("Failed to parse JSON content: {}", content, e);
-            throw new RuntimeException("Failed to extract URL from content", e);
-        }
     }
 
 }
