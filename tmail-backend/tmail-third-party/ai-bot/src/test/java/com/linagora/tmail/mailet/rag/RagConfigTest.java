@@ -17,17 +17,19 @@
  ********************************************************************/
 package com.linagora.tmail.mailet.rag;
 
-import com.linagora.tmail.mailet.AIBotConfig;
-import nl.jqno.equalsverifier.EqualsVerifier;
-import org.apache.commons.configuration2.Configuration;
-import org.apache.commons.configuration2.PropertiesConfiguration;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import java.net.URI;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.junit.jupiter.api.Test;
+
+import com.linagora.tmail.mailet.AIBotConfig;
+
+import nl.jqno.equalsverifier.EqualsVerifier;
 
 public class RagConfigTest {
 
