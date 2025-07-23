@@ -22,6 +22,7 @@ import static org.apache.mailet.base.DateFormats.RFC822_DATE_FORMAT;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +78,8 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     private final SystemMailboxesProvider systemMailboxesProvider;
     private final Optional<List<Username>> whitelist;
     private final RagConfig ragConfig;
+    private final Partition.Factory partitionFactory;
+    private final OpenRagHttpClient openRagHttpClient;
 
     @Inject
     public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, HierarchicalConfiguration<ImmutableNode> config, RagConfig ragConfig) {
@@ -85,6 +88,8 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         this.systemMailboxesProvider = systemMailboxesProvider;
         this.whitelist = parseWhitelist(config);
         this.ragConfig = ragConfig;
+        this.partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
+        this.openRagHttpClient = new OpenRagHttpClient(ragConfig);
     }
 
     private Optional<List<Username>> parseWhitelist(HierarchicalConfiguration<ImmutableNode> config) {
@@ -129,19 +134,9 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                         }
                         LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
                         MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
-                        OpenRagHttpClient ragondinHttpClient = new OpenRagHttpClient(ragConfig);
                         return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
-                            .doOnError(error -> LOGGER.error("Error occurred: {}", error.getMessage()))
                             .flatMap(messageResult ->
-                                asRagLearnableContent(messageResult)
-                                    .doOnSuccess(text -> LOGGER.info("RAG Listener successfully processed mailContent ***** \n{}\n *****", text))
-                                    .flatMap(content -> new OpenRagHttpClient(ragConfig)
-                                        .addDocument(
-                                            Partition.Factory.fromPattern(ragConfig.getPartitionPattern())
-                                                    .forUsername(addedEvent.getUsername()),
-                                            new DocumentId(messageResult.getThreadId()),
-                                            content,
-                                            getMetaData(addedEvent, messageResult))))
+                                addDocumentToRagContext(addedEvent, messageResult))
                             .then();
                     });
             }
@@ -151,12 +146,21 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         return Mono.empty();
     }
 
-    private Map<String, String> getMetaData(MailboxEvents.Added addedEvent, MessageResult messageResult) {
+    private Mono<String> addDocumentToRagContext(MailboxEvents.Added addedEvent, MessageResult messageResult) {
+        return asRagLearnableContent(messageResult)
+            .doOnSuccess(text -> LOGGER.debug("RAG Listener successfully processed mailContent ***** \n{}\n *****", new DocumentId(messageResult.getThreadId())))
+            .flatMap(content -> openRagHttpClient
+                .addDocument(
+                    partitionFactory.forUsername(addedEvent.getUsername()),
+                    new DocumentId(messageResult.getThreadId()),
+                    content,
+                    computeMetaData(addedEvent, messageResult)));
+    }
+
+    private Map<String, String> computeMetaData(MailboxEvents.Added addedEvent, MessageResult messageResult) {
         try {
-            return  Map.of("username", addedEvent.getUsername().asString(),
-                "link to message", String.format("https://tmail/%s/dashboard/%s", addedEvent.getUsername().getDomainPart().get().asString(), messageResult.getThreadId().toString()),
-                "date", parseMessage(messageResult.getFullContent().getInputStream()).getDate().toString(),
-                "doctype", parseMessage(messageResult.getFullContent().getInputStream()).getMimeType());
+            return  Map.of("date", DateTimeFormatter.ISO_INSTANT.format(parseMessage(messageResult.getFullContent().getInputStream()).getDate().toInstant()),
+                "doctype", "com.linagora.email");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

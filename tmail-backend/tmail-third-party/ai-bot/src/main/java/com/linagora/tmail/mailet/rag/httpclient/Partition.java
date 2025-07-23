@@ -22,17 +22,7 @@ import org.apache.james.core.Username;
 
 import com.google.common.base.Preconditions;
 
-
 public record Partition(String partitionName) {
-
-    public static Partition fromPattern(String pattern, String localPart, String domainName) {
-        Preconditions.checkArgument(pattern.contains("{localPart}"), "Pattern must contain {localPart}");
-        Preconditions.checkArgument(pattern.contains("{domainName}"), "Pattern must contain {domainName}");
-        String partitionName = pattern
-            .replace("{localPart}", localPart)
-            .replace("{domainName}", domainName);
-        return new Partition(partitionName);
-    }
 
     public static class Factory {
         private final String pattern;
@@ -53,4 +43,14 @@ public record Partition(String partitionName) {
             return Partition.fromPattern(pattern, localPart, domainName);
         }
     }
+
+    public static Partition fromPattern(String pattern, String localPart, String domainName) {
+        Preconditions.checkArgument(pattern.contains("{localPart}"), "Pattern must contain {localPart}");
+        Preconditions.checkArgument(pattern.contains("{domainName}"), "Pattern must contain {domainName}");
+        String partitionName = pattern
+            .replace("{localPart}", localPart)
+            .replace("{domainName}", domainName);
+        return new Partition(partitionName);
+    }
+
 }
