@@ -18,20 +18,16 @@
 package com.linagora.tmail.mailet.rag.httpclient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.linagora.tmail.mailet.rag.RagConfig;
+import java.net.URI;
+import java.util.Map;
+import java.util.Optional;
 
 import org.apache.james.mailbox.model.TestMessageId;
 import org.apache.james.mailbox.model.ThreadId;
@@ -39,15 +35,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.linagora.tmail.mailet.rag.RagConfig;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 public class OpenRagHttpClientTest {
     private WireMockServer wireMockServer;
@@ -60,10 +58,6 @@ public class OpenRagHttpClientTest {
 
     @BeforeEach
     public void setUp() throws Exception {
-        logger = (Logger) LoggerFactory.getLogger("com.linagora.tmail.mailet.rag.httpclient.RagondinHttpClient");
-        listAppender = new ListAppender<>();
-        listAppender.start();
-        logger.addAppender(listAppender);
         wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
         wireMockServer.start();
 
@@ -76,7 +70,6 @@ public class OpenRagHttpClientTest {
 
     @AfterEach
     void tearDown() {
-        logger.detachAppender(listAppender);
         wireMockServer.stop();
     }
 
@@ -107,43 +100,14 @@ public class OpenRagHttpClientTest {
         RagConfig ragConf = new RagConfig("fake", true, Optional.of(URI.create("https://ragondin-twake-staging.linagora.com/").toURL()), "{localPart}.twake.{domainName}");
         OpenRagHttpClient openRagHttpClient = new OpenRagHttpClient(ragConf);
 
-        Mono<Void> response = openRagHttpClient.addDocument(
+        Mono<String> response = openRagHttpClient.addDocument(
                 Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
                 new DocumentId(new ThreadId(TestMessageId.of(9))),
                 "Contenu du fichier RAG on Twake Mail",
                 Map.of("link", "https://example.com",
                     "date", "2023-10-01"));
 
-        StepVerifier.create(response)
-            .verifyComplete();
-        assertThat(listAppender.list)
-            .extracting(ILoggingEvent::getFormattedMessage)
-            .isEqualTo(List.of("Indexation Task completed successfully for document tmail_9"));
+        assertThat(response.block()).matches("\\{\"task_status_url\":\"http://ragondin-twake-staging.linagora.com/indexer/task/.*\"}");
     }
 
-    @Disabled("Disabled because the test requires a real authentificationToken to run")
-    @Test
-    void shouldRecieveResponseWhenDocumentAlreadyExists() throws Exception {
-        RagConfig ragConf = new RagConfig("fake", true, Optional.of(URI.create("https://ragondin-twake-staging.linagora.com/").toURL()), "{localPart}.twake.{domainName}");
-        OpenRagHttpClient openRagHttpClient = new OpenRagHttpClient(ragConf);
-
-        openRagHttpClient.addDocument(
-            Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
-            new DocumentId(new ThreadId(TestMessageId.of(9))),
-            "message content",
-            Map.of()).block();
-
-        openRagHttpClient.addDocument(
-            Partition.fromPattern("{localPart}.twake.{domainName}", "test", "linagora.com"),
-            new DocumentId(new ThreadId(TestMessageId.of(9))),
-            "Updated version for message content",
-            Map.of()).block();
-
-        assertThat(listAppender.list)
-            .extracting(ILoggingEvent::getFormattedMessage)
-            .isEqualTo(List.of("Indexation Task completed successfully for document tmail_9",
-                "Document already exists. Retrying with PUT.",
-                "Indexation Task completed successfully for document tmail_9"));
-
-    }
 }
