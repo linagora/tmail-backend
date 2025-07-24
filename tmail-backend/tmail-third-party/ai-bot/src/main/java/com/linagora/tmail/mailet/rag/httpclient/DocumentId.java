@@ -18,9 +18,11 @@
 package com.linagora.tmail.mailet.rag.httpclient;
 
 import org.apache.james.mailbox.model.ThreadId;
+import org.apache.james.mailbox.store.mail.model.MimeMessageId;
 
-public record DocumentId(ThreadId id) {
+public record DocumentId(ThreadId threadId, MimeMessageId branchBaseId) {    
     public String asString() {
-        return "tmail_" + id.serialize();
+        // FIXME: MimeMessageId might not be a valid filename
+        return "tmail_" + threadId.serialize() + "_" + branchBaseId.getValue();
     }
 }
