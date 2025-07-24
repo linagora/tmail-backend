@@ -309,6 +309,17 @@ public class CalDavCollectIntegrationTest {
     }
 
     @Test
+    void mailetShouldCallDavServerToCreateNewCalendarObjectIfRecipientIsOrganizer(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
+
+        sendMessage(receiver, sender, mail, mimeMessageId);
+
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new EventUid(mimeMessageId)).block();
+        assertThat(result).isNotNull();
+    }
+
+    @Test
     void mailetShouldOnlyCallDavServerToCreateNewCalendarObjectForInvitedRecipientsWhenMailContainsBothInvitedRecipientsAndUninvitedRecipients(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
