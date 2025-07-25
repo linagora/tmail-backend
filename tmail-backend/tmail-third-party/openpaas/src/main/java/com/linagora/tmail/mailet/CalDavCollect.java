@@ -23,8 +23,8 @@ import static com.linagora.tmail.dav.DavClient.CALENDAR_PATH;
 import java.io.StringReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -52,6 +52,7 @@ import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.Attendee;
+import net.fortuna.ical4j.model.property.Organizer;
 import reactor.core.publisher.Mono;
 
 public class CalDavCollect extends GenericMailet {
@@ -102,7 +103,7 @@ public class CalDavCollect extends GenericMailet {
                 MailAddress mailAddress = new MailAddress(recipient);
                 Calendar calendar = parseICalString(icalContent);
 
-                if (isRecipientAttendee(mailAddress, calendar)) {
+                if (concernsRecipient(mailAddress, calendar)) {
                     davUserProvider.provide(Username.of(mailAddress.asString()))
                         .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
                         .block();
@@ -135,21 +136,30 @@ public class CalDavCollect extends GenericMailet {
         return new CalendarBuilder().build(reader);
     }
 
-    private boolean isRecipientAttendee(MailAddress mailAddress, Calendar calendar) {
-        for (Component component : calendar.getComponents(Component.VEVENT)) {
-            VEvent event = (VEvent) component;
+    private boolean concernsRecipient(MailAddress mailAddress, Calendar calendar) {
+        return calendar.getComponents(Component.VEVENT)
+            .stream()
+            .filter(VEvent.class::isInstance)
+            .map(VEvent.class::cast)
+            .anyMatch(event -> isOrganizer(mailAddress, event) || isAttendee(mailAddress, event));
+    }
 
-            List<MailAddress> attendeeList = event.getProperties(Property.ATTENDEE)
-                .stream()
-                .map(attendee -> (Attendee) attendee)
-                .map(Attendee::getCalAddress)
-                .map(URI::getSchemeSpecificPart)
-                .map(Throwing.function(MailAddress::new))
-                .toList();
+    private static boolean isAttendee(MailAddress mailAddress, VEvent event) {
+        return event.getProperties(Property.ATTENDEE)
+            .stream()
+            .map(attendee -> (Attendee) attendee)
+            .map(Attendee::getCalAddress)
+            .map(URI::getSchemeSpecificPart)
+            .map(Throwing.function(MailAddress::new))
+            .anyMatch(mailAddress::equals);
+    }
 
-            return attendeeList.contains(mailAddress);
-        }
-
-        return false;
+    private static Boolean isOrganizer(MailAddress mailAddress, VEvent event) {
+        return Optional.ofNullable(event.getOrganizer())
+            .map(Organizer::getCalAddress)
+            .map(URI::getSchemeSpecificPart)
+            .map(Throwing.function(MailAddress::new))
+            .map(mailAddress::equals)
+            .orElse(false);
     }
 }
