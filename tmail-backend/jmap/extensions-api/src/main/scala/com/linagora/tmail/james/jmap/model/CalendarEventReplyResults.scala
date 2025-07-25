@@ -18,10 +18,10 @@
 
 package com.linagora.tmail.james.jmap.model
 
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.NoUpdateRequiredException
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
-import org.apache.james.mailbox.MailboxSession
 import org.slf4j.{Logger, LoggerFactory}
 
 object CalendarEventReplyResults {
@@ -52,7 +52,7 @@ object CalendarEventReplyResults {
     done(BlobId.of(blobId).get)
 
   private def asSetError(throwable: Throwable, username: String): SetError = throwable match {
-    case _: InvalidCalendarFileException | _: IllegalArgumentException =>
+    case _: InvalidCalendarFileException | _: IllegalArgumentException | _: NoUpdateRequiredException =>
       LOGGER.info("Error when generate reply mail for {}: {}", username, throwable.getMessage)
       SetError.invalidPatch(SetErrorDescription(throwable.getMessage))
     case _ =>
