@@ -53,10 +53,10 @@ object CalendarEventReplyResults {
 
   private def asSetError(throwable: Throwable, username: String): SetError = throwable match {
     case _: InvalidCalendarFileException | _: IllegalArgumentException | _: NoUpdateRequiredException =>
-      LOGGER.info("Error when generate reply mail for {}: {}", username, throwable.getMessage)
+      LOGGER.info("Error when replying to event invitation for {}: {}", username, throwable.getMessage)
       SetError.invalidPatch(SetErrorDescription(throwable.getMessage))
     case _ =>
-      LOGGER.error("serverFail to generate reply mail for {}", username, throwable)
+      LOGGER.error("serverFail to reply event invitation for {}", username, throwable)
       SetError.serverFail(SetErrorDescription(throwable.getMessage))
   }
 }
