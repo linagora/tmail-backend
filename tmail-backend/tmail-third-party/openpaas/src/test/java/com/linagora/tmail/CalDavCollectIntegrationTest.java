@@ -315,7 +315,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(receiver, sender, mail, mimeMessageId);
 
-        DavCalendarObject result = davClient.getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new EventUid(mimeMessageId)).block();
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(sender.id(), sender.email()), new EventUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
     }
 
