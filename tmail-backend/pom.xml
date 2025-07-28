@@ -83,6 +83,8 @@
         <module>rate-limiter/rate-limiter-cassandra</module>
         <module>rate-limiter/rate-limiter-postgres</module>
 
+        <module>saas/saas-api</module>
+
         <module>smtp-extensions</module>
 
         <module>webadmin/webadmin-email-address-contact</module>
@@ -336,6 +338,17 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-rate-limiter-api</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-saas-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-saas-api</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
