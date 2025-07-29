@@ -27,6 +27,7 @@ import com.linagora.tmail.james.jmap.model.{CalendarEventParse, CalendarEventPar
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import jakarta.inject.{Inject, Named}
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, Invocation, Properties, SessionTranslator, UrlPrefixes}
@@ -50,7 +51,7 @@ object CalendarCapabilityProperties {
 case class CalendarCapabilityFactory(supportedLanguage: CalendarEventReplySupportedLanguage,
                                      supportFreeBusyQuery: Boolean,
                                      counterSupport: Boolean) extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = CalendarCapability(CalendarCapabilityProperties(
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = CalendarCapability(CalendarCapabilityProperties(
     replySupportedLanguage = supportedLanguage.valueAsStringSet,
     supportFreeBusyQuery = supportFreeBusyQuery,
     counterSupport = counterSupport))

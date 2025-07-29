@@ -43,7 +43,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.CollectionConverters._
 
 case object LabelCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = LabelCapability
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = LabelCapability
 
   override def id(): CapabilityIdentifier = LINAGORA_LABEL
 }

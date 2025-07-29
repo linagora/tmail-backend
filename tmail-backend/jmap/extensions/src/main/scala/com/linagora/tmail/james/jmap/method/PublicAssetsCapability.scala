@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.method
 import com.google.inject.Inject
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PUBLIC_ASSETS
 import com.linagora.tmail.james.jmap.{JMAPExtensionConfiguration, PublicAssetTotalSizeLimit}
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
 import play.api.libs.json.{JsObject, Json}
@@ -36,7 +37,7 @@ class PublicAssetsCapabilityFactory @Inject()(val configuration: JMAPExtensionCo
 
   override def id(): CapabilityIdentifier = LINAGORA_PUBLIC_ASSETS
 
-  override def create(urlPrefixes: UrlPrefixes): Capability = {
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = {
     PublicAssetsCapability(PublicAssetsCapabilityProperties(configuration.publicAssetTotalSizeLimit))
   }
 }

@@ -35,6 +35,7 @@ import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
 import io.netty.handler.codec.http.{HttpHeaderNames, HttpMethod, QueryStringDecoder}
 import jakarta.inject.{Inject, Named}
+import org.apache.james.core.Username
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Id.Id
@@ -84,7 +85,7 @@ class DownloadAllCapabilityFactory @Inject() extends CapabilityFactory {
 
   override def id(): CapabilityIdentifier = LINAGORA_DOWNLOAD_ALL
 
-  override def create(urlPrefixes: UrlPrefixes): Capability =
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability =
     DownloadAllCapability(DownloadAllCapabilityProperties(URL(urlPrefixes.httpUrlPrefix.toString + "/downloadAll/{accountId}/{emailId}?name={name}")))
 }
 
