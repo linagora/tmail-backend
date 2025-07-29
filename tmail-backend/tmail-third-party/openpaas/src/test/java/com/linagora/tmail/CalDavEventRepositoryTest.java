@@ -99,7 +99,7 @@ public class CalDavEventRepositoryTest {
         when(calendarResolver.resolveRequestCalendar(any(), any(), any())).thenReturn(SMono.empty());
         testee = new CalDavEventRepository(davClient,
             resources.getMailboxManager().getSessionProvider(),
-            new OpenPaasDavUserProvider(openPaasRestClient),
+            new OpenPaasDavUserProvider(openPaasRestClient, davClient),
             calendarResolver);
 
         setupNewTestUser();
