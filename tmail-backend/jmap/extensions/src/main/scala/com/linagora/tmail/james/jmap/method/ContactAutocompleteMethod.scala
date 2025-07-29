@@ -26,6 +26,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTAC
 import com.linagora.tmail.james.jmap.model.{Contact, ContactAutocompleteRequest, ContactAutocompleteResponse, ContactFirstname, ContactId, ContactSurname}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
+import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
@@ -54,7 +55,7 @@ class ContactCapabilitiesModule extends AbstractModule {
 }
 
 class ContactCapabilityFactory @Inject()(val minAutoCompleteInputLength: MinAutoCompleteInputLength) extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability =
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability =
     ContactCapability(ContactCapabilityProperties(minAutoCompleteInputLength))
 
   override def id(): CapabilityIdentifier = LINAGORA_CONTACT

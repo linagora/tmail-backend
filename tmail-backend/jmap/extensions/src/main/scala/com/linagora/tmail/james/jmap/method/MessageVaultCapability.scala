@@ -20,11 +20,11 @@ package com.linagora.tmail.james.jmap.method
 
 import java.time.Duration
 
-import com.google.inject.AbstractModule
-import com.google.inject.Inject
+import com.google.inject.{AbstractModule, Inject}
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MESSAGE_VAULT
 import org.apache.commons.lang3.time.DurationFormatUtils
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
 import play.api.libs.json.{JsObject, Json}
@@ -43,7 +43,7 @@ case class MessageVaultCapability(messageVaultCapabilityProperties: MessageVault
 case class MessageVaultCapabilityFactory @Inject()(configuration: EmailRecoveryActionConfiguration) extends CapabilityFactory {
   override def id(): CapabilityIdentifier = LINAGORA_MESSAGE_VAULT
 
-  override def create(urlPrefixes: UrlPrefixes): Capability = {
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = {
     MessageVaultCapability(MessageVaultCapabilityProperties(
       maxEmailRecoveryPerRequest = configuration.maxEmailRecoveryPerRequest,
       restorationHorizon = configuration.restorationHorizon))

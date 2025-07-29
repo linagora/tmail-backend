@@ -23,6 +23,7 @@ import com.google.inject.multibindings.ProvidesIntoSet
 import com.linagora.tmail.james.jmap.firebase.FirebaseConfiguration
 import com.linagora.tmail.james.jmap.json.FirebaseSubscriptionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FIREBASE
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
 import play.api.libs.json.JsObject
@@ -45,7 +46,7 @@ case class FirebaseCapability(properties: FirebaseCapabilityProperties) extends 
 }
 
 case class FirebaseCapabilityFactory(configuration: FirebaseConfiguration) extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = FirebaseCapability(FirebaseCapabilityProperties(
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = FirebaseCapability(FirebaseCapabilityProperties(
     ApiKey(OptionConverters.toScala(configuration.apiKey())),
     AppId(OptionConverters.toScala(configuration.appId())),
     MessagingSenderId(OptionConverters.toScala(configuration.messagingSenderId())),

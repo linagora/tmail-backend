@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.team.mailboxes
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.ProvidesIntoSet
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_TEAM_MAILBOXES
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
 import play.api.libs.json.{JsObject, Json}
@@ -35,7 +36,7 @@ case object TeamMailboxesCapability extends Capability {
 }
 
 case object TeamMailboxesCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = TeamMailboxesCapability
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = TeamMailboxesCapability
 
   override def id(): CapabilityIdentifier = LINAGORA_TEAM_MAILBOXES
 }
