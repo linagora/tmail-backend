@@ -56,6 +56,11 @@
             <type>test-jar</type>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-guice-common</artifactId>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-webadmin</artifactId>
         </dependency>
