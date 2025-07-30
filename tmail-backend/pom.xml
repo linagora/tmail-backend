@@ -240,6 +240,7 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-guice-common</artifactId>
+                <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
