@@ -20,8 +20,8 @@ package com.linagora.tmail.james.jmap.method
 
 import java.time.Duration
 
-import com.google.inject.{AbstractModule, Inject}
 import com.google.inject.multibindings.Multibinder
+import com.google.inject.{AbstractModule, Inject}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MESSAGE_VAULT
 import org.apache.commons.lang3.time.DurationFormatUtils
 import org.apache.james.core.Username
