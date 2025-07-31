@@ -40,6 +40,7 @@ import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.{MailboxPath, MessageResult, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.modules.protocols.SmtpGuiceProbe
+import org.apache.james.rrt.lib.{Mapping, MappingSource}
 import org.apache.james.utils.{DataProbeImpl, SMTPMessageSender}
 import org.apache.mailet.base.test.FakeMail
 import org.assertj.core.api.Assertions.assertThat
@@ -330,6 +331,87 @@ trait LinagoraForwardSetMethodContract {
          |       ]
          |    }, "c2" ]
          |  ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateForwardLoopShouldFail(guiceJamesServer: GuiceJamesServer): Unit = {
+    // GIVEN Andre forwards mails to Bob
+    guiceJamesServer.getProbe(classOf[DataProbeImpl])
+      .addMapping(MappingSource.fromUser(ANDRE), Mapping.forward(BOB.asString()))
+
+    // WHEN Bob Forward/set to forward mails to Andre
+    val request: String =
+      s"""{
+         |    "using": [ "urn:ietf:params:jmap:core",
+         |               "com:linagora:params:jmap:forward" ],
+         |    "methodCalls": [
+         |      ["Forward/set", {
+         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "update": {
+         |            "singleton": {
+         |                "localCopy": false,
+         |                "forwards": [
+         |                    "${ANDRE.asMailAddress().asString()}"
+         |                ]
+         |            }
+         |        }
+         |      }, "c1"],
+         |      ["Forward/get", {
+         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "ids": ["singleton"]
+         |      }, "c2" ]
+         |    ]
+         |  }""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    // THEN Forward/set should reject the loop request
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "Forward/set",
+         |            {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "newState": "${INSTANCE.value}",
+         |                "notUpdated": {
+         |                    "singleton": {
+         |                        "type": "invalidPatch",
+         |                        "description": "Creation of redirection of ${BOB.asString()} to forward:${ANDRE.asString()} would lead to a loop, operation not performed"
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ],
+         |        [
+         |            "Forward/get",
+         |            {
+         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "notFound": [],
+         |                "state": "${INSTANCE.value}",
+         |                "list": [
+         |                    {
+         |                        "id": "singleton",
+         |                        "localCopy": true,
+         |                        "forwards": []
+         |                    }
+         |                ]
+         |            },
+         |            "c2"
+         |        ]
+         |    ]
          |}""".stripMargin)
   }
 

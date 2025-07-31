@@ -20,9 +20,10 @@ package com.linagora.tmail.james.jmap.model
 
 import com.linagora.tmail.james.jmap.json.ForwardSerializer
 import com.linagora.tmail.james.jmap.method.AsEitherRequest
-import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType, invalidArgumentValue, serverFailValue}
+import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType, invalidArgumentValue, invalidPatchValue, serverFailValue}
 import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.apache.james.jmap.method.WithAccountId
+import org.apache.james.rrt.api.RecipientRewriteTableException
 import play.api.libs.json.JsObject
 
 case class ForwardSetRequest(accountId: AccountId,
@@ -84,6 +85,7 @@ case class ForwardSetUpdateFailure(id: String, exception: Throwable) extends For
 
   def asSetError(exception: Throwable): ForwardSetError = exception match {
     case e: IllegalArgumentException => ForwardSetError(invalidArgumentValue, Some(SetErrorDescription(e.getMessage)))
+    case e: RecipientRewriteTableException => ForwardSetError(invalidPatchValue, Some(SetErrorDescription(e.getMessage)))
     case e: Throwable => ForwardSetError(serverFailValue, Some(SetErrorDescription(e.getMessage)))
   }
 }
