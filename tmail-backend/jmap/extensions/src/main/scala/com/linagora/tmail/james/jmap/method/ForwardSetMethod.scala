@@ -123,8 +123,8 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
         .parameters(() => ImmutableMap.of("mappingSource", mappingSource.asUsername().toScala.map(_.asString()).getOrElse(""),
           "forwardList", forwardDestinations.map(_.asString).mkString(",")))
         .log("Update forward."))
-      .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)))
       .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateSuccess))
+      .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)))
 
   private def retrieveMappings(mappingSource: MappingSource): SMono[Seq[MailAddress]] =
     SMono.fromCallable(() => recipientRewriteTable.getStoredMappings(mappingSource)
