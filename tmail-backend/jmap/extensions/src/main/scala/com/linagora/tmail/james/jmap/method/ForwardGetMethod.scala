@@ -26,7 +26,7 @@ import com.linagora.tmail.james.jmap.model.Forwards.UNPARSED_SINGLETON
 import com.linagora.tmail.james.jmap.model.{ForwardGetRequest, ForwardGetResponse, ForwardNotFound, Forwards, UnparsedForwardId}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
-import org.apache.james.core.MailAddress
+import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodCallId, MethodName}
 import org.apache.james.jmap.core.UuidState.INSTANCE
@@ -58,7 +58,7 @@ class ForwardCapabilitiesModule extends AbstractModule {
 }
 
 case object ForwardCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = ForwardCapability
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = ForwardCapability
 
   override def id(): CapabilityIdentifier = LINAGORA_FORWARD
 }

@@ -27,6 +27,7 @@ import com.linagora.tmail.james.jmap.method.MailboxClearMethod.{DELETE_BATCH_SIZ
 import com.linagora.tmail.james.jmap.model.{MailboxClearRequest, MailboxClearResponse}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JAMES_SHARES, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -50,7 +51,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.OptionConverters.RichOptional
 
 case object MailboxClearCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = MailboxClearCapability
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = MailboxClearCapability
 
   override def id(): CapabilityIdentifier = LINAGORA_MAILBOX_CLEAR
 }

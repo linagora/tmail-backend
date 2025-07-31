@@ -44,7 +44,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.CollectionConverters._
 
 case class JmapSettingsCapabilityFactory @Inject()(readOnlyPropertyProviderAggregator: ReadOnlyPropertyProviderAggregator) extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability =
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability =
     JmapSettingsCapability(JmapSettingsCapabilityProperties(readOnlyPropertyProviderAggregator.readOnlySettings()))
 
   override def id(): CapabilityIdentifier = LINAGORA_SETTINGS

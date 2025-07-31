@@ -21,6 +21,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.jmap.aibot.CapabilityIdentifier.LINAGORA_AIBOT
 import eu.timepit.refined.auto._
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
 import org.apache.james.jmap.method.Method
@@ -45,7 +46,7 @@ class AiBotCapabilitiesModule extends AbstractModule {
 }
 
 case object AiBotCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = AiBotCapability
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = AiBotCapability
 
   override def id(): CapabilityIdentifier = LINAGORA_AIBOT
 }

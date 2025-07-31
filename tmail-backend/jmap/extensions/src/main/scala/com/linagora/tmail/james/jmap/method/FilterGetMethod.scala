@@ -56,7 +56,7 @@ class FilterCapabilitiesModule extends AbstractModule {
 }
 
 case object FilterCapabilityFactory extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability = FilterCapability
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability = FilterCapability
 
   override def id(): CapabilityIdentifier = LINAGORA_FILTER
 }

@@ -24,7 +24,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT_SUPPORT
 import jakarta.inject.Inject
-import org.apache.james.core.MailAddress
+import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, UrlPrefixes}
 import play.api.libs.json.{JsObject, Json}
@@ -56,7 +56,7 @@ case class ContactSupportCapability(contactSupportProperties: ContactSupportProp
 }
 
 case class ContactSupportCapabilityFactory @Inject()(jmapConfig: JMAPExtensionConfiguration) extends CapabilityFactory {
-  override def create(urlPrefixes: UrlPrefixes): Capability =
+  override def create(urlPrefixes: UrlPrefixes, username: Username): Capability =
     ContactSupportCapability(ContactSupportProperties(jmapConfig.supportMailAddress, jmapConfig.supportHttpLink))
 
   override def id(): CapabilityIdentifier = LINAGORA_CONTACT_SUPPORT
