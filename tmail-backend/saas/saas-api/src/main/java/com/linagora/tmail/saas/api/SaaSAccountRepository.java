@@ -16,30 +16,15 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.saas.api.memory;
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+package com.linagora.tmail.saas.api;
 
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
-import com.linagora.tmail.saas.api.SaaSUserRepository;
-import com.linagora.tmail.saas.model.SaaSPlan;
+import com.linagora.tmail.saas.model.SaaSAccount;
 
-import reactor.core.publisher.Mono;
+public interface SaaSAccountRepository {
+    Publisher<SaaSAccount> getSaaSAccount(Username username);
 
-public class MemorySaaSUserRepository implements SaaSUserRepository {
-    private final ConcurrentMap<Username, SaaSPlan> table = new ConcurrentHashMap<>();
-
-    @Override
-    public Publisher<SaaSPlan> getPlan(Username username) {
-        return Mono.justOrEmpty(table.get(username))
-            .switchIfEmpty(Mono.fromCallable(() -> SaaSPlan.FREE));
-    }
-
-    @Override
-    public Publisher<Void> setPlan(Username username, SaaSPlan saaSPlan) {
-        return Mono.fromRunnable(() -> table.put(username, saaSPlan));
-    }
+    Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount);
 }

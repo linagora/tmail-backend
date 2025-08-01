@@ -18,31 +18,8 @@
 
 package com.linagora.tmail.saas.model;
 
-import java.util.stream.Stream;
-
-import com.google.common.base.Preconditions;
-
-public enum SaaSPlan {
-    FREE("free"),
-    STANDARD("standard"),
-    PREMIUM("premium");
-
-    public static SaaSPlan from(String rawValue) {
-        Preconditions.checkNotNull(rawValue);
-
-        return Stream.of(values())
-            .filter(plan -> plan.value.equalsIgnoreCase(rawValue))
-            .findAny()
-            .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid SaaS plan '%s'", rawValue)));
-    }
-
-    private final String value;
-
-    SaaSPlan(String value) {
-        this.value = value;
-    }
-
-    public String value() {
-        return value;
-    }
+public record SaaSPlan(String value) {
+    public static final SaaSPlan FREE = new SaaSPlan("free");
+    public static final SaaSPlan STANDARD = new SaaSPlan("standard");
+    public static final SaaSPlan PREMIUM = new SaaSPlan("premium");
 }
