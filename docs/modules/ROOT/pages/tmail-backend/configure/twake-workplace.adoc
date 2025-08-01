@@ -40,3 +40,16 @@ settings.readonly.properties.providers=com.linagora.tmail.james.jmap.settings.TW
 === RabbitMQ Configuration
 
 The TWP Settings module may require RabbitMQ configuration to function properly. See the xref:tmail-backend/configure/rabbitmq.adoc#_twp_settings_configuration[RabbitMQ TWP Settings Configuration] section for details on configuring the RabbitMQ properties.
+
+== Configuring Software as a Service Integration
+
+SaaS (Software as a Service) integration allows TMail to manage user plans and associated capabilities based on their SaaS subscriptions, (e.g., free, standard, premium). This integration is optional, disabled by default, and can be enabled by loading the corresponding Guice module.
+
+To enable SaaS integration module, you need to load the corresponding extension Guice modules in `extension.properties`:
+
+[source,java]
+----
+com.linagora.tmail.james.app.MemorySaaSModule
+com.linagora.tmail.james.app.DistributedSaaSModule
+com.linagora.tmail.james.app.PostgresSaaSModule
+----
