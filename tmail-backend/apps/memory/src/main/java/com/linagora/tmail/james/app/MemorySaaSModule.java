@@ -21,15 +21,15 @@ package com.linagora.tmail.james.app;
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
-import com.linagora.tmail.saas.api.SaaSUserRepository;
-import com.linagora.tmail.saas.api.memory.MemorySaaSUserRepository;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 
 public class MemorySaaSModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new SaaSCapabilitiesModule());
 
-        bind(SaaSUserRepository.class).to(MemorySaaSUserRepository.class)
+        bind(SaaSAccountRepository.class).to(MemorySaaSAccountRepository.class)
             .in(Scopes.SINGLETON);
     }
 }

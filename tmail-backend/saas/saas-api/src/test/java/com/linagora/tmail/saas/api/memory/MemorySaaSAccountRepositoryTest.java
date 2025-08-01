@@ -14,30 +14,25 @@
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
- ********************************************************************/
+ *******************************************************************/
 
-package com.linagora.tmail.common.probe;
+package com.linagora.tmail.saas.api.memory;
 
-import jakarta.inject.Inject;
-
-import org.apache.james.core.Username;
-import org.apache.james.utils.GuiceProbe;
+import org.junit.jupiter.api.BeforeEach;
 
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
-import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
+import com.linagora.tmail.saas.api.SaaSAccountRepositoryContract;
 
-import reactor.core.publisher.Mono;
+public class MemorySaaSAccountRepositoryTest implements SaaSAccountRepositoryContract {
+    private MemorySaaSAccountRepository memorySaaSUserRepository;
 
-public class SaaSProbe implements GuiceProbe {
-    private final SaaSAccountRepository saaSAccountRepository;
-
-    @Inject
-    public SaaSProbe(SaaSAccountRepository saaSAccountRepository) {
-        this.saaSAccountRepository = saaSAccountRepository;
+    @BeforeEach
+    void setUp() {
+        memorySaaSUserRepository = new MemorySaaSAccountRepository();
     }
 
-    public void setPlan(Username username, SaaSPlan saaSPlan) {
-        Mono.from(saaSAccountRepository.upsertSaasAccount(username, new SaaSAccount(saaSPlan))).block();
+    @Override
+    public SaaSAccountRepository testee() {
+        return memorySaaSUserRepository;
     }
 }

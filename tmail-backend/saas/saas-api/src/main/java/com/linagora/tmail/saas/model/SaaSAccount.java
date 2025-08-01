@@ -16,23 +16,7 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.saas.api.memory;
+package com.linagora.tmail.saas.model;
 
-import org.junit.jupiter.api.BeforeEach;
-
-import com.linagora.tmail.saas.api.SaaSUserRepository;
-import com.linagora.tmail.saas.api.SaaSUserRepositoryContract;
-
-public class MemorySaaSUserRepositoryTest implements SaaSUserRepositoryContract {
-    private MemorySaaSUserRepository memorySaaSUserRepository;
-
-    @BeforeEach
-    void setUp() {
-        memorySaaSUserRepository = new MemorySaaSUserRepository();
-    }
-
-    @Override
-    public SaaSUserRepository testee() {
-        return memorySaaSUserRepository;
-    }
+public record SaaSAccount(SaaSPlan saaSPlan) {
 }

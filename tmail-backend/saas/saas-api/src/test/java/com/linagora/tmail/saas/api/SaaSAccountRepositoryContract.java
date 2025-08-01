@@ -23,36 +23,37 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.apache.james.core.Username;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.saas.model.SaaSAccount;
 import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
-public interface SaaSUserRepositoryContract {
-    SaaSUserRepository testee();
+public interface SaaSAccountRepositoryContract {
+    SaaSAccountRepository testee();
 
     Username BOB = Username.of("bob@domain.tld");
     Username ALICE = Username.of("alice@domain.tld");
 
     @Test
-    default void setPlanShouldSucceed() {
-        Mono.from(testee().setPlan(BOB, SaaSPlan.FREE)).block();
+    default void upsertSaasAccountShouldSucceed() {
+        Mono.from(testee().upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.FREE))).block();
 
-        assertThat(Mono.from(testee().getPlan(BOB)).block())
-            .isEqualTo(SaaSPlan.FREE);
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(new SaaSAccount(SaaSPlan.FREE));
     }
 
     @Test
-    default void setPlanShouldOverridePreviousPlan() {
-        Mono.from(testee().setPlan(BOB, SaaSPlan.FREE)).block();
-        Mono.from(testee().setPlan(BOB, SaaSPlan.PREMIUM)).block();
+    default void upsertSaasAccountShouldOverridePreviousPlan() {
+        Mono.from(testee().upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.FREE))).block();
+        Mono.from(testee().upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.PREMIUM))).block();
 
-        assertThat(Mono.from(testee().getPlan(BOB)).block())
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block().saaSPlan())
             .isEqualTo(SaaSPlan.PREMIUM);
     }
 
     @Test
-    default void getPlanShouldReturnFreeByDefault() {
-        assertThat(Mono.from(testee().getPlan(ALICE)).block())
+    default void getSaaSAccountShouldReturnFreePlanByDefault() {
+        assertThat(Mono.from(testee().getSaaSAccount(ALICE)).block().saaSPlan())
             .isEqualTo(SaaSPlan.FREE);
     }
 }

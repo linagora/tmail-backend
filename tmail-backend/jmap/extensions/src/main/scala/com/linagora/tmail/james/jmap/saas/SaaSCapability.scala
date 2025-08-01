@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.saas
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SAAS
-import com.linagora.tmail.saas.api.SaaSUserRepository
+import com.linagora.tmail.saas.api.SaaSAccountRepository
 import com.linagora.tmail.saas.model.SaaSPlan
 import jakarta.inject.Inject
 import org.apache.james.core.Username
@@ -37,13 +37,13 @@ case class SaaSCapabilityProperties(saasPlan: SaaSPlan) extends CapabilityProper
 final case class SaaSCapability(properties: SaaSCapabilityProperties,
                                 identifier: CapabilityIdentifier = LINAGORA_SAAS) extends Capability
 
-class SaaSCapabilityFactory @Inject()(val saaSUserRepository: SaaSUserRepository) extends CapabilityFactory {
+class SaaSCapabilityFactory @Inject()(val saaSUserRepository: SaaSAccountRepository) extends CapabilityFactory {
   override def create(urlPrefixes: UrlPrefixes, username: Username): Capability =
     this.createReactive(urlPrefixes, username).block()
 
   override def createReactive(urlPrefixes: UrlPrefixes, username: Username): SMono[Capability] =
-    SMono(saaSUserRepository.getPlan(username))
-      .map(saasPlan => SaaSCapability(SaaSCapabilityProperties(saasPlan)))
+    SMono(saaSUserRepository.getSaaSAccount(username))
+      .map(saaSAccount => SaaSCapability(SaaSCapabilityProperties(saaSAccount.saaSPlan())))
 
   override def id(): CapabilityIdentifier = LINAGORA_SAAS
 }
