@@ -26,12 +26,17 @@
 
 package com.linagora.tmail.user.postgres;
 
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.defaultCreateUserTableFunction;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.userTable;
+
 import java.util.UUID;
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresIndex;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.apache.james.user.postgres.PostgresUserDataDefinition;
+import org.jooq.CreateTableElementListStep;
+import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Table;
@@ -40,6 +45,8 @@ import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.SQLDataType;
 import org.jooq.postgres.extensions.bindings.HstoreBinding;
 import org.jooq.postgres.extensions.types.Hstore;
+
+import com.google.common.annotations.VisibleForTesting;
 
 public interface TMailPostgresUserDataDefinition {
     interface PostgresUserTable {
@@ -50,8 +57,19 @@ public interface TMailPostgresUserDataDefinition {
         Field<UUID> SETTINGS_STATE = DSL.field("settings_state", SQLDataType.UUID);
         Field<UUID> RATE_LIMITING_PLAN_ID = DSL.field("rate_limiting_plan_id", SQLDataType.UUID);
 
-        PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
-            .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
+        static PostgresTable userTable(PostgresTable.CreateTableFunction createUserTableFunction) {
+            return PostgresTable.name(TABLE_NAME.getName())
+                .createTableStep(createUserTableFunction)
+                .disableRowLevelSecurity()
+                .build();
+        }
+
+        static PostgresTable.CreateTableFunction defaultCreateUserTableFunction() {
+            return PostgresUserTable::defaultUserTableStatement;
+        }
+
+        static CreateTableElementListStep defaultUserTableStatement(DSLContext dsl, String tableName) {
+            return dsl.createTableIfNotExists(tableName)
                 .column(PostgresUserDataDefinition.PostgresUserTable.USERNAME)
                 .column(PostgresUserDataDefinition.PostgresUserTable.HASHED_PASSWORD)
                 .column(PostgresUserDataDefinition.PostgresUserTable.ALGORITHM)
@@ -60,17 +78,21 @@ public interface TMailPostgresUserDataDefinition {
                 .column(SETTINGS)
                 .column(SETTINGS_STATE)
                 .column(RATE_LIMITING_PLAN_ID)
-                .constraint(DSL.constraint(PostgresUserDataDefinition.PostgresUserTable.USERNAME_PRIMARY_KEY).primaryKey(USERNAME))))
-            .disableRowLevelSecurity()
-            .build();
+                .constraint(DSL.constraint(PostgresUserDataDefinition.PostgresUserTable.USERNAME_PRIMARY_KEY).primaryKey(USERNAME));
+        }
 
         PostgresIndex RATE_LIMITING_PLAN_ID_INDEX = PostgresIndex.name("index_user_rate_limiting_plan_id")
             .createIndexStep((dslContext, indexName) -> dslContext.createIndexIfNotExists(indexName)
             .on(TABLE_NAME, RATE_LIMITING_PLAN_ID));
     }
 
-    PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
-        .addTable(PostgresUserTable.TABLE)
-        .addIndex(PostgresUserTable.RATE_LIMITING_PLAN_ID_INDEX)
-        .build();
+    static PostgresDataDefinition userDataDefinition(PostgresTable.CreateTableFunction createUserTableFunction) {
+        return PostgresDataDefinition.builder()
+            .addTable(userTable(createUserTableFunction))
+            .addIndex(PostgresUserTable.RATE_LIMITING_PLAN_ID_INDEX)
+            .build();
+    }
+
+    @VisibleForTesting
+    PostgresDataDefinition MODULE = userDataDefinition(defaultCreateUserTableFunction());
 }
