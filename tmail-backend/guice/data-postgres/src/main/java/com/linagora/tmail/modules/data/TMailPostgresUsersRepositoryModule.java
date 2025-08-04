@@ -26,8 +26,11 @@
 
 package com.linagora.tmail.modules.data;
 
+import jakarta.inject.Named;
+
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.postgres.PostgresDataDefinition;
+import org.apache.james.backends.postgres.PostgresTable;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.lib.UsersDAO;
@@ -41,11 +44,11 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
-import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition;
 
 public class TMailPostgresUsersRepositoryModule extends AbstractModule {
+    public static final String TMAIL_POSTGRES_USER = "tmailPostgresUser";
 
     public static AbstractModule USER_CONFIGURATION_MODULE = new AbstractModule() {
         @Provides
@@ -63,9 +66,6 @@ public class TMailPostgresUsersRepositoryModule extends AbstractModule {
 
         bind(PostgresUsersDAO.class).in(Scopes.SINGLETON);
         bind(UsersDAO.class).to(PostgresUsersDAO.class);
-
-        Multibinder<PostgresDataDefinition> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresDataDefinition.class);
-        postgresDataDefinitions.addBinding().toInstance(TMailPostgresUserDataDefinition.MODULE);
     }
 
     @ProvidesIntoSet
@@ -75,4 +75,15 @@ public class TMailPostgresUsersRepositoryModule extends AbstractModule {
             .init(() -> usersRepository.configure(configurationProvider.getConfiguration("usersrepository")));
     }
 
+    @Provides
+    @Singleton
+    @Named(TMAIL_POSTGRES_USER)
+    public PostgresTable.CreateTableFunction provideCreateUserTableFunction() {
+        return TMailPostgresUserDataDefinition.PostgresUserTable.defaultCreateUserTableFunction();
+    }
+
+    @ProvidesIntoSet
+    public PostgresDataDefinition provideUserDataDefinition(@Named(TMAIL_POSTGRES_USER) PostgresTable.CreateTableFunction createUserTableFunction) {
+        return TMailPostgresUserDataDefinition.userDataDefinition(createUserTableFunction);
+    }
 }
