@@ -28,20 +28,26 @@ import com.datastax.oss.driver.api.querybuilder.schema.CreateTable;
 import com.datastax.oss.driver.api.querybuilder.schema.CreateTableStart;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.cassandra.CassandraSaaSAccountRepository;
 import com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition;
 
 public class DistributedSaaSModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new SaaSCapabilitiesModule());
+
+        bind(SaaSAccountRepository.class).to(CassandraSaaSAccountRepository.class)
+            .in(Scopes.SINGLETON);
     }
 
     @Provides
     @Singleton
     @Named(TMAIL_CASSANDRA_USER)
     public Function<CreateTableStart, CreateTable> overrideCreateUserTableFunction() {
-        return CassandraSaaSDataDefinition.createUserTableWithSaaSSupport();
+        return CassandraSaaSDataDefinition.userTableWithSaaSSupport();
     }
 }
