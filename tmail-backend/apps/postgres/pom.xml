@@ -223,6 +223,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-saas-postgres</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-webadmin-mailbox</artifactId>
         </dependency>
         <dependency>
