@@ -26,9 +26,10 @@ import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers.{equalTo, hasKey, not}
-import org.junit.jupiter.api.{AfterEach, Test}
+import org.junit.jupiter.api.{AfterEach, Tag, Test}
 
 trait JmapSaasContract {
 
@@ -93,6 +94,7 @@ trait JmapSaasContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAttachedPlan(): Unit = {
     val server: GuiceJamesServer = setUpJmapServer(saasSupport = true)
 
