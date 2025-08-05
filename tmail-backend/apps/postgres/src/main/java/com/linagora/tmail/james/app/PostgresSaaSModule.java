@@ -26,14 +26,20 @@ import org.apache.james.backends.postgres.PostgresTable;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.postgres.PostgresSaaSAccountRepository;
 import com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition;
 
 public class PostgresSaaSModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new SaaSCapabilitiesModule());
+
+        bind(SaaSAccountRepository.class).to(PostgresSaaSAccountRepository.class)
+            .in(Scopes.SINGLETON);
     }
 
     @Provides
