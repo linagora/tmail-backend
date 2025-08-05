@@ -53,3 +53,9 @@ com.linagora.tmail.james.app.MemorySaaSModule
 com.linagora.tmail.james.app.DistributedSaaSModule
 com.linagora.tmail.james.app.PostgresSaaSModule
 ----
+
+If you use the `PostgresSaaSModule`, you need to add SaaS related columns (`saas_plan`) to the Postgres `users` table. For example:
+
+```
+ALTER TABLE tmail_schema.users ADD COLUMN saas_plan VARCHAR;
+```
