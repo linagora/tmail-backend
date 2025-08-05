@@ -19,18 +19,30 @@
 package com.linagora.tmail.saas.api.postgres;
 
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.defaultUserTableStatement;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.userDataDefinition;
 
+import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.jooq.DSLContext;
 import org.jooq.Field;
+import org.jooq.Record;
+import org.jooq.Table;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition;
+
 public interface PostgresSaaSDataDefinition {
-    Field<String> SAAS_PLAN = DSL.field("saas_plan", SQLDataType.VARCHAR(50));
+    Table<Record> TABLE_NAME = TMailPostgresUserDataDefinition.PostgresUserTable.TABLE_NAME;
+    Field<String> USERNAME = TMailPostgresUserDataDefinition.PostgresUserTable.USERNAME;
+    Field<String> SAAS_PLAN = DSL.field("saas_plan", SQLDataType.VARCHAR);
 
     static PostgresTable.CreateTableFunction userTableWithSaaSSupport() {
         return (DSLContext dsl, String tableName) -> defaultUserTableStatement(dsl, tableName)
             .column(SAAS_PLAN);
     }
+
+    @VisibleForTesting
+    PostgresDataDefinition MODULE = userDataDefinition(userTableWithSaaSSupport());
 }
