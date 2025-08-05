@@ -59,3 +59,9 @@ If you use the `DistributedSaaSModule`, you need to add SaaS related columns (`s
 ```
 ALTER TABLE tmail_keyspace.user ADD saas_plan text;
 ```
+
+If you use the `PostgresSaaSModule`, you need to add SaaS related columns (`saas_plan`) to the Postgres `users` table. For example:
+
+```
+ALTER TABLE tmail_schema.users ADD COLUMN saas_plan VARCHAR;
+```

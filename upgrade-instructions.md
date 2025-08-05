@@ -75,6 +75,19 @@ DROP TABLE tmail_schema.rate_limit_plan_user;
 DROP TABLE tmail_schema.jmap_settings;
 ```
 
+### SaaS deployment: adding `saas_plan` column to Postgres users table
+
+Date: 05/08/2025
+
+Issue: https://github.com/linagora/tmail-backend/issues/1840
+
+Concerned product: Postgres TMail
+
+If you are running TMail in a SaaS deployment with the extension `PostgresSaaSModule` enabled in `extensions.properties`, you need to add the `saas_plan` column to the Postgres `users` table:
+```
+ALTER TABLE tmail_schema.users ADD COLUMN saas_plan VARCHAR;
+```
+
 ## 1.0.5
 
 - [Add new field to user contact index](#add-new-field-to-user-contact-index)
