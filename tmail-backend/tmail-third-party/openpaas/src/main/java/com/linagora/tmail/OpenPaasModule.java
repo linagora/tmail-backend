@@ -124,8 +124,8 @@ public class OpenPaasModule extends AbstractModule {
 
         @Provides
         @Singleton
-        public DavUserProvider provideDavUserProvider(OpenPaasRestClient openPaasClient) {
-            return new OpenPaasDavUserProvider(openPaasClient);
+        public DavUserProvider provideDavUserProvider(OpenPaasRestClient openPaasClient, DavClient davClient) {
+            return new OpenPaasDavUserProvider(openPaasClient, davClient);
         }
     }
 }
