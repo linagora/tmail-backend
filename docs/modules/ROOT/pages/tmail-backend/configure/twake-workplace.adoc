@@ -53,3 +53,9 @@ com.linagora.tmail.james.app.MemorySaaSModule
 com.linagora.tmail.james.app.DistributedSaaSModule
 com.linagora.tmail.james.app.PostgresSaaSModule
 ----
+
+If you use the `DistributedSaaSModule`, you need to add SaaS related columns (`saas_plan`) to the Cassandra `users` table. For example:
+
+```
+ALTER TABLE tmail_keyspace.user ADD saas_plan text;
+```

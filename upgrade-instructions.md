@@ -37,6 +37,21 @@ DROP TABLE tmail_keyspace.rate_limit_plan_user;
 DROP TABLE tmail_keyspace.settings;
 ```
 
+### SaaS deployment: adding `saas_plan` column to Cassandra user table
+
+Date: 04/08/2025
+
+Issue: https://github.com/linagora/tmail-backend/issues/1840
+
+Concerned product: Distributed TMail
+
+If you are running TMail in a SaaS deployment with the extension `DistributedSaaSModule` enabled in `extensions.properties`, you need to add the `saas_plan` column to the Cassandra `user` table:
+```
+ALTER TABLE tmail_keyspace.user ADD saas_plan text;
+```
+
+Otherwise, you can skip this step.
+
 ### Adding settings and rate limiting plan id columns to Postgres users table
 
 Date: 17/07/2025

@@ -26,11 +26,16 @@
 
 package com.linagora.tmail.user.cassandra;
 
+import java.util.function.Function;
+
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.user.cassandra.tables.CassandraUserTable;
 
 import com.datastax.oss.driver.api.core.CqlIdentifier;
 import com.datastax.oss.driver.api.core.type.DataTypes;
+import com.datastax.oss.driver.api.querybuilder.schema.CreateTable;
+import com.datastax.oss.driver.api.querybuilder.schema.CreateTableStart;
+import com.google.common.annotations.VisibleForTesting;
 
 public interface TMailCassandraUsersRepositoryDataDefinition {
     String TABLE_NAME = CassandraUserTable.TABLE_NAME;
@@ -39,9 +44,22 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
     CqlIdentifier SETTINGS_STATE = CqlIdentifier.fromCql("settings_state");
     CqlIdentifier RATE_LIMITING_PLAN_ID = CqlIdentifier.fromCql("rate_limiting_plan_id");
 
-    CassandraDataDefinition MODULE = CassandraDataDefinition.table(TABLE_NAME)
-        .comment("Holds users and their associated data.")
-        .statement(statement -> types -> statement
+    @VisibleForTesting
+    CassandraDataDefinition MODULE = createUserTableDefinition(defaultCreateUserTableFunction());
+
+    static CassandraDataDefinition.Impl createUserTableDefinition(Function<CreateTableStart, CreateTable> createUserTableFunction) {
+        return CassandraDataDefinition.table(TABLE_NAME)
+            .comment("Holds users and their associated data.")
+            .statement(statement -> types -> createUserTableFunction.apply(statement))
+            .build();
+    }
+
+    static Function<CreateTableStart, CreateTable> defaultCreateUserTableFunction() {
+        return statement -> defaultCreateUserTableStatement(statement);
+    }
+
+    static CreateTable defaultCreateUserTableStatement(CreateTableStart statement) {
+        return statement
             .withPartitionKey(CassandraUserTable.NAME, DataTypes.TEXT)
             .withColumn(CassandraUserTable.REALNAME, DataTypes.TEXT)
             .withColumn(CassandraUserTable.PASSWORD, DataTypes.TEXT)
@@ -50,6 +68,7 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
             .withColumn(CassandraUserTable.DELEGATED_USERS, DataTypes.setOf(DataTypes.TEXT))
             .withColumn(SETTINGS, DataTypes.mapOf(DataTypes.TEXT, DataTypes.TEXT))
             .withColumn(SETTINGS_STATE, DataTypes.UUID)
-            .withColumn(RATE_LIMITING_PLAN_ID, DataTypes.UUID))
-        .build();
+            .withColumn(RATE_LIMITING_PLAN_ID, DataTypes.UUID);
+    }
+
 }
