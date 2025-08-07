@@ -53,3 +53,7 @@ com.linagora.tmail.james.app.MemorySaaSModule
 com.linagora.tmail.james.app.DistributedSaaSModule
 com.linagora.tmail.james.app.PostgresSaaSModule
 ----
+
+=== SenderIsPayingUser matcher
+
+The `SenderIsPayingUser` matcher can be used to determine if the sender of an email is a paying SaaS user based on their subscription plan. This matcher can be used to apply specific processing rules for paying users.
