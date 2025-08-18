@@ -23,6 +23,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -52,6 +53,7 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxSessionMapperFactory;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.MailboxId;
@@ -442,5 +444,86 @@ class RagListenerTest {
                 userWithNoDomainMailboxSession);
 
         verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+    }
+
+    @Test
+    void reactiveEventShouldHandelComplexThreads() throws Exception {
+
+        byte[] CONTENT = ("Return-Path: <lvtu@linagora.com>\r\n" +
+            "org.apache.james.rspamd.flag: NO\r\n" +
+            "org.apache.james.rspamd.status: No, actions=no action score=-0.1 requiredScore=15.0\r\n" +
+            "Delivered-To: amghirbi@linagora.com\r\n" +
+            "MIME-Version: 1.0\r\n" +
+            "References: <Mime4j.1bd.75d93a8eae8b3098.19855396777@linagora.com>\r\n" +
+            "In-Reply-To: <Mime4j.1bd.75d93a8eae8b3098.19855396777@linagora.com>\r\n" +
+            "Subject: Re: complex Email Threads\r\n" +
+            "From: Linh Vu TU <lvtu@linagora.com>\r\n" +
+            "To: amghirbi@linagora.com\r\n" +
+            "Reply-To: lvtu@linagora.com\r\n" +
+            "Date: Wed, 30 Jul 2025 10:54:34 +0000\r\n" +
+            "Message-ID: <Mime4j.27d.620bf9763fd15260.1985af83d03@linagora.com>\r\n" +
+            "User-Agent: Twake-Mail/0.17.1 Mozilla/5.0 (X11; Linux x86_64)\r\n" +
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36\r\n" +
+            "Content-Type: multipart/alternative; boundary=\"boundary\"\r\n" +
+            "\r\n" +
+            "--boundary\r\n" +
+            "Content-Type: text/plain; charset=UTF-8\r\n" +
+            "Content-Transfer-Encoding: quoted-printable\r\n" +
+            "\r\n" +
+            "answer B\r\n" +
+            "\r\n" +
+            "On Jul 29, 2025 3:08 PM, from Alae Mghirbi <amghirbi@linagora.com>\r\n" +
+            "testing email A\r\n" +
+            "\r\n" +
+            "--boundary\r\n" +
+            "Content-Type: text/html; charset=UTF-8\r\n" +
+            "Content-Transfer-Encoding: quoted-printable\r\n" +
+            "\r\n" +
+            "<div>answer B<br><br></div>\r\n" +
+            "<cite style=\"text-align: left;display: block;\">On Jul 29, 2025 3:08 PM, from Alae Mghirbi &lt;amghirbi@linagora.com&gt;</cite>\r\n" +
+            "<blockquote style=\"margin-left:8px;margin-right:8px;padding-left:12px;padding-right:12px;border-left:5px solid #eee;\">\r\n" +
+            "<div>testing email A<br><br></div></blockquote>\r\n" +
+            "\r\n" +
+            "--boundary--").getBytes(StandardCharsets.UTF_8);
+
+        mailboxManager.getEventBus().register(ragListener);
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            bobMailboxSession);
+
+        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        wireMockServer.getAllServeEvents().forEach(event -> {
+            String body = event.getRequest().getBodyAsString();
+            System.out.println("Corps de la requête interceptée :\n" + body);
+        });
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+                .withHeader("Authorization", equalTo("Bearer dummy-token"))
+                .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{\"date\":\"2025-07-30T10:54:34Z\", \"doctype\":\"com.linagora.email\"}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
+                    "Subject: Re: complex Email Threads\n" +
+                    "From: lvtu@linagora.com\n" +
+                    "To: amghirbi@linagora.com\n" +
+                    "Date: Wed, 30 Jul 2025 10:54:34 +0000\n" +
+                    "\n" +
+                    "# Email Content\n" +
+                    "\n" +
+                    "answer B\n" +
+                    "\n" +
+                    "\n" +
+                    "\n" +
+                    "On Jul 29, 2025 3:08 PM, from Alae Mghirbi <amghirbi@linagora.com>\n" +
+                    "\n" +
+                    "testing email A"))
+                .build()));
     }
 }

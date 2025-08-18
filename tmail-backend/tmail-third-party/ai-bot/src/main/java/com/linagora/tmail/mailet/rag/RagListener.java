@@ -186,7 +186,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                 markdownBuilder.append("\nAttachments: " + String.join(", ", attachmentNames));
             }
             markdownBuilder.append("\n\n# Email Content\n\n");
-            markdownBuilder.append(new MessageContentExtractor().extract(mimeMessage).getTextBody().get());
+            markdownBuilder.append(EmailReplyParser.parseEmailReply(new MessageContentExtractor().extract(mimeMessage).getTextBody().get()));
             return markdownBuilder.toString();
         });
     }
