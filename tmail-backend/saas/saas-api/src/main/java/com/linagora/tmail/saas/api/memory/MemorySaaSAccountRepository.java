@@ -26,7 +26,6 @@ import org.reactivestreams.Publisher;
 
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
@@ -35,8 +34,7 @@ public class MemorySaaSAccountRepository implements SaaSAccountRepository {
 
     @Override
     public Publisher<SaaSAccount> getSaaSAccount(Username username) {
-        return Mono.justOrEmpty(table.get(username))
-            .switchIfEmpty(Mono.fromCallable(() -> new SaaSAccount(SaaSPlan.FREE)));
+        return Mono.justOrEmpty(table.get(username));
     }
 
     @Override

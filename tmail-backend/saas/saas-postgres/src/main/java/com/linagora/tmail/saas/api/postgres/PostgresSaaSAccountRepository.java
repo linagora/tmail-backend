@@ -48,8 +48,7 @@ public class PostgresSaaSAccountRepository implements SaaSAccountRepository {
                 .from(TABLE_NAME)
                 .where(USERNAME.eq(username.asString())))))
             .mapNotNull(record -> record.get(SAAS_PLAN))
-            .map(saasPlan -> new SaaSAccount(new SaaSPlan(saasPlan)))
-            .switchIfEmpty(Mono.fromCallable(() -> new SaaSAccount(SaaSPlan.FREE)));
+            .map(saasPlan -> new SaaSAccount(new SaaSPlan(saasPlan)));
     }
 
     @Override

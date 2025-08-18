@@ -43,7 +43,9 @@ class SaaSCapabilityFactory @Inject()(val saaSUserRepository: SaaSAccountReposit
 
   override def createReactive(urlPrefixes: UrlPrefixes, username: Username): SMono[Capability] =
     SMono(saaSUserRepository.getSaaSAccount(username))
-      .map(saaSAccount => SaaSCapability(SaaSCapabilityProperties(saaSAccount.saaSPlan())))
+      .map(saasAccount => saasAccount.saaSPlan())
+      .switchIfEmpty(SMono.fromCallable(() => SaaSPlan.FREE))
+      .map(saaSPlan => SaaSCapability(SaaSCapabilityProperties(saaSPlan)))
 
   override def id(): CapabilityIdentifier = LINAGORA_SAAS
 }
