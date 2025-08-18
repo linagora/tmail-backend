@@ -18,6 +18,9 @@
 
 package com.linagora.tmail.james;
 
+import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_PASSWORD;
+import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_USER;
+
 import java.io.File;
 
 import org.apache.james.CleanupTasksPerformer;
@@ -67,6 +70,7 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
 
     @Override
     public GuiceJamesServer startJmapServer(boolean saasSupport) {
+        dropUserTable();
         guiceJamesServer = DistributedServer.createServer(DistributedJamesConfiguration.builder()
                 .workingDirectory(tmpDir)
                 .configurationFromClasspath()
@@ -102,13 +106,18 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
         }
     }
 
-    private void dropUserTable() {
-        guiceJamesServer.getProbe(DistributedEmailGetMethodTest.TestingSessionProbe.class)
-            .getTestingSession()
-            .execute("ALTER TABLE testing.\"user\" WITH gc_grace_seconds = 0");
-        guiceJamesServer.getProbe(DistributedEmailGetMethodTest.TestingSessionProbe.class)
-            .getTestingSession()
-            .execute("DROP TABLE IF EXISTS testing.\"user\"");
+    public void dropUserTable() {
+        Throwing.runnable(() -> {
+            cassandraExtension.getCassandra().getRawContainer().execInContainer("cqlsh",
+                "-u", CASSANDRA_TESTING_USER,
+                "-p", CASSANDRA_TESTING_PASSWORD,
+                "-e", "ALTER TABLE testing.\"user\" WITH gc_grace_seconds = 0;");
+
+            cassandraExtension.getCassandra().getRawContainer().execInContainer("cqlsh",
+                "-u", CASSANDRA_TESTING_USER,
+                "-p", CASSANDRA_TESTING_PASSWORD,
+                "-e", "DROP TABLE IF EXISTS testing.\"user\";");
+        }).run();
     }
 
     private Module provideSaaSModule(boolean saasSupport) {
