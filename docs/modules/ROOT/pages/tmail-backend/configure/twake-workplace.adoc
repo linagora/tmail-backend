@@ -65,3 +65,7 @@ If you use the `PostgresSaaSModule`, you need to add SaaS related columns (`saas
 ```
 ALTER TABLE tmail_schema.users ADD COLUMN saas_plan VARCHAR;
 ```
+
+=== HasAnySaaSPlan matcher
+
+The `HasAnySaaSPlan` matcher can be used to determine if the sender of an email has a SaaS plan.
