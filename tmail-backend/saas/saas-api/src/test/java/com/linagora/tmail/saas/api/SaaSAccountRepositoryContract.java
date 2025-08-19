@@ -52,8 +52,8 @@ public interface SaaSAccountRepositoryContract {
     }
 
     @Test
-    default void getSaaSAccountShouldReturnFreePlanByDefault() {
-        assertThat(Mono.from(testee().getSaaSAccount(ALICE)).block().saaSPlan())
-            .isEqualTo(SaaSPlan.FREE);
+    default void getSaaSAccountShouldReturnEmptyWhenUserDoesNotHaveAnySaaSAccount() {
+        assertThat(Mono.from(testee().getSaaSAccount(ALICE)).block())
+            .isNull();
     }
 }

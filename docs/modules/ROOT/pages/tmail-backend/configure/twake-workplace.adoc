@@ -65,3 +65,22 @@ If you use the `PostgresSaaSModule`, you need to add SaaS related columns (`saas
 ```
 ALTER TABLE tmail_schema.users ADD COLUMN saas_plan VARCHAR;
 ```
+
+=== SenderHasAnySaaSPlan matcher
+
+The `SenderHasAnySaaSPlan` matcher can be used to determine if the sender of an email has a SaaS plan.
+
+=== SenderHasSaaSPlan matcher
+
+The `SenderHasSaaSPlan` matcher allows to match emails where the sender has a specific SaaS plan.
+This is useful for applying mail processing rules based on the sender's SaaS subscription.
+
+To use the matcher, specify a comma-separated list of SaaS plan names as the condition.
+For example, to match senders with either the `standard` or `premium` plan:
+
+[source,xml]
+----
+<mailet match="SenderHasSaaSPlan=standard,premium" class="..." />
+----
+
+If the sender's SaaS plan matches any of the specified plans, the matcher will return the recipients of the email.

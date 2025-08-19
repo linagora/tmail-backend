@@ -16,29 +16,40 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.saas.api.memory;
+package com.linagora.tmail.saas.matcher;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Collection;
 
+import jakarta.inject.Inject;
+
+import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
-import org.reactivestreams.Publisher;
+import org.apache.mailet.Mail;
+import org.apache.mailet.base.GenericMatcher;
 
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
-import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 
-public class MemorySaaSAccountRepository implements SaaSAccountRepository {
-    private final ConcurrentMap<Username, SaaSAccount> table = new ConcurrentHashMap<>();
+/**
+ * Matches mail where the sender has a SaaS plan.
+ */
+public class SenderHasAnySaaSPlan extends GenericMatcher {
+    private final SaaSAccountRepository saaSAccountRepository;
 
-    @Override
-    public Publisher<SaaSAccount> getSaaSAccount(Username username) {
-        return Mono.justOrEmpty(table.get(username));
+    @Inject
+    public SenderHasAnySaaSPlan(SaaSAccountRepository saaSAccountRepository) {
+        this.saaSAccountRepository = saaSAccountRepository;
     }
 
     @Override
-    public Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount) {
-        return Mono.fromRunnable(() -> table.put(username, saaSAccount));
+    public final Collection<MailAddress> match(Mail mail) {
+        return Mono.justOrEmpty(mail.getMaybeSender().asOptional())
+            .map(Username::fromMailAddress)
+            .flatMap(sender -> Mono.from(saaSAccountRepository.getSaaSAccount(sender))
+                .map(any -> mail.getRecipients()))
+            .switchIfEmpty(Mono.just(ImmutableList.of()))
+            .block();
     }
 }

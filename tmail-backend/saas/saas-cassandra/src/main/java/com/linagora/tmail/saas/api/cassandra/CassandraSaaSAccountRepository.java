@@ -63,8 +63,7 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
         return Mono.from(executor.executeSingleRow(selectPlanStatement.bind()
                 .setString(USER, username.asString())))
             .mapNotNull(row -> row.getString(SAAS_PLAN))
-            .map(saasPlanString -> new SaaSAccount(new SaaSPlan(saasPlanString)))
-            .switchIfEmpty(Mono.fromCallable(() -> new SaaSAccount(SaaSPlan.FREE)));
+            .map(saasPlanString -> new SaaSAccount(new SaaSPlan(saasPlanString)));
     }
 
     @Override
