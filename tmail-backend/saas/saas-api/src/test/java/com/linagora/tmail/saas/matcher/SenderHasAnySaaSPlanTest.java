@@ -34,16 +34,16 @@ import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
-public class HasAnySaaSPlanTest {
+public class SenderHasAnySaaSPlanTest {
     @Test
     void shouldReturnRecipientWhenSenderIsPremiumUser() throws Exception {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.PREMIUM))).block();
 
-        HasAnySaaSPlan hasAnySaaSPlan = new HasAnySaaSPlan(saaSAccountRepository);
+        SenderHasAnySaaSPlan senderHasAnySaaSPlan = new SenderHasAnySaaSPlan(saaSAccountRepository);
 
         MailAddress recipient = new MailAddress("james-user@james.org");
-        Collection<MailAddress> matched = hasAnySaaSPlan.match(FakeMail.builder()
+        Collection<MailAddress> matched = senderHasAnySaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(BOB.asMailAddress())
             .recipient(recipient)
@@ -57,10 +57,10 @@ public class HasAnySaaSPlanTest {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.STANDARD))).block();
 
-        HasAnySaaSPlan hasAnySaaSPlan = new HasAnySaaSPlan(saaSAccountRepository);
+        SenderHasAnySaaSPlan senderHasAnySaaSPlan = new SenderHasAnySaaSPlan(saaSAccountRepository);
 
         MailAddress recipient = new MailAddress("james-user@james.org");
-        Collection<MailAddress> matched = hasAnySaaSPlan.match(FakeMail.builder()
+        Collection<MailAddress> matched = senderHasAnySaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(BOB.asMailAddress())
             .recipient(recipient)
@@ -74,10 +74,10 @@ public class HasAnySaaSPlanTest {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.FREE))).block();
 
-        HasAnySaaSPlan hasAnySaaSPlan = new HasAnySaaSPlan(saaSAccountRepository);
+        SenderHasAnySaaSPlan senderHasAnySaaSPlan = new SenderHasAnySaaSPlan(saaSAccountRepository);
 
         MailAddress recipient = new MailAddress("james-user@james.org");
-        Collection<MailAddress> matched = hasAnySaaSPlan.match(FakeMail.builder()
+        Collection<MailAddress> matched = senderHasAnySaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(BOB.asMailAddress())
             .recipient(recipient)
@@ -89,10 +89,10 @@ public class HasAnySaaSPlanTest {
     @Test
     void shouldNotReturnRecipientWhenSenderDoesNotHaveAnyPlan() throws Exception {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
-        HasAnySaaSPlan hasAnySaaSPlan = new HasAnySaaSPlan(saaSAccountRepository);
+        SenderHasAnySaaSPlan senderHasAnySaaSPlan = new SenderHasAnySaaSPlan(saaSAccountRepository);
 
         MailAddress recipient = new MailAddress("james-user@james.org");
-        Collection<MailAddress> matched = hasAnySaaSPlan.match(FakeMail.builder()
+        Collection<MailAddress> matched = senderHasAnySaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(BOB.asMailAddress())
             .recipient(recipient)
@@ -104,10 +104,10 @@ public class HasAnySaaSPlanTest {
     @Test
     void shouldNotReturnRecipientWhenExternalSender() throws Exception {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
-        HasAnySaaSPlan hasAnySaaSPlan = new HasAnySaaSPlan(saaSAccountRepository);
+        SenderHasAnySaaSPlan senderHasAnySaaSPlan = new SenderHasAnySaaSPlan(saaSAccountRepository);
 
         MailAddress recipient = new MailAddress("james-user@james.org");
-        Collection<MailAddress> matched = hasAnySaaSPlan.match(FakeMail.builder()
+        Collection<MailAddress> matched = senderHasAnySaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender("externalSender@gmail.com")
             .recipient(recipient)

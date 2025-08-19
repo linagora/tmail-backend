@@ -34,27 +34,27 @@ import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
-public class HasSaaSPlanTest {
+public class SenderHasSaaSPlanTest {
     @Test
     void shouldReturnRecipientWhenSenderMatchesSaaSPlan() throws Exception {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(ALICE, new SaaSAccount(SaaSPlan.STANDARD))).block();
         Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.PREMIUM))).block();
 
-        HasSaaSPlan hasSaaSPlan = new HasSaaSPlan(saaSAccountRepository);
-        hasSaaSPlan.init(FakeMatcherConfig.builder()
+        SenderHasSaaSPlan senderHasSaaSPlan = new SenderHasSaaSPlan(saaSAccountRepository);
+        senderHasSaaSPlan.init(FakeMatcherConfig.builder()
             .matcherName("HasSaaSPlan")
             .condition("standard,premium")
             .build());
 
         MailAddress recipient = new MailAddress("james-user@james.org");
 
-        assertThat(hasSaaSPlan.match(FakeMail.builder()
+        assertThat(senderHasSaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(BOB.asMailAddress())
             .recipient(recipient)
             .build())).containsOnly(recipient);
-        assertThat(hasSaaSPlan.match(FakeMail.builder()
+        assertThat(senderHasSaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(BOB.asMailAddress())
             .recipient(recipient)
@@ -67,15 +67,15 @@ public class HasSaaSPlanTest {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(ALICE, new SaaSAccount(SaaSPlan.STANDARD))).block();
 
-        HasSaaSPlan hasSaaSPlan = new HasSaaSPlan(saaSAccountRepository);
-        hasSaaSPlan.init(FakeMatcherConfig.builder()
+        SenderHasSaaSPlan senderHasSaaSPlan = new SenderHasSaaSPlan(saaSAccountRepository);
+        senderHasSaaSPlan.init(FakeMatcherConfig.builder()
             .matcherName("HasSaaSPlan")
             .condition("StanDarD")
             .build());
 
         MailAddress recipient = new MailAddress("james-user@james.org");
 
-        assertThat(hasSaaSPlan.match(FakeMail.builder()
+        assertThat(senderHasSaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(ALICE.asMailAddress())
             .recipient(recipient)
@@ -88,15 +88,15 @@ public class HasSaaSPlanTest {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(ALICE, new SaaSAccount(SaaSPlan.FREE))).block();
 
-        HasSaaSPlan hasSaaSPlan = new HasSaaSPlan(saaSAccountRepository);
-        hasSaaSPlan.init(FakeMatcherConfig.builder()
+        SenderHasSaaSPlan senderHasSaaSPlan = new SenderHasSaaSPlan(saaSAccountRepository);
+        senderHasSaaSPlan.init(FakeMatcherConfig.builder()
             .matcherName("HasSaaSPlan")
             .condition("standard,premium")
             .build());
 
         MailAddress recipient = new MailAddress("james-user@james.org");
 
-        assertThat(hasSaaSPlan.match(FakeMail.builder()
+        assertThat(senderHasSaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(ALICE.asMailAddress())
             .recipient(recipient)
@@ -108,15 +108,15 @@ public class HasSaaSPlanTest {
     void shouldNotReturnRecipientWhenSenderDoesNotHaveASaaSPlan() throws Exception {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
 
-        HasSaaSPlan hasSaaSPlan = new HasSaaSPlan(saaSAccountRepository);
-        hasSaaSPlan.init(FakeMatcherConfig.builder()
+        SenderHasSaaSPlan senderHasSaaSPlan = new SenderHasSaaSPlan(saaSAccountRepository);
+        senderHasSaaSPlan.init(FakeMatcherConfig.builder()
             .matcherName("HasSaaSPlan")
             .condition("standard,premium")
             .build());
 
         MailAddress recipient = new MailAddress("james-user@james.org");
 
-        assertThat(hasSaaSPlan.match(FakeMail.builder()
+        assertThat(senderHasSaaSPlan.match(FakeMail.builder()
             .name("default-id")
             .sender(ALICE.asMailAddress())
             .recipient(recipient)
