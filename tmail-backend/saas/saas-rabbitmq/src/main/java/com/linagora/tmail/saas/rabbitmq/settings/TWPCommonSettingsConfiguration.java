@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.jmap.settings;
+package com.linagora.tmail.saas.rabbitmq.settings;
 
 import java.net.URI;
 import java.util.List;

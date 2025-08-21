@@ -16,7 +16,7 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.james.jmap.settings;
+package com.linagora.tmail.saas.rabbitmq.settings;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

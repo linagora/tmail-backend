@@ -16,9 +16,9 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.james.jmap.settings;
+package com.linagora.tmail.saas.rabbitmq.settings;
 
-import static com.linagora.tmail.james.jmap.settings.TWPCommonSettingsConfiguration.TWP_QUEUES_QUORUM_BYPASS_DISABLED;
+import static com.linagora.tmail.saas.rabbitmq.settings.TWPCommonSettingsConfiguration.TWP_QUEUES_QUORUM_BYPASS_DISABLED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

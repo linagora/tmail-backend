@@ -16,10 +16,8 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.james.jmap.settings;
+package com.linagora.tmail.saas.rabbitmq.settings;
 
-import static com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION;
-import static com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION_DEFAULT;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
@@ -41,6 +39,12 @@ import org.apache.james.user.api.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.linagora.tmail.james.jmap.settings.JmapSettingsKey;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch$;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsUtil;
+import com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.ShutdownSignalException;
@@ -193,7 +197,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
         return Mono.justOrEmpty(message.payload().language())
             .flatMap(language -> {
                 JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, language);
-                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWP_SETTINGS_VERSION, message.version().toString());
+                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION, message.version().toString());
                 JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
 
                 return Mono.from(jmapSettingsRepository.updatePartial(username, combinedPatch))
@@ -205,8 +209,8 @@ public class TWPSettingsConsumer implements Closeable, Startable {
     private Mono<Long> getStoredSettingsVersion(Username username) {
         return Mono.from(jmapSettingsRepository.get(username))
             .map(jmapSettings -> OptionConverters.toJava(JmapSettingsUtil.getTWPSettingsVersion(jmapSettings))
-                .orElse(TWP_SETTINGS_VERSION_DEFAULT))
-            .switchIfEmpty(Mono.just(TWP_SETTINGS_VERSION_DEFAULT));
+                .orElse(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION_DEFAULT))
+            .switchIfEmpty(Mono.just(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION_DEFAULT));
     }
 
     @Override

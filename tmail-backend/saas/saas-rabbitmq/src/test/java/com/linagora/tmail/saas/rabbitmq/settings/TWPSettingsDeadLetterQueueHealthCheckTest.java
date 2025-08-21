@@ -16,10 +16,10 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.james.jmap.settings;
+package com.linagora.tmail.saas.rabbitmq.settings;
 
-import static com.linagora.tmail.james.jmap.settings.TWPCommonSettingsConfiguration.TWP_SETTINGS_EXCHANGE_DEFAULT;
-import static com.linagora.tmail.james.jmap.settings.TWPSettingsConsumer.TWP_SETTINGS_DEAD_LETTER_QUEUE;
+import static com.linagora.tmail.saas.rabbitmq.settings.TWPCommonSettingsConfiguration.TWP_SETTINGS_EXCHANGE_DEFAULT;
+import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_DEAD_LETTER_QUEUE;
 import static com.rabbitmq.client.BuiltinExchangeType.FANOUT;
 import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
 import static org.apache.james.backends.rabbitmq.Constants.AUTO_DELETE;
