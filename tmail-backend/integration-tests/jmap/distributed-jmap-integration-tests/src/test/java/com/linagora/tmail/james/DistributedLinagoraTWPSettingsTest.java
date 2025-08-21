@@ -18,8 +18,8 @@
 
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.james.jmap.settings.TWPCommonSettingsConfiguration.TWP_SETTINGS_EXCHANGE_DEFAULT;
-import static com.linagora.tmail.james.jmap.settings.TWPCommonSettingsConfiguration.TWP_SETTINGS_ROUTING_KEY_DEFAULT;
+import static com.linagora.tmail.saas.rabbitmq.settings.TWPCommonSettingsConfiguration.TWP_SETTINGS_EXCHANGE_DEFAULT;
+import static com.linagora.tmail.saas.rabbitmq.settings.TWPCommonSettingsConfiguration.TWP_SETTINGS_ROUTING_KEY_DEFAULT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;

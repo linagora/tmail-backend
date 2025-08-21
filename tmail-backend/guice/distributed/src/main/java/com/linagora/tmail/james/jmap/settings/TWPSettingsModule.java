@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.settings;
 
-import static com.linagora.tmail.james.jmap.settings.TWPSettingsConsumer.TWP_SETTINGS_INJECTION_KEY;
+import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_INJECTION_KEY;
 
 import java.io.FileNotFoundException;
 import java.net.URI;
@@ -51,6 +51,10 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.AmqpUri;
+import com.linagora.tmail.saas.rabbitmq.settings.TWPCommonSettingsConfiguration;
+import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer;
+import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsDeadLetterQueueHealthCheck;
+import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsQueueConsumerHealthCheck;
 
 public class TWPSettingsModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsModule.class);

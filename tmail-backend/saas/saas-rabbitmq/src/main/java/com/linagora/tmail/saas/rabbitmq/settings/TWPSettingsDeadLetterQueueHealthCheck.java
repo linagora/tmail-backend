@@ -16,41 +16,34 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.james.jmap.settings;
+package com.linagora.tmail.saas.rabbitmq.settings;
 
-import static com.linagora.tmail.james.jmap.settings.TWPSettingsConsumer.TWP_SETTINGS_INJECTION_KEY;
-import static com.linagora.tmail.james.jmap.settings.TWPSettingsConsumer.TWP_SETTINGS_QUEUE;
+import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_DEAD_LETTER_QUEUE;
+import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_INJECTION_KEY;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
+import org.apache.james.backends.rabbitmq.RabbitMQManagementAPI;
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.linagora.tmail.RabbitMQManagementAPI;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-public class TWPSettingsQueueConsumerHealthCheck implements HealthCheck {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsQueueConsumerHealthCheck.class);
-    public static final ComponentName COMPONENT_NAME = new ComponentName("TWPSettingsQueueConsumerHealthCheck");
+public class TWPSettingsDeadLetterQueueHealthCheck implements HealthCheck {
+    public static final ComponentName COMPONENT_NAME = new ComponentName("TWPSettingsDeadLetterQueueHealthCheck");
     private static final String DEFAULT_VHOST = "/";
 
     private final RabbitMQConfiguration twpRabbitMQConfiguration;
-    private final TWPSettingsConsumer twpSettingsConsumer;
     private final RabbitMQManagementAPI api;
 
     @Inject
-    public TWPSettingsQueueConsumerHealthCheck(@Named(TWP_SETTINGS_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
-                                               TWPSettingsConsumer twpSettingsConsumer) {
+    public TWPSettingsDeadLetterQueueHealthCheck(@Named(TWP_SETTINGS_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
         this.twpRabbitMQConfiguration = twpRabbitMQConfiguration;
         this.api = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
-        this.twpSettingsConsumer = twpSettingsConsumer;
     }
 
     @Override
@@ -60,26 +53,15 @@ public class TWPSettingsQueueConsumerHealthCheck implements HealthCheck {
 
     @Override
     public Mono<Result> check() {
-        return Mono.fromCallable(() -> api.queueDetails(twpRabbitMQConfiguration.getVhost().orElse(DEFAULT_VHOST), TWP_SETTINGS_QUEUE)
-                .getConsumerDetails())
-            .flatMap(consumers -> {
-                if (consumers.isEmpty()) {
-                    return restartTWPSettingsConsumer();
+        return Mono.fromCallable(() -> api.queueDetails(twpRabbitMQConfiguration.getVhost().orElse(DEFAULT_VHOST), TWP_SETTINGS_DEAD_LETTER_QUEUE)
+                .getQueueLength())
+            .map(queueSize -> {
+                if (queueSize != 0) {
+                    return Result.degraded(COMPONENT_NAME, "RabbitMQ dead letter queue of TWP Settings contain events. This might indicate transient failure on event processing.");
                 }
-                return Mono.fromCallable(() -> Result.healthy(COMPONENT_NAME));
+                return Result.healthy(COMPONENT_NAME);
             })
-            .onErrorResume(e -> Mono.just(Result.unhealthy(COMPONENT_NAME, "Error checking TWPSettingsQueueConsumerHealthCheck", e)))
+            .onErrorResume(e -> Mono.just(Result.unhealthy(COMPONENT_NAME, "Error checking TWPSettingsDeadLetterQueueHealthCheck", e)))
             .subscribeOn(Schedulers.boundedElastic());
-    }
-
-    private Mono<Result> restartTWPSettingsConsumer() {
-        LOGGER.warn("TWPSettingsQueueConsumerHealthCheck found no consumers, restarting the consumer");
-
-        return Mono.fromRunnable(twpSettingsConsumer::restartConsumer)
-            .thenReturn(Result.degraded(COMPONENT_NAME, "The TWP settings queue has no consumers"))
-            .onErrorResume(error -> {
-                LOGGER.error("Error while restarting TWP settings consumer", error);
-                return Mono.fromCallable(() -> Result.degraded(COMPONENT_NAME, "The TWP settings queue has no consumers"));
-            });
     }
 }

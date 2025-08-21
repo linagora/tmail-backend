@@ -16,15 +16,11 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.james.jmap.settings;
+package com.linagora.tmail.saas.rabbitmq.settings;
 
 import static com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
-import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN;
-import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN_PASSWORD;
-import static org.apache.james.user.ldap.DockerLdapSingleton.DOMAIN;
-import static org.apache.james.user.ldap.DockerLdapSingleton.JAMES_USER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
@@ -42,6 +38,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
+import org.apache.james.user.ldap.DockerLdapSingleton;
 import org.apache.james.user.ldap.LdapGenericContainer;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 import org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository;
@@ -56,6 +53,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableMap;
+import com.linagora.tmail.james.jmap.settings.JmapSettings;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsKey;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch$;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsValue;
+import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
@@ -86,8 +90,8 @@ public class TWPSettingsConsumerTest {
     UsersRepositoryContract.UserRepositoryExtension userRepositoryExtension = UsersRepositoryContract.UserRepositoryExtension.withVirtualHost();
 
     private static final LdapGenericContainer ldapContainer = LdapGenericContainer.builder()
-        .domain(DOMAIN)
-        .password(ADMIN_PASSWORD)
+        .domain(DockerLdapSingleton.DOMAIN)
+        .password(DockerLdapSingleton.ADMIN_PASSWORD)
         .dockerFilePrefix("localpartLogin/")
         .build();
 
@@ -101,7 +105,7 @@ public class TWPSettingsConsumerTest {
     }
 
     public static HierarchicalConfiguration<ImmutableNode> ldapRepositoryConfigurationWithVirtualHosting(LdapGenericContainer ldapContainer, Optional<String> resolveLocalPartAttribute) {
-        return ldapRepositoryConfigurationWithVirtualHosting(ldapContainer, Optional.of(ADMIN), resolveLocalPartAttribute);
+        return ldapRepositoryConfigurationWithVirtualHosting(ldapContainer, Optional.of(DockerLdapSingleton.ADMIN), resolveLocalPartAttribute);
     }
 
     public static HierarchicalConfiguration<ImmutableNode> ldapRepositoryConfigurationWithVirtualHosting(LdapGenericContainer ldapContainer, Optional<Username> administrator, Optional<String> resolveLocalPartAttribute) {
@@ -117,7 +121,7 @@ public class TWPSettingsConsumerTest {
         PropertyListConfiguration configuration = new PropertyListConfiguration();
         configuration.addProperty("[@ldapHost]", ldapContainer.getLdapHost());
         configuration.addProperty("[@principal]", "cn=admin,dc=james,dc=org");
-        configuration.addProperty("[@credentials]", ADMIN_PASSWORD);
+        configuration.addProperty("[@credentials]", DockerLdapSingleton.ADMIN_PASSWORD);
         configuration.addProperty("[@userBase]", "ou=people,dc=james,dc=org");
         configuration.addProperty("[@userObjectClass]", "inetOrgPerson");
         configuration.addProperty("[@connectionTimeout]", "2000");
@@ -238,7 +242,7 @@ public class TWPSettingsConsumerTest {
     @Test
     void shouldNotUpdateOtherUsersSetting() {
         // GIVEN james-user already has a language setting
-        Mono.from(jmapSettingsRepository.updatePartial(JAMES_USER,
+        Mono.from(jmapSettingsRepository.updatePartial(DockerLdapSingleton.JAMES_USER,
             JmapSettingsPatch$.MODULE$.toUpsert(JMAP_LANGUAGE_KEY, LANGUAGE_EN))).block();
 
         // WHEN alice updates her language setting
@@ -249,7 +253,7 @@ public class TWPSettingsConsumerTest {
 
         // THEN only james-user's language setting is not updated
         awaitAtMost.untilAsserted(() -> {
-            JmapSettings settings = Mono.from(jmapSettingsRepository.get(JAMES_USER)).block();
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(DockerLdapSingleton.JAMES_USER)).block();
             assertThat(settings).isNotNull();
             assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
                 .isEqualTo(new JmapSettingsValue(LANGUAGE_EN));
