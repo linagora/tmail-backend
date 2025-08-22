@@ -18,8 +18,8 @@
 
 package com.linagora.tmail.saas.rabbitmq.settings;
 
+import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
 import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_DEAD_LETTER_QUEUE;
-import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_INJECTION_KEY;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -41,7 +41,7 @@ public class TWPSettingsDeadLetterQueueHealthCheck implements HealthCheck {
     private final RabbitMQManagementAPI api;
 
     @Inject
-    public TWPSettingsDeadLetterQueueHealthCheck(@Named(TWP_SETTINGS_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
+    public TWPSettingsDeadLetterQueueHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
         this.twpRabbitMQConfiguration = twpRabbitMQConfiguration;
         this.api = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
     }

@@ -60,6 +60,7 @@ import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch$;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsValue;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
+import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
@@ -148,12 +149,12 @@ public class TWPSettingsConsumerTest {
         ReadOnlyUsersLDAPRepository usersRepository = startUsersRepository(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer, resolveLocalPartAttribute), testSystem.getDomainList());
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
 
-        TWPCommonSettingsConfiguration twpCommonSettingsConfiguration = new TWPCommonSettingsConfiguration(
+        TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration = new TWPCommonRabbitMQConfiguration(
             Optional.empty(),
             Optional.empty(),
-            false,
-            EXCHANGE_NAME,
-            ROUTING_KEY);
+            false);
+
+        TWPSettingsRabbitMQConfiguration twpSettingsRabbitMQConfiguration = new TWPSettingsRabbitMQConfiguration(EXCHANGE_NAME, ROUTING_KEY);
 
         RabbitMQConfiguration rabbitMQConfiguration = RabbitMQConfiguration.builder()
             .amqpUri(rabbitMQExtension.getRabbitMQ().amqpUri())
@@ -166,7 +167,8 @@ public class TWPSettingsConsumerTest {
             rabbitMQConfiguration,
             usersRepository,
             jmapSettingsRepository,
-            twpCommonSettingsConfiguration);
+            twpCommonRabbitMQConfiguration,
+            twpSettingsRabbitMQConfiguration);
 
         testee.init();
     }
