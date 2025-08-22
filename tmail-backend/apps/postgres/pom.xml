@@ -427,7 +427,7 @@
                             </path>
                             <path>
                                 <from>src/main/extensions-jars</from>
-                                <into>/root/extensions-jars</into>
+                                <into>/root/libs</into>
                             </path>
                             <path>
                                 <from>src/main/eml-template</from>
