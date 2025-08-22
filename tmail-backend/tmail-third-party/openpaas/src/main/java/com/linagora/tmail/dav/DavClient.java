@@ -31,6 +31,7 @@ import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.james.core.Username;
 import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +71,12 @@ public class DavClient {
     private static final String ACCEPT_XML = "application/xml";
     private static final String CONTENT_TYPE_VCARD = "application/vcard";
     private static final String CONTENT_TYPE_JSON = "application/json";
+    private static final String PRINCIPAL_BODY_REQUEST = """
+        <d:propfind xmlns:d="DAV:">
+          <d:prop>
+             <d:current-user-principal />
+          </d:prop>
+        </d:propfind>""";
 
     public static final int MAX_CALENDAR_OBJECT_UPDATE_RETRIES = 5;
     public static final String CALENDAR_PATH = "/calendars/";
@@ -368,6 +375,23 @@ public class DavClient {
                         String.format("Unexpected status code: %d when querying freebusy for user: %s. Response body: %s",
                             response.status().code(), user.userId(), body)
                     )));
+            });
+    }
+
+    public Mono<Void> getPrincipal(Username user) {
+        return client.headers(headers -> calDavHeaders(user.asString()).apply(headers)
+                .add("Depth", "0"))
+            .request(HttpMethod.valueOf("PROPFIND"))
+            .uri("/")
+            .send(Mono.just(Unpooled.wrappedBuffer(PRINCIPAL_BODY_REQUEST.getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, byteBufMono) -> {
+                if (response.status() == HttpResponseStatus.MULTI_STATUS) {
+                    return ReactorUtils.logAsMono(() -> LOGGER.info("User {} has been auto-provisioned successfully via principal endpoint.", user.asString()));
+                } else {
+                    return Mono.error(new DavClientException(
+                        String.format("Unexpected status code: %d when finding principal for user: %s",
+                            response.status().code(), user.asString())));
+                }
             });
     }
 }
