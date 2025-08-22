@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.settings;
 
-import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_INJECTION_KEY;
+import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
 
 import java.io.FileNotFoundException;
 import java.net.URI;
@@ -51,10 +51,11 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.AmqpUri;
-import com.linagora.tmail.saas.rabbitmq.settings.TWPCommonSettingsConfiguration;
+import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer;
 import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsDeadLetterQueueHealthCheck;
 import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsQueueConsumerHealthCheck;
+import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsRabbitMQConfiguration;
 
 public class TWPSettingsModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsModule.class);
@@ -79,14 +80,20 @@ public class TWPSettingsModule extends AbstractModule {
 
     @Provides
     @Singleton
-    TWPCommonSettingsConfiguration provideCommonSettingsConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
-        return TWPCommonSettingsConfiguration.from(propertiesProvider.getConfiguration("rabbitmq"));
+    TWPCommonRabbitMQConfiguration provideTwpCommonRabbitMQConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
+        return TWPCommonRabbitMQConfiguration.from(propertiesProvider.getConfiguration("rabbitmq"));
     }
 
     @Provides
-    @Named(TWP_SETTINGS_INJECTION_KEY)
     @Singleton
-    public SimpleConnectionPool provideSimpleConnectionPool(@Named(TWP_SETTINGS_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration) {
+    TWPSettingsRabbitMQConfiguration provideTwpSettingsConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException, FileNotFoundException {
+        return TWPSettingsRabbitMQConfiguration.from(propertiesProvider.getConfiguration("rabbitmq"));
+    }
+
+    @Provides
+    @Named(TWP_INJECTION_KEY)
+    @Singleton
+    public SimpleConnectionPool provideSimpleConnectionPool(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration) {
         RabbitMQConnectionFactory rabbitMQConnectionFactory = new RabbitMQConnectionFactory(rabbitMQConfiguration);
         try {
             return new SimpleConnectionPool(rabbitMQConnectionFactory, SimpleConnectionPool.Configuration.DEFAULT);
@@ -97,9 +104,9 @@ public class TWPSettingsModule extends AbstractModule {
     }
 
     @Provides
-    @Named(TWP_SETTINGS_INJECTION_KEY)
+    @Named(TWP_INJECTION_KEY)
     @Singleton
-    public ReactorRabbitMQChannelPool provideReactorRabbitMQChannelPool(@Named(TWP_SETTINGS_INJECTION_KEY) SimpleConnectionPool simpleConnectionPool,
+    public ReactorRabbitMQChannelPool provideReactorRabbitMQChannelPool(@Named(TWP_INJECTION_KEY) SimpleConnectionPool simpleConnectionPool,
                                                                         MetricFactory metricFactory,
                                                                         GaugeRegistry gaugeRegistry) {
 
@@ -113,13 +120,13 @@ public class TWPSettingsModule extends AbstractModule {
     }
 
     @Provides
-    @Named(TWP_SETTINGS_INJECTION_KEY)
+    @Named(TWP_INJECTION_KEY)
     @Singleton
     public RabbitMQConfiguration provideTwpSettingsRabbitMQConfiguration(RabbitMQConfiguration commonRabbitMQConfiguration,
-                                                                         TWPCommonSettingsConfiguration twpCommonSettingsConfiguration) {
-        Optional<List<AmqpUri>> maybeTwpAmqpUris = twpCommonSettingsConfiguration.amqpUri();
+                                                                         TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration) {
+        Optional<List<AmqpUri>> maybeTwpAmqpUris = twpCommonRabbitMQConfiguration.amqpUri();
 
-        return maybeTwpAmqpUris.map(withTwpAmqpUris(commonRabbitMQConfiguration, twpCommonSettingsConfiguration.managementUri()))
+        return maybeTwpAmqpUris.map(withTwpAmqpUris(commonRabbitMQConfiguration, twpCommonRabbitMQConfiguration.managementUri()))
             .orElse(commonRabbitMQConfiguration);
     }
 

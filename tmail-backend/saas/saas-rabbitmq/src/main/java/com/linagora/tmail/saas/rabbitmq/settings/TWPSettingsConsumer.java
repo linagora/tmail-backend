@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.saas.rabbitmq.settings;
 
+import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
@@ -45,6 +46,7 @@ import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch$;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsUtil;
 import com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider;
+import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.ShutdownSignalException;
@@ -68,32 +70,34 @@ public class TWPSettingsConsumer implements Closeable, Startable {
     private static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
     public static final String TWP_SETTINGS_QUEUE = "tmail-settings";
     public static final String TWP_SETTINGS_DEAD_LETTER_QUEUE = "tmail-settings-dead-letter";
-    public static final String TWP_SETTINGS_INJECTION_KEY = "twp-settings";
 
     private final ReceiverProvider receiverProvider;
     private final UsersRepository usersRepository;
     private final JmapSettingsRepository jmapSettingsRepository;
     private final Sender sender;
-    private final RabbitMQConfiguration twpRabbitMQConfiguration;
-    private final TWPCommonSettingsConfiguration twpCommonSettingsConfiguration;
+    private final RabbitMQConfiguration rabbitMQConfiguration;
+    private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
+    private final TWPSettingsRabbitMQConfiguration twpSettingsRabbitMQConfiguration;
     private Disposable consumeSettingsDisposable;
 
     @Inject
-    public TWPSettingsConsumer(@Named(TWP_SETTINGS_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
-                               @Named(TWP_SETTINGS_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+    public TWPSettingsConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
+                               @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                UsersRepository usersRepository,
                                JmapSettingsRepository jmapSettingsRepository,
-                               TWPCommonSettingsConfiguration twpCommonSettingsConfiguration) {
+                               TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
+                               TWPSettingsRabbitMQConfiguration twpSettingsRabbitMQConfiguration) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.usersRepository = usersRepository;
         this.jmapSettingsRepository = jmapSettingsRepository;
-        this.twpRabbitMQConfiguration = twpRabbitMQConfiguration;
-        this.twpCommonSettingsConfiguration = twpCommonSettingsConfiguration;
+        this.rabbitMQConfiguration = rabbitMQConfiguration;
+        this.twpCommonRabbitMQConfiguration = twpCommonRabbitMQConfiguration;
+        this.twpSettingsRabbitMQConfiguration = twpSettingsRabbitMQConfiguration;
     }
 
     public void init() {
-        declareExchangeAndQueue(twpCommonSettingsConfiguration.exchange(), TWP_SETTINGS_QUEUE, TWP_SETTINGS_DEAD_LETTER_QUEUE);
+        declareExchangeAndQueue(twpSettingsRabbitMQConfiguration.exchange(), TWP_SETTINGS_QUEUE, TWP_SETTINGS_DEAD_LETTER_QUEUE);
         startConsumer();
     }
 
@@ -116,7 +120,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
                 sender.bind(BindingSpecification.binding()
                     .exchange(exchange)
                     .queue(queue)
-                    .routingKey(twpCommonSettingsConfiguration.routingKey())))
+                    .routingKey(twpSettingsRabbitMQConfiguration.routingKey())))
             .then()
             .block();
     }
@@ -132,8 +136,8 @@ public class TWPSettingsConsumer implements Closeable, Startable {
     }
 
     private QueueArguments.Builder queueArgumentSupplier() {
-        if (!twpCommonSettingsConfiguration.quorumQueuesBypass()) {
-            return twpRabbitMQConfiguration.workQueueArgumentsBuilder();
+        if (!twpCommonRabbitMQConfiguration.quorumQueuesBypass()) {
+            return rabbitMQConfiguration.workQueueArgumentsBuilder();
         }
         return QueueArguments.builder();
     }

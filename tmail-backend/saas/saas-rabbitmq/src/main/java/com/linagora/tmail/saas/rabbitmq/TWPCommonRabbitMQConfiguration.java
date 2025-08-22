@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.saas.rabbitmq.settings;
+package com.linagora.tmail.saas.rabbitmq;
 
 import java.net.URI;
 import java.util.List;
@@ -30,29 +30,21 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.AmqpUri;
 
-public record TWPCommonSettingsConfiguration(Optional<List<AmqpUri>> amqpUri,
+public record TWPCommonRabbitMQConfiguration(Optional<List<AmqpUri>> amqpUri,
                                              Optional<URI> managementUri,
-                                             boolean quorumQueuesBypass,
-                                             String exchange,
-                                             String routingKey) {
+                                             boolean quorumQueuesBypass) {
     private static final String TWP_RABBITMQ_URI_PROPERTY = "twp.rabbitmq.uri";
     private static final String TWP_MANAGEMENT_URI_PROPERTY = "twp.rabbitmq.management.uri";
     private static final String TWP_QUEUES_QUORUM_BYPASS_PROPERTY = "twp.queues.quorum.bypass";
-    private static final String TWP_SETTINGS_EXCHANGE_PROPERTY = "twp.settings.exchange";
-    private static final String TWP_SETTINGS_ROUTING_KEY_PROPERTY = "twp.settings.routingKey";
     public static final boolean TWP_QUEUES_QUORUM_BYPASS_DISABLED = false;
-    public static final String TWP_SETTINGS_EXCHANGE_DEFAULT = "settings";
-    public static final String TWP_SETTINGS_ROUTING_KEY_DEFAULT = "user.settings.updated";
 
-    public static TWPCommonSettingsConfiguration from(Configuration rabbitMQConfiguration) {
+    public static TWPCommonRabbitMQConfiguration from(Configuration rabbitMQConfiguration) {
         Optional<URI> managementUri = Optional.ofNullable(rabbitMQConfiguration.getString(TWP_MANAGEMENT_URI_PROPERTY, null))
             .filter(StringUtils::isNotBlank)
-            .map(Throwing.function(TWPCommonSettingsConfiguration::parseURI));
+            .map(Throwing.function(TWPCommonRabbitMQConfiguration::parseURI));
         boolean quorumQueuesBypass = rabbitMQConfiguration.getBoolean(TWP_QUEUES_QUORUM_BYPASS_PROPERTY, TWP_QUEUES_QUORUM_BYPASS_DISABLED);
-        String exchange = rabbitMQConfiguration.getString(TWP_SETTINGS_EXCHANGE_PROPERTY, TWP_SETTINGS_EXCHANGE_DEFAULT);
-        String routingKey = rabbitMQConfiguration.getString(TWP_SETTINGS_ROUTING_KEY_PROPERTY, TWP_SETTINGS_ROUTING_KEY_DEFAULT);
 
-        return new TWPCommonSettingsConfiguration(readTWPRabbitMqUris(rabbitMQConfiguration), managementUri, quorumQueuesBypass, exchange, routingKey);
+        return new TWPCommonRabbitMQConfiguration(readTWPRabbitMqUris(rabbitMQConfiguration), managementUri, quorumQueuesBypass);
     }
 
     private static Optional<List<AmqpUri>> readTWPRabbitMqUris(Configuration rabbitConfiguration) {
