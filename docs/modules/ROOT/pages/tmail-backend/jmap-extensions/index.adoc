@@ -46,10 +46,11 @@ from the blob id of the calendar file (.ics).
  - link:calendarEventReply.adoc[com:linagora:params:calendar:event] allows users to reply to calendar events.
  - link:deletedMessagesVault.adoc[com:linagora:params:messages:vault] allows users to recover deleted messages in their vault.
  - link:jmapLabels.adoc[com:linagora:params:jmap:labels] allows users to manipulate emails by labels.
- - link:jmapSettings.adoc[com:linagora:params:jmap:labels] allows clients to store per-user settings on the backend side.
+ - link:jmapSettings.adoc[com:linagora:params:jmap:settings] allows clients to store per-user settings on the backend side.
  - link:publicAssets.adoc[com:linagora:params:public:assets] allows clients to store images as public assets to use on their TMail signature.
  - link:downloadAll.adoc[com:linagora:params:downloadAll] allows clients to download all attachments of a mail at once compressed in a zip file.
  - link:mailboxClear.adoc[com:linagora:params:jmap:mailbox:clear] allows clients to clear a user mailbox thus avoiding round trips, outdated projection and network issues.
+ - link:saas.adoc[com:linagora:params:saas] allows to return the Twake Workplace SaaS capability for users.
 
 === Standard JMAP extensions
 
