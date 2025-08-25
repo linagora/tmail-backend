@@ -23,6 +23,8 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 import java.io.File;
 
 import org.apache.james.GuiceJamesServer;
+import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.github.fge.lambdas.Throwing;
@@ -65,10 +67,33 @@ public class MemoryJmapSaaSTest implements JmapSaasContract {
         }
     }
 
+    @Override
+    public void publishAmqpSettingsMessage(String message) {
+        throw new UnsupportedOperationException("No RabbitMQ in memory app");
+    }
+
     private Module provideSaaSModule(boolean saasSupport) {
         if (saasSupport) {
             return Modules.combine(new MemorySaaSModule(), new SaaSProbeModule());
         }
         return Modules.EMPTY_MODULE;
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void planNameShouldBeSetWhenSubscriptionUpdateAndUserHasNoPlanYet() {
+
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void planNameShouldBeUpdatedWhenSubscriptionUpdateAndUserAlreadyHasAPlan() {
+
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void shouldNotSetPlanNameWhenSaaSModuleIsNotEnabled() {
+
     }
 }
