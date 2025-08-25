@@ -174,6 +174,8 @@ import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModule;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.PostgresJmapSettingsRepositoryModule;
+import com.linagora.tmail.james.jmap.settings.TWPSettingsModule;
+import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
@@ -257,7 +259,8 @@ public class PostgresTmailServer {
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
             .overrideWith(chooseJmapOidc(configuration))
-            .overrideWith(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED));
+            .overrideWith(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED))
+            .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()));
     }
 
     private static final Module WEBADMIN = Modules.combine(
@@ -533,5 +536,12 @@ public class PostgresTmailServer {
         return binder -> {
 
         };
+    }
+
+    private static List<Module> chooseTWPSettingsModule(TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration) {
+        if (twpSettingsModuleChooserConfiguration.enabled()) {
+            return List.of(new TWPSettingsModule());
+        }
+        return List.of();
     }
 }

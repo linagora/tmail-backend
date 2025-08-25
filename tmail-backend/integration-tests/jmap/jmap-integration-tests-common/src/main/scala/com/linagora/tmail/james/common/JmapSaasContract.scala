@@ -37,6 +37,8 @@ trait JmapSaasContract {
 
   def stopJmapServer(): Unit
 
+  def publishAmqpSettingsMessage(message: String): Unit
+
   private def setUpJmapServer(saasSupport: Boolean = false): GuiceJamesServer = {
     val server = startJmapServer(saasSupport)
     server.getProbe(classOf[DataProbeImpl])
@@ -108,5 +110,91 @@ trait JmapSaasContract {
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("capabilities.'com:linagora:params:saas'.saasPlan", equalTo("premium"))
+  }
+
+  @Test
+  def planNameShouldBeSetWhenSubscriptionUpdateAndUserHasNoPlanYet(): Unit = {
+    setUpJmapServer(saasSupport = true)
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "username": "${BOB.asString()}",
+         |    "isPaying": true,
+         |    "planName": "standard",
+         |    "mail": {
+         |        "storageQuota": 1234
+         |    }
+         |}""".stripMargin)
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .when()
+        .get("/session")
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .body("capabilities.'com:linagora:params:saas'.saasPlan", equalTo("standard"))
+    }
+  }
+
+  @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
+  def planNameShouldBeUpdatedWhenSubscriptionUpdateAndUserAlreadyHasAPlan(): Unit = {
+    setUpJmapServer(saasSupport = true)
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "username": "${BOB.asString()}",
+         |    "isPaying": true,
+         |    "planName": "standard",
+         |    "mail": {
+         |        "storageQuota": 1234
+         |    }
+         |}""".stripMargin)
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "username": "${BOB.asString()}",
+         |    "isPaying": true,
+         |    "planName": "premium",
+         |    "mail": {
+         |        "storageQuota": 10000
+         |    }
+         |}""".stripMargin)
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .when()
+        .get("/session")
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .body("capabilities.'com:linagora:params:saas'.saasPlan", equalTo("premium"))
+    }
+  }
+
+  @Test
+  def shouldNotSetPlanNameWhenSaaSModuleIsNotEnabled(): Unit = {
+    setUpJmapServer()
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "username": "${BOB.asString()}",
+         |    "isPaying": true,
+         |    "planName": "standard",
+         |    "mail": {
+         |        "storageQuota": 1234
+         |    }
+         |}""".stripMargin)
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .when()
+        .get("/session")
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .body("capabilities", not(hasKey("com:linagora:params:saas")))
+    }
   }
 }

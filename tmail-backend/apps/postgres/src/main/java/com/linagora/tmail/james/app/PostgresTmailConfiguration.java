@@ -45,6 +45,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 
 public record PostgresTmailConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                          BlobStoreConfiguration blobStoreConfiguration,
@@ -53,6 +54,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          MailQueueViewChoice mailQueueViewChoice,
                                          FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                          LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
+                                         TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration,
                                          boolean jmapEnabled,
                                          boolean rlsEnabled,
                                          PropertiesProvider propertiesProvider,
@@ -69,6 +71,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<MailQueueViewChoice> mailQueueViewChoice;
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
+        private Optional<TWPSettingsModuleChooserConfiguration> twpSettingsModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> rlsEnabled;
         private Optional<ExtensionConfiguration> extentionConfiguration;
@@ -85,6 +88,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             mailQueueViewChoice = Optional.empty();
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
+            twpSettingsModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             rlsEnabled = Optional.empty();
             extentionConfiguration = Optional.empty();
@@ -148,6 +152,11 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
 
         public Builder linagoraServicesDiscoveryModuleChooserConfiguration(LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration) {
             this.linagoraServicesDiscoveryModuleChooserConfiguration = Optional.of(servicesDiscoveryModuleChooserConfiguration);
+            return this;
+        }
+
+        public Builder twpSettingsModuleChooserConfiguration(TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration) {
+            this.twpSettingsModuleChooserConfiguration = Optional.of(twpSettingsModuleChooserConfiguration);
             return this;
         }
 
@@ -220,6 +229,9 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration
                 .orElseGet(Throwing.supplier(() -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(propertiesProvider)));
 
+            TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration = this.twpSettingsModuleChooserConfiguration
+                .orElseGet(Throwing.supplier(() -> TWPSettingsModuleChooserConfiguration.parse(propertiesProvider)));
+
             boolean jmapEnabled = this.jmapEnabled.orElseGet(() -> {
                 try {
                     return JMAPModule.parseConfiguration(propertiesProvider).isEnabled();
@@ -256,6 +268,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 mailQueueViewChoice,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
+                twpSettingsModuleChooserConfiguration,
                 jmapEnabled,
                 rlsEnabled,
                 propertiesProvider,

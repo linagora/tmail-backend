@@ -85,6 +85,7 @@
 
         <module>saas/saas-api</module>
         <module>saas/saas-cassandra</module>
+        <module>saas/saas-rabbitmq</module>
         <module>saas/saas-postgres</module>
 
         <module>smtp-extensions</module>
@@ -358,6 +359,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-saas-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-saas-rabbitmq</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
