@@ -70,7 +70,9 @@ public class PostgresJmapSettingsRepository implements JmapSettingsRepository {
                     newState,
                     CollectionConverters.asJava(settingsPatch.toUpsert().settings()),
                     CollectionConverters.asJava(settingsPatch.toRemove()))
-                .then(Mono.just(new SettingsStateUpdate(oldState, newState))));
+                .then(Mono.just(new SettingsStateUpdate(oldState, newState))))
+            .switchIfEmpty(jmapSettingsDAO.saveSettings(username, newState, CollectionConverters.asJava(settingsPatch.toUpsert().settings()))
+                .then(Mono.just(new SettingsStateUpdate(JmapSettingsStateFactory.INITIAL(), newState))));
     }
 
     @Override

@@ -25,7 +25,6 @@ import java.util.Map;
 
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.jooq.impl.DSL;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -40,12 +39,6 @@ public class PostgresJmapSettingsRepositoryTest implements JmapSettingsRepositor
     @Override
     public JmapSettingsRepository testee() {
         return new PostgresJmapSettingsRepository(new PostgresJmapSettingsDAO(postgresExtension.getDefaultPostgresExecutor()));
-    }
-
-    @Override
-    @Disabled("Failing. This capability is only needed for TWP settings update, which uses Cassandra implementation anyway.")
-    public void updatePartialShouldInsertSettingsWhenUserHasNoSettings() {
-
     }
 
     @Test
