@@ -1,0 +1,13 @@
+= Software As A Service (SaaS) JMAP Extensions
+:navtitle: SaaS
+
+== Additions to the capability object
+
+Servers supporting the Twake Workplace SaaS integration need to advertise it through the session capabilities:
+....
+com:linagora:params:saas
+....
+
+The associated object has the following field:
+
+- `saasPlan`: *String*. The SaaS plan name of the user.
