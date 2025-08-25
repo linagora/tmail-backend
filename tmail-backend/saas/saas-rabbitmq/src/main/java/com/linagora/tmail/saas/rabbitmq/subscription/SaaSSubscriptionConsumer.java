@@ -35,6 +35,7 @@ import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaSizeLimit;
+import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.user.api.UsersRepository;
@@ -62,7 +63,7 @@ import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 
-public class SaaSSubscriptionConsumer implements Closeable {
+public class SaaSSubscriptionConsumer implements Closeable, Startable {
     private static final Logger LOGGER = LoggerFactory.getLogger(SaaSSubscriptionConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
     public static final String SAAS_SUBSCRIPTION_QUEUE = "tmail-saas-subscription";

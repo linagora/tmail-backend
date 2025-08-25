@@ -18,6 +18,9 @@
 
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
+import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_PASSWORD;
 import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_USER;
 
@@ -28,6 +31,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -44,7 +48,11 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.common.JmapSaasContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+
+import reactor.core.publisher.Mono;
+import reactor.rabbitmq.OutboundMessage;
 
 public class DistributedJmapSaaSTest implements JmapSaasContract {
     private static final com.linagora.tmail.james.app.RabbitMQExtension rabbitMQExtensionModule = new com.linagora.tmail.james.app.RabbitMQExtension();
@@ -84,6 +92,7 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
                 .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
                 .searchConfiguration(SearchConfiguration.openSearch())
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+                .twpSettingsModuleChooserConfiguration(new TWPSettingsModuleChooserConfiguration(true))
                 .build())
             .overrideWith(opensearchExtension.getModule(),
                 cassandraExtension.getModule(),
@@ -91,7 +100,6 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
                 s3Extension.getModule())
             .overrideWith((binder -> binder.bind(CleanupTasksPerformer.class).asEagerSingleton()))
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new DistributedEmailGetMethodTest.TestingSessionModule())
             .overrideWith(provideSaaSModule(saasSupport));
 
         Throwing.runnable(() -> guiceJamesServer.start()).run();
@@ -101,12 +109,26 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
     @Override
     public void stopJmapServer() {
         if (guiceJamesServer != null && guiceJamesServer.isStarted()) {
-            dropUserTable(); // This allows the user table to be recreated with a different schema in the next test
             guiceJamesServer.stop();
         }
     }
 
-    public void dropUserTable() {
+    @AfterAll
+    static void afterAll() {
+        dropUserTable();
+    }
+
+    @Override
+    public void publishAmqpSettingsMessage(String message) {
+        rabbitMQExtension.getSender()
+            .send(Mono.just(new OutboundMessage(
+                TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
+                TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT,
+                message.getBytes(UTF_8))))
+            .block();
+    }
+
+    public static void dropUserTable() {
         Throwing.runnable(() -> {
             cassandraExtension.getCassandra().getRawContainer().execInContainer("cqlsh",
                 "-u", CASSANDRA_TESTING_USER,
