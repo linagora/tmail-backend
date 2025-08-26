@@ -28,16 +28,24 @@ import reactor.core.publisher.Mono;
 
 public class OpenPaasDavUserProvider implements DavUserProvider {
     private final OpenPaasRestClient restClient;
+    private final DavClient davClient;
 
     @Inject
-    public OpenPaasDavUserProvider(OpenPaasRestClient restClient) {
+    public OpenPaasDavUserProvider(OpenPaasRestClient restClient, DavClient davClient) {
         this.restClient = restClient;
+        this.davClient = davClient;
     }
 
     @Override
     public Mono<DavUser> provide(Username username) {
+        return provideDavUser(username)
+            .switchIfEmpty(davClient.getPrincipal(username)
+                .then(provideDavUser(username))
+            .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find user in Dav server with username '%s'".formatted(username.asString())))));
+    }
+
+    private Mono<DavUser> provideDavUser(Username username) {
         return restClient.searchOpenPaasUserId(username.asString())
-            .map(openPaasUserId -> new DavUser(openPaasUserId, username.asString()))
-            .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find user in Dav server with username '%s'".formatted(username.asString()))));
+            .map(openPaasUserId -> new DavUser(openPaasUserId, username.asString()));
     }
 }

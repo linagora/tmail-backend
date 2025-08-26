@@ -56,6 +56,7 @@ import javax.net.ssl.SSLException;
 
 import org.apache.http.HttpStatus;
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
 import org.apache.james.util.ClassLoaderUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -313,6 +314,12 @@ class DavClientTest {
                 urlEqualTo(ALICE_CALENDAR_OBJECT_1))
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
                 .withHeader("Accept", equalTo("application/xml")));
+    }
+
+    @Test
+    void getPrincipalShouldSucceed() {
+        assertThatCode(() -> client.getPrincipal(Username.of(ALICE)).block())
+            .doesNotThrowAnyException();
     }
 
     @Test

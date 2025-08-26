@@ -77,6 +77,17 @@ public class DavServerExtension extends WireMockExtension {
         super.onBeforeEach(wireMockRuntimeInfo);
 
         stubFor(
+            propfind("/")
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .withHeader("Accept", equalTo("application/xml"))
+                .withHeader("Depth", equalTo("0"))
+                .willReturn(aResponse()
+                    .withResponseBody(
+                        new Body(
+                            ClassLoaderUtils.getSystemResourceAsByteArray("ALICE_PRINCIPALS_RESPONSE.xml")))
+                    .withStatus(207)));
+
+        stubFor(
             propfind("/calendars/" + ALICE_ID)
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
                 .willReturn(
