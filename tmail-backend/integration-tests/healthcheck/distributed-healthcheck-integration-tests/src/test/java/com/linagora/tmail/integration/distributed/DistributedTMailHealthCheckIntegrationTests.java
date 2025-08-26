@@ -44,6 +44,7 @@ import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.integration.TMailHealthCheckIntegrationTests;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
+import com.linagora.tmail.james.app.DistributedSaaSModule;
 import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
@@ -78,7 +79,8 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
         .extension(new RedisExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new RedisRateLimiterModule())
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DistributedSaaSModule()))
         .build();
 
     @Test
@@ -131,5 +133,20 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
                     .statusCode(HttpStatus.OK_200)
                     .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
                     .body("checks.componentName", hasItems("TWPSettingsQueueConsumerHealthCheck")));
+    }
+
+    @Test
+    void saasSubscriptionQueueShouldBeHealthyWhenSaaSModuleEnabled(GuiceJamesServer jamesServer) {
+        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
+        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
+
+        given()
+            .queryParam("check", "SaaSSubscriptionDeadLetterQueueHealthCheck")
+        .when()
+            .get("/healthcheck")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
+            .body("checks.componentName", hasItems("SaaSSubscriptionDeadLetterQueueHealthCheck"));
     }
 }

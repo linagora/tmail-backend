@@ -26,6 +26,7 @@ import jakarta.inject.Named;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.postgres.PostgresTable;
+import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
@@ -34,12 +35,14 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.postgres.PostgresSaaSAccountRepository;
 import com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionDeadLetterQueueHealthCheck;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration;
 
 public class PostgresSaaSModule extends AbstractModule {
@@ -50,6 +53,9 @@ public class PostgresSaaSModule extends AbstractModule {
         bind(SaaSAccountRepository.class).to(PostgresSaaSAccountRepository.class)
             .in(Scopes.SINGLETON);
         bind(SaaSSubscriptionConsumer.class).in(Scopes.SINGLETON);
+
+        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
+            .to(SaaSSubscriptionDeadLetterQueueHealthCheck.class);
     }
 
     @Provides
