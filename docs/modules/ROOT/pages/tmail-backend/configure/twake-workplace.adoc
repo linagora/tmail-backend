@@ -84,3 +84,9 @@ For example, to match senders with either the `standard` or `premium` plan:
 ----
 
 If the sender's SaaS plan matches any of the specified plans, the matcher will return the recipients of the email.
+
+=== SaaSSubscriptionConsumer
+
+`SaaSSubscriptionConsumer` allows to synchronize user SaaS subscription information via RabbitMQ messages, e.g. plan name, storage quota, rate limiting, etc.
+
+The SaaS subscription RabbitMQ consumer may require RabbitMQ configuration to function properly. See the xref:tmail-backend/configure/rabbitmq.adoc#_twp_settings_configuration[RabbitMQ TWP Settings Configuration] section for details on configuring the RabbitMQ properties.
