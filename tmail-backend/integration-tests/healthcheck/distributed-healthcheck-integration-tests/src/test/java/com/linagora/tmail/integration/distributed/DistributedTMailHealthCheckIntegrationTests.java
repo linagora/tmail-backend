@@ -149,4 +149,21 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
             .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
             .body("checks.componentName", hasItems("SaaSSubscriptionDeadLetterQueueHealthCheck"));
     }
+
+    @Test
+    void saasSubscriptionConsumerHealthcheckShouldBeHealthyWhenSaaSModuleEnabled(GuiceJamesServer jamesServer) {
+        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
+        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
+
+        await().atMost(30, SECONDS)
+            .untilAsserted(() ->
+                given()
+                    .queryParam("check", "SaaSSubscriptionQueueConsumerHealthCheck")
+                .when()
+                    .get("/healthcheck")
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
+                    .body("checks.componentName", hasItems("SaaSSubscriptionQueueConsumerHealthCheck")));
+    }
 }

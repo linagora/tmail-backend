@@ -43,6 +43,7 @@ import com.linagora.tmail.saas.api.postgres.PostgresSaaSAccountRepository;
 import com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionDeadLetterQueueHealthCheck;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionQueueConsumerHealthCheck;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration;
 
 public class PostgresSaaSModule extends AbstractModule {
@@ -56,6 +57,8 @@ public class PostgresSaaSModule extends AbstractModule {
 
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
             .to(SaaSSubscriptionDeadLetterQueueHealthCheck.class);
+        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
+            .to(SaaSSubscriptionQueueConsumerHealthCheck.class);
     }
 
     @Provides
