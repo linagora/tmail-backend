@@ -23,7 +23,7 @@ import java.util.Locale
 
 import com.google.common.base.CharMatcher
 import com.linagora.tmail.james.jmap.settings.InboxArchivalFormat.InboxArchivalFormat
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, cleanupDefaultPeriod, spamCleanupEnabledSetting, spamCleanupPeriodSetting, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
+import com.linagora.tmail.james.jmap.settings.JmapSettings.{INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, LANGUAGE_KEY, cleanupDefaultPeriod, spamCleanupEnabledSetting, spamCleanupPeriodSetting, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsKey.SettingKeyType
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
@@ -119,6 +119,7 @@ object JmapSettings {
   val INBOX_ARCHIVAL_ENABLE_KEY = "inbox.archival.enabled"
   val INBOX_ARCHIVAL_PERIOD_KEY = "inbox.archival.period"
   val INBOX_ARCHIVAL_FORMAT_KEY = "inbox.archival.format"
+  val LANGUAGE_KEY = "language"
 
   val INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE: Boolean = false
   val INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE: Period = Period.ofMonths(1)
@@ -161,6 +162,10 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
     settings.get(JmapSettingsKey.liftOrThrow(INBOX_ARCHIVAL_FORMAT_KEY))
       .flatMap(value => InboxArchivalFormat.parse(value.value))
       .getOrElse(INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE)
+
+  def language(): Option[String] =
+    settings.get(JmapSettingsKey.liftOrThrow(LANGUAGE_KEY))
+      .map(_.value)
 }
 
 case class JmapSettingsUpsertRequest(settings: Map[JmapSettingsKey, JmapSettingsValue])
