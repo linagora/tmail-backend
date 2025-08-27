@@ -25,3 +25,4 @@ This includes:
 - xref:tmail-backend/smtp-extensions/smtpAuthDelegationExtension.adoc[SMTP extensions]
 - link:ecosystem-discovery.adoc[Linagora Ecosystem discovery]
 - link:twake-workplace.adoc[Twake Workplace Integration]
+- link:I18NDSNBounce.adoc[Internationalized DSN Bounce]
