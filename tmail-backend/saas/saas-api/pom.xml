@@ -40,5 +40,9 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.github.spullara.mustache.java</groupId>
+            <artifactId>compiler</artifactId>
+        </dependency>
     </dependencies>
 </project>
