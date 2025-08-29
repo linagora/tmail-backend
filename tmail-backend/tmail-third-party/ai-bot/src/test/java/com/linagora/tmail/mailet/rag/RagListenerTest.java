@@ -68,6 +68,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 class RagListenerTest {
 
@@ -117,13 +118,13 @@ class RagListenerTest {
 
     @BeforeEach
     void setup() throws Exception {
-        wireMockServer = new WireMockServer();
+        wireMockServer = new WireMockServer(WireMockConfiguration.options().dynamicPort());
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
         stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
             .willReturn(aResponse()
                 .withStatus(200)
-                .withBody("{\"task_status_url\":\"http://localhost:8080/status/1234\"}")));
+                .withBody(String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockServer.port()))));
 
         clock = new UpdatableTickingClock(Instant.now());
         mapperFactory = new InMemoryMailboxSessionMapperFactory(clock);
@@ -171,7 +172,7 @@ class RagListenerTest {
         Configurations configurations = new Configurations();
         config = configurations.xml("listeners.xml");
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("openrag.url", "http://localhost:8080");
+        configuration.addProperty("openrag.url", String.format("http://localhost:%d", wireMockServer.port()));
         configuration.addProperty("openrag.token", "dummy-token");
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
@@ -228,7 +229,7 @@ class RagListenerTest {
         stubFor(put(urlPathMatching("/indexer/partition/.*/file/.*"))
             .willReturn(aResponse()
                 .withStatus(200)
-                .withBody("{\"task_status_url\":\"http://localhost:8080/status/1234\"}")));
+                .withBody(String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockServer.port()))));
 
         mailboxManager.getEventBus().register(ragListener);
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
