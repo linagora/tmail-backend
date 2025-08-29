@@ -37,4 +37,8 @@ public class DavStatus {
             .add("value", value)
             .toString();
     }
+
+    public boolean isSuccess() {
+        return value != null && value.contains("200 OK");
+    }
 }
