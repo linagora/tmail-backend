@@ -24,11 +24,14 @@ import org.apache.james.core.Username;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
 public interface SaaSAccountRepositoryContract {
+
+    SaaSAccount SAAS_ACCOUNT = new SaaSAccount(false, true);
+    SaaSAccount SAAS_ACCOUNT_2 = new SaaSAccount(true, true);
+
     SaaSAccountRepository testee();
 
     Username BOB = Username.of("bob@domain.tld");
@@ -36,24 +39,24 @@ public interface SaaSAccountRepositoryContract {
 
     @Test
     default void upsertSaasAccountShouldSucceed() {
-        Mono.from(testee().upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.FREE))).block();
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT)).block();
 
         assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
-            .isEqualTo(new SaaSAccount(SaaSPlan.FREE));
+            .isEqualTo(SAAS_ACCOUNT);
+    }
+
+    @Test
+    default void getSaaSAccountShouldReturnDefaultValue() {
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SaaSAccount.DEFAULT);
     }
 
     @Test
     default void upsertSaasAccountShouldOverridePreviousPlan() {
-        Mono.from(testee().upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.FREE))).block();
-        Mono.from(testee().upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.PREMIUM))).block();
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT)).block();
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT_2)).block();
 
-        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block().saaSPlan())
-            .isEqualTo(SaaSPlan.PREMIUM);
-    }
-
-    @Test
-    default void getSaaSAccountShouldReturnEmptyWhenUserDoesNotHaveAnySaaSAccount() {
-        assertThat(Mono.from(testee().getSaaSAccount(ALICE)).block())
-            .isNull();
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SAAS_ACCOUNT_2);
     }
 }

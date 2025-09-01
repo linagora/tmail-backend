@@ -34,7 +34,8 @@ public class MemorySaaSAccountRepository implements SaaSAccountRepository {
 
     @Override
     public Publisher<SaaSAccount> getSaaSAccount(Username username) {
-        return Mono.justOrEmpty(table.get(username));
+        return Mono.justOrEmpty(table.get(username))
+            .switchIfEmpty(Mono.just(SaaSAccount.DEFAULT));
     }
 
     @Override

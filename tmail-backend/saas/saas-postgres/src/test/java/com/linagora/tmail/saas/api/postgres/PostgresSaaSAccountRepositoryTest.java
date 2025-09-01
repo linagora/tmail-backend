@@ -30,7 +30,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.SaaSAccountRepositoryContract;
 import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
@@ -60,39 +59,16 @@ public class PostgresSaaSAccountRepositoryTest implements SaaSAccountRepositoryC
             .block();
 
         // Set Bob SaaS plan
-        Mono.from(repository.upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.PREMIUM))).block();
+        Mono.from(repository.upsertSaasAccount(BOB, new SaaSAccount(true, true))).block();
 
         // Assert that the user record still exists and other associated data is not lost
         org.jooq.Record record = postgresExtension.getDefaultPostgresExecutor()
-            .executeRow(dslContext -> Mono.from(dslContext.select(DSL.field("hashed_password"), DSL.field("saas_plan"))
+            .executeRow(dslContext -> Mono.from(dslContext.select(DSL.field("hashed_password"), DSL.field("is_paying"))
                 .from(DSL.table("users"))
                 .where(DSL.field("username").eq(BOB.asString()))))
             .block();
 
-        assertThat(record.get("saas_plan", String.class)).isEqualTo("premium");
-        assertThat(record.get("hashed_password", String.class)).isEqualTo("hashedPassword");
-    }
-
-    @Test
-    void updatePlanShouldSucceedWhenExistingUserRecordWithSaaSPlan() {
-        // Given the Bob record in the user table
-        postgresExtension.getDefaultPostgresExecutor()
-            .executeVoid(dslContext -> Mono.from(dslContext.insertInto(DSL.table("users"), DSL.field("username"), DSL.field("hashed_password"))
-                .values(BOB.asString(), "hashedPassword")))
-            .block();
-        Mono.from(repository.upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.STANDARD))).block();
-
-        // Update Bob' SaaS plan from STANDARD to PREMIUM
-        Mono.from(repository.upsertSaasAccount(BOB, new SaaSAccount(SaaSPlan.PREMIUM))).block();
-
-        // Assert that the user record still exists and other associated data is not lost
-        org.jooq.Record record = postgresExtension.getDefaultPostgresExecutor()
-            .executeRow(dslContext -> Mono.from(dslContext.select(DSL.field("hashed_password"), DSL.field("saas_plan"))
-                .from(DSL.table("users"))
-                .where(DSL.field("username").eq(BOB.asString()))))
-            .block();
-
-        assertThat(record.get("saas_plan", String.class)).isEqualTo("premium");
+        assertThat(record.get("is_paying", Boolean.class)).isTrue();
         assertThat(record.get("hashed_password", String.class)).isEqualTo("hashedPassword");
     }
 }
