@@ -19,7 +19,7 @@
 package com.linagora.tmail.james.common
 
 import com.linagora.tmail.common.probe.SaaSProbe
-import com.linagora.tmail.saas.model.SaaSPlan
+import com.linagora.tmail.saas.model.{SaaSAccount}
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import org.apache.http.HttpStatus.SC_OK
@@ -92,7 +92,8 @@ trait JmapSaasContract {
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
-      .body("capabilities.'com:linagora:params:saas'.saasPlan", equalTo("free"))
+      .body("capabilities.'com:linagora:params:saas'.isPaying", equalTo("false"))
+      .body("capabilities.'com:linagora:params:saas'.canUpgrade", equalTo("true"))
   }
 
   @Test
@@ -101,7 +102,7 @@ trait JmapSaasContract {
     val server: GuiceJamesServer = setUpJmapServer(saasSupport = true)
 
     server.getProbe(classOf[SaaSProbe])
-      .setPlan(BOB, SaaSPlan.PREMIUM)
+      .setPlan(BOB, new SaaSAccount(true, true))
 
     `given`()
       .when()
@@ -109,7 +110,8 @@ trait JmapSaasContract {
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
-      .body("capabilities.'com:linagora:params:saas'.saasPlan", equalTo("premium"))
+      .body("capabilities.'com:linagora:params:saas'.isPaying", equalTo("true"))
+      .body("capabilities.'com:linagora:params:saas'.canUpgrade", equalTo("true"))
   }
 
   @Test
@@ -120,7 +122,7 @@ trait JmapSaasContract {
       s"""{
          |    "username": "${BOB.asString()}",
          |    "isPaying": true,
-         |    "planName": "standard",
+         |    "canUpgrade": true,
          |    "mail": {
          |        "storageQuota": 1234
          |    }
@@ -133,7 +135,8 @@ trait JmapSaasContract {
       .`then`
         .statusCode(SC_OK)
         .contentType(JSON)
-        .body("capabilities.'com:linagora:params:saas'.saasPlan", equalTo("standard"))
+        .body("capabilities.'com:linagora:params:saas'.isPaying", equalTo("true"))
+        .body("capabilities.'com:linagora:params:saas'.canUpgrade", equalTo("true"))
     }
   }
 
@@ -145,8 +148,8 @@ trait JmapSaasContract {
     publishAmqpSettingsMessage(
       s"""{
          |    "username": "${BOB.asString()}",
-         |    "isPaying": true,
-         |    "planName": "standard",
+         |    "isPaying": false,
+         |    "canUpgrade": true,
          |    "mail": {
          |        "storageQuota": 1234
          |    }
@@ -156,7 +159,7 @@ trait JmapSaasContract {
       s"""{
          |    "username": "${BOB.asString()}",
          |    "isPaying": true,
-         |    "planName": "premium",
+         |    "canUpgrade": true,
          |    "mail": {
          |        "storageQuota": 10000
          |    }
@@ -169,32 +172,8 @@ trait JmapSaasContract {
       .`then`
         .statusCode(SC_OK)
         .contentType(JSON)
-        .body("capabilities.'com:linagora:params:saas'.saasPlan", equalTo("premium"))
-    }
-  }
-
-  @Test
-  def shouldNotSetPlanNameWhenSaaSModuleIsNotEnabled(): Unit = {
-    setUpJmapServer()
-
-    publishAmqpSettingsMessage(
-      s"""{
-         |    "username": "${BOB.asString()}",
-         |    "isPaying": true,
-         |    "planName": "standard",
-         |    "mail": {
-         |        "storageQuota": 1234
-         |    }
-         |}""".stripMargin)
-
-    awaitAtMostTenSeconds.untilAsserted { () =>
-      `given`()
-        .when()
-        .get("/session")
-      .`then`
-        .statusCode(SC_OK)
-        .contentType(JSON)
-        .body("capabilities", not(hasKey("com:linagora:params:saas")))
+        .body("capabilities.'com:linagora:params:saas'.isPaying", equalTo("true"))
+        .body("capabilities.'com:linagora:params:saas'.canUpgrade", equalTo("true"))
     }
   }
 }

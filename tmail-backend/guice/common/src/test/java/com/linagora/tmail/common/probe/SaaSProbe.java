@@ -25,7 +25,6 @@ import org.apache.james.utils.GuiceProbe;
 
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
@@ -37,7 +36,7 @@ public class SaaSProbe implements GuiceProbe {
         this.saaSAccountRepository = saaSAccountRepository;
     }
 
-    public void setPlan(Username username, SaaSPlan saaSPlan) {
-        Mono.from(saaSAccountRepository.upsertSaasAccount(username, new SaaSAccount(saaSPlan))).block();
+    public void setPlan(Username username, SaaSAccount account) {
+        Mono.from(saaSAccountRepository.upsertSaasAccount(username, account)).block();
     }
 }
