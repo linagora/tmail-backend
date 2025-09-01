@@ -54,36 +54,23 @@ com.linagora.tmail.james.app.DistributedSaaSModule
 com.linagora.tmail.james.app.PostgresSaaSModule
 ----
 
-If you use the `DistributedSaaSModule`, you need to add SaaS related columns (`saas_plan`) to the Cassandra `users` table. For example:
+If you use the `DistributedSaaSModule`, you need to add SaaS related columns (`is_paying`, `can_upgrade`) to the Cassandra `users` table. For example:
 
 ```
-ALTER TABLE tmail_keyspace.user ADD saas_plan text;
+ALTER TABLE tmail_keyspace.user ADD is_paying boolean;
+ALTER TABLE tmail_keyspace.user ADD can_upgrade boolean;
 ```
 
-If you use the `PostgresSaaSModule`, you need to add SaaS related columns (`saas_plan`) to the Postgres `users` table. For example:
+If you use the `PostgresSaaSModule`, you need to add SaaS related columns (`is_paying`, `can_upgrade`) to the Postgres `users` table. For example:
 
 ```
-ALTER TABLE tmail_schema.users ADD COLUMN saas_plan VARCHAR;
+ALTER TABLE tmail_schema.users ADD COLUMN is_paying BOOLEAN;
+ALTER TABLE tmail_schema.users ADD COLUMN can_upgrade VARCHAR;
 ```
 
-=== SenderHasAnySaaSPlan matcher
+=== IsPaying matcher
 
-The `SenderHasAnySaaSPlan` matcher can be used to determine if the sender of an email has a SaaS plan.
-
-=== SenderHasSaaSPlan matcher
-
-The `SenderHasSaaSPlan` matcher allows to match emails where the sender has a specific SaaS plan.
-This is useful for applying mail processing rules based on the sender's SaaS subscription.
-
-To use the matcher, specify a comma-separated list of SaaS plan names as the condition.
-For example, to match senders with either the `standard` or `premium` plan:
-
-[source,xml]
-----
-<mailet match="SenderHasSaaSPlan=standard,premium" class="..." />
-----
-
-If the sender's SaaS plan matches any of the specified plans, the matcher will return the recipients of the email.
+The `IsPaying` matcher can be used to determine if the sender of an email has a paying SaaS plan.
 
 === SaaSSubscriptionConsumer
 
