@@ -27,7 +27,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 
-public record SaaSSubscriptionMessage(String username, Boolean isPaying, String planName, MailLimitation mail) {
+public record SaaSSubscriptionMessage(String username, Boolean isPaying, Boolean canUpgrade, MailLimitation mail) {
     public static class SaaSSubscriptionMessageParseException extends RuntimeException {
         SaaSSubscriptionMessageParseException(String message, Throwable cause) {
             super(message, cause);
@@ -73,16 +73,16 @@ public record SaaSSubscriptionMessage(String username, Boolean isPaying, String 
     @JsonCreator
     public SaaSSubscriptionMessage(@JsonProperty("username") String username,
                                    @JsonProperty("isPaying") Boolean isPaying,
-                                   @JsonProperty("planName") String planName,
+                                   @JsonProperty("canUpgrade") Boolean canUpgrade,
                                    @JsonProperty("mail") MailLimitation mail) {
         Preconditions.checkNotNull(username, "username cannot be null");
         Preconditions.checkNotNull(isPaying, "isPaying cannot be null");
-        Preconditions.checkNotNull(planName, "planName cannot be null");
+        Preconditions.checkNotNull(canUpgrade, "planName cannot be null");
         Preconditions.checkNotNull(mail, "mail cannot be null");
 
         this.username = username;
         this.isPaying = isPaying;
-        this.planName = planName;
+        this.canUpgrade = canUpgrade;
         this.mail = mail;
     }
 }

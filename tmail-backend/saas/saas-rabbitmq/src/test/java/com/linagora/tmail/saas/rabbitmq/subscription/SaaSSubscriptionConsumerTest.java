@@ -51,13 +51,12 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
-public class SaaSSubscriptionConsumerTest {
+class SaaSSubscriptionConsumerTest {
     private static final String EXCHANGE_NAME = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
     private static final String ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
     private static final Username ALICE = Username.of("alice@james.org");
@@ -127,12 +126,12 @@ public class SaaSSubscriptionConsumerTest {
     }
 
     @Test
-    void shouldSetPlanNameWhenUserHasNoPlanYet() {
+    void shouldRegisterSaasAccountDetails() {
         String validMessage = String.format("""
             {
                 "username": "%s",
                 "isPaying": true,
-                "planName": "twake_standard",
+                "canUpgrade": true,
                 "mail": { "storageQuota": 12334534 }
             }
             """, ALICE.asString());
@@ -142,8 +141,8 @@ public class SaaSSubscriptionConsumerTest {
         await.untilAsserted(() -> {
             SaaSAccount saaSAccount = Mono.from(saasAccountRepository.getSaaSAccount(ALICE)).block();
             assertThat(saaSAccount).isNotNull();
-            assertThat(saaSAccount.saaSPlan())
-                .isEqualTo(new SaaSPlan("twake_standard"));
+            assertThat(saaSAccount.isPaying()).isTrue();
+            assertThat(saaSAccount.canUpgrade()).isTrue();
         });
     }
 
@@ -153,7 +152,7 @@ public class SaaSSubscriptionConsumerTest {
             {
                 "username": "%s",
                 "isPaying": true,
-                "planName": "twake_standard",
+                "canUpgrade": true,
                 "mail": { "storageQuota": 1234 }
             }
             """, ALICE.asString());
@@ -172,7 +171,7 @@ public class SaaSSubscriptionConsumerTest {
             {
                 "username": "%s",
                 "isPaying": true,
-                "planName": "twake_standard",
+                "canUpgrade": true,
                 "mail": { "storageQuota": -1 }
             }
             """, ALICE.asString());
@@ -188,13 +187,13 @@ public class SaaSSubscriptionConsumerTest {
     @Test
     void shouldUpdateNewPlanNameWhenNewSubscriptionUpdate() {
         Mono.from(saasAccountRepository.upsertSaasAccount(ALICE,
-            new SaaSAccount(new SaaSPlan("twake_standard")))).block();
+            new SaaSAccount(true, true))).block();
 
         String validMessage = String.format("""
             {
                 "username": "%s",
                 "isPaying": true,
-                "planName": "twake_premium",
+                "canUpgrade": false,
                 "mail": { "storageQuota": 12334534 }
             }
             """, ALICE.asString());
@@ -204,8 +203,7 @@ public class SaaSSubscriptionConsumerTest {
         await.untilAsserted(() -> {
             SaaSAccount saaSAccount = Mono.from(saasAccountRepository.getSaaSAccount(ALICE)).block();
             assertThat(saaSAccount).isNotNull();
-            assertThat(saaSAccount.saaSPlan())
-                .isEqualTo(new SaaSPlan("twake_premium"));
+            assertThat(saaSAccount.canUpgrade()).isFalse();
         });
     }
 
@@ -217,7 +215,7 @@ public class SaaSSubscriptionConsumerTest {
             {
                 "username": "%s",
                 "isPaying": true,
-                "planName": "twake_premium",
+                "canUpgrade": false,
                 "mail": { "storageQuota": 12334534 }
             }
             """, ALICE.asString());
@@ -233,7 +231,7 @@ public class SaaSSubscriptionConsumerTest {
     @Test
     void shouldNotEffectOtherUserSubscription() throws MailboxException {
         Mono.from(saasAccountRepository.upsertSaasAccount(ALICE,
-            new SaaSAccount(new SaaSPlan("twake_standard")))).block();
+            new SaaSAccount(true, true))).block();
         maxQuotaManager.setMaxStorage(userQuotaRootResolver.forUser(ALICE), QuotaSizeLimit.size(1234));
 
         // Update Bob subscription should not effect Alice subscription
@@ -241,7 +239,7 @@ public class SaaSSubscriptionConsumerTest {
             {
                 "username": "%s",
                 "isPaying": true,
-                "planName": "twake_premium",
+                "canUpgrade": false,
                 "mail": { "storageQuota": 12334534 }
             }
             """, BOB.asString());
@@ -250,8 +248,8 @@ public class SaaSSubscriptionConsumerTest {
         await.untilAsserted(() -> {
             SaaSAccount saaSAccount = Mono.from(saasAccountRepository.getSaaSAccount(ALICE)).block();
             assertThat(saaSAccount).isNotNull();
-            assertThat(saaSAccount.saaSPlan())
-                .isEqualTo(new SaaSPlan("twake_standard"));
+            assertThat(saaSAccount.isPaying()).isTrue();
+            assertThat(saaSAccount.canUpgrade()).isTrue();
             assertThat(maxQuotaManager.getMaxStorage(userQuotaRootResolver.forUser(ALICE)))
                 .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
         });
@@ -263,7 +261,7 @@ public class SaaSSubscriptionConsumerTest {
             {
                 "username": "%s",
                 "isPaying": true,
-                "planName": "twake_standard",
+                "canUpgrade": false,
                 "mail": { "storageQuota": 1234 }
             }
             """, ALICE.asString());
@@ -274,29 +272,9 @@ public class SaaSSubscriptionConsumerTest {
         await.untilAsserted(() -> {
             SaaSAccount saaSAccount = Mono.from(saasAccountRepository.getSaaSAccount(ALICE)).block();
             assertThat(saaSAccount).isNotNull();
-            assertThat(saaSAccount.saaSPlan())
-                .isEqualTo(new SaaSPlan("twake_standard"));
+            assertThat(saaSAccount.canUpgrade()).isFalse();
             assertThat(maxQuotaManager.getMaxStorage(userQuotaRootResolver.forUser(ALICE)))
                 .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
-        });
-    }
-
-    @Test
-    void shouldNotSetPlanForNonExistingUser() {
-        String message = String.format("""
-            {
-                "username": "%s",
-                "isPaying": true,
-                "planName": "twake_standard",
-                "mail": { "storageQuota": 12334534 }
-            }
-            """, NON_EXISTING_USER.asString());
-
-        publishAmqpSaaSSubscriptionMessage(message);
-
-        await.untilAsserted(() -> {
-            SaaSAccount saaSAccount = Mono.from(saasAccountRepository.getSaaSAccount(NON_EXISTING_USER)).block();
-            assertThat(saaSAccount).isNull();
         });
     }
 
@@ -310,7 +288,7 @@ public class SaaSSubscriptionConsumerTest {
             {
                 "username": "%s",
                 "isPaying": true,
-                "planName": "twake_standard",
+                "canUpgrade": false,
                 "mail": { "storageQuota": 12334534 }
             }
             """, ALICE.asString());
@@ -318,8 +296,7 @@ public class SaaSSubscriptionConsumerTest {
         await.untilAsserted(() -> {
             SaaSAccount saaSAccount = Mono.from(saasAccountRepository.getSaaSAccount(ALICE)).block();
             assertThat(saaSAccount).isNotNull();
-            assertThat(saaSAccount.saaSPlan())
-                .isEqualTo(new SaaSPlan("twake_standard"));
+            assertThat(saaSAccount.canUpgrade()).isFalse();
         });
     }
 
