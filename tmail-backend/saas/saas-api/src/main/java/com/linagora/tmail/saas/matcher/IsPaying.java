@@ -29,26 +29,27 @@ import org.apache.mailet.base.GenericMatcher;
 
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 
 /**
  * Matches mail where the sender has a SaaS plan.
  */
-public class SenderHasAnySaaSPlan extends GenericMatcher {
+public class IsPaying extends GenericMatcher {
     private final SaaSAccountRepository saaSAccountRepository;
 
     @Inject
-    public SenderHasAnySaaSPlan(SaaSAccountRepository saaSAccountRepository) {
+    public IsPaying(SaaSAccountRepository saaSAccountRepository) {
         this.saaSAccountRepository = saaSAccountRepository;
     }
 
     @Override
-    public final Collection<MailAddress> match(Mail mail) {
+    public Collection<MailAddress> match(Mail mail) {
         return Mono.justOrEmpty(mail.getMaybeSender().asOptional())
             .map(Username::fromMailAddress)
-            .flatMap(sender -> Mono.from(saaSAccountRepository.getSaaSAccount(sender))
-                .map(any -> mail.getRecipients()))
+            .filterWhen(sender -> Mono.from(saaSAccountRepository.getSaaSAccount(sender)).map(SaaSAccount::isPaying))
+            .map(any -> mail.getRecipients())
             .switchIfEmpty(Mono.just(ImmutableList.of()))
             .block();
     }
