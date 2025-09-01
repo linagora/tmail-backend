@@ -18,11 +18,13 @@
 
 package com.linagora.tmail.saas.api.cassandra;
 
+import static com.datastax.oss.driver.api.core.type.codec.TypeCodecs.BOOLEAN;
 import static com.datastax.oss.driver.api.core.type.codec.TypeCodecs.TEXT;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
-import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.SAAS_PLAN;
+import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.CAN_UPGRADE;
+import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.IS_PAYING;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.TABLE_NAME;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.USER;
 
@@ -36,7 +38,6 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
@@ -50,10 +51,11 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
         this.executor = new CassandraAsyncExecutor(session);
         this.insertPlanStatement = session.prepare(insertInto(TABLE_NAME)
             .value(USER, bindMarker(USER))
-            .value(SAAS_PLAN, bindMarker(SAAS_PLAN))
+            .value(CAN_UPGRADE, bindMarker(CAN_UPGRADE))
+            .value(IS_PAYING, bindMarker(IS_PAYING))
             .build());
         this.selectPlanStatement = session.prepare(selectFrom(TABLE_NAME)
-            .column(SAAS_PLAN)
+            .columns(IS_PAYING, CAN_UPGRADE)
             .whereColumn(USER).isEqualTo(bindMarker(USER))
             .build());
     }
@@ -62,14 +64,15 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
     public Publisher<SaaSAccount> getSaaSAccount(Username username) {
         return Mono.from(executor.executeSingleRow(selectPlanStatement.bind()
                 .setString(USER, username.asString())))
-            .mapNotNull(row -> row.getString(SAAS_PLAN))
-            .map(saasPlanString -> new SaaSAccount(new SaaSPlan(saasPlanString)));
+            .mapNotNull(row -> new SaaSAccount(row.getBoolean(CAN_UPGRADE), row.getBoolean(IS_PAYING)))
+            .switchIfEmpty(Mono.just(SaaSAccount.DEFAULT));
     }
 
     @Override
     public Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount) {
         return Mono.from(executor.executeVoid(insertPlanStatement.bind()
             .set(USER, username.asString(), TEXT)
-            .set(SAAS_PLAN, saaSAccount.saaSPlan().value(), TEXT)));
+            .set(CAN_UPGRADE, saaSAccount.canUpgrade(), BOOLEAN)
+            .set(IS_PAYING, saaSAccount.isPaying(), BOOLEAN)));
     }
 }

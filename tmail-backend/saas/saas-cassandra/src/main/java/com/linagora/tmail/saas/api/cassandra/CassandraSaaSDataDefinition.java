@@ -34,13 +34,15 @@ import com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefini
 public interface CassandraSaaSDataDefinition {
     String TABLE_NAME = TMailCassandraUsersRepositoryDataDefinition.TABLE_NAME;
     CqlIdentifier USER = TMailCassandraUsersRepositoryDataDefinition.USER;
-    CqlIdentifier SAAS_PLAN = CqlIdentifier.fromCql("saas_plan");
+    CqlIdentifier CAN_UPGRADE = CqlIdentifier.fromCql("can_upgrade");
+    CqlIdentifier IS_PAYING = CqlIdentifier.fromCql("is_paying");
 
     @VisibleForTesting
     CassandraDataDefinition MODULE = createUserTableDefinition(userTableWithSaaSSupport());
 
     static Function<CreateTableStart, CreateTable> userTableWithSaaSSupport() {
         return statement -> TMailCassandraUsersRepositoryDataDefinition.defaultCreateUserTableStatement(statement)
-            .withColumn(SAAS_PLAN, DataTypes.TEXT);
+            .withColumn(CAN_UPGRADE, DataTypes.BOOLEAN)
+            .withColumn(IS_PAYING, DataTypes.BOOLEAN);
     }
 }

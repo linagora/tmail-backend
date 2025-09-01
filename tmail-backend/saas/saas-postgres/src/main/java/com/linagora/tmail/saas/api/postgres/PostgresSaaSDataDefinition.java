@@ -36,11 +36,13 @@ import com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition;
 public interface PostgresSaaSDataDefinition {
     Table<Record> TABLE_NAME = TMailPostgresUserDataDefinition.PostgresUserTable.TABLE_NAME;
     Field<String> USERNAME = TMailPostgresUserDataDefinition.PostgresUserTable.USERNAME;
-    Field<String> SAAS_PLAN = DSL.field("saas_plan", SQLDataType.VARCHAR);
+    Field<Boolean> CAN_UPGRADE = DSL.field("can_upgrade", SQLDataType.BOOLEAN);
+    Field<Boolean> IS_PAYING = DSL.field("is_paying", SQLDataType.BOOLEAN);
 
     static PostgresTable.CreateTableFunction userTableWithSaaSSupport() {
         return (DSLContext dsl, String tableName) -> defaultUserTableStatement(dsl, tableName)
-            .column(SAAS_PLAN);
+            .column(CAN_UPGRADE)
+            .column(IS_PAYING);
     }
 
     @VisibleForTesting

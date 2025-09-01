@@ -18,5 +18,6 @@
 
 package com.linagora.tmail.saas.model;
 
-public record SaaSAccount(SaaSPlan saaSPlan) {
+public record SaaSAccount(boolean canUpgrade, boolean isPaying) {
+    public static SaaSAccount DEFAULT = new SaaSAccount(true, false);
 }
