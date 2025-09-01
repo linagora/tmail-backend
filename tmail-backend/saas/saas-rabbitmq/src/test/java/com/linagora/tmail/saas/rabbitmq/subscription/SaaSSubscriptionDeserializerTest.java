@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 
-public class SaaSSubscriptionDeserializerTest {
+class SaaSSubscriptionDeserializerTest {
     @Test
     void parseInvalidAmqpMessageShouldThrowException() {
         String invalidMessage = "{ invalid json }";
@@ -40,7 +40,7 @@ public class SaaSSubscriptionDeserializerTest {
             {
                 "username": "alice@twake.app",
                 "isPaying": true,
-                "planName": "twake_standard",
+                "canUpgrade": true,
                 "mail": { "storageQuota": 12334534 }
             }
             """;
@@ -50,7 +50,7 @@ public class SaaSSubscriptionDeserializerTest {
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(message.username()).isEqualTo("alice@twake.app");
             softly.assertThat(message.isPaying()).isTrue();
-            softly.assertThat(message.planName()).isEqualTo("twake_standard");
+            softly.assertThat(message.canUpgrade()).isTrue();
             softly.assertThat(message.mail().storageQuota()).isEqualTo(12334534L);
         });
     }
@@ -60,7 +60,7 @@ public class SaaSSubscriptionDeserializerTest {
         String message = """
             {
                 "isPaying": true,
-                "planName": "twake_standard",
+                "canUpgrade": true,
                 "mail": { "storageQuota": 12334534 }
             }
             """;
@@ -75,7 +75,7 @@ public class SaaSSubscriptionDeserializerTest {
         String message = """
             {
                 "username": "alice@twake.app",
-                "planName": "twake_standard",
+                "canUpgrade": true,
                 "mail": { "storageQuota": 12334534 }
             }
             """;
@@ -86,7 +86,7 @@ public class SaaSSubscriptionDeserializerTest {
     }
 
     @Test
-    void parseMissingRequiredPlanNameShouldThrowException() {
+    void parseMissingRequiredCanUpgradeShouldThrowException() {
         String message = """
             {
                 "username": "alice@twake.app",
@@ -106,6 +106,7 @@ public class SaaSSubscriptionDeserializerTest {
             {
                 "username": "alice@twake.app",
                 "isPaying": true,
+                "canUpgrade": true,
                 "planName": "twake_standard"
             }
             """;
@@ -120,8 +121,8 @@ public class SaaSSubscriptionDeserializerTest {
         String message = """
             {
                 "username": "alice@twake.app",
-                "isPaying": false,
-                "planName": "twake_standard",
+                "isPaying": true,
+                "canUpgrade": true,
                 "mail": { "storageQuota": 123, "extraField": "ignored" },
                 "extraField": "ignored"
             }
@@ -131,8 +132,8 @@ public class SaaSSubscriptionDeserializerTest {
 
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(parsed.username()).isEqualTo("alice@twake.app");
-            softly.assertThat(parsed.isPaying()).isFalse();
-            softly.assertThat(parsed.planName()).isEqualTo("twake_standard");
+            softly.assertThat(parsed.isPaying()).isTrue();
+            softly.assertThat(parsed.canUpgrade()).isTrue();
             softly.assertThat(parsed.mail().storageQuota()).isEqualTo(123L);
         });
     }
@@ -143,7 +144,7 @@ public class SaaSSubscriptionDeserializerTest {
             {
                 "username": "alice@twake.app",
                 "isPaying": true,
-                "planName": "twake_standard",
+                "canUpgrade": true,
                 "mail": { "storageQuota": -1 }
             }
             """;
