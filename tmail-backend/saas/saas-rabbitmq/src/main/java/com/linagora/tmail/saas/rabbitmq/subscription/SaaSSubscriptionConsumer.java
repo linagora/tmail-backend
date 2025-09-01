@@ -45,7 +45,6 @@ import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -183,17 +182,13 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> handleSubscriptionMessage(SaaSSubscriptionMessage subscriptionMessage) {
+        SaaSAccount saaSAccount = new SaaSAccount(subscriptionMessage.canUpgrade(), subscriptionMessage.isPaying());
         return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(subscriptionMessage.username())))
             .map(User::getUserName)
-            .flatMap(username -> updatePlan(username, subscriptionMessage.planName())
+            .flatMap(username -> Mono.from(saasAccountRepository.upsertSaasAccount(username, saaSAccount))
                 .then(updateStorageQuota(username, subscriptionMessage.mail().storageQuota()))
-                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for user: {}, isPaying: {}, planName: {}, storageQuota: {}",
-                    username, subscriptionMessage.isPaying(), subscriptionMessage.planName(), subscriptionMessage.mail().storageQuota())));
-    }
-
-    private Mono<Void> updatePlan(Username username, String planName) {
-        return Mono.from(saasAccountRepository.upsertSaasAccount(username,
-            new SaaSAccount(new SaaSPlan(planName))));
+                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for user: {}, isPaying: {}, canUpgrade: {}, storageQuota: {}",
+                    username, subscriptionMessage.isPaying(), subscriptionMessage.canUpgrade(), subscriptionMessage.mail().storageQuota())));
     }
 
     private Mono<Void> updateStorageQuota(Username username, Long storageQuota) {
