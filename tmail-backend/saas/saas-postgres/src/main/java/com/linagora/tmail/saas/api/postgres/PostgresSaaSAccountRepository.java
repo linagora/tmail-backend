@@ -18,7 +18,8 @@
 
 package com.linagora.tmail.saas.api.postgres;
 
-import static com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition.SAAS_PLAN;
+import static com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition.CAN_UPGRADE;
+import static com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition.IS_PAYING;
 import static com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition.TABLE_NAME;
 import static com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition.USERNAME;
 
@@ -30,7 +31,6 @@ import org.reactivestreams.Publisher;
 
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
-import com.linagora.tmail.saas.model.SaaSPlan;
 
 import reactor.core.publisher.Mono;
 
@@ -44,20 +44,21 @@ public class PostgresSaaSAccountRepository implements SaaSAccountRepository {
 
     @Override
     public Publisher<SaaSAccount> getSaaSAccount(Username username) {
-        return Mono.from(executor.executeRow(dsl -> Mono.from(dsl.select(SAAS_PLAN)
+        return Mono.from(executor.executeRow(dsl -> Mono.from(dsl.select(CAN_UPGRADE, IS_PAYING)
                 .from(TABLE_NAME)
                 .where(USERNAME.eq(username.asString())))))
-            .mapNotNull(record -> record.get(SAAS_PLAN))
-            .map(saasPlan -> new SaaSAccount(new SaaSPlan(saasPlan)));
+            .mapNotNull(record  -> new SaaSAccount(record.get(CAN_UPGRADE), record.get(IS_PAYING)));
     }
 
     @Override
     public Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount) {
         return executor.executeVoid(dsl -> Mono.from(dsl.insertInto(TABLE_NAME)
             .set(USERNAME, username.asString())
-            .set(SAAS_PLAN, saaSAccount.saaSPlan().value())
+            .set(CAN_UPGRADE, saaSAccount.canUpgrade())
+            .set(IS_PAYING, saaSAccount.isPaying())
             .onConflict(USERNAME)
             .doUpdate()
-            .set(SAAS_PLAN, saaSAccount.saaSPlan().value())));
+            .set(CAN_UPGRADE, saaSAccount.canUpgrade())
+            .set(IS_PAYING, saaSAccount.isPaying())));
     }
 }
