@@ -12,6 +12,24 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+## 1.0.10
+
+### Adding settings and rate limiting plan id columns to Cassandra user table
+
+Date: 01/09/2025
+
+Issue: https://github.com/linagora/tmail-backend/issues/1831
+
+Concerned product: Distributed TMail
+
+Add `can_upgrade`, `is_paying`columns to the `user` table to store saas plan information.
+
+To add these columns, you need to run the following CQL commands:
+```
+ALTER TABLE tmail_keyspace.user ADD can_upgrade boolean;
+ALTER TABLE tmail_keyspace.user ADD is_paying boolean;
+```
+
 ## 1.0.9
 
 ### Adding settings and rate limiting plan id columns to Cassandra user table
