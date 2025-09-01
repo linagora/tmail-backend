@@ -10,4 +10,5 @@ com:linagora:params:saas
 
 The associated object has the following field:
 
-- `saasPlan`: *String*. The SaaS plan name of the user.
+- `canUpgrade`: *Boolean*. True if the user can upgrade to a higher plan.
+- `isPaying`: *Boolean*. True if the user is currently on a paying plan.

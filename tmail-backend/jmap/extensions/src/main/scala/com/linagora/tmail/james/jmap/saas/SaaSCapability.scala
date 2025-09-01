@@ -22,7 +22,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SAAS
 import com.linagora.tmail.saas.api.SaaSAccountRepository
-import com.linagora.tmail.saas.model.SaaSPlan
+import com.linagora.tmail.saas.model.{SaaSAccount}
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
@@ -30,8 +30,8 @@ import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProp
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.SMono
 
-case class SaaSCapabilityProperties(saasPlan: SaaSPlan) extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj("saasPlan" -> saasPlan.value())
+case class SaaSCapabilityProperties(saasAccount: SaaSAccount) extends CapabilityProperties {
+  override def jsonify(): JsObject = Json.obj("isPaying" -> saasAccount.isPaying, "canUpgrade" -> saasAccount.canUpgrade)
 }
 
 final case class SaaSCapability(properties: SaaSCapabilityProperties,
@@ -43,8 +43,6 @@ class SaaSCapabilityFactory @Inject()(val saaSUserRepository: SaaSAccountReposit
 
   override def createReactive(urlPrefixes: UrlPrefixes, username: Username): SMono[Capability] =
     SMono(saaSUserRepository.getSaaSAccount(username))
-      .map(saasAccount => saasAccount.saaSPlan())
-      .switchIfEmpty(SMono.fromCallable(() => SaaSPlan.FREE))
       .map(saaSPlan => SaaSCapability(SaaSCapabilityProperties(saaSPlan)))
 
   override def id(): CapabilityIdentifier = LINAGORA_SAAS
