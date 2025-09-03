@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.dav.xml;
 
+import java.util.List;
+
 import jakarta.xml.bind.annotation.XmlElement;
 
 import com.google.common.base.MoreObjects;
@@ -27,14 +29,26 @@ public class DavResponse {
     private DavHref href;
 
     @XmlElement(name = "propstat", namespace = "DAV:")
-    private DavPropstat propstat;
+    private List<DavPropstat> propstats;
 
     public DavHref getHref() {
         return href;
     }
 
+    private DavPropstat propstat;
+
     public DavPropstat getPropstat() {
+        if (propstat == null && propstats != null) {
+            propstat = propstats.stream()
+                .filter(p -> p.getStatus().isSuccess())
+                .findFirst()
+                .orElse(propstats.getFirst());
+        }
         return propstat;
+    }
+
+    public List<DavPropstat> getPropstats() {
+        return propstats;
     }
 
     public boolean isCalendarCollectionResponse() {

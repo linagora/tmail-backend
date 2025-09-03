@@ -118,7 +118,7 @@ public class CalDavEventRepositoryTest {
     private BlobId setupCalendarResolver(String eventUid, Optional<String> recurrenceIdField) {
         String requestCalendar = "BEGIN:VCALENDAR\n" +
             "VERSION:2.0\n" +
-            "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.2.2//EN\n" +
             "METHOD:REQUEST\n" +
             "BEGIN:VEVENT\n" +
             "UID:" + eventUid + "\n" +
@@ -184,7 +184,7 @@ public class CalDavEventRepositoryTest {
         String recurrenceIdValue = "RECURRENCE-ID:20250409T080000Z";
         String calendarAsString = "BEGIN:VCALENDAR\n" +
             "VERSION:2.0\n" +
-            "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.2.2//EN\n" +
             "CALSCALE:GREGORIAN\n" +
             "BEGIN:VTIMEZONE\n" +
             "TZID:Europe/Paris\n" +
@@ -253,7 +253,7 @@ public class CalDavEventRepositoryTest {
         String recurrenceIdValue = "RECURRENCE-ID:20250409T080000Z";
         String calendarAsString = "BEGIN:VCALENDAR\n" +
             "VERSION:2.0\n" +
-            "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.2.2//EN\n" +
             "CALSCALE:GREGORIAN\n" +
             "BEGIN:VTIMEZONE\n" +
             "TZID:Europe/Paris\n" +
@@ -461,7 +461,7 @@ public class CalDavEventRepositoryTest {
         String eventUidA = UUID.randomUUID().toString();
         String calendarAsString = "BEGIN:VCALENDAR\n" +
             "VERSION:2.0\n" +
-            "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.2.2//EN\n" +
             "CALSCALE:GREGORIAN\n" +
             "BEGIN:VTIMEZONE\n" +
             "TZID:Europe/Paris\n" +
@@ -693,7 +693,7 @@ public class CalDavEventRepositoryTest {
         assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
             .isEqualToNormalizingNewlines("BEGIN:VCALENDAR\n" +
                 "VERSION:2.0\n" +
-                "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+                "PRODID:-//Sabre//Sabre VObject 4.2.2//EN\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
                 "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
@@ -766,7 +766,7 @@ public class CalDavEventRepositoryTest {
         String eventUidA = UUID.randomUUID().toString();
         String calendar = "BEGIN:VCALENDAR\n" +
             "VERSION:2.0\n" +
-            "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.2.2//EN\n" +
             "BEGIN:VEVENT\n" +
             "UID:" + eventUidA + "\n" +
             "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
@@ -802,7 +802,7 @@ public class CalDavEventRepositoryTest {
         assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
             .isEqualToNormalizingNewlines("BEGIN:VCALENDAR\n" +
                 "VERSION:2.0\n" +
-                "PRODID:-//Sabre//Sabre VObject 4.1.3//EN\n" +
+                "PRODID:-//Sabre//Sabre VObject 4.2.2//EN\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
                 "DTSTART;TZID=Europe/Paris:20250328T090000\n" +

@@ -158,7 +158,7 @@ class I18NCalendarEventReplyMessageGeneratorTest {
     val requestDoesNotContainCalScale: String =
       s"""BEGIN:VCALENDAR
          |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
          |METHOD:REQUEST
          |BEGIN:VTIMEZONE
          |TZID:Europe/Paris

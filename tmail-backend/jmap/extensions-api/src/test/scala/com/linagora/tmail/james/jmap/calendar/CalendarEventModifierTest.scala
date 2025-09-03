@@ -265,7 +265,7 @@ class CalendarEventModifierTest {
     val originalCalendar: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
       """BEGIN:VCALENDAR
         |VERSION:2.0
-        |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+        |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
         |BEGIN:VTIMEZONE
         |TZID:Asia/Jakarta
         |BEGIN:STANDARD
@@ -461,7 +461,7 @@ class CalendarEventModifierTest {
       val baseCalendar =
         """BEGIN:VCALENDAR
           |VERSION:2.0
-          |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+          |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
           |CALSCALE:GREGORIAN
           |BEGIN:VTIMEZONE
           |TZID:Asia/Ho_Chi_Minh
@@ -517,7 +517,7 @@ class CalendarEventModifierTest {
         .isEqualToNormalizingNewlines(
           """BEGIN:VCALENDAR
             |VERSION:2.0
-            |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+            |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
             |CALSCALE:GREGORIAN
             |BEGIN:VTIMEZONE
             |TZID:Asia/Ho_Chi_Minh
@@ -562,7 +562,7 @@ class CalendarEventModifierTest {
       val baseCalendar =
         """BEGIN:VCALENDAR
           |VERSION:2.0
-          |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+          |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
           |CALSCALE:GREGORIAN
           |BEGIN:VTIMEZONE
           |TZID:Asia/Ho_Chi_Minh
