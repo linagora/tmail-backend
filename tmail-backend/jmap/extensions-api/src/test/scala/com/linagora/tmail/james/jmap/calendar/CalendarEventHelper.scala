@@ -49,7 +49,7 @@ case class CalendarEventHelper(uid: String,
   def asText: String =
     s"""BEGIN:VCALENDAR
        |VERSION:2.0
-       |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+       |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
        |BEGIN:VTIMEZONE
        |TZID:Asia/Jakarta
        |BEGIN:STANDARD
@@ -81,7 +81,7 @@ case class CalendarEventHelper(uid: String,
     CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
       s"""BEGIN:VCALENDAR
         |VERSION:2.0
-        |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+        |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
         |METHOD:COUNTER
         |BEGIN:VEVENT
         |UID:$uid

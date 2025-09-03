@@ -52,7 +52,7 @@ object CalendarEventReplyGeneratorTest {
     val payload: String =
       s"""BEGIN:VCALENDAR
          |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
          |CALSCALE:GREGORIAN
          |METHOD:REQUEST
          |BEGIN:VTIMEZONE
@@ -150,7 +150,7 @@ class CalendarEventReplyGeneratorTest {
     val invitationDoesNotContainDtStampAndLastModified: String =
       s"""BEGIN:VCALENDAR
          |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
          |CALSCALE:GREGORIAN
          |METHOD:REQUEST
          |BEGIN:VTIMEZONE
@@ -280,7 +280,7 @@ class CalendarEventReplyGeneratorTest {
     val requestDoesNotContainCalScale: String =
       s"""BEGIN:VCALENDAR
          |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
          |METHOD:REQUEST
          |BEGIN:VTIMEZONE
          |TZID:Europe/Paris

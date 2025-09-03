@@ -719,7 +719,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
     val originalCalendarAsString =
       s"""BEGIN:VCALENDAR
          |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
          |BEGIN:VEVENT
          |UID:$eventUid
          |DTSTART;TZID=Europe/Paris:20250328T090000
@@ -747,7 +747,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
     val requestCalendarWithRecurrenceId: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
       s"""BEGIN:VCALENDAR
          |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
          |CALSCALE:GREGORIAN
          |METHOD:REQUEST
          |BEGIN:VEVENT
@@ -770,7 +770,7 @@ trait LinagoraCalendarEventAttendanceGetMethodContract {
     val requestCalendarWithoutRecurrenceId: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
       s"""BEGIN:VCALENDAR
          |VERSION:2.0
-         |PRODID:-//Sabre//Sabre VObject 4.1.3//EN
+         |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
          |CALSCALE:GREGORIAN
          |METHOD:REQUEST
          |BEGIN:VEVENT
