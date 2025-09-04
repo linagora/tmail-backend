@@ -1,0 +1,15 @@
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Subject: Notification de Statut de Distribution (Échec) pour le message à {{RECIPIENTS}}: erreur de réécriture du destinataire
+
+Ceci est une notification de statut de distribution générée automatiquement.
+
+Nous sommes désolés de vous informer que votre message n'a pas pu être délivré en raison d'un problème de réécriture du destinataire.
+
+Détails :
+- De: {{SENDER}}
+- À: {{RECIPIENTS}}
+- Objet original: {{SUBJECT}}
+- Date: {{DATE}}
+
+Veuillez contacter l’administrateur pour plus d’informations.
