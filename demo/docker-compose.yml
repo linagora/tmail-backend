@@ -60,7 +60,7 @@ services:
 
   ldap:
     container_name: ldap
-    image: bitnami/openldap
+    image: bitnamilegacy/openldap
     ports:
       - "389:389"
       - "636:636"
