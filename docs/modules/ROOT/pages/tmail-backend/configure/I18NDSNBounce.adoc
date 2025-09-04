@@ -1,0 +1,47 @@
+=== I18NDSNBounce
+
+Generates a Delivery Status Notification (DSN) with internationalization (i18n) support, extending *DSNBounce*. This mailet allows sending bounce messages in the recipient's preferred language, using configurable templates and content types.
+
+The bounce message is generated from a mustache template, selected based on the sender's language preference (from JMAP settings or Content-Language header), and falls back to a default language if not available.
+
+Supported configuration parameters:
+
+* *debug*: true or false, default=false
+* *passThrough*: true or false, default=true
+* *attachment*: message, heads or none, default=message
+* *sender*: an address or postmaster or sender or unaltered, default=postmaster
+* *prefix*: optional subject prefix prepended to the original message
+* *action*: failed, delayed, delivered, expanded or relayed, default=failed
+* *defaultStatus*: SMTP status code, default=unknown
+* *supportedLanguages*: comma-separated list of supported language tags (e.g. `en,fr,vi`)
+* *i18nDsnTemplateDirectory*: directory path for i18n DSN templates (default: `classpath://eml-template/dsn/`)
+* *contentType*: MIME content type for the bounce message (default: `text/plain; charset=UTF-8`)
+* *defaultLanguage*: default language tag used if no preference is found (default: `en`)
+
+Sample configuration:
+
+....
+<mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
+  <sender>postmaster@domain.com</sender>
+  <prefix>[DSN]</prefix>
+  <attachment>message</attachment>
+  <passThrough>true</passThrough>
+  <debug>false</debug>
+  <action>failed</action>
+  <defaultStatus>5.0.0</defaultStatus>
+  <supportedLanguages>en,fr,vi</supportedLanguages>
+  <i18nDsnTemplateDirectory>file://eml-template/dsn/</i18nDsnTemplateDirectory>
+  <contentType>text/plain; charset=UTF-8</contentType>
+  <defaultLanguage>en</defaultLanguage>
+</mailet>
+....
+
+The template file is selected as "dsn-bounce-<language>.eml" from the configured directory. If the recipient's language is not supported, the default language is used.
+
+The template variables available for use in mustache templates are:
+
+* *SENDER*: the original mail's sender address
+* *RECIPIENTS*: comma-separated list of the original mail's recipient addresses
+* *SUBJECT*: the original email subject
+* *DATE*: the current date/time, formatted according to the sender's locale and time offset if available
+* *ERROR_MESSAGE*: the error message for the bounce

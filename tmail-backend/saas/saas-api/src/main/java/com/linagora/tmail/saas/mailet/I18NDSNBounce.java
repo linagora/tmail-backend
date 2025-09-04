@@ -76,6 +76,60 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import scala.jdk.javaapi.OptionConverters;
 
+/**
+ * <p>
+ * Generates a Delivery Status Notification (DSN) with internationalization (i18n) support, extending {@link DSNBounce}.
+ * This mailet allows sending bounce messages in the recipient's preferred language, using configurable templates and content types.
+ * </p>
+ *
+ * <p>
+ * The bounce message is generated from a mustache template, selected based on the recipient's language preference (from JMAP settings or Content-Language header),
+ * and falls back to a default language if not available. The template variables include sender, recipients, subject, date, and error message.
+ * </p>
+ *
+ * <p>
+ * Supported configuration parameters:
+ * <ul>
+ *   <li><b>debug</b>: true or false, default=false</li>
+ *   <li><b>passThrough</b>: true or false, default=true</li>
+ *   <li><b>attachment</b>: message, heads or none, default=message</li>
+ *   <li><b>sender</b>: an address or postmaster or sender or unaltered, default=postmaster</li>
+ *   <li><b>prefix</b>: optional subject prefix prepended to the original message</li>
+ *   <li><b>action</b>: failed, delayed, delivered, expanded or relayed, default=failed</li>
+ *   <li><b>defaultStatus</b>: SMTP status code, default=unknown</li>
+ *   <li><b>supportedLanguages</b>: comma-separated list of supported language tags (e.g. "en,fr,vi")</li>
+ *   <li><b>i18nDsnTemplateDirectory</b>: directory path for i18n DSN templates (default: classpath://eml-template/dsn/)</li>
+ *   <li><b>contentType</b>: MIME content type for the bounce message (default: text/plain; charset=UTF-8)</li>
+ *   <li><b>defaultLanguage</b>: default language tag used if no preference is found (default: "en")</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * Example configuration:
+ * </p>
+ * <pre>
+ * {@code
+ * <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
+ *   <sender>postmaster</sender>
+ *   <attachment>message</attachment>
+ *   <passThrough>true</passThrough>
+ *   <debug>false</debug>
+ *   <action>failed</action>
+ *   <defaultStatus>5.0.0</defaultStatus>
+ *   <supportedLanguages>en,fr,de</supportedLanguages>
+ *   <i18nDsnTemplateDirectory>classpath://eml-template/dsn/</i18nDsnTemplateDirectory>
+ *   <contentType>text/plain; charset=UTF-8</contentType>
+ *   <defaultLanguage>en</defaultLanguage>
+ * </mailet>
+ * }
+ * </pre>
+ *
+ * <p>
+ * The template file is selected as "dsn-bounce-<language>.eml" from the configured directory. If the recipient's language is not supported, the default language is used.
+ * </p>
+ *
+ * @see DSNBounce
+ */
 public class I18NDSNBounce extends DSNBounce {
     private static final Logger LOGGER = LoggerFactory.getLogger(I18NDSNBounce.class);
     private static final String SUPPORTED_LANGUAGES_PARAMETER = "supportedLanguages";
