@@ -1,0 +1,14 @@
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Subject: Thông báo Trạng thái Giao thư (Thất bại) đối với thư gửi đến {{RECIPIENTS}}: không có người dùng như vậy ở đây
+
+Đây là một Thông báo Trạng thái Giao thư được tạo tự động.
+Chúng tôi rất tiếc phải thông báo rằng thư của bạn không thể được gửi đi vì không có người dùng nào như vậy ở đây.
+
+Chi tiết:
+- Người gửi: {{SENDER}}
+- Người nhận: {{RECIPIENTS}}
+- Tiêu đề gốc: {{SUBJECT}}
+- Ngày: {{DATE}}
+
+Vui lòng liên hệ quản trị viên để biết thêm thông tin.
