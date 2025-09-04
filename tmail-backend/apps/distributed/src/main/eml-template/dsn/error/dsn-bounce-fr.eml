@@ -1,6 +1,4 @@
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Subject: Notification de Statut de Distribution (Échec) pour le message à {{RECIPIENTS}}: erreur inattendue
+# Notification de Statut de Distribution (Échec) pour le message à {{RECIPIENTS}}: erreur inattendue
 
 Ceci est une notification de statut de distribution générée automatiquement.
 

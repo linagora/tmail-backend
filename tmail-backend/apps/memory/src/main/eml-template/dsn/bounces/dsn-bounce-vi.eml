@@ -1,6 +1,4 @@
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Subject: Thông báo Trạng thái Giao thư (Thất bại) đối với thư gửi đến {{RECIPIENTS}}
+# Thông báo Trạng thái Giao thư (Thất bại) đối với thư gửi đến {{RECIPIENTS}}
 
 Đây là một Thông báo Trạng thái Giao thư được tạo tự động.
 Chúng tôi rất tiếc phải thông báo rằng thư của bạn không thể được gửi đi.
