@@ -136,7 +136,7 @@
             <mailet match="All" class="MetricsMailet">
                 <metricName>bounces</metricName>
             </mailet>
-            <mailet match="All" class="I18NDSNBounce">
+            <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
                 <passThrough>false</passThrough>
                 <i18nDsnTemplateDirectory>file://eml-template/dsn/</i18nDsnTemplateDirectory>
                 <supportedLanguages>en,fr,ru,vi</supportedLanguages>
