@@ -1,0 +1,12 @@
+# Delivery Status Notification (Failure) for message to {{RECIPIENTS}}: no such user here
+
+This is an automatically generated Delivery Status Notification.
+We're sorry to inform you that your message could not be delivered because the given user do not exist.
+
+Details:
+- From: {{SENDER}}
+- To: {{RECIPIENTS}}
+- Original subject: {{SUBJECT}}
+- Date: {{DATE}}
+
+Please contact the administrator for more information.

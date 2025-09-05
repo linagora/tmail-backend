@@ -1,15 +1,15 @@
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Subject: Thông báo Trạng thái Giao thư (Thất bại) đối với thư gửi đến {{RECIPIENTS}}
+Subject: Thông báo Trạng thái Giao thư (Thất bại) đối với thư gửi đến {{RECIPIENTS}}: lỗi ghi lại người nhận
 
 Đây là một Thông báo Trạng thái Giao thư được tạo tự động.
-Chúng tôi rất tiếc phải thông báo rằng thư của bạn không thể được gửi đi.
+
+Chúng tôi rất tiếc phải thông báo rằng tin nhắn của bạn không thể gửi được do lỗi noop trong quá trình ghi lại người nhận.
 
 Chi tiết:
 - Người gửi: {{SENDER}}
 - Người nhận: {{RECIPIENTS}}
 - Tiêu đề gốc: {{SUBJECT}}
 - Ngày: {{DATE}}
-- Thông báo lỗi: {{ERROR_MESSAGE}}
 
 Vui lòng liên hệ quản trị viên để biết thêm thông tin.

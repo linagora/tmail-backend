@@ -1,0 +1,13 @@
+# Notification de Statut de Distribution (Échec) pour le message à {{RECIPIENTS}}
+
+Ceci est une notification de statut de distribution générée automatiquement.
+Nous sommes désolés de vous informer que votre message n’a pas pu être délivré.
+
+Détails :
+- De: {{SENDER}}
+- À: {{RECIPIENTS}}
+- Objet original: {{SUBJECT}}
+- Date: {{DATE}}
+- Message d’erreur: {{ERROR_MESSAGE}}
+
+Veuillez contacter l’administrateur pour plus d’informations.

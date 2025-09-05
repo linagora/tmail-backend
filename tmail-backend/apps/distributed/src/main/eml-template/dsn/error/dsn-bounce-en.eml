@@ -1,0 +1,14 @@
+# Delivery Status Notification (Failure) for message to {{RECIPIENTS}}: unexpected error
+
+This is an automatically generated Delivery Status Notification.
+
+We're sorry to inform you that your message could not be delivered because of an unexpected error.
+
+Details:
+- From: {{SENDER}}
+- To: {{RECIPIENTS}}
+- Original subject: {{SUBJECT}}
+- Date: {{DATE}}
+- Error message: {{ERROR_MESSAGE}}
+
+Please contact the administrator for more information.

@@ -46,7 +46,13 @@
             <mailet match="All" class="MetricsMailet">
                 <metricName>mailetContainerErrors</metricName>
             </mailet>
-            <mailet match="All" class="Bounce"/>
+            <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
+                <passThrough>false</passThrough>
+                <i18nDsnTemplateDirectory>file://eml-template/dsn/error</i18nDsnTemplateDirectory>
+                <supportedLanguages>en,fr,ru,vi</supportedLanguages>
+                <defaultLanguage>en</defaultLanguage>
+                <contentType>text/plain; charset=UTF-8</contentType>
+            </mailet>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>memory://var/mail/error/</repositoryPath>
                 <onMailetException>propagate</onMailetException>
@@ -111,8 +117,12 @@
             <mailet match="All" class="MetricsMailet">
                 <metricName>mailetContainerLocalAddressError</metricName>
             </mailet>
-            <mailet match="All" class="Bounce">
-                <attachment>none</attachment>
+            <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
+                <passThrough>false</passThrough>
+                <i18nDsnTemplateDirectory>file://eml-template/dsn/local-address-error</i18nDsnTemplateDirectory>
+                <supportedLanguages>en,fr,ru,vi</supportedLanguages>
+                <defaultLanguage>en</defaultLanguage>
+                <contentType>text/plain; charset=UTF-8</contentType>
             </mailet>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>memory://var/mail/address-error/</repositoryPath>
@@ -122,9 +132,6 @@
         <processor state="relay-denied" enableJmx="true">
             <mailet match="All" class="MetricsMailet">
                 <metricName>mailetContainerRelayDenied</metricName>
-            </mailet>
-            <mailet match="All" class="Bounce">
-                <attachment>none</attachment>
             </mailet>
             <mailet match="All" class="ToRepository">
                 <repositoryPath>memory://var/mail/relay-denied/</repositoryPath>
@@ -138,7 +145,7 @@
             </mailet>
             <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
                 <passThrough>false</passThrough>
-                <i18nDsnTemplateDirectory>file://eml-template/dsn/</i18nDsnTemplateDirectory>
+                <i18nDsnTemplateDirectory>file://eml-template/dsn/bounces</i18nDsnTemplateDirectory>
                 <supportedLanguages>en,fr,ru,vi</supportedLanguages>
                 <defaultLanguage>en</defaultLanguage>
                 <contentType>text/plain; charset=UTF-8</contentType>
@@ -151,11 +158,16 @@
                 <passThrough>true</passThrough>
             </mailet>
             <mailet match="IsSenderInRRTLoop" class="Null"/>
-            <mailet match="All" class="Bounce"/>
+            <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
+                <passThrough>false</passThrough>
+                <i18nDsnTemplateDirectory>file://eml-template/dsn/rrt-error</i18nDsnTemplateDirectory>
+                <supportedLanguages>en,fr,ru,vi</supportedLanguages>
+                <defaultLanguage>en</defaultLanguage>
+                <contentType>text/plain; charset=UTF-8</contentType>
+            </mailet>
+            <mailet match="All" class="Null"/>
         </processor>
-
     </processors>
-
 </mailetcontainer>
 
 
