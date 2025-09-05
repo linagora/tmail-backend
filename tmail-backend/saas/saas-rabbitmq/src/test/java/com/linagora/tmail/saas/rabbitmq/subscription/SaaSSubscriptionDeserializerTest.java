@@ -24,7 +24,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.saas.model.RateLimitingDefinition;
+
 class SaaSSubscriptionDeserializerTest {
+    private static final RateLimitingDefinition RATE_LIMITED = new RateLimitingDefinition(
+        10L, 100L, 1000L,
+        20L, 200L, 2000L);
+
     @Test
     void parseInvalidAmqpMessageShouldThrowException() {
         String invalidMessage = "{ invalid json }";
@@ -41,7 +47,15 @@ class SaaSSubscriptionDeserializerTest {
                 "username": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """;
 
@@ -52,6 +66,7 @@ class SaaSSubscriptionDeserializerTest {
             softly.assertThat(message.isPaying()).isTrue();
             softly.assertThat(message.canUpgrade()).isTrue();
             softly.assertThat(message.mail().storageQuota()).isEqualTo(12334534L);
+            softly.assertThat(message.mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITED);
         });
     }
 
@@ -61,7 +76,15 @@ class SaaSSubscriptionDeserializerTest {
             {
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """;
 
@@ -76,7 +99,15 @@ class SaaSSubscriptionDeserializerTest {
             {
                 "username": "alice@twake.app",
                 "canUpgrade": true,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """;
 
@@ -91,7 +122,15 @@ class SaaSSubscriptionDeserializerTest {
             {
                 "username": "alice@twake.app",
                 "isPaying": true,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """;
 
@@ -106,8 +145,25 @@ class SaaSSubscriptionDeserializerTest {
             {
                 "username": "alice@twake.app",
                 "isPaying": true,
+                "canUpgrade": true
+            }
+            """;
+
+        assertThatThrownBy(() -> SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message))
+            .isInstanceOf(SaaSSubscriptionMessage.SaaSSubscriptionMessageParseException.class)
+            .hasMessageContaining("Failed to parse SaaS subscription message");
+    }
+
+    @Test
+    void parseMissingRequiredRateLimitingShouldThrowException() {
+        String message = """
+            {
+                "username": "alice@twake.app",
+                "isPaying": true,
                 "canUpgrade": true,
-                "planName": "twake_standard"
+                "mail": {
+                    "storageQuota": 12334534
+                }
             }
             """;
 
@@ -123,7 +179,15 @@ class SaaSSubscriptionDeserializerTest {
                 "username": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": { "storageQuota": 123, "extraField": "ignored" },
+                "mail": {
+                    "storageQuota": 123,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                },
                 "extraField": "ignored"
             }
             """;
@@ -135,6 +199,7 @@ class SaaSSubscriptionDeserializerTest {
             softly.assertThat(parsed.isPaying()).isTrue();
             softly.assertThat(parsed.canUpgrade()).isTrue();
             softly.assertThat(parsed.mail().storageQuota()).isEqualTo(123L);
+            softly.assertThat(parsed.mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITED);
         });
     }
 
@@ -145,7 +210,15 @@ class SaaSSubscriptionDeserializerTest {
                 "username": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": { "storageQuota": -1 }
+                "mail": {
+                    "storageQuota": -1,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """;
 

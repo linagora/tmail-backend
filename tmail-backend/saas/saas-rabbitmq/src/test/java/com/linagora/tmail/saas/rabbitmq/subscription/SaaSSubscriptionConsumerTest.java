@@ -136,7 +136,15 @@ class SaaSSubscriptionConsumerTest {
                 "username": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 123,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """, ALICE.asString());
 
@@ -147,6 +155,7 @@ class SaaSSubscriptionConsumerTest {
             assertThat(saaSAccount).isNotNull();
             assertThat(saaSAccount.isPaying()).isTrue();
             assertThat(saaSAccount.canUpgrade()).isTrue();
+            assertThat(saaSAccount.rateLimiting()).isEqualTo(RATE_LIMITED);
         });
     }
 
@@ -157,7 +166,15 @@ class SaaSSubscriptionConsumerTest {
                 "username": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": { "storageQuota": 1234 }
+                "mail": {
+                    "storageQuota": 1234,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """, ALICE.asString());
 
@@ -176,7 +193,15 @@ class SaaSSubscriptionConsumerTest {
                 "username": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": { "storageQuota": -1 }
+                "mail": {
+                    "storageQuota": -1,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """, ALICE.asString());
 
@@ -189,7 +214,7 @@ class SaaSSubscriptionConsumerTest {
     }
 
     @Test
-    void shouldUpdateNewPlanNameWhenNewSubscriptionUpdate() {
+    void shouldUpdateCanUpgradeWhenNewSubscriptionUpdate() {
         Mono.from(saasAccountRepository.upsertSaasAccount(ALICE,
             new SaaSAccount(true, true, RATE_LIMITED))).block();
 
@@ -198,7 +223,15 @@ class SaaSSubscriptionConsumerTest {
                 "username": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """, ALICE.asString());
 
@@ -220,7 +253,15 @@ class SaaSSubscriptionConsumerTest {
                 "username": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """, ALICE.asString());
 
@@ -229,6 +270,49 @@ class SaaSSubscriptionConsumerTest {
         await.untilAsserted(() -> {
             assertThat(maxQuotaManager.getMaxStorage(userQuotaRootResolver.forUser(ALICE)))
                 .isEqualTo(Optional.of(QuotaSizeLimit.size(12334534)));
+        });
+    }
+
+    @Test
+    void shouldUpdateRateLimitingWhenNewSubscriptionUpdate() {
+        publishAmqpSaaSSubscriptionMessage(String.format("""
+            {
+                "username": "%s",
+                "isPaying": true,
+                "canUpgrade": false,
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 1,
+                    "mailsSentPerHours": 1,
+                    "mailsSentPerDays": 1,
+                    "mailsReceivedPerMinute": 2,
+                    "mailsReceivedPerHours": 2,
+                    "mailsReceivedPerDays": 2
+                }
+            }
+            """, ALICE.asString()));
+
+        publishAmqpSaaSSubscriptionMessage(String.format("""
+            {
+                "username": "%s",
+                "isPaying": true,
+                "canUpgrade": false,
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
+            }
+            """, ALICE.asString()));
+
+        await.untilAsserted(() -> {
+            SaaSAccount saaSAccount = Mono.from(saasAccountRepository.getSaaSAccount(ALICE)).block();
+            assertThat(saaSAccount).isNotNull();
+            assertThat(saaSAccount.rateLimiting()).isEqualTo(RATE_LIMITED);
         });
     }
 
@@ -244,7 +328,15 @@ class SaaSSubscriptionConsumerTest {
                 "username": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """, BOB.asString());
         publishAmqpSaaSSubscriptionMessage(validMessage);
@@ -266,7 +358,15 @@ class SaaSSubscriptionConsumerTest {
                 "username": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": { "storageQuota": 1234 }
+                "mail": {
+                    "storageQuota": 1234,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """, ALICE.asString());
 
@@ -293,7 +393,15 @@ class SaaSSubscriptionConsumerTest {
                 "username": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": { "storageQuota": 12334534 }
+                "mail": {
+                    "storageQuota": 12334534,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHours": 100,
+                    "mailsSentPerDays": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHours": 200,
+                    "mailsReceivedPerDays": 2000
+                }
             }
             """, ALICE.asString());
         publishAmqpSaaSSubscriptionMessage(validMessage);
