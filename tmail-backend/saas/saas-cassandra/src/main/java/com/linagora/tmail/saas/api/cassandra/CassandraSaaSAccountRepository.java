@@ -75,7 +75,9 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
     public Publisher<SaaSAccount> getSaaSAccount(Username username) {
         return Mono.from(executor.executeSingleRow(selectPlanStatement.bind()
                 .setString(USER, username.asString())))
-            .mapNotNull(row -> new SaaSAccount(row.getBoolean(CAN_UPGRADE), row.getBoolean(IS_PAYING), getRateLimiting(row)))
+            .mapNotNull(row -> new SaaSAccount(Optional.ofNullable(row.get(CAN_UPGRADE, Boolean.class)).orElse(SaaSAccount.DEFAULT.canUpgrade()),
+                Optional.ofNullable(row.get(IS_PAYING, Boolean.class)).orElse(SaaSAccount.DEFAULT.isPaying()),
+                getRateLimiting(row)))
             .switchIfEmpty(Mono.just(SaaSAccount.DEFAULT));
     }
 
