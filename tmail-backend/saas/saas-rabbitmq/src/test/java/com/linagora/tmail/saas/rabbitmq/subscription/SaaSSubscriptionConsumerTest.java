@@ -50,6 +50,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
+import com.linagora.tmail.saas.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.model.SaaSAccount;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
@@ -62,6 +63,9 @@ class SaaSSubscriptionConsumerTest {
     private static final Username ALICE = Username.of("alice@james.org");
     private static final Username BOB = Username.of("bob@james.org");
     private static final Username NON_EXISTING_USER = Username.of("nonExisting@james.org");
+    private static final RateLimitingDefinition RATE_LIMITED = new RateLimitingDefinition(
+        10L, 100L, 1000L,
+        20L, 200L, 2000L);
 
     private final ConditionFactory await = Awaitility.with()
         .pollInterval(Duration.ofMillis(500))
@@ -187,7 +191,7 @@ class SaaSSubscriptionConsumerTest {
     @Test
     void shouldUpdateNewPlanNameWhenNewSubscriptionUpdate() {
         Mono.from(saasAccountRepository.upsertSaasAccount(ALICE,
-            new SaaSAccount(true, true))).block();
+            new SaaSAccount(true, true, RATE_LIMITED))).block();
 
         String validMessage = String.format("""
             {
@@ -231,7 +235,7 @@ class SaaSSubscriptionConsumerTest {
     @Test
     void shouldNotEffectOtherUserSubscription() throws MailboxException {
         Mono.from(saasAccountRepository.upsertSaasAccount(ALICE,
-            new SaaSAccount(true, true))).block();
+            new SaaSAccount(true, true, RATE_LIMITED))).block();
         maxQuotaManager.setMaxStorage(userQuotaRootResolver.forUser(ALICE), QuotaSizeLimit.size(1234));
 
         // Update Bob subscription should not effect Alice subscription
