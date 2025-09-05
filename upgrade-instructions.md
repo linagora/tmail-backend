@@ -14,36 +14,48 @@ Note: this section is in progress. It will be updated during all the development
 
 ## 1.0.10
 
-### Adding settings and rate limiting plan id columns to Cassandra user table
+### Adding SaaS related columns to Cassandra user table
 
-Date: 01/09/2025
+Date: 05/09/2025
 
-Issue: https://github.com/linagora/tmail-backend/issues/1831
+Issues: https://github.com/linagora/tmail-backend/issues/1884, https://github.com/linagora/tmail-backend/issues/1888
 
 Concerned product: Distributed TMail
 
-Add `can_upgrade`, `is_paying`columns to the `user` table to store saas plan information.
+If you are running TMail in a SaaS deployment with the extension `DistributedSaaSModule` enabled in `extensions.properties`, you need to add `can_upgrade`, `is_paying`, and `rate_limiting` columns to the `user` table to store saas information.
 
 To add these columns, you need to run the following CQL commands:
 ```
 ALTER TABLE tmail_keyspace.user ADD can_upgrade boolean;
 ALTER TABLE tmail_keyspace.user ADD is_paying boolean;
+ALTER TABLE tmail_keyspace.user ADD rate_limiting text;
 ```
 
-### Adding settings and rate limiting plan id columns to Postgres user table
+The `saas_plan` column can be dropped now:
+```
+ALTER TABLE tmail_keyspace.user DROP saas_plan;
+```
 
-Date: 01/09/2025
+### Adding SaaS related columns to Postgres user table
 
-Issue: https://github.com/linagora/tmail-backend/issues/1831
+Date: 05/09/2025
+
+Issues: https://github.com/linagora/tmail-backend/issues/1884, https://github.com/linagora/tmail-backend/issues/1888
 
 Concerned product: Postgres TMail
 
-Add `can_upgrade`, `is_paying`columns to the `user` table to store saas plan information.
+If you are running TMail in a SaaS deployment with the extension `PostgresSaaSModule` enabled in `extensions.properties`, you need to add `can_upgrade`, `is_paying`, and `rate_limiting` columns to the `users` table to store saas information.
 
 To add these columns, you need to run the following SQL commands:
 ```
 ALTER TABLE tmail_schema.users ADD COLUMN is_paying BOOLEAN;
-ALTER TABLE tmail_schema.users ADD COLUMN can_upgrade VARCHAR;
+ALTER TABLE tmail_schema.users ADD COLUMN can_upgrade BOOLEAN;
+ALTER TABLE tmail_schema.users ADD COLUMN rate_limiting JSONB;
+```
+
+The `saas_plan` column can be dropped now:
+```
+ALTER TABLE tmail_schema.users DROP COLUMN saas_plan;
 ```
 
 ## 1.0.9
