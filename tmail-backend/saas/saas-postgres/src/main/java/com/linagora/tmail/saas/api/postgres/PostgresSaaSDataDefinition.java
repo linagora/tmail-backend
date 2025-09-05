@@ -25,6 +25,7 @@ import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.jooq.DSLContext;
 import org.jooq.Field;
+import org.jooq.JSONB;
 import org.jooq.Record;
 import org.jooq.Table;
 import org.jooq.impl.DSL;
@@ -38,11 +39,13 @@ public interface PostgresSaaSDataDefinition {
     Field<String> USERNAME = TMailPostgresUserDataDefinition.PostgresUserTable.USERNAME;
     Field<Boolean> CAN_UPGRADE = DSL.field("can_upgrade", SQLDataType.BOOLEAN);
     Field<Boolean> IS_PAYING = DSL.field("is_paying", SQLDataType.BOOLEAN);
+    Field<JSONB> RATE_LIMITING = DSL.field("rate_limiting", SQLDataType.JSONB);
 
     static PostgresTable.CreateTableFunction userTableWithSaaSSupport() {
         return (DSLContext dsl, String tableName) -> defaultUserTableStatement(dsl, tableName)
             .column(CAN_UPGRADE)
-            .column(IS_PAYING);
+            .column(IS_PAYING)
+            .column(RATE_LIMITING);
     }
 
     @VisibleForTesting
