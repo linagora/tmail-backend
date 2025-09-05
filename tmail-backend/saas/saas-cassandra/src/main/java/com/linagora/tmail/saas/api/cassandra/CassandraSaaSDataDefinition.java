@@ -36,6 +36,7 @@ public interface CassandraSaaSDataDefinition {
     CqlIdentifier USER = TMailCassandraUsersRepositoryDataDefinition.USER;
     CqlIdentifier CAN_UPGRADE = CqlIdentifier.fromCql("can_upgrade");
     CqlIdentifier IS_PAYING = CqlIdentifier.fromCql("is_paying");
+    CqlIdentifier RATE_LIMITING = CqlIdentifier.fromCql("rate_limiting");
 
     @VisibleForTesting
     CassandraDataDefinition MODULE = createUserTableDefinition(userTableWithSaaSSupport());
@@ -43,6 +44,7 @@ public interface CassandraSaaSDataDefinition {
     static Function<CreateTableStart, CreateTable> userTableWithSaaSSupport() {
         return statement -> TMailCassandraUsersRepositoryDataDefinition.defaultCreateUserTableStatement(statement)
             .withColumn(CAN_UPGRADE, DataTypes.BOOLEAN)
-            .withColumn(IS_PAYING, DataTypes.BOOLEAN);
+            .withColumn(IS_PAYING, DataTypes.BOOLEAN)
+            .withColumn(RATE_LIMITING, DataTypes.TEXT);
     }
 }
