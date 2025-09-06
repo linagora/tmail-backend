@@ -19,6 +19,7 @@
 package com.linagora.tmail.saas.matcher;
 
 import static com.linagora.tmail.saas.api.SaaSAccountRepositoryContract.BOB;
+import static com.linagora.tmail.saas.api.SaaSAccountRepositoryContract.RATE_LIMITED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.core.MailAddress;
@@ -36,7 +37,7 @@ class IsPayingTest {
     @Test
     void shouldReturnRecipientWhenSenderIsPaying() throws Exception {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
-        Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(true, true))).block();
+        Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(true, true, RATE_LIMITED))).block();
 
         IsPaying senderHasSaaSPlan = new IsPaying(saaSAccountRepository);
         senderHasSaaSPlan.init(FakeMatcherConfig.builder()
@@ -55,7 +56,7 @@ class IsPayingTest {
     @Test
     void shouldReturnEmptyWhenSenderIsNotPaying() throws Exception {
         SaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
-        Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(true, false))).block();
+        Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(true, false, RATE_LIMITED))).block();
 
         IsPaying senderHasSaaSPlan = new IsPaying(saaSAccountRepository);
         senderHasSaaSPlan.init(FakeMatcherConfig.builder()

@@ -18,6 +18,18 @@
 
 package com.linagora.tmail.saas.model;
 
-public record SaaSAccount(boolean canUpgrade, boolean isPaying, RateLimitingDefinition rateLimiting) {
-    public static SaaSAccount DEFAULT = new SaaSAccount(true, false, RateLimitingDefinition.UNLIMITED);
+public record RateLimitingDefinition(
+    Long mailsSentPerMinute,
+    Long mailsSentPerHours,
+    Long mailsSentPerDays,
+    Long mailsReceivedPerMinute,
+    Long mailsReceivedPerHours,
+    Long mailsReceivedPerDays) {
+    public static RateLimitingDefinition UNLIMITED = new RateLimitingDefinition(
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE);
 }

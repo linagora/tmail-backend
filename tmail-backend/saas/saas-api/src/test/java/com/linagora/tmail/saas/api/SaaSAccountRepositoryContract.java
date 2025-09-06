@@ -18,19 +18,24 @@
 
 package com.linagora.tmail.saas.api;
 
+import static com.linagora.tmail.saas.model.RateLimitingDefinition.UNLIMITED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.core.Username;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.saas.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 
 public interface SaaSAccountRepositoryContract {
+    RateLimitingDefinition RATE_LIMITED = new RateLimitingDefinition(
+        10L, 100L, 1000L,
+        20L, 200L, 2000L);
 
-    SaaSAccount SAAS_ACCOUNT = new SaaSAccount(false, true);
-    SaaSAccount SAAS_ACCOUNT_2 = new SaaSAccount(true, true);
+    SaaSAccount SAAS_ACCOUNT = new SaaSAccount(false, true, UNLIMITED);
+    SaaSAccount SAAS_ACCOUNT_2 = new SaaSAccount(true, true, RATE_LIMITED);
 
     SaaSAccountRepository testee();
 

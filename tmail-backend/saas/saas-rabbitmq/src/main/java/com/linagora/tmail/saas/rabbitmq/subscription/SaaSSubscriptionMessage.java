@@ -26,6 +26,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
+import com.linagora.tmail.saas.model.RateLimitingDefinition;
 
 public record SaaSSubscriptionMessage(String username, Boolean isPaying, Boolean canUpgrade, MailLimitation mail) {
     public static class SaaSSubscriptionMessageParseException extends RuntimeException {
@@ -61,12 +62,29 @@ public record SaaSSubscriptionMessage(String username, Boolean isPaying, Boolean
         }
     }
 
-    public record MailLimitation(Long storageQuota) {
-        @JsonCreator
-        public MailLimitation(@JsonProperty("storageQuota") Long storageQuota) {
-            Preconditions.checkNotNull(storageQuota, "storageQuota cannot be null");
+    public record MailLimitation(
+        @JsonProperty("storageQuota") Long storageQuota,
+        @JsonProperty("mailsSentPerMinute") Long mailsSentPerMinute,
+        @JsonProperty("mailsSentPerHours") Long mailsSentPerHours,
+        @JsonProperty("mailsSentPerDays") Long mailsSentPerDays,
+        @JsonProperty("mailsReceivedPerMinute") Long mailsReceivedPerMinute,
+        @JsonProperty("mailsReceivedPerHours") Long mailsReceivedPerHours,
+        @JsonProperty("mailsReceivedPerDays") Long mailsReceivedPerDays) {
 
-            this.storageQuota = storageQuota;
+        @JsonCreator
+        public MailLimitation {
+            Preconditions.checkNotNull(storageQuota, "storageQuota cannot be null");
+            Preconditions.checkNotNull(mailsSentPerMinute, "mailsSentPerMinute cannot be null");
+            Preconditions.checkNotNull(mailsSentPerHours, "mailsSentPerHours cannot be null");
+            Preconditions.checkNotNull(mailsSentPerDays, "mailsSentPerDays cannot be null");
+            Preconditions.checkNotNull(mailsReceivedPerMinute, "mailsReceivedPerMinute cannot be null");
+            Preconditions.checkNotNull(mailsReceivedPerHours, "mailsReceivedPerHours cannot be null");
+            Preconditions.checkNotNull(mailsReceivedPerDays, "mailsReceivedPerDays cannot be null");
+        }
+
+        public RateLimitingDefinition rateLimitingDefinition() {
+            return new RateLimitingDefinition(mailsSentPerMinute, mailsSentPerHours, mailsSentPerDays,
+                mailsReceivedPerMinute, mailsReceivedPerHours, mailsReceivedPerDays);
         }
     }
 

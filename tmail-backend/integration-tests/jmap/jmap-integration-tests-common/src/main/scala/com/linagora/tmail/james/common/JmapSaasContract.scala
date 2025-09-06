@@ -19,7 +19,8 @@
 package com.linagora.tmail.james.common
 
 import com.linagora.tmail.common.probe.SaaSProbe
-import com.linagora.tmail.saas.model.{SaaSAccount}
+import com.linagora.tmail.james.common.JmapSaasContract.RATE_LIMITED
+import com.linagora.tmail.saas.model.{RateLimitingDefinition, SaaSAccount}
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import org.apache.http.HttpStatus.SC_OK
@@ -30,6 +31,10 @@ import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers.{equalTo, hasKey, not}
 import org.junit.jupiter.api.{AfterEach, Tag, Test}
+
+object JmapSaasContract {
+  val RATE_LIMITED = new RateLimitingDefinition(10L, 100L, 1000L, 20L, 200L, 2000L)
+}
 
 trait JmapSaasContract {
 
@@ -102,7 +107,7 @@ trait JmapSaasContract {
     val server: GuiceJamesServer = setUpJmapServer(saasSupport = true)
 
     server.getProbe(classOf[SaaSProbe])
-      .setPlan(BOB, new SaaSAccount(true, true))
+      .setPlan(BOB, new SaaSAccount(true, true, RATE_LIMITED))
 
     `given`()
       .when()
@@ -124,7 +129,13 @@ trait JmapSaasContract {
          |    "isPaying": true,
          |    "canUpgrade": true,
          |    "mail": {
-         |        "storageQuota": 1234
+         |        "storageQuota": 1234,
+         |        "mailsSentPerMinute": 10,
+         |        "mailsSentPerHours": 100,
+         |        "mailsSentPerDays": 1000,
+         |        "mailsReceivedPerMinute": 20,
+         |        "mailsReceivedPerHours": 200,
+         |        "mailsReceivedPerDays": 2000
          |    }
          |}""".stripMargin)
 
@@ -151,7 +162,13 @@ trait JmapSaasContract {
          |    "isPaying": false,
          |    "canUpgrade": true,
          |    "mail": {
-         |        "storageQuota": 1234
+         |        "storageQuota": 1234,
+         |        "mailsSentPerMinute": 1,
+         |        "mailsSentPerHours": 1,
+         |        "mailsSentPerDays": 1,
+         |        "mailsReceivedPerMinute": 1,
+         |        "mailsReceivedPerHours": 1,
+         |        "mailsReceivedPerDays": 1
          |    }
          |}""".stripMargin)
 
@@ -161,7 +178,13 @@ trait JmapSaasContract {
          |    "isPaying": true,
          |    "canUpgrade": true,
          |    "mail": {
-         |        "storageQuota": 10000
+         |        "storageQuota": 10000,
+         |        "mailsSentPerMinute": 10,
+         |        "mailsSentPerHours": 100,
+         |        "mailsSentPerDays": 1000,
+         |        "mailsReceivedPerMinute": 20,
+         |        "mailsReceivedPerHours": 200,
+         |        "mailsReceivedPerDays": 2000
          |    }
          |}""".stripMargin)
 

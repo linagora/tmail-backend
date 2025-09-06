@@ -59,7 +59,7 @@ public class PostgresSaaSAccountRepositoryTest implements SaaSAccountRepositoryC
             .block();
 
         // Set Bob SaaS plan
-        Mono.from(repository.upsertSaasAccount(BOB, new SaaSAccount(true, true))).block();
+        Mono.from(repository.upsertSaasAccount(BOB, new SaaSAccount(true, true, RATE_LIMITED))).block();
 
         // Assert that the user record still exists and other associated data is not lost
         org.jooq.Record record = postgresExtension.getDefaultPostgresExecutor()

@@ -182,7 +182,7 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> handleSubscriptionMessage(SaaSSubscriptionMessage subscriptionMessage) {
-        SaaSAccount saaSAccount = new SaaSAccount(subscriptionMessage.canUpgrade(), subscriptionMessage.isPaying());
+        SaaSAccount saaSAccount = new SaaSAccount(subscriptionMessage.canUpgrade(), subscriptionMessage.isPaying(), subscriptionMessage.mail().rateLimitingDefinition());
         return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(subscriptionMessage.username())))
             .map(User::getUserName)
             .flatMap(username -> Mono.from(saasAccountRepository.upsertSaasAccount(username, saaSAccount))
