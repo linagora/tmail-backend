@@ -22,8 +22,8 @@ import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.rate.limiter.api.cassandra.dao.{CassandraRateLimitPlanDAO, CassandraRateLimitPlanUserDAO}
 import com.linagora.tmail.rate.limiter.api.cassandra.table.CassandraRateLimitPlanTable
-import com.linagora.tmail.rate.limiter.api.cassandra.{CassandraRateLimitingPlanRepository, CassandraRateLimitingPlanUserRepository}
-import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanRepository, RateLimitingPlanUserRepository, RateLimitingPlanUsernameChangeTaskStep}
+import com.linagora.tmail.rate.limiter.api.cassandra.{CassandraRateLimitingPlanRepository, CassandraRateLimitingPlanUserRepository, CassandraRateLimitingRepository}
+import com.linagora.tmail.rate.limiter.api.{RateLimitingPlanRepository, RateLimitingPlanUserRepository, RateLimitingPlanUsernameChangeTaskStep, RateLimitingRepository}
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.user.api.UsernameChangeTaskStep
 
@@ -41,5 +41,8 @@ class CassandraRateLimitingModule() extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
       .addBinding()
       .to(classOf[RateLimitingPlanUsernameChangeTaskStep])
+
+    bind(classOf[CassandraRateLimitingRepository]).in(Scopes.SINGLETON)
+    bind(classOf[RateLimitingRepository]).to(classOf[CassandraRateLimitingRepository])
   }
 }
