@@ -30,6 +30,32 @@ ALTER TABLE tmail_keyspace.user ADD can_upgrade boolean;
 ALTER TABLE tmail_keyspace.user ADD is_paying boolean;
 ```
 
+### Adding rate limiting columns to Cassandra user table
+
+Date: 08/09/2025
+
+Issue: https://github.com/linagora/tmail-backend/issues/1888
+
+Concerned product: Distributed TMail
+
+Add the following columns to the `user` table to store per-user mail rate limiting:
+- `mails_sent_per_minute` (BIGINT)
+- `mails_sent_per_hour` (BIGINT)
+- `mails_sent_per_day` (BIGINT)
+- `mails_received_per_minute` (BIGINT)
+- `mails_received_per_hour` (BIGINT)
+- `mails_received_per_day` (BIGINT)
+
+To add these columns, run the following CQL commands:
+```
+ALTER TABLE tmail_keyspace.user ADD mails_sent_per_minute bigint;
+ALTER TABLE tmail_keyspace.user ADD mails_sent_per_hour bigint;
+ALTER TABLE tmail_keyspace.user ADD mails_sent_per_day bigint;
+ALTER TABLE tmail_keyspace.user ADD mails_received_per_minute bigint;
+ALTER TABLE tmail_keyspace.user ADD mails_received_per_hour bigint;
+ALTER TABLE tmail_keyspace.user ADD mails_received_per_day bigint;
+```
+
 ### Adding settings and rate limiting plan id columns to Postgres user table
 
 Date: 01/09/2025

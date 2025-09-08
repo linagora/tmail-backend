@@ -43,6 +43,12 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
     CqlIdentifier SETTINGS = CqlIdentifier.fromCql("settings");
     CqlIdentifier SETTINGS_STATE = CqlIdentifier.fromCql("settings_state");
     CqlIdentifier RATE_LIMITING_PLAN_ID = CqlIdentifier.fromCql("rate_limiting_plan_id");
+    CqlIdentifier MAILS_SENT_PER_MINUTE = CqlIdentifier.fromCql("mails_sent_per_minute");
+    CqlIdentifier MAILS_SENT_PER_HOURS = CqlIdentifier.fromCql("mails_sent_per_hour");
+    CqlIdentifier MAILS_SENT_PER_DAYS = CqlIdentifier.fromCql("mails_sent_per_day");
+    CqlIdentifier MAILS_RECEIVED_PER_MINUTE = CqlIdentifier.fromCql("mails_received_per_minute");
+    CqlIdentifier MAILS_RECEIVED_PER_HOURS = CqlIdentifier.fromCql("mails_received_per_hour");
+    CqlIdentifier MAILS_RECEIVED_PER_DAYS = CqlIdentifier.fromCql("mails_received_per_day");
 
     @VisibleForTesting
     CassandraDataDefinition MODULE = createUserTableDefinition(defaultCreateUserTableFunction());
@@ -68,7 +74,13 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
             .withColumn(CassandraUserTable.DELEGATED_USERS, DataTypes.setOf(DataTypes.TEXT))
             .withColumn(SETTINGS, DataTypes.mapOf(DataTypes.TEXT, DataTypes.TEXT))
             .withColumn(SETTINGS_STATE, DataTypes.UUID)
-            .withColumn(RATE_LIMITING_PLAN_ID, DataTypes.UUID);
+            .withColumn(RATE_LIMITING_PLAN_ID, DataTypes.UUID)
+            .withColumn(MAILS_SENT_PER_MINUTE, DataTypes.BIGINT)
+            .withColumn(MAILS_SENT_PER_HOURS, DataTypes.BIGINT)
+            .withColumn(MAILS_SENT_PER_DAYS, DataTypes.BIGINT)
+            .withColumn(MAILS_RECEIVED_PER_MINUTE, DataTypes.BIGINT)
+            .withColumn(MAILS_RECEIVED_PER_HOURS, DataTypes.BIGINT)
+            .withColumn(MAILS_RECEIVED_PER_DAYS, DataTypes.BIGINT);
     }
 
 }
