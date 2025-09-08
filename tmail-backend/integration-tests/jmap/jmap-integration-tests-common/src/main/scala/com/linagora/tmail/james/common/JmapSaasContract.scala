@@ -120,7 +120,7 @@ trait JmapSaasContract {
 
     publishAmqpSettingsMessage(
       s"""{
-         |    "username": "${BOB.asString()}",
+         |    "internalEmail": "${BOB.asString()}",
          |    "isPaying": true,
          |    "canUpgrade": true,
          |    "mail": {
@@ -147,7 +147,7 @@ trait JmapSaasContract {
 
     publishAmqpSettingsMessage(
       s"""{
-         |    "username": "${BOB.asString()}",
+         |    "internalEmail": "${BOB.asString()}",
          |    "isPaying": false,
          |    "canUpgrade": true,
          |    "mail": {
@@ -157,7 +157,7 @@ trait JmapSaasContract {
 
     publishAmqpSettingsMessage(
       s"""{
-         |    "username": "${BOB.asString()}",
+         |    "internalEmail": "${BOB.asString()}",
          |    "isPaying": true,
          |    "canUpgrade": true,
          |    "mail": {
