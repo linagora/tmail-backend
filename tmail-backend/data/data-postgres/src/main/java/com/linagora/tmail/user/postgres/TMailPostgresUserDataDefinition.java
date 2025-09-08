@@ -56,6 +56,12 @@ public interface TMailPostgresUserDataDefinition {
         Field<Hstore> SETTINGS = DSL.field("settings", DefaultDataType.getDefaultDataType("hstore").asConvertedDataType(new HstoreBinding()));
         Field<UUID> SETTINGS_STATE = DSL.field("settings_state", SQLDataType.UUID);
         Field<UUID> RATE_LIMITING_PLAN_ID = DSL.field("rate_limiting_plan_id", SQLDataType.UUID);
+        Field<Long> MAILS_SENT_PER_MINUTE = DSL.field("mails_sent_per_minute", SQLDataType.BIGINT);
+        Field<Long> MAILS_SENT_PER_HOURS = DSL.field("mails_sent_per_hour", SQLDataType.BIGINT);
+        Field<Long> MAILS_SENT_PER_DAYS = DSL.field("mails_sent_per_day", SQLDataType.BIGINT);
+        Field<Long> MAILS_RECEIVED_PER_MINUTE = DSL.field("mails_received_per_minute", SQLDataType.BIGINT);
+        Field<Long> MAILS_RECEIVED_PER_HOURS = DSL.field("mails_received_per_hour", SQLDataType.BIGINT);
+        Field<Long> MAILS_RECEIVED_PER_DAYS = DSL.field("mails_received_per_day", SQLDataType.BIGINT);
 
         static PostgresTable userTable(PostgresTable.CreateTableFunction createUserTableFunction) {
             return PostgresTable.name(TABLE_NAME.getName())
@@ -78,6 +84,12 @@ public interface TMailPostgresUserDataDefinition {
                 .column(SETTINGS)
                 .column(SETTINGS_STATE)
                 .column(RATE_LIMITING_PLAN_ID)
+                .column(MAILS_SENT_PER_MINUTE)
+                .column(MAILS_SENT_PER_HOURS)
+                .column(MAILS_SENT_PER_DAYS)
+                .column(MAILS_RECEIVED_PER_MINUTE)
+                .column(MAILS_RECEIVED_PER_HOURS)
+                .column(MAILS_RECEIVED_PER_DAYS)
                 .constraint(DSL.constraint(PostgresUserDataDefinition.PostgresUserTable.USERNAME_PRIMARY_KEY).primaryKey(USERNAME));
         }
 
