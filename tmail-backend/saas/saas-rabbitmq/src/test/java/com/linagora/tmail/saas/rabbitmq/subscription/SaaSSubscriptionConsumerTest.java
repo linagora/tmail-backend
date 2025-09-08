@@ -129,7 +129,7 @@ class SaaSSubscriptionConsumerTest {
     void shouldRegisterSaasAccountDetails() {
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
                 "mail": { "storageQuota": 12334534 }
@@ -150,7 +150,7 @@ class SaaSSubscriptionConsumerTest {
     void shouldSetStorageQuotaWhenUserHasNoPlanYet() {
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
                 "mail": { "storageQuota": 1234 }
@@ -169,7 +169,7 @@ class SaaSSubscriptionConsumerTest {
     void shouldSupportSetUnlimitedStorageQuota() {
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
                 "mail": { "storageQuota": -1 }
@@ -191,7 +191,7 @@ class SaaSSubscriptionConsumerTest {
 
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
                 "mail": { "storageQuota": 12334534 }
@@ -213,7 +213,7 @@ class SaaSSubscriptionConsumerTest {
 
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
                 "mail": { "storageQuota": 12334534 }
@@ -237,7 +237,7 @@ class SaaSSubscriptionConsumerTest {
         // Update Bob subscription should not effect Alice subscription
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
                 "mail": { "storageQuota": 12334534 }
@@ -259,7 +259,7 @@ class SaaSSubscriptionConsumerTest {
     void shouldBeIdempotent() {
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
                 "mail": { "storageQuota": 1234 }
@@ -286,7 +286,7 @@ class SaaSSubscriptionConsumerTest {
         // Publish a valid message after invalid one to ensure consumer is still alive
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
                 "mail": { "storageQuota": 12334534 }

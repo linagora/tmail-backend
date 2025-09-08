@@ -38,7 +38,7 @@ class SaaSSubscriptionDeserializerTest {
     void parseValidAmqpMessageShouldSucceed() {
         String validMessage = """
             {
-                "username": "alice@twake.app",
+                "internalEmail": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
                 "mail": { "storageQuota": 12334534 }
@@ -48,7 +48,7 @@ class SaaSSubscriptionDeserializerTest {
         SaaSSubscriptionMessage message = SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(validMessage);
 
         SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(message.username()).isEqualTo("alice@twake.app");
+            softly.assertThat(message.internalEmail()).isEqualTo("alice@twake.app");
             softly.assertThat(message.isPaying()).isTrue();
             softly.assertThat(message.canUpgrade()).isTrue();
             softly.assertThat(message.mail().storageQuota()).isEqualTo(12334534L);
@@ -56,7 +56,7 @@ class SaaSSubscriptionDeserializerTest {
     }
 
     @Test
-    void parseMissingRequiredUsernameShouldThrowException() {
+    void parseMissingRequiredInternalEmailShouldThrowException() {
         String message = """
             {
                 "isPaying": true,
@@ -74,7 +74,7 @@ class SaaSSubscriptionDeserializerTest {
     void parseMissingRequiredIsPayingShouldThrowException() {
         String message = """
             {
-                "username": "alice@twake.app",
+                "internalEmail": "alice@twake.app",
                 "canUpgrade": true,
                 "mail": { "storageQuota": 12334534 }
             }
@@ -89,7 +89,7 @@ class SaaSSubscriptionDeserializerTest {
     void parseMissingRequiredCanUpgradeShouldThrowException() {
         String message = """
             {
-                "username": "alice@twake.app",
+                "internalEmail": "alice@twake.app",
                 "isPaying": true,
                 "mail": { "storageQuota": 12334534 }
             }
@@ -104,7 +104,7 @@ class SaaSSubscriptionDeserializerTest {
     void parseMissingRequiredMailPayloadShouldThrowException() {
         String message = """
             {
-                "username": "alice@twake.app",
+                "internalEmail": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
                 "planName": "twake_standard"
@@ -120,7 +120,7 @@ class SaaSSubscriptionDeserializerTest {
     void parseMessageWithExtraFieldsShouldNotFail() {
         String message = """
             {
-                "username": "alice@twake.app",
+                "internalEmail": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
                 "mail": { "storageQuota": 123, "extraField": "ignored" },
@@ -131,7 +131,7 @@ class SaaSSubscriptionDeserializerTest {
         SaaSSubscriptionMessage parsed = SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message);
 
         SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(parsed.username()).isEqualTo("alice@twake.app");
+            softly.assertThat(parsed.internalEmail()).isEqualTo("alice@twake.app");
             softly.assertThat(parsed.isPaying()).isTrue();
             softly.assertThat(parsed.canUpgrade()).isTrue();
             softly.assertThat(parsed.mail().storageQuota()).isEqualTo(123L);
@@ -142,7 +142,7 @@ class SaaSSubscriptionDeserializerTest {
     void parseNegativeStorageQuotaShouldSucceed() {
         String message = """
             {
-                "username": "alice@twake.app",
+                "internalEmail": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
                 "mail": { "storageQuota": -1 }
