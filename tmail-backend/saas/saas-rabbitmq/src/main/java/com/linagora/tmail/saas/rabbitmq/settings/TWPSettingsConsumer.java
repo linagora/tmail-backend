@@ -37,6 +37,7 @@ import org.apache.james.core.Username;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.model.User;
+import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,6 +184,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
 
     private Mono<Void> handleSettingsMessage(TWPCommonSettingsMessage message) {
         return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(message.payload().email())))
+            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
             .map(User::getUserName)
             .flatMap(username -> getStoredSettingsVersion(username)
                 .flatMap(storedVersion -> {
