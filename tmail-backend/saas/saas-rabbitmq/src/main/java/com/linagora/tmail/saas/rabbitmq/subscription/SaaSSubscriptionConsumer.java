@@ -40,6 +40,7 @@ import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.model.User;
+import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,6 +190,7 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     private Mono<Void> handleSubscriptionMessage(SaaSSubscriptionMessage subscriptionMessage) {
         SaaSAccount saaSAccount = new SaaSAccount(subscriptionMessage.canUpgrade(), subscriptionMessage.isPaying());
         return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(subscriptionMessage.internalEmail())))
+            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
             .map(User::getUserName)
             .flatMap(username -> Mono.from(saasAccountRepository.upsertSaasAccount(username, saaSAccount))
                 .then(updateStorageQuota(username, subscriptionMessage.mail().storageQuota()))
