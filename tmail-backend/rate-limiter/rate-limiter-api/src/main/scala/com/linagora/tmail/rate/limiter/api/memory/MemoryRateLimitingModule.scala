@@ -20,7 +20,7 @@ package com.linagora.tmail.rate.limiter.api.memory
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
-import com.linagora.tmail.rate.limiter.api.{InMemoryRateLimitingPlanRepository, RateLimitingPlanRepository, RateLimitingPlanUserRepository, RateLimitingPlanUsernameChangeTaskStep, RateLimitingRepository}
+import com.linagora.tmail.rate.limiter.api.{InMemoryRateLimitingPlanRepository, RateLimitingPlanRepository, RateLimitingPlanUserRepository, RateLimitingPlanUsernameChangeTaskStep, RateLimitingRepository, RateLimitingUsernameChangeTaskStep}
 import org.apache.james.user.api.UsernameChangeTaskStep
 
 class MemoryRateLimitingModule() extends AbstractModule {
@@ -38,5 +38,9 @@ class MemoryRateLimitingModule() extends AbstractModule {
 
     bind(classOf[MemoryRateLimitingRepository]).in(Scopes.SINGLETON)
     bind(classOf[RateLimitingRepository]).to(classOf[MemoryRateLimitingRepository])
+
+    Multibinder.newSetBinder(binder(), classOf[UsernameChangeTaskStep])
+      .addBinding()
+      .to(classOf[RateLimitingUsernameChangeTaskStep])
   }
 }
