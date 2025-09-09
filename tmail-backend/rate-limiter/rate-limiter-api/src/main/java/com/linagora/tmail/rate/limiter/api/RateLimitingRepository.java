@@ -27,4 +27,6 @@ public interface RateLimitingRepository {
     Publisher<Void> setRateLimiting(Username username, RateLimitingDefinition rateLimiting);
 
     Publisher<RateLimitingDefinition> getRateLimiting(Username username);
+
+    Publisher<Void> revokeRateLimiting(Username username);
 }

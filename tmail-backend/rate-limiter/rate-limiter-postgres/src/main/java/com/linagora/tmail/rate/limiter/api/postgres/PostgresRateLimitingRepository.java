@@ -78,6 +78,18 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
             .defaultIfEmpty(RateLimitingDefinition.EMPTY_RATE_LIMIT);
     }
 
+    @Override
+    public Publisher<Void> revokeRateLimiting(Username username) {
+        return executor.executeVoid(dsl -> Mono.from(dsl.update(TABLE_NAME)
+            .set(MAILS_SENT_PER_MINUTE, (Long) null)
+            .set(MAILS_SENT_PER_HOURS, (Long) null)
+            .set(MAILS_SENT_PER_DAYS, (Long) null)
+            .set(MAILS_RECEIVED_PER_MINUTE, (Long) null)
+            .set(MAILS_RECEIVED_PER_HOURS, (Long) null)
+            .set(MAILS_RECEIVED_PER_DAYS, (Long) null)
+            .where(USERNAME.eq(username.asString()))));
+    }
+
     private RateLimitingDefinition toRateLimitingDefinition(Record row) {
         return RateLimitingDefinition.builder()
             .mailsSentPerMinute(row.get(MAILS_SENT_PER_MINUTE, Long.class))

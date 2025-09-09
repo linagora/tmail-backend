@@ -73,4 +73,28 @@ public class PostgresRateLimitingRepositoryTest implements RateLimitingRepositor
         assertThat(record.get("mails_sent_per_minute", Long.class))
             .isEqualTo(RATE_LIMITING_1.mailsSentPerMinute().orElse(null));
     }
+
+    @Test
+    void shouldNotDeleteUserRecordWhenRevokeRateLimiting() {
+        // Given the Bob record in the user table
+        postgresExtension.getDefaultPostgresExecutor()
+            .executeVoid(dslContext -> Mono.from(dslContext.insertInto(DSL.table("users"), DSL.field("username"), DSL.field("hashed_password"))
+                .values(BOB.asString(), "hashedPassword")))
+            .block();
+
+        // Set Bob rate limits
+        Mono.from(repository.setRateLimiting(BOB, RATE_LIMITING_1)).block();
+
+        // Revoke Bob rate limits
+        Mono.from(repository.revokeRateLimiting(BOB)).block();
+
+        // Assert that the user record still exists after revoke associated plan, so other user associated data is not lost
+        String storedHashPassword = postgresExtension.getDefaultPostgresExecutor()
+            .executeRow(dslContext -> Mono.from(dslContext.select(DSL.field("hashed_password"))
+                .from(DSL.table("users"))
+                .where(DSL.field("username").eq(BOB.asString()))))
+            .block()
+            .get("hashed_password", String.class);
+        assertThat(storedHashPassword).isEqualTo("hashedPassword");
+    }
 }
