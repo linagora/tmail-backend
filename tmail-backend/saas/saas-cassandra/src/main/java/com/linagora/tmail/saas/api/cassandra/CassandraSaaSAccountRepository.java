@@ -28,6 +28,8 @@ import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.TABLE_NAME;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.USER;
 
+import java.util.Optional;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
@@ -64,7 +66,9 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
     public Publisher<SaaSAccount> getSaaSAccount(Username username) {
         return Mono.from(executor.executeSingleRow(selectPlanStatement.bind()
                 .setString(USER, username.asString())))
-            .mapNotNull(row -> new SaaSAccount(row.getBoolean(CAN_UPGRADE), row.getBoolean(IS_PAYING)))
+            .mapNotNull(row -> new SaaSAccount(
+                Optional.ofNullable(row.get(CAN_UPGRADE, Boolean.class)).orElse(SaaSAccount.DEFAULT.canUpgrade()),
+                Optional.ofNullable(row.get(IS_PAYING, Boolean.class)).orElse(SaaSAccount.DEFAULT.isPaying())))
             .switchIfEmpty(Mono.just(SaaSAccount.DEFAULT));
     }
 
