@@ -21,6 +21,7 @@ package com.linagora.tmail.rate.limiter.api.cassandra;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.update;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.EMPTY_RATE_LIMIT;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_RECEIVED_PER_DAYS;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_RECEIVED_PER_HOURS;
@@ -50,6 +51,7 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
     private final CassandraAsyncExecutor executor;
     private final PreparedStatement insertRateLimitingStatement;
     private final PreparedStatement selectRateLimitingStatement;
+    private final PreparedStatement clearRateLimitingStatement;
 
     @Inject
     public CassandraRateLimitingRepository(CqlSession session) {
@@ -66,6 +68,15 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
         this.selectRateLimitingStatement = session.prepare(selectFrom(TABLE_NAME)
             .columns(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
                 MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
+            .whereColumn(USER).isEqualTo(bindMarker(USER))
+            .build());
+        this.clearRateLimitingStatement = session.prepare(update(TABLE_NAME)
+            .setColumn(MAILS_SENT_PER_MINUTE, bindMarker(MAILS_SENT_PER_MINUTE))
+            .setColumn(MAILS_SENT_PER_HOURS, bindMarker(MAILS_SENT_PER_HOURS))
+            .setColumn(MAILS_SENT_PER_DAYS, bindMarker(MAILS_SENT_PER_DAYS))
+            .setColumn(MAILS_RECEIVED_PER_MINUTE, bindMarker(MAILS_RECEIVED_PER_MINUTE))
+            .setColumn(MAILS_RECEIVED_PER_HOURS, bindMarker(MAILS_RECEIVED_PER_HOURS))
+            .setColumn(MAILS_RECEIVED_PER_DAYS, bindMarker(MAILS_RECEIVED_PER_DAYS))
             .whereColumn(USER).isEqualTo(bindMarker(USER))
             .build());
     }
@@ -88,6 +99,18 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
                 .set(USER, username.asString(), TypeCodecs.TEXT)))
             .map(this::toRateLimitingDefinition)
             .defaultIfEmpty(EMPTY_RATE_LIMIT);
+    }
+
+    @Override
+    public Publisher<Void> revokeRateLimiting(Username username) {
+        return Mono.from(executor.executeVoid(clearRateLimitingStatement.bind()
+            .set(USER, username.asString(), TypeCodecs.TEXT)
+            .setToNull(MAILS_SENT_PER_MINUTE)
+            .setToNull(MAILS_SENT_PER_HOURS)
+            .setToNull(MAILS_SENT_PER_DAYS)
+            .setToNull(MAILS_RECEIVED_PER_MINUTE)
+            .setToNull(MAILS_RECEIVED_PER_HOURS)
+            .setToNull(MAILS_RECEIVED_PER_DAYS)));
     }
 
     private RateLimitingDefinition toRateLimitingDefinition(Row row) {

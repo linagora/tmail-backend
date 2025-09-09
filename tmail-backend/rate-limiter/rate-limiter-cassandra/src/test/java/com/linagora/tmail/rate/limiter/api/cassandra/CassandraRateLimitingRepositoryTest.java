@@ -18,14 +18,20 @@
 
 package com.linagora.tmail.rate.limiter.api.cassandra;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepositoryContract;
 import com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition;
+
+import reactor.core.publisher.Mono;
 
 public class CassandraRateLimitingRepositoryTest implements RateLimitingRepositoryContract {
     @RegisterExtension
@@ -43,4 +49,24 @@ public class CassandraRateLimitingRepositoryTest implements RateLimitingReposito
         return cassandraRateLimitingRepository;
     }
 
+    @Test
+    void shouldNotDeleteUserRecordWhenRevokeRateLimiting(CassandraCluster cassandraCluster) {
+        CqlSession testingSession = cassandraCluster.getConf();
+
+        // Given the Bob record in the user table
+        testingSession.execute(String.format("INSERT INTO user (name, realname) VALUES ('%s', '%s')",  BOB.asString(), BOB.getLocalPart()));
+
+        // Set Bob rate limits
+        Mono.from(cassandraRateLimitingRepository.setRateLimiting(BOB, RATE_LIMITING_1)).block();
+
+        // Revoke Bob rate limits
+        Mono.from(cassandraRateLimitingRepository.revokeRateLimiting(BOB)).block();
+
+        // Assert that the user record still exists after revoking rate limits, so other user associated data is not lost
+        assertThat(testingSession.execute(String.format("SELECT * FROM user WHERE name = '%s'",  BOB.asString()))
+            .iterator()
+            .next()
+            .get("realname", String.class))
+            .isEqualTo(BOB.getLocalPart());
+    }
 }

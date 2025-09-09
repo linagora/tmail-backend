@@ -44,4 +44,9 @@ public class MemoryRateLimitingRepository implements RateLimitingRepository {
         return Mono.justOrEmpty(table.get(username))
             .defaultIfEmpty(EMPTY_RATE_LIMIT);
     }
+
+    @Override
+    public Publisher<Void> revokeRateLimiting(Username username) {
+        return Mono.fromRunnable(() -> table.remove(username));
+    }
 }

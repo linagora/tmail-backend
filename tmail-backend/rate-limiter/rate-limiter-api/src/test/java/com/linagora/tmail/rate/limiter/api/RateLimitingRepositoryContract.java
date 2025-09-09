@@ -70,4 +70,35 @@ public interface RateLimitingRepositoryContract {
             .isEqualTo(RATE_LIMITING_2);
     }
 
+    @Test
+    default void revokeRateLimitingShouldSucceed() {
+        Mono.from(testee().setRateLimiting(BOB, RATE_LIMITING_1)).block();
+        Mono.from(testee().revokeRateLimiting(BOB)).block();
+
+        assertThat(Mono.from(testee().getRateLimiting(BOB)).block())
+            .isEqualTo(EMPTY_RATE_LIMIT);
+    }
+
+    @Test
+    default void setRateLimitingAfterRevokeRateLimitingShouldSucceed() {
+        // This test simulates a scenario where the user record exists but has no rate limiting yet.
+        Mono.from(testee().setRateLimiting(BOB, RATE_LIMITING_1)).block();
+        Mono.from(testee().revokeRateLimiting(BOB)).block();
+
+        Mono.from(testee().setRateLimiting(BOB, RATE_LIMITING_2)).block();
+
+        assertThat(Mono.from(testee().getRateLimiting(BOB)).block())
+            .isEqualTo(RATE_LIMITING_2);
+    }
+
+    @Test
+    default void revokeRateLimitingShouldBeIdempotent() {
+        Mono.from(testee().setRateLimiting(BOB, RATE_LIMITING_1)).block();
+
+        Mono.from(testee().revokeRateLimiting(BOB)).block();
+        Mono.from(testee().revokeRateLimiting(BOB)).block();
+
+        assertThat(Mono.from(testee().getRateLimiting(BOB)).block())
+            .isEqualTo(EMPTY_RATE_LIMIT);
+    }
 }
