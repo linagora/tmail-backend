@@ -211,7 +211,7 @@ class SaaSSubscriptionConsumerTest {
     void shouldSetRateLimitingWhenUserHasNoPlanYet() {
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
                 "mail": {
@@ -263,7 +263,7 @@ class SaaSSubscriptionConsumerTest {
     void shouldSupportSetUnlimitedRateLimiting() {
         String validMessage = String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
                 "mail": {
@@ -348,7 +348,7 @@ class SaaSSubscriptionConsumerTest {
     void shouldUpdateRateLimitingWhenNewSubscriptionUpdate() {
         publishAmqpSaaSSubscriptionMessage(String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
                 "mail": {
@@ -365,7 +365,7 @@ class SaaSSubscriptionConsumerTest {
 
         publishAmqpSaaSSubscriptionMessage(String.format("""
             {
-                "username": "%s",
+                "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
                 "mail": {
