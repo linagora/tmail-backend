@@ -49,7 +49,7 @@
             </mailet>
             <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
                 <passThrough>false</passThrough>
-                <i18nDsnTemplateDirectory>file://eml-template/dsn/error</i18nDsnTemplateDirectory>
+                <i18nDsnTemplateDirectory>file://eml-template/dsn/error/</i18nDsnTemplateDirectory>
                 <supportedLanguages>en,fr,ru,vi</supportedLanguages>
                 <defaultLanguage>en</defaultLanguage>
                 <contentType>text/plain; charset=UTF-8</contentType>
@@ -120,7 +120,7 @@
             </mailet>
             <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
                 <passThrough>false</passThrough>
-                <i18nDsnTemplateDirectory>file://eml-template/dsn/local-address-error</i18nDsnTemplateDirectory>
+                <i18nDsnTemplateDirectory>file://eml-template/dsn/local-address-error/</i18nDsnTemplateDirectory>
                 <supportedLanguages>en,fr,ru,vi</supportedLanguages>
                 <defaultLanguage>en</defaultLanguage>
                 <contentType>text/plain; charset=UTF-8</contentType>
@@ -146,7 +146,7 @@
             </mailet>
             <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
                 <passThrough>false</passThrough>
-                <i18nDsnTemplateDirectory>file://eml-template/dsn/bounces</i18nDsnTemplateDirectory>
+                <i18nDsnTemplateDirectory>file://eml-template/dsn/bounces/</i18nDsnTemplateDirectory>
                 <supportedLanguages>en,fr,ru,vi</supportedLanguages>
                 <defaultLanguage>en</defaultLanguage>
                 <contentType>text/plain; charset=UTF-8</contentType>
@@ -161,7 +161,7 @@
             <mailet match="IsSenderInRRTLoop" class="Null"/>
             <mailet match="All" class="com.linagora.tmail.saas.mailet.I18NDSNBounce">
                 <passThrough>false</passThrough>
-                <i18nDsnTemplateDirectory>file://eml-template/dsn/rrt-error</i18nDsnTemplateDirectory>
+                <i18nDsnTemplateDirectory>file://eml-template/dsn/rrt-error/</i18nDsnTemplateDirectory>
                 <supportedLanguages>en,fr,ru,vi</supportedLanguages>
                 <defaultLanguage>en</defaultLanguage>
                 <contentType>text/plain; charset=UTF-8</contentType>
