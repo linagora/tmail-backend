@@ -41,7 +41,6 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.integration.UsernameChangeIntegrationContract;
-import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedEncryptedMailboxModule;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -94,9 +93,6 @@ public class DistributedUsernameChangeIntegrationTest extends UsernameChangeInte
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceKeystoreManagerProbe.class))
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
-                .addBinding()
-                .to(RateLimitingProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceLabelProbe.class))
