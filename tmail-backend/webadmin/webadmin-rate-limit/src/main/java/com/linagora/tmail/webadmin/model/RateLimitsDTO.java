@@ -19,23 +19,25 @@
 
 package com.linagora.tmail.webadmin.model;
 
+import java.util.Optional;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 
-public record RateLimitsDTO(Long mailsSentPerMinute,
-                            Long mailsSentPerHours,
-                            Long mailsSentPerDays,
-                            Long mailsReceivedPerMinute,
-                            Long mailsReceivedPerHours,
-                            Long mailsReceivedPerDays) {
+public record RateLimitsDTO(Optional<Long> mailsSentPerMinute,
+                            Optional<Long> mailsSentPerHours,
+                            Optional<Long> mailsSentPerDays,
+                            Optional<Long> mailsReceivedPerMinute,
+                            Optional<Long> mailsReceivedPerHours,
+                            Optional<Long> mailsReceivedPerDays) {
     @JsonCreator
-    public RateLimitsDTO(@JsonProperty("mailsSentPerMinute") Long mailsSentPerMinute,
-                         @JsonProperty("mailsSentPerHours") Long mailsSentPerHours,
-                         @JsonProperty("mailsSentPerDays") Long mailsSentPerDays,
-                         @JsonProperty("mailsReceivedPerMinute") Long mailsReceivedPerMinute,
-                         @JsonProperty("mailsReceivedPerHours") Long mailsReceivedPerHours,
-                         @JsonProperty("mailsReceivedPerDays") Long mailsReceivedPerDays) {
+    public RateLimitsDTO(@JsonProperty("mailsSentPerMinute") Optional<Long> mailsSentPerMinute,
+                         @JsonProperty("mailsSentPerHours") Optional<Long> mailsSentPerHours,
+                         @JsonProperty("mailsSentPerDays") Optional<Long> mailsSentPerDays,
+                         @JsonProperty("mailsReceivedPerMinute") Optional<Long> mailsReceivedPerMinute,
+                         @JsonProperty("mailsReceivedPerHours") Optional<Long> mailsReceivedPerHours,
+                         @JsonProperty("mailsReceivedPerDays") Optional<Long> mailsReceivedPerDays) {
         this.mailsSentPerMinute = mailsSentPerMinute;
         this.mailsSentPerHours = mailsSentPerHours;
         this.mailsSentPerDays = mailsSentPerDays;
@@ -46,12 +48,12 @@ public record RateLimitsDTO(Long mailsSentPerMinute,
 
     public RateLimitingDefinition toRateLimitingDefinition() {
         return RateLimitingDefinition.builder()
-            .mailsSentPerMinute(mailsSentPerMinute)
-            .mailsSentPerHours(mailsSentPerHours)
-            .mailsSentPerDays(mailsSentPerDays)
-            .mailsReceivedPerMinute(mailsReceivedPerMinute)
-            .mailsReceivedPerHours(mailsReceivedPerHours)
-            .mailsReceivedPerDays(mailsReceivedPerDays)
+            .mailsSentPerMinute(mailsSentPerMinute.orElse(null))
+            .mailsSentPerHours(mailsSentPerHours.orElse(null))
+            .mailsSentPerDays(mailsSentPerDays.orElse(null))
+            .mailsReceivedPerMinute(mailsReceivedPerMinute.orElse(null))
+            .mailsReceivedPerHours(mailsReceivedPerHours.orElse(null))
+            .mailsReceivedPerDays(mailsReceivedPerDays.orElse(null))
             .build();
     }
 }

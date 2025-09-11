@@ -122,11 +122,11 @@ public class RateLimitsUserRoutes implements Routes {
     }
 
     private RateLimitsDTO toRateLimitsDTO(RateLimitingDefinition rateLimitingDefinition) {
-        return new RateLimitsDTO(rateLimitingDefinition.mailsSentPerMinute().orElse(null),
-            rateLimitingDefinition.mailsSentPerHours().orElse(null),
-            rateLimitingDefinition.mailsSentPerDays().orElse(null),
-            rateLimitingDefinition.mailsReceivedPerMinute().orElse(null),
-            rateLimitingDefinition.mailsReceivedPerHours().orElse(null),
-            rateLimitingDefinition.mailsReceivedPerDays().orElse(null));
+        return new RateLimitsDTO(rateLimitingDefinition.mailsSentPerMinute(),
+            rateLimitingDefinition.mailsSentPerHours(),
+            rateLimitingDefinition.mailsSentPerDays(),
+            rateLimitingDefinition.mailsReceivedPerMinute(),
+            rateLimitingDefinition.mailsReceivedPerHours(),
+            rateLimitingDefinition.mailsReceivedPerDays());
     }
 }
