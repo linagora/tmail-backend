@@ -2,33 +2,3 @@
 :navtitle: Rate limiting
 
 See xref:tmail-backend/features/tmailRateLimiting.adoc[this page] for feature explanation.
-
-== Apply rate limiting plans
-An administrator needs to rely on the `EnforceRateLimitingPlan` mailet in order to apply rate limiting plans.
-
-Configure mailets to apply rate limiting to senders:
-
-....
-<mailet match="All" class="EnforceRateLimitingPlan">
-    <keyPrefix>some-prefix</keyPrefix>
-    <operationLimitation>TransitLimitations</operationLimitation>
-    <exceededProcessor>tooMuchMails</exceededProcessor>
-</mailet>
-<mailet match="All" class="EnforceRateLimitingPlan">
-    <keyPrefix>some-prefix</keyPrefix>
-    <operationLimitation>RelayLimitations</operationLimitation>
-    <exceededProcessor>tooMuchMails</exceededProcessor>
-</mailet>
-....
-
-Configure mailet to apply rate limiting to recipients:
-
-....
-<mailet match="All" class="EnforceRateLimitingPlan">
-    <keyPrefix>some-prefix</keyPrefix>
-    <operationLimitation>DeliveryLimitations</operationLimitation>
-    <exceededProcessor>tooMuchMails</exceededProcessor>
-</mailet>
-....
-
-Exceeded emails will be transferred to `tooMuchMails` processor. Please customize this mailet depends on your will.

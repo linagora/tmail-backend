@@ -3,20 +3,14 @@
 
 Manage email rate limiting plans and apply them to your users!
 
-TMail Rate Limiting enable the administrator to manage rate limiting plans and apply those plans to users:
+TMail Rate Limiting enable the administrator to manage rate limiting of users:
 
-- Administrator can manage rate limiting plans
-- Administrator can manage which rate limiting plans apply to which users
-- Administrator can configure mailet configuration, so it can retrieve rate limiting plans and apply to according users
+- Administrator can manage rate limiting for each user
+- Administrator can configure mailet configuration, so it can retrieve rate limiting and apply to according users
 
 == Manage rate limiting plans via webadmin
 
-The administrator can manage rate limiting plans using xref:tmail-backend/webadmin.adoc#_rate_limiting[Rate Limiting Plan Management Routes]:
+The administrator can manage rate limiting using xref:tmail-backend/webadmin.adoc#_rate_limiting[Rate Limiting Plan Management Routes]:
 
-- Creating/updating/getting rate limiting plans
-- Attaching/getting/removing plan of a user. Getting list of users belonging to a plan.
-
-The administrator only can apply a plan to a user.
-
-Because of limited number of plans, we do not support removing rate limiting plans.
+- Updating/getting rate limiting for users.
 
