@@ -35,7 +35,6 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
-import com.linagora.tmail.integration.probe.RateLimitingProbe;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
@@ -67,7 +66,6 @@ public class PostgresWebAdminBase {
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapGuiceContactAutocompleteProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapSettingsProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapGuiceLabelProbe.class))
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(RateLimitingProbe.class))
             .overrideWith(overrideWithModule))
         .extension(PostgresExtension.empty())
         .extension(new ClockExtension());

@@ -39,15 +39,6 @@
             <artifactId>team-mailboxes</artifactId>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>tmail-rate-limiter-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>tmail-rate-limiter-api</artifactId>
-            <type>test-jar</type>
-        </dependency>
-        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-common</artifactId>
         </dependency>
