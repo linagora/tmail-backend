@@ -16,23 +16,17 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.webadmin.model;
+package com.linagora.tmail.webadmin;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.james.webadmin.Routes;
 
-public record RateLimitationDTO(String name,
-                                Long periodInSeconds,
-                                Long count,
-                                Long size) {
-    @JsonCreator
-    public RateLimitationDTO(@JsonProperty(value = "name", required = true) String name,
-                             @JsonProperty(value = "periodInSeconds", required = true) Long periodInSeconds,
-                             @JsonProperty(value = "count", required = true) Long count,
-                             @JsonProperty(value = "size", required = true) Long size) {
-        this.name = name;
-        this.periodInSeconds = periodInSeconds;
-        this.count = count;
-        this.size = size;
+import com.google.inject.AbstractModule;
+import com.google.inject.multibindings.Multibinder;
+
+public class RateLimitsRoutesModule extends AbstractModule {
+    @Override
+    protected void configure() {
+        Multibinder<Routes> routesMultibinder = Multibinder.newSetBinder(binder(), Routes.class);
+        routesMultibinder.addBinding().to(RateLimitsUserRoutes.class);
     }
 }

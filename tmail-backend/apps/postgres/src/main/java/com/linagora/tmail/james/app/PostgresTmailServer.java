@@ -187,7 +187,7 @@ import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
-import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
+import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
@@ -278,7 +278,7 @@ public class PostgresTmailServer {
         new MailQueueRoutesModule(),
         new MailRepositoriesRoutesModule(),
         new MessagesRoutesModule(),
-        new RateLimitPlanRoutesModule(),
+        new RateLimitsRoutesModule(),
         new ReIndexingModule(),
         new SieveRoutesModule(),
         new TeamMailboxModule(),
@@ -356,7 +356,7 @@ public class PostgresTmailServer {
         .with(new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new PostgresRateLimitingModule(),
-            new RateLimitPlanRoutesModule(),
+            new RateLimitsRoutesModule(),
             new EmailAddressContactRoutesModule(),
             new PostgresLabelRepositoryModule(),
             new PostgresJmapSettingsRepositoryModule(),

@@ -16,22 +16,25 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.rate.limiter.api.postgres.dao
+package com.linagora.tmail.rate.limiter.api.cassandra.module;
 
-import com.linagora.tmail.rate.limiter.api.LimitTypes.LimitTypes
-import com.linagora.tmail.rate.limiter.api.{LimitType, LimitTypes}
+import org.apache.james.user.api.UsernameChangeTaskStep;
 
-import scala.jdk.CollectionConverters._
+import com.google.inject.AbstractModule;
+import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
+import com.linagora.tmail.rate.limiter.api.RateLimitingUsernameChangeTaskStep;
+import com.linagora.tmail.rate.limiter.api.cassandra.CassandraRateLimitingRepository;
 
-object PostgresRateLimitingDAOUtils {
-  def getQuantity(limitType: LimitType): Long = {
-    limitType.allowedQuantity().value.longValue
-  }
+public class CassandraRateLimitingModule extends AbstractModule {
+    @Override
+    protected void configure() {
+        bind(CassandraRateLimitingRepository.class).in(Scopes.SINGLETON);
+        bind(RateLimitingRepository.class).to(CassandraRateLimitingRepository.class);
 
-  def getLimitType(limitTypeAndAllowedQuantity: java.util.Map[String, java.lang.Long]): LimitTypes = {
-    val limitTypes = limitTypeAndAllowedQuantity.asScala
-      .map(map => LimitType.liftOrThrow(map._1, map._2.toLong))
-      .toSet
-    LimitTypes.liftOrThrow(limitTypes)
-  }
+        Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
+            .addBinding()
+            .to(RateLimitingUsernameChangeTaskStep.class);
+    }
 }
