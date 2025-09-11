@@ -1,6 +1,0 @@
-<listeners>
-  <listener>
-    <class>org.apache.james.jmap.event.PopulateEmailQueryViewListener</class>
-    <async>true</async>
-  </listener>
-</listeners>
