@@ -140,6 +140,57 @@ Return codes:
 
 == Rate limiting
 
+=== Update rate limits of a user
+
+Allows to update the rate limits bound to a user.
+
+....
+curl -XPUT http://ip:port/users/{username}/ratelimits
+ -H "Content-Type: application/json"
+ -d '{
+    "mailsSentPerMinute": 10,
+    "mailsSentPerHours": 100,
+    "mailsSentPerDays": 1000,
+    "mailsReceivedPerMinute": 20,
+    "mailsReceivedPerHours": 200,
+    "mailsReceivedPerDays": 2000
+}'
+....
+
+Note: null values are allowed (means no limit set)
+
+Return codes:
+
+- `204` The user rate limits updated successfully
+- `400` Invalid request
+- `404` User does not exist
+
+=== Get rate limits of a user
+....
+curl -XGET http://ip:port/users/{username}/ratelimits
+....
+
+Returns the limits of a user:
+
+....
+{
+    "mailsSentPerMinute": 10,
+    "mailsSentPerHours": 100,
+    "mailsSentPerDays": 1000,
+    "mailsReceivedPerMinute": 20,
+    "mailsReceivedPerHours": 200,
+    "mailsReceivedPerDays": 2000
+}
+....
+
+Note: Limits not set will return a null value.
+
+Return codes:
+
+- `200` get the rate limits of a user successfully
+- `400` Invalid request
+- `404` User does not exist
+
 === Create a new plan
 Allow to create a new rate limiting plan.
 ....
