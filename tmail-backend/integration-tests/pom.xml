@@ -48,10 +48,6 @@
         <module>webadmin/distributed-webadmin-integration-tests</module>
         <module>webadmin/postgres-webadmin-integration-tests</module>
 
-        <module>rate-limiter/rate-limiter-integration-tests-common</module>
-        <module>rate-limiter/distributed-rate-limiter-integration-tests</module>
-        <module>rate-limiter/postgres-rate-limiter-integration-tests</module>
-
         <module>rspamd/rspamd-integration-tests-common</module>
         <module>rspamd/distributed-rspamd-integration-tests</module>
         <module>rspamd/postgres-rspamd-integration-tests</module>
@@ -87,11 +83,6 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>webadmin-integration-tests-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>rate-limiter-integration-tests-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
