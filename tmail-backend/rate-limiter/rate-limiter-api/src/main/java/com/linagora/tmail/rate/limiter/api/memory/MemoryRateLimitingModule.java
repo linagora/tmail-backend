@@ -16,25 +16,24 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.webadmin.model;
+package com.linagora.tmail.rate.limiter.api.memory;
 
-import java.util.List;
+import org.apache.james.user.api.UsernameChangeTaskStep;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.google.common.base.Preconditions;
+import com.google.inject.AbstractModule;
+import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
+import com.linagora.tmail.rate.limiter.api.RateLimitingUsernameChangeTaskStep;
 
-public class OperationLimitationsDTO {
-    private final List<RateLimitationDTO> rateLimitationDTOList;
+public class MemoryRateLimitingModule extends AbstractModule {
+    @Override
+    protected void configure() {
+        bind(MemoryRateLimitingRepository.class).in(Scopes.SINGLETON);
+        bind(RateLimitingRepository.class).to(MemoryRateLimitingRepository.class);
 
-    @JsonCreator
-    public OperationLimitationsDTO(List<RateLimitationDTO> rateLimitationDTOList) {
-        Preconditions.checkArgument(!rateLimitationDTOList.isEmpty(), "Operation limitation arrays must have at least one entry.");
-        this.rateLimitationDTOList = rateLimitationDTOList;
-    }
-
-    @JsonValue
-    public List<RateLimitationDTO> getRateLimitationDTOList() {
-        return rateLimitationDTOList;
+        Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
+            .addBinding()
+            .to(RateLimitingUsernameChangeTaskStep.class);
     }
 }

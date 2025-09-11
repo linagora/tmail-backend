@@ -114,7 +114,7 @@ import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
-import com.linagora.tmail.webadmin.RateLimitPlanRoutesModule;
+import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
@@ -179,7 +179,7 @@ public class MemoryServer {
             new TMailScanningQuotaSearcherModule(),
             new MemoryRateLimiterModule(),
             new MemoryRateLimitingModule(),
-            new RateLimitPlanRoutesModule(),
+            new RateLimitsRoutesModule(),
             new MemoryEmailAddressContactModule(),
             new EmailAddressContactRoutesModule(),
             new MemoryLabelRepositoryModule(),

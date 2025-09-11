@@ -16,22 +16,25 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.rate.limiter.api.postgres;
+package com.linagora.tmail.rate.limiter.api.postgres.module;
 
-import org.apache.james.backends.postgres.PostgresExtension;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.apache.james.user.api.UsernameChangeTaskStep;
 
-import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepository;
-import com.linagora.tmail.rate.limiter.api.RateLimitingPlanRepositoryContract;
-import com.linagora.tmail.rate.limiter.api.postgres.dao.PostgresRateLimitingPlanDAO;
-import com.linagora.tmail.rate.limiter.api.postgres.table.PostgresRateLimitPlanModule;
+import com.google.inject.AbstractModule;
+import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
+import com.linagora.tmail.rate.limiter.api.RateLimitingUsernameChangeTaskStep;
+import com.linagora.tmail.rate.limiter.api.postgres.PostgresRateLimitingRepository;
 
-public class PostgresRateLimitingPlanRepositoryTest implements RateLimitingPlanRepositoryContract {
-    @RegisterExtension
-    static PostgresExtension postgresExtension = PostgresExtension.withoutRowLevelSecurity(PostgresRateLimitPlanModule.MODULE);
-
+public class PostgresRateLimitingModule extends AbstractModule {
     @Override
-    public RateLimitingPlanRepository testee() {
-        return new PostgresRateLimitingPlanRepository(new PostgresRateLimitingPlanDAO(postgresExtension.getDefaultPostgresExecutor()));
+    protected void configure() {
+        bind(PostgresRateLimitingRepository.class).in(Scopes.SINGLETON);
+        bind(RateLimitingRepository.class).to(PostgresRateLimitingRepository.class);
+
+        Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
+            .addBinding()
+            .to(RateLimitingUsernameChangeTaskStep.class);
     }
 }
