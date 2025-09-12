@@ -14,3 +14,31 @@ The administrator can manage rate limiting using xref:tmail-backend/webadmin.ado
 
 - Updating/getting rate limiting for users.
 
+== Apply rate limiting via mailets
+
+TMail provides mailets that enforce these limits during mail processing:
+
+- `SentRateLimiting`: applies rate limiting for the sender of the email.
+- `ReceivedRateLimiting`: applies rate limiting for the recipients of the email.
+
+Example configurations:
+
+```
+    <mailet match="SenderIsLocal" class="com.linagora.tmail.mailets.SentRateLimiting">
+        <keyPrefix>some-prefix</keyPrefix>
+        <exceededProcessor>tooMuchMails</exceededProcessor>
+        <mailsPerMinuteDefault>10</mailsPerMinuteDefault/>
+        <mailsPerHourDefault>100</mailsPerHourDefault/>
+        <mailsPerDayDefault>1000</mailsPerDayDefault/>
+    </mailet>
+    <mailet match="RecipientIsLocal" class="com.linagora.tmail.mailets.ReceivedRateLimiting">
+        <keyPrefix>some-prefix</keyPrefix>
+        <precision>1s</precision>
+        <exceededProcessor>tooMuchMails</exceededProcessor>
+        <mailsPerMinuteDefault>10</mailsPerMinuteDefault/>
+        <mailsPerHourDefault>100</mailsPerHourDefault/>
+        <mailsPerDayDefault>1000</mailsPerDayDefault/>
+    </mailet>
+```
+
+See according mailet Javadoc for more details.
