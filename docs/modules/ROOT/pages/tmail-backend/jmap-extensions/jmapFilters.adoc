@@ -40,7 +40,7 @@ A `ConditionGroup` object has the following properties:
 A `Condition` object has the following properties:
 
 - **field**: `String`, the field of the message to be evaluated. Must be one of `from`, `to`, `cc`, `recipient`, `subject`.
-- **comparator**: `String`, how to compare the field against the suppied value. Must be one of `contains`, `not-contains`, `exactly-equals`, `not-exactly-equals`.
+- **comparator**: `String`, how to compare the field against the suppied value. Must be one of `contains`, `not-contains`, `exactly-equals`, `not-exactly-equals`, `start-with`.
 The comparator is case-incentive for `from`, `to`, `cc`, `recipient` fields but case-sensitive for `subject` field.
 - **value**: `String`, the value the field should be evaluated against, using the comparator.
 
