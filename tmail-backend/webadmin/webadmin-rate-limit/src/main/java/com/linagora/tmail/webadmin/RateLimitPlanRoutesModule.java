@@ -27,6 +27,7 @@ public class RateLimitPlanRoutesModule extends AbstractModule {
     @Override
     protected void configure() {
         Multibinder<Routes> routesMultibinder = Multibinder.newSetBinder(binder(), Routes.class);
+        routesMultibinder.addBinding().to(RateLimitsUserRoutes.class);
         routesMultibinder.addBinding().to(RateLimitPlanUserRoutes.class);
         routesMultibinder.addBinding().to(RateLimitPlanManagementRoutes.class);
     }
