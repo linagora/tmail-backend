@@ -750,4 +750,168 @@ trait LinagoraFilterGetMethodContract {
          |}""".stripMargin)
   }
 
+  @Test
+  def filterGetShouldReturnStartwithRule(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(generateUsername(),
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.START_WITH, "question"))
+          .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
+          .build)
+
+    val request = s"""{
+                     |  "using": ["com:linagora:params:jmap:filter" ],
+                     |  "methodCalls": [
+                     |    [
+                     |      "Filter/get",
+                     |        {
+                     |          "accountId": "$generateAccountIdAsString",
+                     |          "ids": ["singleton"]
+                     |        },
+                     |          "c1"]
+                     |    ]
+                     |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+      .when()
+      .post()
+      .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [[
+         |    "Filter/get", {
+         |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
+         |      "list": [
+         |      {
+         |        "id": "singleton",
+         |        "rules": [
+         |          {
+         |            "name": "My first rule",
+         |            "condition": {
+         |              "field": "${Rule.Condition.Field.SUBJECT.asString()}",
+         |              "comparator": "${Rule.Condition.Comparator.START_WITH.asString()}",
+         |              "value": "question"
+         |            },
+         |            "conditionGroup": {
+         |              "conditionCombiner": "AND",
+         |              "conditions": [
+         |                {
+         |                  "comparator": "${Rule.Condition.Comparator.START_WITH.asString()}",
+         |                  "field": "${Rule.Condition.Field.SUBJECT.asString()}",
+         |                  "value": "question"
+         |                }
+         |              ]
+         |            },
+         |            "action": {
+         |              "appendIn": {
+         |                "mailboxIds":["$generateMailboxIdForUser"]
+         |              },"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
+         |            }
+         |          }
+         |        ]
+         |      }
+         |    ],
+         |    "notFound": []
+         |  }, "c1"]]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def filterGetShouldReturnCombinationOfStartWithAndOthersRules(server: GuiceJamesServer): Unit = {
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(generateUsername(),
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.ConditionGroup.of(Rule.ConditionCombiner.OR, Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"),
+            Rule.Condition.of(Rule.Condition.Field.FROM, Rule.Condition.Comparator.START_WITH, "user")))
+          .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
+          .build)
+
+    val request =
+      s"""{
+         |  "using": ["com:linagora:params:jmap:filter" ],
+         |  "methodCalls": [
+         |    [
+         |      "Filter/get",
+         |        {
+         |          "accountId": "$generateAccountIdAsString",
+         |          "ids": ["singleton"]
+         |        },
+         |          "c1"]
+         |    ]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+      .when()
+      .post()
+      .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |  "sessionState": "${SESSION_STATE.value}",
+         |  "methodResponses": [[
+         |    "Filter/get", {
+         |      "accountId": "$generateAccountIdAsString",
+         |      "state": "0",
+         |      "list": [
+         |      {
+         |        "id": "singleton",
+         |        "rules": [
+         |          {
+         |            "name": "My first rule",
+         |            "conditionGroup": {
+         |              "conditionCombiner": "OR",
+         |              "conditions": [
+         |                {
+         |                  "comparator": "${Rule.Condition.Comparator.CONTAINS.asString()}",
+         |                  "field": "${Rule.Condition.Field.SUBJECT.asString()}",
+         |                  "value": "question"
+         |                },
+         |                {
+         |                  "comparator": "${Rule.Condition.Comparator.START_WITH.asString()}",
+         |                  "field": "${Rule.Condition.Field.FROM.asString()}",
+         |                  "value": "user"
+         |                }
+         |              ]
+         |            },
+         |            "condition": {
+         |              "field": "${Rule.Condition.Field.SUBJECT.asString()}",
+         |              "comparator": "${Rule.Condition.Comparator.CONTAINS.asString()}",
+         |              "value": "question"
+         |            },
+         |            "action": {
+         |              "appendIn": {
+         |                "mailboxIds":["$generateMailboxIdForUser"]
+         |              },"markAsSeen":false,"markAsImportant":false,"reject":false,"withKeywords":[]
+         |            }
+         |          }
+         |        ]
+         |      }
+         |    ],
+         |    "notFound": []
+         |  }, "c1"]]
+         |}""".stripMargin)
+  }
 }
