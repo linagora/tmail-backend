@@ -125,7 +125,7 @@ To enable RAG, you need to mount a configuration file called listeners.xml, whic
 ```xml
 <listeners>
     <listener>
-        <class>com.linagora.tmail.aibot.RagListener</class>
+        <class>com.linagora.tmail.mailet.rag.RagListener</class>
         <users>btellier@linagora.com,ptranvan@linagora.com</users>
     </listener>
 </listeners>
