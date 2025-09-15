@@ -18,10 +18,14 @@
 
 package com.linagora.tmail.james.app;
 
+import org.apache.james.user.api.UsernameChangeTaskStep;
+
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.SaaSAccountUsernameChangeTaskStep;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 
 public class MemorySaaSModule extends AbstractModule {
@@ -31,5 +35,9 @@ public class MemorySaaSModule extends AbstractModule {
 
         bind(SaaSAccountRepository.class).to(MemorySaaSAccountRepository.class)
             .in(Scopes.SINGLETON);
+
+        Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
+            .addBinding()
+            .to(SaaSAccountUsernameChangeTaskStep.class);
     }
 }

@@ -27,6 +27,7 @@ import jakarta.inject.Named;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.core.healthcheck.HealthCheck;
+import org.apache.james.user.api.UsernameChangeTaskStep;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
@@ -41,6 +42,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.SaaSAccountUsernameChangeTaskStep;
 import com.linagora.tmail.saas.api.cassandra.CassandraSaaSAccountRepository;
 import com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer;
@@ -61,6 +63,10 @@ public class DistributedSaaSModule extends AbstractModule {
             .to(SaaSSubscriptionDeadLetterQueueHealthCheck.class);
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
             .to(SaaSSubscriptionQueueConsumerHealthCheck.class);
+
+        Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
+            .addBinding()
+            .to(SaaSAccountUsernameChangeTaskStep.class);
     }
 
     @Provides
