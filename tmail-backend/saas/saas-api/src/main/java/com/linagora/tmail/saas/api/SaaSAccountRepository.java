@@ -27,4 +27,6 @@ public interface SaaSAccountRepository {
     Publisher<SaaSAccount> getSaaSAccount(Username username);
 
     Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount);
+
+    Publisher<Void> deleteSaaSAccount(Username username);
 }

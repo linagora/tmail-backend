@@ -42,4 +42,9 @@ public class MemorySaaSAccountRepository implements SaaSAccountRepository {
     public Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount) {
         return Mono.fromRunnable(() -> table.put(username, saaSAccount));
     }
+
+    @Override
+    public Publisher<Void> deleteSaaSAccount(Username username) {
+        return Mono.fromRunnable(() -> table.remove(username));
+    }
 }
