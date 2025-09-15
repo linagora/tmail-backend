@@ -130,6 +130,23 @@ To enable RAG, you need to mount a configuration file called listeners.xml, whic
     </listener>
 </listeners>
 ```
+
+You need to also add the following keys in `ai.properties` file:
+
+```properties
+openrag.url=https://ragondin.linagora.com
+openrag.token=fake-token
+openrag.ssl.trust.all.certs=false
+openrag.partition.pattern={localPart}.twake.{domainName}
+```
+
+**Parameters explanation:**
+
+* `openrag.url`: The URL to access the OpenRAG server. Mandatory.
+* `openrag.token`: The token for authorization access to the OpenRAG server. Mandatory.
+* `openrag.ssl.trust.all.certs`: Bypass OpenRAG ssl certificate validation or not. Optional, defaults to true.
+* `openrag.partition.pattern`: Partition pattern for OpenRAG listener. It must contain `{localPart}` and `{domainName}`. Optional, defaults to `{localPart}.twake.{domainName}`.
+
 The RagListener is responsible for processing mailbox events. It is designed to listen for messages being added to a mailbox, at which point it extracts the message content and sends it to the RAG database for indexing and future retrieval. It also listens for message deletion events to remove the corresponding content from the RAG database.You can specify a whitelist of users authorized to use the RAG feature in the <users> tag.
 The RagListener will process the text content of new incoming emails and update the RAG database accordingly.
 
