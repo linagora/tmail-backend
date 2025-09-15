@@ -59,4 +59,36 @@ public interface SaaSAccountRepositoryContract {
         assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
             .isEqualTo(SAAS_ACCOUNT_2);
     }
+
+    @Test
+    default void deleteSaaSAccountShouldSucceed() {
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT)).block();
+        Mono.from(testee().deleteSaaSAccount(BOB)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SaaSAccount.DEFAULT);
+    }
+
+    @Test
+    default void setSaaSAccountAfterDeleteSaaSAccountShouldSucceed() {
+        // This test simulates a scenario where the user record exists but has no saas account yet.
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT)).block();
+        Mono.from(testee().deleteSaaSAccount(BOB)).block();
+
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT_2)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SAAS_ACCOUNT_2);
+    }
+
+    @Test
+    default void deleteSaaSAccountShouldBeIdempotent() {
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT)).block();
+
+        Mono.from(testee().deleteSaaSAccount(BOB)).block();
+        Mono.from(testee().deleteSaaSAccount(BOB)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SaaSAccount.DEFAULT);
+    }
 }

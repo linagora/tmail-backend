@@ -18,13 +18,19 @@
 
 package com.linagora.tmail.saas.api.cassandra;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.SaaSAccountRepositoryContract;
+
+import reactor.core.publisher.Mono;
 
 public class CassandraSaaSAccountRepositoryTest implements SaaSAccountRepositoryContract {
     @RegisterExtension
@@ -40,5 +46,26 @@ public class CassandraSaaSAccountRepositoryTest implements SaaSAccountRepository
     @Override
     public SaaSAccountRepository testee() {
         return cassandraSaaSAccountRepository;
+    }
+
+    @Test
+    void shouldNotDeleteUserRecordWhenDeleteSaaSAccount(CassandraCluster cassandraCluster) {
+        CqlSession testingSession = cassandraCluster.getConf();
+
+        // Given the Bob record in the user table
+        testingSession.execute(String.format("INSERT INTO user (name, realname) VALUES ('%s', '%s')",  BOB.asString(), BOB.getLocalPart()));
+
+        // Set Bob saas account
+        Mono.from(cassandraSaaSAccountRepository.upsertSaasAccount(BOB, SAAS_ACCOUNT)).block();
+
+        // Delete saas account
+        Mono.from(cassandraSaaSAccountRepository.deleteSaaSAccount(BOB)).block();
+
+        // Assert that the user record still exists after delete saas account, so other user associated data is not lost
+        assertThat(testingSession.execute(String.format("SELECT * FROM user WHERE name = '%s'",  BOB.asString()))
+            .iterator()
+            .next()
+            .get("realname", String.class))
+            .isEqualTo(BOB.getLocalPart());
     }
 }

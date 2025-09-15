@@ -23,6 +23,7 @@ import static com.datastax.oss.driver.api.core.type.codec.TypeCodecs.TEXT;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.update;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.CAN_UPGRADE;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.IS_PAYING;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.TABLE_NAME;
@@ -38,6 +39,7 @@ import org.reactivestreams.Publisher;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
 
@@ -47,6 +49,7 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
     private final CassandraAsyncExecutor executor;
     private final PreparedStatement insertPlanStatement;
     private final PreparedStatement selectPlanStatement;
+    private final PreparedStatement clearSaaSAccountStatement;
 
     @Inject
     public CassandraSaaSAccountRepository(CqlSession session) {
@@ -58,6 +61,11 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
             .build());
         this.selectPlanStatement = session.prepare(selectFrom(TABLE_NAME)
             .columns(IS_PAYING, CAN_UPGRADE)
+            .whereColumn(USER).isEqualTo(bindMarker(USER))
+            .build());
+        this.clearSaaSAccountStatement = session.prepare(update(TABLE_NAME)
+            .setColumn(CAN_UPGRADE, bindMarker(CAN_UPGRADE))
+            .setColumn(IS_PAYING, bindMarker(IS_PAYING))
             .whereColumn(USER).isEqualTo(bindMarker(USER))
             .build());
     }
@@ -78,5 +86,13 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
             .set(USER, username.asString(), TEXT)
             .set(CAN_UPGRADE, saaSAccount.canUpgrade(), BOOLEAN)
             .set(IS_PAYING, saaSAccount.isPaying(), BOOLEAN)));
+    }
+
+    @Override
+    public Publisher<Void> deleteSaaSAccount(Username username) {
+        return Mono.from(executor.executeVoid(clearSaaSAccountStatement.bind()
+            .set(USER, username.asString(), TypeCodecs.TEXT)
+            .setToNull(CAN_UPGRADE)
+            .setToNull(IS_PAYING)));
     }
 }

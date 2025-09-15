@@ -68,4 +68,12 @@ public class PostgresSaaSAccountRepository implements SaaSAccountRepository {
             .set(CAN_UPGRADE, saaSAccount.canUpgrade())
             .set(IS_PAYING, saaSAccount.isPaying())));
     }
+
+    @Override
+    public Publisher<Void> deleteSaaSAccount(Username username) {
+        return executor.executeVoid(dsl -> Mono.from(dsl.update(TABLE_NAME)
+            .set(CAN_UPGRADE, (Boolean) null)
+            .set(IS_PAYING, (Boolean) null)
+            .where(USERNAME.eq(username.asString()))));
+    }
 }

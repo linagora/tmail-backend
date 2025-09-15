@@ -71,4 +71,28 @@ public class PostgresSaaSAccountRepositoryTest implements SaaSAccountRepositoryC
         assertThat(record.get("is_paying", Boolean.class)).isTrue();
         assertThat(record.get("hashed_password", String.class)).isEqualTo("hashedPassword");
     }
+
+    @Test
+    void shouldNotDeleteUserRecordWhenDeleteSaaSAccount() {
+        // Given the Bob record in the user table
+        postgresExtension.getDefaultPostgresExecutor()
+            .executeVoid(dslContext -> Mono.from(dslContext.insertInto(DSL.table("users"), DSL.field("username"), DSL.field("hashed_password"))
+                .values(BOB.asString(), "hashedPassword")))
+            .block();
+
+        // Set Bob saas account
+        Mono.from(repository.upsertSaasAccount(BOB, SAAS_ACCOUNT)).block();
+
+        // Delete Bob saas account
+        Mono.from(repository.deleteSaaSAccount(BOB)).block();
+
+        // Assert that the user record still exists after delete saas account, so other user associated data is not lost
+        String storedHashPassword = postgresExtension.getDefaultPostgresExecutor()
+            .executeRow(dslContext -> Mono.from(dslContext.select(DSL.field("hashed_password"))
+                .from(DSL.table("users"))
+                .where(DSL.field("username").eq(BOB.asString()))))
+            .block()
+            .get("hashed_password", String.class);
+        assertThat(storedHashPassword).isEqualTo("hashedPassword");
+    }
 }
