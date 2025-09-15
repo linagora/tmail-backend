@@ -777,9 +777,9 @@ trait LinagoraFilterGetMethodContract {
     val response = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
-      .when()
+    .when()
       .post()
-      .`then`
+    .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
       .contentType(JSON)
@@ -801,16 +801,16 @@ trait LinagoraFilterGetMethodContract {
          |          {
          |            "name": "My first rule",
          |            "condition": {
-         |              "field": "${Rule.Condition.Field.SUBJECT.asString()}",
-         |              "comparator": "${Rule.Condition.Comparator.START_WITH.asString()}",
+         |              "field": "subject",
+         |              "comparator": "start-with",
          |              "value": "question"
          |            },
          |            "conditionGroup": {
          |              "conditionCombiner": "AND",
          |              "conditions": [
          |                {
-         |                  "comparator": "${Rule.Condition.Comparator.START_WITH.asString()}",
-         |                  "field": "${Rule.Condition.Field.SUBJECT.asString()}",
+         |                  "comparator": "start-with",
+         |                  "field": "subject",
          |                  "value": "question"
          |                }
          |              ]
@@ -858,9 +858,9 @@ trait LinagoraFilterGetMethodContract {
     val response = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
-      .when()
+    .when()
       .post()
-      .`then`
+    .`then`
       .log().ifValidationFails()
       .statusCode(HttpStatus.SC_OK)
       .contentType(JSON)
@@ -885,20 +885,20 @@ trait LinagoraFilterGetMethodContract {
          |              "conditionCombiner": "OR",
          |              "conditions": [
          |                {
-         |                  "comparator": "${Rule.Condition.Comparator.CONTAINS.asString()}",
-         |                  "field": "${Rule.Condition.Field.SUBJECT.asString()}",
+         |                  "comparator": "contains",
+         |                  "field": "subject",
          |                  "value": "question"
          |                },
          |                {
-         |                  "comparator": "${Rule.Condition.Comparator.START_WITH.asString()}",
-         |                  "field": "${Rule.Condition.Field.FROM.asString()}",
+         |                  "comparator": "start-with",
+         |                  "field": "from",
          |                  "value": "user"
          |                }
          |              ]
          |            },
          |            "condition": {
-         |              "field": "${Rule.Condition.Field.SUBJECT.asString()}",
-         |              "comparator": "${Rule.Condition.Comparator.CONTAINS.asString()}",
+         |              "field": "subject",
+         |              "comparator": "contains",
          |              "value": "question"
          |            },
          |            "action": {
