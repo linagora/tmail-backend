@@ -332,10 +332,10 @@ Implemented extra steps for TMail are:
 
 - `ContactUsernameChangeTaskStep`: migrates contacts from old user to new user
 - `PGPKeysUsernameChangeTaskStep`: migrates PGP public keys from old user to new user
-- `RateLimitingPlanUsernameChangeTaskStep`: migrates rate limiting plan from old to new user
 - `LabelUsernameChangeTaskStep`: migrates JMAP labels from old to new user
 - `JmapSettingsUsernameChangeTaskStep`: migrates JMAP settings from old to new user
 - `RateLimitingUsernameChangeTaskStep`: migrates rate limiting from old to new user
+- `SaaSAccountUsernameChangeTaskStep` (only if the SaaS module is enabled): migrates SaaS account information from old to new user
 
 Response codes:
 * 201: Success. Corresponding task id is returned.
