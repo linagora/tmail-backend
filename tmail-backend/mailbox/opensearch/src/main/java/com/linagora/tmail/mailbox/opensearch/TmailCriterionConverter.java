@@ -38,6 +38,7 @@ import org.apache.james.mailbox.opensearch.json.JsonMessageConstants;
 import org.apache.james.mailbox.opensearch.query.DefaultCriterionConverter;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
+import org.opensearch.client.opensearch._types.query_dsl.MatchNoneQuery;
 import org.opensearch.client.opensearch._types.query_dsl.MatchQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Operator;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -111,9 +112,24 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
     }
 
     @Override
+    protected Query manageAddressFields(String headerName, String value) {
+        if (useQueryStringQuery && QUERY_STRING_CONTROL_CHAR.matchesAnyOf(value)) {
+            return new MatchNoneQuery.Builder()
+                .build()
+                .toQuery();
+        }
+        return super.manageAddressFields(headerName, value);
+    }
+
+    @Override
     protected Query convertTextCriterion(SearchQuery.TextCriterion textCriterion) {
         switch (textCriterion.getType()) {
             case ATTACHMENT_FILE_NAME:
+                if (useQueryStringQuery && QUERY_STRING_CONTROL_CHAR.matchesAnyOf(textCriterion.getOperator().getValue())) {
+                    return new MatchNoneQuery.Builder()
+                        .build()
+                        .toQuery();
+                }
                 if (isNgramFilename(textCriterion)) {
                     return new BoolQuery.Builder()
                         .should(new MatchQuery.Builder()
