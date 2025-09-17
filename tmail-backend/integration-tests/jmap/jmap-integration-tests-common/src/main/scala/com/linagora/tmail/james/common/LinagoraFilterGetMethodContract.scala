@@ -62,7 +62,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -314,7 +314,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -394,7 +394,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -475,7 +475,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -527,7 +527,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -577,8 +577,8 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .conditionGroup(Rule.ConditionGroup.of(Rule.ConditionCombiner.OR, Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"),
-            Rule.Condition.of(Rule.Condition.Field.FROM, Rule.Condition.Comparator.CONTAINS, "user2")))
+          .conditionGroup(Rule.ConditionGroup.of(Rule.ConditionCombiner.OR, Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"),
+            Rule.Condition.of(Rule.Condition.FixedField.FROM, Rule.Condition.Comparator.CONTAINS, "user2")))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -666,7 +666,7 @@ trait LinagoraFilterGetMethodContract {
           .id(Rule.Id.of("1"))
           .name("My first rule")
           .conditionGroup(Rule.ConditionGroup.of(Rule.ConditionCombiner.AND,
-            Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question")))
+            Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question")))
           .action(Rule.Action.builder().setAppendInMailboxes(Rule.Action.AppendInMailboxes.withMailboxIds())
             .setWithKeywords(ImmutableList.of)
             .setForward(Optional.of(Rule.Action.Forward.of(forwardedMailAddresses, true)))
@@ -757,7 +757,7 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .conditionGroup(Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.START_WITH, "question"))
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.START_WITH, "question"))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
@@ -836,8 +836,8 @@ trait LinagoraFilterGetMethodContract {
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
-          .conditionGroup(Rule.ConditionGroup.of(Rule.ConditionCombiner.OR, Rule.Condition.of(Rule.Condition.Field.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"),
-            Rule.Condition.of(Rule.Condition.Field.FROM, Rule.Condition.Comparator.START_WITH, "user")))
+          .conditionGroup(Rule.ConditionGroup.of(Rule.ConditionCombiner.OR, Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "question"),
+            Rule.Condition.of(Rule.Condition.FixedField.FROM, Rule.Condition.Comparator.START_WITH, "user")))
           .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(generateMailboxIdForUser())))
           .build)
 
