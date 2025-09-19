@@ -36,6 +36,7 @@ import com.google.common.hash.Hashing;
 
 import io.lettuce.core.KeyValue;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class RedisOidcTokenCache implements OidcTokenCache {
     public static class TokenParseException extends RuntimeException {
@@ -137,6 +138,7 @@ public class RedisOidcTokenCache implements OidcTokenCache {
 
     private Mono<TokenInfo> resolveTokenInfoAndCache(Token token, String tokenRedisKey) {
         return tokenInfoResolver.apply(token)
+            .publishOn(Schedulers.parallel())
             .flatMap(tokenInfo -> cacheTokenInfo(tokenRedisKey, tokenInfo)
                 .thenReturn(tokenInfo));
     }
