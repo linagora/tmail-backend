@@ -293,6 +293,14 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>logback-jackson</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.linagora.tmail</groupId>
             <artifactId>logback-json-classic</artifactId>
         </dependency>
