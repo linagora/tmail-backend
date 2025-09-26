@@ -160,11 +160,11 @@ trait JmapSaasContract {
          |      "mail": {
          |        "storageQuota": 1234,
          |        "mailsSentPerMinute": 1,
-         |        "mailsSentPerHours": 1,
-         |        "mailsSentPerDays": 1,
+         |        "mailsSentPerHour": 1,
+         |        "mailsSentPerDay": 1,
          |        "mailsReceivedPerMinute": 1,
-         |        "mailsReceivedPerHours": 1,
-         |        "mailsReceivedPerDays": 1
+         |        "mailsReceivedPerHour": 1,
+         |        "mailsReceivedPerDay": 1
          |      }
          |    }
          |}""".stripMargin)
@@ -178,11 +178,11 @@ trait JmapSaasContract {
          |      "mail": {
          |        "storageQuota": 10000,
          |        "mailsSentPerMinute": 10,
-         |        "mailsSentPerHours": 100,
-         |        "mailsSentPerDays": 1000,
+         |        "mailsSentPerHour": 100,
+         |        "mailsSentPerDay": 1000,
          |        "mailsReceivedPerMinute": 20,
-         |        "mailsReceivedPerHours": 200,
-         |        "mailsReceivedPerDays": 2000
+         |        "mailsReceivedPerHour": 200,
+         |        "mailsReceivedPerDay": 2000
          |      }
          |    }
          |}""".stripMargin)
