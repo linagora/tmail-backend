@@ -156,7 +156,8 @@ trait JmapSaasContract {
          |    "internalEmail": "${BOB.asString()}",
          |    "isPaying": false,
          |    "canUpgrade": true,
-         |    "mail": {
+         |    "features": {
+         |      "mail": {
          |        "storageQuota": 1234,
          |        "mailsSentPerMinute": 1,
          |        "mailsSentPerHours": 1,
@@ -164,6 +165,7 @@ trait JmapSaasContract {
          |        "mailsReceivedPerMinute": 1,
          |        "mailsReceivedPerHours": 1,
          |        "mailsReceivedPerDays": 1
+         |      }
          |    }
          |}""".stripMargin)
 
@@ -172,7 +174,8 @@ trait JmapSaasContract {
          |    "internalEmail": "${BOB.asString()}",
          |    "isPaying": true,
          |    "canUpgrade": true,
-         |    "mail": {
+         |    "features": {
+         |      "mail": {
          |        "storageQuota": 10000,
          |        "mailsSentPerMinute": 10,
          |        "mailsSentPerHours": 100,
@@ -180,6 +183,7 @@ trait JmapSaasContract {
          |        "mailsReceivedPerMinute": 20,
          |        "mailsReceivedPerHours": 200,
          |        "mailsReceivedPerDays": 2000
+         |      }
          |    }
          |}""".stripMargin)
 
