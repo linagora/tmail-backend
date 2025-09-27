@@ -52,14 +52,16 @@ class SaaSSubscriptionDeserializerTest {
                 "internalEmail": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """;
@@ -70,8 +72,8 @@ class SaaSSubscriptionDeserializerTest {
             softly.assertThat(message.internalEmail()).isEqualTo("alice@twake.app");
             softly.assertThat(message.isPaying()).isTrue();
             softly.assertThat(message.canUpgrade()).isTrue();
-            softly.assertThat(message.mail().storageQuota()).isEqualTo(12334534L);
-            softly.assertThat(message.mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
+            softly.assertThat(message.features().mail().storageQuota()).isEqualTo(12334534L);
+            softly.assertThat(message.features().mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
         });
     }
 
@@ -81,14 +83,16 @@ class SaaSSubscriptionDeserializerTest {
             {
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """;
@@ -104,14 +108,16 @@ class SaaSSubscriptionDeserializerTest {
             {
                 "internalEmail": "alice@twake.app",
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """;
@@ -127,14 +133,16 @@ class SaaSSubscriptionDeserializerTest {
             {
                 "internalEmail": "alice@twake.app",
                 "isPaying": true,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """;
@@ -166,8 +174,10 @@ class SaaSSubscriptionDeserializerTest {
                 "username": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 12334534
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534
+                    }
                 }
             }
             """;
@@ -184,14 +194,16 @@ class SaaSSubscriptionDeserializerTest {
                 "internalEmail": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 123,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 123,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 },
                 "extraField": "ignored"
             }
@@ -203,8 +215,8 @@ class SaaSSubscriptionDeserializerTest {
             softly.assertThat(parsed.internalEmail()).isEqualTo("alice@twake.app");
             softly.assertThat(parsed.isPaying()).isTrue();
             softly.assertThat(parsed.canUpgrade()).isTrue();
-            softly.assertThat(parsed.mail().storageQuota()).isEqualTo(123L);
-            softly.assertThat(parsed.mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
+            softly.assertThat(parsed.features().mail().storageQuota()).isEqualTo(123L);
+            softly.assertThat(parsed.features().mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
         });
     }
 
@@ -215,20 +227,22 @@ class SaaSSubscriptionDeserializerTest {
                 "internalEmail": "alice@twake.app",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": -1,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": -1,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """;
 
         SaaSSubscriptionMessage parsed = SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message);
 
-        assertThat(parsed.mail().storageQuota()).isEqualTo(-1L);
+        assertThat(parsed.features().mail().storageQuota()).isEqualTo(-1L);
     }
 }

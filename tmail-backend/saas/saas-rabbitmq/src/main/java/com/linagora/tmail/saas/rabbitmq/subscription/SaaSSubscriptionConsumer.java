@@ -193,10 +193,10 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
             .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
             .map(User::getUserName)
             .flatMap(username -> Mono.from(saasAccountRepository.upsertSaasAccount(username, saaSAccount))
-                .then(updateStorageQuota(username, subscriptionMessage.mail().storageQuota()))
-                .then(updateRateLimiting(username, subscriptionMessage.mail().rateLimitingDefinition()))
+                .then(updateStorageQuota(username, subscriptionMessage.features().mail().storageQuota()))
+                .then(updateRateLimiting(username, subscriptionMessage.features().mail().rateLimitingDefinition()))
                 .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for user: {}, isPaying: {}, canUpgrade: {}, storageQuota: {}, rateLimiting: {}",
-                    username, subscriptionMessage.isPaying(), subscriptionMessage.canUpgrade(), subscriptionMessage.mail().storageQuota(), subscriptionMessage.mail().rateLimitingDefinition())));
+                    username, subscriptionMessage.isPaying(), subscriptionMessage.canUpgrade(), subscriptionMessage.features().mail().storageQuota(), subscriptionMessage.features().mail().rateLimitingDefinition())));
     }
 
     private Mono<Void> updateStorageQuota(Username username, Long storageQuota) {

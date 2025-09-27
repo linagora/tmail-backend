@@ -160,14 +160,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 123,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 123,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString());
@@ -189,14 +191,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 1234,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString());
@@ -214,14 +218,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 1234,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString());
@@ -241,14 +247,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": -1,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": -1,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString());
@@ -266,14 +274,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": true,
-                "mail": {
-                    "storageQuota": 1000,
-                    "mailsSentPerMinute": -1,
-                    "mailsSentPerHours": -1,
-                    "mailsSentPerDays": -1,
-                    "mailsReceivedPerMinute": -1,
-                    "mailsReceivedPerHours": -1,
-                    "mailsReceivedPerDays": -1
+                "features": {
+                    "mail": {
+                        "storageQuota": 1000,
+                        "mailsSentPerMinute": -1,
+                        "mailsSentPerHour": -1,
+                        "mailsSentPerDay": -1,
+                        "mailsReceivedPerMinute": -1,
+                        "mailsReceivedPerHour": -1,
+                        "mailsReceivedPerDay": -1
+                    }
                 }
             }
             """, ALICE.asString());
@@ -296,14 +306,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString());
@@ -326,14 +338,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString());
@@ -351,14 +365,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 1,
-                    "mailsSentPerHours": 1,
-                    "mailsSentPerDays": 1,
-                    "mailsReceivedPerMinute": 2,
-                    "mailsReceivedPerHours": 2,
-                    "mailsReceivedPerDays": 2
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 1,
+                        "mailsSentPerHour": 1,
+                        "mailsSentPerDay": 1,
+                        "mailsReceivedPerMinute": 2,
+                        "mailsReceivedPerHour": 2,
+                        "mailsReceivedPerDay": 2
+                    }
                 }
             }
             """, ALICE.asString()));
@@ -368,14 +384,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString()));
@@ -398,14 +416,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, BOB.asString());
@@ -428,14 +448,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": {
-                    "storageQuota": 1234,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString());
@@ -465,14 +487,16 @@ class SaaSSubscriptionConsumerTest {
                 "internalEmail": "%s",
                 "isPaying": true,
                 "canUpgrade": false,
-                "mail": {
-                    "storageQuota": 12334534,
-                    "mailsSentPerMinute": 10,
-                    "mailsSentPerHours": 100,
-                    "mailsSentPerDays": 1000,
-                    "mailsReceivedPerMinute": 20,
-                    "mailsReceivedPerHours": 200,
-                    "mailsReceivedPerDays": 2000
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
                 }
             }
             """, ALICE.asString());
