@@ -12,7 +12,7 @@
 
     <properties>
         <target.jdk>21</target.jdk>
-        <jib.base.image>eclipse-temurin:24-jre-noble</jib.base.image>
+        <jib.base.image>eclipse-temurin:25-jre-jammy</jib.base.image>
     </properties>
 
     <modules>
