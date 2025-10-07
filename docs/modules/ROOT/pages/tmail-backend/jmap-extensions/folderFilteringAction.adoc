@@ -1,0 +1,236 @@
+= Folder filtering tasks
+:navtitle: folder filtering tasks
+
+This extension allows users to run their configured filtering rules (as defined by `Filter/set`) against existing messages in a specific mailbox.
+This is done by creating a `FolderFilteringAction` task.
+
+== FolderFilteringAction object
+
+This object represents the action of running filtering rules over existing messages in a mailbox.
+
+It has the following properties:
+
+- `id`: *Id* (server set). The task identifier.
+- `mailboxId`: *Id*. Immutable. The mailbox to apply filtering rules.
+- `mailboxName`: *String* (server-set). The display name of the mailbox.
+- `status`: *Status*. The status of the task.
+- `processedMessageCount`: *UnsignedInt* (server-set). Total number of messages examined by the filtering task.
+- `successfulActions`: *UnsignedInt* (server-set). Number of filtering actions successfully applied.
+- `failedActions`: *UnsignedInt* (server-set). Number of filtering actions that failed.
+- `maximumAppliedActionReached`: *Boolean* (server-set). Indicates whether the server stopped early due to reaching a configured maximum number of applied actions.
+
+*Status* can take the following values:
+
+- `waiting`: the task is planned and waits to be executed.
+- `inProgress`: the task is currently being executed.
+- `done`: the task finished successfully.
+- `failed`: the task execution failed.
+- `canceled`: the task was canceled.
+
+== FolderFilteringAction/get
+
+This method returns the underlying folder filtering tasks.
+
+Standard `/get` semantics. The `ids` property cannot be null.
+
+This method supports the following properties of the `FolderFilteringAction` object:
+`id`, `mailboxName`, `status`, `processedMessageCount`, `successfulActions`, `failedActions`, `maximumAppliedActionReached`.
+
+Servers MUST ensure only the authenticated user's filtering tasks are returned.
+
+== FolderFilteringAction/set
+
+Standard `/set` semantics.
+
+=== create
+
+- The client MUST NOT specify the `status` property on creation.
+
+Example request:
+
+....
+["FolderFilteringAction/set",
+  {
+    "create": {
+      "c1": {
+        "mailboxId": "mb1"
+      }
+    }
+  },
+  "#0"
+]
+....
+
+Example response:
+
+....
+["FolderFilteringAction/set",
+  {
+    "created": {
+      "c1": { "id": "flt-task-001" }
+    },
+    "notCreated": {}
+  },
+  "#0"
+]
+....
+
+=== update
+
+- Only the `status` property may be updated.
+- The only allowed transition is from `waiting` or `inProgress` to `canceled`.
+- The `invalidStatus` method level error should be returned upon status update state violation.
+
+Example:
+
+....
+["FolderFilteringAction/set",
+  {
+    "update": {
+      "flt-task-001": { "status": "canceled" }
+    }
+  },
+  "#0"
+]
+....
+
+Response:
+
+....
+["FolderFilteringAction/set",
+  {
+    "updated": { "flt-task-001": null },
+    "notUpdated": {}
+  },
+  "#0"
+]
+....
+
+=== destroy
+
+`FolderFilteringAction/set destroy` MUST fail.
+
+== Example flow
+
+=== Creating a filtering task
+
+....
+{
+  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter"],
+  "methodCalls": [
+    ["FolderFilteringAction/set",
+      {
+        "create": {
+          "c1": {
+            "mailboxId": "INBOX"
+          }
+        }
+      },
+      "#0"
+    ]
+  ]
+}
+....
+
+Server responds:
+
+....
+["FolderFilteringAction/set",
+  {
+    "created": {
+      "c1": { "id": "flt-task-001" }
+    },
+    "notCreated": {}
+  },
+  "#0"
+]
+....
+
+=== Polling task status
+
+....
+["FolderFilteringAction/get",
+  {
+    "ids": ["flt-task-001"],
+    "properties": ["status","processedMessageCount","successfulActions","failedActions","maximumAppliedActionReached"]
+  },
+  "#0"
+]
+....
+
+Server returns:
+
+....
+["FolderFilteringAction/get",
+  {
+    "list": [
+      {
+        "id": "flt-task-001",
+        "mailboxName": "Inbox",
+        "status": "inProgress",
+        "processedMessageCount": 200,
+        "successfulActions": 180,
+        "failedActions": 20,
+        "maximumAppliedActionReached": false
+      }
+    ],
+    "notFound": []
+  },
+  "#0"
+]
+....
+
+=== Canceling a task
+
+....
+["FolderFilteringAction/set",
+  {
+    "update": {
+      "flt-task-001": { "status": "canceled" }
+    }
+  },
+  "#0"
+]
+....
+
+Response:
+
+....
+["FolderFilteringAction/set",
+  {
+    "updated": { "flt-task-001": null },
+    "notUpdated": {}
+  },
+  "#0"
+]
+....
+
+=== Attempting to cancel again
+
+....
+["FolderFilteringAction/set",
+  {
+    "update": {
+      "flt-task-001": { "status": "canceled" }
+    }
+  },
+  "#0"
+]
+....
+
+Response:
+
+....
+["FolderFilteringAction/set",
+  {
+    "updated": {},
+    "notUpdated": {
+      "flt-task-001": {
+        "type": "invalidStatus",
+        "description": "Attempting to cancel a FolderFilteringAction with an invalid status."
+      }
+    }
+  },
+  "#0"
+]
+....
