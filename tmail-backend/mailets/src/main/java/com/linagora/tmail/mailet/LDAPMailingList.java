@@ -86,6 +86,7 @@ import com.unboundid.ldap.sdk.SearchScope;
  *  <li>userMailCacheDuration: Time during which one should keep entries into the user DN => mailAddress cache.</li>
  *  <li>mailAttributeForGroups: Attribute holding the mail address of a group. For easy testing this can be set to description
  *  but for production use a special LDAP schema needs to be crafted for using the mail attribute.</li>
+ *  <li>extraFilter: a LDAP filter to use when looking up the groups. None if not provided. Needs to match LDAP filter syntax.</li>
  *  </ul>
  *
  *  <ul>Performance considerations:
@@ -207,6 +208,7 @@ public class LDAPMailingList extends GenericMailet {
     private String rejectedSenderProcessor;
     private MailingListPredicate mailingListPredicate;
     private String mailAttributeForGroups;
+    private Optional<Filter> extraFilter = Optional.empty();
 
     @Inject
     public LDAPMailingList(LDAPConnectionPool ldapConnectionPool, LdapRepositoryConfiguration configuration) {
@@ -233,6 +235,8 @@ public class LDAPMailingList extends GenericMailet {
     @Override
     public void init() throws MessagingException {
         baseDN = getInitParameter("baseDN");
+        extraFilter = Optional.ofNullable(getInitParameter("extraFilter"))
+            .map(Throwing.function(Filter::create));
         mailAttributeForGroups = getInitParameter("mailAttributeForGroups", "mail");
         String groupObjectClass = getInitParameter("groupObjectClass", "groupofnames");
         objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
@@ -316,7 +320,9 @@ public class LDAPMailingList extends GenericMailet {
 
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
-        return Filter.createANDFilter(objectClassFilter, specificUserFilter);
+        return extraFilter
+            .map(filter -> Filter.createANDFilter(objectClassFilter, specificUserFilter, filter))
+            .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
     }
 
     private MailTransformation listToMailTransformation(MaybeSender maybeSender, SearchResultEntry list) {
