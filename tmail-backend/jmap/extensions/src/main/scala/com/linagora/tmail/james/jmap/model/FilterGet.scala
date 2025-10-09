@@ -26,7 +26,7 @@ import org.apache.james.jmap.api.filtering.{Version, Rule => JavaRule}
 import org.apache.james.jmap.api.model.{State, TypeName}
 import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id
-import org.apache.james.jmap.mail.{Keyword, Name}
+import org.apache.james.jmap.mail.{Keyword, MailboxName, Name}
 import org.apache.james.jmap.method.WithAccountId
 import org.apache.james.mailbox.model.MailboxId
 
@@ -64,8 +64,11 @@ case class MailAddress(string: String) extends AnyVal
 case class KeepACopy(value: Boolean)
 case class FilterForward(addresses: List[MailAddress], keepACopy: KeepACopy)
 
+case class MoveTo(mailboxName: MailboxName.MailboxName)
+
 case class Action(appendIn: AppendIn, markAsSeen: Option[MarkAsSeen], markAsImportant: Option[MarkAsImportant],
-                  reject: Option[Reject], withKeywords: Option[WithKeywords], forwardTo: Option[FilterForward])
+                  reject: Option[Reject], withKeywords: Option[WithKeywords], forwardTo: Option[FilterForward],
+                  moveTo: Option[MoveTo])
 
 case class Rule(name: Name, conditionGroup: ConditionGroup, condition: Condition,  action: Action)
 
@@ -102,7 +105,14 @@ object Rule {
         Some(MarkAsImportant(rule.getAction.isMarkAsImportant)),
         Some(Reject(rule.getAction.isReject)),
         Some(WithKeywords(rule.getAction.getWithKeywords.asScala.map(s => Keyword.of(s).get).toSeq)),
-        convert(rule.getAction.getForward)))
+        convert(rule.getAction.getForward),
+        convertMoveTo(rule.getAction.getMoveTo)))
+
+  private def convertMoveTo(moveToOptional: Optional[JavaRule.Action.MoveTo]): Option[MoveTo] =
+    moveToOptional.toScala.map(moveTo => MailboxName.validate(moveTo.getMailboxName) match {
+      case Right(validName) => MoveTo(validName)
+      case Left(e) => throw e
+    })
 
   private def convert(forwardOptional: Optional[JavaRule.Action.Forward]): Option[FilterForward] =
     forwardOptional.toScala.map(actionForward => FilterForward(
