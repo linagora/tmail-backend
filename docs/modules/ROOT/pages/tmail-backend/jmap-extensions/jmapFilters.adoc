@@ -52,6 +52,7 @@ An `Action` object has the following properties:
 - **withKeywords** `String[]` optional defaults to empty. The keyword to apply to matching emails.
 - **appendIn**: `AppendIn`, specified the "append in mailboxes" action.
 - **forwardTo**: `ForwardTo`, optional. specified the "forward" action.
+- **moveTo**: `MoveTo`, optional. Specifies the "move to mailbox by name" action.
 
 An `AppendIn` object has the following properties:
 
@@ -61,6 +62,10 @@ A `ForwardTo` object has the following properties:
 
  - **addresses**: `String[]`: The list of email addresses to forward the email to.
  - **keepACopy**: `Boolean`: Should the email be kept locally or not.
+
+A `MoveTo` object has the following properties:
+
+ - **mailboxName**: `String`. The name of the mailbox to move the message to. If the mailbox does not exist, it will be created automatically.
 
 === Filter/get
 

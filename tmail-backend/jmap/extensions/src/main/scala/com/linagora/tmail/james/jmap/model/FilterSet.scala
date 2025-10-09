@@ -31,6 +31,7 @@ import org.apache.james.jmap.method.WithAccountId
 import play.api.libs.json.{JsArray, JsObject}
 
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 
 case class FilterSetRequest(accountId: AccountId,
@@ -93,6 +94,7 @@ object RuleWithId {
       .setReject(ruleWithId.action.reject.map(_.value).getOrElse(false))
       .setWithKeywords(ruleWithId.action.withKeywords.map(keywords => ImmutableList.copyOf(keywords.keywords.map(k => k.flagName).toList.asJavaCollection)).getOrElse(ImmutableList.of()))
       .setForward(convertScalaForwardToJavaForward(ruleWithId.action.forwardTo))
+      .setMoveTo(ruleWithId.action.moveTo.map(moveTo => new Rule.Action.MoveTo(moveTo.mailboxName.value)).toJava)
       .build()
 
   private def convertScalaForwardToJavaForward(forwardOption: Option[FilterForward]): Optional[Rule.Action.Forward] =

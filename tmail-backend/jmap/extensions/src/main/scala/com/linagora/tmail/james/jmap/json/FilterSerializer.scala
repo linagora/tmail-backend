@@ -19,7 +19,7 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.ConditionCombiner.ConditionCombiner
-import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, ConditionCombiner, ConditionGroup, Field, Filter, FilterForward, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, KeepACopy, MailAddress, MarkAsImportant, MarkAsSeen, Reject, Rule, RuleWithId, SerializedRule, Update, WithKeywords}
+import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, ConditionCombiner, ConditionGroup, Field, Filter, FilterForward, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, KeepACopy, MailAddress, MarkAsImportant, MarkAsSeen, MoveTo, Reject, Rule, RuleWithId, SerializedRule, Update, WithKeywords}
 import jakarta.inject.Inject
 import org.apache.james.jmap.mail.{Keyword, Name}
 import org.apache.james.mailbox.model.MailboxId
@@ -61,6 +61,7 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val mailAddressFormat: Format[MailAddress] = Json.valueFormat[MailAddress]
   implicit val keepACopyFormat: Format[KeepACopy] = Json.valueFormat[KeepACopy]
   implicit val forwardToFormat: Format[FilterForward] = Json.format[FilterForward]
+  implicit val moveToFormat: Format[MoveTo] = Json.format[MoveTo]
   implicit val actionFormat: Format[Action] = Json.format[Action]
   implicit val ruleWrites: Writes[Rule] = Json.writes[Rule]
   implicit val filterWrites: Writes[Filter] = Json.writes[Filter]
