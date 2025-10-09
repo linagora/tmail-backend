@@ -68,6 +68,7 @@ import com.unboundid.ldap.sdk.SearchScope;
  *  rejection.</li>
  *  <li>mailAttributeForGroups: Attribute holding the mail address of a group. For easy testing this can be set to description
  *  but for production use a special LDAP schema needs to be crafted for using the mail attribute.</li>
+ *   *  <li>extraFilter: a LDAP filter to use when looking up the groups. None if not provided. Needs to match LDAP filter syntax.</li>
  *  </ul>
  *
  *  <p>Sample structure for LDAP groups:</p>
@@ -142,6 +143,7 @@ public class OBMLDAPMailingList extends GenericMailet {
     private String baseDN;
     private String rejectedSenderProcessor;
     private String mailAttributeForGroups;
+    private Optional<Filter> extraFilter = Optional.empty();
 
     @Inject
     public OBMLDAPMailingList(LDAPConnectionPool ldapConnectionPool) {
@@ -169,6 +171,8 @@ public class OBMLDAPMailingList extends GenericMailet {
     @Override
     public void init() throws MessagingException {
         baseDN = getInitParameter("baseDN");
+        extraFilter = Optional.ofNullable(getInitParameter("extraFilter"))
+            .map(Throwing.function(Filter::create));
         mailAttributeForGroups = getInitParameter("mailAttributeForGroups", "mail");
         String groupObjectClass = getInitParameter("groupObjectClass", "obmGroup");
         objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
@@ -232,7 +236,9 @@ public class OBMLDAPMailingList extends GenericMailet {
 
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
-        return Filter.createANDFilter(objectClassFilter, specificUserFilter);
+        return extraFilter
+            .map(filter -> Filter.createANDFilter(objectClassFilter, specificUserFilter, filter))
+            .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
     }
 
     private MailTransformation listToMailTransformation(MaybeSender maybeSender, GroupResolutionResult list) {

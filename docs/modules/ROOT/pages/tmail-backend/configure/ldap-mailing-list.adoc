@@ -23,6 +23,7 @@ rejection.
 - userMailCacheDuration: Time during which one should keep entries into the user DN => mailAddress cache.
 - mailAttributeForGroups: Attribute holding the mail address of a group. For easy testing this can be set to description
 but for production use a special LDAP schema needs to be crafted for using the mail attribute.
+- extraFilter: a LDAP filter to use when looking up the groups. None if not provided. Needs to match LDAP filter syntax.
 
 Performance considerations:
 
