@@ -696,6 +696,222 @@ trait LinagoraFilterSetMethodContract {
   }
 
   @Test
+  def shouldSupportCustomHeaderField(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/set", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"update": {
+         |				"singleton": [{
+         |					"id": "1",
+         |					"name": "My first rule",
+         |					"condition": {
+         |						"field": "header:X-custom",
+         |						"comparator": "contains",
+         |						"value": "question"
+         |					},
+         |					"action": {
+         |						"appendIn": {
+         |							"mailboxIds": ["$generateMailboxIdForUser"]
+         |						}
+         |					}
+         |				}]
+         |			}
+         |		}, "c1"],
+         |		[
+         |			"Filter/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"ids": ["singleton"]
+         |			},
+         |			"c2"
+         |		]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Filter/set",
+         |			{
+         |				"accountId": "$generateAccountIdAsString",
+         |				"oldState": "-1",
+         |				"newState": "0",
+         |				"updated": {
+         |					"singleton": {
+         |
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		],
+         |		[
+         |			"Filter/get", {
+         |				"accountId": "$generateAccountIdAsString",
+         |				"state": "0",
+         |				"list": [{
+         |					"id": "singleton",
+         |					"rules": [{
+         |						"name": "My first rule",
+         |						"conditionGroup": {
+         |							"conditionCombiner": "AND",
+         |							"conditions": [
+         |								{
+         |									"field": "header:X-custom",
+         |									"comparator": "contains",
+         |									"value": "question"
+         |								}
+         |							]
+         |						},
+         |						"condition": {
+         |							"field": "header:X-custom",
+         |							"comparator": "contains",
+         |							"value": "question"
+         |						},
+         |						"action": {
+         |							"appendIn": {
+         |								"mailboxIds": ["$generateMailboxIdForUser"]
+         |							},
+         |							"markAsSeen": false,
+         |							"markAsImportant": false,
+         |							"reject": false,
+         |							"withKeywords": []
+         |						}
+         |					}]
+         |				}],
+         |				"notFound": []
+         |			}, "c2"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def shouldSupportCustomHeaderExistenceWithAnyComparator(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/set", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"update": {
+         |				"singleton": [{
+         |					"id": "1",
+         |					"name": "My first rule",
+         |					"condition": {
+         |						"field": "header:X-custom",
+         |						"comparator": "any",
+         |						"value": "disregard me"
+         |					},
+         |					"action": {
+         |						"appendIn": {
+         |							"mailboxIds": ["$generateMailboxIdForUser"]
+         |						}
+         |					}
+         |				}]
+         |			}
+         |		}, "c1"],
+         |		[
+         |			"Filter/get",
+         |			{
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"ids": ["singleton"]
+         |			},
+         |			"c2"
+         |		]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |	"sessionState": "${SESSION_STATE.value}",
+         |	"methodResponses": [
+         |		[
+         |			"Filter/set",
+         |			{
+         |				"accountId": "$generateAccountIdAsString",
+         |				"oldState": "-1",
+         |				"newState": "0",
+         |				"updated": {
+         |					"singleton": {
+         |
+         |					}
+         |				}
+         |			},
+         |			"c1"
+         |		],
+         |		[
+         |			"Filter/get", {
+         |				"accountId": "$generateAccountIdAsString",
+         |				"state": "0",
+         |				"list": [{
+         |					"id": "singleton",
+         |					"rules": [{
+         |						"name": "My first rule",
+         |						"conditionGroup": {
+         |							"conditionCombiner": "AND",
+         |							"conditions": [
+         |								{
+         |									"field": "header:X-custom",
+         |									"comparator": "any",
+         |									"value": "disregard me"
+         |								}
+         |							]
+         |						},
+         |						"condition": {
+         |							"field": "header:X-custom",
+         |							"comparator": "any",
+         |							"value": "disregard me"
+         |						},
+         |						"action": {
+         |							"appendIn": {
+         |								"mailboxIds": ["$generateMailboxIdForUser"]
+         |							},
+         |							"markAsSeen": false,
+         |							"markAsImportant": false,
+         |							"reject": false,
+         |							"withKeywords": []
+         |						}
+         |					}]
+         |				}],
+         |				"notFound": []
+         |			}, "c2"
+         |		]
+         |	]
+         |}""".stripMargin)
+  }
+
+  @Test
   def filterSetShouldReturnUnknownMethodWhenOmittingCapability(): Unit = {
     val request = s"""{
                      |	"using": [],
