@@ -20,7 +20,6 @@ package com.linagora.tmail.james.app;
 
 import static com.linagora.tmail.OpenPaasModule.DavModule.CALDAV_SUPPORTED;
 import static com.linagora.tmail.OpenPaasModule.DavModule.CALDAV_SUPPORT_MODULE_PROVIDER;
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 
 import java.util.List;
 import java.util.Set;
@@ -136,14 +135,13 @@ import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
 import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
+import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
-import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactEventBusModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
-import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
-import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
-import com.linagora.tmail.james.jmap.contact.MinAutoCompleteInputLength;
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.james.jmap.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -260,7 +258,8 @@ public class PostgresTmailServer {
             .overrideWith(chooseTaskManagerModules(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED))
-            .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()));
+            .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
+            .overrideWith(chooseEventBusModules(configuration.eventBusImpl()));
     }
 
     private static final Module WEBADMIN = Modules.combine(
@@ -363,7 +362,7 @@ public class PostgresTmailServer {
             new PostgresPublicAssetRepositoryModule(),
             new PostgresTicketStoreModule(),
             new TasksHeathCheckModule(),
-            chooseEventBusModules(configuration),
+            chooseQueueModules(configuration),
             new TMailIMAPModule(),
             QUOTA_USERNAME_SUPPLIER_MODULE);
 
@@ -391,29 +390,35 @@ public class PostgresTmailServer {
     }
 
     private static final Module IN_MEMORY_EVENT_BUS_FEATURE_MODULE = Modules.combine(
-        new MemoryEmailAddressContactModule()
-    );
+        new MemoryEmailAddressContactEventBusModule());
 
     private static final Module RABBITMQ_EVENT_BUS_FEATURE_MODULE = Modules.combine(
-        new DistributedEmailAddressContactEventModule(),
-        new EmailAddressContactRabbitMQEventBusModule(),
-        new PostgresEmailAddressContactEventDeadLettersModule());
+        new MailboxEventBusModule(),
+        new JMAPEventBusModule(),
+        new EmailAddressContactRabbitMQEventBusModule());
 
-    public static Module chooseEventBusModules(PostgresTmailConfiguration configuration) {
+    public static Module chooseQueueModules(PostgresTmailConfiguration configuration) {
         return switch (configuration.eventBusImpl()) {
             case IN_MEMORY -> Modules.combine(new DefaultEventModule(),
-                new ActiveMQQueueModule(),
-                IN_MEMORY_EVENT_BUS_FEATURE_MODULE);
-            case RABBITMQ -> Modules.combine(new RabbitMQModule(),
+                new ActiveMQQueueModule());
+            case RABBITMQ, RABBITMQ_AND_REDIS -> Modules.combine(new RabbitMQModule(),
                 new RabbitMQMailQueueModule(),
                 new FakeMailQueueViewModule(),
                 new RabbitMailQueueRoutesModule(),
                 new RabbitMQEmailAddressContactModule(),
                 new ScheduledReconnectionHandler.Module(),
-                Modules.override(new DefaultEventModule())
-                    .with(new MailboxEventBusModule()),
                 new DistributedTaskSerializationModule(),
-                RABBITMQ_EVENT_BUS_FEATURE_MODULE);
+                new PostgresEmailAddressContactEventDeadLettersModule(),
+                new DistributedEmailAddressContactEventModule(),
+                new DefaultEventModule());
+        };
+    }
+
+    public static Module chooseEventBusModules(PostgresTmailConfiguration.EventBusImpl eventBusImpl) {
+        return switch (eventBusImpl) {
+            case IN_MEMORY -> IN_MEMORY_EVENT_BUS_FEATURE_MODULE;
+            case RABBITMQ -> RABBITMQ_EVENT_BUS_FEATURE_MODULE;
+            case RABBITMQ_AND_REDIS -> new RabbitMQAndRedisEventBusModule();
         };
     }
 
@@ -421,7 +426,7 @@ public class PostgresTmailServer {
         switch (configuration.eventBusImpl()) {
             case IN_MEMORY:
                 return List.of(new TaskManagerModule(), new PostgresTaskExecutionDetailsProjectionGuiceModule());
-            case RABBITMQ:
+            case RABBITMQ, RABBITMQ_AND_REDIS:
                 return List.of(new DistributedTaskManagerModule());
             default:
                 throw new RuntimeException("Unsupported event-bus implementation " + configuration.eventBusImpl().name());
@@ -459,17 +464,10 @@ public class PostgresTmailServer {
 
     private static Module chooseJmapModule(PostgresTmailConfiguration configuration) {
         if (configuration.jmapEnabled()) {
-            return Modules.combine(chooseJmapEventBusModule(configuration), chooseJmapListenerModule(configuration));
+            return Modules.combine(chooseJmapListenerModule(configuration));
         }
         return binder -> {
         };
-    }
-
-    public static Module chooseJmapEventBusModule(PostgresTmailConfiguration configuration) {
-        if (configuration.eventBusImpl().equals(RABBITMQ)) {
-            return new JMAPEventBusModule();
-        }
-        return Modules.EMPTY_MODULE;
     }
 
     private static Module chooseJmapListenerModule(PostgresTmailConfiguration configuration) {
@@ -498,8 +496,7 @@ public class PostgresTmailServer {
                     new OpenSearchHighlightModule());
             case Scanning:
                 return List.of(
-                    binder -> binder.bind(EmailAddressContactSearchEngine.class).toInstance(new InMemoryEmailAddressContactSearchEngine()),
-                    binder -> binder.bind(MinAutoCompleteInputLength.class).toInstance(MinAutoCompleteInputLength.ONE()),
+                    new InMemoryEmailAddressContactSearchEngineModule(),
                     SCANNING_SEARCH_MODULE,
                     SCANNING_QUOTA_SEARCH_MODULE,
                     new FakeSearchHighlightModule());

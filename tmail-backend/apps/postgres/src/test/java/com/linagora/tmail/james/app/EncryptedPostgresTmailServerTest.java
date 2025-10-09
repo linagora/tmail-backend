@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.app;
 
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY;
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.IN_MEMORY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.ClockExtension;

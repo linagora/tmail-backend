@@ -16,37 +16,38 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james;
+package com.linagora.tmail.james.app;
 
-import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.IN_MEMORY;
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ_AND_REDIS;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
 
-import org.apache.james.ClockExtension;
-import org.apache.james.DockerOpenSearchExtension;
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
+import org.apache.james.JamesServerConcreteContract;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
-import org.apache.james.jmap.rfc8621.contract.EmailQueryMethodContract;
-import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.core.healthcheck.ResultStatus;
+import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.GuiceProbe;
+import org.apache.james.utils.WebAdminGuiceProbe;
+import org.apache.james.webadmin.WebAdminUtils;
+import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
-import com.linagora.tmail.james.app.PostgresTmailConfiguration;
-import com.linagora.tmail.james.app.PostgresTmailServer;
-import com.linagora.tmail.james.common.LabelChangesMethodContract;
-import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
-import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
-import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
-import com.linagora.tmail.team.TeamMailboxProbe;
 
-public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract {
+import io.restassured.specification.RequestSpecification;
 
+class DistributedPostgresServerWithRedisEventBusTest implements JamesServerConcreteContract {
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
         PostgresTmailConfiguration.builder()
@@ -57,23 +58,38 @@ public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract {
                 .disableCache()
                 .deduplication()
                 .noCryptoConfig()
-                .disableSingleSave())
+                .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
-            .eventBusImpl(IN_MEMORY)
+            .eventBusImpl(RABBITMQ_AND_REDIS)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class))
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(TeamMailboxProbe.class))
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapGuiceContactAutocompleteProbe.class))
-            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapSettingsProbe.class))
-            .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LabelChangesMethodContract.firebasePushClient()))
-            .overrideWith(new DelegationProbeModule()))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(RabbitMQAndRedisEventBusProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
+        .extension(new RabbitMQExtension())
         .extension(PostgresExtension.empty())
+        .extension(new AwsS3BlobStoreExtension())
         .extension(new DockerOpenSearchExtension())
-        .extension(new ClockExtension())
+        .extension(new RedisExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
+
+    private RequestSpecification webAdminApi;
+
+    @BeforeEach
+    void setUp(GuiceJamesServer guiceJamesServer) {
+        this.webAdminApi = WebAdminUtils.spec(guiceJamesServer.getProbe(WebAdminGuiceProbe.class).getWebAdminPort());
+    }
+
+    @Test
+    public void rabbitEventBusConsumerHealthCheckShouldWork() {
+        webAdminApi.when()
+            .get("/healthcheck")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
+            .body("checks.componentName", hasItems("EventbusConsumers-mailboxEvent", "EventbusConsumers-jmapEvent"));
+    }
 
 }

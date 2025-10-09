@@ -77,13 +77,14 @@ import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryDownloadAllModule;
-import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactEventBusModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryLabelRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.PublicAssetsMemoryModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
+import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.mail.TMailMailboxSortOrderProviderModule;
@@ -180,7 +181,8 @@ public class MemoryServer {
             new MemoryRateLimiterModule(),
             new MemoryRateLimitingModule(),
             new RateLimitsRoutesModule(),
-            new MemoryEmailAddressContactModule(),
+            new InMemoryEmailAddressContactSearchEngineModule(),
+            new MemoryEmailAddressContactEventBusModule(),
             new EmailAddressContactRoutesModule(),
             new MemoryLabelRepositoryModule(),
             new MemoryJmapSettingsRepositoryModule(),

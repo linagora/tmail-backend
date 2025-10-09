@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.app;
 
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.FIVE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Durations.ONE_MINUTE;

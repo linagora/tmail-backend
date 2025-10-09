@@ -18,12 +18,14 @@
 
 package com.linagora.tmail.james.app;
 
+import static org.apache.james.JamesServerMain.LOGGER;
+
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.james.PostgresJamesConfiguration;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
@@ -59,9 +61,53 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          boolean rlsEnabled,
                                          PropertiesProvider propertiesProvider,
                                          ExtensionConfiguration extentionConfiguration,
-                                         PostgresJamesConfiguration.EventBusImpl eventBusImpl,
+                                         EventBusImpl eventBusImpl,
                                          boolean oidcEnabled,
                                          OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) implements Configuration {
+
+    public enum EventBusImpl {
+        IN_MEMORY, RABBITMQ, RABBITMQ_AND_REDIS;
+
+        public static EventBusImpl from(PropertiesProvider configurationProvider) {
+            try {
+                configurationProvider.getConfiguration("rabbitmq");
+                return toEventBusChoice(EventBusKeysChoice.parse(configurationProvider));
+            } catch (FileNotFoundException e) {
+                LOGGER.info("RabbitMQ configuration was not found, defaulting to in memory event bus");
+                return EventBusImpl.IN_MEMORY;
+            } catch (ConfigurationException e) {
+                LOGGER.warn("Error reading rabbitmq.properties, defaulting to in memory event bus", e);
+                return EventBusImpl.IN_MEMORY;
+            }
+        }
+
+        private static EventBusImpl toEventBusChoice(EventBusKeysChoice eventBusKeysChoice) {
+            return switch (eventBusKeysChoice) {
+                case RABBITMQ -> RABBITMQ;
+                case REDIS -> RABBITMQ_AND_REDIS;
+            };
+        }
+    }
+
+    private enum EventBusKeysChoice {
+        RABBITMQ,
+        REDIS;
+
+        public static EventBusKeysChoice parse(PropertiesProvider configuration) {
+            try {
+                org.apache.commons.configuration2.Configuration queueConfiguration = configuration.getConfiguration("queue");
+                return Optional.ofNullable(queueConfiguration.getString("event.bus.keys.choice", null))
+                    .map(value -> EventBusKeysChoice.valueOf(value.toUpperCase(Locale.US)))
+                    .orElse(EventBusKeysChoice.RABBITMQ);
+            } catch (FileNotFoundException e) {
+                return RABBITMQ;
+            } catch (ConfigurationException e) {
+                LOGGER.warn("Error reading queue.properties, default to RabbitMQ event bus keys", e);
+                return RABBITMQ;
+            }
+        }
+    }
+
     public static class Builder {
         private Optional<SearchConfiguration> searchConfiguration;
         private Optional<BlobStoreConfiguration> blobStoreConfiguration;
@@ -75,7 +121,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> rlsEnabled;
         private Optional<ExtensionConfiguration> extentionConfiguration;
-        private Optional<PostgresJamesConfiguration.EventBusImpl> eventBusImpl;
+        private Optional<EventBusImpl> eventBusImpl;
         private Optional<Boolean> oidcEnabled;
         private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
 
@@ -175,7 +221,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return this;
         }
 
-        public Builder eventBusImpl(PostgresJamesConfiguration.EventBusImpl eventBusImpl) {
+        public Builder eventBusImpl(EventBusImpl eventBusImpl) {
             this.eventBusImpl = Optional.of(eventBusImpl);
             return this;
         }
@@ -244,7 +290,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
 
             boolean rlsEnabled = this.rlsEnabled.orElse(readRLSEnabledFromFile(propertiesProvider));
 
-            PostgresJamesConfiguration.EventBusImpl eventBusImpl = this.eventBusImpl.orElseGet(() -> PostgresJamesConfiguration.EventBusImpl.from(propertiesProvider));
+            EventBusImpl eventBusImpl = this.eventBusImpl.orElseGet(() -> EventBusImpl.from(propertiesProvider));
 
             boolean oidcEnabled = this.oidcEnabled.orElseGet(() -> {
                 try {

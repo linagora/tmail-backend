@@ -19,11 +19,11 @@
 package com.linagora.tmail.james;
 
 import static com.linagora.tmail.james.TmailJmapBase.MESSAGE_ID_FACTORY;
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ;
 import static org.apache.james.MailsShouldBeWellReceived.CALMLY_AWAIT;
 import static org.apache.james.MailsShouldBeWellReceived.DOMAIN;
 import static org.apache.james.MailsShouldBeWellReceived.JAMES_USER;
 import static org.apache.james.MailsShouldBeWellReceived.PASSWORD;
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
