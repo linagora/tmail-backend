@@ -18,10 +18,10 @@
 
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 
 import java.io.File;
 

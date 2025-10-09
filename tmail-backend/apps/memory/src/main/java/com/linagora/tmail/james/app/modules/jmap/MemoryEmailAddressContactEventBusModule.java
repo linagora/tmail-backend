@@ -30,15 +30,8 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
-import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 
-public class MemoryEmailAddressContactModule extends AbstractModule {
-
-    @Override
-    protected void configure() {
-        install(new InMemoryEmailAddressContactSearchEngineModule());
-    }
-
+public class MemoryEmailAddressContactEventBusModule extends AbstractModule {
     @ProvidesIntoSet
     public InitializationOperation registerListener(
             @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBus eventBus,

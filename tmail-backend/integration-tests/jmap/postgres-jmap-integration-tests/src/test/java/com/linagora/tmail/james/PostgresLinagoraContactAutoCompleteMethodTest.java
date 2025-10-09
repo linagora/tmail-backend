@@ -18,9 +18,9 @@
 
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ;
 import static com.linagora.tmail.james.jmap.OpenSearchContactConfiguration.DEFAULT_CONFIGURATION;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;

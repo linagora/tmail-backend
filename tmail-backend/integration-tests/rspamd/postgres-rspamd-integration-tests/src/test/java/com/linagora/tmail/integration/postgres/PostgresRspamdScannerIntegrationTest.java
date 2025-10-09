@@ -20,7 +20,6 @@ package com.linagora.tmail.integration.postgres;
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.PostgresJamesConfiguration;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -40,7 +39,7 @@ public class PostgresRspamdScannerIntegrationTest extends RspamdScannerIntegrati
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .searchConfiguration(SearchConfiguration.scanning())
-            .eventBusImpl(PostgresJamesConfiguration.EventBusImpl.RABBITMQ)
+            .eventBusImpl(PostgresTmailConfiguration.EventBusImpl.RABBITMQ)
             .blobStore(BlobStoreConfiguration.builder()
                 .postgres()
                 .disableCache()

@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.integration.postgres;
 
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY;
-
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -56,7 +54,7 @@ public class PostgresWebAdminBase {
                 .noCryptoConfig()
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.scanning())
-            .eventBusImpl(IN_MEMORY)
+            .eventBusImpl(PostgresTmailConfiguration.EventBusImpl.IN_MEMORY)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

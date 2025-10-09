@@ -20,7 +20,6 @@ package com.linagora.tmail.james;
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.PostgresJamesConfiguration;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.backends.redis.RedisExtension;
@@ -43,7 +42,7 @@ public class PostgresTeamMailboxSmtpTest extends TeamMailboxSmtpContract {
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
             .searchConfiguration(SearchConfiguration.scanning())
-            .eventBusImpl(PostgresJamesConfiguration.EventBusImpl.RABBITMQ)
+            .eventBusImpl(PostgresTmailConfiguration.EventBusImpl.RABBITMQ)
             .blobStore(BlobStoreConfiguration.builder()
                 .postgres()
                 .disableCache()

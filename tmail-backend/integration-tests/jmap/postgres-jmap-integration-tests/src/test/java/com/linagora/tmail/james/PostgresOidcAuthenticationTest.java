@@ -19,7 +19,7 @@
 package com.linagora.tmail.james;
 
 import static com.linagora.tmail.james.TmailJmapBase.postgresExtension;
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.IN_MEMORY;
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.IN_MEMORY;
 
 import java.net.URL;
 import java.util.Optional;

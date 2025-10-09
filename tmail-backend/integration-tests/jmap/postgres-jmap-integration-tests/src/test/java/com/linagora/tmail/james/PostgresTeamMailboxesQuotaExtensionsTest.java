@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james;
 
-import static org.apache.james.PostgresJamesConfiguration.EventBusImpl.RABBITMQ;
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ;
 
 import org.apache.james.ClockExtension;
 import org.apache.james.GuiceJamesServer;
