@@ -24,7 +24,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.json.FilterSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
-import com.linagora.tmail.james.jmap.model.{FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId, Update}
+import com.linagora.tmail.james.jmap.model.{Condition, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId, Update}
 import eu.timepit.refined.auto._
 import jakarta.inject.{Inject, Named}
 import org.apache.james.core.Username
@@ -106,6 +106,7 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
 
   override val methodName: Invocation.MethodName = MethodName("Filter/set")
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(LINAGORA_FILTER)
+  private val forbiddenFields: Set[String] = Set("flag", "internalDate", "savedDate")
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession,
                          request: FilterSetRequest): Publisher[InvocationWithContext] = {
@@ -185,14 +186,23 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
         Some(SetErrorDescription("'destroy' is not supported on singleton objects")))))
         .toMap)
 
-  def validateRules(update: Update, mailboxSession: MailboxSession): Either[IllegalArgumentException, Update] =
+  def validateRules(update: Update, mailboxSession: MailboxSession): Either[IllegalArgumentException, Update] = {
     if (!update.rules.distinctBy(_.id).length.equals(update.rules.length)) {
-      Left(new DuplicatedRuleException("There are some duplicated rules"))
-    } else if (update.rules.exists(_.action.forwardTo.exists(forward => forward.addresses.map(_.string).contains(mailboxSession.getUser.asString)))) {
-      Left(new IllegalArgumentException("The mail address that are forwarded to could not be this mail address"))
-    } else {
-      Right(update)
+      return Left(new DuplicatedRuleException("There are some duplicated rules"))
     }
+
+    update.rules.iterator.foreach { rule =>
+      val matchedForbiddenField: Option[Condition] = rule.conditionGroup.conditions.find(condition => forbiddenFields.exists(_.equalsIgnoreCase(condition.field.string)))
+      if (matchedForbiddenField.nonEmpty) {
+        return Left(new IllegalArgumentException(s"Rules with field '${matchedForbiddenField.get.field.string}' are not supported"))
+      }
+      if (rule.action.forwardTo.exists(forward => forward.addresses.map(_.string).contains(mailboxSession.getUser.asString))) {
+        return Left(new IllegalArgumentException("The mail address that are forwarded to could not be this mail address"))
+      }
+    }
+
+    Right(update)
+  }
 
   def convertToOptionalVersion(ifInState: Option[FilterState]): Optional[Version] =
     ifInState.map(filterState => FilterState.toVersion(filterState)).toJava
