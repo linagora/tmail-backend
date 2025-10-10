@@ -39,9 +39,10 @@ A `ConditionGroup` object has the following properties:
 
 A `Condition` object has the following properties:
 
-- **field**: `String`, the field of the message to be evaluated. Must be one of `from`, `to`, `cc`, `recipient`, `subject`, or a custom header in the form `header:Header-Name` (e.g., `header:X-custom`).
-- **comparator**: `String`, how to compare the field against the supplied value. Must be one of `contains`, `not-contains`, `exactly-equals`, `not-exactly-equals`, `start-with`.
+- **field**: `String`, the field of the message to be evaluated. Must be one of `from`, `to`, `cc`, `recipient`, `subject`, `sentDate`, or a custom header in the form `header:Header-Name` (e.g., `header:X-custom`).
+- **comparator**: `String`, how to compare the field against the supplied value. Must be one of `contains`, `not-contains`, `exactly-equals`, `not-exactly-equals`, `start-with`. Except that:
   - For custom headers (fields starting with `header:`), the `any` comparator can additionally be used to check the header's existence. The provided `value` is ignored in this case.
+  - For `sentDate`, only `isNewerThan` and `isOlderThan` comparators are supported. The value should be a duration string (e.g., "2d", "2 d", "2 day", "2 Day", "2 days").
 - **value**: `String`, the value the field should be evaluated against, using the comparator.
 
 An `Action` object has the following properties:
