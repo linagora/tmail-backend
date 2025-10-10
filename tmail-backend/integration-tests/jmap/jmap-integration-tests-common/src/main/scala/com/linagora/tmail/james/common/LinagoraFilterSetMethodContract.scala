@@ -1020,6 +1020,201 @@ trait LinagoraFilterSetMethodContract {
   }
 
   @Test
+  def updateRulesShouldRejectFlagCriteria(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/set", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"update": {
+         |				"singleton": [{
+         |					"id": "1",
+         |					"name": "My first rule",
+         |					"condition": {
+         |						"field": "flag",
+         |						"comparator": "isSet",
+         |						"value": "$$seen"
+         |					},
+         |					"action": {
+         |						"appendIn": {
+         |							"mailboxIds": ["$generateMailboxIdForUser"]
+         |						},
+         |						"withKeywords": []
+         |					}
+         |				}]
+         |			}
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "Filter/set",
+         |            {
+         |                "accountId": "$generateAccountIdAsString",
+         |                "oldState": "-1",
+         |                "newState": "-1",
+         |                "notUpdated": {
+         |                    "singleton": {
+         |                        "type": "invalidArguments",
+         |                        "description": "Rules with field 'flag' are not supported"
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateRulesShouldRejectInternalDateCriteria(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/set", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"update": {
+         |				"singleton": [{
+         |					"id": "1",
+         |					"name": "My first rule",
+         |					"condition": {
+         |						"field": "internalDate",
+         |						"comparator": "isOlderThan",
+         |						"value": "1day"
+         |					},
+         |					"action": {
+         |						"appendIn": {
+         |							"mailboxIds": ["$generateMailboxIdForUser"]
+         |						},
+         |						"withKeywords": []
+         |					}
+         |				}]
+         |			}
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "Filter/set",
+         |            {
+         |                "accountId": "$generateAccountIdAsString",
+         |                "oldState": "-1",
+         |                "newState": "-1",
+         |                "notUpdated": {
+         |                    "singleton": {
+         |                        "type": "invalidArguments",
+         |                        "description": "Rules with field 'internalDate' are not supported"
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
+  def updateRulesShouldRejectSavedDateCriteria(): Unit = {
+    val request =
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/set", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"update": {
+         |				"singleton": [{
+         |					"id": "1",
+         |					"name": "My first rule",
+         |					"condition": {
+         |						"field": "savedDate",
+         |						"comparator": "isOlderThan",
+         |						"value": "1day"
+         |					},
+         |					"action": {
+         |						"appendIn": {
+         |							"mailboxIds": ["$generateMailboxIdForUser"]
+         |						},
+         |						"withKeywords": []
+         |					}
+         |				}]
+         |			}
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).isEqualTo(
+      s"""{
+         |    "sessionState": "${SESSION_STATE.value}",
+         |    "methodResponses": [
+         |        [
+         |            "Filter/set",
+         |            {
+         |                "accountId": "$generateAccountIdAsString",
+         |                "oldState": "-1",
+         |                "newState": "-1",
+         |                "notUpdated": {
+         |                    "singleton": {
+         |                        "type": "invalidArguments",
+         |                        "description": "Rules with field 'savedDate' are not supported"
+         |                    }
+         |                }
+         |            },
+         |            "c1"
+         |        ]
+         |    ]
+         |}""".stripMargin)
+  }
+
+  @Test
   def filterSetShouldReturnUnknownMethodWhenOmittingCapability(): Unit = {
     val request = s"""{
                      |	"using": [],
