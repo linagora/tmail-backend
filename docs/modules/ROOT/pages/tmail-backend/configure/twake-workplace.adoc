@@ -77,3 +77,9 @@ The `IsPaying` matcher can be used to determine if the sender of an email has a 
 `SaaSSubscriptionConsumer` allows to synchronize user SaaS subscription information via RabbitMQ messages, e.g. plan name, storage quota, rate limiting, etc.
 
 The SaaS subscription RabbitMQ consumer may require RabbitMQ configuration to function properly. See the xref:tmail-backend/configure/rabbitmq.adoc#_twp_settings_configuration[RabbitMQ TWP Settings Configuration] section for details on configuring the RabbitMQ properties.
+
+=== SaaSDomainSubscriptionConsumer
+
+`SaaSDomainSubscriptionConsumer` allows to synchronize domain SaaS subscription information via RabbitMQ messages, e.g. validation, storage quota, rate limiting, etc.
+
+The SaaS domain subscription RabbitMQ consumer may require RabbitMQ configuration to function properly. See the xref:tmail-backend/configure/rabbitmq.adoc#_twp_settings_configuration[RabbitMQ TWP Settings Configuration] section for details on configuring the RabbitMQ properties.
