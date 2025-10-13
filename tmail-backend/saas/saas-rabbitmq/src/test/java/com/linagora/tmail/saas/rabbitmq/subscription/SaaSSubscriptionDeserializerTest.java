@@ -40,8 +40,8 @@ class SaaSSubscriptionDeserializerTest {
     void parseInvalidAmqpMessageShouldThrowException() {
         String invalidMessage = "{ invalid json }";
 
-        assertThatThrownBy(() -> SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(invalidMessage))
-            .isInstanceOf(SaaSSubscriptionMessage.SaaSSubscriptionMessageParseException.class)
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(invalidMessage))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
             .hasMessageContaining("Failed to parse SaaS subscription message");
     }
 
@@ -66,7 +66,7 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        SaaSSubscriptionMessage message = SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(validMessage);
+        SaaSSubscriptionMessage message = SaaSSubscriptionDeserializer.parseAMQPUserMessage(validMessage);
 
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(message.internalEmail()).isEqualTo("alice@twake.app");
@@ -97,8 +97,8 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        assertThatThrownBy(() -> SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message))
-            .isInstanceOf(SaaSSubscriptionMessage.SaaSSubscriptionMessageParseException.class)
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(message))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
             .hasMessageContaining("Failed to parse SaaS subscription message");
     }
 
@@ -122,8 +122,8 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        assertThatThrownBy(() -> SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message))
-            .isInstanceOf(SaaSSubscriptionMessage.SaaSSubscriptionMessageParseException.class)
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(message))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
             .hasMessageContaining("Failed to parse SaaS subscription message");
     }
 
@@ -147,8 +147,8 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        assertThatThrownBy(() -> SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message))
-            .isInstanceOf(SaaSSubscriptionMessage.SaaSSubscriptionMessageParseException.class)
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(message))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
             .hasMessageContaining("Failed to parse SaaS subscription message");
     }
 
@@ -162,8 +162,8 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        assertThatThrownBy(() -> SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message))
-            .isInstanceOf(SaaSSubscriptionMessage.SaaSSubscriptionMessageParseException.class)
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(message))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
             .hasMessageContaining("Failed to parse SaaS subscription message");
     }
 
@@ -182,8 +182,8 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        assertThatThrownBy(() -> SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message))
-            .isInstanceOf(SaaSSubscriptionMessage.SaaSSubscriptionMessageParseException.class)
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(message))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
             .hasMessageContaining("Failed to parse SaaS subscription message");
     }
 
@@ -209,7 +209,7 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        SaaSSubscriptionMessage parsed = SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message);
+        SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
 
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(parsed.internalEmail()).isEqualTo("alice@twake.app");
@@ -241,7 +241,7 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        SaaSSubscriptionMessage parsed = SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(message);
+        SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
 
         assertThat(parsed.features().mail().storageQuota()).isEqualTo(-1L);
     }
