@@ -45,6 +45,18 @@ public class SaaSSubscriptionDeserializer {
         }
     }
 
+    public static SaaSDomainSubscriptionMessage parseAMQPDomainMessage(String messagePayload) {
+        return parseAMQPDomainMessage(messagePayload.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static SaaSDomainSubscriptionMessage parseAMQPDomainMessage(byte[] messagePayload) {
+        try {
+            return DESERIALIZER.deserializeDomainMessage(messagePayload);
+        } catch (Exception e) {
+            throw new SaaSSubscriptionMessageParseException("Failed to parse SaaS subscription domain message: " + new String(messagePayload, StandardCharsets.UTF_8), e);
+        }
+    }
+
     private final ObjectMapper objectMapper;
 
     public SaaSSubscriptionDeserializer() {
@@ -54,5 +66,9 @@ public class SaaSSubscriptionDeserializer {
 
     public SaaSSubscriptionMessage deserializeUserMessage(byte[] jsonBytes) throws IOException {
         return objectMapper.readValue(jsonBytes, SaaSSubscriptionMessage.class);
+    }
+
+    public SaaSDomainSubscriptionMessage deserializeDomainMessage(byte[] jsonBytes) throws IOException {
+        return objectMapper.readValue(jsonBytes, SaaSDomainSubscriptionMessage.class);
     }
 }
