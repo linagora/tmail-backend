@@ -20,7 +20,6 @@ package com.linagora.tmail.james;
 
 import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
-import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
@@ -31,11 +30,13 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.inject.Module;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.common.module.SaaSProbeModule;
@@ -43,6 +44,7 @@ import com.linagora.tmail.james.app.PostgresSaaSModule;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.JmapSaasContract;
+import com.linagora.tmail.james.common.probe.DomainProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -86,7 +88,10 @@ public class PostgresJmapSaaSTest implements JmapSaasContract {
             .overrideWith((binder -> binder.bind(CleanupTasksPerformer.class).asEagerSingleton()))
             .overrideWith(new DelegationProbeModule())
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(provideSaaSModule(saasSupport));
+            .overrideWith(provideSaaSModule(saasSupport))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(DomainProbe.class));
 
         Throwing.runnable(() -> guiceJamesServer.start()).run();
         return guiceJamesServer;
@@ -100,11 +105,11 @@ public class PostgresJmapSaaSTest implements JmapSaasContract {
     }
 
     @Override
-    public void publishAmqpSettingsMessage(String message) {
+    public void publishAmqpSettingsMessage(String message, String routingKey) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
                 TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
-                TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT,
+                routingKey,
                 message.getBytes(UTF_8))))
             .block();
     }

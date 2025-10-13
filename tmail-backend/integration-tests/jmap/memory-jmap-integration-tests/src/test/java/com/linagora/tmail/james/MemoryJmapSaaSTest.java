@@ -68,7 +68,7 @@ public class MemoryJmapSaaSTest implements JmapSaasContract {
     }
 
     @Override
-    public void publishAmqpSettingsMessage(String message) {
+    public void publishAmqpSettingsMessage(String message, String routingKey) {
         throw new UnsupportedOperationException("No RabbitMQ in memory app");
     }
 
@@ -94,6 +94,12 @@ public class MemoryJmapSaaSTest implements JmapSaasContract {
     @Disabled("Memory app does not support RabbitMQ consumer")
     @Test
     public void shouldNotSetPlanNameWhenSaaSModuleIsNotEnabled() {
+
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void domainShouldBeCreatedWhenDomainSubscriptionValidated() {
 
     }
 }
