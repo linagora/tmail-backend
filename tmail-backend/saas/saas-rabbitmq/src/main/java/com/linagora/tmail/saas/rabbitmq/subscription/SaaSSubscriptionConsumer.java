@@ -177,7 +177,7 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> consumeSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
-        return Mono.fromCallable(() -> SaaSSubscriptionMessage.Deserializer.parseAMQPMessage(messagePayload))
+        return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(messagePayload))
             .flatMap(this::handleSubscriptionMessage)
             .doOnSuccess(result -> ackDelivery.ack())
             .onErrorResume(error -> {

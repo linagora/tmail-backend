@@ -18,50 +18,12 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 
 public record SaaSSubscriptionMessage(String internalEmail, Boolean isPaying, Boolean canUpgrade, SaasFeatures features) {
-    public static class SaaSSubscriptionMessageParseException extends RuntimeException {
-        SaaSSubscriptionMessageParseException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
-
-    private static final Deserializer DESERIALIZER = new Deserializer();
-
-    public static class Deserializer {
-        public static SaaSSubscriptionMessage parseAMQPMessage(String messagePayload) {
-            return parseAMQPMessage(messagePayload.getBytes(StandardCharsets.UTF_8));
-        }
-
-        public static SaaSSubscriptionMessage parseAMQPMessage(byte[] messagePayload) {
-            try {
-                return DESERIALIZER.deserialize(messagePayload);
-            } catch (Exception e) {
-                throw new SaaSSubscriptionMessageParseException("Failed to parse SaaS subscription message: " + new String(messagePayload, StandardCharsets.UTF_8), e);
-            }
-        }
-
-        private final ObjectMapper objectMapper;
-
-        public Deserializer() {
-            this.objectMapper = new ObjectMapper();
-            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        }
-
-        public SaaSSubscriptionMessage deserialize(byte[] jsonBytes) throws IOException {
-            return objectMapper.readValue(jsonBytes, SaaSSubscriptionMessage.class);
-        }
-    }
-
     public record MailLimitation(
         @JsonProperty("storageQuota") Long storageQuota,
         @JsonProperty("mailsSentPerMinute") Long mailsSentPerMinute,
