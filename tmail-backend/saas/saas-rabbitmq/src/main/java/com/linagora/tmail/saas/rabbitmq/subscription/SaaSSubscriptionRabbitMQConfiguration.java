@@ -21,16 +21,20 @@ package com.linagora.tmail.saas.rabbitmq.subscription;
 import org.apache.commons.configuration2.Configuration;
 
 public record SaaSSubscriptionRabbitMQConfiguration(String exchange,
-                                                    String routingKey) {
+                                                    String routingKey,
+                                                    String domainRoutingKey) {
     private static final String TWP_SAAS_SUBSCRIPTION_EXCHANGE_PROPERTY = "twp.saas.subscription.exchange";
     private static final String TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_PROPERTY = "twp.saas.subscription.routingKey";
+    private static final String TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_PROPERTY = "twp.saas.domain.subscription.routingKey";
     public static final String TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT = "saas.subscription";
     public static final String TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT = "saas.subscription.routingKey";
+    public static final String TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT = "domain.subscription.changed";
 
     public static SaaSSubscriptionRabbitMQConfiguration from(Configuration rabbitMQConfiguration) {
         String exchange = rabbitMQConfiguration.getString(TWP_SAAS_SUBSCRIPTION_EXCHANGE_PROPERTY, TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT);
         String routingKey = rabbitMQConfiguration.getString(TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_PROPERTY, TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT);
+        String domainRoutingKey = rabbitMQConfiguration.getString(TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_PROPERTY, TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT);
 
-        return new SaaSSubscriptionRabbitMQConfiguration(exchange, routingKey);
+        return new SaaSSubscriptionRabbitMQConfiguration(exchange, routingKey, domainRoutingKey);
     }
 }

@@ -68,6 +68,7 @@ import reactor.rabbitmq.OutboundMessage;
 class SaaSSubscriptionConsumerTest {
     private static final String EXCHANGE_NAME = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
     private static final String ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
+    private static final String DOMAIN_ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
     private static final Username ALICE = Username.of("alice@james.org");
     private static final Username BOB = Username.of("bob@james.org");
     RateLimitingDefinition RATE_LIMITING_1 = RateLimitingDefinition.builder()
@@ -117,7 +118,7 @@ class SaaSSubscriptionConsumerTest {
             .build();
 
         SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration =
-            new SaaSSubscriptionRabbitMQConfiguration(EXCHANGE_NAME, ROUTING_KEY);
+            new SaaSSubscriptionRabbitMQConfiguration(EXCHANGE_NAME, ROUTING_KEY, DOMAIN_ROUTING_KEY);
 
         TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration = new TWPCommonRabbitMQConfiguration(
             Optional.empty(),
