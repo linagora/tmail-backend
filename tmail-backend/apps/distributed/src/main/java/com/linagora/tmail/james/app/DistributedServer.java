@@ -64,7 +64,6 @@ import org.apache.james.modules.DistributedTaskSerializationModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
-import org.apache.james.modules.data.CassandraDomainListModule;
 import org.apache.james.modules.data.CassandraDropListsModule;
 import org.apache.james.modules.data.CassandraJmapModule;
 import org.apache.james.modules.data.CassandraRecipientRewriteTableModule;
@@ -205,6 +204,7 @@ import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.modules.data.TMailCassandraDelegationStoreModule;
+import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
@@ -315,7 +315,7 @@ public class DistributedServer {
             .toInstance(ImmutableSet.of());
 
     public static final Module CASSANDRA_SERVER_CORE_MODULE = Modules.combine(
-        new CassandraDomainListModule(),
+        new TMailCassandraDomainListModule(),
         new CassandraDLPConfigurationStoreModule(),
         new CassandraEventStoreModule(),
         new CassandraMailRepositoryModule(),
