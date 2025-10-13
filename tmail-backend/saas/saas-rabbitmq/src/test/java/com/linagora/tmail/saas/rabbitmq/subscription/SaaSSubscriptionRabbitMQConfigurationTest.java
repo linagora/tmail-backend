@@ -32,7 +32,8 @@ public class SaaSSubscriptionRabbitMQConfigurationTest {
 
         assertThat(configuration).isEqualTo(new SaaSSubscriptionRabbitMQConfiguration(
             "saas.subscription",
-            "saas.subscription.routingKey"));
+            "saas.subscription.routingKey",
+            "domain.subscription.changed"));
     }
 
     @Test
@@ -53,5 +54,15 @@ public class SaaSSubscriptionRabbitMQConfigurationTest {
         SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
 
         assertThat(configuration.routingKey()).isEqualTo("SaaSSubscriptionRoutingKey");
+    }
+
+    @Test
+    void configureDomainRoutingKeyShouldWork() {
+        PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
+        rabbitConfiguration.addProperty("twp.saas.domain.subscription.routingKey", "SaaSDomainSubscriptionRoutingKey");
+
+        SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
+
+        assertThat(configuration.domainRoutingKey()).isEqualTo("SaaSDomainSubscriptionRoutingKey");
     }
 }
