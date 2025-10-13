@@ -45,6 +45,7 @@ import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.SaaSAccountUsernameChangeTaskStep;
 import com.linagora.tmail.saas.api.cassandra.CassandraSaaSAccountRepository;
 import com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionConsumer;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionDeadLetterQueueHealthCheck;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionQueueConsumerHealthCheck;
@@ -58,6 +59,7 @@ public class DistributedSaaSModule extends AbstractModule {
         bind(SaaSAccountRepository.class).to(CassandraSaaSAccountRepository.class)
             .in(Scopes.SINGLETON);
         bind(SaaSSubscriptionConsumer.class).in(Scopes.SINGLETON);
+        bind(SaaSDomainSubscriptionConsumer.class).in(Scopes.SINGLETON);
 
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
             .to(SaaSSubscriptionDeadLetterQueueHealthCheck.class);
@@ -80,6 +82,13 @@ public class DistributedSaaSModule extends AbstractModule {
     public InitializationOperation initializeSaaSSubscriptionConsumer(SaaSSubscriptionConsumer instance) {
         return InitilizationOperationBuilder
             .forClass(SaaSSubscriptionConsumer.class)
+            .init(instance::init);
+    }
+
+    @ProvidesIntoSet
+    public InitializationOperation initializeSaaSDomainSubscriptionConsumer(SaaSDomainSubscriptionConsumer instance) {
+        return InitilizationOperationBuilder
+            .forClass(SaaSDomainSubscriptionConsumer.class)
             .init(instance::init);
     }
 

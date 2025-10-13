@@ -19,17 +19,26 @@
 package com.linagora.tmail.james.common
 
 import com.linagora.tmail.common.probe.SaaSProbe
+import com.linagora.tmail.james.common.JmapSaasContract.{DOMAIN_SUBSCRIPTION_ROUTING_KEY, SUBSCRIPTION_ROUTING_KEY}
+import com.linagora.tmail.james.common.probe.DomainProbe
 import com.linagora.tmail.saas.model.SaaSAccount
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Domain
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.{equalTo, hasKey, not}
 import org.junit.jupiter.api.{AfterEach, Tag, Test}
+
+object JmapSaasContract {
+  val SUBSCRIPTION_ROUTING_KEY: String = "saas.subscription.routingKey"
+  val DOMAIN_SUBSCRIPTION_ROUTING_KEY: String = "domain.subscription.changed"
+}
 
 trait JmapSaasContract {
 
@@ -37,7 +46,7 @@ trait JmapSaasContract {
 
   def stopJmapServer(): Unit
 
-  def publishAmqpSettingsMessage(message: String): Unit
+  def publishAmqpSettingsMessage(message: String, routingKey: String): Unit
 
   private def setUpJmapServer(saasSupport: Boolean = false): GuiceJamesServer = {
     val server = startJmapServer(saasSupport)
@@ -134,7 +143,8 @@ trait JmapSaasContract {
          |        "mailsReceivedPerDay": 2000
          |      }
          |    }
-         |}""".stripMargin)
+         |}""".stripMargin,
+      SUBSCRIPTION_ROUTING_KEY)
 
     awaitAtMostTenSeconds.untilAsserted { () =>
       `given`()
@@ -169,7 +179,8 @@ trait JmapSaasContract {
          |        "mailsReceivedPerDay": 1
          |      }
          |    }
-         |}""".stripMargin)
+         |}""".stripMargin,
+      SUBSCRIPTION_ROUTING_KEY)
 
     publishAmqpSettingsMessage(
       s"""{
@@ -187,7 +198,8 @@ trait JmapSaasContract {
          |        "mailsReceivedPerDay": 2000
          |      }
          |    }
-         |}""".stripMargin)
+         |}""".stripMargin,
+      SUBSCRIPTION_ROUTING_KEY)
 
     awaitAtMostTenSeconds.untilAsserted { () =>
       `given`()
@@ -199,5 +211,21 @@ trait JmapSaasContract {
         .body("capabilities.'com:linagora:params:saas'.isPaying", equalTo(true))
         .body("capabilities.'com:linagora:params:saas'.canUpgrade", equalTo(true))
     }
+  }
+
+  @Test
+  def domainShouldBeCreatedWhenDomainSubscriptionValidated(): Unit = {
+    val server = setUpJmapServer(saasSupport = true)
+    val domain: Domain = Domain.of("twake.app")
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "domain": "%s",
+         |    "validated": true
+         |}""".format(domain.asString())
+        .stripMargin,
+      DOMAIN_SUBSCRIPTION_ROUTING_KEY)
+
+    awaitAtMostTenSeconds.untilAsserted(() => assertThat(server.getProbe(classOf[DomainProbe]).containsDomain(domain)).isTrue)
   }
 }

@@ -19,7 +19,6 @@
 package com.linagora.tmail.james;
 
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
-import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_PASSWORD;
 import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_USER;
@@ -31,12 +30,14 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.inject.Module;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.common.module.SaaSProbeModule;
@@ -47,6 +48,7 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.common.JmapSaasContract;
+import com.linagora.tmail.james.common.probe.DomainProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -100,7 +102,10 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
                 s3Extension.getModule())
             .overrideWith((binder -> binder.bind(CleanupTasksPerformer.class).asEagerSingleton()))
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(provideSaaSModule(saasSupport));
+            .overrideWith(provideSaaSModule(saasSupport))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(DomainProbe.class));
 
         Throwing.runnable(() -> guiceJamesServer.start()).run();
         return guiceJamesServer;
@@ -119,11 +124,11 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
     }
 
     @Override
-    public void publishAmqpSettingsMessage(String message) {
+    public void publishAmqpSettingsMessage(String message, String routingKey) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
                 TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
-                TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT,
+                routingKey,
                 message.getBytes(UTF_8))))
             .block();
     }
@@ -139,6 +144,16 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
                 "-u", CASSANDRA_TESTING_USER,
                 "-p", CASSANDRA_TESTING_PASSWORD,
                 "-e", "DROP TABLE IF EXISTS testing.\"user\";");
+
+            cassandraExtension.getCassandra().getRawContainer().execInContainer("cqlsh",
+                "-u", CASSANDRA_TESTING_USER,
+                "-p", CASSANDRA_TESTING_PASSWORD,
+                "-e", "ALTER TABLE testing.\"domain\" WITH gc_grace_seconds = 0;");
+
+            cassandraExtension.getCassandra().getRawContainer().execInContainer("cqlsh",
+                "-u", CASSANDRA_TESTING_USER,
+                "-p", CASSANDRA_TESTING_PASSWORD,
+                "-e", "DROP TABLE IF EXISTS testing.\"domain\";");
         }).run();
     }
 
