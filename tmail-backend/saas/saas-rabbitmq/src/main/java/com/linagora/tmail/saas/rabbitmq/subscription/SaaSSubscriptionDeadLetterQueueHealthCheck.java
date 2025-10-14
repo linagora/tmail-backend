@@ -23,7 +23,6 @@ import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscripti
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer.SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE;
 
 import java.util.List;
-import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
@@ -34,7 +33,6 @@ import org.apache.james.backends.rabbitmq.RabbitMQManagementAPI;
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
-import org.apache.james.core.healthcheck.ResultStatus;
 
 import com.google.common.collect.ImmutableList;
 
@@ -43,7 +41,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class SaaSSubscriptionDeadLetterQueueHealthCheck implements HealthCheck {
-    public static final ComponentName COMPONENT_NAME = new ComponentName("SaaSSubscriptionDeadLetterQueuesHealthCheck");
+    public static final ComponentName COMPONENT_NAME = new ComponentName("SaaSSubscriptionDeadLetterQueueHealthCheck");
     private static final String DEFAULT_VHOST = "/";
     private static final List<String> DEAD_LETTER_QUEUES = ImmutableList.of(
         SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE,
@@ -74,34 +72,12 @@ public class SaaSSubscriptionDeadLetterQueueHealthCheck implements HealthCheck {
                 return Result.healthy(COMPONENT_NAME);
             })
             .onErrorResume(e -> Mono.just(Result.unhealthy(COMPONENT_NAME, "Error checking SaaSSubscriptionDeadLetterQueueHealthCheck", e)))
-            .reduce(this::combine)
+            .reduce(SaaSSubscriptionUtils::combine)
             .subscribeOn(Schedulers.boundedElastic());
     }
 
     private Pair<String, Long> checkQueueLength(String queueName) {
         return Pair.of(queueName, api.queueDetails(twpRabbitMQConfiguration.getVhost().orElse(DEFAULT_VHOST), queueName)
             .getQueueLength());
-    }
-
-    public Result combine(Result result1, Result result2) {
-        if (result1.getStatus() == ResultStatus.HEALTHY && result2.getStatus() == ResultStatus.HEALTHY) {
-            return result1;
-        } else if (result1.getStatus() == ResultStatus.HEALTHY && result2.getStatus() == ResultStatus.DEGRADED) {
-            return result2;
-        } else if (result1.getStatus() == ResultStatus.DEGRADED && result2.getStatus() == ResultStatus.HEALTHY) {
-            return result1;
-        } else if (result1.getStatus() == ResultStatus.DEGRADED && result2.getStatus() == ResultStatus.DEGRADED) {
-            return Result.degraded(result1.getComponentName(), combineCauseMessages(result1.getCause(), result2.getCause()));
-        } else if (result1.getStatus() == ResultStatus.UNHEALTHY) {
-            return result1;
-        } else {
-            return result2;
-        }
-    }
-
-    private String combineCauseMessages(Optional<String> cause1, Optional<String> cause2) {
-        return cause1.flatMap(cause1Message ->
-                cause2.map(cause2Message -> cause1Message + "\n" + cause2Message))
-            .orElse("");
     }
 }
