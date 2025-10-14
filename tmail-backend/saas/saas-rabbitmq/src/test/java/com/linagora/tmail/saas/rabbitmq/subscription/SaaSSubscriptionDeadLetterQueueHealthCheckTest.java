@@ -18,9 +18,10 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
+import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionConsumer.SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer.SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
-import static com.rabbitmq.client.BuiltinExchangeType.FANOUT;
+import static com.rabbitmq.client.BuiltinExchangeType.DIRECT;
 import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
 import static org.apache.james.backends.rabbitmq.Constants.AUTO_DELETE;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
@@ -32,6 +33,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
@@ -49,6 +51,9 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 
 class SaaSSubscriptionDeadLetterQueueHealthCheckTest {
+    private static final String ROUTING_KEY_USER = "routingKeyUser";
+    private static final String ROUTING_KEY_DOMAIN = "routingKeyDomain";
+
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
         .isolationPolicy(RabbitMQExtension.IsolationPolicy.STRONG);
@@ -89,8 +94,10 @@ class SaaSSubscriptionDeadLetterQueueHealthCheckTest {
     }
 
     @Test
-    void healthCheckShouldReturnHealthyWhenSaaSSubscriptionDeadLetterQueueIsEmpty() throws Exception {
-        createDeadLetterQueue(SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE);
+    void healthCheckShouldReturnHealthyWhenSaaSSubscriptionDeadLetterQueuesAreEmpty() throws Exception {
+        createDeadLetterQueues(ImmutableMap.of(
+            SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_USER,
+            SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_DOMAIN));
 
         assertThat(testee.check().block().isHealthy()).isTrue();
     }
@@ -101,27 +108,61 @@ class SaaSSubscriptionDeadLetterQueueHealthCheckTest {
     }
 
     @Test
+    void healthCheckShouldReturnUnhealthyWhenOnlySubscriptionDeadLetterQueueIsDeclared() throws Exception {
+        createDeadLetterQueues(ImmutableMap.of(
+            SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_USER));
+        assertThat(testee.check().block().isUnHealthy()).isTrue();
+    }
+
+    @Test
+    void healthCheckShouldReturnUnhealthyWhenOnlyDomainSubscriptionDeadLetterQueueIsDeclared() throws Exception {
+        createDeadLetterQueues(ImmutableMap.of(
+            SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_DOMAIN));
+        assertThat(testee.check().block().isUnHealthy()).isTrue();
+    }
+
+    @Test
     void healthCheckShouldReturnDegradedWhenSaaSSubscriptionDeadLetterQueueIsNotEmpty() throws Exception {
-        createDeadLetterQueue(SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE);
-        publishAMessage();
+        createDeadLetterQueues(ImmutableMap.of(
+            SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_USER,
+            SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_DOMAIN));
+        publishAMessage(ROUTING_KEY_USER);
 
         awaitAtMostOneMinute.until(() -> testee.check().block().isDegraded());
     }
 
-    private void createDeadLetterQueue(String deadLetterQueue) throws IOException {
-        channel.exchangeDeclare(TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT, FANOUT, DURABLE);
-        channel.queueDeclare(deadLetterQueue, DURABLE, !EXCLUSIVE, AUTO_DELETE, NO_QUEUE_DECLARE_ARGUMENTS).getQueue();
-        channel.queueBind(deadLetterQueue, TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT, "routingKey");
+    @Test
+    void healthCheckShouldReturnDegradedWhenSaaSDomainSubscriptionDeadLetterQueueIsNotEmpty() throws Exception {
+        createDeadLetterQueues(ImmutableMap.of(
+            SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_USER,
+            SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_DOMAIN));
+        publishAMessage(ROUTING_KEY_DOMAIN);
+
+        awaitAtMostOneMinute.until(() -> testee.check().block().isDegraded());
     }
 
-    private void publishAMessage() throws IOException {
+    private void createDeadLetterQueues(Map<String, String> deadLetterQueueRouting) throws IOException {
+        channel.exchangeDeclare(TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT, DIRECT, DURABLE);
+        deadLetterQueueRouting.forEach(this::createDeadLetterQueue);
+    }
+
+    private void createDeadLetterQueue(String deadLetterQueue, String routingKey) {
+        try {
+            channel.queueDeclare(deadLetterQueue, DURABLE, !EXCLUSIVE, AUTO_DELETE, NO_QUEUE_DECLARE_ARGUMENTS).getQueue();
+            channel.queueBind(deadLetterQueue, TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT, routingKey);
+        } catch (IOException e) {
+            throw new RuntimeException();
+        }
+    }
+
+    private void publishAMessage(String routingKey) throws IOException {
         AMQP.BasicProperties basicProperties = new AMQP.BasicProperties.Builder()
             .deliveryMode(PERSISTENT_TEXT_PLAIN.getDeliveryMode())
             .priority(PERSISTENT_TEXT_PLAIN.getPriority())
             .contentType(PERSISTENT_TEXT_PLAIN.getContentType())
             .build();
 
-        channel.basicPublish(TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT, "routingKey", basicProperties, "Hello, world!".getBytes(StandardCharsets.UTF_8));
+        channel.basicPublish(TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT, routingKey, basicProperties, "Hello, world!".getBytes(StandardCharsets.UTF_8));
     }
 
     private void closeQuietly(AutoCloseable... closeables) {
