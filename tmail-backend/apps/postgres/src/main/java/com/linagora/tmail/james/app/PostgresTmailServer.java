@@ -59,7 +59,6 @@ import org.apache.james.modules.RunArgumentsModule;
 import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
 import org.apache.james.modules.data.PostgresDLPConfigurationStoreModule;
 import org.apache.james.modules.data.PostgresDataJmapModule;
-import org.apache.james.modules.data.PostgresDataModule;
 import org.apache.james.modules.data.PostgresDelegationStoreModule;
 import org.apache.james.modules.data.PostgresEventStoreModule;
 import org.apache.james.modules.data.PostgresVacationModule;
@@ -178,6 +177,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
+import com.linagora.tmail.modules.data.TMailPostgresDataModule;
 import com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
@@ -332,7 +332,7 @@ public class PostgresTmailServer {
                 binder.bind(MessageParser.class).to(TMailCleverMessageParser.class);
             }),
         new PostgresDeadLetterModule(),
-        new PostgresDataModule(),
+        new TMailPostgresDataModule(),
         new MailboxModule(),
         new SievePostgresRepositoryModules(),
         new TaskManagerModule(),
