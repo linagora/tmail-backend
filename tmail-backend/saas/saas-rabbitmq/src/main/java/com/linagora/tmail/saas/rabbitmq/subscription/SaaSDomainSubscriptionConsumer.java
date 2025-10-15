@@ -34,13 +34,14 @@ import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.core.Domain;
+import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.lifecycle.api.Startable;
+import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -70,6 +71,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
     private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
     private final DomainList domainList;
+    private final MaxQuotaManager maxQuotaManager;
     private Disposable consumeSubscriptionDisposable;
 
     @Inject
@@ -77,13 +79,15 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
                                           @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                           TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                           SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
-                                          DomainList domainList) {
+                                          DomainList domainList,
+                                          MaxQuotaManager maxQuotaManager) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.rabbitMQConfiguration = rabbitMQConfiguration;
         this.twpCommonRabbitMQConfiguration = twpCommonRabbitMQConfiguration;
         this.saasSubscriptionRabbitMQConfiguration = saasSubscriptionRabbitMQConfiguration;
         this.domainList = domainList;
+        this.maxQuotaManager = maxQuotaManager;
     }
 
     public void init() {
@@ -170,13 +174,37 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
 
     private Mono<Void> handleDomainSubscriptionMessage(SaaSDomainSubscriptionMessage domainSubscriptionMessage) {
         if (domainSubscriptionMessage.validated()) {
-            return Mono.fromCallable(() -> Domain.of(domainSubscriptionMessage.domain()))
-                .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-                .filter(Throwing.predicate(domain -> !domainList.containsDomain(domain)))
-                .doOnNext(Throwing.consumer(domainList::addDomain))
-                .then();
+            Domain domain = Domain.of(domainSubscriptionMessage.domain());
+            return addDomainIfNotExist(domain)
+                .then(updateStorageDomainQuota(domain, domainSubscriptionMessage.features().mail().storageQuota())
+                    .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
+                        domain, domainSubscriptionMessage.features().mail().storageQuota(), domainSubscriptionMessage.features().mail().rateLimitingDefinition())));
         }
         return Mono.empty();
+    }
+
+    private Mono<Domain> addDomainIfNotExist(Domain domain) {
+        return Mono.from(domainList.containsDomainReactive(domain))
+            .flatMap(alreadyExists -> {
+                if (alreadyExists) {
+                    return Mono.just(domain);
+                }
+                return Mono.fromCallable(() -> {
+                    domainList.addDomain(domain);
+                    return domain;
+                }).subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER);
+            });
+    }
+
+    private Mono<Void> updateStorageDomainQuota(Domain domain, Long storageQuota) {
+        return Mono.from(maxQuotaManager.setDomainMaxStorageReactive(domain, asQuotaSizeLimit(storageQuota)));
+    }
+
+    private QuotaSizeLimit asQuotaSizeLimit(Long storageQuota) {
+        if (storageQuota == -1) {
+            return QuotaSizeLimit.unlimited();
+        }
+        return QuotaSizeLimit.size(storageQuota);
     }
 
     @Override
