@@ -41,6 +41,8 @@ import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
+import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -71,6 +73,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
     private final DomainList domainList;
     private final MaxQuotaManager maxQuotaManager;
+    private final RateLimitingRepository rateLimitingRepository;
     private Disposable consumeSubscriptionDisposable;
 
     @Inject
@@ -79,7 +82,8 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
                                           TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                           SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
                                           DomainList domainList,
-                                          MaxQuotaManager maxQuotaManager) {
+                                          MaxQuotaManager maxQuotaManager,
+                                          RateLimitingRepository rateLimitingRepository) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.rabbitMQConfiguration = rabbitMQConfiguration;
@@ -87,6 +91,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
         this.saasSubscriptionRabbitMQConfiguration = saasSubscriptionRabbitMQConfiguration;
         this.domainList = domainList;
         this.maxQuotaManager = maxQuotaManager;
+        this.rateLimitingRepository = rateLimitingRepository;
     }
 
     public void init() {
@@ -176,6 +181,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
             Domain domain = Domain.of(domainSubscriptionMessage.domain());
             return addDomainIfNotExist(domain)
                 .then(updateStorageDomainQuota(domain, domainSubscriptionMessage.features().mail().storageQuota())
+                    .then(updateRateLimiting(domain, domainSubscriptionMessage.features().mail().rateLimitingDefinition()))
                     .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
                         domain, domainSubscriptionMessage.features().mail().storageQuota(), domainSubscriptionMessage.features().mail().rateLimitingDefinition())));
         }
@@ -197,6 +203,10 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
 
     private Mono<Void> updateStorageDomainQuota(Domain domain, Long storageQuota) {
         return Mono.from(maxQuotaManager.setDomainMaxStorageReactive(domain, SaaSSubscriptionUtils.asQuotaSizeLimit(storageQuota)));
+    }
+
+    private Mono<Void> updateRateLimiting(Domain domain, RateLimitingDefinition rateLimiting) {
+        return Mono.from(rateLimitingRepository.setRateLimiting(domain, rateLimiting));
     }
 
     @Override

@@ -18,6 +18,12 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_RECEIVED_PER_DAYS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_RECEIVED_PER_HOURS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_RECEIVED_PER_MINUTE_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_DAYS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_HOURS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_MINUTE_UNLIMITED;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +50,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
+import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository;
+import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 import reactor.core.publisher.Mono;
@@ -54,6 +63,22 @@ public class SaaSDomainSubscriptionConsumerTest {
     private static final String ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
     private static final String DOMAIN_ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
     private static final Domain DOMAIN = Domain.of("twake.app");
+    RateLimitingDefinition RATE_LIMITING_1 = RateLimitingDefinition.builder()
+        .mailsSentPerMinute(10L)
+        .mailsSentPerHours(100L)
+        .mailsSentPerDays(1000L)
+        .mailsReceivedPerMinute(20L)
+        .mailsReceivedPerHours(200L)
+        .mailsReceivedPerDays(2000L)
+        .build();
+    RateLimitingDefinition UNLIMITED = RateLimitingDefinition.builder()
+        .mailsSentPerMinute(MAILS_SENT_PER_MINUTE_UNLIMITED)
+        .mailsSentPerHours(MAILS_SENT_PER_HOURS_UNLIMITED)
+        .mailsSentPerDays(MAILS_SENT_PER_DAYS_UNLIMITED)
+        .mailsReceivedPerMinute(MAILS_RECEIVED_PER_MINUTE_UNLIMITED)
+        .mailsReceivedPerHours(MAILS_RECEIVED_PER_HOURS_UNLIMITED)
+        .mailsReceivedPerDays(MAILS_RECEIVED_PER_DAYS_UNLIMITED)
+        .build();
 
     private final ConditionFactory await = Awaitility.with()
         .pollInterval(Duration.ofMillis(500))
@@ -69,6 +94,7 @@ public class SaaSDomainSubscriptionConsumerTest {
 
     private DomainList domainList;
     private MaxQuotaManager maxQuotaManager;
+    private RateLimitingRepository rateLimitingRepository;
     private SaaSDomainSubscriptionConsumer testee;
 
     @BeforeEach
@@ -90,13 +116,16 @@ public class SaaSDomainSubscriptionConsumerTest {
         maxQuotaManager = new InMemoryPerUserMaxQuotaManager();
         domainList = new SimpleDomainList();
 
+        rateLimitingRepository = new MemoryRateLimitingRepository();
+
         testee = new SaaSDomainSubscriptionConsumer(
             rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQConfiguration,
             twpCommonRabbitMQConfiguration,
             saasSubscriptionRabbitMQConfiguration,
             domainList,
-            maxQuotaManager);
+            maxQuotaManager,
+            rateLimitingRepository);
         testee.init();
     }
 
@@ -206,6 +235,34 @@ public class SaaSDomainSubscriptionConsumerTest {
     }
 
     @Test
+    void shouldSetRateLimitingWhenDomainHasNoRateLimitingYet() {
+        String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> {
+            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+            assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
+        });
+    }
+
+    @Test
     void shouldSupportSetUnlimitedStorageQuotaForDomain() {
         String validMessage = String.format("""
             {
@@ -229,6 +286,34 @@ public class SaaSDomainSubscriptionConsumerTest {
 
         await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
             .isEqualTo(Optional.of(QuotaSizeLimit.unlimited())));
+    }
+
+    @Test
+    void shouldSupportSetUnlimitedRateLimitingForDomain() {
+        String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1000,
+                        "mailsSentPerMinute": -1,
+                        "mailsSentPerHour": -1,
+                        "mailsSentPerDay": -1,
+                        "mailsReceivedPerMinute": -1,
+                        "mailsReceivedPerHour": -1,
+                        "mailsReceivedPerDay": -1
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> {
+            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+            assertThat(rateLimitingDefinition).isEqualTo(UNLIMITED);
+        });
     }
 
     @Test
@@ -261,10 +346,68 @@ public class SaaSDomainSubscriptionConsumerTest {
     }
 
     @Test
+    void shouldUpdateRateLimitingWhenNewSubscriptionUpdate() {
+        String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 1,
+                        "mailsSentPerHour": 10,
+                        "mailsSentPerDay": 100,
+                        "mailsReceivedPerMinute": 2,
+                        "mailsReceivedPerHour": 20,
+                        "mailsReceivedPerDay": 200
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        String validUpdateMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validUpdateMessage);
+
+        await.untilAsserted(() -> {
+            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+            assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
+        });
+    }
+
+    @Test
     void shouldNotEffectOtherDomainSubscription() throws MailboxException, DomainListException {
         Domain otherDomain = Domain.of("otherDomain.org");
         domainList.addDomain(otherDomain);
         maxQuotaManager.setDomainMaxStorage(otherDomain, QuotaSizeLimit.size(1234));
+
+        RateLimitingDefinition otherRateLimiting = RateLimitingDefinition.builder()
+            .mailsSentPerMinute(15L)
+            .mailsSentPerHours(150L)
+            .mailsSentPerDays(1500L)
+            .mailsReceivedPerMinute(25L)
+            .mailsReceivedPerHours(250L)
+            .mailsReceivedPerDays(2500L)
+            .build();
+        Mono.from(rateLimitingRepository.setRateLimiting(otherDomain, otherRateLimiting)).block();
 
         String validMessage = String.format("""
             {
@@ -290,6 +433,8 @@ public class SaaSDomainSubscriptionConsumerTest {
             assertThat(domainList.containsDomain(otherDomain)).isTrue();
             assertThat(maxQuotaManager.getDomainMaxStorage(otherDomain))
                 .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
+            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(otherDomain)).block();
+            assertThat(rateLimitingDefinition).isEqualTo(otherRateLimiting);
         });
     }
 
@@ -316,7 +461,13 @@ public class SaaSDomainSubscriptionConsumerTest {
         publishAmqpSaaSDomainSubscriptionMessage(validMessage);
         publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+        await.untilAsserted(() -> {
+            assertThat(domainList.containsDomain(DOMAIN)).isTrue();
+            assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+                .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
+            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+            assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
+        });
     }
 
     @Test
