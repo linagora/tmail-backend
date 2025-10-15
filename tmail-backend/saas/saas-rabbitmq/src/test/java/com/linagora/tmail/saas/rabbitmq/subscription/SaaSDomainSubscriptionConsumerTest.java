@@ -30,8 +30,13 @@ import java.util.concurrent.TimeUnit;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.Domain;
+import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.domainlist.api.DomainListException;
 import org.apache.james.domainlist.api.mock.SimpleDomainList;
+import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.inmemory.quota.InMemoryPerUserMaxQuotaManager;
+import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -63,6 +68,7 @@ public class SaaSDomainSubscriptionConsumerTest {
         .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
 
     private DomainList domainList;
+    private MaxQuotaManager maxQuotaManager;
     private SaaSDomainSubscriptionConsumer testee;
 
     @BeforeEach
@@ -81,6 +87,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             Optional.empty(),
             false);
 
+        maxQuotaManager = new InMemoryPerUserMaxQuotaManager();
         domainList = new SimpleDomainList();
 
         testee = new SaaSDomainSubscriptionConsumer(
@@ -88,7 +95,8 @@ public class SaaSDomainSubscriptionConsumerTest {
             rabbitMQConfiguration,
             twpCommonRabbitMQConfiguration,
             saasSubscriptionRabbitMQConfiguration,
-            domainList);
+            domainList,
+            maxQuotaManager);
         testee.init();
     }
 
@@ -168,6 +176,120 @@ public class SaaSDomainSubscriptionConsumerTest {
         await.untilAsserted(() -> {
             assertThat(domainList.containsDomain(DOMAIN)).isTrue();
             assertThat(domainList.containsDomain(unvalidatedDomain)).isFalse();
+        });
+    }
+
+    @Test
+    void shouldSetStorageQuotaWhenDomainHasNoQuotaYet() {
+        String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+            .isEqualTo(Optional.of(QuotaSizeLimit.size(1234))));
+    }
+
+    @Test
+    void shouldSupportSetUnlimitedStorageQuotaForDomain() {
+        String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": -1,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+            .isEqualTo(Optional.of(QuotaSizeLimit.unlimited())));
+    }
+
+    @Test
+    void shouldUpdateStorageQuotaWhenNewSubscriptionUpdate() throws MailboxException, DomainListException {
+        domainList.addDomain(DOMAIN);
+        maxQuotaManager.setDomainMaxStorage(DOMAIN, QuotaSizeLimit.size(1234));
+
+        String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+            .isEqualTo(Optional.of(QuotaSizeLimit.size(12334534))));
+    }
+
+    @Test
+    void shouldNotEffectOtherDomainSubscription() throws MailboxException, DomainListException {
+        Domain otherDomain = Domain.of("otherDomain.org");
+        domainList.addDomain(otherDomain);
+        maxQuotaManager.setDomainMaxStorage(otherDomain, QuotaSizeLimit.size(1234));
+
+        String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> {
+            assertThat(domainList.containsDomain(otherDomain)).isTrue();
+            assertThat(maxQuotaManager.getDomainMaxStorage(otherDomain))
+                .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
         });
     }
 
