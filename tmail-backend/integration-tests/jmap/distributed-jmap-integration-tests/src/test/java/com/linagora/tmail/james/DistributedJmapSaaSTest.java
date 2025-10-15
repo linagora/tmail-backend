@@ -30,6 +30,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
+import org.apache.james.modules.QuotaProbesImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -105,7 +106,10 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
             .overrideWith(provideSaaSModule(saasSupport))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
-                .to(DomainProbe.class));
+                .to(DomainProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(QuotaProbesImpl.class));
 
         Throwing.runnable(() -> guiceJamesServer.start()).run();
         return guiceJamesServer;

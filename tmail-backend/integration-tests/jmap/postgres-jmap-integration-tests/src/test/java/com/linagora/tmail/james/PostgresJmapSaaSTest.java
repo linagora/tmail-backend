@@ -30,6 +30,7 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
+import org.apache.james.modules.QuotaProbesImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
@@ -91,7 +92,10 @@ public class PostgresJmapSaaSTest implements JmapSaasContract {
             .overrideWith(provideSaaSModule(saasSupport))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
-                .to(DomainProbe.class));
+                .to(DomainProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
+                .to(QuotaProbesImpl.class));
 
         Throwing.runnable(() -> guiceJamesServer.start()).run();
         return guiceJamesServer;
