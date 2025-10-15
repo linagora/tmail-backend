@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.domainlist.postgres.TMailPostgresDomainDataDefinition;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepositoryContract;
 import com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition;
@@ -36,7 +37,7 @@ import reactor.core.publisher.Mono;
 public class PostgresRateLimitingRepositoryTest implements RateLimitingRepositoryContract {
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.withoutRowLevelSecurity(
-        PostgresDataDefinition.aggregateModules(TMailPostgresUserDataDefinition.MODULE));
+        PostgresDataDefinition.aggregateModules(TMailPostgresUserDataDefinition.MODULE, TMailPostgresDomainDataDefinition.MODULE));
 
     private PostgresRateLimitingRepository repository;
 

@@ -22,6 +22,7 @@ import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.update;
+import static com.linagora.tmail.domainlist.cassandra.TMailCassandraDomainListDataDefinition.DOMAIN;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.EMPTY_RATE_LIMIT;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_RECEIVED_PER_DAYS;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_RECEIVED_PER_HOURS;
@@ -35,6 +36,7 @@ import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDat
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
@@ -42,6 +44,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.linagora.tmail.domainlist.cassandra.TMailCassandraDomainListDataDefinition;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 
@@ -50,7 +53,9 @@ import reactor.core.publisher.Mono;
 public class CassandraRateLimitingRepository implements RateLimitingRepository {
     private final CassandraAsyncExecutor executor;
     private final PreparedStatement insertRateLimitingStatement;
+    private final PreparedStatement insertDomainRateLimitingStatement;
     private final PreparedStatement selectRateLimitingStatement;
+    private final PreparedStatement selectDomainRateLimitingStatement;
     private final PreparedStatement clearRateLimitingStatement;
 
     @Inject
@@ -65,10 +70,24 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .value(MAILS_RECEIVED_PER_HOURS, bindMarker(MAILS_RECEIVED_PER_HOURS))
             .value(MAILS_RECEIVED_PER_DAYS, bindMarker(MAILS_RECEIVED_PER_DAYS))
             .build());
+        this.insertDomainRateLimitingStatement = session.prepare(insertInto(TMailCassandraDomainListDataDefinition.TABLE_NAME)
+            .value(DOMAIN, bindMarker(DOMAIN))
+            .value(MAILS_SENT_PER_MINUTE, bindMarker(MAILS_SENT_PER_MINUTE))
+            .value(MAILS_SENT_PER_HOURS, bindMarker(MAILS_SENT_PER_HOURS))
+            .value(MAILS_SENT_PER_DAYS, bindMarker(MAILS_SENT_PER_DAYS))
+            .value(MAILS_RECEIVED_PER_MINUTE, bindMarker(MAILS_RECEIVED_PER_MINUTE))
+            .value(MAILS_RECEIVED_PER_HOURS, bindMarker(MAILS_RECEIVED_PER_HOURS))
+            .value(MAILS_RECEIVED_PER_DAYS, bindMarker(MAILS_RECEIVED_PER_DAYS))
+            .build());
         this.selectRateLimitingStatement = session.prepare(selectFrom(TABLE_NAME)
             .columns(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
                 MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
             .whereColumn(USER).isEqualTo(bindMarker(USER))
+            .build());
+        this.selectDomainRateLimitingStatement = session.prepare(selectFrom(TMailCassandraDomainListDataDefinition.TABLE_NAME)
+            .columns(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
+                MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
+            .whereColumn(DOMAIN).isEqualTo(bindMarker(DOMAIN))
             .build());
         this.clearRateLimitingStatement = session.prepare(update(TABLE_NAME)
             .setColumn(MAILS_SENT_PER_MINUTE, bindMarker(MAILS_SENT_PER_MINUTE))
@@ -94,9 +113,29 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
     }
 
     @Override
+    public Publisher<Void> setRateLimiting(Domain domain, RateLimitingDefinition rateLimiting) {
+        return Mono.from(executor.executeVoid(insertDomainRateLimitingStatement.bind()
+            .set(DOMAIN, domain.asString(), TypeCodecs.TEXT)
+            .set(MAILS_SENT_PER_MINUTE, rateLimiting.mailsSentPerMinute().orElse(null), TypeCodecs.BIGINT)
+            .set(MAILS_SENT_PER_HOURS, rateLimiting.mailsSentPerHours().orElse(null), TypeCodecs.BIGINT)
+            .set(MAILS_SENT_PER_DAYS, rateLimiting.mailsSentPerDays().orElse(null), TypeCodecs.BIGINT)
+            .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null), TypeCodecs.BIGINT)
+            .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null), TypeCodecs.BIGINT)
+            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null), TypeCodecs.BIGINT)));
+    }
+
+    @Override
     public Publisher<RateLimitingDefinition> getRateLimiting(Username username) {
         return Mono.from(executor.executeSingleRow(selectRateLimitingStatement.bind()
                 .set(USER, username.asString(), TypeCodecs.TEXT)))
+            .map(this::toRateLimitingDefinition)
+            .defaultIfEmpty(EMPTY_RATE_LIMIT);
+    }
+
+    @Override
+    public Publisher<RateLimitingDefinition> getRateLimiting(Domain domain) {
+        return Mono.from(executor.executeSingleRow(selectDomainRateLimitingStatement.bind()
+                .set(DOMAIN, domain.asString(), TypeCodecs.TEXT)))
             .map(this::toRateLimitingDefinition)
             .defaultIfEmpty(EMPTY_RATE_LIMIT);
     }

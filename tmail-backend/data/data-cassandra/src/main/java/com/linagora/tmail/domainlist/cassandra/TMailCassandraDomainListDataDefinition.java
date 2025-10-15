@@ -19,6 +19,12 @@
 package com.linagora.tmail.domainlist.cassandra;
 
 import static com.datastax.oss.driver.api.querybuilder.SchemaBuilder.RowsPerPartition.rows;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_RECEIVED_PER_DAYS;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_RECEIVED_PER_HOURS;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_RECEIVED_PER_MINUTE;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_DAYS;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_HOURS;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_MINUTE;
 
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.backends.cassandra.utils.CassandraConstants;
@@ -36,6 +42,12 @@ public interface TMailCassandraDomainListDataDefinition {
         .options(options -> options
             .withCaching(true, rows(CassandraConstants.DEFAULT_CACHED_ROW_PER_PARTITION)))
         .statement(statement -> types -> statement
-            .withPartitionKey(DOMAIN, DataTypes.TEXT))
+            .withPartitionKey(DOMAIN, DataTypes.TEXT)
+            .withColumn(MAILS_SENT_PER_MINUTE, DataTypes.BIGINT)
+            .withColumn(MAILS_SENT_PER_HOURS, DataTypes.BIGINT)
+            .withColumn(MAILS_SENT_PER_DAYS, DataTypes.BIGINT)
+            .withColumn(MAILS_RECEIVED_PER_MINUTE, DataTypes.BIGINT)
+            .withColumn(MAILS_RECEIVED_PER_HOURS, DataTypes.BIGINT)
+            .withColumn(MAILS_RECEIVED_PER_DAYS, DataTypes.BIGINT))
         .build();
 }
