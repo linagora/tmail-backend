@@ -25,6 +25,8 @@ import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.M
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_DAYS_UNLIMITED;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_HOURS_UNLIMITED;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_MINUTE_UNLIMITED;
+import static com.linagora.tmail.webadmin.RateLimitsUserRoutesTest.GET_RATE_LIMITS_OF_USER_PATH;
+import static com.linagora.tmail.webadmin.RateLimitsUserRoutesTest.PUT_RATE_LIMITS_TO_USER_PATH;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
@@ -39,7 +41,11 @@ import static org.mockito.Mockito.when;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
+import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.domainlist.lib.DomainListConfiguration;
+import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
@@ -60,11 +66,12 @@ import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import io.restassured.RestAssured;
 import reactor.core.publisher.Mono;
 
-public class RateLimitsUserRoutesTest {
-    public static final String PUT_RATE_LIMITS_TO_USER_PATH = "/users/%s/ratelimits";
-    public static final String GET_RATE_LIMITS_OF_USER_PATH = "/users/%s/ratelimits";
-    private static final Username BOB = Username.of("bob@linagora.com");
-    private static final Username ANDRE = Username.of("andre@linagora.com");
+public class RateLimitsDomainRoutesTest {
+    private static final String PUT_RATE_LIMITS_TO_DOMAIN_PATH = "/domains/%s/ratelimits";
+    private static final String GET_RATE_LIMITS_OF_DOMAIN_PATH = "/domains/%s/ratelimits";
+    private static final Username BOB = Username.of("bob@domain.tld");
+    private static final Domain DOMAIN = Domain.of("domain.tld");
+    private static final Domain NOT_EXISTING_DOMAIN = Domain.of("domain2.tld");
     private static final RateLimitingDefinition UNLIMITED_RATE_LIMITS = RateLimitingDefinition.builder()
         .mailsSentPerMinute(MAILS_SENT_PER_MINUTE_UNLIMITED)
         .mailsSentPerHours(MAILS_SENT_PER_HOURS_UNLIMITED)
@@ -73,7 +80,7 @@ public class RateLimitsUserRoutesTest {
         .mailsReceivedPerHours(MAILS_RECEIVED_PER_HOURS_UNLIMITED)
         .mailsReceivedPerDays(MAILS_RECEIVED_PER_DAYS_UNLIMITED)
         .build();
-    private static final RateLimitingDefinition BOB_RATE_LIMITS = RateLimitingDefinition.builder()
+    private static final RateLimitingDefinition LIMITED_RATE_LIMITS = RateLimitingDefinition.builder()
         .mailsSentPerMinute(10L)
         .mailsSentPerHours(100L)
         .mailsSentPerDays(1000L)
@@ -90,7 +97,7 @@ public class RateLimitsUserRoutesTest {
             "mailsReceivedPerHours": -1,
             "mailsReceivedPerDays": -1
         }""";
-    private static final String PAYLOAD = """
+    private static final String LIMITED_PAYLOAD = """
         {
             "mailsSentPerMinute": 10,
             "mailsSentPerHours": 100,
@@ -100,26 +107,30 @@ public class RateLimitsUserRoutesTest {
             "mailsReceivedPerDays": 2000
         }""";
 
-    private static Stream<Arguments> usernameInvalidSource() {
+    private static Stream<Arguments> domainInvalidSource() {
         return Stream.of(
-            Arguments.of("@"),
-            Arguments.of("aa@aa@aa")
-        );
+            Arguments.of("@.tld"),
+            Arguments.of("aa@aa@aa.tld"));
     }
 
     private WebAdminServer webAdminServer;
     private UsersRepository usersRepository;
+    private MemoryDomainList domainList;
     private RateLimitingRepository rateLimitingRepository;
 
     @BeforeEach
     void setUp() throws Exception {
         rateLimitingRepository = new MemoryRateLimitingRepository();
         usersRepository = mock(UsersRepository.class);
+        DNSService dnsService = mock(DNSService.class);
+        domainList = new MemoryDomainList(dnsService);
+        domainList.configure(DomainListConfiguration.DEFAULT);
+        domainList.addDomain(DOMAIN);
         RateLimitsUserRoutes rateLimitsUserRoutes = new RateLimitsUserRoutes(rateLimitingRepository, usersRepository, new JsonTransformer());
-        webAdminServer = WebAdminUtils.createWebAdminServer(rateLimitsUserRoutes).start();
+        RateLimitsDomainRoutes rateLimitsDomainRoutes = new RateLimitsDomainRoutes(rateLimitingRepository, domainList, new JsonTransformer());
+        webAdminServer = WebAdminUtils.createWebAdminServer(rateLimitsUserRoutes, rateLimitsDomainRoutes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
-
         when(usersRepository.contains(BOB)).thenReturn(true);
     }
 
@@ -129,12 +140,12 @@ public class RateLimitsUserRoutesTest {
     }
 
     @Nested
-    class ApplyRateLimitsToUserTest {
+    class ApplyRateLimitsToDomainTest {
         @ParameterizedTest
-        @MethodSource("com.linagora.tmail.webadmin.RateLimitsUserRoutesTest#usernameInvalidSource")
-        void shouldReturnErrorWhenInvalidUser(String username) {
+        @MethodSource("com.linagora.tmail.webadmin.RateLimitsDomainRoutesTest#domainInvalidSource")
+        void shouldReturnErrorWhenInvalidDomain(String domain) {
             Map<String, Object> errors = given()
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, username))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, domain))
             .then()
                 .statusCode(BAD_REQUEST_400)
                 .contentType(JSON)
@@ -150,9 +161,9 @@ public class RateLimitsUserRoutesTest {
         }
 
         @Test
-        void shouldReturnNotFoundWhenUserNotFound() {
+        void shouldReturnNotFoundWhenDomainNotFound() {
             Map<String, Object> errors = given()
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, ANDRE.asString()))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, NOT_EXISTING_DOMAIN.asString()))
             .then()
                 .statusCode(NOT_FOUND_404)
                 .contentType(JSON)
@@ -164,7 +175,7 @@ public class RateLimitsUserRoutesTest {
             Assertions.assertThat(errors)
                 .containsEntry("statusCode", NOT_FOUND_404)
                 .containsEntry("type", "notFound")
-                .containsEntry("message", "User " + ANDRE.asString() + " does not exist");
+                .containsEntry("message", "Domain " + NOT_EXISTING_DOMAIN.asString() + " does not exist");
         }
 
         @Test
@@ -174,7 +185,7 @@ public class RateLimitsUserRoutesTest {
                 {
                     "badPayload": "bad"
                 }""")
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(BAD_REQUEST_400)
                 .contentType(JSON)
@@ -186,19 +197,39 @@ public class RateLimitsUserRoutesTest {
             Assertions.assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", "Error while deserializing applyRateLimitsToUser request");
+                .containsEntry("message", "Error while deserializing applyRateLimitsToDomain request");
         }
 
         @Test
         void shouldSucceed() {
             given()
-                .body(PAYLOAD)
+                .body(LIMITED_PAYLOAD)
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
+                .isEqualTo(LIMITED_RATE_LIMITS);
+        }
+
+        @Test
+        void shouldNotConflictWithUserRateLimitRoute() {
+            given()
+                .body(LIMITED_PAYLOAD)
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .body(UNLIMITED_PAYLOAD)
                 .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
+                .isEqualTo(LIMITED_RATE_LIMITS);
             assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
-                .isEqualTo(BOB_RATE_LIMITS);
+                .isEqualTo(UNLIMITED_RATE_LIMITS);
         }
 
         @Test
@@ -213,11 +244,11 @@ public class RateLimitsUserRoutesTest {
                     "mailsReceivedPerHours": null,
                     "mailsReceivedPerDays": null
                 }""")
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
-            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
                 .isEqualTo(EMPTY_RATE_LIMIT);
         }
 
@@ -225,11 +256,11 @@ public class RateLimitsUserRoutesTest {
         void unlimitedValuesShouldBeAllowed() {
             given()
                 .body(UNLIMITED_PAYLOAD)
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
-            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
                 .isEqualTo(UNLIMITED_RATE_LIMITS);
         }
 
@@ -245,11 +276,11 @@ public class RateLimitsUserRoutesTest {
                     "mailsReceivedPerHours": null,
                     "mailsReceivedPerDays": -1
                 }""")
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
-            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
                 .isEqualTo(RateLimitingDefinition.builder()
                     .mailsSentPerMinute(MAILS_SENT_PER_MINUTE_UNLIMITED)
                     .mailsSentPerHours(100L)
@@ -263,8 +294,8 @@ public class RateLimitsUserRoutesTest {
         @Test
         void shouldOverridePreviousLimits() {
             given()
-                .body(PAYLOAD)
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .body(LIMITED_PAYLOAD)
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
@@ -278,11 +309,11 @@ public class RateLimitsUserRoutesTest {
                     "mailsReceivedPerHours": 250,
                     "mailsReceivedPerDays": 2500
                 }""")
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
-            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
                 .isEqualTo(RateLimitingDefinition.builder()
                     .mailsSentPerMinute(15L)
                     .mailsSentPerHours(150L)
@@ -296,19 +327,19 @@ public class RateLimitsUserRoutesTest {
         @Test
         void shouldBeIdempotent() {
             given()
-                .body(PAYLOAD)
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .body(LIMITED_PAYLOAD)
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
             given()
-                .body(PAYLOAD)
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .body(LIMITED_PAYLOAD)
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
-            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
-                .isEqualTo(BOB_RATE_LIMITS);
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
+                .isEqualTo(LIMITED_RATE_LIMITS);
         }
 
         @Test
@@ -321,11 +352,11 @@ public class RateLimitsUserRoutesTest {
                     "mailsReceivedPerHours": 200,
                     "mailsReceivedPerDays": 2000
                 }""")
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
-            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
                 .isEqualTo(RateLimitingDefinition.builder()
                     .mailsSentPerMinute(null)
                     .mailsSentPerHours(100L)
@@ -339,29 +370,29 @@ public class RateLimitsUserRoutesTest {
         @Test
         void emptyPayloadShouldResetRateLimits() {
             given()
-                .body(PAYLOAD)
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .body(LIMITED_PAYLOAD)
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
             given()
                 .body("{}")
-                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+                .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(NO_CONTENT_204);
 
-            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block())
                 .isEqualTo(EMPTY_RATE_LIMIT);
         }
     }
 
     @Nested
-    class GetRateLimitsOfUserTest {
+    class GetRateLimitsOfDomainTest {
         @ParameterizedTest
-        @MethodSource("com.linagora.tmail.webadmin.RateLimitsUserRoutesTest#usernameInvalidSource")
-        void shouldReturnErrorWhenInvalidUser(String username) {
+        @MethodSource("com.linagora.tmail.webadmin.RateLimitsDomainRoutesTest#domainInvalidSource")
+        void shouldReturnErrorWhenInvalidDomain(String domain) {
             Map<String, Object> errors = given()
-                .put(String.format(GET_RATE_LIMITS_OF_USER_PATH, username))
+                .put(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, domain))
             .then()
                 .statusCode(BAD_REQUEST_400)
                 .contentType(JSON)
@@ -377,9 +408,9 @@ public class RateLimitsUserRoutesTest {
         }
 
         @Test
-        void shouldReturnNotFoundWhenUserNotFound() {
+        void shouldReturnNotFoundWhenDomainNotFound() {
             Map<String, Object> errors = given()
-                .put(String.format(GET_RATE_LIMITS_OF_USER_PATH, ANDRE.asString()))
+                .put(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, NOT_EXISTING_DOMAIN.asString()))
             .then()
                 .statusCode(NOT_FOUND_404)
                 .contentType(JSON)
@@ -391,15 +422,15 @@ public class RateLimitsUserRoutesTest {
             Assertions.assertThat(errors)
                 .containsEntry("statusCode", NOT_FOUND_404)
                 .containsEntry("type", "notFound")
-                .containsEntry("message", "User " + ANDRE.asString() + " does not exist");
+                .containsEntry("message", "Domain " + NOT_EXISTING_DOMAIN.asString() + " does not exist");
         }
 
         @Test
         void shouldSucceed() {
-            Mono.from(rateLimitingRepository.setRateLimiting(BOB, BOB_RATE_LIMITS)).block();
+            Mono.from(rateLimitingRepository.setRateLimiting(DOMAIN, LIMITED_RATE_LIMITS)).block();
 
             String response = given()
-                .get(String.format(GET_RATE_LIMITS_OF_USER_PATH, BOB.asString()))
+                .get(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(OK_200)
                 .contentType(JSON)
@@ -408,15 +439,42 @@ public class RateLimitsUserRoutesTest {
                 .asString();
 
             assertThatJson(response)
-                .isEqualTo(PAYLOAD);
+                .isEqualTo(LIMITED_PAYLOAD);
+        }
+
+        @Test
+        void shouldNotConflictWithUserRateLimitRoute() {
+            Mono.from(rateLimitingRepository.setRateLimiting(DOMAIN, LIMITED_RATE_LIMITS)).block();
+            Mono.from(rateLimitingRepository.setRateLimiting(BOB, UNLIMITED_RATE_LIMITS)).block();
+
+            String domainLimits = given()
+                .get(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, DOMAIN.asString()))
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            String userLimits = given()
+                .get(String.format(GET_RATE_LIMITS_OF_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(domainLimits).isEqualTo(LIMITED_PAYLOAD);
+            assertThatJson(userLimits).isEqualTo(UNLIMITED_PAYLOAD);
         }
 
         @Test
         void shouldReturnUnlimitedLimits() {
-            Mono.from(rateLimitingRepository.setRateLimiting(BOB, UNLIMITED_RATE_LIMITS)).block();
+            Mono.from(rateLimitingRepository.setRateLimiting(DOMAIN, UNLIMITED_RATE_LIMITS)).block();
 
             String response = given()
-                .get(String.format(GET_RATE_LIMITS_OF_USER_PATH, BOB.asString()))
+                .get(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(OK_200)
                 .contentType(JSON)
@@ -431,7 +489,7 @@ public class RateLimitsUserRoutesTest {
         @Test
         void shouldReturnNullLimitsByDefault() {
             String response = given()
-                .get(String.format(GET_RATE_LIMITS_OF_USER_PATH, BOB.asString()))
+                .get(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(OK_200)
                 .contentType(JSON)
@@ -453,7 +511,7 @@ public class RateLimitsUserRoutesTest {
 
         @Test
         void shouldReturnMixedTypesOfLimits() {
-            Mono.from(rateLimitingRepository.setRateLimiting(BOB, RateLimitingDefinition.builder()
+            Mono.from(rateLimitingRepository.setRateLimiting(DOMAIN, RateLimitingDefinition.builder()
                 .mailsSentPerMinute(MAILS_SENT_PER_MINUTE_UNLIMITED)
                 .mailsSentPerHours(100L)
                 .mailsSentPerDays(null)
@@ -463,7 +521,7 @@ public class RateLimitsUserRoutesTest {
                 .build())).block();
 
             String response = given()
-                .get(String.format(GET_RATE_LIMITS_OF_USER_PATH, BOB.asString()))
+                .get(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, DOMAIN.asString()))
             .then()
                 .statusCode(OK_200)
                 .contentType(JSON)
