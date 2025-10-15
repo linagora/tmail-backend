@@ -102,7 +102,18 @@ public class SaaSDomainSubscriptionConsumerTest {
         String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
             }
             """, DOMAIN.asString());
 
@@ -117,7 +128,18 @@ public class SaaSDomainSubscriptionConsumerTest {
         String unvalidatedMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": false
+                "validated": false,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
             }
             """, unvalidatedDomain.asString());
 
@@ -126,7 +148,18 @@ public class SaaSDomainSubscriptionConsumerTest {
         String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
             }
             """, DOMAIN.asString());
 
@@ -143,7 +176,18 @@ public class SaaSDomainSubscriptionConsumerTest {
         String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
             }
             """, DOMAIN.asString());
 
@@ -162,7 +206,18 @@ public class SaaSDomainSubscriptionConsumerTest {
         String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
             }
             """, DOMAIN.asString());
         publishAmqpSaaSDomainSubscriptionMessage(validMessage);

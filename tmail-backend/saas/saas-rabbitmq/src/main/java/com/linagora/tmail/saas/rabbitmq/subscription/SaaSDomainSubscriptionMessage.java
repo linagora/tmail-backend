@@ -22,14 +22,17 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 
-public record SaaSDomainSubscriptionMessage(String domain, Boolean validated) {
+public record SaaSDomainSubscriptionMessage(String domain, Boolean validated, SaasFeatures features) {
     @JsonCreator
     public SaaSDomainSubscriptionMessage(@JsonProperty("domain") String domain,
-                                         @JsonProperty("validated") Boolean validated) {
+                                         @JsonProperty("validated") Boolean validated,
+                                         @JsonProperty("features") SaasFeatures features) {
         Preconditions.checkNotNull(domain, "domain cannot be null");
         Preconditions.checkNotNull(validated, "validated cannot be null");
+        Preconditions.checkNotNull(features, "features cannot be null");
 
         this.domain = domain;
         this.validated = validated;
+        this.features = features;
     }
 }

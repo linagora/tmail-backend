@@ -18,12 +18,24 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
+
 public class SaaSDomainSubscriptionDeserializerTest {
+    RateLimitingDefinition RATE_LIMITING_1 = RateLimitingDefinition.builder()
+        .mailsSentPerMinute(10L)
+        .mailsSentPerHours(100L)
+        .mailsSentPerDays(1000L)
+        .mailsReceivedPerMinute(20L)
+        .mailsReceivedPerHours(200L)
+        .mailsReceivedPerDays(2000L)
+        .build();
+
     @Test
     void parseInvalidAmqpMessageShouldThrowException() {
         String invalidMessage = "{ invalid json }";
@@ -38,7 +50,18 @@ public class SaaSDomainSubscriptionDeserializerTest {
         String validMessage = """
             {
                 "domain": "twake.app",
-                "validated": true
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
             }
             """;
 
@@ -47,6 +70,8 @@ public class SaaSDomainSubscriptionDeserializerTest {
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(message.domain()).isEqualTo("twake.app");
             softly.assertThat(message.validated()).isTrue();
+            softly.assertThat(message.features().mail().storageQuota()).isEqualTo(12334534L);
+            softly.assertThat(message.features().mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
         });
     }
 
@@ -54,7 +79,18 @@ public class SaaSDomainSubscriptionDeserializerTest {
     void parseMissingRequiredDomainShouldThrowException() {
         String message = """
             {
-                "validated": true
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
             }
             """;
 
@@ -67,7 +103,51 @@ public class SaaSDomainSubscriptionDeserializerTest {
     void parseMissingRequiredValidatedShouldThrowException() {
         String message = """
             {
-                "domain": "twake.app"
+                "domain": "twake.app",
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """;
+
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
+            .hasMessageContaining("Failed to parse SaaS subscription domain message");
+    }
+
+    @Test
+    void parseMissingRequiredMailPayloadShouldThrowException() {
+        String message = """
+            {
+                "domain": "twake.app",
+                "validated": true
+            }
+            """;
+
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
+            .hasMessageContaining("Failed to parse SaaS subscription domain message");
+    }
+
+    @Test
+    void parseMissingRequiredRateLimitingShouldThrowException() {
+        String message = """
+            {
+                "domain": "twake.app",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534
+                    }
+                }
             }
             """;
 
@@ -82,6 +162,17 @@ public class SaaSDomainSubscriptionDeserializerTest {
             {
                 "domain": "twake.app",
                 "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                },
                 "extraField": "ignored"
             }
             """;
@@ -92,5 +183,30 @@ public class SaaSDomainSubscriptionDeserializerTest {
             softly.assertThat(message.domain()).isEqualTo("twake.app");
             softly.assertThat(message.validated()).isTrue();
         });
+    }
+
+    @Test
+    void parseNegativeStorageQuotaShouldSucceed() {
+        String message = """
+            {
+                "domain": "twake.app",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": -1,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """;
+
+        SaaSDomainSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message);
+
+        assertThat(parsed.features().mail().storageQuota()).isEqualTo(-1L);
     }
 }
