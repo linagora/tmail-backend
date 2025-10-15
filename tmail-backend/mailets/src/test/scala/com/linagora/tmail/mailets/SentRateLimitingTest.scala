@@ -18,13 +18,13 @@
 
 package com.linagora.tmail.mailets
 
-import com.linagora.tmail.mailets.SentRateLimitingTest.{ALICE, BOB}
+import com.linagora.tmail.mailets.SentRateLimitingTest.{ALICE, BOB, DOMAIN}
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.{MAILS_SENT_PER_DAYS_UNLIMITED, MAILS_SENT_PER_HOURS_UNLIMITED, MAILS_SENT_PER_MINUTE_UNLIMITED}
 import org.apache.james.backends.redis.{DockerRedis, RedisClientFactory, RedisExtension, StandaloneRedisConfiguration}
-import org.apache.james.core.Username
+import org.apache.james.core.{Domain, Username}
 import org.apache.james.rate.limiter.redis.RedisRateLimiterFactory
 import org.apache.james.server.core.filesystem.FileSystemImpl
 import org.apache.mailet.Mail
@@ -35,6 +35,7 @@ import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.SMono
 
 object SentRateLimitingTest {
+  val DOMAIN: Domain = Domain.of("domain.tld")
   val BOB: Username = Username.of("bob@domain.tld")
   val ALICE: Username = Username.of("alice@domain.tld")
 }
@@ -98,6 +99,88 @@ class SentRateLimitingTest {
       .mailsSentPerMinute(1)
       .mailsSentPerHours(10)
       .mailsSentPerDays(100)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender(BOB.asString())
+      .recipients("rcpt1@linagora.com")
+      .state("transport")
+      .build()
+
+    val shouldExceedConfiguredLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender(BOB.asString())
+      .recipients("rcpt2@linagora.com")
+      .state("transport")
+      .build()
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedConfiguredLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedConfiguredLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def shouldApplyConfiguredDomainRateLimitsWhenSenderHasNoLimit(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("mailsPerMinuteDefault", "1000")
+      .setProperty("mailsPerHourDefault", "1000")
+      .setProperty("mailsPerDayDefault", "1000")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(DOMAIN, new RateLimitingDefinition.Builder()
+      .mailsSentPerMinute(1)
+      .mailsSentPerHours(10)
+      .mailsSentPerDays(100)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender(BOB.asString())
+      .recipients("rcpt1@linagora.com")
+      .state("transport")
+      .build()
+
+    val shouldExceedConfiguredLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender(BOB.asString())
+      .recipients("rcpt2@linagora.com")
+      .state("transport")
+      .build()
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedConfiguredLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedConfiguredLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def shouldApplyConfiguredUserRateLimitsWhenSenderHasDomainAndUserLimit(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("mailsPerMinuteDefault", "1000")
+      .setProperty("mailsPerHourDefault", "1000")
+      .setProperty("mailsPerDayDefault", "1000")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(DOMAIN, new RateLimitingDefinition.Builder()
+      .mailsSentPerMinute(10)
+      .mailsSentPerHours(20)
+      .mailsSentPerDays(30)
+      .build())).block()
+
+    SMono(rateLimitingRepository.setRateLimiting(BOB, new RateLimitingDefinition.Builder()
+      .mailsSentPerMinute(1)
+      .mailsSentPerHours(10)
+      .mailsSentPerDays(20)
       .build())).block()
 
     val mail1: Mail = FakeMail.builder()
