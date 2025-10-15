@@ -34,7 +34,6 @@ import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.core.Username;
-import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
@@ -200,18 +199,11 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> updateStorageQuota(Username username, Long storageQuota) {
-        return Mono.from(maxQuotaManager.setMaxStorageReactive(userQuotaRootResolver.forUser(username), asQuotaSizeLimit(storageQuota)));
+        return Mono.from(maxQuotaManager.setMaxStorageReactive(userQuotaRootResolver.forUser(username), SaaSSubscriptionUtils.asQuotaSizeLimit(storageQuota)));
     }
 
     private Mono<Void> updateRateLimiting(Username username, RateLimitingDefinition rateLimiting) {
         return Mono.from(rateLimitingRepository.setRateLimiting(username, rateLimiting));
-    }
-
-    private QuotaSizeLimit asQuotaSizeLimit(Long storageQuota) {
-        if (storageQuota == -1) {
-            return QuotaSizeLimit.unlimited();
-        }
-        return QuotaSizeLimit.size(storageQuota);
     }
 
     @Override

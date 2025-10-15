@@ -34,7 +34,6 @@ import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.core.Domain;
-import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
@@ -197,14 +196,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> updateStorageDomainQuota(Domain domain, Long storageQuota) {
-        return Mono.from(maxQuotaManager.setDomainMaxStorageReactive(domain, asQuotaSizeLimit(storageQuota)));
-    }
-
-    private QuotaSizeLimit asQuotaSizeLimit(Long storageQuota) {
-        if (storageQuota == -1) {
-            return QuotaSizeLimit.unlimited();
-        }
-        return QuotaSizeLimit.size(storageQuota);
+        return Mono.from(maxQuotaManager.setDomainMaxStorageReactive(domain, SaaSSubscriptionUtils.asQuotaSizeLimit(storageQuota)));
     }
 
     @Override
